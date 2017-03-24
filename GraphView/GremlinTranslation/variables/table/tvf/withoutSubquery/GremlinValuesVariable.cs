@@ -17,6 +17,13 @@ namespace GraphView
             PropertyKeys = new List<string>(propertyKeys);
         }
 
+        internal override List<GremlinVariable> FetchAllVars()
+        {
+            List<GremlinVariable> variableList = new List<GremlinVariable>() { this };
+            variableList.AddRange(ProjectVariable.FetchAllVars());
+            return variableList;
+        }
+
         public override WTableReference ToTableReference()
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();

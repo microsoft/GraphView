@@ -18,20 +18,27 @@ namespace GraphView
 
         internal override void Populate(string property)
         {
-            if (ProjectedProperties.Contains(property)) return;
             base.Populate(property);
-
             SubqueryContext.Populate(property);
         }
 
-        internal override List<GremlinVariable> FetchVarsFromCurrAndChildContext()
+        internal override List<GremlinVariable> FetchAllVars()
         {
-            return SubqueryContext == null ? new List<GremlinVariable>() : SubqueryContext.FetchVarsFromCurrAndChildContext();
+            List<GremlinVariable> variableList = new List<GremlinVariable>() { this };
+            variableList.AddRange(SubqueryContext.FetchAllVars());
+            return variableList;
+        }
+
+        internal override List<GremlinVariable> FetchAllTableVars()
+        {
+            List<GremlinVariable> variableList = new List<GremlinVariable>() { this };
+            variableList.AddRange(SubqueryContext.FetchAllTableVars());
+            return variableList;
         }
 
         public override WTableReference ToTableReference()
         {
-            return SqlUtil.GetDerivedTable(SubqueryContext.ToSelectQueryBlock(ProjectedProperties), GetVariableName());
+            return SqlUtil.GetDerivedTable(SubqueryContext.ToSelectQueryBlock(), GetVariableName());
         }
     }
 
@@ -44,20 +51,18 @@ namespace GraphView
             FoldVariable = subqueryContext.PivotVariable;
         }
 
-        //internal override GremlinVariableType GetUnfoldVariableType()
-        //{
-        //    return FoldVariable.GetVariableType();
-        //}
+        internal override List<GremlinVariable> FetchAllVars()
+        {
+            List<GremlinVariable> variableList = new List<GremlinVariable>() { this };
+            variableList.Add(FoldVariable);
+            variableList.AddRange(SubqueryContext.FetchAllVars());
+            return variableList;
+        }
 
         public override WTableReference ToTableReference()
         {
             WSelectQueryBlock queryBlock = SubqueryContext.ToSelectQueryBlock();
             queryBlock.SelectElements.Clear();
-            //if (SubqueryContext.PivotVariable.ProjectedProperties.Count == 0)
-            //{
-            //    SubqueryContext.PivotVariable.ProjectedProperties.Add(GetProjectKey());
-            //}
-
             List<WScalarExpression> foldParameters = new List<WScalarExpression> { SubqueryContext.PivotVariable.ToCompose1() };
             queryBlock.SelectElements.Add(SqlUtil.GetSelectScalarExpr(SqlUtil.GetFunctionCall(GremlinKeyword.func.Fold, foldParameters), GremlinKeyword.TableDefaultColumnName));
             return SqlUtil.GetDerivedTable(queryBlock, GetVariableName());
@@ -137,14 +142,21 @@ namespace GraphView
             : base(subqueryContext)
         {
             PathVariable = pathVariable;
-            subqueryContext.HomeVariable = this;
+        }
+
+        internal override List<GremlinVariable> FetchAllVars()
+        {
+            List<GremlinVariable> variableList = new List<GremlinVariable>() { this };
+            variableList.Add(PathVariable);
+            variableList.AddRange(SubqueryContext.FetchAllVars());
+            return variableList;
         }
 
         public override WTableReference ToTableReference()
         {
             WSelectQueryBlock queryBlock = SubqueryContext.ToSelectQueryBlock();
             queryBlock.SelectElements.Clear();
-            queryBlock.SelectElements.Add(SqlUtil.GetSelectScalarExpr(SqlUtil.GetFunctionCall(GremlinKeyword.func.Tree, PathVariable.DefaultVariableProperty().ToScalarExpression()), GremlinKeyword.TableDefaultColumnName));
+            queryBlock.SelectElements.Add(SqlUtil.GetSelectScalarExpr(SqlUtil.GetFunctionCall(GremlinKeyword.func.Tree, PathVariable.DefaultProjection().ToScalarExpression()), GremlinKeyword.TableDefaultColumnName));
             return SqlUtil.GetDerivedTable(queryBlock, GetVariableName());
         }
     }

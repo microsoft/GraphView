@@ -6,8 +6,15 @@ using System.Threading.Tasks;
 
 namespace GraphView
 {
-    internal class GremlinContextVariable: GremlinSelectedVariable
+    internal class GremlinContextVariable: GremlinVariable
     {
+        public GremlinVariable RealVariable { get; set; }
+
+        internal override GremlinVariableType GetVariableType()
+        {
+            return RealVariable.GetVariableType();
+        }
+
         internal override string GetVariableName()
         {
             return RealVariable.GetVariableName();
@@ -26,15 +33,14 @@ namespace GraphView
 
         internal override void Populate(string property)
         {
-            if (ProjectedProperties.Contains(property)) return;
             base.Populate(property);
-
             RealVariable.Populate(property);
         }
 
-        internal override void Select(GremlinToSqlContext currentContext, string selectKey)
+        internal override void PopulateStepProperty(string property)
         {
-            RealVariable.Select(currentContext, selectKey);
+            base.PopulateStepProperty(property);
+            RealVariable.PopulateStepProperty(property);
         }
     }
 }

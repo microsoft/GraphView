@@ -23,6 +23,12 @@ namespace GraphView
             IsReverse = isReverse;
         }
 
+        internal override void Populate(string property)
+        {
+            InputVaribale.Populate(property);
+            base.Populate(property);
+        }
+
         internal override List<GremlinVariable> FetchAllVars()
         {
             List<GremlinVariable> variableList = new List<GremlinVariable>() { this };
@@ -38,6 +44,15 @@ namespace GraphView
             parameters.Add(SqlUtil.GetValueExpr(High));
             parameters.Add(IsLocal ? SqlUtil.GetValueExpr(1) : SqlUtil.GetValueExpr(-1));
             parameters.Add(IsReverse ? SqlUtil.GetValueExpr(1): SqlUtil.GetValueExpr(-1));
+
+            if (IsLocal)
+            {
+                foreach (var property in ProjectedProperties)
+                {
+                    parameters.Add(SqlUtil.GetValueExpr(property));
+                }
+            }
+
             var tableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Range, parameters, GetVariableName());
             return SqlUtil.GetCrossApplyTableReference(tableRef);
         }

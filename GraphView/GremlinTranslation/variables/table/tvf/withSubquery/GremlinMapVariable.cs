@@ -18,38 +18,28 @@ namespace GraphView
 
         internal override void Populate(string property)
         {
-            if (ProjectedProperties.Contains(property)) return;
             base.Populate(property);
-
             MapContext.Populate(property);
         }
 
-        internal override bool ContainsLabel(string label)
+        internal override List<GremlinVariable> FetchAllVars()
         {
-            if (base.ContainsLabel(label)) return true;
-            return false;
+            List<GremlinVariable> variableList = new List<GremlinVariable>() { this };
+            variableList.AddRange(MapContext.FetchAllVars());
+            return variableList;
         }
 
-        //internal override GremlinVariableType GetUnfoldVariableType()
-        //{
-        //    return MapContext.PivotVariable.GetUnfoldVariableType();
-        //}
-
-        internal override List<GremlinVariable> PopulateAllTaggedVariable(string label)
+        internal override List<GremlinVariable> FetchAllTableVars()
         {
-            //Map step should be regarded as one step, so we can't populate the tagged variable of MapContext 
-            return base.PopulateAllTaggedVariable(label);
-        }
-
-        internal override List<GremlinVariable> FetchVarsFromCurrAndChildContext()
-        {
-            return MapContext == null ? new List<GremlinVariable>() : MapContext.FetchVarsFromCurrAndChildContext();
+            List<GremlinVariable> variableList = new List<GremlinVariable>() { this };
+            variableList.AddRange(MapContext.FetchAllTableVars());
+            return variableList;
         }
 
         public override WTableReference ToTableReference()
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();
-            parameters.Add(SqlUtil.GetScalarSubquery(MapContext.ToSelectQueryBlock(ProjectedProperties)));
+            parameters.Add(SqlUtil.GetScalarSubquery(MapContext.ToSelectQueryBlock()));
             var tableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Map, parameters, GetVariableName());
 
             return SqlUtil.GetCrossApplyTableReference(tableRef);

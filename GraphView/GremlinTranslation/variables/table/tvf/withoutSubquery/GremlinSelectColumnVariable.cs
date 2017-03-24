@@ -19,9 +19,15 @@ namespace GraphView
 
         internal override void Populate(string property)
         {
-            if (ProjectedProperties.Contains(property)) return;
             base.Populate(property);
             InputVariable.Populate(property);
+        }
+
+        internal override List<GremlinVariable> FetchAllVars()
+        {
+            List<GremlinVariable> variableList = new List<GremlinVariable>() { this };
+            variableList.AddRange(InputVariable.FetchAllVars());
+            return variableList;
         }
 
         public override WTableReference ToTableReference()
@@ -38,7 +44,7 @@ namespace GraphView
     {
         public GremlinOrderLocalInitVariable()
         {
-            variableName = GremlinKeyword.Compose1TableDefaultName;
+            VariableName = GremlinKeyword.Compose1TableDefaultName;
         }
 
         internal override GremlinVariableProperty DefaultProjection()

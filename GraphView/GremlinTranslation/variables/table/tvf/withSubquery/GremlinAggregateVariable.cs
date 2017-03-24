@@ -15,26 +15,33 @@ namespace GraphView
         {
             ProjectContext = projectContext;
             SideEffectKey = sideEffectKey;
-            Labels.Add(sideEffectKey);
         }
 
-        //internal override GremlinVariableType GetUnfoldVariableType()
-        //{
-        //    return ProjectContext.PivotVariable.GetVariableType();
-        //}
-
-        internal override List<GremlinVariable> FetchVarsFromCurrAndChildContext()
+        internal override List<GremlinVariable> FetchAllVars()
         {
-            return ProjectContext == null ? new List<GremlinVariable>() : ProjectContext.FetchVarsFromCurrAndChildContext();
+            List<GremlinVariable> variableList = new List<GremlinVariable>() { this };
+            variableList.AddRange(ProjectContext.FetchAllVars());
+            return variableList;
+        }
+
+        internal override List<GremlinVariable> FetchAllTableVars()
+        {
+            List<GremlinVariable> variableList = new List<GremlinVariable>() { this };
+            variableList.AddRange(ProjectContext.FetchAllTableVars());
+            return variableList;
+        }
+
+        internal override void Populate(string property)
+        {
+            ProjectContext.Populate(property);
+            base.Populate(property);
         }
 
         public override WTableReference ToTableReference()
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();
             //TODO: refactor
-            WSelectQueryBlock selectQueryBlock = ProjectContext.ToSelectQueryBlock();
-            selectQueryBlock.SelectElements.Clear();
-            selectQueryBlock.SelectElements.Add(SqlUtil.GetSelectScalarExpr(ProjectContext.PivotVariable.ToCompose1(), GremlinKeyword.TableDefaultColumnName));
+            WSelectQueryBlock selectQueryBlock = ProjectContext.ToSelectQueryBlock(true);
             parameters.Add(SqlUtil.GetScalarSubquery(selectQueryBlock));
             parameters.Add(SqlUtil.GetValueExpr(SideEffectKey));
             var tableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Aggregate, parameters, GetVariableName());

@@ -24,9 +24,32 @@ namespace GraphView
             Scope = scope;
         }
 
-        internal override List<GremlinVariable> FetchVarsFromCurrAndChildContext()
+        internal override void Populate(string property)
         {
-            return DedupContext == null ? new List<GremlinVariable>() : DedupContext.FetchVarsFromCurrAndChildContext();
+            InputVariable?.Populate(property);
+            foreach (var variable in DedupVariables)
+            {
+                variable.Populate(property);
+            }
+            base.Populate(property);
+        }
+
+        internal override List<GremlinVariable> FetchAllVars()
+        {
+            List<GremlinVariable> variableList = new List<GremlinVariable>() { this };
+            variableList.Add(InputVariable);
+            variableList.AddRange(DedupVariables);
+            if (DedupContext != null)
+                variableList.AddRange(DedupContext.FetchAllVars());
+            return variableList;
+        }
+
+        internal override List<GremlinVariable> FetchAllTableVars()
+        {
+            List<GremlinVariable> variableList = new List<GremlinVariable>() { this };
+            if (DedupContext != null)
+                variableList.AddRange(DedupContext.FetchAllTableVars());
+            return variableList;
         }
 
         public override WTableReference ToTableReference()
@@ -36,7 +59,7 @@ namespace GraphView
             {
                 foreach (var dedupVariable in DedupVariables)
                 {
-                    parameters.Add(dedupVariable.DefaultVariableProperty().ToScalarExpression());
+                    parameters.Add(dedupVariable.DefaultProjection().ToScalarExpression());
                 }
             }
             else if (DedupContext != null)
@@ -45,7 +68,7 @@ namespace GraphView
             }
             else
             {
-                parameters.Add(InputVariable.DefaultVariableProperty().ToScalarExpression());
+                parameters.Add(InputVariable.DefaultProjection().ToScalarExpression());
             }
 
             var tableRef = SqlUtil.GetFunctionTableReference(

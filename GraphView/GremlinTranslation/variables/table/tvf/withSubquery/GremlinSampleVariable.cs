@@ -20,9 +20,18 @@ namespace GraphView
             ProbabilityContext = probabilityContext;
         }
 
-        internal override List<GremlinVariable> FetchVarsFromCurrAndChildContext()
+        internal override List<GremlinVariable> FetchAllVars()
         {
-            return ProbabilityContext.FetchVarsFromCurrAndChildContext();
+            List<GremlinVariable> variableList = new List<GremlinVariable>() { this };
+            variableList.AddRange(ProbabilityContext.FetchAllVars());
+            return variableList;
+        }
+
+        internal override List<GremlinVariable> FetchAllTableVars()
+        {
+            List<GremlinVariable> variableList = new List<GremlinVariable>() { this };
+            variableList.AddRange(ProbabilityContext.FetchAllTableVars());
+            return variableList;
         }
 
         public override WTableReference ToTableReference()

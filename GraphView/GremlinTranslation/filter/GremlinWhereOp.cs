@@ -17,6 +17,7 @@ namespace GraphView
             Predicate = predicate;
             Predicate.IsTag = true;
         }
+
         public GremlinWhereOp(string startKey, Predicate predicate)
         {
             StartKey = startKey;

@@ -15,7 +15,7 @@ namespace GraphView
         public GremlinPathVariable(List<GremlinVariable> pathList, List<GremlinToSqlContext> byContexts)
             :base(GremlinVariableType.Table)
         {
-            this.PathList = pathList;
+            PathList = pathList;
             IsInRepeatContext = false;
             ByContexts = byContexts;
         }
@@ -24,38 +24,48 @@ namespace GraphView
         public GremlinPathVariable(List<GremlinVariable> pathList)
             : base(GremlinVariableType.Table)
         {
-            this.PathList = pathList;
+            PathList = pathList;
             IsInRepeatContext = false;
             ByContexts = new List<GremlinToSqlContext>();
         }
 
-        internal override List<GremlinVariable> FetchVarsFromCurrAndChildContext()
+        internal override List<GremlinVariable> FetchAllVars()
         {
-            List<GremlinVariable> variableList = new List<GremlinVariable>();
+            List<GremlinVariable> variableList = new List<GremlinVariable>() { this };
+            variableList.AddRange(PathList.FindAll(p=>p!=null && !(p is GremlinContextVariable)));
             foreach (var context in ByContexts)
             {
-                variableList.AddRange(context.FetchVarsFromCurrAndChildContext());
+                variableList.AddRange(context.FetchAllVars());
+            }
+            return variableList;
+        }
+
+        internal override List<GremlinVariable> FetchAllTableVars()
+        {
+            List<GremlinVariable> variableList = new List<GremlinVariable>() { this };
+            foreach (var context in ByContexts)
+            {
+                variableList.AddRange(context.FetchAllTableVars());
             }
             return variableList;
         }
 
         internal override void Populate(string property)
         {
-            if (ByContexts.Count == 0)
+            foreach (var context in ByContexts)
             {
-                foreach (var step in PathList)
-                {
-                    step.Populate(property);
-                }
-            }
-            else
-            {
-                foreach (var context in ByContexts)
-                {
-                    context.Populate(property);
-                }
+                context.Populate(property);
             }
             base.Populate(property);
+        }
+
+        internal override void PopulateStepProperty(string property)
+        {
+            foreach (var step in PathList)
+            {
+                if (step == this) continue;
+                step?.PopulateStepProperty(property);
+            }
         }
 
         public override WTableReference ToTableReference()
@@ -66,34 +76,33 @@ namespace GraphView
             //Must toSelectQueryBlock before toCompose1 of variableList in order to populate needed columns
             foreach (var byContext in ByContexts)
             {
-                //TODO: select compose1
-                WSelectQueryBlock queryBlock = byContext.ToSelectQueryBlock();
-                queryBlock.SelectElements.Clear();
-                queryBlock.SelectElements.Add(SqlUtil.GetSelectScalarExpr(byContext.PivotVariable.ToCompose1(), GremlinKeyword.TableDefaultColumnName));
-                queryBlocks.Add(queryBlock);
-                
+                queryBlocks.Add(byContext.ToSelectQueryBlock(true));
             }
 
-            if (IsInRepeatContext)
-            {
-                //Must add as the first parameter
-                parameters.Add(SqlUtil.GetColumnReferenceExpr(GremlinKeyword.RepeatInitalTableName, GremlinKeyword.Path));
-            }
             foreach (var path in PathList)
             {
-                if (path is GremlinMultiStepVariable)
+                if (path == null)
                 {
-                    parameters.Add(path.DefaultProjection().ToScalarExpression());
+                    if (IsInRepeatContext)
+                    {
+                        parameters.Add(SqlUtil.GetColumnReferenceExpr(GremlinKeyword.RepeatInitalTableName,
+                            GremlinKeyword.Path));
+                    }
+                }
+                else if (path is GremlinContextVariable)
+                {
+                    foreach (var label in path.Labels)
+                    {
+                        parameters.Add(SqlUtil.GetValueExpr(label));
+                    }
                 }
                 else
                 {
-                    parameters.Add(path.ToCompose1());
-                    //var stepVar = path.StepVariable.First();
-                    //parameters.Add(stepVar.ToCompose1());
-                    //foreach (var label in stepVar.Labels)
-                    //{
-                    //    parameters.Add(SqlUtil.GetValueExpr(label));
-                    //}
+                    parameters.Add(path.ToStepScalarExpr());
+                    foreach (var label in path.Labels)
+                    {
+                        parameters.Add(SqlUtil.GetValueExpr(label));
+                    }
                 }
             }
 
@@ -105,5 +114,33 @@ namespace GraphView
             var tableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Path, parameters, GetVariableName());
             return SqlUtil.GetCrossApplyTableReference(tableRef);
         }
+    }
+
+    internal class GremlinLocalPathVariable : GremlinPathVariable
+    {
+        public GremlinLocalPathVariable(List<GremlinVariable> pathList, List<GremlinToSqlContext> byContexts)
+            :base(pathList, byContexts)
+        {
+        }
+
+        public GremlinLocalPathVariable(List<GremlinVariable> pathList)
+            : base(pathList)
+        {
+        }
+
+    }
+
+    internal class GremlinGlobalPathVariable : GremlinPathVariable
+    {
+        public GremlinGlobalPathVariable(List<GremlinVariable> pathList, List<GremlinToSqlContext> byContexts)
+            : base(pathList, byContexts)
+        {
+        }
+
+        public GremlinGlobalPathVariable(List<GremlinVariable> pathList)
+            : base(pathList)
+        {
+        }
+
     }
 }

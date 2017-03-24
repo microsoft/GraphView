@@ -14,15 +14,10 @@ namespace GraphView
             : base(variableType)
         {
             CoalesceContextList = new List<GremlinToSqlContext>(coalesceContextList);
-            foreach (var context in coalesceContextList)
-            {
-                context.HomeVariable = this;
-            }
         }
 
         internal override void Populate(string property)
         {
-            if (ProjectedProperties.Contains(property)) return;
             base.Populate(property);
 
             foreach (var context in CoalesceContextList)
@@ -31,42 +26,25 @@ namespace GraphView
             }
         }
 
-        internal override bool ContainsLabel(string label)
+        internal override List<GremlinVariable> FetchAllVars()
         {
-            if (base.ContainsLabel(label)) return true;
+            List<GremlinVariable> variableList = new List<GremlinVariable>() {this};
             foreach (var context in CoalesceContextList)
             {
-                foreach (var variable in context.VariableList)
-                {
-                    if (variable.ContainsLabel(label))
-                    {
-                        return true;
-                    }
-                }
-            }
-            return false;
-        }
-
-        internal override List<GremlinVariable> PopulateAllTaggedVariable(string label)
-        {
-            //Coalesce step should be regarded as one step, so we can't populate the tagged variable of coalesceContextList 
-            return base.PopulateAllTaggedVariable(label);
-        }
-
-        internal override List<GremlinVariable> FetchVarsFromCurrAndChildContext()
-        {
-            List<GremlinVariable> variableList = new List<GremlinVariable>();
-            foreach (var context in CoalesceContextList)
-            {
-                variableList.AddRange(context.FetchVarsFromCurrAndChildContext());
+                variableList.AddRange(context.FetchAllVars());
             }
             return variableList;
         }
 
-        //internal override GremlinVariableType GetUnfoldVariableType()
-        //{
-        //    throw new NotImplementedException();
-        //}
+        internal override List<GremlinVariable> FetchAllTableVars()
+        {
+            List<GremlinVariable> variableList = new List<GremlinVariable>() {this};
+            foreach (var context in CoalesceContextList)
+            {
+                variableList.AddRange(context.FetchAllTableVars());
+            }
+            return variableList;
+        }
 
         public override  WTableReference ToTableReference()
         {
@@ -74,7 +52,7 @@ namespace GraphView
 
             foreach (var context in CoalesceContextList)
             {
-                parameters.Add(SqlUtil.GetScalarSubquery(context.ToSelectQueryBlock(ProjectedProperties)));
+                parameters.Add(SqlUtil.GetScalarSubquery(context.ToSelectQueryBlock()));
             }
             var tableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Coalesce, parameters, GetVariableName());
 

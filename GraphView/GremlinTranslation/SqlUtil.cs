@@ -479,6 +479,9 @@ namespace GraphView
                 case GremlinKeyword.func.Select:
                     funcTableRef = new WSelectTableReference();
                     break;
+                case GremlinKeyword.func.SelectOne:
+                    funcTableRef = new WSelectOneTableReference();
+                    break;
                 case GremlinKeyword.func.SelectColumn:
                     funcTableRef = new WSelectColumnTableReference();
                     break;
@@ -543,16 +546,6 @@ namespace GraphView
         internal static WWhereClause GetWhereClause(WBooleanExpression predicate)
         {
             return new WWhereClause() {SearchCondition = predicate};
-        }
-
-        internal static WSelectQueryBlock GetSimpleSelectQueryBlock(params GremlinVariableProperty[] projectProperties)
-        {
-            var queryBlock = new WSelectQueryBlock();
-            foreach (var property in projectProperties)
-            {
-                queryBlock.SelectElements.Add(GetSelectScalarExpr(property.DefaultVariableProperty().ToScalarExpression()));
-            }
-            return queryBlock;
         }
 
         internal static WSelectQueryBlock GetSimpleSelectQueryBlock(string value)

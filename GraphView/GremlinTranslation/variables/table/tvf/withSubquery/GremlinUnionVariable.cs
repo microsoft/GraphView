@@ -17,23 +17,8 @@ namespace GraphView
             UnionContextList = unionContextList;
         }
 
-        //internal override GremlinVariableType GetUnfoldVariableType()
-        //{
-        //    if (UnionContextList.Count == 0) return GremlinVariableType.Table;
-        //    if (UnionContextList.Count == 1) return UnionContextList.First().PivotVariable.GetUnfoldVariableType();
-        //    if (UnionContextList.Count == 2)
-        //    {
-        //        return UnionContextList.First().PivotVariable.GetUnfoldVariableType();
-        //    }
-        //    else 
-        //    {   
-        //        throw new NotImplementedException();
-        //    }
-        //}
-
         internal override void Populate(string property)
         {
-            if (ProjectedProperties.Contains(property)) return;
             base.Populate(property);
 
             foreach (var context in UnionContextList)
@@ -42,25 +27,27 @@ namespace GraphView
             }
         }
 
-        internal override GremlinVariable GetAndPopulatePath()
+        internal override void PopulateStepProperty(string property)
         {
-            List<GremlinVariable> pathStepVariableList = new List<GremlinVariable>();
             foreach (var context in UnionContextList)
             {
-                GremlinPathVariable newVariable = context.PopulateGremlinPath();
-                pathStepVariableList.Add(newVariable);
+                context.ContextLocalPath.PopulateStepProperty(property);
             }
-            return new GremlinMultiStepVariable(pathStepVariableList, this);
         }
 
-        internal override List<GremlinVariable> FetchVarsFromCurrAndChildContext()
+        internal override void PopulateLocalPath()
         {
-            List<GremlinVariable> variableList = new List<GremlinVariable>();
+            if (ProjectedProperties.Contains(GremlinKeyword.Path)) return;
+            ProjectedProperties.Add(GremlinKeyword.Path);
             foreach (var context in UnionContextList)
             {
-                variableList.AddRange(context.FetchVarsFromCurrAndChildContext());
+                context.PopulateLocalPath();
             }
-            return variableList;
+        }
+
+        internal override WScalarExpression ToStepScalarExpr()
+        {
+            return SqlUtil.GetColumnReferenceExpr(GetVariableName(), GremlinKeyword.Path);
         }
 
         internal override List<GremlinVariable> FetchAllVars()
@@ -83,45 +70,6 @@ namespace GraphView
             return variableList;
         }
 
-        internal override List<GremlinVariable> PopulateAllTaggedVariable(string label)
-        {
-            List<List<GremlinVariable>> branchVariableList = new List<List<GremlinVariable>>();
-            foreach (var context in UnionContextList)
-            {
-                var variableList = context.SelectVarsFromCurrAndChildContext(label);
-                branchVariableList.Add(variableList);
-            }
-            return new List<GremlinVariable>() { new GremlinBranchVariable(label, this, branchVariableList) };
-        }
-
-        internal override bool ContainsLabel(string label)
-        {
-            if (base.ContainsLabel(label)) return true;
-            foreach (var context in UnionContextList)
-            {
-                foreach (var variable in context.VariableList)
-                {
-                    if (variable.ContainsLabel(label))
-                    {
-                        return true;
-                    }
-                }
-            }
-            return false;
-        }
-
-        //internal override WEdgeType GetEdgeType()
-        //{
-        //    if (UnionContextList.Count <= 1) return UnionContextList.First().PivotVariable.GetEdgeType();
-        //    for (var i = 1; i < UnionContextList.Count; i++)
-        //    {
-        //        var isSameType = UnionContextList[i - 1].PivotVariable.GetEdgeType()
-        //                          == UnionContextList[i].PivotVariable.GetEdgeType();
-        //        if (isSameType == false) throw new NotImplementedException();
-        //    }
-        //    return UnionContextList.First().PivotVariable.GetEdgeType();
-        //}
-
         public override WTableReference ToTableReference()
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();
@@ -134,7 +82,7 @@ namespace GraphView
             }
             foreach (var context in UnionContextList)
             {
-                parameters.Add(SqlUtil.GetScalarSubquery(context.ToSelectQueryBlock(ProjectedProperties)));
+                parameters.Add(SqlUtil.GetScalarSubquery(context.ToSelectQueryBlock()));
             }
             var tableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Union, parameters, GetVariableName());
 

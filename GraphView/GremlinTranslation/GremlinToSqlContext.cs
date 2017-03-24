@@ -10,27 +10,21 @@ namespace GraphView
     internal class GremlinToSqlContext
     {
         internal GremlinToSqlContext ParentContext { get; set; }
-        internal GremlinVariable HomeVariable { get; set; }
         internal GremlinVariable PivotVariable { get; set; }
         internal List<GremlinVariable> VariableList { get; private set; }
-        internal List<GremlinVariable> StepList { get; set; }
-        internal List<GremlinMatchPath> PathList { get; set; }
-        internal List<GremlinTableVariable> TableReferences { get; private set; }
-        internal WBooleanExpression Predicates { get; private set; }
-        internal GremlinPathVariable CurrentContextPath { get; set; }
-        internal List<Tuple<GremlinVariableProperty, string>> ProjectVariablePropertiesList { get; set; }
-        internal List<string> ProjectedProperties { get; set; }
-
-        internal bool IsPopulateGremlinPath;
+        internal List<string> ProjectedProperties { get; set; }  // Used for generating select clause
+        internal List<GremlinTableVariable> TableReferences { get; private set; } // Used for generating from clause
+        internal List<GremlinMatchPath> MatchPathList { get; set; }  // Used for generating match clause
+        internal WBooleanExpression Predicates { get; private set; } // Used for generating where clause
+        internal List<GremlinVariable> StepList { get; set; }  // Used for generating Path
+        internal GremlinLocalPathVariable ContextLocalPath { get; set; }
 
         internal GremlinToSqlContext()
         {
             TableReferences = new List<GremlinTableVariable>();
             VariableList = new List<GremlinVariable>();
-            PathList = new List<GremlinMatchPath>();
+            MatchPathList = new List<GremlinMatchPath>();
             StepList = new List<GremlinVariable>();
-            IsPopulateGremlinPath = false;
-            ProjectVariablePropertiesList = new List<Tuple<GremlinVariableProperty, string>>();
             ProjectedProperties = new List<string>();
         }
 
@@ -38,16 +32,15 @@ namespace GraphView
         {
             return new GremlinToSqlContext()
             {
-                VariableList = new List<GremlinVariable>(this.VariableList),
+                ParentContext = this.ParentContext,
                 PivotVariable = this.PivotVariable,
+                VariableList = new List<GremlinVariable>(this.VariableList),
+                ProjectedProperties = new List<string>(this.ProjectedProperties),
                 TableReferences = new List<GremlinTableVariable>(this.TableReferences),
-                PathList = new List<GremlinMatchPath>(this.PathList),
+                MatchPathList = new List<GremlinMatchPath>(this.MatchPathList),
                 Predicates = this.Predicates,
                 StepList = new List<GremlinVariable>(this.StepList),
-                IsPopulateGremlinPath = this.IsPopulateGremlinPath,
-                CurrentContextPath = this.CurrentContextPath,
-                ProjectVariablePropertiesList = new List<Tuple<GremlinVariableProperty, string>>(this.ProjectVariablePropertiesList),
-                ProjectedProperties = new List<string>(this.ProjectedProperties)
+                ContextLocalPath = this.ContextLocalPath,
             };
         }
 
@@ -59,18 +52,17 @@ namespace GraphView
                 inputVariable = VariableList.First();
             }
 
+            ParentContext = null;
             PivotVariable = null;
-            Predicates = null;
             VariableList.Clear();
-            TableReferences.Clear();
-            PathList.Clear();
-            StepList.Clear();
-            IsPopulateGremlinPath = false;
-            CurrentContextPath = null;
-            ProjectVariablePropertiesList.Clear();
             ProjectedProperties.Clear();
+            TableReferences.Clear();
+            MatchPathList.Clear();
+            Predicates = null;
+            StepList.Clear();
+            ContextLocalPath = null;
 
-            //reserve the InputVariable
+            //TODO: reserve the InputVariable, used for repeat step, should be refactored later
             if (inputVariable != null)
             {
                 VariableList.Add(inputVariable);
@@ -79,52 +71,60 @@ namespace GraphView
 
         internal void Populate(string property)
         {
-            if (ProjectedProperties.Contains(property) || property == GremlinKeyword.TableDefaultColumnName) return;
+            if (ProjectedProperties.Contains(property)) return;
             ProjectedProperties.Add(property);
             PivotVariable.Populate(property);
         }
 
-        internal void PopulateColumn(GremlinVariableProperty variableProperty, string alias)
+        internal void PopulateLocalPath()
         {
-            if (ProjectedProperties.Contains(alias)) return;
-            ProjectedProperties.Add(alias);
-            ProjectVariablePropertiesList.Add(new Tuple<GremlinVariableProperty, string>(variableProperty, alias));
+            if (ContextLocalPath != null) return;
+            ProjectedProperties.Add(GremlinKeyword.Path);
+
+            foreach (var step in StepList)
+            {
+                step.PopulateLocalPath();
+            }
+
+            GremlinLocalPathVariable newVariable = new GremlinLocalPathVariable(StepList);
+            VariableList.Add(newVariable);
+            TableReferences.Add(newVariable);
+            ContextLocalPath = newVariable;
+        }
+        internal List<GremlinVariable> GetGlobalPathStepList()
+        {
+            List<GremlinVariable> steps = ParentContext?.GetGlobalPathStepList() ?? new List<GremlinVariable>();
+            foreach (var step in StepList)
+            {
+                step.PopulateLocalPath();
+            }
+            steps.AddRange(StepList);
+            return steps;
         }
 
-        internal List<GremlinVariable> SelectVarsFromCurrAndChildContext(string label)
+        internal List<GremlinVariable> GetSideEffectVariables()
         {
-            List<GremlinVariable> taggedVariableList = new List<GremlinVariable>();
-            for (var i = 0; i < VariableList.Count; i++)
+            List<GremlinVariable> sideEffectVariables = ParentContext?.GetSideEffectVariables() ?? new List<GremlinVariable>();
+            foreach (var variable in VariableList)
             {
-                if (VariableList[i].Labels.Contains(label))
-                {
-                    taggedVariableList.Add(VariableList[i]);
-                }
-                else
-                {
-                    if (VariableList[i].ContainsLabel(label))
-                    {
-                        List<GremlinVariable> subContextVariableList = VariableList[i].PopulateAllTaggedVariable(label);
-                        taggedVariableList.AddRange(subContextVariableList);
-                    }
-                }
-            }
-            return taggedVariableList;
-        }
+                var aggregate = variable as GremlinAggregateVariable;
+                if (aggregate != null)
+                    sideEffectVariables.Add(variable);
 
-        internal List<GremlinVariable> FetchVarsFromCurrAndChildContext()
-        {
-            List<GremlinVariable> variableList = new List<GremlinVariable>();
-            for (var i = 0; i < VariableList.Count; i++)
-            {
-                variableList.Add(VariableList[i]);
-                List<GremlinVariable> subContextVariableList = VariableList[i].FetchVarsFromCurrAndChildContext();
-                if (subContextVariableList != null)
-                {
-                    variableList.AddRange(subContextVariableList);
-                }
+                var store = variable as GremlinStoreVariable;
+                if (store != null)
+                    sideEffectVariables.Add(variable);
+
+                var treeSideEffect = variable as GremlinTreeSideEffectVariable;
+                if (treeSideEffect != null)
+                    sideEffectVariables.Add(variable);
+
+                var groupSideEffect = variable as GremlinGroupVariable;
+                if (groupSideEffect != null && groupSideEffect.SideEffectKey != null)
+                    sideEffectVariables.Add(variable);
             }
-            return variableList;
+            
+            return sideEffectVariables;
         }
 
         internal List<GremlinVariable> FetchAllTableVars()
@@ -147,92 +147,10 @@ namespace GraphView
             return variableList;
         }
 
-        internal List<GremlinVariable> Select(string label, GremlinVariable stopVariable = null)
-        {
-            List<GremlinVariable> taggedVariableList = ParentContext?.Select(label, HomeVariable);
-            if (taggedVariableList == null) taggedVariableList = new List<GremlinVariable>();
-
-            var stopIndex = stopVariable == null ? VariableList.Count : VariableList.IndexOf(stopVariable);
-
-            for (var i = 0; i < stopIndex; i++)
-            {
-                if (VariableList[i].Labels.Contains(label))
-                {
-                    taggedVariableList.Add(new GremlinContextVariable(VariableList[i]));
-                }
-                else
-                {
-                    if (VariableList[i].ContainsLabel(label))
-                    {
-                        List<GremlinVariable> subContextVariableList = VariableList[i].PopulateAllTaggedVariable(label);
-                        foreach (var subContextVar in subContextVariableList)
-                        {
-                            if (subContextVar is GremlinGhostVariable)
-                            {
-                                var ghostVar = subContextVar as GremlinGhostVariable;
-                                var newGhostVar = GremlinGhostVariable.Create(ghostVar.RealVariable,
-                                    ghostVar.AttachedVariable, label);
-                                taggedVariableList.Add(newGhostVar);
-                            }
-                            else
-                            {
-                                GremlinGhostVariable newVariable = GremlinGhostVariable.Create(subContextVar,
-                                    VariableList[i], label);
-                                taggedVariableList.Add(newVariable);
-                            }
-                        }
-                    }
-                }
-            }
-            
-            return taggedVariableList;
-        }
-
-        internal GremlinPathVariable PopulateGremlinPath()
-        {
-            if (IsPopulateGremlinPath) return CurrentContextPath;
-
-            GremlinPathVariable newVariable = new GremlinPathVariable(GetCurrAndChildGremlinStepList());
-            VariableList.Add(newVariable);
-            TableReferences.Add(newVariable);
-            CurrentContextPath = newVariable;
-
-            IsPopulateGremlinPath = true;
-
-            return newVariable;
-        }
-
         internal void SetPivotVariable(GremlinVariable newPivotVariable)
         {
             PivotVariable = newPivotVariable;
             StepList.Add(newPivotVariable);
-            newPivotVariable.HomeContext = this;
-        }
-
-        internal List<GremlinVariable> GetGremlinStepList(GremlinVariable stopVariable = null)
-        {
-            List<GremlinVariable> gremlinStepList = ParentContext?.GetGremlinStepList(HomeVariable);
-            if (gremlinStepList == null)
-            {
-                gremlinStepList = new List<GremlinVariable>();
-            }
-            foreach (var step in StepList)
-            {
-                if (step == stopVariable) break;
-                gremlinStepList.Add(step.GetAndPopulatePath());
-            }
-            return gremlinStepList;
-        }
-
-        internal List<GremlinVariable> GetCurrAndChildGremlinStepList(GremlinVariable stopVariable = null)
-        {
-            List<GremlinVariable> gremlinStepList = new List<GremlinVariable>();
-            foreach (var step in StepList)
-            {
-                if (step == stopVariable) break;
-                gremlinStepList.Add(step.GetAndPopulatePath());
-            }
-            return gremlinStepList;
         }
 
         internal void AddPredicate(WBooleanExpression newPredicate)
@@ -251,7 +169,7 @@ namespace GraphView
                 var secondExpr = SqlUtil.GetValueExpr(edgeLabel);
                 booleanExprList.Add(SqlUtil.GetEqualBooleanComparisonExpr(firstExpr, secondExpr));
             }
-            AddPredicate(SqlUtil.GetBooleanParenthesisExpr(SqlUtil.ConcatBooleanExprWithOr(booleanExprList)));
+            AddPredicate(SqlUtil.ConcatBooleanExprWithOr(booleanExprList));
         }
 
         internal WBooleanExpression ToSqlBoolean()
@@ -260,10 +178,7 @@ namespace GraphView
             {
                 return Predicates;
             }
-            else
-            {
-                 return SqlUtil.GetExistPredicate(ToSelectQueryBlock());
-            }
+            return SqlUtil.GetExistPredicate(ToSelectQueryBlock());
         }
 
         internal WSqlScript ToSqlScript()
@@ -287,15 +202,64 @@ namespace GraphView
             return new List<WSqlStatement>() { ToSelectQueryBlock() };
         }
 
-        internal WSelectQueryBlock ToSelectQueryBlock(List<string> ProjectedProperties = null)
+        internal WSelectQueryBlock ToSelectQueryBlock(bool isToCompose1 = false)
         {
             return new WSelectQueryBlock()
             {
-                SelectElements = GetSelectElement(ProjectedProperties),
+                SelectElements = GetSelectElement(isToCompose1),
                 FromClause = GetFromClause(),
                 MatchClause = GetMatchClause(),
                 WhereClause = GetWhereClause()
             };
+        }
+
+        internal List<WSelectElement> GetSelectElement(bool isToCompose1)
+        {
+            var selectElements = new List<WSelectElement>();
+
+            if (PivotVariable.GetVariableType() == GremlinVariableType.NULL)
+            {
+                selectElements.Add(SqlUtil.GetSelectScalarExpr(SqlUtil.GetStarColumnReferenceExpr(), GremlinKeyword.TableDefaultColumnName));
+                return selectElements;
+            }
+
+            if (isToCompose1)
+            {
+                selectElements.Add(SqlUtil.GetSelectScalarExpr(PivotVariable.ToCompose1(), GremlinKeyword.TableDefaultColumnName));
+                return selectElements;
+            }
+
+            foreach (var projectProperty in ProjectedProperties)
+            {
+                WSelectScalarExpression selectScalarExpr;
+                if (projectProperty == GremlinKeyword.Path)
+                {
+                    selectScalarExpr = SqlUtil.GetSelectScalarExpr(ContextLocalPath.DefaultProjection().ToScalarExpression(), GremlinKeyword.Path);
+                }
+                else if (projectProperty == GremlinKeyword.TableDefaultColumnName)
+                {
+                    GremlinVariableProperty defaultProjection = PivotVariable.DefaultProjection();
+                    selectScalarExpr = SqlUtil.GetSelectScalarExpr(defaultProjection.ToScalarExpression(), GremlinKeyword.TableDefaultColumnName);
+                }
+                else if (PivotVariable.ProjectedProperties.Contains(projectProperty))
+                {
+                    WScalarExpression columnExpr = PivotVariable.GetVariableProperty(projectProperty).ToScalarExpression();
+                    selectScalarExpr = SqlUtil.GetSelectScalarExpr(columnExpr, projectProperty);
+                }
+                else
+                {
+                    selectScalarExpr = SqlUtil.GetSelectScalarExpr(SqlUtil.GetValueExpr(null), projectProperty);
+                }
+                selectElements.Add(selectScalarExpr);
+            }
+
+            if (selectElements.Count == 0)
+            {
+                GremlinVariableProperty defaultProjection = PivotVariable.DefaultProjection();
+                selectElements.Add(SqlUtil.GetSelectScalarExpr(defaultProjection.ToScalarExpression(), GremlinKeyword.TableDefaultColumnName));
+            }
+
+            return selectElements;
         }
 
         internal WFromClause GetFromClause()
@@ -319,85 +283,11 @@ namespace GraphView
         internal WMatchClause GetMatchClause()
         {
             var newMatchClause = new WMatchClause();
-            foreach (var path in PathList)
+            foreach (var path in MatchPathList)
             {
-                 newMatchClause.Paths.Add(SqlUtil.GetMatchPath(path));
+                newMatchClause.Paths.Add(SqlUtil.GetMatchPath(path));
             }
             return newMatchClause.Paths.Count == 0 ? null : newMatchClause;
-        }
-
-        internal List<WSelectElement> GetSelectElement(List<string> ProjectedProperties)
-        {
-            var selectElements = new List<WSelectElement>();
-
-            if ((PivotVariable is GremlinUnionVariable && HomeVariable is GremlinSideEffectVariable)
-                || PivotVariable.GetVariableType() == GremlinVariableType.NULL)
-            {
-                selectElements.Add(SqlUtil.GetSelectScalarExpr(SqlUtil.GetStarColumnReferenceExpr(), GremlinKeyword.TableDefaultColumnName));
-                return selectElements;
-            }
-            if (ProjectedProperties != null && ProjectedProperties.Count != 0)
-            {
-                foreach (var projectProperty in ProjectedProperties)
-                {
-                    WSelectScalarExpression selectScalarExpr;
-                    if (projectProperty == GremlinKeyword.TableDefaultColumnName)
-                    {
-                        GremlinVariableProperty defaultProjection = PivotVariable.DefaultProjection();
-                        selectScalarExpr = SqlUtil.GetSelectScalarExpr(defaultProjection.ToScalarExpression(), GremlinKeyword.TableDefaultColumnName);
-                        selectElements.Add(selectScalarExpr);
-                    }
-                    else
-                    if (ProjectVariablePropertiesList.All(p => p.Item2 != projectProperty))
-                    {
-                        
-                        if (PivotVariable.ProjectedProperties.Contains(projectProperty))
-                        {
-                            WScalarExpression columnExpr =
-                                PivotVariable.GetVariableProperty(projectProperty).ToScalarExpression();
-                            selectScalarExpr = SqlUtil.GetSelectScalarExpr(columnExpr, projectProperty);
-                            selectElements.Add(selectScalarExpr);
-                        }
-                        else
-                        {
-                            selectScalarExpr = SqlUtil.GetSelectScalarExpr(SqlUtil.GetValueExpr(null), projectProperty);
-                            selectElements.Add(selectScalarExpr);
-                        }
-                    }
-                }
-            }
-            else
-            {
-                selectElements.Add(SqlUtil.GetSelectScalarExpr(PivotVariable.DefaultProjection().ToScalarExpression(), GremlinKeyword.TableDefaultColumnName));
-            }
-
-            if (IsPopulateGremlinPath)
-            {
-                selectElements.Add(SqlUtil.GetSelectScalarExpr(CurrentContextPath.DefaultProjection().ToScalarExpression(), GremlinKeyword.Path));
-            }
-            foreach (var item in ProjectVariablePropertiesList)
-            {
-                selectElements.Add(SqlUtil.GetSelectScalarExpr(item.Item1.ToScalarExpression(), item.Item2));
-            }
-            if (selectElements.Count == 0)
-            {
-                if (PivotVariable is GremlinTableVariable
-                    || (PivotVariable is GremlinUnionVariable && HomeVariable is GremlinSideEffectVariable))
-                {
-                    selectElements.Add(SqlUtil.GetSelectScalarExpr(SqlUtil.GetStarColumnReferenceExpr()));
-                }
-                else if (PivotVariable.GetVariableType() == GremlinVariableType.Table)
-                {
-                    throw new Exception("Can't process table type");
-                }
-                else
-                {
-                    GremlinVariableProperty defaultProjection = PivotVariable.DefaultProjection();
-                    selectElements.Add(SqlUtil.GetSelectScalarExpr(defaultProjection.ToScalarExpression()));
-                }
-            }
-
-            return selectElements;
         }
 
         internal WWhereClause GetWhereClause()

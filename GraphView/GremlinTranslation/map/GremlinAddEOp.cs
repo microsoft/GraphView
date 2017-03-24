@@ -9,12 +9,14 @@ namespace GraphView
     internal class GremlinAddEOp: GremlinTranslationOperator
     {
         internal string EdgeLabel { get; set; }
-
-        public GremlinAddEOp() {}
+        public GraphTraversal2 FromVertexTraversal { get; set; }
+        public GraphTraversal2 ToVertexTraversal { get; set; }
+        public List<GremlinProperty> EdgeProperties { get; set; }
 
         public GremlinAddEOp(string label)
         {
             EdgeLabel = label;
+            EdgeProperties = new List<GremlinProperty>();
         }
 
         internal override GremlinToSqlContext GetContext()
@@ -24,69 +26,16 @@ namespace GraphView
             if (inputContext.PivotVariable == null)
             {
                 throw new QueryCompilationException("AddE should follow by a Vertex");
-            } 
+            }
 
-            inputContext.PivotVariable.AddE(inputContext, EdgeLabel);
+            FromVertexTraversal?.GetStartOp().InheritedVariableFromParent(inputContext);
+            GremlinToSqlContext fromVertexContext = FromVertexTraversal?.GetEndOp().GetContext();
 
-            return inputContext;
-        }
-    }
+            ToVertexTraversal?.GetStartOp().InheritedVariableFromParent(inputContext);
+            GremlinToSqlContext toVertexContext = ToVertexTraversal?.GetEndOp().GetContext();
 
-    internal class GremlinFromOp : GremlinTranslationOperator
-    {
-        public GraphTraversal2 FromVertexTraversal { get; set; }
+            inputContext.PivotVariable.AddE(inputContext, EdgeLabel, EdgeProperties, fromVertexContext, toVertexContext);
 
-        public GremlinFromOp(string stepLabel)
-        {
-            FromVertexTraversal = GraphTraversal2.__().Select(GremlinKeyword.Pop.Last, stepLabel);
-        }
-
-        public GremlinFromOp(GraphTraversal2 fromVertexTraversal)
-        {
-            FromVertexTraversal = fromVertexTraversal;
-        }
-
-        internal override GremlinToSqlContext GetContext()
-        {
-            GremlinToSqlContext inputContext = GetInputContext();
-
-            FromVertexTraversal.GetStartOp().InheritedVariableFromParent(inputContext);
-            GremlinToSqlContext fromVertexContext = FromVertexTraversal.GetEndOp().GetContext();
-            var gremlinAddETableVariable = inputContext.PivotVariable as GremlinAddETableVariable;
-            if (gremlinAddETableVariable != null)
-                gremlinAddETableVariable.From(inputContext, fromVertexContext);
-            else
-                throw new QueryCompilationException("From step only can follow by AddE step.");
-
-            return inputContext;
-        }
-    }
-
-    internal class GremlinToOp : GremlinTranslationOperator
-    {
-        public GraphTraversal2 ToVertexTraversal { get; set; }
-
-        public GremlinToOp(string stepLabel)
-        {
-            ToVertexTraversal = GraphTraversal2.__().Select(stepLabel);
-        }
-
-        public GremlinToOp(GraphTraversal2 toVertexTraversal)
-        {
-            ToVertexTraversal = toVertexTraversal;
-        }
-
-        internal override GremlinToSqlContext GetContext()
-        {
-            GremlinToSqlContext inputContext = GetInputContext();
-
-            ToVertexTraversal.GetStartOp().InheritedVariableFromParent(inputContext);
-            GremlinToSqlContext toVertexContext = ToVertexTraversal.GetEndOp().GetContext();
-            var gremlinAddETableVariable = inputContext.PivotVariable as GremlinAddETableVariable;
-            if (gremlinAddETableVariable != null)
-                gremlinAddETableVariable.To(inputContext, toVertexContext);
-            else
-                throw new QueryCompilationException("To step only can follow by AddE step.");
             return inputContext;
         }
     }

@@ -18,9 +18,17 @@ namespace GraphView
             Labels.Add(sideEffectKey);
         }
 
-        internal override List<GremlinVariable> FetchVarsFromCurrAndChildContext()
+        internal override List<GremlinVariable> FetchAllVars()
         {
-            return PathVariable.FetchVarsFromCurrAndChildContext();
+            List<GremlinVariable> variableList = new List<GremlinVariable>() {this};
+            variableList.AddRange(PathVariable.FetchAllVars());
+            return variableList;
+        }
+
+        internal override void Populate(string property)
+        {
+            PathVariable.Populate(property);
+            base.Populate(property);
         }
 
         public override WTableReference ToTableReference()

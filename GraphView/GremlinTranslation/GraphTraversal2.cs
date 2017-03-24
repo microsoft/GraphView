@@ -254,7 +254,7 @@ namespace GraphView
 
         public GraphTraversal2 AddE()
         {
-            AddGremlinOperator(new GremlinAddEOp());
+            throw new SyntaxErrorException("AddE must have a label");
             return this;
         }
 
@@ -604,15 +604,31 @@ namespace GraphView
             return this;
         }
 
-        public GraphTraversal2 From(string fromGremlinTranslationOperatorLabel)
+        public GraphTraversal2 From(string fromLabel)
         {
-            AddGremlinOperator(new GremlinFromOp(fromGremlinTranslationOperatorLabel));
+            GremlinAddEOp addEOp = LastGremlinTranslationOp as GremlinAddEOp;
+            if (addEOp != null)
+            {
+                addEOp.FromVertexTraversal = GraphTraversal2.__().Select(fromLabel);
+            }
+            else
+            {
+                throw new SyntaxErrorException($"{LastGremlinTranslationOp} cannot be cast to GremlinAddEOp");
+            }
             return this;
         }
 
         public GraphTraversal2 From(GraphTraversal2 fromVertexTraversal)
         {
-            AddGremlinOperator(new GremlinFromOp(fromVertexTraversal));
+            GremlinAddEOp addEOp = LastGremlinTranslationOp as GremlinAddEOp;
+            if (addEOp != null)
+            {
+                addEOp.FromVertexTraversal = fromVertexTraversal;
+            }
+            else
+            {
+                throw new SyntaxErrorException($"{LastGremlinTranslationOp} cannot be cast to GremlinAddEOp");
+            }
             return this;
         }
 
@@ -974,13 +990,24 @@ namespace GraphView
             params object[] keyValues)
         {
             if (keyValues.Length % 2 != 0) throw new Exception("The parameter of property should be even");
-            Dictionary<string, object> metaProperties = new Dictionary<string, object>();
-            for (var i = 0; i < keyValues.Length; i += 2)
+
+            var lastOp = LastGremlinTranslationOp as GremlinAddEOp;
+            if (lastOp != null)
             {
-                metaProperties[keyValues[i] as string] = keyValues[i + 1];
+                if (keyValues.Length > 0) throw new SyntaxErrorException("Only vertex can use PropertyCardinality.List and have meta properties");
+                GremlinProperty property = new GremlinProperty(cardinality, key, value, null);
+                lastOp.EdgeProperties.Add(property);
             }
-            GremlinProperty property = new GremlinProperty(cardinality, key, value, metaProperties);
-            AddGremlinOperator(new GremlinPropertyOp(property));
+            else
+            {
+                Dictionary<string, object> metaProperties = new Dictionary<string, object>();
+                for (var i = 0; i < keyValues.Length; i += 2)
+                {
+                    metaProperties[keyValues[i] as string] = keyValues[i + 1];
+                }
+                GremlinProperty property = new GremlinProperty(cardinality, key, value, metaProperties);
+                AddGremlinOperator(new GremlinPropertyOp(property));
+            }
             return this;
         }
 
@@ -1118,15 +1145,31 @@ namespace GraphView
             return this;
         }
 
-        public GraphTraversal2 To(string toGremlinTranslationOperatorLabel)
+        public GraphTraversal2 To(string toLabel)
         {
-            AddGremlinOperator(new GremlinToOp(toGremlinTranslationOperatorLabel));
+            GremlinAddEOp addEOp = LastGremlinTranslationOp as GremlinAddEOp;
+            if (addEOp != null)
+            {
+                addEOp.ToVertexTraversal = GraphTraversal2.__().Select(toLabel);
+            }
+            else
+            {
+                throw new SyntaxErrorException($"{LastGremlinTranslationOp} cannot be cast to GremlinAddEOp");
+            }
             return this;
         }
 
         public GraphTraversal2 To(GraphTraversal2 toVertex)
         {
-            AddGremlinOperator(new GremlinToOp(toVertex));
+            GremlinAddEOp addEOp = LastGremlinTranslationOp as GremlinAddEOp;
+            if (addEOp != null)
+            {
+                addEOp.ToVertexTraversal = toVertex;
+            }
+            else
+            {
+                throw new SyntaxErrorException($"{LastGremlinTranslationOp} cannot be cast to GremlinAddEOp");
+            }
             return this;
         }
 
@@ -1229,7 +1272,6 @@ namespace GraphView
         public GraphTraversal2 Where(string startKey, Predicate predicate)
         {
             AddGremlinOperator(new GremlinWhereOp(startKey, predicate));
-            //AddGremlinOperator(new GremlinWhereOp(GraphTraversal2.__().Select(startKey).As()));
             return this;
         }
 

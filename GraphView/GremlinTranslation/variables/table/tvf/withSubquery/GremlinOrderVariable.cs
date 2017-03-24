@@ -20,14 +20,31 @@ namespace GraphView
             InputVariable = inputVariable;
         }
 
-        internal override List<GremlinVariable> FetchVarsFromCurrAndChildContext()
+        internal override List<GremlinVariable> FetchAllVars()
         {
-            List<GremlinVariable> variableList = new List<GremlinVariable>();
+            List<GremlinVariable> variableList = new List<GremlinVariable>() { this };
+            variableList.Add(InputVariable);
             foreach (var by in ByModulatingList)
             {
-                variableList.AddRange(by.Item1.FetchVarsFromCurrAndChildContext());
+                variableList.AddRange(by.Item1.FetchAllVars());
             }
             return variableList;
+        }
+
+        internal override List<GremlinVariable> FetchAllTableVars()
+        {
+            List<GremlinVariable> variableList = new List<GremlinVariable>() { this };
+            foreach (var by in ByModulatingList)
+            {
+                variableList.AddRange(by.Item1.FetchAllTableVars());
+            }
+            return variableList;
+        }
+
+        internal override void Populate(string property)
+        {
+            InputVariable.Populate(property);
+            base.Populate(property);
         }
 
         public override WTableReference ToTableReference()

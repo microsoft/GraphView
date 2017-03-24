@@ -22,24 +22,29 @@ namespace GraphView
             GroupByContext = groupByContext;
             ProjectByContext = projectByContext;
             IsProjectingACollection = isProjectingACollection;
-
-            GroupByContext.HomeVariable = this;
-            ProjectByContext.HomeVariable = this;
-
-            if (sideEffectKey != null)
-            {
-                Labels.Add(sideEffectKey);
-            }
         }
 
-        internal override List<GremlinVariable> FetchVarsFromCurrAndChildContext()
+        internal override List<GremlinVariable> FetchAllVars()
         {
-            List<GremlinVariable> variableList = new List<GremlinVariable>();
-            if (GroupByContext != null)
-                variableList.AddRange(GroupByContext.FetchVarsFromCurrAndChildContext());
-            if (ProjectByContext != null)
-                variableList.AddRange(ProjectByContext.FetchVarsFromCurrAndChildContext());
+            List<GremlinVariable> variableList = new List<GremlinVariable>() { this };
+            variableList.Add(PrimaryVariable);
+            variableList.AddRange(GroupByContext.FetchAllVars());
+            variableList.AddRange(ProjectByContext.FetchAllVars());
             return variableList;
+        }
+
+        internal override List<GremlinVariable> FetchAllTableVars()
+        {
+            List<GremlinVariable> variableList = new List<GremlinVariable>() { this };
+            variableList.AddRange(GroupByContext.FetchAllTableVars());
+            variableList.AddRange(ProjectByContext.FetchAllTableVars());
+            return variableList;
+        }
+
+        internal override void Populate(string property)
+        {
+            ProjectByContext.Populate(property);
+            base.Populate(property);
         }
 
         public override WTableReference ToTableReference()
@@ -47,14 +52,10 @@ namespace GraphView
             List<WScalarExpression> parameters = new List<WScalarExpression>();
             parameters.Add(SqlUtil.GetValueExpr(SideEffectKey));
 
-            WSelectQueryBlock groupBlock = GroupByContext.ToSelectQueryBlock();
-            groupBlock.SelectElements.Clear();
-            groupBlock.SelectElements.Add(SqlUtil.GetSelectScalarExpr(GroupByContext.PivotVariable.ToCompose1(), GremlinKeyword.TableDefaultColumnName));
+            WSelectQueryBlock groupBlock = GroupByContext.ToSelectQueryBlock(true);
             parameters.Add(SqlUtil.GetScalarSubquery(groupBlock));
 
-            WSelectQueryBlock projectBlock = ProjectByContext.ToSelectQueryBlock();
-            projectBlock.SelectElements.Clear();
-            projectBlock.SelectElements.Add(SqlUtil.GetSelectScalarExpr(ProjectByContext.PivotVariable.ToCompose1(), GremlinKeyword.TableDefaultColumnName));
+            WSelectQueryBlock projectBlock = ProjectByContext.ToSelectQueryBlock(true);
             parameters.Add(SqlUtil.GetScalarSubquery(projectBlock));
 
             var tableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Group, parameters, GetVariableName());

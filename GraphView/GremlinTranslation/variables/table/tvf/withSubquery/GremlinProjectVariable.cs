@@ -15,24 +15,33 @@ namespace GraphView
         {
             ProjectKeys = new List<string>(projectKeys);
             ProjectContextList = byContexts;
+        }
+
+        internal override void Populate(string property)
+        {
             foreach (var context in ProjectContextList)
             {
-                context.HomeVariable = this;
+                context.Populate(property);
             }
+            base.Populate(property);
         }
 
-        internal override List<GremlinVariable> PopulateAllTaggedVariable(string label)
+        internal override List<GremlinVariable> FetchAllVars()
         {
-            //Project step should be regarded as one step, so we can't populate the tagged variable of ProjectContextList 
-            return base.PopulateAllTaggedVariable(label);
-        }
-
-        internal override List<GremlinVariable> FetchVarsFromCurrAndChildContext()
-        {
-            List<GremlinVariable> variableList = new List<GremlinVariable>();
+            List<GremlinVariable> variableList = new List<GremlinVariable>() { this };
             foreach (var context in ProjectContextList)
             {
-                variableList.AddRange(context.FetchVarsFromCurrAndChildContext());
+                variableList.AddRange(context.FetchAllVars());
+            }
+            return variableList;
+        }
+
+        internal override List<GremlinVariable> FetchAllTableVars()
+        {
+            List<GremlinVariable> variableList = new List<GremlinVariable>() { this };
+            foreach (var context in ProjectContextList)
+            {
+                variableList.AddRange(context.FetchAllTableVars());
             }
             return variableList;
         }
@@ -43,66 +52,13 @@ namespace GraphView
 
             for (var i = 0; i < ProjectKeys.Count; i++)
             {
-                parameters.Add(SqlUtil.GetScalarSubquery(ProjectContextList[i % ProjectContextList.Count].ToSelectQueryBlock()));
+                WSelectQueryBlock selectBlock = ProjectContextList[i % ProjectContextList.Count].ToSelectQueryBlock(true);
+                parameters.Add(SqlUtil.GetScalarSubquery(selectBlock));
                 parameters.Add(SqlUtil.GetValueExpr(ProjectKeys[i]));
             }
             var tableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Project, parameters, GetVariableName());
 
             return SqlUtil.GetCrossApplyTableReference(tableRef);
-        }
-
-        internal override void Select(GremlinToSqlContext currentContext, string label)
-        {
-            int index = ProjectKeys.FindIndex(p=> p == label);
-            if (index < 0)
-            {
-                base.Select(currentContext, label);
-            }
-            else
-            {
-                if (ProjectContextList[index % ProjectContextList.Count].PivotVariable is GremlinGhostVariable)
-                {
-                    var ghostVar =
-                        ProjectContextList[index%ProjectContextList.Count].PivotVariable as GremlinGhostVariable;
-                    var newGhostVar = GremlinGhostVariable.Create(ghostVar.RealVariable, ghostVar.AttachedVariable,
-                        label);
-                    currentContext.VariableList.Add(newGhostVar);
-                    currentContext.SetPivotVariable(newGhostVar);
-                }
-                else
-                {
-                    GremlinGhostVariable newVariable = GremlinGhostVariable.Create(ProjectContextList[index % ProjectContextList.Count].PivotVariable, this, label);
-                    currentContext.VariableList.Add(newVariable);
-                    currentContext.SetPivotVariable(newVariable);
-                }
-            }
-        }
-
-        internal override GremlinVariable SelectVariables(GremlinToSqlContext currentContext, string label)
-        {
-            int index = ProjectKeys.FindIndex(p => p == label);
-            if (index < 0)
-            {
-                return base.SelectVariables(currentContext, label);
-            }
-            else
-            {
-                if (ProjectContextList[index % ProjectContextList.Count].PivotVariable is GremlinGhostVariable)
-                {
-                    var ghostVar =
-                        ProjectContextList[index % ProjectContextList.Count].PivotVariable as GremlinGhostVariable;
-                    var newGhostVar = GremlinGhostVariable.Create(ghostVar.RealVariable, ghostVar.AttachedVariable,
-                        label);
-                    currentContext.VariableList.Add(newGhostVar);
-                    return newGhostVar;
-                }
-                else
-                {
-                    GremlinGhostVariable newVariable = GremlinGhostVariable.Create(ProjectContextList[index % ProjectContextList.Count].PivotVariable, this, label);
-                    currentContext.VariableList.Add(newVariable);
-                    return newVariable;
-                }
-            }
         }
     }
 }

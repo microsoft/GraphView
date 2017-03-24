@@ -8,10 +8,10 @@ namespace GraphView
     {
         public GremlinVariableType VariableType { get; set; }
 
-        public GremlinTableVariable(GremlinVariableType variableType)
+        protected GremlinTableVariable(GremlinVariableType variableType)
         {
             VariableType = variableType;
-            variableName = GremlinUtil.GenerateTableAlias(VariableType);
+            VariableName = GremlinUtil.GenerateTableAlias(VariableType);
         }
 
         internal override void Populate(string property)
@@ -49,18 +49,18 @@ namespace GraphView
 
     internal abstract class GremlinScalarTableVariable : GremlinTableVariable
     {
-        public GremlinScalarTableVariable(): base(GremlinVariableType.Scalar) {}
+        protected GremlinScalarTableVariable(): base(GremlinVariableType.Scalar) {}
     }
 
     internal abstract class GremlinVertexTableVariable : GremlinTableVariable
     {
-        public GremlinVertexTableVariable(): base(GremlinVariableType.Vertex) {}
+        protected GremlinVertexTableVariable(): base(GremlinVariableType.Vertex) {}
     }
 
     internal abstract class GremlinEdgeTableVariable : GremlinTableVariable
     {
         public WEdgeType EdgeType { get; set; }
 
-        public GremlinEdgeTableVariable(): base(GremlinVariableType.Edge) {}
+        protected GremlinEdgeTableVariable(): base(GremlinVariableType.Edge) {}
     }
 }

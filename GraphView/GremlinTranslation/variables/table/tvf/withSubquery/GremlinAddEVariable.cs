@@ -16,14 +16,21 @@ namespace GraphView
 
         private int OtherVIndex;
 
-        public GremlinAddETableVariable(GremlinVariable inputVariable, string edgeLabel)
+        public GremlinAddETableVariable(GremlinVariable inputVariable, string edgeLabel, List<GremlinProperty> edgeProperties, GremlinToSqlContext fromContext, GremlinToSqlContext toContext)
         {
-            EdgeProperties = new List<GremlinProperty>();
+            EdgeProperties = edgeProperties;
             EdgeLabel = edgeLabel;
             InputVariable = inputVariable;
             EdgeType = WEdgeType.OutEdge;
             OtherVIndex = 1;
             ProjectedProperties.Add(GremlinKeyword.Label);
+            FromVertexContext = fromContext;
+            ToVertexContext = toContext;
+
+            foreach (var edgeProperty in EdgeProperties)
+            {
+                ProjectedProperties.Add(edgeProperty.Key);
+            }
         }
 
         internal override void Populate(string property)
@@ -33,11 +40,24 @@ namespace GraphView
             base.Populate(property);
         }
 
-        internal override List<GremlinVariable> FetchVarsFromCurrAndChildContext()
+        internal override List<GremlinVariable> FetchAllVars()
         {
-            List<GremlinVariable> variableList = new List<GremlinVariable>();
-            variableList.AddRange(FromVertexContext == null ? new List<GremlinVariable>() : FromVertexContext.FetchVarsFromCurrAndChildContext());
-            variableList.AddRange(ToVertexContext == null ? new List<GremlinVariable>() : ToVertexContext.FetchVarsFromCurrAndChildContext());
+            List<GremlinVariable> variableList = new List<GremlinVariable>() {this};
+            variableList.Add(InputVariable);
+            if (FromVertexContext != null)
+                variableList.AddRange(FromVertexContext.FetchAllVars());
+            if (ToVertexContext != null)
+                variableList.AddRange(ToVertexContext.FetchAllVars());
+            return variableList;
+        }
+
+        internal override List<GremlinVariable> FetchAllTableVars()
+        {
+            List<GremlinVariable> variableList = new List<GremlinVariable>() { this };
+            if (FromVertexContext != null)
+                variableList.AddRange(FromVertexContext.FetchAllTableVars());
+            if (ToVertexContext != null)
+                variableList.AddRange(ToVertexContext.FetchAllTableVars());
             return variableList;
         }
 
@@ -72,7 +92,9 @@ namespace GraphView
         {
             if (context == null)
             {
-                return SqlUtil.GetSimpleSelectQueryBlock(InputVariable.DefaultProjection());
+                var queryBlock = new WSelectQueryBlock();
+                queryBlock.SelectElements.Add(SqlUtil.GetSelectScalarExpr(InputVariable.DefaultProjection().ToScalarExpression()));
+                return queryBlock;
             }
             else
             {
@@ -80,22 +102,10 @@ namespace GraphView
             } 
         }
 
-        internal void From(GremlinToSqlContext currentContext, GremlinToSqlContext fromVertexContext)
-        {
-            FromVertexContext = fromVertexContext;
-            FromVertexContext.HomeVariable = this;
-        }
-
         internal override void Property(GremlinToSqlContext currentContext, GremlinProperty property)
         {
             ProjectedProperties.Add(property.Key);
             EdgeProperties.Add(property);
-        }
-
-        internal void To(GremlinToSqlContext currentContext, GremlinToSqlContext toVertexContext)
-        {
-            ToVertexContext = toVertexContext;
-            ToVertexContext.HomeVariable = this;
         }
     }
 }

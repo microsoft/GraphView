@@ -10,11 +10,13 @@ namespace GraphView
     {
         public List<string> SelectKeys { get; set; }
         public GremlinKeyword.Pop Pop { get; set; }
+        public List<GraphTraversal2> ByList { get; set; }
 
         public GremlinSelectOp(GremlinKeyword.Pop pop, params string[] selectKeys)
         {
             SelectKeys = new List<string>(selectKeys);
             Pop = pop;
+            ByList = new List<GraphTraversal2>();
         }
 
         internal override GremlinToSqlContext GetContext()
@@ -25,23 +27,19 @@ namespace GraphView
                 throw new QueryCompilationException("The PivotVariable can't be null.");
             }
 
-            if (SelectKeys.Count == 1)
+            if (ByList.Count == 0)
             {
-                switch (Pop)
-                {
-                    case GremlinKeyword.Pop.All:
-                        inputContext.PivotVariable.Select(inputContext, SelectKeys.First());
-                        break;
-                    default:
-                        inputContext.PivotVariable.Select(inputContext, Pop, SelectKeys.First());
-                        break;
-                }
-            }
-            else
-            {
+                ByList.Add(GraphTraversal2.__());
             }
 
+            inputContext.PivotVariable.Select(inputContext, Pop, SelectKeys, ByList);
+
             return inputContext;
+        }
+
+        public override void ModulateBy(GraphTraversal2 traversal)
+        {
+            ByList.Add(traversal);
         }
     }
 }

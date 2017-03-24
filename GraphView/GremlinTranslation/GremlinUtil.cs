@@ -51,19 +51,6 @@ namespace GraphView
             return contextList.First().PivotVariable.GetVariableType();
         }
 
-        internal static bool IsTheSameType(List<GremlinVariable> variableList)
-        {
-            if (variableList.Count <= 1) return true;
-            bool isSameType = true;
-            for (var i = 1; i < variableList.Count; i++)
-            {
-                isSameType = variableList[i - 1].GetVariableType() ==
-                             variableList[i].GetVariableType();
-                if (isSameType == false) return false;
-            }
-            return isSameType;
-        }
-
         internal static bool IsVertexProperty(string property)
         {
             if (property == GremlinKeyword.EdgeAdj
@@ -146,6 +133,20 @@ namespace GraphView
                 Value = SqlUtil.GetValueExpr(Value),
                 MetaProperties = metaPropertiesExpr
             };
+        }
+    }
+
+    internal class GremlinMatchPath
+    {
+        public GremlinFreeVertexVariable SourceVariable { get; set; }
+        public GremlinFreeEdgeVariable EdgeVariable { get; set; }
+        public GremlinFreeVertexVariable SinkVariable { get; set; }
+
+        public GremlinMatchPath(GremlinFreeVertexVariable sourceVariable, GremlinFreeEdgeVariable edgeVariable, GremlinFreeVertexVariable sinkVariable)
+        {
+            SourceVariable = sourceVariable;
+            EdgeVariable = edgeVariable;
+            SinkVariable = sinkVariable;
         }
     }
 

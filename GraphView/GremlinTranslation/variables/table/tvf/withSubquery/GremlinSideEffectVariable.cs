@@ -14,18 +14,20 @@ namespace GraphView
             : base(GremlinVariableType.Table)
         {
             SideEffectContext = sideEffectContext;
-            SideEffectContext.HomeVariable = this;
         }
 
-        internal override List<GremlinVariable> PopulateAllTaggedVariable(string label)
+        internal override List<GremlinVariable> FetchAllVars()
         {
-            //SideEffect step should be regarded as one step, so we can't populate the tagged variable of coalesceContextList 
-            return new List<GremlinVariable>();
+            List<GremlinVariable> variableList = new List<GremlinVariable>() { this };
+            variableList.AddRange(SideEffectContext.FetchAllVars());
+            return variableList;
         }
 
-        internal override List<GremlinVariable> FetchVarsFromCurrAndChildContext()
+        internal override List<GremlinVariable> FetchAllTableVars()
         {
-            return SideEffectContext.FetchVarsFromCurrAndChildContext();
+            List<GremlinVariable> variableList = new List<GremlinVariable>() { this };
+            variableList.AddRange(SideEffectContext.FetchAllTableVars());
+            return variableList;
         }
 
         public override WTableReference ToTableReference()

@@ -155,12 +155,6 @@
     <Compile Include="GremlinTranslation\sideEffect\GremlinPropertyOp.cs" />
     <Compile Include="GremlinTranslation\sideEffect\GremlinSideEffectOp.cs" />
     <Compile Include="GremlinTranslation\sideEffect\GremlinTreeOp.cs" />
-    <Compile Include="GremlinTranslation\variables\context\GremlinBranchVariable.cs" />
-    <Compile Include="GremlinTranslation\variables\context\GremlinGhostVariable.cs" />
-    <Compile Include="GremlinTranslation\variables\context\GremlinSelectedVariable.cs" />
-    <Compile Include="GremlinTranslation\variables\context\GremlinListVariable.cs" />
-    <Compile Include="GremlinTranslation\variables\context\GremlinRepeatSelectedVariable.cs" />
-    <Compile Include="GremlinTranslation\variables\GremlinMultiStepVariable.cs" />
     <Compile Include="GremlinTranslation\variables\table\tvf\withoutSubquery\GremlinBarrierVariable.cs" />
     <Compile Include="GremlinTranslation\variables\table\tvf\withoutSubquery\GremlinCyclicPathVariable.cs" />
     <Compile Include="GremlinTranslation\variables\table\tvf\withoutSubquery\GremlinDecompose1Variable.cs" />
@@ -176,8 +170,7 @@
     <Compile Include="GremlinTranslation\variables\table\tvf\withSubquery\GremlinOrderVariable.cs" />
     <Compile Include="GremlinTranslation\variables\table\tvf\withSubquery\GremlinAddEVariable.cs" />
     <Compile Include="GremlinTranslation\variables\table\edge\GremlinBoundEdgeVariable.cs" />
-    <Compile Include="GremlinTranslation\variables\context\GremlinContextVariable.cs" />
-    <Compile Include="GremlinTranslation\GremlinMatchPath.cs" />
+    <Compile Include="GremlinTranslation\variables\GremlinContextVariable.cs" />
     <Compile Include="GremlinTranslation\GremlinToSqlContext.cs" />
     <Compile Include="GremlinTranslation\variables\GremlinVariable.cs" />
     <Compile Include="GremlinTranslation\variables\table\edge\GremlinFreeEdgeVariable.cs" />
@@ -190,6 +183,7 @@
     <Compile Include="GremlinTranslation\variables\table\tvf\withoutSubquery\GremlinMeanLocalVariable.cs" />
     <Compile Include="GremlinTranslation\variables\table\tvf\withoutSubquery\GremlinMinLocalVariable.cs" />
     <Compile Include="GremlinTranslation\variables\table\tvf\withSubquery\GremlinPathVariable.cs" />
+    <Compile Include="GremlinTranslation\variables\table\tvf\withSubquery\GremlinSelectVariable.cs" />
     <Compile Include="GremlinTranslation\variables\table\tvf\withSubquery\GremlinStoreVariable.cs" />
     <Compile Include="GremlinTranslation\variables\table\tvf\withoutSubquery\GremlinUnfoldVariable.cs" />
     <Compile Include="GremlinTranslation\variables\table\tvf\withoutSubquery\GremlinRangeVariable.cs" />

@@ -102,6 +102,7 @@ namespace GraphView
             public const string Choose = "Choose";
             public const string ChooseWithOptions = "ChooseWithOptions";
             public const string Select = "Select";
+            public const string SelectOne = "SelectOne";
             public const string SelectColumn = "SelectColumn";
             public const string GraphViewId = "Id";
             public const string GraphViewLabel = "Label";

@@ -22,11 +22,6 @@ namespace GraphView
             return GremlinVariableType.Scalar;
         }
 
-        internal override GremlinVariableProperty DefaultVariableProperty()
-        {
-            return this;
-        }
-
         internal override void Populate(string property)
         {
             GremlinVariable.Populate(property);

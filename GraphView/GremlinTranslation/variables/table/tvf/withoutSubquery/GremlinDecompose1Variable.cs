@@ -8,32 +8,19 @@ namespace GraphView
 {
     internal class GremlinDecompose1Variable: GremlinTableVariable
     {
-        public List<GremlinVariable> ComposeVariableList { get; set; }
-        public string DefaultProjectionKey { get; set; }
-
-        public GremlinDecompose1Variable(List<GremlinVariable> composeVariableList) : base(GremlinVariableType.Table)
-        {
-            ComposeVariableList = composeVariableList;
-        }
+        public GremlinVariable ComposeVariable { get; set; }
 
         public GremlinDecompose1Variable(GremlinVariable composeVariable) : base(GremlinVariableType.Table)
         {
-            ComposeVariableList = new List<GremlinVariable> {composeVariable};
-        }
-
-        internal override GremlinVariableProperty DefaultProjection()
-        {
-            return DefaultProjectionKey == null
-                ? GetVariableProperty(GremlinKeyword.TableDefaultColumnName)
-                : GetVariableProperty(DefaultProjectionKey);
+            ComposeVariable = composeVariable;
         }
 
         internal override void Populate(string property)
         {
-            foreach (var composeVariable in ComposeVariableList)
-            {
-                composeVariable.Populate(property);
-            }
+            if (ComposeVariable is GremlinPathVariable)
+                ComposeVariable.PopulateStepProperty(property);
+            else
+                ComposeVariable.Populate(property);
             base.Populate(property);
         }
 

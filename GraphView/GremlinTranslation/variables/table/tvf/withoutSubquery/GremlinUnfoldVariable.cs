@@ -10,42 +10,30 @@ namespace GraphView
     {
         public GremlinVariable UnfoldVariable { get; set; }
 
-        //public GremlinUnfoldVariable(GremlinVariable unfoldVariable, GremlinVariableType variableType)
-        //    : base(variableType)
-        //{
-        //    UnfoldVariable = unfoldVariable;
-        //}
-
         public GremlinUnfoldVariable(GremlinVariable unfoldVariable)
             : base(GremlinVariableType.Table)
         {
             UnfoldVariable = unfoldVariable;
         }
 
-        //internal override GremlinVariableType GetUnfoldVariableType()
-        //{
-        //    return UnfoldVariable.GetUnfoldVariableType();
-        //}
-
         internal override void Populate(string property)
         {
-            if (ProjectedProperties.Contains(property)) return;
-            ProjectedProperties.Add(property);
-
+            base.Populate(property);
             UnfoldVariable.Populate(property);
+        }
+
+        internal override List<GremlinVariable> FetchAllVars()
+        {
+            List<GremlinVariable> variableList = new List<GremlinVariable>() { this };
+            variableList.AddRange(UnfoldVariable.FetchAllVars());
+            return variableList;
         }
 
         public override WTableReference ToTableReference()
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();
-            if (UnfoldVariable is GremlinListVariable)
-            {
-                parameters.Add((UnfoldVariable as GremlinListVariable).ToScalarExpression());
-            }
-            else
-            {
-                parameters.Add(UnfoldVariable.DefaultProjection().ToScalarExpression());
-            }
+        
+            parameters.Add(UnfoldVariable.DefaultProjection().ToScalarExpression());
             if (ProjectedProperties.Count == 0)
             {
                 parameters.Add(SqlUtil.GetValueExpr(GremlinKeyword.TableDefaultColumnName));
