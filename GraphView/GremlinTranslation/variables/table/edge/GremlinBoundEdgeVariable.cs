@@ -11,30 +11,25 @@ namespace GraphView
         private GremlinVariableProperty sourceVertexVariableProperty;
         private GremlinVariableProperty adjEdgeVariableProperty;
         private GremlinVariableProperty revAdjEdgeVariableProperty;
-        private GremlinVariableProperty labelVariableProperty;
 
 
         public GremlinBoundEdgeTableVariable(GremlinVariableProperty sourceVertexVariableProperty,
                                         GremlinVariableProperty adjEdgeVariableProperty,
-                                        GremlinVariableProperty labelVariableProperty,
                                         WEdgeType edgeType)
         {
             this.sourceVertexVariableProperty = sourceVertexVariableProperty;
             this.adjEdgeVariableProperty = adjEdgeVariableProperty;
-            this.labelVariableProperty = labelVariableProperty;
             EdgeType = edgeType;
         }
 
         public GremlinBoundEdgeTableVariable(GremlinVariableProperty sourceVertexVariableProperty,
                                         GremlinVariableProperty adjEdgeVariableProperty,
                                         GremlinVariableProperty revAdjEdgeVariableProperty,
-                                        GremlinVariableProperty labelVariableProperty,
                                         WEdgeType edgeType)
         {
             this.sourceVertexVariableProperty = sourceVertexVariableProperty;
             this.adjEdgeVariableProperty = adjEdgeVariableProperty;
             this.revAdjEdgeVariableProperty = revAdjEdgeVariableProperty;
-            this.labelVariableProperty = labelVariableProperty;
             EdgeType = edgeType;
         }
 
@@ -45,7 +40,6 @@ namespace GraphView
             if (this.sourceVertexVariableProperty != null) PropertyKeys.Add(this.sourceVertexVariableProperty.ToScalarExpression());
             if (this.adjEdgeVariableProperty != null) PropertyKeys.Add(this.adjEdgeVariableProperty.ToScalarExpression());
             if (this.revAdjEdgeVariableProperty != null) PropertyKeys.Add(this.revAdjEdgeVariableProperty.ToScalarExpression());
-            if (this.labelVariableProperty != null) PropertyKeys.Add(this.labelVariableProperty.ToScalarExpression());
 
             foreach (var property in ProjectedProperties)
             {
