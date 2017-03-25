@@ -2288,7 +2288,6 @@ namespace GraphView
         internal static ReadOnlyCollection<string> ReservedNodeProperties { get; } = 
             new ReadOnlyCollection<string>(new List<string> {
                 GremlinKeyword.NodeID,
-                GremlinKeyword.Label,
                 GremlinKeyword.EdgeAdj,
                 GremlinKeyword.ReverseEdgeAdj,
                 GremlinKeyword.Star,

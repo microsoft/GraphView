@@ -214,9 +214,6 @@ namespace GraphView
             properties.Add(GremlinKeyword.NodeID);
             projectedColumnsType.Add(ColumnGraphType.VertexId);
 
-            properties.Add(GremlinKeyword.Label);
-            projectedColumnsType.Add(ColumnGraphType.Value);
-
             properties.Add(GremlinKeyword.EdgeAdj);
             projectedColumnsType.Add(ColumnGraphType.OutAdjacencyList);
 
@@ -731,7 +728,6 @@ namespace GraphView
                 operatorChain.Add(new AdjacencyListDecoder2(
                     operatorChain.Last(),
                     context.LocateColumnReference(edge.SourceNode.NodeAlias, GremlinKeyword.NodeID),
-                    context.LocateColumnReference(edge.SourceNode.NodeAlias, GremlinKeyword.Label),
                     edgeIndexTuple.Item1, edgeIndexTuple.Item2, !edge.IsReversed,
                     edgePredicates != null ? edgePredicates.CompileToFunction(localEdgeContext, connection) : null,
                     edge.Properties, connection));
@@ -815,7 +811,6 @@ namespace GraphView
         private void UpdateNodeLayout(string nodeAlias, List<string> properties, QueryCompilationContext context)
         {
             context.AddField(nodeAlias, GremlinKeyword.NodeID, ColumnGraphType.VertexId);
-            context.AddField(nodeAlias, GremlinKeyword.Label, ColumnGraphType.Value);
             context.AddField(nodeAlias, GremlinKeyword.EdgeAdj, ColumnGraphType.OutAdjacencyList);
             context.AddField(nodeAlias, GremlinKeyword.ReverseEdgeAdj, ColumnGraphType.InAdjacencyList);
             context.AddField(nodeAlias, GremlinKeyword.Star, ColumnGraphType.VertexObject);
@@ -1671,7 +1666,6 @@ namespace GraphView
             if (isSendQueryRequired)
             {
                 context.AddField(nodeAlias, GremlinKeyword.NodeID, ColumnGraphType.VertexId);
-                context.AddField(nodeAlias, GremlinKeyword.Label, ColumnGraphType.Value);
                 context.AddField(nodeAlias, GremlinKeyword.EdgeAdj, ColumnGraphType.OutAdjacencyList);
                 context.AddField(nodeAlias, GremlinKeyword.ReverseEdgeAdj, ColumnGraphType.InAdjacencyList);
                 context.AddField(nodeAlias, GremlinKeyword.Star, ColumnGraphType.VertexObject);
@@ -1730,7 +1724,6 @@ namespace GraphView
             if (isSendQueryRequired)
             {
                 context.AddField(nodeAlias, GremlinKeyword.NodeID, ColumnGraphType.VertexId);
-                context.AddField(nodeAlias, GremlinKeyword.Label, ColumnGraphType.Value);
                 context.AddField(nodeAlias, GremlinKeyword.EdgeAdj, ColumnGraphType.OutAdjacencyList);
                 context.AddField(nodeAlias, GremlinKeyword.ReverseEdgeAdj, ColumnGraphType.InAdjacencyList);
                 context.AddField(nodeAlias, GremlinKeyword.Star, ColumnGraphType.VertexObject);
@@ -1753,23 +1746,21 @@ namespace GraphView
         {
             var startVertexIdParameter = Parameters[0] as WColumnReferenceExpression;
             var adjListParameter = Parameters[1] as WColumnReferenceExpression;
-            var startVertexLabelParameter = Parameters[2] as WColumnReferenceExpression;
             
             var startVertexIndex = context.LocateColumnReference(startVertexIdParameter);
-            var startVertexLabelIndex = context.LocateColumnReference(startVertexLabelParameter);
             var adjListIndex = context.LocateColumnReference(adjListParameter);
 
             var edgeAlias = Alias.Value;
             var projectFields = new List<string>(GraphViewReservedProperties.ReservedEdgeProperties);
 
-            for (int i = 3; i < Parameters.Count; i++)
+            for (int i = 2; i < Parameters.Count; i++)
             {
                 var field = (Parameters[i] as WValueExpression).Value;
                 if (!projectFields.Contains(field))
                     projectFields.Add(field);
             }
 
-            var adjListDecoder = new AdjacencyListDecoder2(context.CurrentExecutionOperator, startVertexIndex, startVertexLabelIndex,
+            var adjListDecoder = new AdjacencyListDecoder2(context.CurrentExecutionOperator, startVertexIndex,
                 adjListIndex, -1, true, null, projectFields, dbConnection);
             context.CurrentExecutionOperator = adjListDecoder;
 
@@ -1795,23 +1786,21 @@ namespace GraphView
         {
             var startVertexIdParameter = Parameters[0] as WColumnReferenceExpression;
             var revAdjListParameter = Parameters[1] as WColumnReferenceExpression;
-            var startVertexLabelParameter = Parameters[2] as WColumnReferenceExpression;
 
             var startVertexIndex = context.LocateColumnReference(startVertexIdParameter);
-            var startVertexLabelIndex = context.LocateColumnReference(startVertexLabelParameter);
             var revAdjListIndex = context.LocateColumnReference(revAdjListParameter);
 
             var edgeAlias = Alias.Value;
             var projectFields = new List<string>(GraphViewReservedProperties.ReservedEdgeProperties);
 
-            for (int i = 3; i < Parameters.Count; i++)
+            for (int i = 2; i < Parameters.Count; i++)
             {
                 var field = (Parameters[i] as WValueExpression).Value;
                 if (!projectFields.Contains(field))
                     projectFields.Add(field);
             }
 
-            var adjListDecoder = new AdjacencyListDecoder2(context.CurrentExecutionOperator, startVertexIndex, startVertexLabelIndex,
+            var adjListDecoder = new AdjacencyListDecoder2(context.CurrentExecutionOperator, startVertexIndex,
                - 1, revAdjListIndex, true, null, projectFields, dbConnection);
             context.CurrentExecutionOperator = adjListDecoder;
 
@@ -1837,24 +1826,22 @@ namespace GraphView
             var startVertexIdParameter = Parameters[0] as WColumnReferenceExpression;
             var adjListParameter = Parameters[1] as WColumnReferenceExpression;
             var revAdjListParameter = Parameters[2] as WColumnReferenceExpression;
-            var startVertexLabelParameter = Parameters[3] as WColumnReferenceExpression;
 
             var startVertexIndex = context.LocateColumnReference(startVertexIdParameter);
-            var startVertexLabelIndex = context.LocateColumnReference(startVertexLabelParameter);
             var adjListIndex = context.LocateColumnReference(adjListParameter);
             var revAdjListIndex = context.LocateColumnReference(revAdjListParameter);
 
             var edgeAlias = Alias.Value;
             var projectFields = new List<string>(GraphViewReservedProperties.ReservedEdgeProperties);
 
-            for (int i = 4; i < Parameters.Count; i++)
+            for (int i = 3; i < Parameters.Count; i++)
             {
                 var field = (Parameters[i] as WValueExpression).Value;
                 if (!projectFields.Contains(field))
                     projectFields.Add(field);
             }
 
-            var adjListDecoder = new AdjacencyListDecoder2(context.CurrentExecutionOperator, startVertexIndex, startVertexLabelIndex,
+            var adjListDecoder = new AdjacencyListDecoder2(context.CurrentExecutionOperator, startVertexIndex,
                 adjListIndex, revAdjListIndex, true, null, projectFields, dbConnection);
             context.CurrentExecutionOperator = adjListDecoder;
 

@@ -19,6 +19,7 @@ namespace GraphView
             };
 
             projectedFieldList = new List<string>(GraphViewReservedProperties.ReservedNodeProperties);
+            projectedFieldList.Add(GremlinKeyword.Label);
 
             foreach (WPropertyExpression vertexProperty in vertexProperties) {
                 Debug.Assert(vertexProperty.Cardinality == GremlinKeyword.PropertyCardinality.List);
@@ -91,11 +92,14 @@ namespace GraphView
             context.CurrentExecutionOperator = addVOp;
 
             context.AddField(Alias.Value, GremlinKeyword.NodeID, ColumnGraphType.VertexId);
-            context.AddField(Alias.Value, GremlinKeyword.Label, ColumnGraphType.Value);
             context.AddField(Alias.Value, GremlinKeyword.EdgeAdj, ColumnGraphType.OutAdjacencyList);
             context.AddField(Alias.Value, GremlinKeyword.ReverseEdgeAdj, ColumnGraphType.InAdjacencyList);
             context.AddField(Alias.Value, GremlinKeyword.Star, ColumnGraphType.VertexObject);
-            for (var i = GraphViewReservedProperties.ReservedNodeProperties.Count; i < projectedField.Count; i++) {
+            context.AddField(Alias.Value, GremlinKeyword.Label, ColumnGraphType.Value);
+            //
+            // +1 is for "label", which will be added for the addV case
+            //
+            for (int i = GraphViewReservedProperties.ReservedNodeProperties.Count + 1; i < projectedField.Count; i++) {
                 context.AddField(Alias.Value, projectedField[i], ColumnGraphType.Value);
             }
 

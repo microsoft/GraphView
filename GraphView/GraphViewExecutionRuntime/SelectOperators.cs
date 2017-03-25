@@ -721,7 +721,6 @@ namespace GraphView
     {
         private GraphViewExecutionOperator inputOperator;
         private int startVertexIndex;
-        private int startVertexLabelIndex;
 
         private int adjacencyListIndex;
         private int revAdjacencyListIndex;
@@ -740,7 +739,7 @@ namespace GraphView
         private Dictionary<string, AdjacencyListField> reverseAdjacencyListCollection;
 
         public AdjacencyListDecoder2(GraphViewExecutionOperator input,
-            int startVertexIndex, int startVertexLabelIndex, int adjacencyListIndex, int revAdjacencyListIndex, 
+            int startVertexIndex, int adjacencyListIndex, int revAdjacencyListIndex, 
             bool isStartVertexTheOriginVertex,
             BooleanFunction edgePredicate, List<string> projectedFields,
             GraphViewConnection connection,
@@ -749,7 +748,6 @@ namespace GraphView
             this.inputOperator = input;
             this.outputBuffer = new Queue<RawRecord>();
             this.startVertexIndex = startVertexIndex;
-            this.startVertexLabelIndex = startVertexLabelIndex;
             this.adjacencyListIndex = adjacencyListIndex;
             this.revAdjacencyListIndex = revAdjacencyListIndex;
             this.isStartVertexTheOriginVertex = isStartVertexTheOriginVertex;
@@ -772,7 +770,7 @@ namespace GraphView
         /// <param name="edge"></param>
         /// <param name="startVertexId"></param>
         /// <param name="isReversedAdjList"></param>
-        private void FillMetaField(RawRecord record, EdgeField edge, string startVertexId, string startVertexLabel, bool isReversedAdjList)
+        private void FillMetaField(RawRecord record, EdgeField edge, string startVertexId, bool isReversedAdjList)
         {
             string otherValue;
             if (this.isStartVertexTheOriginVertex) {
@@ -812,10 +810,9 @@ namespace GraphView
         /// </summary>
         /// <param name="adjacencyList"></param>
         /// <param name="startVertexId"></param>
-        /// <param name="startVertexLabel"></param>
         /// <param name="isReverse"></param>
         /// <returns></returns>
-        private List<RawRecord> DecodeAdjacencyList(AdjacencyListField adjacencyList, string startVertexId, string startVertexLabel, bool isReverse)
+        private List<RawRecord> DecodeAdjacencyList(AdjacencyListField adjacencyList, string startVertexId, bool isReverse)
         {
             List<RawRecord> edgeRecordCollection = new List<RawRecord>();
 
@@ -824,7 +821,7 @@ namespace GraphView
                 // Construct new record
                 RawRecord edgeRecord = new RawRecord(projectedFields.Count);
 
-                FillMetaField(edgeRecord, edge, startVertexId, startVertexLabel, isReverse);
+                FillMetaField(edgeRecord, edge, startVertexId, isReverse);
                 FillPropertyField(edgeRecord, edge);
 
                 if (edgePredicate != null && !edgePredicate.Evaluate(edgeRecord))
@@ -846,7 +843,6 @@ namespace GraphView
         {
             List<RawRecord> results = new List<RawRecord>();
             string startVertexId = record[startVertexIndex].ToValue;
-            string startVertexLabel = record[startVertexLabelIndex]?.ToValue;
 
             if (adjacencyListIndex >= 0)
             {
@@ -855,7 +851,7 @@ namespace GraphView
                     throw new GraphViewException(string.Format("The FieldObject at {0} is not a adjacency list but {1}", 
                         adjacencyListIndex, record[adjacencyListIndex] != null ? record[adjacencyListIndex].ToString() : "null"));
 
-                results.AddRange(DecodeAdjacencyList(adj, startVertexId, startVertexLabel, false));
+                results.AddRange(DecodeAdjacencyList(adj, startVertexId, false));
             }
 
             if (revAdjacencyListIndex >= 0 && connection.UseReverseEdges)
@@ -866,7 +862,7 @@ namespace GraphView
                     throw new GraphViewException(string.Format("The FieldObject at {0} is not a reverse adjacency list but {1}",
                         revAdjacencyListIndex, record[revAdjacencyListIndex] != null ? record[revAdjacencyListIndex].ToString() : "null"));
 
-                results.AddRange(DecodeAdjacencyList(adj, startVertexId, startVertexLabel, true));
+                results.AddRange(DecodeAdjacencyList(adj, startVertexId, true));
             }
 
             return results;
@@ -916,11 +912,10 @@ namespace GraphView
 
             RawRecord record = inputTuple.Item1;
             string vertexId = inputTuple.Item2;
-            string startVertexLabel = record[startVertexLabelIndex]?.ToValue;
 
             AdjacencyListField adj = reverseAdjacencyListCollection[vertexId];
 
-            foreach (RawRecord edgeRecord in DecodeAdjacencyList(adj, vertexId, startVertexLabel, true))
+            foreach (RawRecord edgeRecord in DecodeAdjacencyList(adj, vertexId, true))
             {
                 RawRecord r = new RawRecord(record);
                 r.Append(edgeRecord);
