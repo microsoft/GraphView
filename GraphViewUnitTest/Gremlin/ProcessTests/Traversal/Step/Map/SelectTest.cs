@@ -578,7 +578,6 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         ///                         by(__.in('created').values('name').fold().order(local))"
         /// </summary>
         [TestMethod]
-        [Ignore]
         public void HasLabelSoftwareAsNameAsLanguageAsCreatorsSelectNameLanguageCreatorsByNameByLangByInCreatedValuesNameFoldOrderLocal()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -586,8 +585,6 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
                 graphCommand.OutputFormat = OutputFormat.GraphSON;
                 var traversal = graphCommand.g().V().HasLabel("software").As("name").As("language").As("creators").Select("name", "language", "creators").By("name").By("lang").
                     By(GraphTraversal2.__().In("created").Values("name").Fold().Order(GremlinKeyword.Scope.Local));
-
-                //var traversal = graphCommand.g().V().HasLabel("software").In("created").Values("name").Fold().Order(GremlinKeyword.Scope.Local);
 
                 var results = traversal.Next();
                 dynamic dynamicResult = JsonConvert.DeserializeObject<dynamic>(results.FirstOrDefault());
@@ -643,12 +640,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// Port of the g_V_untilXout_outX_repeatXin_asXaXX_selectXaX_byXtailXlocalX_nameX UT from org/apache/tinkerpop/gremlin/process/traversal/step/map/SelectTest.java.
         /// Equivalent gremlin: "g.V.until(__.out.out).repeat(__.in.as('a')).select('a').by(tail(local).name)"
         /// </summary>
-        /// <remarks>
-        /// Bug: Tail with Scope param not implemented.
-        /// WorkItem: https://msdata.visualstudio.com/DocumentDB/_workitems/edit/37443
-        /// </remarks>
         [TestMethod]
-        [Ignore]
         public void VerticesUntilOutOutRepeatInAsASelectAByTailLocalName()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))

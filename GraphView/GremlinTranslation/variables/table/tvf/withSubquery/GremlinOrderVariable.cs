@@ -73,6 +73,14 @@ namespace GraphView
                 orderTableReference?.Parameters.Add(scalarExpr);
             }
 
+            if (Scope == GremlinKeyword.Scope.Local)
+            {
+                foreach (var property in ProjectedProperties)
+                {
+                    wOrderTableReference.Parameters.Add(SqlUtil.GetValueExpr(property));
+                }
+            }
+
             return SqlUtil.GetCrossApplyTableReference(tableRef);
         }
     }
