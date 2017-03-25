@@ -127,11 +127,11 @@ namespace GraphView
             var useRevEdge = new List<OneHeightTree>();
 
             // Return node deinfed in the outer context preferably
-            foreach (var node in graph.Nodes.Values.Where(n => n.IsFromOuterContext && !component.Nodes.Contains(n)))
+            foreach (var node in graph.Nodes.Values.Where(n => n.IsFromOuterContext && !component.Nodes.ContainsKey(n.NodeAlias)))
             {
                 var remainingEdges = node.Neighbors.Where(e => !component.EdgeMaterilizedDict.ContainsKey(e)).ToList();
                 if (component.UnmaterializedNodeMapping.ContainsKey(node) ||
-                    remainingEdges.Any(e => component.Nodes.Contains(e.SinkNode)))
+                    remainingEdges.Any(e => component.Nodes.ContainsKey(e.SinkNode.NodeAlias)))
                 {
                     return new OneHeightTree
                     {
@@ -141,7 +141,7 @@ namespace GraphView
                 }
             }
 
-            foreach (var node in graph.Nodes.Values.Where(n => !component.Nodes.Contains(n)))
+            foreach (var node in graph.Nodes.Values.Where(n => !component.Nodes.ContainsKey(n.NodeAlias)))
             {
                 var remainingEdges = node.Neighbors.Where(e => !component.EdgeMaterilizedDict.ContainsKey(e)).ToList();
                 if (component.UnmaterializedNodeMapping.ContainsKey(node))
@@ -153,7 +153,7 @@ namespace GraphView
                     });
                     break;
                 }
-                if (remainingEdges.Any(e => component.Nodes.Contains(e.SinkNode)))
+                if (remainingEdges.Any(e => component.Nodes.ContainsKey(e.SinkNode.NodeAlias)))
                 {
                     useRevEdge.Add(new OneHeightTree
                     {
@@ -181,7 +181,7 @@ namespace GraphView
             var unpopEdges = new List<MatchEdge>();
             foreach (var edge in tree.Edges)
             {
-                if (component.Nodes.Contains(edge.SinkNode))
+                if (component.Nodes.ContainsKey(edge.SinkNode.NodeAlias))
                     outEdges.Add(edge);
                 else
                     unpopEdges.Add(edge);
@@ -254,7 +254,7 @@ namespace GraphView
             var unpopEdges = new List<MatchEdge>();
             foreach (var edge in tree.Edges)
             {
-                if (component.Nodes.Contains(edge.SinkNode))
+                if (component.Nodes.ContainsKey(edge.SinkNode.NodeAlias))
                     outEdges.Add(edge);
                 else
                     unpopEdges.Add(edge);
@@ -340,6 +340,20 @@ namespace GraphView
             return newComponent;
         }
 
+        private List<string> PopulateAdjacencyListProperties(MatchEdge edge)
+        {
+            if (edge.EdgeType == WEdgeType.BothEdge)
+                return new List<string> { GremlinKeyword.EdgeAdj, GremlinKeyword.ReverseEdgeAdj };
+            //
+            // IsTraversalThroughPhysicalReverseEdge
+            //
+            if ((edge.EdgeType == WEdgeType.OutEdge && edge.IsReversed)
+                || edge.EdgeType == WEdgeType.InEdge && !edge.IsReversed)
+                return new List<string> { GremlinKeyword.ReverseEdgeAdj };
+            else
+                return new List<string> { GremlinKeyword.EdgeAdj };
+        }
+
         private void UpdateComponent(MatchComponent curComponent, CandidateJoinUnit candidateTree)
         {
             var nodes = curComponent.Nodes;
@@ -347,8 +361,8 @@ namespace GraphView
             var unmaterializedNodeMapping = curComponent.UnmaterializedNodeMapping;
             var root = candidateTree.TreeRoot;
 
-            if (!nodes.Contains(root))
-                nodes.Add(root);
+            if (!nodes.ContainsKey(root.NodeAlias))
+                nodes.Add(root.NodeAlias, new MatchNode(root));
             curComponent.MaterializedNodeSplitCount[root] = 0;
 
             var inEdges =
@@ -377,6 +391,11 @@ namespace GraphView
                     var edge = t.Item2;
 
                     edgeMaterializedDict[edge] = true;
+                    List<string> adjListProperties = this.PopulateAdjacencyListProperties(edge);
+                    MatchNode node = curComponent.Nodes[edge.SourceNode.NodeAlias];
+                    foreach (string adjListProperty in adjListProperties) {
+                        node.Properties.Add(adjListProperty);
+                    }
                 }
             }
 
@@ -388,6 +407,11 @@ namespace GraphView
                     var edge = t.Item2;
 
                     edgeMaterializedDict[edge] = true;
+                    List<string> adjListProperties = this.PopulateAdjacencyListProperties(edge);
+                    MatchNode node = curComponent.Nodes[edge.SourceNode.NodeAlias];
+                    foreach (string adjListProperty in adjListProperties) {
+                        node.Properties.Add(adjListProperty);
+                    }
                 }
             }
 
@@ -415,9 +439,9 @@ namespace GraphView
 
             curComponent.TraversalChain2.Add(
                 new Tuple<MatchNode, MatchEdge, MatchNode, List<MatchEdge>, List<MatchEdge>>(
-                    inPreMatEdges[0].SourceNode,
-                    inPreMatEdges[0], 
-                    inPreMatEdges[0].SinkNode, 
+                    curComponent.Nodes[inPreMatEdges[0].SourceNode.NodeAlias],
+                    inPreMatEdges[0],
+                    curComponent.Nodes[inPreMatEdges[0].SinkNode.NodeAlias], 
                     outPostMatEdges, 
                     inPostMatEdges));
         }

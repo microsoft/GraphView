@@ -135,16 +135,9 @@ namespace GraphView
         public IList<MatchEdge> DanglingEdges { get; set; } 
         public double EstimatedRows { get; set; }
         public int TableRowCount { get; set; }
-        public DocDbScript AttachedQuerySegment { get; set; }
         internal JsonQuery AttachedJsonQuery { get; set; }
-        public List<string> Properties { get; set; }
+        public HashSet<string> Properties { get; set; }
 
-        // <index of id field, index of adj field>
-        public Dictionary<int, int> ReverseCheckList { get; set; }
-        // The meta header length of the node, consisting of node's id and node's outgoing edges
-        // Every edge will have a field as adjList and a field as single sink id
-        // | node id | edge1 | edge1.sink | edge2 | edge2.sink | ...
-        public int HeaderLength { get; set; }
         public bool IsFromOuterContext { get; set; }
 
         /// <summary>
@@ -170,9 +163,40 @@ namespace GraphView
             get { return NodeAlias + (External ? "Prime" : ""); }
         }
 
+        public override bool Equals(object obj)
+        {
+            if (Object.ReferenceEquals(this, obj)) return true;
+
+            MatchNode rhs = obj as MatchNode;
+            if (rhs == null) {
+                return false;
+            }
+
+            return this.NodeAlias.Equals(rhs.NodeAlias);
+        }
+
         public override int GetHashCode()
         {
             return NodeAlias.GetHashCode();
+        }
+
+        public MatchNode() { }
+
+        public MatchNode(MatchNode rhs)
+        {
+            this.NodeAlias = rhs.NodeAlias;
+            this.NodeTableObjectName = rhs.NodeTableObjectName;
+            this.Neighbors = rhs.Neighbors;
+            this.ReverseNeighbors = rhs.ReverseNeighbors;
+            this.DanglingEdges = rhs.DanglingEdges;
+            this.EstimatedRows = rhs.EstimatedRows;
+            this.TableRowCount = rhs.TableRowCount;
+            this.AttachedJsonQuery = rhs.AttachedJsonQuery;
+            this.Properties = new HashSet<string>(rhs.Properties);
+            this.IsFromOuterContext = rhs.IsFromOuterContext;
+            this.External = rhs.External;
+            this.GlobalNodeIdDensity = rhs.GlobalNodeIdDensity;
+            this.Predicates = rhs.Predicates;
         }
     }
 

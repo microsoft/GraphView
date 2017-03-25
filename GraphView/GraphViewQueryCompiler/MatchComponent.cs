@@ -41,7 +41,7 @@ namespace GraphView
     /// </summary>
     internal class MatchComponent
     {
-        public HashSet<MatchNode> Nodes { get; set; }
+        public Dictionary<string, MatchNode> Nodes { get; set; }
         public Dictionary<MatchEdge, bool> EdgeMaterilizedDict { get; set; }
         // Stores the split count of a materialized node
         public Dictionary<MatchNode, int> MaterializedNodeSplitCount { get; set; }
@@ -75,7 +75,7 @@ namespace GraphView
 
         public MatchComponent()
         {
-            Nodes = new HashSet<MatchNode>();
+            Nodes = new Dictionary<string, MatchNode>();
             EdgeMaterilizedDict = new Dictionary<MatchEdge, bool>();
             MaterializedNodeSplitCount = new Dictionary<MatchNode, int>();
             TraversalChain = new List<Tuple<MatchNode, MatchEdge>>();
@@ -89,7 +89,7 @@ namespace GraphView
 
         public MatchComponent(MatchNode node) : this()
         {
-            Nodes.Add(node);
+            Nodes.Add(node.NodeAlias, node);
             MaterializedNodeSplitCount[node] = 0;
             //SinkNodeStatisticsDict[node] = new Statistics ();
             NodeToMaterializedEdgesDict[node.NodeAlias] = new List<Tuple<MatchEdge, MaterializedEdgeType>>();
@@ -108,7 +108,7 @@ namespace GraphView
         /// <param name="component"></param>
         public MatchComponent(MatchComponent component)
         {
-            Nodes = new HashSet<MatchNode>(component.Nodes);
+            Nodes = component.Nodes;
             EdgeMaterilizedDict = new Dictionary<MatchEdge, bool>(component.EdgeMaterilizedDict);
             MaterializedNodeSplitCount = new Dictionary<MatchNode, int>(component.MaterializedNodeSplitCount);
 

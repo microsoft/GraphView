@@ -2285,11 +2285,32 @@ namespace GraphView
 
     internal class GraphViewReservedProperties
     {
+        internal static ReadOnlyCollection<string> InitialPopulateNodeProperties { get; } =
+            new ReadOnlyCollection<string>(new List<string> {
+                GremlinKeyword.NodeID
+            });
+
+        internal static ReadOnlyDictionary<string, ColumnGraphType> ReservedNodePropertiesColumnGraphTypes { get; } =
+            new ReadOnlyDictionary<string, ColumnGraphType>(new Dictionary<string, ColumnGraphType>
+            {
+                { GremlinKeyword.NodeID, ColumnGraphType.VertexId },
+                { GremlinKeyword.EdgeAdj, ColumnGraphType.InAdjacencyList },
+                { GremlinKeyword.ReverseEdgeAdj, ColumnGraphType.InAdjacencyList },
+                { GremlinKeyword.Label, ColumnGraphType.Value },
+                { GremlinKeyword.Star, ColumnGraphType.VertexObject }
+            });
+
+        internal static bool IsNodeReservedProperty(string propertyName)
+        {
+            return ReservedNodeProperties.Contains(propertyName);
+        }
+
         internal static ReadOnlyCollection<string> ReservedNodeProperties { get; } = 
             new ReadOnlyCollection<string>(new List<string> {
                 GremlinKeyword.NodeID,
                 GremlinKeyword.EdgeAdj,
                 GremlinKeyword.ReverseEdgeAdj,
+                GremlinKeyword.Label,
                 GremlinKeyword.Star,
             });
 

@@ -18,7 +18,7 @@ namespace GraphView
                 [KW_VERTEX_LABEL] = vertexLabel
             };
 
-            projectedFieldList = new List<string>(GraphViewReservedProperties.ReservedNodeProperties);
+            projectedFieldList = new List<string>(GraphViewReservedProperties.InitialPopulateNodeProperties);
             projectedFieldList.Add(GremlinKeyword.Label);
 
             foreach (WPropertyExpression vertexProperty in vertexProperties) {
@@ -91,16 +91,13 @@ namespace GraphView
                 projectedField);
             context.CurrentExecutionOperator = addVOp;
 
-            context.AddField(Alias.Value, GremlinKeyword.NodeID, ColumnGraphType.VertexId);
-            context.AddField(Alias.Value, GremlinKeyword.EdgeAdj, ColumnGraphType.OutAdjacencyList);
-            context.AddField(Alias.Value, GremlinKeyword.ReverseEdgeAdj, ColumnGraphType.InAdjacencyList);
-            context.AddField(Alias.Value, GremlinKeyword.Star, ColumnGraphType.VertexObject);
-            context.AddField(Alias.Value, GremlinKeyword.Label, ColumnGraphType.Value);
-            //
-            // +1 is for "label", which will be added for the addV case
-            //
-            for (int i = GraphViewReservedProperties.ReservedNodeProperties.Count + 1; i < projectedField.Count; i++) {
-                context.AddField(Alias.Value, projectedField[i], ColumnGraphType.Value);
+            for (int i = 0; i < projectedField.Count; i++)
+            {
+                string propertyName = projectedField[i];
+                ColumnGraphType columnGraphType = GraphViewReservedProperties.IsNodeReservedProperty(propertyName)
+                    ? GraphViewReservedProperties.ReservedNodePropertiesColumnGraphTypes[propertyName]
+                    : ColumnGraphType.Value;
+                context.AddField(Alias.Value, propertyName, columnGraphType);
             }
 
             return addVOp;
