@@ -22,7 +22,7 @@ namespace GraphView
         {
             VertexField vertexField = new VertexField(connection);
 
-            string vertexId = (string)vertexObject["id"];
+            string vertexId = (string)vertexObject[KW_DOC_ID];
             string vertexLabel = (string)vertexObject[KW_VERTEX_LABEL];
 
             //
@@ -32,13 +32,13 @@ namespace GraphView
             //     The schema is defined in Schema.txt
             // - For small vertexes, they are JArray directly showing all the edges.
             //
-            JToken forwardAdjList = null;
-            JToken backwardAdjList = null;
+            JArray forwardAdjList = null;
+            JArray backwardAdjList = null;
 
             foreach (JProperty property in vertexObject.Properties()) {
 
                 // For meta-properties
-                // "id", "label", "nextEdgeOffset", "partition"
+                // "id", "label", "nextEdgeOffset", "partition", "is(rev)spilled"
                 if (VertexField.IsVertexMetaProperty(property.Name)) {
                     vertexField.VertexMetaProperties.Add(property.Name, new ValuePropertyField(property, vertexField));
                     continue;
@@ -54,10 +54,10 @@ namespace GraphView
                     continue;
 
                 case KW_VERTEX_EDGE: // "_edge"
-                    forwardAdjList = property.Value;
+                    forwardAdjList = (JArray)property.Value;
                     break;
                 case KW_VERTEX_REV_EDGE: // "_reverse_edge"
-                    backwardAdjList = property.Value;
+                    backwardAdjList = (JArray)property.Value;
                     break;
 
                 default: // user-defined properties
@@ -67,30 +67,24 @@ namespace GraphView
             }
 
             Debug.Assert(forwardAdjList != null);
-            if (forwardAdjList is JArray) {
+            if (!EdgeDocumentHelper.IsSpilledVertex(vertexObject, false)) {
                 Debug.Assert(edgeDocDict == null, "Small vertexes should not have spilled edge-document");
-                vertexField.AdjacencyList = GetForwardAdjacencyListField(vertexId, vertexLabel, (JArray)forwardAdjList);
-            }
-            else if (forwardAdjList is JObject) {
-                Debug.Assert(edgeDocDict != null, "Large vertexes must have spilled edge-document");
-                vertexField.AdjacencyList = GetForwardAdjacencyListField(vertexId, vertexLabel, connection, (JObject)forwardAdjList, edgeDocDict);
+                vertexField.AdjacencyList = GetForwardAdjacencyListField(vertexId, vertexLabel, forwardAdjList);
             }
             else {
-                Debug.Assert(false, $"Should not get here! forwardAdjList is: {forwardAdjList.GetType()}");
+                Debug.Assert(edgeDocDict != null, "Large vertexes must have spilled edge-document");
+                vertexField.AdjacencyList = GetForwardAdjacencyListField(vertexId, vertexLabel, connection, forwardAdjList, edgeDocDict);
             }
 
 
             Debug.Assert(backwardAdjList != null);
-            if (backwardAdjList is JArray) {
+            if (!EdgeDocumentHelper.IsSpilledVertex(vertexObject, true)) {
                 Debug.Assert(edgeDocDict == null, "Small vertexes should not have spilled edge-document");
-                vertexField.RevAdjacencyList = GetBackwardAdjacencyListField(vertexId, vertexLabel, (JArray)backwardAdjList);
-            }
-            else if (backwardAdjList is JObject) {
-                Debug.Assert(edgeDocDict != null, "Large vertexes must have spilled edge-document");
-                vertexField.RevAdjacencyList = GetBackwardAdjacencyListField(vertexId, vertexLabel, connection, (JObject)backwardAdjList, edgeDocDict);
+                vertexField.RevAdjacencyList = GetBackwardAdjacencyListField(vertexId, vertexLabel, backwardAdjList);
             }
             else {
-                Debug.Assert(false, $"Should not get here! backwardAdjList is: {backwardAdjList.GetType()}");
+                Debug.Assert(edgeDocDict != null, "Large vertexes must have spilled edge-document");
+                vertexField.RevAdjacencyList = GetBackwardAdjacencyListField(vertexId, vertexLabel, connection, backwardAdjList, edgeDocDict);
             }
 
             return vertexField;
@@ -137,11 +131,11 @@ namespace GraphView
         /// <param name="edgeContainer"></param>
         /// <returns></returns>
         public static AdjacencyListField GetForwardAdjacencyListField(
-            string outVId, string outVLabel, GraphViewConnection connection, JObject edgeContainer, Dictionary<string, JObject> edgeDocDict)
+            string outVId, string outVLabel, GraphViewConnection connection, JArray edgeContainer, Dictionary<string, JObject> edgeDocDict)
         {
             AdjacencyListField result = new AdjacencyListField();
 
-            JArray edgeDocuments = (JArray)edgeContainer["_edges"];
+            JArray edgeDocuments = edgeContainer;
             Debug.Assert(edgeDocuments != null, "edgeDocuments != null");
 
             foreach (JObject edgeDocument in edgeDocuments.Children<JObject>()) {
@@ -184,11 +178,11 @@ namespace GraphView
         /// <param name="edgeDocDict">Set of reverse-edge-documents for spilled vertexes</param>
         /// <returns></returns>
         public static AdjacencyListField GetBackwardAdjacencyListField(
-            string inVId, string inVLabel, GraphViewConnection connection, JObject edgeContainer, Dictionary<string, JObject> edgeDocDict)
+            string inVId, string inVLabel, GraphViewConnection connection, JArray edgeContainer, Dictionary<string, JObject> edgeDocDict)
         {
             AdjacencyListField result = new AdjacencyListField();
 
-            JArray edgeDocuments = (JArray)edgeContainer["_edges"];
+            JArray edgeDocuments = edgeContainer;
             Debug.Assert(edgeDocuments != null, "edgeDocuments != null");
 
             foreach (JObject edgeDocument in edgeDocuments.Children<JObject>()) {
@@ -1659,6 +1653,8 @@ namespace GraphView
             case KW_DOC_PARTITION:
             case KW_VERTEX_LABEL:
             case KW_VERTEX_NEXTOFFSET:
+            case KW_VERTEX_EDGE_SPILLED:
+            case KW_VERTEX_REVEDGE_SPILLED:
                 return true;
             default:
                 return false;

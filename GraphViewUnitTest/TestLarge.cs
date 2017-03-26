@@ -144,7 +144,7 @@ namespace GraphViewUnitTest
             graph.g().AddV("SourceV").Next();
             graph.g().AddV("SinkV").Next();
             for (int i = 0; i < EDGE_COUNT; i++) {
-                graph.g().V().HasLabel("SourceV").AddE().To(graph.g().V().HasLabel("SinkV")).Next();
+                graph.g().V().HasLabel("SourceV").AddE("dummyLabel").To(graph.g().V().HasLabel("SinkV")).Next();
             }
             graph.g().V().OutE().Drop().Next();
         }

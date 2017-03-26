@@ -23,17 +23,22 @@ namespace GraphView
         {
             Debug.Assert(vertexObject != null);
 
-            JToken edgeContainer = vertexObject[checkReverse ? KW_VERTEX_REV_EDGE : KW_VERTEX_EDGE];
-            if (edgeContainer is JObject) {
-                Debug.Assert(edgeContainer["_edges"] is JArray);
-                return true;
-            }
-            else if (edgeContainer is JArray) {
-                return false;
-            }
-            else {
-                throw new Exception("Should not get here!");
-            }
+            JToken isSpilled = vertexObject[checkReverse ? KW_VERTEX_REVEDGE_SPILLED : KW_VERTEX_EDGE_SPILLED];
+            Debug.Assert(isSpilled != null);
+            Debug.Assert(isSpilled.Type == JTokenType.Boolean);
+
+            return (bool)isSpilled;
+
+            //if (edgeContainer is JObject) {
+            //    Debug.Assert(edgeContainer["_edges"] is JArray);
+            //    return true;
+            //}
+            //else if (edgeContainer is JArray) {
+            //    return false;
+            //}
+            //else {
+            //    throw new Exception("Should not get here!");
+            //}
         }
 
 
@@ -135,10 +140,11 @@ namespace GraphView
             out string newEdgeDocId)
         {
             bool tooLarge;
-            JToken edgeContainer = vertexObject[isReverse ? KW_VERTEX_REV_EDGE : KW_VERTEX_EDGE]; // JArray or JObject
-            if (edgeContainer is JObject) {
+            JArray edgeContainer = (JArray)vertexObject[isReverse ? KW_VERTEX_REV_EDGE : KW_VERTEX_EDGE]; // JArray or JObject
+            bool isSpilled = IsSpilledVertex(vertexObject, isReverse);
+            if (isSpilled) {
                 // Now it is a large-degree vertex, and contains at least 1 edge-document
-                JArray edgeDocumentsArray = (JArray)edgeContainer["_edges"];
+                JArray edgeDocumentsArray = edgeContainer;
                 Debug.Assert(edgeDocumentsArray != null, "edgeDocuments != null");
                 Debug.Assert(edgeDocumentsArray.Count > 0, "edgeDocuments.Count > 0");
 
@@ -146,7 +152,7 @@ namespace GraphView
                 JObject edgeDocument = connection.RetrieveDocumentById(lastEdgeDocId);
                 Debug.Assert(((string)edgeDocument[KW_DOC_ID]).Equals(lastEdgeDocId), $"((string)edgeDocument[{KW_DOC_ID}]).Equals(lastEdgeDocId)");
                 Debug.Assert((bool)edgeDocument[KW_EDGEDOC_ISREVERSE] == isReverse, $"(bool)edgeDocument['{KW_EDGEDOC_ISREVERSE}'] == isReverse");
-                Debug.Assert((string)edgeDocument[KW_EDGEDOC_VERTEXID] == (string)vertexObject[KW_DOC_ID], $"(string)edgeDocument['{KW_EDGEDOC_VERTEXID}'] == (string)vertexObject['id']");
+                Debug.Assert((string)edgeDocument[KW_EDGEDOC_VERTEXID] == (string)vertexObject[KW_DOC_ID], $"(string)edgeDocument['{KW_EDGEDOC_VERTEXID}'] == (string)vertexObject['{KW_DOC_ID}']");
 
                 JArray edgesArray = (JArray)edgeDocument["_edge"];
                 Debug.Assert(edgesArray != null, "edgesArray != null");
@@ -201,17 +207,20 @@ namespace GraphView
                 UploadOne(connection, (string)vertexObject[KW_DOC_ID], vertexObject, out dummyTooLarge);
                 Debug.Assert(!dummyTooLarge);
             }
-            else if (edgeContainer is JArray) {
-
+            else {
+                // This vertex is not spilled
+                bool? spillReverse;
                 ((JArray)edgeContainer).Add(edgeObject);
                 if (connection.EdgeSpillThreshold == 0) {
                     // Don't spill an edge-document until it is too large
                     tooLarge = false;
+                    spillReverse = null;
                 }
                 else {
                     // Explicitly specified a threshold
                     Debug.Assert(connection.EdgeSpillThreshold > 0, "connection.EdgeSpillThreshold > 0");
-                    tooLarge = (((JArray)edgeContainer).Count >= connection.EdgeSpillThreshold);
+                    tooLarge = (((JArray)edgeContainer).Count > connection.EdgeSpillThreshold);
+                    spillReverse = isReverse;
                 }
 
                 if (!tooLarge) {
@@ -219,10 +228,13 @@ namespace GraphView
                 }
                 if (tooLarge) {
                     string existEdgeDocId;
-                    SpillVertexEdgesToDocument(connection, vertexObject, out existEdgeDocId, out newEdgeDocId);
+                    // The vertex object is uploaded in SpillVertexEdgesToDocument
+                    SpillVertexEdgesToDocument(connection, vertexObject, ref spillReverse, out existEdgeDocId, out newEdgeDocId);
 
                     // Update the in & out edges in vertex field
-                    if (isReverse) {
+                    Debug.Assert(spillReverse != null);
+                    Debug.Assert(vertexField != null);
+                    if (spillReverse.Value) {
                         Debug.Assert(vertexField.RevAdjacencyList.AllEdges.All(edge => edge.EdgeDocID == null));
                         foreach (EdgeField edge in vertexField.RevAdjacencyList.AllEdges) {
                             edge.EdgeDocID = existEdgeDocId;
@@ -239,9 +251,6 @@ namespace GraphView
                     newEdgeDocId = null;
                 }
             }
-            else {
-                throw new Exception($"BUG: edgeContainer should either be JObject or JArray, but now: {edgeContainer?.GetType()}");
-            }
         }
 
         /// <summary>
@@ -251,42 +260,53 @@ namespace GraphView
         /// </summary>
         /// <param name="connection"></param>
         /// <param name="vertexObject"></param>
+        /// <param name="spillReverse">
+        /// Whether to spill the outgoing edges or incoming edges.
+        /// If it's null, let this function decide. 
+        /// (This happens when no spilling threshold is set but the document size limit is reached)
+        /// </param>
         /// <param name="existEdgeDocId">This is the first edge-document (to store the existing edges)</param>
         /// <param name="newEdgeDocId">This is the second edge-document (to store the currently creating edge)</param>
-        private static void SpillVertexEdgesToDocument(GraphViewConnection connection, JObject vertexObject, out string existEdgeDocId, out string newEdgeDocId)
+        private static void SpillVertexEdgesToDocument(GraphViewConnection connection, JObject vertexObject, ref bool? spillReverse, out string existEdgeDocId, out string newEdgeDocId)
         {
             Debug.Assert(vertexObject[KW_DOC_PARTITION] != null);
             Debug.Assert((string)vertexObject[KW_DOC_ID] == (string)vertexObject[KW_DOC_PARTITION]);
+            if (spillReverse == null) {  
+                // Let this function decide whether incoming/outgoing edges to spill
+                Debug.Assert(!IsSpilledVertex(vertexObject, true) || !IsSpilledVertex(vertexObject, false));
+            }
+            else {
+                Debug.Assert(!IsSpilledVertex(vertexObject, spillReverse.Value));
+            }
 
             // NOTE: The VertexCache is not updated here
-            bool outEdgeSeperated = vertexObject[KW_VERTEX_EDGE] is JObject;
+            bool outEdgeSeperated = IsSpilledVertex(vertexObject, false);
             bool inEdgeSeperated = vertexObject[KW_VERTEX_REV_EDGE] is JObject;
             if (inEdgeSeperated && outEdgeSeperated) {
                 throw new Exception("BUG: Should not get here! Either incoming or outgoing edegs should not have been seperated");
             }
 
             JArray targetEdgeArray;
-            bool targetEdgeIsReverse;
             if (inEdgeSeperated) {
                 targetEdgeArray = (JArray)vertexObject[KW_VERTEX_EDGE];
-                targetEdgeIsReverse = false;
+                spillReverse = false;
             }
             else if (outEdgeSeperated) {
                 targetEdgeArray = (JArray)vertexObject[KW_VERTEX_REV_EDGE];
-                targetEdgeIsReverse = true;
+                spillReverse = true;
             }
             else {
                 JArray outEdgeArray = (JArray)vertexObject[KW_VERTEX_EDGE];
                 JArray inEdgeArray = (JArray)vertexObject[KW_VERTEX_REV_EDGE];
-                targetEdgeIsReverse = (outEdgeArray.ToString().Length < inEdgeArray.ToString().Length);
-                targetEdgeArray = targetEdgeIsReverse ? inEdgeArray : outEdgeArray;
+                spillReverse = (outEdgeArray.ToString().Length < inEdgeArray.ToString().Length);
+                targetEdgeArray = spillReverse.Value ? inEdgeArray : outEdgeArray;
             }
 
             // Create a new edge-document to store the currently creating edge
             JObject newEdgeDocObject = new JObject {
                 [KW_DOC_ID] = GraphViewConnection.GenerateDocumentId(),
                 [KW_DOC_PARTITION] = vertexObject[KW_DOC_PARTITION],
-                [KW_EDGEDOC_ISREVERSE] = targetEdgeIsReverse,
+                [KW_EDGEDOC_ISREVERSE] = spillReverse.Value,
                 [KW_EDGEDOC_VERTEXID] = (string)vertexObject[KW_DOC_ID],
                 ["_edge"] = new JArray(targetEdgeArray.Last),
             };
@@ -297,25 +317,35 @@ namespace GraphView
             JObject existEdgeDocObject = new JObject {
                 [KW_DOC_ID] = GraphViewConnection.GenerateDocumentId(),
                 [KW_DOC_PARTITION] = vertexObject[KW_DOC_PARTITION],
-                [KW_EDGEDOC_ISREVERSE] = targetEdgeIsReverse,
+                [KW_EDGEDOC_ISREVERSE] = spillReverse.Value,
                 [KW_EDGEDOC_VERTEXID] = (string)vertexObject[KW_DOC_ID],
                 ["_edge"] = targetEdgeArray,
             };
             existEdgeDocId = connection.CreateDocumentAsync(existEdgeDocObject).Result;
 
             // Update vertexObject to store the newly create edge-document & upload the vertexObject
-            vertexObject[targetEdgeIsReverse ? KW_VERTEX_REV_EDGE : KW_VERTEX_EDGE] = new JObject {
-                ["_edges"] = new JArray {
-                    new JObject {
-                        [KW_DOC_ID] = existEdgeDocId,
-                    },
-                    new JObject {
-                        [KW_DOC_ID] = newEdgeDocId,
-                    },
+            vertexObject[spillReverse.Value ? KW_VERTEX_REV_EDGE : KW_VERTEX_EDGE] = new JArray {
+                new JObject {
+                    [KW_DOC_ID] = existEdgeDocId,
                 },
-            };            
+                new JObject {
+                    [KW_DOC_ID] = newEdgeDocId,
+                },
+            };
+
+            // Update the vertex document to indicate whether it's spilled
+            if (spillReverse.Value) {
+                Debug.Assert((bool)vertexObject[KW_VERTEX_REVEDGE_SPILLED] == false);
+                vertexObject[KW_VERTEX_REVEDGE_SPILLED] = true;
+            }
+            else {
+                Debug.Assert((bool)vertexObject[KW_VERTEX_EDGE_SPILLED] == false);
+                vertexObject[KW_VERTEX_EDGE_SPILLED] = true;
+            }
+
             bool dummyTooLarge;
             UploadOne(connection, (string)vertexObject[KW_DOC_ID], vertexObject, out dummyTooLarge);
+            Debug.Assert(!dummyTooLarge);
         }
 
 
@@ -340,7 +370,7 @@ namespace GraphView
             }
             JToken edgeContainer = vertexObject[isReverseEdge ? KW_VERTEX_REV_EDGE : KW_VERTEX_EDGE];
 
-            if (edgeContainer is JArray) {  // for small-degree vertexes
+            if (!IsSpilledVertex(vertexObject, isReverseEdge)) {  // for small-degree vertexes
                 if (isReverseEdge) {
                     edgeObject = (from edgeObj in edgeContainer.Children<JObject>()
                                   where (string)edgeObj[KW_EDGE_SRCV] == srcVertexId
@@ -356,8 +386,8 @@ namespace GraphView
                 }
                 edgeDocId = null;
             }
-            else if (edgeContainer is JObject) { // for large-degree vertexes
-                string edgeDocIdList = string.Join(", ", edgeContainer["_edges"].Children<JObject>().Select(e => $"'{e[KW_DOC_ID]}'"));
+            else { // for large-degree vertexes
+                string edgeDocIdList = string.Join(", ", edgeContainer.Children<JObject>().Select(e => $"'{e[KW_DOC_ID]}'"));
                 string query;
                 if (isReverseEdge) {
                     query = $"SELECT doc.{KW_DOC_ID}, edge\n" +
@@ -378,9 +408,6 @@ namespace GraphView
                 edgeDocId = (string)result?[KW_DOC_ID];
                 edgeObject = (JObject)result?["edge"];
             }
-            else {
-                throw new Exception($"BUG: edgeContainer should either be JObject or JArray, but now: {edgeContainer?.GetType()}");
-            }
         }
 
 
@@ -392,12 +419,12 @@ namespace GraphView
             bool isReverse,
             string srcVertexId, long edgeOffset)
         {
-            JToken edgeContainer = vertexObject[isReverse ? KW_VERTEX_REV_EDGE : KW_VERTEX_EDGE];
-            if (edgeContainer is JObject) {
+            JArray edgeContainer = (JArray)vertexObject[isReverse ? KW_VERTEX_REV_EDGE : KW_VERTEX_EDGE];
+            if (IsSpilledVertex(vertexObject, isReverse)) {
                 // Now it is a large-degree vertex, and contains at least 1 edge-document
                 Debug.Assert(!string.IsNullOrEmpty(edgeDocId), "!string.IsNullOrEmpty(edgeDocId)");
 
-                JArray edgeDocumentsArray = (JArray)edgeContainer["_edges"];
+                JArray edgeDocumentsArray = edgeContainer;
                 Debug.Assert(edgeDocumentsArray != null, "edgeDocuments != null");
                 Debug.Assert(edgeDocumentsArray.Count > 0, "edgeDocuments.Count > 0");
 
@@ -444,7 +471,8 @@ namespace GraphView
                     documentMap[edgeDocId] = new Tuple<JObject, string>(edgeDocument, (string)edgeDocument[KW_DOC_PARTITION]);
                 }
             }
-            else if (edgeContainer is JArray) {
+            else {
+                // This vertex is not spilled
                 Debug.Assert(edgeDocId == null, "edgeDocId == null");
 
                 if (isReverse) {
@@ -454,9 +482,6 @@ namespace GraphView
                     ((JArray)edgeContainer).First(e => (long)e[KW_EDGE_OFFSET] == edgeOffset).Remove();
                 }
                 documentMap[(string)vertexObject[KW_DOC_ID]] = new Tuple<JObject, string>(vertexObject, (string)vertexObject[KW_DOC_PARTITION]);
-            }
-            else {
-                throw new Exception($"BUG: edgeContainer should either be JObject or JArray, but now: {edgeContainer?.GetType()}");
             }
         }
 
@@ -498,10 +523,13 @@ namespace GraphView
                 if (tooLarge) {
                     // Handle this situation: The updated edge is too large to be filled into the vertex-document
                     string existEdgeDocId, newEdgeDocId;
-                    SpillVertexEdgesToDocument(connection, vertexObject, out existEdgeDocId, out newEdgeDocId);
+                    bool? spillReverse = null;
+                    SpillVertexEdgesToDocument(connection, vertexObject, ref spillReverse, out existEdgeDocId, out newEdgeDocId);
                 }
             }
             else {
+                // Large vertex
+
                 JObject edgeDocObject = connection.RetrieveDocumentById(edgeDocId);
                 edgeDocObject["_edge"].Children<JObject>().First(
                     e => (long)e[KW_EDGE_OFFSET] == (long)newEdgeObject[KW_EDGE_OFFSET] &&
@@ -526,9 +554,11 @@ namespace GraphView
         {
             AdjacencyListField result = new AdjacencyListField();
 
-            string query = $"SELECT {{\"edge\": edge, " +
-                           $"\"{KW_EDGE_SRCV}\": doc.id, " +
-                           $"\"{KW_EDGE_SRCV_LABEL}\": doc.label}} AS incomingEdgeMetadata\n" +
+            string query = $"SELECT {{" +
+                           $"  \"edge\": edge, " +
+                           $"  \"{KW_EDGE_SRCV}\": doc.id, " +
+                           $"  \"{KW_EDGE_SRCV_LABEL}\": doc.label" +
+                           $"}} AS incomingEdgeMetadata\n" +
                            $"FROM doc\n" +
                            $"JOIN edge IN doc._edge\n" +
                            $"WHERE edge.{KW_EDGE_SINKV} = '{vertexId}'\n";

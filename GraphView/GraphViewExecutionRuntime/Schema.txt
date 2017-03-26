@@ -14,6 +14,10 @@ VertexDocument (Small):
 	// vertex properties
 	"label": ...,  // optional					// KW_VERTEX_LABLE
 
+	// Are incoming/outgoing edges spilled?
+	"__graphviewEdgeSpilled": true/false		// KW_VERTEX_EDGE_SPILLED
+	"__graphviewRevEdgeSpilled": true/false		// KW_VERTEX_REVEDGE_SPILLED
+
 	<VertexProperties>
 	...
 }
@@ -24,18 +28,14 @@ VertexDocument (Large):
 	"id": ...,
 	"_partition": ...,    // = id
 	"_edge": {
-		"_edges": [								// TODO: "_edges" still hardcoded
-			{
-				"id": <edge-doucment-id>
-			}, ...
-		]
+		{
+			"id": <edge-doucment-id>
+		}, ...
 	},
 	"_reverse_edge": {
-		"_edges": [								// TODO: "_edges" still hardcoded
-			{
-				"id": <edge-doucment-id>
-			}, ...
-		]
+		{
+			"id": <edge-doucment-id>
+		}, ...
 	},
 	"_nextEdgeOffset": ...
 

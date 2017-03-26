@@ -55,6 +55,8 @@ namespace GraphView
 
             vertexObject[KW_VERTEX_EDGE] = new JArray();
             vertexObject[KW_VERTEX_REV_EDGE] = new JArray();
+            vertexObject[KW_VERTEX_EDGE_SPILLED] = false;
+            vertexObject[KW_VERTEX_REVEDGE_SPILLED] = false;
             vertexObject[KW_VERTEX_NEXTOFFSET] = 0;
 
             return vertexObject;
