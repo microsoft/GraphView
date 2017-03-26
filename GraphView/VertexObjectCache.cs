@@ -83,6 +83,19 @@ namespace GraphView
             }
         }
 
+        public bool TryGetVertexField(string vertexId, out VertexField vertexField)
+        {
+            try {
+                this._lock.EnterReadLock();
+                return this._cachedVertexField.TryGetValue(vertexId, out vertexField);
+            }
+            finally {
+                if (this._lock.IsReadLockHeld) {
+                    this._lock.ExitReadLock();
+                }
+            }
+        }
+
         public bool TryRemoveVertexField(string vertexId)
         {
             try {

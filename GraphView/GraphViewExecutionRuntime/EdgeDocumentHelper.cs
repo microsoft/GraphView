@@ -628,5 +628,39 @@ namespace GraphView
 
             return revAdjacencyListCollection;
         }
+
+        public static void ConstructSpilledAdjListsOfVertexCollection(GraphViewConnection connection,
+            HashSet<string> vertexIdSet)
+        {
+            string inClause = string.Join(", ", vertexIdSet.Select(vertexId => $"'{vertexId}'"));
+            string edgeDocumentsQuery =
+                $"SELECT *\n" +
+                $"FROM edgeDoc\n" +
+                $"WHERE edgeDoc.{KW_EDGEDOC_VERTEXID} IN ({inClause})";
+            IQueryable<dynamic> edgeDocuments = connection.ExecuteQuery(edgeDocumentsQuery);
+
+            // Dictionary<vertexId, Dictionary<edgeDocumentId, edgeDocument>>
+            Dictionary<string, Dictionary<string, JObject>> edgeDict =
+                new Dictionary<string, Dictionary<string, JObject>>();
+            foreach (JObject edgeDocument in edgeDocuments) {
+                string vertexId = (string)edgeDocument[KW_EDGEDOC_VERTEXID];
+                Dictionary<string, JObject> edgeDocSet;
+                edgeDict.TryGetValue(vertexId, out edgeDocSet);
+                if (edgeDocSet == null) {
+                    edgeDocSet = new Dictionary<string, JObject>();
+                    edgeDict.Add(vertexId, edgeDocSet);
+                }
+
+                edgeDocSet.Add((string)edgeDocument[KW_EDGE_ID], edgeDocument);
+            }
+
+            foreach (KeyValuePair<string, Dictionary<string, JObject>> pair in edgeDict)
+            {
+                string vertexId = pair.Key;
+                Dictionary<string, JObject> edgeDocDict = pair.Value; // contains both in & out edges
+                VertexField vertexField = connection.VertexCache.GetVertexField(vertexId);
+                vertexField.ConstructSpilledAdjacencyListField(edgeDocDict);
+            }
+        }
     }
 }

@@ -80,7 +80,7 @@ namespace GraphView
 
             ConstructTraversalChain2(graphPattern);
 
-            ConstructJsonQueries(graphPattern);
+            ConstructJsonQueries(dbConnection, graphPattern);
 
             return ConstructOperator2(dbConnection, graphPattern, context, nonVertexTableReferences,
                 predicatesAccessedTableReferences);
@@ -165,28 +165,47 @@ namespace GraphView
             }
         }
 
-        internal static void ConstructJsonQueries(MatchGraph graphPattern)
+        internal static bool CanBePushedToServer(MatchEdge matchEdge)
         {
-            foreach (var subGraph in graphPattern.ConnectedSubGraphs)
+            return matchEdge != null && matchEdge.EdgeType != WEdgeType.BothEdge;
+        }
+
+        internal static void ConstructJsonQueries(GraphViewConnection connection, MatchGraph graphPattern)
+        {
+            foreach (ConnectedComponent subGraph in graphPattern.ConnectedSubGraphs)
             {
-                var processedNodes = new HashSet<MatchNode>();
+                HashSet<MatchNode> processedNodes = new HashSet<MatchNode>();
                 var traversalChain =
                     new Stack<Tuple<MatchNode, MatchEdge, MatchNode, List<MatchEdge>, List<MatchEdge>>>(
                         subGraph.TraversalChain2);
                 while (traversalChain.Count != 0)
                 {
                     var currentChain = traversalChain.Pop();
-                    var sourceNode = currentChain.Item1;
-                    var traversalEdge = currentChain.Item2;
+                    MatchNode sourceNode = currentChain.Item1;
+                    MatchEdge traversalEdge = currentChain.Item2;
+
                     if (!processedNodes.Contains(sourceNode))
                     {
-                        ConstructJsonQueryOnNode(sourceNode);
+                        MatchEdge pushedToServerEdge = null;
+                        if (traversalEdge != null) {
+                            pushedToServerEdge = CanBePushedToServer(traversalEdge) ? traversalEdge : null;
+                        }
+                        //
+                        // TODO: Refactor
+                        //
+                        else if (sourceNode.DanglingEdges.Count == 1)
+                        {
+                            pushedToServerEdge = CanBePushedToServer(sourceNode.DanglingEdges[0])
+                                ? sourceNode.DanglingEdges[0]
+                                : null;
+                        }
+                        ConstructJsonQueryOnNode(sourceNode, pushedToServerEdge);
                         processedNodes.Add(sourceNode);
                     }
                     if (traversalEdge != null)
                     {
-                        var sinkNode = currentChain.Item3;
-                        ConstructJsonQueryOnNode(sinkNode, currentChain.Item4);
+                        MatchNode sinkNode = currentChain.Item3;
+                        ConstructJsonQueryOnNode(sinkNode);
                         processedNodes.Add(sinkNode);
                     }
                 }
@@ -194,51 +213,56 @@ namespace GraphView
         }
         
 
-        internal static void ConstructJsonQueryOnNode(MatchNode node, List<MatchEdge> backwardMatchingEdges = null)
+        internal static void ConstructJsonQueryOnNode(MatchNode node, MatchEdge edge = null)
         {
             string nodeAlias = node.NodeAlias;
+            string edgeAlias = null;
             StringBuilder selectStrBuilder = new StringBuilder();
             StringBuilder joinStrBuilder = new StringBuilder();
-            List<string> properties = new List<string> { nodeAlias };
-            List<ColumnGraphType> projectedColumnsType = new List<ColumnGraphType>();
+            List<string> nodeProperties = new List<string> { nodeAlias };
+            List<string> edgeProperties = new List<string>();
+            bool isReverseAdj = edge != null ? IsTraversalThroughPhysicalReverseEdge(edge) : false;
+            bool isStartVertexTheOriginVertex = edge != null ? !edge.IsReversed : false;
 
-            WBooleanExpression searchCondition = null;
-            
+
+            foreach (string propertyName in node.Properties) {
+                nodeProperties.Add(propertyName);
+            }
+
             //
             // SELECT N_0 FROM Node N_0
             //
             selectStrBuilder.Append(nodeAlias);
 
-            foreach (string propertyName in node.Properties)
+            if (edge != null)
             {
-                ColumnGraphType columnGraphType = GraphViewReservedProperties.IsNodeReservedProperty(propertyName)
-                    ? GraphViewReservedProperties.ReservedNodePropertiesColumnGraphTypes[propertyName]
-                    : ColumnGraphType.Value;
-                properties.Add(propertyName);
-                projectedColumnsType.Add(columnGraphType);
+                edgeAlias = edge.EdgeAlias;
+                edgeProperties.Add(edge.EdgeAlias);
+                edgeProperties.Add(isReverseAdj.ToString());
+                edgeProperties.Add(isStartVertexTheOriginVertex.ToString());
+
+                //
+                // SELECT N_0, {"id": E_0.id} as E_0 FROM Node N_0 ...
+                //
+                selectStrBuilder.AppendFormat(", {{\"{0}\": {1}.{0}}} AS {1} ", GraphViewKeywords.KW_EDGE_ID, edgeAlias);
+
+                foreach (string propertyName in edge.Properties) {
+                    edgeProperties.Add(propertyName);
+                }
             }
 
-            foreach (WBooleanExpression predicate in node.Predicates)
-                searchCondition = WBooleanBinaryExpression.Conjunction(searchCondition, predicate);
-
-            //
-            // Currently, no backwardMatchingEdges will be produced
-            //
-            //if (backwardMatchingEdges == null)
-            //    backwardMatchingEdges = new List<MatchEdge>();
-
-            //foreach (MatchEdge edge in backwardMatchingEdges)
-            //{
-            //}
-
+            WBooleanExpression nodeCondition = null;
+            foreach (WBooleanExpression predicate in node.Predicates) {
+                nodeCondition = WBooleanBinaryExpression.Conjunction(nodeCondition, predicate);
+            }
 
             BooleanWValueExpressionVisitor booleanWValueExpressionVisitor = new BooleanWValueExpressionVisitor();
-            booleanWValueExpressionVisitor.Invoke(searchCondition);
+            booleanWValueExpressionVisitor.Invoke(nodeCondition);
 
             NormalizeWColumnReferenceExpressionVisitor normalizeColumnReferenceExpressionVisitor =
                 new NormalizeWColumnReferenceExpressionVisitor();
             Dictionary<string, string> referencedProperties =
-                normalizeColumnReferenceExpressionVisitor.Invoke(searchCondition);
+                normalizeColumnReferenceExpressionVisitor.Invoke(nodeCondition);
 
             foreach (KeyValuePair<string, string> referencedProperty in referencedProperties)
             {
@@ -246,14 +270,48 @@ namespace GraphView
                     nodeAlias, referencedProperty.Value);
             }
 
+            WBooleanExpression edgeCondition = null;
+            if (edge != null)
+            {
+                joinStrBuilder.AppendFormat(" JOIN {0} IN {1}.{2} ", edgeAlias, nodeAlias,
+                    isReverseAdj ? GraphViewKeywords.KW_VERTEX_REV_EDGE : GraphViewKeywords.KW_VERTEX_EDGE);
+
+                foreach (WBooleanExpression predicate in edge.Predicates) {
+                    edgeCondition = WBooleanBinaryExpression.Conjunction(edgeCondition, predicate);
+                }
+
+                booleanWValueExpressionVisitor.Invoke(edgeCondition);
+                //
+                // TODO: Normalize column reference
+                //
+            }
+            string edgeConditionString = edgeCondition?.ToString();
+            if (!string.IsNullOrEmpty(edgeConditionString))
+            {
+                edgeConditionString = string.Format("({0}) OR {1}.{2} = true",
+                    edgeConditionString,
+                    nodeAlias,
+                    isReverseAdj
+                        ? GraphViewKeywords.KW_VERTEX_REVEDGE_SPILLED
+                        : GraphViewKeywords.KW_VERTEX_EDGE_SPILLED);
+            }
+
+            bool hasNodePredicates = nodeCondition != null;
+            bool hasEdgePredicates = edgeCondition != null;
+            bool hasBothNodePredicatesAndEdgePredicates = hasNodePredicates && hasEdgePredicates;
+            string searchConditionString = string.Format("{0}{1}{2}",
+                hasNodePredicates ? $"({nodeCondition.ToString()})" : "",
+                hasBothNodePredicatesAndEdgePredicates ? " AND " : "",
+                hasEdgePredicates ? $"({edgeConditionString})" : "");
+
             JsonQuery jsonQuery = new JsonQuery
             {
                 Alias = nodeAlias,
                 JoinClause = joinStrBuilder.ToString(),
                 SelectClause = selectStrBuilder.ToString(),
-                WhereSearchCondition = searchCondition != null ? searchCondition.ToString() : null,
-                Properties = properties,
-                ProjectedColumnsType = projectedColumnsType,
+                WhereSearchCondition = searchConditionString,
+                NodeProperties = nodeProperties,
+                EdgeProperties = edgeProperties,
             };
             node.AttachedJsonQuery = jsonQuery;
         }
@@ -722,12 +780,12 @@ namespace GraphView
                 var edgeIndexTuple = LocateAdjacencyListIndexes(context, edge);
                 var localEdgeContext = GenerateLocalContextForAdjacentListDecoder(edge.EdgeAlias, edge.Properties);
                 var edgePredicates = edge.RetrievePredicatesExpression();
-                operatorChain.Add(new AdjacencyListDecoder2(
+                operatorChain.Add(new AdjacencyListDecoder(
                     operatorChain.Last(),
                     context.LocateColumnReference(edge.SourceNode.NodeAlias, GremlinKeyword.NodeID),
                     edgeIndexTuple.Item1, edgeIndexTuple.Item2, !edge.IsReversed,
                     edgePredicates != null ? edgePredicates.CompileToFunction(localEdgeContext, connection) : null,
-                    edge.Properties, connection));
+                    edge.Properties, connection, context.RawRecordLayout.Count + edge.Properties.Count));
                 context.CurrentExecutionOperator = operatorChain.Last();
 
                 // Update edge's context info
@@ -916,6 +974,13 @@ namespace GraphView
                             UpdateNodeLayout(sinkNode.NodeAlias, sinkNode.Properties, context);
                             tableReferences.Add(sinkNode.NodeAlias, TableGraphType.Vertex);
 
+                            // Cross apply dangling edges
+                            CrossApplyEdges(connection, context, operatorChain, sinkNode.DanglingEdges,
+                                predicatesAccessedTableReferences);
+
+                            //
+                            // TODO: Cross apply backward Edges here
+                            //
                             // Update backwardEdges' context info
                             foreach (var backwardMatchingEdge in backwardMatchingEdges)
                             {
@@ -931,10 +996,6 @@ namespace GraphView
                             CrossApplyEdges(connection, context, operatorChain, forwardMatchingEdges,
                                 predicatesAccessedTableReferences, true);
 
-                            // Cross apply dangling edges
-                            CrossApplyEdges(connection, context, operatorChain, sinkNode.DanglingEdges,
-                                predicatesAccessedTableReferences);
-                            
                             CheckRemainingPredicatesAndAppendFilterOp(context, connection,
                                 new HashSet<string>(tableReferences.Keys), predicatesAccessedTableReferences,
                                 operatorChain);
@@ -1759,8 +1820,8 @@ namespace GraphView
                     projectFields.Add(field);
             }
 
-            var adjListDecoder = new AdjacencyListDecoder2(context.CurrentExecutionOperator, startVertexIndex,
-                adjListIndex, -1, true, null, projectFields, dbConnection);
+            var adjListDecoder = new AdjacencyListDecoder(context.CurrentExecutionOperator, startVertexIndex,
+                adjListIndex, -1, true, null, projectFields, dbConnection, context.RawRecordLayout.Count + projectFields.Count);
             context.CurrentExecutionOperator = adjListDecoder;
 
             // Update context's record layout
@@ -1799,8 +1860,8 @@ namespace GraphView
                     projectFields.Add(field);
             }
 
-            var adjListDecoder = new AdjacencyListDecoder2(context.CurrentExecutionOperator, startVertexIndex,
-               - 1, revAdjListIndex, true, null, projectFields, dbConnection);
+            var adjListDecoder = new AdjacencyListDecoder(context.CurrentExecutionOperator, startVertexIndex,
+               - 1, revAdjListIndex, true, null, projectFields, dbConnection, context.RawRecordLayout.Count + projectFields.Count);
             context.CurrentExecutionOperator = adjListDecoder;
 
             // Update context's record layout
@@ -1840,8 +1901,8 @@ namespace GraphView
                     projectFields.Add(field);
             }
 
-            var adjListDecoder = new AdjacencyListDecoder2(context.CurrentExecutionOperator, startVertexIndex,
-                adjListIndex, revAdjListIndex, true, null, projectFields, dbConnection);
+            var adjListDecoder = new AdjacencyListDecoder(context.CurrentExecutionOperator, startVertexIndex,
+                adjListIndex, revAdjListIndex, true, null, projectFields, dbConnection, context.RawRecordLayout.Count + projectFields.Count);
             context.CurrentExecutionOperator = adjListDecoder;
 
             // Update context's record layout

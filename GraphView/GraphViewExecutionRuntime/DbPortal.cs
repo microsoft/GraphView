@@ -22,9 +22,10 @@ namespace GraphView
         public string JoinClause { get; set; }
         public string WhereSearchCondition { get; set; }
         public string Alias { get; set; }
-        public List<string> Properties { get; set; } 
 
-        public List<ColumnGraphType> ProjectedColumnsType { get; set; }
+        public List<string> NodeProperties { get; set; } 
+
+        public List<string> EdgeProperties { get; set; }
 
         public string ToString(DatabaseType dbType)
         {
@@ -62,8 +63,7 @@ namespace GraphView
 
         public override IEnumerator<RawRecord> GetVertices(JsonQuery vertexQuery)
         {
-            if (string.IsNullOrEmpty(vertexQuery.WhereSearchCondition))
-            {
+            if (string.IsNullOrEmpty(vertexQuery.WhereSearchCondition)) {
                 vertexQuery.WhereSearchCondition = $"{vertexQuery.Alias}.{KW_DOC_ID} = {vertexQuery.Alias}.{KW_DOC_PARTITION}";
             }
             else {
@@ -72,164 +72,172 @@ namespace GraphView
 
             string queryScript = vertexQuery.ToString(DatabaseType.DocumentDB);
             IQueryable<dynamic> items = this.Connection.ExecuteQuery(queryScript);
-            List<string> properties = new List<string>(vertexQuery.Properties);
-            List<ColumnGraphType> projectedColumnsType = vertexQuery.ProjectedColumnsType;
+            List<string> nodeProperties = new List<string>(vertexQuery.NodeProperties);
+            List<string> edgeProperties = new List<string>(vertexQuery.EdgeProperties);
 
-            string nodeAlias = properties[0];
+            string nodeAlias = nodeProperties[0];
             // Skip i = 0, which is the (node.* as nodeAlias) field
-            properties.RemoveAt(0);
+            nodeProperties.RemoveAt(0);
 
+            //
+            // TODO: Refactor
+            //
+            string edgeAlias = null;
+            bool isReverseAdj = false;
+            bool isStartVertexTheOriginVertex = false;
+            bool crossApplyEdgeOnServer = edgeProperties.Any();
+            if (crossApplyEdgeOnServer) {
+                edgeAlias = edgeProperties[0];
+                isReverseAdj = bool.Parse(edgeProperties[1]);
+                isStartVertexTheOriginVertex = bool.Parse(edgeProperties[2]);
+                edgeProperties.RemoveAt(0);
+                edgeProperties.RemoveAt(0);
+                edgeProperties.RemoveAt(0);
+            }
 
             //
             // Batch strategy:
-            //  - For "small" vertexes, just parse JObject & return the VertexField
-            //  - For "large" vertexes, store them in a list, send query to get their edge-documents later
+            //  - For "small" vertexes, they have been cross applied on the server side
+            //  - For "large" vertexes, just return the VertexField, the adjacency list decoder will
+            //    construct spilled adjacency lists in batch mode and cross apply edges after that 
             //
-            // Dictionary<vertexId, vertexObject>
-            Dictionary<string, JObject> largeVertexes = new Dictionary<string, JObject>();
+            Func<VertexField, string, RawRecord> makeCrossAppliedRecord = (vertexField, edgeId) => {
+                Debug.Assert(vertexField != null);
+
+                RawRecord nodeRecord = new RawRecord();
+                //
+                // Fill node property field
+                //
+                foreach (string propertyName in nodeProperties) {
+                    FieldObject propertyValue = vertexField[propertyName];
+                    nodeRecord.Append(propertyValue);
+                }
+
+                RawRecord edgeRecord = new RawRecord(edgeProperties.Count);
+
+                EdgeField edgeField =
+                    (vertexField[isReverseAdj ? KW_VERTEX_REV_EDGE : KW_VERTEX_EDGE] as AdjacencyListField)
+                    .GetEdgeField(edgeId);
+
+                string startVertexId = vertexField[KW_DOC_ID].ToValue;
+                AdjacencyListDecoder.FillMetaField(edgeRecord, edgeField, startVertexId, isStartVertexTheOriginVertex, isReverseAdj);
+                AdjacencyListDecoder.FillPropertyField(edgeRecord, edgeField, edgeProperties);
+
+                nodeRecord.Append(edgeRecord);
+                return nodeRecord;
+            };
 
             Func<VertexField, RawRecord> makeRawRecord = (vertexField) => {
                 Debug.Assert(vertexField != null);
 
                 RawRecord rawRecord = new RawRecord();
-                int endOfNodePropertyIndex = projectedColumnsType.FindIndex(e => e == ColumnGraphType.EdgeSource);
-                if (endOfNodePropertyIndex == -1) endOfNodePropertyIndex = properties.Count;
+                //
                 // Fill node property field
-                for (int i = 0; i < endOfNodePropertyIndex; i++) {
-                    FieldObject propertyValue = vertexField[properties[i]];
+                //
+                foreach (string propertyName in nodeProperties)
+                {
+                    FieldObject propertyValue = vertexField[propertyName];
                     rawRecord.Append(propertyValue);
                 }
                 return rawRecord;
             };
 
-
             HashSet<string> gotVertexIds = new HashSet<string>();
+            HashSet<string> gotEdgeIds = new HashSet<string>();
             foreach (dynamic dynamicItem in items) {
                 JObject vertexObject = (JObject)((JObject)dynamicItem)[nodeAlias];
                 string vertexId = (string)vertexObject[KW_DOC_ID];
-                if (!gotVertexIds.Add(vertexId)) {
-                    continue;
-                }
 
-                if (EdgeDocumentHelper.IsSpilledVertex(vertexObject, true) ||
-                    EdgeDocumentHelper.IsSpilledVertex(vertexObject, false)) {
-
-                    // If either incoming or outgoing edges are spilled, retrieve them in a batch.
-                    largeVertexes.Add(vertexId, vertexObject);
-                }
-                else {
-                    // If no edge spilling, return them first
-                    VertexField vertexField = this.Connection.VertexCache.GetVertexField((string)vertexObject[KW_DOC_ID], vertexObject);
-                    yield return makeRawRecord(vertexField);
-                }
-
-                //
-                // Commented by Wenbin Hou
-                // These codes does not work for DocDB (we never get into the for-loop)
-                // CROSS APPLY over spilled edge-document is impossible in DocDB
-                //
-                #region ================== COMMENT BEGIN ==================
-                //
-                // Fill all the backward matching edges' fields
-                //int startOfEdgeIndex = endOfNodePropertyIndex;
-                //int endOfEdgeIndex = projectedColumnsType.FindIndex(startOfEdgeIndex,
-                //    e => e == ColumnGraphType.EdgeSource);
-                //if (endOfEdgeIndex == -1) endOfEdgeIndex = properties.Count;
-                //for (int i = startOfEdgeIndex; i < properties.Count;)
-                //{
-                //    // These are corresponding meta fields generated in the ConstructMetaFieldSelectClauseOfEdge()
-                //    string source = item[properties[i++]].ToString();
-                //    string sink = item[properties[i++]].ToString();
-                //    string other = item[properties[i++]].ToString();
-                //    string edgeOffset = item[properties[i++]].ToString();
-                //    long physicalOffset = (long)item[properties[i++]];
-                //    string adjType = item[properties[i++]].ToString();
-                //    //var isReversedAdjList = adjType.Equals(KW_VERTEX_REV_EDGE, StringComparison.OrdinalIgnoreCase);
-
-                //    EdgeField edgeField = (vertexObject[adjType] as AdjacencyListField).GetEdgeField(source, physicalOffset);
-
-                //    rawRecord.Append(new StringField(source));
-                //    rawRecord.Append(new StringField(sink));
-                //    rawRecord.Append(new StringField(other));
-                //    rawRecord.Append(new StringField(edgeOffset));
-
-                //    // Fill edge property field
-                //    for (; i < endOfEdgeIndex; i++)
-                //        rawRecord.Append(edgeField[properties[i]]);
-
-                //    //edgeField.Label = edgeField[KW_EDGE_LABEL]?.ToValue;
-                //    //edgeField.InV = source;
-                //    //edgeField.OutV = sink;
-                //    //edgeField.InVLabel = isReversedAdjList
-                //    //    ? edgeField[KW_EDGE_SINKV_LABEL]?.ToValue
-                //    //    : vertexObject[KW_VERTEX_LABEL]?.ToValue;
-                //    //edgeField.OutVLabel = isReversedAdjList
-                //    //    ? vertexObject[KW_VERTEX_LABEL]?.ToValue
-                //    //    : edgeField[KW_EDGE_SINKV_LABEL]?.ToValue;
-
-                //    endOfEdgeIndex = projectedColumnsType.FindIndex(i,
-                //        e => e == ColumnGraphType.EdgeSource);
-                //}
-                //
-                #endregion ================== COMMENT END ==================
-
-            }
-
-            // 
-            // In case the spilled edge-document's amount is too much (and exceeds DocDB InClauseLimit),
-            // Split the dictionary into multiple parts
-            //
-            // List<Dictionary<vertexId, vertexObject>>
-            List<Dictionary<string, JObject>> vertexDicts = new List<Dictionary<string, JObject>>(
-                largeVertexes.Count / GraphViewConnection.InClauseLimit + 1);
-            {
-                int index = 0;
-                Dictionary<string, JObject> current = null;
-                foreach (KeyValuePair<string, JObject> pair in largeVertexes) {
-                    if (index == 0) {
-                        current = new Dictionary<string, JObject>();
-                        vertexDicts.Add(current);
+                if (crossApplyEdgeOnServer) {
+                    //
+                    // Note: checking gotVertexIds.Add(vertexId) is for the correctness of cardinality
+                    //
+                    if (EdgeDocumentHelper.IsSpilledVertex(vertexObject, isReverseAdj) && gotVertexIds.Add(vertexId)) {
+                        VertexField vertexField = this.Connection.VertexCache.GetVertexField(vertexId, vertexObject);
+                        yield return makeRawRecord(vertexField);
                     }
-                    current.Add(pair.Key, pair.Value);
-
-                    if (index == GraphViewConnection.InClauseLimit - 1) {
-                        index = 0;
-                        current = null;
+                    else
+                    {
+                        JObject edgeObjct = (JObject)((JObject)dynamicItem)[edgeAlias];
+                        string edgeId = (string)edgeObjct[KW_EDGE_ID];
+                        //
+                        // Note: checking gotEdgeIds.Add(edgeId) is for the correctness of cardinality
+                        //
+                        if (gotEdgeIds.Add(edgeId)) {
+                            VertexField vertexField = this.Connection.VertexCache.GetVertexField(vertexId, vertexObject);
+                            yield return makeCrossAppliedRecord(vertexField, edgeId);
+                        }
                     }
                 }
-            }
-
-            // Process each vertexDict in vertexDicts
-            // Elements in a vertexDict are limited to "InClauseLimit" (thus can be batched)
-            foreach (Dictionary<string, JObject> vertexDict in vertexDicts) {
-                string inClause = string.Join(", ", vertexDict.Keys.Select(vertexId => $"'{vertexId}'"));
-                string edgeDocumentsQuery =
-                    $"SELECT *\n" +
-                    $"FROM edgeDoc\n" +
-                    $"WHERE edgeDoc.{KW_EDGEDOC_VERTEXID} IN ({inClause})";
-                IQueryable<dynamic> edgeDocuments = Connection.ExecuteQuery(edgeDocumentsQuery);
-
-                // Dictionary<vertexId, Dictionary<edgeDocumentId, edgeDocument>>
-                Dictionary<string, Dictionary<string, JObject>> edgeDict = new Dictionary<string, Dictionary<string, JObject>>();
-                foreach (JObject edgeDocument in edgeDocuments) {
-                    string vertexId = (string)edgeDocument[KW_EDGEDOC_VERTEXID];
-                    Dictionary<string, JObject> edgeDocSet;
-                    edgeDict.TryGetValue(vertexId, out edgeDocSet);
-                    if (edgeDocSet == null) {
-                        edgeDocSet = new Dictionary<string, JObject>();
-                        edgeDict.Add(vertexId, edgeDocSet);
+                else
+                {
+                    if (!gotVertexIds.Add(vertexId)) {
+                        continue;
                     }
-
-                    edgeDocSet.Add((string)edgeDocument[KW_EDGE_ID], edgeDocument);
-                }
-
-                foreach (KeyValuePair<string, Dictionary<string, JObject>> pair in edgeDict) {
-                    string vertexId = pair.Key;
-                    Dictionary<string, JObject> edgeDocDict = pair.Value;  // contains both in & out edges
-                    VertexField vertexField = this.Connection.VertexCache.GetVertexField(vertexId, vertexDict[vertexId], edgeDocDict);
+                    VertexField vertexField = this.Connection.VertexCache.GetVertexField(vertexId, vertexObject);
                     yield return makeRawRecord(vertexField);
                 }
             }
+
+            //// 
+            //// In case the spilled edge-document's amount is too much (and exceeds DocDB InClauseLimit),
+            //// Split the dictionary into multiple parts
+            ////
+            //// List<Dictionary<vertexId, vertexObject>>
+            //List<Dictionary<string, JObject>> vertexDicts = new List<Dictionary<string, JObject>>(
+            //    largeVertexes.Count / GraphViewConnection.InClauseLimit + 1);
+            //{
+            //    int index = 0;
+            //    Dictionary<string, JObject> current = null;
+            //    foreach (KeyValuePair<string, JObject> pair in largeVertexes) {
+            //        if (index == 0) {
+            //            current = new Dictionary<string, JObject>();
+            //            vertexDicts.Add(current);
+            //        }
+            //        current.Add(pair.Key, pair.Value);
+
+            //        if (index == GraphViewConnection.InClauseLimit - 1) {
+            //            index = 0;
+            //            current = null;
+            //        }
+            //    }
+            //}
+
+            //// Process each vertexDict in vertexDicts
+            //// Elements in a vertexDict are limited to "InClauseLimit" (thus can be batched)
+            //foreach (Dictionary<string, JObject> vertexDict in vertexDicts)
+            //{
+            //    string inClause = string.Join(", ", vertexDict.Keys.Select(vertexId => $"'{vertexId}'"));
+            //    string edgeDocumentsQuery =
+            //        $"SELECT *\n" +
+            //        $"FROM edgeDoc\n" +
+            //        $"WHERE edgeDoc.{KW_EDGEDOC_VERTEXID} IN ({inClause})";
+            //    IQueryable<dynamic> edgeDocuments = Connection.ExecuteQuery(edgeDocumentsQuery);
+
+            //    // Dictionary<vertexId, Dictionary<edgeDocumentId, edgeDocument>>
+            //    Dictionary<string, Dictionary<string, JObject>> edgeDict = new Dictionary<string, Dictionary<string, JObject>>();
+            //    foreach (JObject edgeDocument in edgeDocuments)
+            //    {
+            //        string vertexId = (string)edgeDocument[KW_EDGEDOC_VERTEXID];
+            //        Dictionary<string, JObject> edgeDocSet;
+            //        edgeDict.TryGetValue(vertexId, out edgeDocSet);
+            //        if (edgeDocSet == null)
+            //        {
+            //            edgeDocSet = new Dictionary<string, JObject>();
+            //            edgeDict.Add(vertexId, edgeDocSet);
+            //        }
+
+            //        edgeDocSet.Add((string)edgeDocument[KW_EDGE_ID], edgeDocument);
+            //    }
+
+            //    foreach (KeyValuePair<string, Dictionary<string, JObject>> pair in edgeDict)
+            //    {
+            //        string vertexId = pair.Key;
+            //        Dictionary<string, JObject> edgeDocDict = pair.Value;  // contains both in & out edges
+            //        VertexField vertexField = this.Connection.VertexCache.GetVertexField(vertexId, vertexDict[vertexId], edgeDocDict);
+            //        yield return makeRawRecord(vertexField);
+            //    }
+            //}
         }
     }
 }

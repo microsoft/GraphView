@@ -193,7 +193,8 @@ namespace GraphView
                     {
                         RawRecord resultRecord = new RawRecord { fieldValues = new List<FieldObject>() };
                         resultRecord.Append(pair.Item1);
-                        resultRecord.Append(new StringField(pair.Item2));
+                        resultRecord.Append(new ValuePropertyField(GraphViewKeywords.KW_DOC_ID, pair.Item2,
+                            JsonDataType.String, (VertexField) null));
                         outputBuffer.Enqueue(resultRecord);
                     }
 
@@ -241,11 +242,11 @@ namespace GraphView
                         WhereSearchCondition = sinkVertexQuery.WhereSearchCondition,
                         SelectClause = sinkVertexQuery.SelectClause,
                         JoinClause = sinkVertexQuery.JoinClause,
-                        ProjectedColumnsType = sinkVertexQuery.ProjectedColumnsType,
-                        Properties = sinkVertexQuery.Properties,
+                        NodeProperties = sinkVertexQuery.NodeProperties,
+                        EdgeProperties = sinkVertexQuery.EdgeProperties,
                     };
 
-                    if (toSendQuery.WhereSearchCondition == null)
+                    if (string.IsNullOrEmpty(toSendQuery.WhereSearchCondition))
                     {
                         toSendQuery.WhereSearchCondition = inClause;
                     }
@@ -451,11 +452,12 @@ namespace GraphView
                         Alias = sinkVertexQuery.Alias,
                         WhereSearchCondition = sinkVertexQuery.WhereSearchCondition,
                         SelectClause = sinkVertexQuery.SelectClause,
-                        ProjectedColumnsType = sinkVertexQuery.ProjectedColumnsType,
-                        Properties = sinkVertexQuery.Properties,
+                        JoinClause = sinkVertexQuery.JoinClause,
+                        NodeProperties = sinkVertexQuery.NodeProperties,
+                        EdgeProperties = sinkVertexQuery.EdgeProperties,
                     };
 
-                    if (toSendQuery.WhereSearchCondition == null)
+                    if (string.IsNullOrEmpty(toSendQuery.WhereSearchCondition))
                     {
                         toSendQuery.WhereSearchCondition = inClause;
                     }
@@ -716,292 +718,6 @@ namespace GraphView
     //        Open();
     //    }
     //}
-
-    internal class AdjacencyListDecoder2 : GraphViewExecutionOperator
-    {
-        private GraphViewExecutionOperator inputOperator;
-        private int startVertexIndex;
-
-        private int adjacencyListIndex;
-        private int revAdjacencyListIndex;
-
-        private BooleanFunction edgePredicate;
-        private List<string> projectedFields;
-
-        private bool isStartVertexTheOriginVertex;
-
-        private Queue<RawRecord> outputBuffer;
-        private GraphViewConnection connection;
-
-        private int batchSize;
-        private bool isBatchingReverseEdgeMode;
-        private Queue<Tuple<RawRecord, string>> inputSequence;
-        private Dictionary<string, AdjacencyListField> reverseAdjacencyListCollection;
-
-        public AdjacencyListDecoder2(GraphViewExecutionOperator input,
-            int startVertexIndex, int adjacencyListIndex, int revAdjacencyListIndex, 
-            bool isStartVertexTheOriginVertex,
-            BooleanFunction edgePredicate, List<string> projectedFields,
-            GraphViewConnection connection,
-            int batchSize = 1000)
-        {
-            this.inputOperator = input;
-            this.outputBuffer = new Queue<RawRecord>();
-            this.startVertexIndex = startVertexIndex;
-            this.adjacencyListIndex = adjacencyListIndex;
-            this.revAdjacencyListIndex = revAdjacencyListIndex;
-            this.isStartVertexTheOriginVertex = isStartVertexTheOriginVertex;
-            this.edgePredicate = edgePredicate;
-            this.projectedFields = projectedFields;
-            this.connection = connection;
-
-            this.batchSize = batchSize;
-            this.isBatchingReverseEdgeMode = this.revAdjacencyListIndex >= 0 && !this.connection.UseReverseEdges;
-            this.inputSequence = new Queue<Tuple<RawRecord, string>>();
-            this.reverseAdjacencyListCollection = new Dictionary<string, AdjacencyListField>();
-
-            Open();
-        }
-
-        /// <summary>
-        /// Fill edge's {_source, _sink, _other, _offset, *} meta fields
-        /// </summary>
-        /// <param name="record"></param>
-        /// <param name="edge"></param>
-        /// <param name="startVertexId"></param>
-        /// <param name="isReversedAdjList"></param>
-        private void FillMetaField(RawRecord record, EdgeField edge, string startVertexId, bool isReversedAdjList)
-        {
-            string otherValue;
-            if (this.isStartVertexTheOriginVertex) {
-                if (isReversedAdjList) {
-                    otherValue = edge[KW_EDGE_SRCV].ToValue;
-                }
-                else {
-                    otherValue = edge[KW_EDGE_SINKV].ToValue;
-                }
-            }
-            else {
-                otherValue = startVertexId;
-            }
-
-            record.fieldValues[0] = new StringField(edge.OutV);
-            record.fieldValues[1] = new StringField(edge.InV);
-            record.fieldValues[2] = new StringField(otherValue);
-            record.fieldValues[3] = new StringField(edge.Offset.ToString());
-            record.fieldValues[4] = new EdgeField(edge, otherValue);
-        }
-
-        /// <summary>
-        /// Fill the field of selected edge's properties
-        /// </summary>
-        /// <param name="record"></param>
-        /// <param name="edge"></param>
-        private void FillPropertyField(RawRecord record, EdgeField edge)
-        {
-            for (var i = GraphViewReservedProperties.ReservedEdgeProperties.Count; i < projectedFields.Count; i++)
-            {
-                record.fieldValues[i] = edge[projectedFields[i]];
-            }
-        }
-
-        /// <summary>
-        /// Decode an adjacency list and return all the edges satisfying the edge predicate
-        /// </summary>
-        /// <param name="adjacencyList"></param>
-        /// <param name="startVertexId"></param>
-        /// <param name="isReverse"></param>
-        /// <returns></returns>
-        private List<RawRecord> DecodeAdjacencyList(AdjacencyListField adjacencyList, string startVertexId, bool isReverse)
-        {
-            List<RawRecord> edgeRecordCollection = new List<RawRecord>();
-
-            foreach (EdgeField edge in adjacencyList.AllEdges)
-            {
-                // Construct new record
-                RawRecord edgeRecord = new RawRecord(projectedFields.Count);
-
-                FillMetaField(edgeRecord, edge, startVertexId, isReverse);
-                FillPropertyField(edgeRecord, edge);
-
-                if (edgePredicate != null && !edgePredicate.Evaluate(edgeRecord))
-                    continue;
-
-                edgeRecordCollection.Add(edgeRecord);
-            }
-
-            return edgeRecordCollection;
-        }
-
-        /// <summary>
-        /// Decode a record's adjacency list or/and reverse adjacency list
-        /// and return all the edges satisfying the edge predicate
-        /// </summary>
-        /// <param name="record"></param>
-        /// <returns></returns>
-        private List<RawRecord> Decode(RawRecord record)
-        {
-            List<RawRecord> results = new List<RawRecord>();
-            string startVertexId = record[startVertexIndex].ToValue;
-
-            if (adjacencyListIndex >= 0)
-            {
-                AdjacencyListField adj = record[adjacencyListIndex] as AdjacencyListField;
-                if (adj == null)
-                    throw new GraphViewException(string.Format("The FieldObject at {0} is not a adjacency list but {1}", 
-                        adjacencyListIndex, record[adjacencyListIndex] != null ? record[adjacencyListIndex].ToString() : "null"));
-
-                results.AddRange(DecodeAdjacencyList(adj, startVertexId, false));
-            }
-
-            if (revAdjacencyListIndex >= 0 && connection.UseReverseEdges)
-            {
-                AdjacencyListField adj = record[revAdjacencyListIndex] as AdjacencyListField;
-
-                if (adj == null)
-                    throw new GraphViewException(string.Format("The FieldObject at {0} is not a reverse adjacency list but {1}",
-                        revAdjacencyListIndex, record[revAdjacencyListIndex] != null ? record[revAdjacencyListIndex].ToString() : "null"));
-
-                results.AddRange(DecodeAdjacencyList(adj, startVertexId, true));
-            }
-
-            return results;
-        }
-
-        /// <summary>
-        /// Cross apply the adjacency list or/and reverse adjacency list of the record
-        /// </summary>
-        /// <param name="record"></param>
-        /// <returns></returns>
-        private List<RawRecord> CrossApply(RawRecord record)
-        {
-            List<RawRecord> results = new List<RawRecord>();
-
-            foreach (RawRecord edgeRecord in Decode(record))
-            {
-                RawRecord r = new RawRecord(record);
-                r.Append(edgeRecord);
-
-                results.Add(r);
-            }
-
-            return results;
-        }
-
-        /// <summary>
-        /// Send one query to get all the reverse adjacency lists of vertice in the inputSequence 
-        /// </summary>
-        private void GetReverseAdjacencyListsInBatch()
-        {
-            HashSet<string> vertexIdCollection = new HashSet<string>();
-            foreach (Tuple<RawRecord, string> tuple in inputSequence) {
-                vertexIdCollection.Add(tuple.Item2);
-            }
-
-            reverseAdjacencyListCollection = EdgeDocumentHelper.GetReverseAdjacencyListsOfVertexCollection(connection, vertexIdCollection);
-        }
-
-        /// <summary>
-        /// Cross apply the reverse adjacency list of one record in the inputSequence
-        /// </summary>
-        /// <returns></returns>
-        private List<RawRecord> CrossApplyOneRecordinInputSequence()
-        {
-            List<RawRecord> results = new List<RawRecord>();
-            Tuple<RawRecord, string> inputTuple = inputSequence.Dequeue();
-
-            RawRecord record = inputTuple.Item1;
-            string vertexId = inputTuple.Item2;
-
-            AdjacencyListField adj = reverseAdjacencyListCollection[vertexId];
-
-            foreach (RawRecord edgeRecord in DecodeAdjacencyList(adj, vertexId, true))
-            {
-                RawRecord r = new RawRecord(record);
-                r.Append(edgeRecord);
-
-                results.Add(r);
-            }
-
-            reverseAdjacencyListCollection.Remove(vertexId);
-
-            return results;
-        }
-
-        public override RawRecord Next()
-        {
-            if (outputBuffer.Count > 0) {
-                return outputBuffer.Dequeue();
-            }
-
-            while (inputSequence.Count >= batchSize 
-                || reverseAdjacencyListCollection.Count > 0 
-                || (inputSequence.Count != 0 && !inputOperator.State()))
-            {
-                if (reverseAdjacencyListCollection.Count == 0) {
-                    GetReverseAdjacencyListsInBatch();
-                }
-
-                foreach (RawRecord record in CrossApplyOneRecordinInputSequence()) {
-                    outputBuffer.Enqueue(record);
-                }
-
-                if (outputBuffer.Count > 0) {
-                    return outputBuffer.Dequeue();
-                }
-            }
-
-            while (inputOperator.State())
-            {
-                RawRecord currentRecord = inputOperator.Next();
-
-                if (currentRecord == null) {
-                    break;
-                }
-
-                if (isBatchingReverseEdgeMode && inputSequence.Count < batchSize) {
-                    inputSequence.Enqueue(new Tuple<RawRecord, string>(currentRecord, currentRecord[startVertexIndex].ToValue));
-                }
-
-                foreach (RawRecord record in CrossApply(currentRecord)) {
-                    outputBuffer.Enqueue(record);
-                }
-
-                if (outputBuffer.Count > 0) {
-                    return outputBuffer.Dequeue();
-                }
-            }
-
-            while (inputSequence.Count >= batchSize
-                || reverseAdjacencyListCollection.Count > 0
-                || (inputSequence.Count != 0 && !inputOperator.State()))
-            {
-                if (reverseAdjacencyListCollection.Count == 0) {
-                    GetReverseAdjacencyListsInBatch();
-                }
-
-                foreach (RawRecord record in CrossApplyOneRecordinInputSequence()) {
-                    outputBuffer.Enqueue(record);
-                }
-
-                if (outputBuffer.Count > 0) {
-                    return outputBuffer.Dequeue();
-                }
-            }
-
-            Close();
-            return null;
-        }
-
-        public override void ResetState()
-        {
-            inputOperator.ResetState();
-            outputBuffer?.Clear();
-            inputSequence?.Clear();
-            reverseAdjacencyListCollection?.Clear();
-            Open();
-        }
-    }
 
     //internal abstract class TableValuedScalarFunction
     //{
@@ -4319,6 +4035,318 @@ namespace GraphView
 
             this.Close();
             return null;
+        }
+    }
+
+    internal class AdjacencyListDecoder : GraphViewExecutionOperator
+    {
+        private readonly GraphViewExecutionOperator inputOp;
+        private readonly int startVertexIndex;
+
+        private readonly int adjacencyListIndex;
+        private readonly int revAdjacencyListIndex;
+
+        private readonly BooleanFunction edgePredicate;
+        private readonly List<string> projectedFields;
+
+        private readonly bool isStartVertexTheOriginVertex;
+
+        private readonly Queue<RawRecord> outputBuffer;
+        private readonly GraphViewConnection connection;
+
+        private readonly int batchSize;
+        private readonly Queue<Tuple<RawRecord, string>> batchInputSequence;
+
+        private readonly int outputRecordLength;
+        private bool hasConstructedSpilledAdjListsForCurrentBatch;
+
+        public AdjacencyListDecoder(
+            GraphViewExecutionOperator inputOp,
+            int startVertexIndex, 
+            int adjacencyListIndex, int revAdjacencyListIndex,
+            bool isStartVertexTheOriginVertex,
+            BooleanFunction edgePredicate, List<string> projectedFields,
+            GraphViewConnection connection,
+            int outputRecordLength,
+            int batchSize = 1000)
+        {
+            this.inputOp = inputOp;
+            this.outputBuffer = new Queue<RawRecord>();
+            this.startVertexIndex = startVertexIndex;
+            this.adjacencyListIndex = adjacencyListIndex;
+            this.revAdjacencyListIndex = revAdjacencyListIndex;
+            this.isStartVertexTheOriginVertex = isStartVertexTheOriginVertex;
+            this.edgePredicate = edgePredicate;
+            this.projectedFields = projectedFields;
+            this.connection = connection;
+
+            this.batchSize = batchSize;
+            this.batchInputSequence = new Queue<Tuple<RawRecord, string>>();
+
+            this.outputRecordLength = outputRecordLength;
+            this.hasConstructedSpilledAdjListsForCurrentBatch = false;
+
+            this.Open();
+        }
+
+        /// <summary>
+        /// Fill edge's {_source, _sink, _other, _offset, *} meta fields
+        /// </summary>
+        /// <param name="record"></param>
+        /// <param name="edge"></param>
+        /// <param name="startVertexId"></param>
+        /// <param name="isReversedAdjList"></param>
+        /// <param name="isStartVertexTheOriginVertex"></param>
+        internal static void FillMetaField(RawRecord record, EdgeField edge, 
+            string startVertexId, bool isStartVertexTheOriginVertex, bool isReversedAdjList)
+        {
+            string otherValue;
+            if (isStartVertexTheOriginVertex) {
+                if (isReversedAdjList) {
+                    otherValue = edge[KW_EDGE_SRCV].ToValue;
+                }
+                else {
+                    otherValue = edge[KW_EDGE_SINKV].ToValue;
+                }
+            }
+            else {
+                otherValue = startVertexId;
+            }
+
+            record.fieldValues[0] = new StringField(edge.OutV);
+            record.fieldValues[1] = new StringField(edge.InV);
+            record.fieldValues[2] = new StringField(otherValue);
+            record.fieldValues[3] = new StringField(edge.Offset.ToString());
+            record.fieldValues[4] = new EdgeField(edge, otherValue);
+        }
+
+        /// <summary>
+        /// Fill the field of selected edge's properties
+        /// </summary>
+        /// <param name="record"></param>
+        /// <param name="edge"></param>
+        /// <param name="projectedFields"></param>
+        internal static void FillPropertyField(RawRecord record, EdgeField edge, List<string> projectedFields)
+        {
+            for (int i = GraphViewReservedProperties.ReservedEdgeProperties.Count; i < projectedFields.Count; i++) {
+                record.fieldValues[i] = edge[projectedFields[i]];
+            }
+        }
+
+        /// <summary>
+        /// Decode an adjacency list and return all the edges satisfying the edge predicate
+        /// </summary>
+        /// <param name="adjacencyList"></param>
+        /// <param name="startVertexId"></param>
+        /// <param name="isReverse"></param>
+        /// <returns></returns>
+        private List<RawRecord> DecodeAdjacencyList(AdjacencyListField adjacencyList, string startVertexId, bool isReverse)
+        {
+            List<RawRecord> edgeRecordCollection = new List<RawRecord>();
+
+            foreach (EdgeField edge in adjacencyList.AllEdges) {
+                // Construct new record
+                RawRecord edgeRecord = new RawRecord(this.projectedFields.Count);
+
+                AdjacencyListDecoder.FillMetaField(edgeRecord, edge, startVertexId, this.isStartVertexTheOriginVertex, isReverse);
+                AdjacencyListDecoder.FillPropertyField(edgeRecord, edge, this.projectedFields);
+
+                if (this.edgePredicate != null && !this.edgePredicate.Evaluate(edgeRecord)) {
+                    continue;
+                }
+
+                edgeRecordCollection.Add(edgeRecord);
+            }
+
+            return edgeRecordCollection;
+        }
+
+        /// <summary>
+        /// Decode a record's adjacency list or/and reverse adjacency list
+        /// and return all the edges satisfying the edge predicate
+        /// </summary>
+        /// <param name="record"></param>
+        /// <returns></returns>
+        private List<RawRecord> Decode(RawRecord record)
+        {
+            List<RawRecord> results = new List<RawRecord>();
+            string startVertexId = record[this.startVertexIndex].ToValue;
+
+            if (this.adjacencyListIndex >= 0)
+            {
+                AdjacencyListField adj = record[this.adjacencyListIndex] as AdjacencyListField;
+                if (adj == null)
+                    throw new GraphViewException(
+                        $"The FieldObject at {this.adjacencyListIndex} is not a adjacency list but {(record[this.adjacencyListIndex] != null ? record[this.adjacencyListIndex].ToString() : "null")}");
+
+                results.AddRange(this.DecodeAdjacencyList(adj, startVertexId, false));
+            }
+
+            if (this.revAdjacencyListIndex >= 0)
+            {
+                AdjacencyListField revAdj = record[this.revAdjacencyListIndex] as AdjacencyListField;
+                if (revAdj == null)
+                    throw new GraphViewException(
+                        $"The FieldObject at {this.revAdjacencyListIndex} is not a reverse adjacency list but {(record[this.revAdjacencyListIndex] != null ? record[this.revAdjacencyListIndex].ToString() : "null")}");
+
+                results.AddRange(this.DecodeAdjacencyList(revAdj, startVertexId, true));
+            }
+
+            return results;
+        }
+
+        /// <summary>
+        /// Cross apply the adjacency list or/and reverse adjacency list of the record
+        /// </summary>
+        /// <param name="record"></param>
+        /// <returns></returns>
+        private List<RawRecord> CrossApply(RawRecord record)
+        {
+            List<RawRecord> results = new List<RawRecord>();
+
+            foreach (RawRecord edgeRecord in Decode(record)) {
+                RawRecord r = new RawRecord(record);
+                r.Append(edgeRecord);
+
+                results.Add(r);
+            }
+
+            return results;
+        }
+
+        /// <summary>
+        /// Send one query to construct all the spilled adjacency lists of vertice in the inputSequence 
+        /// </summary>
+        private void ConstructSpilledAdjListsInBatch()
+        {
+            HashSet<string> vertexIdCollection = new HashSet<string>();
+            foreach (Tuple<RawRecord, string> tuple in batchInputSequence)
+            {
+                string vertexId = tuple.Item2;
+                VertexField vertexField;
+                this.connection.VertexCache.TryGetVertexField(vertexId, out vertexField);
+                if (vertexField != null)
+                {
+                    AdjacencyListField adj = vertexField[GraphViewKeywords.KW_VERTEX_EDGE] as AdjacencyListField;
+                    AdjacencyListField revAdj = vertexField[GraphViewKeywords.KW_VERTEX_REV_EDGE] as AdjacencyListField;
+                    Debug.Assert(adj != null, "adj != null");
+                    Debug.Assert(revAdj != null, "revAdj != null");
+                    if (adj.HasBeenFetched && revAdj.HasBeenFetched) {
+                        continue;
+                    }
+                }
+                vertexIdCollection.Add(tuple.Item2);
+            }
+
+            EdgeDocumentHelper.ConstructSpilledAdjListsOfVertexCollection(connection, vertexIdCollection);
+        }
+
+        public override RawRecord Next()
+        {
+            if (this.outputBuffer.Count > 0) {
+                return outputBuffer.Dequeue();
+            }
+
+            while (this.batchInputSequence.Count >= batchSize
+                || this.hasConstructedSpilledAdjListsForCurrentBatch
+                || (this.batchInputSequence.Count != 0 && !this.inputOp.State()))
+            {
+                if (!this.hasConstructedSpilledAdjListsForCurrentBatch) {
+                    this.ConstructSpilledAdjListsInBatch();
+                }
+
+                Tuple<RawRecord, string> batchVertex = this.batchInputSequence.Dequeue();
+
+                this.hasConstructedSpilledAdjListsForCurrentBatch = this.batchInputSequence.Count > 0;
+
+                RawRecord currentRecord = batchVertex.Item1;
+
+                foreach (RawRecord record in this.CrossApply(currentRecord)) {
+                    this.outputBuffer.Enqueue(record);
+                }
+
+                if (this.outputBuffer.Count > 0) {
+                    return this.outputBuffer.Dequeue();
+                }
+            }
+
+            while (this.inputOp.State())
+            {
+                RawRecord currentRecord = this.inputOp.Next();
+
+                if (currentRecord == null) {
+                    break;
+                }
+
+                Debug.Assert(currentRecord.Length <= this.outputRecordLength, "currentRecord.Length <= this.outputRecordLength");
+                bool hasBeenCrossAppliedOnServer = currentRecord.Length == this.outputRecordLength;
+
+                if (hasBeenCrossAppliedOnServer) {
+                    return currentRecord;
+                }
+
+                if (this.adjacencyListIndex >= 0)
+                {
+                    AdjacencyListField adj = currentRecord[this.adjacencyListIndex] as AdjacencyListField;
+                    Debug.Assert(adj != null, "adj != null");
+                    if (!adj.HasBeenFetched) {
+                        this.batchInputSequence.Enqueue(new Tuple<RawRecord, string>(currentRecord, currentRecord[this.startVertexIndex].ToValue));
+                        continue;
+                    }
+                }
+                else if (this.revAdjacencyListIndex >= 0)
+                {
+                    AdjacencyListField revAdj = currentRecord[this.revAdjacencyListIndex] as AdjacencyListField;
+                    Debug.Assert(revAdj != null, "revAdj != null");
+                    if (!revAdj.HasBeenFetched) {
+                        this.batchInputSequence.Enqueue(new Tuple<RawRecord, string>(currentRecord, currentRecord[this.startVertexIndex].ToValue));
+                        continue;
+                    }
+                }
+
+                foreach (RawRecord record in this.CrossApply(currentRecord)) {
+                    this.outputBuffer.Enqueue(record);
+                }
+
+                if (this.outputBuffer.Count > 0) {
+                    return this.outputBuffer.Dequeue();
+                }
+            }
+
+            while (this.batchInputSequence.Count >= batchSize
+                 || this.hasConstructedSpilledAdjListsForCurrentBatch
+                 || (this.batchInputSequence.Count != 0 && !this.inputOp.State()))
+            {
+                if (!this.hasConstructedSpilledAdjListsForCurrentBatch) {
+                    this.ConstructSpilledAdjListsInBatch();
+                }
+
+                Tuple<RawRecord, string> batchVertex = this.batchInputSequence.Dequeue();
+
+                this.hasConstructedSpilledAdjListsForCurrentBatch = this.batchInputSequence.Count > 0;
+
+                RawRecord currentRecord = batchVertex.Item1;
+
+                foreach (RawRecord record in this.CrossApply(currentRecord)) {
+                    this.outputBuffer.Enqueue(record);
+                }
+
+                if (this.outputBuffer.Count > 0) {
+                    return this.outputBuffer.Dequeue();
+                }
+            }
+
+            this.Close();
+            return null;
+        }
+
+        public override void ResetState()
+        {
+            this.inputOp.ResetState();
+            this.outputBuffer.Clear();
+            this.batchInputSequence.Clear();
+            this.hasConstructedSpilledAdjListsForCurrentBatch = false;
+            this.Open();
         }
     }
 }
