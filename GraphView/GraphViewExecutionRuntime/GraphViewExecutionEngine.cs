@@ -98,7 +98,7 @@ namespace GraphView
             AdjacencyListField result = new AdjacencyListField();
 
             foreach (JObject edgeObject in edgeArray.Children<JObject>()) {
-                result.AddEdgeField(outVId, (long)edgeObject[KW_EDGE_OFFSET],
+                result.AddEdgeField((string)edgeObject[KW_EDGE_ID],
                                     EdgeField.ConstructForwardEdgeField(outVId, outVLabel, null, edgeObject));
             }
 
@@ -111,8 +111,7 @@ namespace GraphView
             AdjacencyListField result = new AdjacencyListField();
 
             foreach (JObject edgeObject in edgeArray.Children<JObject>()) {
-                result.AddEdgeField((string)edgeObject[KW_EDGE_SRCV],  // for backward edge, this is the srcVertexId
-                                    (long)edgeObject[KW_EDGE_OFFSET],
+                result.AddEdgeField((string)edgeObject[KW_EDGE_ID],
                                     EdgeField.ConstructBackwardEdgeField(inVId, inVLabel, null, edgeObject));
             }
 
@@ -156,8 +155,7 @@ namespace GraphView
                 Debug.Assert(edgesArray != null, "edgesArray != null");
                 Debug.Assert(edgesArray.Count > 0, "edgesArray.Count > 0");
                 foreach (JObject edgeObject in edgesArray.Children<JObject>()) {
-                    result.AddEdgeField(outVId,
-                                        (long)edgeObject[KW_EDGE_OFFSET],
+                    result.AddEdgeField((string)edgeObject[KW_EDGE_ID],
                                         EdgeField.ConstructForwardEdgeField(outVId, outVLabel, edgeDocID, edgeObject));
                 }
             }
@@ -203,8 +201,7 @@ namespace GraphView
                 Debug.Assert(edgesArray != null, "edgesArray != null");
                 Debug.Assert(edgesArray.Count > 0, "edgesArray.Count > 0");
                 foreach (JObject edgeObject in edgesArray.Children<JObject>()) {
-                    result.AddEdgeField((string)edgeObject[KW_EDGE_SRCV],
-                                        (long)edgeObject[KW_EDGE_OFFSET],
+                    result.AddEdgeField((string)edgeObject[KW_EDGE_ID],
                                         EdgeField.ConstructBackwardEdgeField(inVId, inVLabel, edgeDocID, edgeObject));
                 }
             }
@@ -1364,6 +1361,8 @@ namespace GraphView
         public string EdgeDocID { get; set; }
         public long Offset { get; private set; }
 
+        public string EdgeId => this.EdgeProperties[KW_EDGE_ID].PropertyValue;
+
         //
         // This property will only be assigned in the adjacency list decoder
         // since OtherV is not a meta property of an edge.
@@ -1578,7 +1577,7 @@ namespace GraphView
 
     internal class AdjacencyListField : FieldObject
     {
-        // <$"{srcVertexId}.{edgeOffset}", EdgeField>
+        // <edge's id, EdgeField>
         private Dictionary<string, EdgeField> Edges { get; }
 
         public IEnumerable<EdgeField> AllEdges => this.Edges.Values;
@@ -1590,23 +1589,20 @@ namespace GraphView
         }
 
 
-        private string MakeKey(string srcVertexId, long edgeOffset) => $"{srcVertexId}.{edgeOffset}";
-
-
-        public void AddEdgeField(string srcVertexId, long edgeOffset, EdgeField edgeField)
+        public void AddEdgeField(string edgeId, EdgeField edgeField)
         {
-            this.Edges.Add(MakeKey(srcVertexId, edgeOffset), edgeField);
+            this.Edges.Add(edgeId, edgeField);
         }
 
-        public void RemoveEdgeField(string srcVertexId, long edgeOffset)
+        public void RemoveEdgeField(string edgeId)
         {
-            this.Edges.Remove(MakeKey(srcVertexId, edgeOffset));
+            this.Edges.Remove(edgeId);
         }
 
-        public EdgeField GetEdgeField(string srcVertexId, long edgeOffset)
+        public EdgeField GetEdgeField(string edgeId)
         {
             EdgeField edgeField;
-            this.Edges.TryGetValue(MakeKey(srcVertexId, edgeOffset), out edgeField);
+            this.Edges.TryGetValue(edgeId, out edgeField);
             return edgeField;
         }
 

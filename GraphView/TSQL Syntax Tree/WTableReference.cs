@@ -670,7 +670,7 @@ namespace GraphView
 
     public partial class WDropNodeTableReference : WSchemaObjectFunctionTableReference {}
 
-    public partial class WDropEdgeTableReference : WSchemaObjectFunctionTableReference {}
+    //public partial class WDropEdgeTableReference : WSchemaObjectFunctionTableReference {}
 
     public partial class WDropTableReference : WSchemaObjectFunctionTableReference { }
 
@@ -682,7 +682,7 @@ namespace GraphView
 
     public partial class WUpdatePropertiesTableReference : WSchemaObjectFunctionTableReference { }
 
-    public partial class WUpdateEdgePropertiesTableReference : WSchemaObjectFunctionTableReference {}
+    //public partial class WUpdateEdgePropertiesTableReference : WSchemaObjectFunctionTableReference {}
 
     public partial class WStoreTableReference : WSchemaObjectFunctionTableReference {}
 

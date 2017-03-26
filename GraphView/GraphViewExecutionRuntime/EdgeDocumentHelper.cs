@@ -356,13 +356,13 @@ namespace GraphView
         /// <param name="connection"></param>
         /// <param name="vertexObject"></param>
         /// <param name="srcVertexId"></param>
-        /// <param name="edgeOffset"></param>
+        /// <param name="edgeId"></param>
         /// <param name="isReverseEdge"></param>
         /// <param name="edgeObject"></param>
         /// <param name="edgeDocId"></param>
         public static void FindEdgeBySourceAndOffset(
             GraphViewConnection connection,
-            JObject vertexObject, string srcVertexId, long edgeOffset, bool isReverseEdge,
+            JObject vertexObject, string srcVertexId, string edgeId, bool isReverseEdge,
             out JObject edgeObject, out string edgeDocId)
         {
             if (!isReverseEdge) {
@@ -374,13 +374,13 @@ namespace GraphView
                 if (isReverseEdge) {
                     edgeObject = (from edgeObj in edgeContainer.Children<JObject>()
                                   where (string)edgeObj[KW_EDGE_SRCV] == srcVertexId
-                                  where (long)edgeObj[KW_EDGE_OFFSET] == edgeOffset
+                                  where (string)edgeObj[KW_EDGE_ID] == edgeId
                                   select edgeObj
                                  ).FirstOrDefault();
                 }
                 else {
                     edgeObject = (from edgeObj in edgeContainer.Children<JObject>()
-                                  where (long)edgeObj[KW_EDGE_OFFSET] == edgeOffset
+                                  where (string)edgeObj[KW_EDGE_ID] == edgeId
                                   select edgeObj
                                  ).FirstOrDefault();
                 }
@@ -395,14 +395,14 @@ namespace GraphView
                             $"JOIN edge IN doc._edge\n" +
                             $"WHERE doc.{KW_DOC_ID} IN ({edgeDocIdList})\n" +
                             $"  AND (edge.{KW_EDGE_SRCV} = '{srcVertexId}')\n" +
-                            $"  AND (edge.{KW_EDGE_OFFSET} = {edgeOffset})\n";
+                            $"  AND (edge.{KW_EDGE_ID} = {edgeId})\n";
                 }
                 else {
                     query = $"SELECT doc.{KW_DOC_ID}, edge\n" +
                             $"FROM doc\n" +
                             $"JOIN edge IN doc._edge\n" +
                             $"WHERE doc.{KW_DOC_ID} IN ({edgeDocIdList})\n" +
-                            $"  AND (edge.{KW_EDGE_OFFSET} = {edgeOffset})\n";
+                            $"  AND (edge.{KW_EDGE_ID} = {edgeId})\n";
                 }
                 JObject result = connection.ExecuteQueryUnique(query);
                 edgeDocId = (string)result?[KW_DOC_ID];
@@ -417,7 +417,7 @@ namespace GraphView
             string edgeDocId,
             JObject vertexObject,
             bool isReverse,
-            string srcVertexId, long edgeOffset)
+            string srcVertexId, string edgeId)
         {
             JArray edgeContainer = (JArray)vertexObject[isReverse ? KW_VERTEX_REV_EDGE : KW_VERTEX_EDGE];
             if (IsSpilledVertex(vertexObject, isReverse)) {
@@ -440,10 +440,10 @@ namespace GraphView
                 Debug.Assert(edgesArray != null, "edgesArray != null");
                 Debug.Assert(edgesArray.Count > 0, "edgesArray.Count > 0");
                 if (isReverse) {
-                    edgesArray.First(e => (string)e[KW_EDGE_SRCV] == srcVertexId && (long)e[KW_EDGE_OFFSET] == edgeOffset).Remove();
+                    edgesArray.First(e => (string)e[KW_EDGE_SRCV] == srcVertexId && (string)e[KW_EDGE_ID] == edgeId).Remove();
                 }
                 else {
-                    edgesArray.First(e => (long)e[KW_EDGE_OFFSET] == edgeOffset).Remove();
+                    edgesArray.First(e => (string)e[KW_EDGE_ID] == edgeId).Remove();
                 }
 
                 // 
@@ -476,10 +476,10 @@ namespace GraphView
                 Debug.Assert(edgeDocId == null, "edgeDocId == null");
 
                 if (isReverse) {
-                    ((JArray)edgeContainer).First(e => (string)e[KW_EDGE_SRCV] == srcVertexId && (long)e[KW_EDGE_OFFSET] == edgeOffset).Remove();
+                    ((JArray)edgeContainer).First(e => (string)e[KW_EDGE_SRCV] == srcVertexId && (string)e[KW_EDGE_ID] == edgeId).Remove();
                 }
                 else {
-                    ((JArray)edgeContainer).First(e => (long)e[KW_EDGE_OFFSET] == edgeOffset).Remove();
+                    ((JArray)edgeContainer).First(e => (string)e[KW_EDGE_ID] == edgeId).Remove();
                 }
                 documentMap[(string)vertexObject[KW_DOC_ID]] = new Tuple<JObject, string>(vertexObject, (string)vertexObject[KW_DOC_PARTITION]);
             }
@@ -514,7 +514,7 @@ namespace GraphView
                 //
                 // NOTE: The following line applies for both incomming and outgoing edge.
                 edgeContainer.Children<JObject>().First(
-                    e => (long)e[KW_EDGE_OFFSET] == (long)newEdgeObject[KW_EDGE_OFFSET] &&
+                    e => (string)e[KW_EDGE_ID] == (string)newEdgeObject[KW_EDGE_ID] &&
                          (string)e[srcOrSinkVInEdgeObject] == (string)newEdgeObject[srcOrSinkVInEdgeObject]
                 ).Remove();
                 edgeContainer.Add(newEdgeObject);
@@ -532,7 +532,7 @@ namespace GraphView
 
                 JObject edgeDocObject = connection.RetrieveDocumentById(edgeDocId);
                 edgeDocObject["_edge"].Children<JObject>().First(
-                    e => (long)e[KW_EDGE_OFFSET] == (long)newEdgeObject[KW_EDGE_OFFSET] &&
+                    e => (string)e[KW_EDGE_ID] == (string)newEdgeObject[KW_EDGE_ID] &&
                          (string)e[srcOrSinkVInEdgeObject] == (string)newEdgeObject[srcOrSinkVInEdgeObject]
                 ).Remove();
                 ((JArray)edgeDocObject["_edge"]).Add(newEdgeObject);
@@ -577,7 +577,7 @@ namespace GraphView
                         new EdgePropertyField(KW_EDGE_SRCV_LABEL, srcVLabel, JsonDataType.String, edgeField));
                 }
 
-                result.AddEdgeField(srcV, (long)edgeObject[KW_EDGE_OFFSET], edgeField);
+                result.AddEdgeField((string)edgeObject[KW_EDGE_ID], edgeField);
             }
 
             return result;
@@ -623,7 +623,7 @@ namespace GraphView
                 }
 
                 AdjacencyListField revAdjList = revAdjacencyListCollection[vertexId];
-                revAdjList.AddEdgeField(srcV, (long)edgeObject[KW_EDGE_OFFSET], edgeField);
+                revAdjList.AddEdgeField((string)edgeObject[KW_EDGE_ID], edgeField);
             }
 
             return revAdjacencyListCollection;
