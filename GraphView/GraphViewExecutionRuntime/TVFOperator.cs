@@ -236,33 +236,41 @@ namespace GraphView
 
     internal class LabelOperator : TableValuedFunction
     {
-        private readonly int _targetVertexOrEdgeIndex;
+        private readonly int _targetIndex;
 
-        public LabelOperator(GraphViewExecutionOperator inputOp, int targetVertexOrEdgeIndex)
+        public LabelOperator(GraphViewExecutionOperator inputOp, int targetIndex)
             : base(inputOp)
         {
-            this._targetVertexOrEdgeIndex = targetVertexOrEdgeIndex;
+            this._targetIndex = targetIndex;
         }
 
         internal override List<RawRecord> CrossApply(RawRecord record)
         {
             List<RawRecord> results = new List<RawRecord>();
 
-            FieldObject vertexOrEdge = record[this._targetVertexOrEdgeIndex];
-            if (vertexOrEdge != null) {
-                VertexField vertex = vertexOrEdge as VertexField;
+            FieldObject target = record[this._targetIndex];
+            if (target != null) {
+                VertexField vertex = target as VertexField;
                 if (vertex != null) {
                     RawRecord r = new RawRecord();
                     r.Append(new StringField(vertex.VertexMetaProperties[KW_VERTEX_LABEL].ToValue));
                     results.Add(r);
                 }
 
-                EdgeField edge = vertexOrEdge as EdgeField;
+                VertexSinglePropertyField vertexSingleProperty = target as VertexSinglePropertyField;
+                if (vertexSingleProperty != null) {
+                    RawRecord r = new RawRecord();
+                    r.Append(new StringField(vertexSingleProperty.PropertyName));
+                    results.Add(r);
+                }
+
+                EdgeField edge = target as EdgeField;
                 if (edge != null) {
                     RawRecord r = new RawRecord();
                     r.Append(new StringField(edge.Label));
                     results.Add(r);
                 }
+
             }
 
             return results;
