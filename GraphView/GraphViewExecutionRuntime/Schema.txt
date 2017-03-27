@@ -25,16 +25,16 @@ VertexDocument (Small):
 VertexDocument (Large):
 {
 	"id": ...,
-	"_partition": ...,    // = id
-	"_edge": {
+	"_partition": ...,		// = id
+	"_edge": {				// Stores the only latest edge document (may be empty)
 		{
 			"id": <edge-doucment-id>
-		}, ...
+		}
 	},
-	"_reverse_edge": {
+	"_reverse_edge": {		// Stores the only latest edge document (may be empty)
 		{
 			"id": <edge-doucment-id>
-		}, ...
+		}
 	},
 
 	// vertex properties
