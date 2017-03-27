@@ -41,6 +41,31 @@ namespace GraphView
             RepeatTraversal.GetStartOp().InheritedVariableFromParent(inputContext);
             GremlinToSqlContext repeatContext = RepeatTraversal.GetEndOp().GetContext();
 
+            foreach (var variable in repeatContext.TableReferences)
+            {
+                if (variable is GremlinFoldVariable
+                    || variable is GremlinCountVariable
+                    || variable is GremlinMinVariable
+                    || variable is GremlinMaxVariable
+                    || variable is GremlinSumVariable
+                    || variable is GremlinMeanVariable
+                    || variable is GremlinTreeVariable)
+                {
+                    throw new SyntaxErrorException($"The parent of a reducing barrier can not be repeat()-step: {variable.GetType()}");
+                }
+                var group = variable as GremlinGroupVariable;
+                if (group != null && group.SideEffectKey == null)
+                {
+                    throw new SyntaxErrorException($"The parent of a reducing barrier can not be repeat()-step: {variable.GetType()}");
+                }
+            }
+            foreach (var variable in repeatContext.FetchAllTableVars())
+            {
+                if (variable is GremlinRepeatVariable) {
+                    throw new SyntaxErrorException("The repeat()-step can't include another nesting repeat()-step:");
+                }
+            }
+
             RepeatCondition repeatCondition = new RepeatCondition();
             repeatCondition.StartFromContext = StartFromContext;
             repeatCondition.IsEmitContext = EmitContext;

@@ -367,6 +367,8 @@ namespace GraphView
 
     public partial class WOptionalTableReference : WSchemaObjectFunctionTableReference
     {
+        public bool HasAggregateFunctionAsChildren { get; set; }
+
         internal void Split(out WSelectQueryBlock contextSelect, out WSelectQueryBlock optionalSelectQuery)
         {
             WScalarSubquery optionalInput = Parameters[0] as WScalarSubquery;
