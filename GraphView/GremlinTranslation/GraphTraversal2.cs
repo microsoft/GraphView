@@ -657,6 +657,7 @@ namespace GraphView
         {
             GremlinGroupOp newGroupOp = new GremlinGroupOp(sideEffectKey);
             newGroupOp.ProjectBy = __().Count();
+            newGroupOp.IsProjectingACollection = false;
             AddGremlinOperator(newGroupOp);
             return this;
         }

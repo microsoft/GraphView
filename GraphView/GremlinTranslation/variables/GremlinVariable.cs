@@ -299,13 +299,16 @@ namespace GraphView
             currentContext.TableReferences.Add(newVariable);
         }
 
-        internal virtual void Dedup(GremlinToSqlContext currentContext, List<string> dedupLabels, GremlinToSqlContext dedupContext, GremlinKeyword.Scope scope)
+        internal virtual void Dedup(GremlinToSqlContext currentContext, List<string> dedupLabels, GraphTraversal2 dedupTraversal, GremlinKeyword.Scope scope)
         {
             List<GremlinVariable> dedupVariables = new List<GremlinVariable>();
             foreach (var dedupLabel in dedupLabels)
             {
-                dedupVariables.Add(GenerateSelectVariable(currentContext, GremlinKeyword.Pop.Last, new List<string> { dedupLabel}));
+                dedupVariables.Add(GenerateSelectVariable(currentContext, GremlinKeyword.Pop.Last, new List<string> { dedupLabel}, new List<GraphTraversal2>() {dedupTraversal.Copy()}));
             }
+
+            dedupTraversal.GetStartOp().InheritedVariableFromParent(currentContext);
+            GremlinToSqlContext dedupContext = dedupTraversal.GetEndOp().GetContext();
 
             GremlinDedupVariable newVariable = new GremlinDedupVariable(this, dedupVariables, dedupContext, scope);
             currentContext.VariableList.Add(newVariable);

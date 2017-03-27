@@ -17,6 +17,7 @@ namespace GraphView
         {
             DedupLabels = new List<string>(dedupLabels);
             Scope = scope;
+            ByTraversal = GraphTraversal2.__();
         }
 
         internal override GremlinToSqlContext GetContext()
@@ -27,17 +28,10 @@ namespace GraphView
                 throw new QueryCompilationException("The PivotVariable can't be null.");
             }
 
-            GremlinToSqlContext dedupContext = null;
-            if (ByTraversal != null)
-            {
-                ByTraversal.GetStartOp().InheritedVariableFromParent(inputContext);
-                dedupContext = ByTraversal.GetEndOp().GetContext();
-            }
-
             // Dedup(Local, "x", "y"), the dedupLabels should be ignored
             if (Scope == GremlinKeyword.Scope.Local) DedupLabels.Clear();
 
-            inputContext.PivotVariable.Dedup(inputContext, DedupLabels, dedupContext, Scope);
+            inputContext.PivotVariable.Dedup(inputContext, DedupLabels, ByTraversal, Scope);
 
             return inputContext;
         }

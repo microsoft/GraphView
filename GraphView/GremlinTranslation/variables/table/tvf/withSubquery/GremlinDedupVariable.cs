@@ -62,13 +62,9 @@ namespace GraphView
                     parameters.Add(dedupVariable.DefaultProjection().ToScalarExpression());
                 }
             }
-            else if (DedupContext != null)
-            {
-                parameters.Add(SqlUtil.GetScalarSubquery(DedupContext.ToSelectQueryBlock()));
-            }
             else
             {
-                parameters.Add(InputVariable.DefaultProjection().ToScalarExpression());
+                parameters.Add(SqlUtil.GetScalarSubquery(DedupContext.ToSelectQueryBlock()));
             }
 
             var tableRef = SqlUtil.GetFunctionTableReference(

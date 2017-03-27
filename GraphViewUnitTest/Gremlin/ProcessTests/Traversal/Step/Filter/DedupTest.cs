@@ -20,18 +20,11 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         /// from org/apache/tinkerpop/gremlin/process/traversal/step/filter/DedupTest.java
         /// Gremlin: g.V().out().in().values("name").fold().dedup(Scope.local).unfold();
         /// </summary>
-        /// <remarks>
-        /// dedup(Scope scope, params string[] dedupLabels) is not implemented
-        /// https://msdata.visualstudio.com/DocumentDB/_workitems/edit/36911
-        /// </remarks>
         [TestMethod]
-        [Ignore]
         public void DedupLocalScope()
         {
             using (GraphViewCommand GraphViewCommand = new GraphViewCommand(graphConnection))
             {
-                // TODO: Implement GraphTraversal2 dedup(Scope scope, params string[] dedupLabels)
-
                 var traversal = GraphViewCommand.g().V()
                     .Out()
                     .In()
@@ -50,66 +43,33 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         /// from org/apache/tinkerpop/gremlin/process/traversal/step/filter/DedupTest.java
         /// Gremlin: g.V().out().as("x").in().as("y").select("x", "y").by("name").fold().dedup(Scope.local, "x", "y").unfold();
         /// </summary>
-        /// <remarks>
-        /// dedup(Scope scope, params string[] dedupLabels) is not implemented
-        /// https://msdata.visualstudio.com/DocumentDB/_workitems/edit/36911
-        /// </remarks>
         [TestMethod]
-        [Ignore]
         public void DedupLocalMultipleLabels()
         {
             using (GraphViewCommand GraphViewCommand = new GraphViewCommand(graphConnection))
             {
-                // TODO: Implement GraphTraversal2 dedup(Scope scope, params string[] dedupLabels)
-                Assert.Fail();
-
-                var expected = new List<Dictionary<string, string>>()
+                GraphViewCommand.OutputFormat = OutputFormat.GraphSON;
+                var traversal = GraphViewCommand.g().V()
+                    .Out()
+                    .As("x")
+                    .In()
+                    .As("y")
+                    .Select("x", "y")
+                    .By("name")
+                    .Fold()
+                    .Dedup(GremlinKeyword.Scope.Local, "x", "y")
+                    .Unfold();
+                dynamic result = JsonConvert.DeserializeObject<dynamic>(traversal.Next().FirstOrDefault());
+                List<string> expected = new List<string>
                 {
-                    new Dictionary<string, string>()
-                    {
-                        { "x", "lop" },
-                        { "y", "marko" }
-                    },
-                    new Dictionary<string, string>()
-                    {
-                        { "x", "lop" },
-                        { "y", "josh" }
-                    },
-                    new Dictionary<string, string>()
-                    {
-                        { "x", "lop" },
-                        { "y", "peter" }
-                    },
-                    new Dictionary<string, string>()
-                    {
-                        { "x", "vadas" },
-                        { "y", "marko" }
-                    },
-                    new Dictionary<string, string>()
-                    {
-                        { "x", "josh" },
-                        { "y", "marko" }
-                    },
-                    new Dictionary<string, string>()
-                    {
-                        { "x", "ripple" },
-                        { "y", "josh" }
-                    },
+                    "lop,marko",
+                    "lop,josh",
+                    "lop,peter",
+                    "vadas,marko",
+                    "josh,marko",
+                    "ripple,josh"
                 };
-
-                //var traversal = GraphViewCommand.g().V()
-                //    .Out()
-                //    .As("x")
-                //    .In()
-                //    .As("y")
-                //    .Select("x", "y")
-                //    .By("name")
-                //    .Fold()
-                //    .Dedup("x", "y")
-                //    .Unfold();
-                // var result = traversal.Next();
-
-                //AbstractGremlinTest.CheckUnOrderedResults(expected, result, new AbstractGremlinTest.DicionaryEqualityComparer<string, string>());
+                AbstractGremlinTest.CheckUnOrderedResults(expected, ((JArray)result).Select(p=>string.Format("{0},{1}", p["x"], p["y"])).ToList());
             }
         }
 
@@ -138,17 +98,11 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         /// from org/apache/tinkerpop/gremlin/process/traversal/step/filter/DedupTest.java
         /// Gremlin: g.V().both().has(T.label, "software").dedup().by("lang").values("name");
         /// </summary>
-        /// <remarks>
-        /// Dedup().By() does not work
-        /// https://msdata.visualstudio.com/DocumentDB/_workitems/edit/37139
-        /// </remarks>
         [TestMethod]
         public void DedupBy()
         {
             using (GraphViewCommand GraphViewCommand = new GraphViewCommand(graphConnection))
             {
-                // TODO: Implement Dedup().By()
-
                 var traversal = GraphViewCommand.g().V()
                     .Both()
                     .HasLabel("software")
@@ -246,17 +200,11 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         /// from org/apache/tinkerpop/gremlin/process/traversal/step/filter/DedupTest.java
         /// Gremlin: g.V().both().both().dedup().by(T.label);
         /// </summary>
-        /// <remarks>
-        /// Dedup().By() does not work
-        /// https://msdata.visualstudio.com/DocumentDB/_workitems/edit/37139
-        /// </remarks>
         [TestMethod]
         public void DedupByLabel()
         {
             using (GraphViewCommand GraphViewCommand = new GraphViewCommand(graphConnection))
             {
-                // TODO: Implement Dedup().By()
-
                 var traversal = GraphViewCommand.g().V()
                     .Both()
                     .Both()
@@ -273,20 +221,12 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         /// from org/apache/tinkerpop/gremlin/process/traversal/step/filter/DedupTest.java
         /// Gremlin: g.V().<String, List<Double>>group().by(T.label).by(bothE().values("weight").dedup().fold());
         /// </summary>
-        /// <remarks>
-        /// Deserialize fold() result
-        /// https://msdata.visualstudio.com/DocumentDB/_workitems/edit/37155
-        /// </remarks>
         [TestMethod]
-        [Ignore]
         public void DedupInsideBy()
         {
             using (GraphViewCommand GraphViewCommand = new GraphViewCommand(graphConnection))
             {
-                // TODO: Deserialize fold() result
-                // The result in graphson is "[{{\"label\": \"person\"}: [0.5, 1, 0.4, 0.2], {\"label\": \"software\"}: [0.4, 0.2, 1]}]", 
-                // which cannot be deserialized by Newtonsoft.
-                // The exception Newtonsoft.Json.JsonReaderException: Invalid property identifier character: {. Path '[0]', line 1, position 2.
+                GraphViewCommand.OutputFormat = OutputFormat.GraphSON;
                 var traversal = GraphViewCommand.g().V()
                     .Group()
                     .By("label")
@@ -294,11 +234,12 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
                         .Values("weight")
                         .Dedup()
                         .Fold());
-                var result = traversal.Next();
 
-                Assert.AreEqual(2, result.Count());
-                //CollectionAssert.AreEqual(new double[] { 0.2, 0.4, 1.0}, result["software"]);
-                //CollectionAssert.AreEqual(new double[] { 0.2, 0.4, 0.5, 1.0 }, result["person"]);
+                dynamic result = JsonConvert.DeserializeObject<dynamic>(traversal.Next().FirstOrDefault());
+
+                Assert.AreEqual(1, result.Count);
+                CheckUnOrderedResults(new double[] { 0.2, 0.4, 1.0 }, ((JArray)result[0]["software"]).Select(p=>(double)p).ToList());
+                CheckUnOrderedResults(new double[] { 0.2, 0.4, 0.5, 1.0 }, ((JArray)result[0]["person"]).Select(p => (double)p).ToList());
             }
         }
 
@@ -307,18 +248,12 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         /// from org/apache/tinkerpop/gremlin/process/traversal/step/filter/DedupTest.java
         /// Gremlin: g.V().as("a").both().as("b").dedup("a", "b").by(T.label).select("a", "b");
         /// </summary>
-        /// <remarks>
-        /// Dedup().By() does not work
-        /// https://msdata.visualstudio.com/DocumentDB/_workitems/edit/37139
-        /// </remarks>
         [TestMethod]
         public void DedupMultipleLabels()
         {
             using (GraphViewCommand GraphViewCommand = new GraphViewCommand(graphConnection))
             {
-                // TODO: Implement Dedup().By()
-                // TODO: Use graphson to parse result.
-
+                GraphViewCommand.OutputFormat = OutputFormat.GraphSON;
                 var traversal = GraphViewCommand.g().V()
                     .As("a")
                     .Both()
@@ -326,11 +261,12 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
                     .Dedup("a", "b")
                     .By("label")
                     .Select("a", "b");
-                //IEnumerable<Dictionary<string, object>> result = traversal.Next();
-                //IEnumerable<string> resultInString = result.Select(d=> string.Format("{0},{1}",d["a"].Label(), d["b"].Label());
+                dynamic result = JsonConvert.DeserializeObject<dynamic>(traversal.Next().FirstOrDefault());
+                Assert.AreEqual(3, result.Count);
 
-                //Assert.AreEqual(3, result.Count());
-                //AbstractGremlinTest.CheckUnOrderedResults(new string[] { "person,person", "person,software", "software,person"}, resultInString);
+                IEnumerable<string> resultInString = ((JArray)result).Select(d => string.Format("{0},{1}", (string)d["a"]["label"], (string)d["b"]["label"]));
+
+                AbstractGremlinTest.CheckUnOrderedResults(new string[] { "person,person", "person,software", "software,person" }, resultInString);
             }
         }
 
@@ -339,10 +275,6 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         /// from org/apache/tinkerpop/gremlin/process/traversal/step/filter/DedupTest.java
         /// Gremlin: g.V().as("a").out("created").as("b").in("created").as("c").dedup("a", "b").path();
         /// </summary>
-        /// <remarks>
-        /// GremlinDedupVariable.ToTableReference() is not implemented
-        /// https://msdata.visualstudio.com/DocumentDB/_workitems/edit/37160
-        /// </remarks>
         [TestMethod]
         public void DedupTwoOutOfThreeLabels()
         {
@@ -394,20 +326,11 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         /// from org/apache/tinkerpop/gremlin/process/traversal/step/filter/DedupTest.java
         /// Gremlin: g.V().outE().as("e").inV().as("v").select("e").order().by("weight", Order.incr).select("v").<String>values("name").dedup();
         /// </summary>
-        /// <remarks>
-        /// GremlinOrderOp.ModulateBy() is not implemented
-        /// https://msdata.visualstudio.com/DocumentDB/_workitems/edit/37165
-        /// GraphTraversal2.By(string key, GremlinKeyword.Order order) is not implemented
-        /// https://msdata.visualstudio.com/DocumentDB/_workitems/edit/37166
-        /// </remarks>
         [TestMethod]
         public void DedupWithOrder()
         {
             using (GraphViewCommand GraphViewCommand = new GraphViewCommand(graphConnection))
             {
-                // TODO: GremlinOrderOp.ModulateBy() is not implemented
-                // TODO: GraphTraversal2.By(string key, GremlinKeyword.Order order) is not implemented
-
                 var traversal = GraphViewCommand.g().V()
                     .OutE()
                     .As("e")
@@ -421,7 +344,6 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
                     .Dedup();
                 var result = traversal.Next();
 
-                //AbstractGremlinTest.CheckUnOrderedResults(new string[] { "marko", "vadas", "josh", "peter" }, result);
                 AbstractGremlinTest.CheckUnOrderedResults(new string[] { "lop", "vadas", "josh", "ripple" }, result);
             }
         }
@@ -431,17 +353,11 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         /// from org/apache/tinkerpop/gremlin/process/traversal/step/filter/DedupTest.java
         /// Gremlin: g.V().both().both().dedup().by(__.outE().count()).values("name");
         /// </summary>
-        /// <remarks>
-        /// GremlinOrderOp.ModulateBy() is not implemented
-        /// https://msdata.visualstudio.com/DocumentDB/_workitems/edit/37165
-        /// </remarks>
         [TestMethod]
         public void DedupByAnonymousTraversal()
         {
             using (GraphViewCommand GraphViewCommand = new GraphViewCommand(graphConnection))
             {
-                // TODO: GremlinOrderOp.ModulateBy() is not implemented
-
                 var traversal = GraphViewCommand.g().V()
                     .Both()
                     .Both()
@@ -487,10 +403,6 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         /// from org/apache/tinkerpop/gremlin/process/traversal/step/filter/DedupTest.java
         /// Gremlin: g.V().as("a").repeat(both()).times(3).emit().values("name").as("b").group().by(select("a")).by(select("b").dedup().order().fold()).select(values).<Collection<String>>unfold().dedup();
         /// </summary>
-        /// <remarks>
-        /// GremlinOrderOp.ModulateBy() is not implemented
-        /// https://msdata.visualstudio.com/DocumentDB/_workitems/edit/37165
-        /// </remarks>
         [TestMethod]
         public void TwoDedups()
         {
@@ -523,10 +435,6 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         /// from org/apache/tinkerpop/gremlin/process/traversal/step/filter/DedupTest.java
         /// Gremlin: g.V().repeat(dedup()).times(2).count();
         /// </summary>
-        /// <remarks>
-        /// Repeat(Dedup()) does not work
-        /// https://msdata.visualstudio.com/DocumentDB/_workitems/edit/37181
-        /// </remarks>
         [TestMethod]
         public void DedupInsideRepeat()
         {

@@ -57,7 +57,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
             {
-                string markoNameVertexPropertyId = this.ConvertToPropertyId(graphCommand, "marko", "name");
+                string markoNameVertexPropertyId = this.ConvertToPropertyId(graphCommand, "marko", "name", "marko");
 
                 var traversal = graphCommand.g().V().Has("age").Properties().Has("id", markoNameVertexPropertyId).Value();
 

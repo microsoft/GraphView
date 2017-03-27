@@ -130,10 +130,10 @@ namespace GraphView
             base.CyclicPath(currentContext);
         }
 
-        internal override void Dedup(GremlinToSqlContext currentContext, List<string> dedupLabels, GremlinToSqlContext dedupContext, GremlinKeyword.Scope scope)
+        internal override void Dedup(GremlinToSqlContext currentContext, List<string> dedupLabels, GraphTraversal2 dedupTraversal, GremlinKeyword.Scope scope)
         {
             this.isTraversalToBound = scope == GremlinKeyword.Scope.Global;
-            base.Dedup(currentContext, dedupLabels, dedupContext, scope);
+            base.Dedup(currentContext, dedupLabels, dedupTraversal, scope);
         }
 
         internal override void Group(GremlinToSqlContext currentContext, string sideEffectKey, GremlinToSqlContext groupByContext,

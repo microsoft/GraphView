@@ -250,18 +250,23 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Branch
         /// Port of the g_V_repeatXgroupCountXmX_byXnameX_outX_timesX2X_capXmX() UT from org/apache/tinkerpop/gremlin/process/traversal/step/branch/RepeatTest.java.
         /// Equivalent gremlin: "g.V().repeat(groupCount("m").by("name").out()).times(2).cap("m")"
         /// </summary>
-        /// <remarks>
-        /// GroupCount() Not Implemented on GraphTraversal2
-        /// Bug item: https://msdata.visualstudio.com/DocumentDB/_workitems/edit/36609
-        /// </remarks>
-        [Ignore]
         [TestMethod]
         [Owner("zhlian")]
         public void VerticesRepeatGroupCountMByNameOutTimes2CapM()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
             {
-                //var traversal = graphCommand.g().V().Repeat(GraphTraversal2.__().GroupCount("m").By("name").out()).Times(2).Cap("m");
+                graphCommand.OutputFormat = OutputFormat.GraphSON;
+                var traversal = graphCommand.g().V().Repeat(GraphTraversal2.__().GroupCount("m").By("name").Out()).Times(2).Cap("m");
+                dynamic results = JsonConvert.DeserializeObject<dynamic>(traversal.Next()[0]);
+                Assert.AreEqual(1, results.Count);
+                var result = results[0];
+                Assert.AreEqual(2, (int)result["ripple"]);
+                Assert.AreEqual(1, (int)result["peter"]);
+                Assert.AreEqual(2, (int)result["vadas"]);
+                Assert.AreEqual(2, (int)result["josh"]);
+                Assert.AreEqual(4, (int)result["lop"]);
+                Assert.AreEqual(1, (int)result["marko"]);
             }
         }
 
@@ -269,20 +274,24 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Branch
         /// Port of the g_V_repeatXbothX_timesX10X_asXaX_out_asXbX_selectXa_bX() UT from org/apache/tinkerpop/gremlin/process/traversal/step/branch/RepeatTest.java.
         /// Equivalent gremlin: "g.V().repeat(both()).times(10).as("a").out().as("b").select("a", "b")"
         /// </summary>
-        /// <remarks>
-        /// Select more than one key not implemented 
-        /// Bug item: https://msdata.visualstudio.com/DocumentDB/_workitems/edit/37285
-        /// </remarks>
-        [Ignore]
         [TestMethod]
+        [Ignore]
         [Owner("zhlian")]
         public void VerticesRepeatBothTimes10AsAOutAsBSelectAB()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
             {
-                //var traversal = graphCommand.g().V().Repeat(GraphTraversal2.__().Both()).Times(10).As("a").Out().As("b").Select("a", "b");
+                var traversal = graphCommand.g().V().Repeat(GraphTraversal2.__().Both()).Times(10).As("a").Out().As("b").Select("a", "b");
 
-                //var results = traversal.Next();
+                int counter = 0;
+                dynamic results = JsonConvert.DeserializeObject<dynamic>(traversal.Next()[0]);
+                foreach (var result in results)
+                {
+                    Assert.AreEqual(ConvertToVertexId(graphCommand, "marko"), result["a"]["id"]);
+                    Assert.AreEqual(ConvertToVertexId(graphCommand, "lop"), result["b"]["id"]);
+                    counter++;
+                }
+                Assert.IsTrue(counter > 0);
             }
         }
 

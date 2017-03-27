@@ -60,12 +60,12 @@ namespace GraphViewUnitTest.Gremlin
             return vertexId;
         }
 
-        public string ConvertToPropertyId(GraphViewCommand GraphViewCommand, string vertexName, string property)
+        public string ConvertToPropertyId(GraphViewCommand GraphViewCommand, string vertexName, string property, string propertyValue)
         {
             OutputFormat originalFormat = GraphViewCommand.OutputFormat;
             GraphViewCommand.OutputFormat = OutputFormat.Regular;
 
-            string propertyId = GraphViewCommand.g().V().Has("name", vertexName).Properties(property).Id().Next().FirstOrDefault();
+            string propertyId = GraphViewCommand.g().V().Has("name", vertexName).Properties(property).HasValue(propertyValue).Id().Next().FirstOrDefault();
 
             GraphViewCommand.OutputFormat = originalFormat;
 
