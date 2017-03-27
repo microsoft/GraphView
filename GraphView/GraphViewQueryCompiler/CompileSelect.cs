@@ -259,10 +259,10 @@ namespace GraphView
             BooleanWValueExpressionVisitor booleanWValueExpressionVisitor = new BooleanWValueExpressionVisitor();
             booleanWValueExpressionVisitor.Invoke(nodeCondition);
 
-            NormalizeWColumnReferenceExpressionVisitor normalizeColumnReferenceExpressionVisitor =
-                new NormalizeWColumnReferenceExpressionVisitor();
+            NormalizeNodePredicatesWColumnReferenceExpressionVisitor normalizeNodePredicatesColumnReferenceExpressionVisitor =
+                new NormalizeNodePredicatesWColumnReferenceExpressionVisitor();
             Dictionary<string, string> referencedProperties =
-                normalizeColumnReferenceExpressionVisitor.Invoke(nodeCondition);
+                normalizeNodePredicatesColumnReferenceExpressionVisitor.Invoke(nodeCondition);
 
             foreach (KeyValuePair<string, string> referencedProperty in referencedProperties)
             {
@@ -276,14 +276,16 @@ namespace GraphView
                 joinStrBuilder.AppendFormat(" JOIN {0} IN {1}.{2} ", edgeAlias, nodeAlias,
                     isReverseAdj ? GraphViewKeywords.KW_VERTEX_REV_EDGE : GraphViewKeywords.KW_VERTEX_EDGE);
 
+                WBooleanExpression tempEdgeCondition = null;
                 foreach (WBooleanExpression predicate in edge.Predicates) {
-                    edgeCondition = WBooleanBinaryExpression.Conjunction(edgeCondition, predicate);
+                    tempEdgeCondition = WBooleanBinaryExpression.Conjunction(tempEdgeCondition, predicate);
                 }
 
-                booleanWValueExpressionVisitor.Invoke(edgeCondition);
-                //
-                // TODO: Normalize column reference
-                //
+                booleanWValueExpressionVisitor.Invoke(tempEdgeCondition);
+
+                edgeCondition = tempEdgeCondition.Copy();
+                DMultiPartIdentifierVisitor normalizeEdgePredicatesColumnReferenceExpressionVisitor = new DMultiPartIdentifierVisitor();
+                normalizeEdgePredicatesColumnReferenceExpressionVisitor.Invoke(edgeCondition);
             }
             string edgeConditionString = edgeCondition?.ToString();
             if (!string.IsNullOrEmpty(edgeConditionString))
@@ -1694,8 +1696,6 @@ namespace GraphView
             WColumnReferenceExpression sinkParameter = Parameters[0] as WColumnReferenceExpression;
             int sinkIndex = context.LocateColumnReference(sinkParameter);
             string nodeAlias = Alias.Value;
-            //var isSendQueryRequired = !(Parameters.Count == 2 && (Parameters[1] as WValueExpression).Value.Equals("id"));
-            bool isSendQueryRequired = true;
 
             MatchNode matchNode = new MatchNode
             {
@@ -1705,14 +1705,21 @@ namespace GraphView
                 Properties = new HashSet<string>(GraphViewReservedProperties.InitialPopulateNodeProperties),
             };
 
-            // Construct JSON query
-            if (isSendQueryRequired)
+            for (int i = 1; i < this.Parameters.Count; i++)
             {
-                for (int i = 1; i < Parameters.Count; i++)
-                {
-                    string property = (Parameters[i] as WValueExpression).Value;
-                    matchNode.Properties.Add(property);
-                }
+                WValueExpression populateProperty = this.Parameters[i] as WValueExpression;
+                Debug.Assert(populateProperty != null, "populateProperty != null");
+
+                matchNode.Properties.Add(populateProperty.Value);
+            }
+
+            bool isSendQueryRequired = !(matchNode.Properties.Count == 1 &&
+                                         matchNode.Properties.First().Equals(GraphViewKeywords.KW_DOC_ID));
+
+            //
+            // Construct JSON query
+            //
+            if (isSendQueryRequired) {
                 WSelectQueryBlock.ConstructJsonQueryOnNode(matchNode);
             }
 
@@ -1721,18 +1728,15 @@ namespace GraphView
             context.CurrentExecutionOperator = traversalOp;
 
             // Update context's record layout
-            if (isSendQueryRequired)
-            {
-                foreach (string propertyName in matchNode.Properties)
-                {
+            if (isSendQueryRequired) {
+                foreach (string propertyName in matchNode.Properties) {
                     ColumnGraphType columnGraphType = GraphViewReservedProperties.IsNodeReservedProperty(propertyName)
                         ? GraphViewReservedProperties.ReservedNodePropertiesColumnGraphTypes[propertyName]
                         : ColumnGraphType.Value;
                     context.AddField(nodeAlias, propertyName, columnGraphType);
                 }
             }
-            else
-            {
+            else {
                 context.AddField(nodeAlias, GremlinKeyword.NodeID, ColumnGraphType.VertexId);
             }
 
@@ -1753,8 +1757,6 @@ namespace GraphView
             };
 
             string nodeAlias = Alias.Value;
-            //var isSendQueryRequired = !(Parameters.Count == 3 && (Parameters[2] as WValueExpression).Value.Equals("id"));
-            bool isSendQueryRequired = true;
 
             MatchNode matchNode = new MatchNode
             {
@@ -1764,14 +1766,21 @@ namespace GraphView
                 Properties = new HashSet<string>(GraphViewReservedProperties.InitialPopulateNodeProperties),
             };
 
-            // Construct JSON query
-            if (isSendQueryRequired)
+            for (int i = 2; i < this.Parameters.Count; i++)
             {
-                for (int i = 2; i < Parameters.Count; i++)
-                {
-                    string property = (Parameters[i] as WValueExpression).Value;
-                    matchNode.Properties.Add(property);
-                }
+                WValueExpression populateProperty = this.Parameters[i] as WValueExpression;
+                Debug.Assert(populateProperty != null, "populateProperty != null");
+
+                matchNode.Properties.Add(populateProperty.Value);
+            }
+
+            bool isSendQueryRequired = !(matchNode.Properties.Count == 1 &&
+                                         matchNode.Properties.First().Equals(GraphViewKeywords.KW_DOC_ID));
+
+            //
+            // Construct JSON query
+            //
+            if (isSendQueryRequired) {
                 WSelectQueryBlock.ConstructJsonQueryOnNode(matchNode);
             }
 
@@ -1779,19 +1788,18 @@ namespace GraphView
                 matchNode.AttachedJsonQuery);
             context.CurrentExecutionOperator = bothVOp;
 
+            //
             // Update context's record layout
-            if (isSendQueryRequired)
-            {
-                foreach (string propertyName in matchNode.Properties)
-                {
+            //
+            if (isSendQueryRequired) {
+                foreach (string propertyName in matchNode.Properties) {
                     ColumnGraphType columnGraphType = GraphViewReservedProperties.IsNodeReservedProperty(propertyName)
                         ? GraphViewReservedProperties.ReservedNodePropertiesColumnGraphTypes[propertyName]
                         : ColumnGraphType.Value;
                     context.AddField(nodeAlias, propertyName, columnGraphType);
                 }
             }
-            else
-            {
+            else {
                 context.AddField(nodeAlias, GremlinKeyword.NodeID, ColumnGraphType.VertexId);
             }
 

@@ -27,6 +27,18 @@ namespace GraphView
 
         public List<string> EdgeProperties { get; set; }
 
+        public JsonQuery() { }
+
+        public JsonQuery(JsonQuery rhs)
+        {
+            this.SelectClause = rhs.SelectClause;
+            this.JoinClause = rhs.JoinClause;
+            this.WhereSearchCondition = rhs.WhereSearchCondition;
+            this.Alias = rhs.Alias;
+            this.NodeProperties = rhs.NodeProperties;
+            this.EdgeProperties = rhs.EdgeProperties;
+        }
+
         public string ToString(DatabaseType dbType)
         {
             switch (dbType) {

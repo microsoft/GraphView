@@ -171,7 +171,7 @@ namespace GraphView
     /// The booleanExpression.toString() will show
     /// (WHERE age._value = 27 AND flag._value = true)
     /// </summary>
-    internal class NormalizeWColumnReferenceExpressionVisitor : WSqlFragmentVisitor
+    internal class NormalizeNodePredicatesWColumnReferenceExpressionVisitor : WSqlFragmentVisitor
     {
         //
         // <key: encode name with only letters, digits and underscore
@@ -179,7 +179,7 @@ namespace GraphView
         //
         private Dictionary<string, string> referencedProperties;
 
-        public NormalizeWColumnReferenceExpressionVisitor()
+        public NormalizeNodePredicatesWColumnReferenceExpressionVisitor()
         {
             referencedProperties = new Dictionary<string, string>();
         }
@@ -240,6 +240,28 @@ namespace GraphView
                 }
             }
             return new string(result, 0, idx);
+        }
+    }
+
+    /// <summary>
+    /// DMultiPartIdentifierVisitor traverses a boolean expression and
+    /// change all the WMultiPartIdentifiers to DMultiPartIdentifiers for normalization
+    /// </summary>
+    internal class DMultiPartIdentifierVisitor : WSqlFragmentVisitor
+    {
+        public void Invoke(WBooleanExpression booleanExpression)
+        {
+            if (booleanExpression != null) {
+                booleanExpression.Accept(this);
+            }
+        }
+
+        //
+        // E_0.|id => E_0['|id']
+        //
+        public override void Visit(WColumnReferenceExpression node)
+        {
+            node.MultiPartIdentifier = new DMultiPartIdentifier(node.MultiPartIdentifier);
         }
     }
 

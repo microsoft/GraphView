@@ -236,15 +236,7 @@ namespace GraphView
 
                     string inClause = string.Format("{0}.id IN ({1})", sinkVertexQuery.Alias, sinkReferenceList.ToString());
 
-                    JsonQuery toSendQuery = new JsonQuery()
-                    {
-                        Alias = sinkVertexQuery.Alias,
-                        WhereSearchCondition = sinkVertexQuery.WhereSearchCondition,
-                        SelectClause = sinkVertexQuery.SelectClause,
-                        JoinClause = sinkVertexQuery.JoinClause,
-                        NodeProperties = sinkVertexQuery.NodeProperties,
-                        EdgeProperties = sinkVertexQuery.EdgeProperties,
-                    };
+                    JsonQuery toSendQuery = new JsonQuery(sinkVertexQuery);
 
                     if (string.IsNullOrEmpty(toSendQuery.WhereSearchCondition))
                     {
@@ -447,15 +439,7 @@ namespace GraphView
 
                     string inClause = string.Format("{0}.id IN ({1})", sinkVertexQuery.Alias, sinkReferenceList.ToString());
 
-                    JsonQuery toSendQuery = new JsonQuery()
-                    {
-                        Alias = sinkVertexQuery.Alias,
-                        WhereSearchCondition = sinkVertexQuery.WhereSearchCondition,
-                        SelectClause = sinkVertexQuery.SelectClause,
-                        JoinClause = sinkVertexQuery.JoinClause,
-                        NodeProperties = sinkVertexQuery.NodeProperties,
-                        EdgeProperties = sinkVertexQuery.EdgeProperties,
-                    };
+                    JsonQuery toSendQuery = new JsonQuery(sinkVertexQuery);
 
                     if (string.IsNullOrEmpty(toSendQuery.WhereSearchCondition))
                     {

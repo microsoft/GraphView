@@ -322,36 +322,6 @@ namespace GraphView
         }
     }
 
-    /// <summary>
-    /// DMultiPartIdentifierVisitor traverses a boolean expression and
-    /// change all the WMultiPartIdentifiers to DMultiPartIdentifiers for normalization
-    /// </summary>
-    internal class DMultiPartIdentifierVisitor : WSqlFragmentVisitor
-    {
-        public void Invoke(WBooleanExpression node, string tableName)
-        {
-            node.Accept(this);
-        }
-
-        public override void Visit(WColumnReferenceExpression node)
-        {
-            node.MultiPartIdentifier = new DMultiPartIdentifier(node.MultiPartIdentifier);
-        }
-
-        public override void Visit(WScalarSubquery node)
-        {
-        }
-
-        public override void Visit(WFunctionCall node)
-        {
-        }
-
-        public override void Visit(WSearchedCaseExpression node)
-        {
-        }
-    }
-
-
     #region comment codes
     //internal class CheckBooleanEqualExpersion : WSqlFragmentVisitor
     //{
