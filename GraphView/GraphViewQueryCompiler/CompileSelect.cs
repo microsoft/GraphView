@@ -1947,6 +1947,48 @@ namespace GraphView
         }
     }
 
+
+    partial class WLabelTableReference
+    {
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
+        {
+            Debug.Assert(this.Parameters.Count == 1);
+
+            WColumnReferenceExpression targetVertexOrEdge = this.Parameters[0] as WColumnReferenceExpression;
+            Debug.Assert(targetVertexOrEdge != null);
+
+            int targetVertexOrEdgeIndex = context.LocateColumnReference(targetVertexOrEdge);
+
+            GraphViewExecutionOperator labelOp = new LabelOperator(context.CurrentExecutionOperator, targetVertexOrEdgeIndex);
+            context.CurrentExecutionOperator = labelOp;
+            context.AddField(Alias.Value, GremlinKeyword.TableDefaultColumnName, ColumnGraphType.Value);
+
+            return labelOp;
+        }
+    }
+
+
+    partial class WIdTableReference
+    {
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
+        {
+            Debug.Assert(this.Parameters.Count == 1);
+
+            // Can be VertexField, EdgeField, or VertexSinglePropertyField
+            WColumnReferenceExpression target = this.Parameters[0] as WColumnReferenceExpression;
+            Debug.Assert(target != null);
+
+            int targetIndex = context.LocateColumnReference(target);
+
+            GraphViewExecutionOperator IdOp = new IdOperator(context.CurrentExecutionOperator, targetIndex);
+            context.CurrentExecutionOperator = IdOp;
+            context.AddField(Alias.Value, GremlinKeyword.TableDefaultColumnName, ColumnGraphType.Value);
+
+            return IdOp;
+        }
+    }
+
+
     partial class WAllPropertiesTableReference
     {
         internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)

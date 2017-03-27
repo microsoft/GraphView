@@ -234,6 +234,84 @@ namespace GraphView
         }
     }
 
+    internal class LabelOperator : TableValuedFunction
+    {
+        private readonly int _targetVertexOrEdgeIndex;
+
+        public LabelOperator(GraphViewExecutionOperator inputOp, int targetVertexOrEdgeIndex)
+            : base(inputOp)
+        {
+            this._targetVertexOrEdgeIndex = targetVertexOrEdgeIndex;
+        }
+
+        internal override List<RawRecord> CrossApply(RawRecord record)
+        {
+            List<RawRecord> results = new List<RawRecord>();
+
+            FieldObject vertexOrEdge = record[this._targetVertexOrEdgeIndex];
+            if (vertexOrEdge != null) {
+                VertexField vertex = vertexOrEdge as VertexField;
+                if (vertex != null) {
+                    RawRecord r = new RawRecord();
+                    r.Append(new StringField(vertex.VertexMetaProperties[KW_VERTEX_LABEL].ToValue));
+                    results.Add(r);
+                }
+
+                EdgeField edge = vertexOrEdge as EdgeField;
+                if (edge != null) {
+                    RawRecord r = new RawRecord();
+                    r.Append(new StringField(edge.Label));
+                    results.Add(r);
+                }
+            }
+
+            return results;
+        }
+    }
+
+    internal class IdOperator : TableValuedFunction
+    {
+        private readonly int _targetIndex;
+
+        public IdOperator(GraphViewExecutionOperator inputOp, int targetIndex)
+            : base(inputOp)
+        {
+            this._targetIndex = targetIndex;
+        }
+
+        internal override List<RawRecord> CrossApply(RawRecord record)
+        {
+            List<RawRecord> results = new List<RawRecord>();
+
+            FieldObject target = record[this._targetIndex];
+            if (target != null) {
+                VertexField vertex = target as VertexField;
+                if (vertex != null) {
+                    RawRecord r = new RawRecord();
+                    r.Append(new StringField(vertex.VertexMetaProperties[KW_DOC_ID].ToValue));
+                    results.Add(r);
+                }
+
+                VertexSinglePropertyField vertexSingleProperty = target as VertexSinglePropertyField;
+                if (vertexSingleProperty != null) {
+                    RawRecord r = new RawRecord();
+                    r.Append(new StringField(vertexSingleProperty.PropertyId));
+                    results.Add(r);
+                }
+
+                EdgeField edge = target as EdgeField;
+                if (edge != null) {
+                    RawRecord r = new RawRecord();
+                    r.Append(new StringField(edge.EdgeId));
+                    results.Add(r);
+                }
+
+            }
+
+            return results;
+        }
+    }
+
     internal class AllPropertiesOperator : TableValuedFunction
     {
         private readonly int inputTargetIndex;
