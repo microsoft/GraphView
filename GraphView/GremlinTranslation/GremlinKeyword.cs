@@ -19,7 +19,7 @@ namespace GraphView
         public const string EdgeSourceV = "_source";
         public const string EdgeSinkV = "_sink";
         public const string EdgeOtherV = "_other";
-        public const string EdgeOffset = "_offset";
+        //public const string EdgeOffset = "_offset";
         public const string NodeID = "id";
         public const string EdgeAdj = "_edge";
         public const string ReverseEdgeAdj = "_reverse_edge";

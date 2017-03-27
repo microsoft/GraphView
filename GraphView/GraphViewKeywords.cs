@@ -40,7 +40,7 @@ namespace GraphView
         public const string KW_VERTEX_LABEL = "label";
         public const string KW_VERTEX_EDGE = GremlinKeyword.EdgeAdj;
         public const string KW_VERTEX_REV_EDGE = GremlinKeyword.ReverseEdgeAdj;
-        public const string KW_VERTEX_NEXTOFFSET = "_nextEdgeOffset";
+        //public const string KW_VERTEX_NEXTOFFSET = "_nextEdgeOffset";
         public const string KW_VERTEX_EDGE_SPILLED = "__graphviewEdgeSpilled";
         public const string KW_VERTEX_REVEDGE_SPILLED = "__graphviewRevEdgeSpilled";
 
@@ -50,7 +50,7 @@ namespace GraphView
 
         public const string KW_EDGE_LABEL = "label";
         public const string KW_EDGE_ID = "id";
-        public const string KW_EDGE_OFFSET = "_offset";
+        //public const string KW_EDGE_OFFSET = "_offset";
         public const string KW_EDGE_SRCV = "_srcV";
         public const string KW_EDGE_SRCV_LABEL = "_srcVLabel";
         public const string KW_EDGE_SINKV = "_sinkV";

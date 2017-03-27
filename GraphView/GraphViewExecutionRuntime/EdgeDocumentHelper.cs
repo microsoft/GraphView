@@ -93,23 +93,19 @@ namespace GraphView
             out JObject outEdgeObject, out string outEdgeDocID,
             out JObject inEdgeObject, out string inEdgeDocID)
         {
-            long edgeOffset = (long)srcVertexObject[KW_VERTEX_NEXTOFFSET];
-            srcVertexObject[KW_VERTEX_NEXTOFFSET] = edgeOffset + 1;
+            //long edgeOffset = (long)srcVertexObject[KW_VERTEX_NEXTOFFSET];
+            //srcVertexObject[KW_VERTEX_NEXTOFFSET] = edgeOffset + 1;
 
             outEdgeObject = (JObject)edgeJsonObject.DeepClone();
             inEdgeObject = (JObject)edgeJsonObject.DeepClone();
 
-            // Add "id" property to edgeObject if desired
-            if (connection.GenerateEdgeId) {
-                string guid = GraphViewConnection.GenerateDocumentId();
-                outEdgeObject[KW_EDGE_ID] = guid;
-                inEdgeObject[KW_EDGE_ID] = guid;
-            }
+            // Add "id" property to edgeObject
+            string edgeId = GraphViewConnection.GenerateDocumentId();
 
             string srcLabel = srcVertexObject[KW_VERTEX_LABEL]?.ToString();
             string sinkLabel = sinkVertexObject[KW_VERTEX_LABEL]?.ToString();
-            GraphViewJsonCommand.UpdateEdgeMetaProperty(outEdgeObject, edgeOffset, false, sinkId, sinkLabel);
-            GraphViewJsonCommand.UpdateEdgeMetaProperty(inEdgeObject, edgeOffset, true, srcId, srcLabel);
+            GraphViewJsonCommand.UpdateEdgeMetaProperty(outEdgeObject, edgeId, false, sinkId, sinkLabel);
+            GraphViewJsonCommand.UpdateEdgeMetaProperty(inEdgeObject, edgeId, true, srcId, srcLabel);
 
             InsertEdgeObjectInternal(connection, srcVertexObject, srcVertexField, outEdgeObject, false, out outEdgeDocID); // srcVertex uploaded
             InsertEdgeObjectInternal(connection, sinkVertexObject, sinkVertexField, inEdgeObject, true, out inEdgeDocID); // sinkVertex uploaded
@@ -350,7 +346,7 @@ namespace GraphView
 
 
         /// <summary>
-        /// Find incoming or outgoing edge by "srcId and _offset"
+        /// Find incoming or outgoing edge by "srcId and edgeId"
         /// Output the edgeObject, as well as the edgeDocId (null for small-degree edges)
         /// </summary>
         /// <param name="connection"></param>
@@ -360,7 +356,7 @@ namespace GraphView
         /// <param name="isReverseEdge"></param>
         /// <param name="edgeObject"></param>
         /// <param name="edgeDocId"></param>
-        public static void FindEdgeBySourceAndOffset(
+        public static void FindEdgeBySourceAndEdgeId(
             GraphViewConnection connection,
             JObject vertexObject, string srcVertexId, string edgeId, bool isReverseEdge,
             out JObject edgeObject, out string edgeDocId)
@@ -499,7 +495,7 @@ namespace GraphView
             JObject vertexObject,
             string edgeDocId,  // Can be null
             bool isReverse,
-            JObject newEdgeObject  // With all metadata (including id, partition, srcV/sinkV, offset)
+            JObject newEdgeObject  // With all metadata (including id, partition, srcV/sinkV, edgeId)
         )
         {
             bool tooLarge;

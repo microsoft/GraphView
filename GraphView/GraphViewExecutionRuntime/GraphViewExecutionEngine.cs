@@ -1287,7 +1287,7 @@ namespace GraphView
         public string InV { get; private set; }
         public string OutV { get; private set; }
         public string EdgeDocID { get; set; }
-        public long Offset { get; private set; }
+        //public long Offset { get; private set; }
 
         public string EdgeId => this.EdgeProperties[KW_EDGE_ID].PropertyValue;
 
@@ -1312,7 +1312,7 @@ namespace GraphView
             this.InV = rhs.InV;
             this.OutV = rhs.OutV;
             this.EdgeDocID = rhs.EdgeDocID;
-            this.Offset = rhs.Offset;
+            //this.Offset = rhs.Offset;
 
             this.OtherV = otherV;
         }
@@ -1332,8 +1332,8 @@ namespace GraphView
                         return new StringField(this.InV);
                     case GremlinKeyword.EdgeOtherV:
                         return new StringField(this.OtherV);
-                    case GremlinKeyword.EdgeOffset:
-                        return new StringField(this.Offset.ToString(), JsonDataType.Long);
+                    case GremlinKeyword.EdgeID:
+                        return new StringField(this.EdgeId);
                     default:
                         break;
                 }
@@ -1388,7 +1388,7 @@ namespace GraphView
             foreach (string propertyName in this.EdgeProperties.Keys) {
                 switch (propertyName) {
                 case KW_EDGE_LABEL:
-                case KW_EDGE_OFFSET:
+                //case KW_EDGE_OFFSET:
                 case KW_EDGE_SRCV:
                 case KW_EDGE_SRCV_LABEL:
                 case KW_EDGE_SINKV:
@@ -1452,7 +1452,7 @@ namespace GraphView
                 OutV = outVId,
                 OutVLabel = outVLabel,
                 EdgeDocID = edgeDocID,
-                Offset = (long)edgeObject[KW_EDGE_OFFSET],
+                //Offset = (long)edgeObject[KW_EDGE_OFFSET],
             };
 
             foreach (JProperty property in edgeObject.Properties()) {
@@ -1480,7 +1480,7 @@ namespace GraphView
                 InV = inVId,
                 InVLabel = inVLabel,
                 EdgeDocID = edgeDocID,
-                Offset = (long)edgeObject[KW_EDGE_OFFSET],
+                //Offset = (long)edgeObject[KW_EDGE_OFFSET],
             };
 
             foreach (JProperty property in edgeObject.Properties()) {
@@ -1548,13 +1548,14 @@ namespace GraphView
         {
             StringBuilder sb = new StringBuilder();
 
-            foreach (string offset in Edges.Keys.OrderBy(e => long.Parse(e.Substring(e.IndexOf(".")+1))))
+            // The order is no longer important now
+            foreach (KeyValuePair<string, EdgeField> pair in Edges)
             {
                 if (sb.Length > 0)
                 {
                     sb.Append(", ");
                 }
-                sb.Append(Edges[offset].ToString());
+                sb.Append(pair.Value.ToString());
             }
 
             return string.Format("[{0}]", sb.ToString());
@@ -1564,13 +1565,13 @@ namespace GraphView
         {
             StringBuilder sb = new StringBuilder();
 
-            foreach (string offset in Edges.Keys.OrderBy(e => long.Parse(e)))
+            foreach (KeyValuePair<string, EdgeField> pair in Edges)
             {
                 if (sb.Length > 0)
                 {
                     sb.Append(", ");
                 }
-                sb.Append(Edges[offset].ToGraphSON());
+                sb.Append(pair.Value.ToGraphSON());
             }
 
             return string.Format("[{0}]", sb.ToString());
@@ -1585,7 +1586,7 @@ namespace GraphView
             case KW_DOC_ID:
             case KW_DOC_PARTITION:
             case KW_VERTEX_LABEL:
-            case KW_VERTEX_NEXTOFFSET:
+            //case KW_VERTEX_NEXTOFFSET:
             case KW_VERTEX_EDGE_SPILLED:
             case KW_VERTEX_REVEDGE_SPILLED:
                 return true;
@@ -1802,7 +1803,7 @@ namespace GraphView
                             {
                             case KW_EDGE_ID:
                             case KW_EDGE_LABEL:
-                            case KW_EDGE_OFFSET:
+                            //case KW_EDGE_OFFSET:
                             case KW_EDGE_SRCV:
                             case KW_EDGE_SINKV:
                             case KW_EDGE_SRCV_LABEL:
@@ -1896,7 +1897,7 @@ namespace GraphView
                             {
                             case KW_EDGE_ID:
                             case KW_EDGE_LABEL:
-                            case KW_EDGE_OFFSET:
+                            //case KW_EDGE_OFFSET:
                             case KW_EDGE_SRCV:
                             case KW_EDGE_SINKV:
                             case KW_EDGE_SRCV_LABEL:
@@ -1957,7 +1958,7 @@ namespace GraphView
                     case KW_VERTEX_LABEL:
                     case KW_VERTEX_EDGE:
                     case KW_VERTEX_REV_EDGE:
-                    case KW_VERTEX_NEXTOFFSET:
+                    //case KW_VERTEX_NEXTOFFSET:
                         continue;
                     default:
                         break;
@@ -2359,7 +2360,7 @@ namespace GraphView
                 GremlinKeyword.EdgeSourceV,
                 GremlinKeyword.EdgeSinkV,
                 GremlinKeyword.EdgeOtherV,
-                GremlinKeyword.EdgeOffset,
+                GremlinKeyword.EdgeID,
                 GremlinKeyword.Star,
             });
     }

@@ -880,7 +880,7 @@ namespace GraphView
             context.AddField(edgeAlias, GremlinKeyword.EdgeSourceV, ColumnGraphType.EdgeSource);
             context.AddField(edgeAlias, GremlinKeyword.EdgeSinkV, ColumnGraphType.EdgeSink);
             context.AddField(edgeAlias, GremlinKeyword.EdgeOtherV, ColumnGraphType.Value);
-            context.AddField(edgeAlias, GremlinKeyword.EdgeOffset, ColumnGraphType.EdgeOffset);
+            context.AddField(edgeAlias, GremlinKeyword.EdgeID, ColumnGraphType.EdgeId);
             context.AddField(edgeAlias, GremlinKeyword.Star, ColumnGraphType.EdgeObject);
             for (var i = GraphViewReservedProperties.ReservedEdgeProperties.Count; i < properties.Count; i++)
             {
@@ -1828,7 +1828,7 @@ namespace GraphView
             context.AddField(edgeAlias, GremlinKeyword.EdgeSourceV, ColumnGraphType.EdgeSource);
             context.AddField(edgeAlias, GremlinKeyword.EdgeSinkV, ColumnGraphType.EdgeSink);
             context.AddField(edgeAlias, GremlinKeyword.EdgeOtherV, ColumnGraphType.Value);
-            context.AddField(edgeAlias, GremlinKeyword.EdgeOffset, ColumnGraphType.EdgeOffset);
+            context.AddField(edgeAlias, GremlinKeyword.EdgeID, ColumnGraphType.EdgeId);
             context.AddField(edgeAlias, GremlinKeyword.Star, ColumnGraphType.EdgeObject);
 
             for (var i = GraphViewReservedProperties.ReservedEdgeProperties.Count; i < projectFields.Count; i++)
@@ -1868,7 +1868,7 @@ namespace GraphView
             context.AddField(edgeAlias, GremlinKeyword.EdgeSourceV, ColumnGraphType.EdgeSource);
             context.AddField(edgeAlias, GremlinKeyword.EdgeSinkV, ColumnGraphType.EdgeSink);
             context.AddField(edgeAlias, GremlinKeyword.EdgeOtherV, ColumnGraphType.Value);
-            context.AddField(edgeAlias, GremlinKeyword.EdgeOffset, ColumnGraphType.EdgeOffset);
+            context.AddField(edgeAlias, GremlinKeyword.EdgeID, ColumnGraphType.EdgeId);
             context.AddField(edgeAlias, GremlinKeyword.Star, ColumnGraphType.EdgeObject);
             for (var i = GraphViewReservedProperties.ReservedEdgeProperties.Count; i < projectFields.Count; i++)
             {
@@ -1909,7 +1909,7 @@ namespace GraphView
             context.AddField(edgeAlias, GremlinKeyword.EdgeSourceV, ColumnGraphType.EdgeSource);
             context.AddField(edgeAlias, GremlinKeyword.EdgeSinkV, ColumnGraphType.EdgeSink);
             context.AddField(edgeAlias, GremlinKeyword.EdgeOtherV, ColumnGraphType.Value);
-            context.AddField(edgeAlias, GremlinKeyword.EdgeOffset, ColumnGraphType.EdgeOffset);
+            context.AddField(edgeAlias, GremlinKeyword.EdgeID, ColumnGraphType.EdgeId);
             context.AddField(edgeAlias, GremlinKeyword.Star, ColumnGraphType.EdgeObject);
             for (var i = GraphViewReservedProperties.ReservedEdgeProperties.Count; i < projectFields.Count; i++)
             {

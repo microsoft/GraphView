@@ -89,7 +89,7 @@ namespace GraphView
                 case KW_VERTEX_EDGE:
                 case KW_VERTEX_REV_EDGE:
                 case KW_VERTEX_LABEL:
-                case KW_VERTEX_NEXTOFFSET:
+                //case KW_VERTEX_NEXTOFFSET:
 
                 case "_rid":
                 case "_self":
@@ -121,7 +121,7 @@ namespace GraphView
                 switch (name) {
                 // Reversed properties for meta-data
                 case KW_EDGE_ID:
-                case KW_EDGE_OFFSET:
+                //case KW_EDGE_OFFSET:
                 case KW_EDGE_SRCV:
                 case KW_EDGE_SRCV_LABEL:
                 case KW_EDGE_SINKV:
@@ -140,9 +140,9 @@ namespace GraphView
 
         [DebuggerStepThrough]
         public static void UpdateEdgeMetaProperty(
-            JObject edgeJObject, long edgeOffset, bool isReverseEdge, string srcOrSinkVId, string srcOrSinkVLabel)
+            JObject edgeJObject, string edgeId, bool isReverseEdge, string srcOrSinkVId, string srcOrSinkVLabel)
         {
-            edgeJObject[KW_EDGE_OFFSET] = edgeOffset;
+            edgeJObject[KW_EDGE_ID] = edgeId;
             if (isReverseEdge) {
                 edgeJObject[KW_EDGE_SRCV] = srcOrSinkVId;
                 edgeJObject[KW_EDGE_SRCV_LABEL] = (JValue)srcOrSinkVLabel ?? JValue.CreateNull();

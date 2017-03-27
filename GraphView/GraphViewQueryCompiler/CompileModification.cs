@@ -57,7 +57,7 @@ namespace GraphView
             vertexObject[KW_VERTEX_REV_EDGE] = new JArray();
             vertexObject[KW_VERTEX_EDGE_SPILLED] = false;
             vertexObject[KW_VERTEX_REVEDGE_SPILLED] = false;
-            vertexObject[KW_VERTEX_NEXTOFFSET] = 0;
+            //vertexObject[KW_VERTEX_NEXTOFFSET] = 0;
 
             return vertexObject;
         }
@@ -132,7 +132,7 @@ namespace GraphView
             context.AddField(Alias.Value, GremlinKeyword.EdgeSourceV, ColumnGraphType.EdgeSource);
             context.AddField(Alias.Value, GremlinKeyword.EdgeSinkV, ColumnGraphType.EdgeSink);
             context.AddField(Alias.Value, GremlinKeyword.EdgeOtherV, ColumnGraphType.Value);
-            context.AddField(Alias.Value, GremlinKeyword.EdgeOffset, ColumnGraphType.EdgeOffset);
+            context.AddField(Alias.Value, GremlinKeyword.EdgeID, ColumnGraphType.EdgeId);
             context.AddField(Alias.Value, GremlinKeyword.Star, ColumnGraphType.EdgeObject);
             for (var i = GraphViewReservedProperties.ReservedEdgeProperties.Count; i < projectedField.Count; i++)
             {
@@ -440,7 +440,7 @@ namespace GraphView
 
     //    //    context.AddField("", "sourceId", ColumnGraphType.VertexId);
     //    //    context.AddField("", "sinkId", ColumnGraphType.VertexId);
-    //    //    context.AddField("", "edgeOffset", ColumnGraphType.EdgeOffset);
+    //    //    context.AddField("", "edgeOffset", ColumnGraphType.EdgeId);
 
     //    //    return insertEdgeOp;
     //    //}

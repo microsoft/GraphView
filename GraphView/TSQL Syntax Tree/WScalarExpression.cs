@@ -199,7 +199,7 @@ namespace GraphView
         VertexObject,
         EdgeObject,
         EdgeSource,
-        EdgeOffset,
+        EdgeId,
         EdgeSink,
         OutAdjacencyList,
         InAdjacencyList,

@@ -9,7 +9,6 @@ VertexDocument (Small):
 	"_reverse_edge": [							// KW_VERTEX_REVEDGE
 		<RevEdgeObject>, ...
 	],
-	"_nextEdgeOffset": ...						// KW_VERTEX_NEXTOFFSET
 
 	// vertex properties
 	"label": ...,  // optional					// KW_VERTEX_LABLE
@@ -37,7 +36,6 @@ VertexDocument (Large):
 			"id": <edge-doucment-id>
 		}, ...
 	},
-	"_nextEdgeOffset": ...
 
 	// vertex properties
 	"label": ...,  // optional
@@ -65,8 +63,8 @@ EdgeDocument:
 
 EdgeObject:
 {
-	"_offset": ...,	        // offset of current edge (relative to srcV)
-												// KW_EDGE_OFFSET
+	"id": ...,				// id of current edge (unique)
+												// KW_EDGE_ID
 	"_sinkV": ...,	        // id of sink vertex
 												// KW_EDGE_SINKV
 	"_sinkVLabel": ...,     // label of sink vertex, must exist, can be JValue-null
@@ -80,8 +78,8 @@ EdgeObject:
 
 RevEdgeObject:
 {
-	"_offset": ...,	        // offset of current edge (relative to srcV)
-												// KW_EDGE_OFFSET
+	"id": ...,				// id of current edge (unique)
+												// KW_EDGE_ID
 	"_srcV": ...,	        // id of sink vertex
 												// KW_EDGE_SRCV
 	"_srcVLabel": ...,      // label of sink vertex, must exist, can be JValue-null

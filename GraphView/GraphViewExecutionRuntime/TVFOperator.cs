@@ -218,6 +218,15 @@ namespace GraphView
                     continue;
                 }
 
+                StringField strf = propertyObject as StringField;
+                if (strf != null)
+                {
+                    RawRecord r = new RawRecord();
+                    r.Append(new StringField(strf.Value, strf.JsonDataType));
+                    results.Add(r);
+                    continue;
+                }
+
                 Debug.Assert(false, "Should not get here.");
             }
 
@@ -290,7 +299,7 @@ namespace GraphView
                         // Reserved properties for meta-data
                         case KW_EDGE_LABEL:
                         case KW_EDGE_ID:
-                        case KW_EDGE_OFFSET:
+                        //case KW_EDGE_OFFSET:
                         case KW_EDGE_SRCV:
                         case KW_EDGE_SINKV:
                         case KW_EDGE_SRCV_LABEL:
@@ -448,8 +457,8 @@ namespace GraphView
                         switch (propertyName)
                         {
                             // Reserved properties for meta-data
-                            case GraphViewKeywords.KW_EDGE_ID:
-                            case KW_EDGE_OFFSET:
+                            case KW_EDGE_ID:
+                            //case KW_EDGE_OFFSET:
                             case KW_EDGE_SRCV:
                             case KW_EDGE_SINKV:
                             case KW_EDGE_SRCV_LABEL:
@@ -609,8 +618,8 @@ namespace GraphView
                         switch (propertyName)
                         {
                             // Reserved properties for meta-data
-                            case GraphViewKeywords.KW_EDGE_ID:
-                            case KW_EDGE_OFFSET:
+                            case KW_EDGE_ID:
+                            //case KW_EDGE_OFFSET:
                             case KW_EDGE_SRCV:
                             case KW_EDGE_SINKV:
                             case KW_EDGE_SRCV_LABEL:
@@ -715,7 +724,7 @@ namespace GraphView
                         // Reserved properties for meta-data
                         case KW_EDGE_ID:
                         case KW_EDGE_LABEL:
-                        case KW_EDGE_OFFSET:
+                        //case KW_EDGE_OFFSET:
                         case KW_EDGE_SRCV:
                         case KW_EDGE_SINKV:
                         case KW_EDGE_SRCV_LABEL:

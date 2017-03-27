@@ -4090,7 +4090,7 @@ namespace GraphView
         }
 
         /// <summary>
-        /// Fill edge's {_source, _sink, _other, _offset, *} meta fields
+        /// Fill edge's {_source, _sink, _other, id, *} meta fields
         /// </summary>
         /// <param name="record"></param>
         /// <param name="edge"></param>
@@ -4116,7 +4116,7 @@ namespace GraphView
             record.fieldValues[0] = new StringField(edge.OutV);
             record.fieldValues[1] = new StringField(edge.InV);
             record.fieldValues[2] = new StringField(otherValue);
-            record.fieldValues[3] = new StringField(edge.Offset.ToString());
+            record.fieldValues[3] = new StringField(edge.EdgeId);
             record.fieldValues[4] = new EdgeField(edge, otherValue);
         }
 

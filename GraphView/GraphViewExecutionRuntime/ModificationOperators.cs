@@ -620,11 +620,11 @@ namespace GraphView
             // Construct the newly added edge's RawRecord
             RawRecord result = new RawRecord();
 
-            // source, sink, other, offset, *
+            // source, sink, other, edgeId, *
             result.Append(new StringField(srcId));
             result.Append(new StringField(sinkId));
             result.Append(new StringField(_otherVTag == 0 ? srcId : sinkId));
-            result.Append(new StringField(outEdgeObject[KW_EDGE_OFFSET].ToString()));
+            result.Append(new StringField(outEdgeField.EdgeId));
             result.Append(outEdgeField);
 
             for (int i = GraphViewReservedProperties.ReservedEdgeProperties.Count; i < _edgeProperties.Count; i++)
@@ -704,7 +704,7 @@ namespace GraphView
             JObject srcEdgeObject;
             string srcEdgeDocId, sinkEdgeDocId;
             JObject srcVertexObject = this.Connection.RetrieveDocumentById(srcId);
-            EdgeDocumentHelper.FindEdgeBySourceAndOffset(
+            EdgeDocumentHelper.FindEdgeBySourceAndEdgeId(
                 this.Connection, srcVertexObject, srcId, edgeId, false,
                 out srcEdgeObject, out srcEdgeDocId);
             if (srcEdgeObject == null)
@@ -719,7 +719,7 @@ namespace GraphView
             {
                 sinkVertexObject = this.Connection.RetrieveDocumentById(sinkId);
                 JObject sinkEdgeObject;
-                EdgeDocumentHelper.FindEdgeBySourceAndOffset(
+                EdgeDocumentHelper.FindEdgeBySourceAndEdgeId(
                     this.Connection, sinkVertexObject, srcId, edgeId, true,
                     out sinkEdgeObject, out sinkEdgeDocId);
             }
@@ -947,7 +947,7 @@ namespace GraphView
             JObject srcVertexObject = this.Connection.RetrieveDocumentById(srcVertexId);
             string outEdgeDocId;
             JObject outEdgeObject;
-            EdgeDocumentHelper.FindEdgeBySourceAndOffset(
+            EdgeDocumentHelper.FindEdgeBySourceAndEdgeId(
                 this.Connection, srcVertexObject, srcVertexId, edgeId, false,
                 out outEdgeObject, out outEdgeDocId);
             if (outEdgeObject == null)
@@ -968,7 +968,7 @@ namespace GraphView
             else {
                 sinkVertexObject = this.Connection.RetrieveDocumentById(sinkVertexId);
             }
-            EdgeDocumentHelper.FindEdgeBySourceAndOffset(
+            EdgeDocumentHelper.FindEdgeBySourceAndEdgeId(
                 this.Connection, sinkVertexObject, srcVertexId, edgeId, true,
                 out inEdgeObject, out inEdgeDocId);
 
