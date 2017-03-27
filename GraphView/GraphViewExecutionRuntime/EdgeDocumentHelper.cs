@@ -652,7 +652,8 @@ namespace GraphView
             {
                 string vertexId = pair.Key;
                 Dictionary<string, JObject> edgeDocDict = pair.Value; // contains both in & out edges
-                VertexField vertexField = connection.VertexCache.GetVertexField(vertexId);
+                VertexField vertexField;
+                connection.VertexCache.TryGetVertexField(vertexId, out vertexField);
                 vertexField.ConstructSpilledAdjacencyListField(edgeDocDict);
             }
         }

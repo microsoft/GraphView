@@ -1574,7 +1574,7 @@ namespace GraphView
             QueryCompilationContext subcontext = new QueryCompilationContext(context);
             ContainerOperator containerOp = null;
             bool isCarryOnMode = false;
-            if (HasAggregateFunctionInTheOptionalSelectQuery(optionalSelect))
+            if (this.HasAggregateFunctionAsChildren)
             {
                 isCarryOnMode = true;
                 containerOp = new ContainerOperator(context.CurrentExecutionOperator);
@@ -1686,6 +1686,44 @@ namespace GraphView
             }
 
             return flatMapOp;
+        }
+    }
+
+    partial class WBoundNodeTableReference
+    {
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
+        {
+            Debug.Assert(context.CurrentExecutionOperator != null, "context.CurrentExecutionOperator != null");
+
+            string nodeAlias = Alias.Value;
+            MatchNode matchNode = new MatchNode
+            {
+                AttachedJsonQuery = null,
+                NodeAlias = nodeAlias,
+                Predicates = new List<WBooleanExpression>(),
+                Properties = new HashSet<string>(GraphViewReservedProperties.InitialPopulateNodeProperties),
+            };
+
+            foreach (WScalarExpression expression in this.Parameters)
+            {
+                WValueExpression populateProperty = expression as WValueExpression;
+                Debug.Assert(populateProperty != null, "populateProperty != null");
+
+                matchNode.Properties.Add(populateProperty.Value);
+            }
+
+            WSelectQueryBlock.ConstructJsonQueryOnNode(matchNode);
+
+            FetchNodeOperator2 fetchNodeOp = new FetchNodeOperator2(dbConnection, matchNode.AttachedJsonQuery);
+
+            foreach (string propertyName in matchNode.Properties) {
+                ColumnGraphType columnGraphType = GraphViewReservedProperties.IsNodeReservedProperty(propertyName)
+                    ? GraphViewReservedProperties.ReservedNodePropertiesColumnGraphTypes[propertyName]
+                    : ColumnGraphType.Value;
+                context.AddField(nodeAlias, propertyName, columnGraphType);
+            }
+
+            return new CartesianProductOperator2(context.CurrentExecutionOperator, fetchNodeOp);
         }
     }
 
@@ -2191,10 +2229,6 @@ namespace GraphView
         {
             WSelectQueryBlock contextSelect, repeatSelect;
             Split(out contextSelect, out repeatSelect);
-
-            //if (HasAggregateFunctionInTheRepeatSelectQuery(repeatSelect)) {
-            //    throw new QueryCompilationException("The parent of an aggregate function cannot be a repeat operator.");
-            //}
 
             QueryCompilationContext rTableContext = new QueryCompilationContext(context);
             rTableContext.ClearField();

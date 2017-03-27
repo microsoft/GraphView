@@ -390,13 +390,6 @@ namespace GraphView
                 throw new SyntaxErrorException("The input of an optional table reference must be a UNION ALL binary query and the two sub-queries must be a select query block.");
             }
         }
-
-        internal bool HasAggregateFunctionInTheOptionalSelectQuery(WSelectQueryBlock optionalSelectQuery)
-        {
-            AggregateFunctionCountVisitor aggregateCountVisitor = new AggregateFunctionCountVisitor();
-
-            return aggregateCountVisitor.Invoke(optionalSelectQuery) > 0;
-        }
     }
 
     public partial class WCoalesceTableReference : WSchemaObjectFunctionTableReference {}

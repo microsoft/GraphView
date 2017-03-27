@@ -999,6 +999,16 @@ namespace GraphView
                     else
                     {
                         FieldObject pathStep = GetStepProjectionResult(step, ref activeByFuncIndex);
+
+                        Compose1Field compose1PathStep = pathStep as Compose1Field;
+                        Debug.Assert(compose1PathStep != null, "compose1PathStep != null");
+                        //
+                        // g.V().optional(__.count().V()).path()
+                        //
+                        if (compose1PathStep[compose1PathStep.DefaultProjectionKey] == null) {
+                            continue;
+                        }
+
                         PathStepField pathStepField = new PathStepField(pathStep);
                         foreach (string label in stepLabels) {
                             pathStepField.AddLabel(label);
