@@ -424,6 +424,8 @@ namespace GraphView
 
     public partial class WBoundOutNodeTableReference : WSchemaObjectFunctionTableReference {}
 
+    public partial class WBoundNodeTableReference : WSchemaObjectFunctionTableReference { }
+
     public partial class WPropertiesTableReference : WSchemaObjectFunctionTableReference {}
 
     public partial class WAllPropertiesTableReference : WSchemaObjectFunctionTableReference { }

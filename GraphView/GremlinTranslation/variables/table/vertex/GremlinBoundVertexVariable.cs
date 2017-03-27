@@ -16,6 +16,21 @@ namespace GraphView
         public GremlinVariableProperty SourceVariableProperty { get; set; }
         public GremlinVariableProperty SinkVariableProperty { get; set; }
 
+        public GremlinBoundVertexVariable()
+        {
+        }
+
+        public GremlinBoundVertexVariable(GremlinVariableProperty sourceVariableProperty)
+        {
+            SourceVariableProperty = sourceVariableProperty;
+        }
+
+        public GremlinBoundVertexVariable(GremlinVariableProperty sourceVariableProperty, GremlinVariableProperty sinkVariableProperty)
+        {
+            SourceVariableProperty = sourceVariableProperty;
+            SinkVariableProperty = sinkVariableProperty;
+        }
+
         public override WTableReference ToTableReference()
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();
@@ -36,26 +51,22 @@ namespace GraphView
             WTableReference tableRef = null;
             if (SourceVariableProperty != null && SinkVariableProperty != null)
             {
-                //BothV
+                //BothV(E_0._source, E_0._sink, "name", "age")
                 tableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.BothV, parameters, GetVariableName());
+            }
+            else if (SourceVariableProperty != null || SinkVariableProperty != null)
+            {
+                //EtoV(E_0._sink, "name", "age")
+                //EtoV(E_0._source, "name", "age")
+                tableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.EtoV, parameters, GetVariableName());
             }
             else
             {
-                tableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.EtoV, parameters, GetVariableName());
+                //V("name", "age")
+                tableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.V, parameters, GetVariableName());
             }
 
             return SqlUtil.GetCrossApplyTableReference(tableRef);
-        }
-
-        public GremlinBoundVertexVariable(GremlinVariableProperty sourceVariableProperty)
-        {
-            SourceVariableProperty = sourceVariableProperty;
-        }
-
-        public GremlinBoundVertexVariable(GremlinVariableProperty sourceVariableProperty, GremlinVariableProperty sinkVariableProperty)
-        {
-            SourceVariableProperty = sourceVariableProperty;
-            SinkVariableProperty = sinkVariableProperty;
         }
     }
 }

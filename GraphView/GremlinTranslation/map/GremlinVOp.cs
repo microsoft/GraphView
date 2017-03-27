@@ -22,7 +22,17 @@ namespace GraphView
         {
             GremlinToSqlContext inputContext = GetInputContext();
 
-            GremlinFreeVertexVariable newVariable = new GremlinFreeVertexVariable();
+            GremlinTableVariable newVariable;
+            if (inputContext.PivotVariable == null
+                || inputContext.PivotVariable is GremlinFreeVertexVariable
+                || inputContext.PivotVariable is GremlinContextVariable)
+            {
+                newVariable = new GremlinFreeVertexVariable();
+            }
+            else
+            {
+                newVariable = new GremlinBoundVertexVariable();
+            }
 
             if (VertexIdsOrElements.Count > 0)
             {

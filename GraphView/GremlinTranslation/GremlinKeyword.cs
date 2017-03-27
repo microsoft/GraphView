@@ -44,6 +44,7 @@ namespace GraphView
             public const string InV = "InV";
             public const string BothV = "BothV";
             public const string EtoV = "EtoV";
+            public const string V = "V";
             public const string Optional = "Optional";
             public const string Properties = "Properties";
             public const string AllProperties = "AllProperties";
