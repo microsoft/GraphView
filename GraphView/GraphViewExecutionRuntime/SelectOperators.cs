@@ -2162,8 +2162,10 @@ namespace GraphView
 
                     int index = 0;
                     foreach (EntryField entry in inputMap) {
-                        if (index >= low && index++ < high)
+                        if (index >= low && index < high) {
                             newMap.Add(entry.Key, entry.Value);
+                        }
+                        ++index;
                     }
                     filteredObject = newMap;
                 }
