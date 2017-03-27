@@ -722,8 +722,7 @@ namespace GraphView
 
         public GraphTraversal2 Id()
         {
-            //TODO: id should be a tvf later
-            AddGremlinOperator(new GremlinValuesOp(GremlinKeyword.DefaultId));
+            AddGremlinOperator(new GremlinIdOp());
             return this;
         }
 
@@ -796,7 +795,7 @@ namespace GraphView
 
         public GraphTraversal2 Label()
         {
-            AddGremlinOperator(new GremlinValuesOp(GremlinKeyword.Label));
+            AddGremlinOperator(new GremlinLabelOp());
             return this;
         }
 
