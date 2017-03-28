@@ -275,7 +275,6 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Branch
         /// Equivalent gremlin: "g.V().repeat(both()).times(10).as("a").out().as("b").select("a", "b")"
         /// </summary>
         [TestMethod]
-        [Ignore]
         [Owner("zhlian")]
         public void VerticesRepeatBothTimes10AsAOutAsBSelectAB()
         {
@@ -292,7 +291,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Branch
                     Assert.IsTrue(result["b"] != null);
                     counter++;
                 }
-                Assert.IsTrue(counter > 0);
+                Assert.IsTrue(counter == 43958);
             }
         }
 
