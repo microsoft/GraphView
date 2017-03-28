@@ -173,9 +173,8 @@ namespace GraphView
 
             switch (outputFormat)
             {
-
                 case OutputFormat.GraphSON:
-                    string result = "[";
+                    StringBuilder result = new StringBuilder("[");
                     bool firstEntry = true;
                     foreach (var record in rawRecordResults)
                     {
@@ -185,13 +184,13 @@ namespace GraphView
                         }
                         else
                         {
-                            result += ", ";
+                            result.Append(", ");
                         }
                         FieldObject field = record[0];
-                        result += field.ToGraphSON();
+                        result.Append(field.ToGraphSON());
                     }
-                    result += "]";
-                    results.Add(result);
+                    result.Append("]");
+                    results.Add(result.ToString());
                     break;
                 default:
                     foreach (var record in rawRecordResults)

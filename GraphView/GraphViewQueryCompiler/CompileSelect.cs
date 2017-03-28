@@ -2231,9 +2231,10 @@ namespace GraphView
             Split(out contextSelect, out repeatSelect);
 
             QueryCompilationContext rTableContext = new QueryCompilationContext(context);
-            rTableContext.ClearField();
+            rTableContext.CarryOn = true;
 
             QueryCompilationContext initalContext = new QueryCompilationContext(context);
+            initalContext.CarryOn = true;
             GraphViewExecutionOperator getInitialRecordOp = contextSelect.Compile(initalContext, dbConnection);
 
             foreach (WSelectElement selectElement in contextSelect.SelectElements)
@@ -2256,18 +2257,20 @@ namespace GraphView
             BooleanFunction emitCondition = repeatCondition.EmitCondition?.CompileToFunction(rTableContext, dbConnection);
             bool emitContext = repeatCondition.EmitContext;
 
+            ConstantSourceOperator tempSourceOp = new ConstantSourceOperator();
+            ContainerOperator innerSourceOp = new ContainerOperator(tempSourceOp);
             GraphViewExecutionOperator innerOp = repeatSelect.Compile(rTableContext, dbConnection);
+            rTableContext.OuterContextOp.SourceEnumerator = innerSourceOp.GetEnumerator();
 
             RepeatOperator repeatOp;
             if (repeatTimes == -1)
                 repeatOp = new RepeatOperator(context.CurrentExecutionOperator, initalContext.OuterContextOp, getInitialRecordOp, 
-                    innerOp, rTableContext.OuterContextOp, terminationCondition, startFromContext, emitCondition, emitContext);
+                    tempSourceOp, innerSourceOp, innerOp, terminationCondition, startFromContext, emitCondition, emitContext);
             else
-                repeatOp = new RepeatOperator(context.CurrentExecutionOperator, initalContext.OuterContextOp, getInitialRecordOp, innerOp,
-                    rTableContext.OuterContextOp, repeatTimes, emitCondition, emitContext);
+                repeatOp = new RepeatOperator(context.CurrentExecutionOperator, initalContext.OuterContextOp, getInitialRecordOp, 
+                    tempSourceOp, innerSourceOp, innerOp, repeatTimes, emitCondition, emitContext);
 
             context.CurrentExecutionOperator = repeatOp;
-
 
             //
             // Updates the raw record layout
