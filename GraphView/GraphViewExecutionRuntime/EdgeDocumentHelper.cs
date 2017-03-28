@@ -546,7 +546,7 @@ namespace GraphView
 
         public static AdjacencyListField GetReverseAdjacencyListOfVertex(GraphViewConnection connection, string vertexId)
         {
-            AdjacencyListField result = new AdjacencyListField();
+            AdjacencyListField result = new AdjacencyListField(connection, vertexId, true);
 
             string query = $"SELECT {{" +
                            $"  \"edge\": edge, " +
@@ -577,59 +577,59 @@ namespace GraphView
             return result;
         }
 
-        public static Dictionary<string, AdjacencyListField> GetReverseAdjacencyListsOfVertexCollection(GraphViewConnection connection, HashSet<string> vertexIdSet)
-        {
-            Dictionary<string, AdjacencyListField> revAdjacencyListCollection = new Dictionary<string, AdjacencyListField>();
+        //public static Dictionary<string, AdjacencyListField> GetReverseAdjacencyListsOfVertexCollection(GraphViewConnection connection, HashSet<string> vertexIdSet)
+        //{
+        //    Dictionary<string, AdjacencyListField> revAdjacencyListCollection = new Dictionary<string, AdjacencyListField>();
 
-            StringBuilder vertexIdList = new StringBuilder();
+        //    StringBuilder vertexIdList = new StringBuilder();
 
-            foreach (string vertexId in vertexIdSet)
-            {
-                if (vertexIdList.Length > 0) {
-                    vertexIdList.Append(", ");
-                }
-                vertexIdList.AppendFormat("'{0}'", vertexId);
+        //    foreach (string vertexId in vertexIdSet)
+        //    {
+        //        if (vertexIdList.Length > 0) {
+        //            vertexIdList.Append(", ");
+        //        }
+        //        vertexIdList.AppendFormat("'{0}'", vertexId);
 
-                revAdjacencyListCollection[vertexId] = new AdjacencyListField();
-            }
+        //        revAdjacencyListCollection[vertexId] = new AdjacencyListField();
+        //    }
 
-            string query = $"SELECT {{\"edge\": edge, " +
-                           $"  \"vertexId\": edge.{KW_EDGE_SINKV}, "+
-                           $"  \"{KW_EDGE_SRCV}\": doc.id, " +
-                           $"  \"{KW_EDGE_SRCV_LABEL}\": doc.label}} AS incomingEdgeMetadata\n" +
-                           $"FROM doc\n" +
-                           $"JOIN edge IN doc._edge\n" +
-                           $"WHERE edge.{KW_EDGE_SINKV} IN ({vertexIdList.ToString()})\n";
+        //    string query = $"SELECT {{\"edge\": edge, " +
+        //                   $"  \"vertexId\": edge.{KW_EDGE_SINKV}, "+
+        //                   $"  \"{KW_EDGE_SRCV}\": doc.id, " +
+        //                   $"  \"{KW_EDGE_SRCV_LABEL}\": doc.label}} AS incomingEdgeMetadata\n" +
+        //                   $"FROM doc\n" +
+        //                   $"JOIN edge IN doc._edge\n" +
+        //                   $"WHERE edge.{KW_EDGE_SINKV} IN ({vertexIdList.ToString()})\n";
 
-            foreach (JObject edgeDocument in connection.ExecuteQuery(query))
-            {
-                JObject edgeMetadata = (JObject)edgeDocument["incomingEdgeMetadata"];
-                JObject edgeObject = (JObject)edgeMetadata["edge"];
-                string vertexId = edgeMetadata["vertexId"].ToString();
-                string srcV = edgeMetadata[KW_EDGE_SRCV].ToString();
-                string srcVLabel = edgeMetadata[KW_EDGE_SRCV_LABEL]?.ToString();
+        //    foreach (JObject edgeDocument in connection.ExecuteQuery(query))
+        //    {
+        //        JObject edgeMetadata = (JObject)edgeDocument["incomingEdgeMetadata"];
+        //        JObject edgeObject = (JObject)edgeMetadata["edge"];
+        //        string vertexId = edgeMetadata["vertexId"].ToString();
+        //        string srcV = edgeMetadata[KW_EDGE_SRCV].ToString();
+        //        string srcVLabel = edgeMetadata[KW_EDGE_SRCV_LABEL]?.ToString();
 
-                EdgeField edgeField = EdgeField.ConstructForwardEdgeField(srcV, srcVLabel, null, edgeObject);
-                edgeField.EdgeProperties.Add(KW_EDGE_SRCV, new EdgePropertyField(KW_EDGE_SRCV, srcV, JsonDataType.String, edgeField));
-                if (srcVLabel != null) {
-                    edgeField.EdgeProperties.Add(KW_EDGE_SRCV_LABEL,
-                        new EdgePropertyField(KW_EDGE_SRCV_LABEL, srcVLabel, JsonDataType.String, edgeField));
-                }
+        //        EdgeField edgeField = EdgeField.ConstructForwardEdgeField(srcV, srcVLabel, null, edgeObject);
+        //        edgeField.EdgeProperties.Add(KW_EDGE_SRCV, new EdgePropertyField(KW_EDGE_SRCV, srcV, JsonDataType.String, edgeField));
+        //        if (srcVLabel != null) {
+        //            edgeField.EdgeProperties.Add(KW_EDGE_SRCV_LABEL,
+        //                new EdgePropertyField(KW_EDGE_SRCV_LABEL, srcVLabel, JsonDataType.String, edgeField));
+        //        }
 
-                AdjacencyListField revAdjList = revAdjacencyListCollection[vertexId];
-                revAdjList.AddEdgeField((string)edgeObject[KW_EDGE_ID], edgeField);
-            }
+        //        AdjacencyListField revAdjList = revAdjacencyListCollection[vertexId];
+        //        revAdjList.AddEdgeField((string)edgeObject[KW_EDGE_ID], edgeField);
+        //    }
 
-            return revAdjacencyListCollection;
-        }
+        //    return revAdjacencyListCollection;
+        //}
 
         public static void ConstructSpilledAdjListsOfVertexCollection(GraphViewConnection connection,
             HashSet<string> vertexIdSet)
         {
             string inClause = string.Join(", ", vertexIdSet.Select(vertexId => $"'{vertexId}'"));
             string edgeDocumentsQuery =
-                $"SELECT *\n" +
-                $"FROM edgeDoc\n" +
+                $"SELECT * " +
+                $"FROM edgeDoc " +
                 $"WHERE edgeDoc.{KW_EDGEDOC_VERTEXID} IN ({inClause})";
             IQueryable<dynamic> edgeDocuments = connection.ExecuteQuery(edgeDocumentsQuery);
 
@@ -645,7 +645,7 @@ namespace GraphView
                     edgeDict.Add(vertexId, edgeDocSet);
                 }
 
-                edgeDocSet.Add((string)edgeDocument[KW_EDGE_ID], edgeDocument);
+                edgeDocSet.Add((string)edgeDocument[KW_DOC_ID], edgeDocument);
             }
 
             foreach (KeyValuePair<string, Dictionary<string, JObject>> pair in edgeDict)

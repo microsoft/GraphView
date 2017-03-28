@@ -26,6 +26,8 @@
 
 #pragma warning disable CS3003 // Type is not CLS-compliant
 
+#define EASY_DEBUG
+
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -457,14 +459,21 @@ namespace GraphView
 
         }
 
-       
+
+#if EASY_DEBUG
+        private static long __currId = 0;
+#endif       
         internal static string GenerateDocumentId()
         {
+#if EASY_DEBUG
+            return "ID_" + (++__currId).ToString();
+#else
             // TODO: Implement a stronger Id generation
             Guid guid = Guid.NewGuid();
             return guid.ToString("D");
+#endif
         }
-        
+
     }
 
 }

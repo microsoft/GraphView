@@ -498,6 +498,9 @@ namespace GraphView
 
             VertexField vertex = this.Connection.VertexCache.GetVertexField(vertexId);
 
+            // Construct the adjacency list (in case lazied)
+            EdgeDocumentHelper.ConstructSpilledAdjListsOfVertexCollection(this.Connection, new HashSet<string> {vertexId});
+
             // Save a copy of Edges _IDs & drop outgoing edges
             List<string> outEdgeIds = vertex.AdjacencyList.AllEdges.Select(e => e.EdgeId).ToList();
             foreach (string outEdgeId in outEdgeIds) {
@@ -524,9 +527,9 @@ namespace GraphView
             JObject vertexObject = this.Connection.RetrieveDocumentById(vertexId);
             Debug.Assert(vertexObject != null);
             Debug.Assert(vertexObject["_edge"] is JArray);
-            Debug.Assert(((JArray)vertexObject["_edge"]).Count == 0);
+            //Debug.Assert(((JArray)vertexObject["_edge"]).Count == 0);
             Debug.Assert(vertexObject["_reverse_edge"] is JArray);
-            Debug.Assert(((JArray)vertexObject["_reverse_edge"]).Count == 0);
+            //Debug.Assert(((JArray)vertexObject["_reverse_edge"]).Count == 0);
 #endif
             // NOTE: for vertex document, id = _partition
             this.Connection.ReplaceOrDeleteDocumentAsync(vertexId, null, vertexId).Wait();

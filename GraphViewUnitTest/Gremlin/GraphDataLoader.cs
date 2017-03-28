@@ -100,7 +100,7 @@ namespace GraphViewUnitTest.Gremlin
                 ConfigurationManager.AppSettings["DocDBKeyLocal"],
                 ConfigurationManager.AppSettings["DocDBDatabaseGremlin"],
                 ConfigurationManager.AppSettings["DocDBCollectionModern"]);
-            connection.ResetCollection();
+            connection.ResetCollection(/*edgeSpillThreshold: 2*/);
 
             GraphViewCommand graphCommand = new GraphViewCommand(connection);
 
