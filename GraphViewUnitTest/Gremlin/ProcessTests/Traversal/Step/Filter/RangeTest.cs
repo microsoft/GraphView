@@ -264,7 +264,6 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         /// Port of g_V_asXaX_out_asXbX_out_asXcX_selectXa_b_cX_byXnameX_rangeXlocal_1_3X UT from org/apache/tinkerpop/gremlin/process/traversal/step/filter/RangeTest.java.
         /// Equivalent gremlin: "g.V().as("a").out().as("b").out().as("c").<Map<String, String>>select("a","b","c").by("name").range(local, 1, 3)"
         /// </summary>
-        [Ignore]
         [TestMethod]
         [Owner("zhlian")]
         public void AsAOutAsBOutASCSelectA_B_CByNameRangeLocal_1_3()
@@ -283,7 +282,6 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         /// Equivalent gremlin: "g.V().as("a").out().as("b").out().as("c").<Map<String, String>>select("a","b","c").by("name").range(local, 1, 2)"
         /// </summary>
         [TestMethod]
-        [Ignore]
         [Owner("zhlian")]
         public void AsAOutAsBOutASCSelectA_B_CByNameRangeLocal_1_2()
         {

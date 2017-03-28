@@ -959,6 +959,8 @@ namespace GraphView
 
         internal virtual void Where(GremlinToSqlContext currentContext, Predicate predicate)
         {
+            if (predicate is AndPredicate || predicate is OrPredicate)
+                throw new NotImplementedException($"Can't supported {predicate.GetType()} in where()-step for now");
             List<string> selectKeys = new List<string>() { predicate.Value as string };
             var compareVar = GenerateSelectVariable(currentContext, GremlinKeyword.Pop.All, selectKeys);
 
@@ -970,6 +972,8 @@ namespace GraphView
 
         internal virtual void Where(GremlinToSqlContext currentContext, string startKey, Predicate predicate)
         {
+            if (predicate is AndPredicate || predicate is OrPredicate)
+                throw new NotImplementedException($"Can't supported {predicate.GetType()} in where()-step for now");
             GremlinVariable firstVar = GenerateSelectVariable(currentContext, GremlinKeyword.Pop.All, new List<string> { startKey });
             GremlinVariable secondVar = GenerateSelectVariable(currentContext, GremlinKeyword.Pop.All, new List<string> { predicate.Value as string});
 

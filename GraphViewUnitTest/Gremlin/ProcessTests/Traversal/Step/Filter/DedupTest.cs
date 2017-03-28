@@ -130,8 +130,6 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         {
             using (GraphViewCommand GraphViewCommand = new GraphViewCommand(graphConnection))
             {
-                // TODO: Implement public GraphTraversal2 by(Function<V, Object> function)
-
                 //var traversal = GraphViewCommand.g().V()
                 //    .Both()
                 //    .Properties("name")

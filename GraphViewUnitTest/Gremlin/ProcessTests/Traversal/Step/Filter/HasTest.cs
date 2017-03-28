@@ -421,23 +421,21 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         /// WorkItem to track this: https://msdata.visualstudio.com/DocumentDB/_workitems/edit/36527
         /// </remarks>
         [TestMethod]
-        [Ignore]
         public void HasLabelPersonHasAgeNotLTE10AndNotBetween11n20ANDLT29OrEQ35()
         {
             using (GraphViewCommand GraphViewCommand = new GraphViewCommand(graphConnection))
             {
-                Assert.Fail();
-                //var traversal = GraphViewCommand.g().V().HasLabel("person")
-                //    .Has("age", 
-                //        Predicate.not(
-                //            Predicate.lte(10)
-                //            .and(Predicate.not(Predicate.between(11, 20))))
-                //        .and(Predicate.lt(29)
-                //        .Or(Predicate.eq(35))))
-                //        .Values("name");
+                var traversal = GraphViewCommand.g().V().HasLabel("person")
+                    .Has("age",
+                        Predicate.not(
+                            Predicate.lte(10)
+                            .And(Predicate.not(Predicate.between(11, 20))))
+                        .And(Predicate.lt(29)
+                        .Or(Predicate.eq(35))))
+                        .Values("name");
 
-                //var result = traversal.Next();
-                //Assert.IsTrue(result.Contains("peter") && result.Contains("vadas"));
+                var result = traversal.Next();
+                Assert.IsTrue(result.Contains("peter") && result.Contains("vadas"));
             }
         }
 

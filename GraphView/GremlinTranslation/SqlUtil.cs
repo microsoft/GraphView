@@ -58,8 +58,8 @@ namespace GraphView
             return new WBooleanComparisonExpression()
             {
                 ComparisonType = type,
-                FirstExpr = firstExpr,
-                SecondExpr = secondExpr
+                FirstExpr = firstExpr.Copy(),
+                SecondExpr = secondExpr.Copy()
             };
         }
 
@@ -70,6 +70,22 @@ namespace GraphView
             WScalarExpression highExpr = null;
             switch (predicate.PredicateType)
             {
+                case PredicateType.and:
+                    var andPredicate = predicate as AndPredicate;
+                    foreach (var p in andPredicate.PredicateList)
+                    {
+                        WScalarExpression secExpr = GetValueExpr(p.Value);
+                        booleanExprList.Add(GetBooleanComparisonExpr(firstExpr, secExpr, p));
+                    }
+                    return ConcatBooleanExprWithAnd(booleanExprList);
+                case PredicateType.or:
+                    var orPredicate = predicate as OrPredicate;
+                    foreach (var p in orPredicate.PredicateList)
+                    {
+                        WScalarExpression secExpr = GetValueExpr(p.Value);
+                        booleanExprList.Add(GetBooleanComparisonExpr(firstExpr, secExpr, p));
+                    }
+                    return ConcatBooleanExprWithOr(booleanExprList);
                 case PredicateType.within:
                     if (predicate.IsTag)
                     {
@@ -124,24 +140,24 @@ namespace GraphView
                     booleanExprList.Add(GetBooleanComparisonExpr(firstExpr, lowExpr, GetComparisonType(PredicateType.gte)));
                     booleanExprList.Add(GetBooleanComparisonExpr(firstExpr, highExpr, GetComparisonType(PredicateType.lt))); ;
                     return ConcatBooleanExprWithAnd(booleanExprList);
-                case PredicateType.lteAndgte:
+                case PredicateType.lteOrgte:
                     lowExpr = GetValueExpr(predicate.Low);
                     highExpr = GetValueExpr(predicate.High);
                     booleanExprList.Add(GetBooleanComparisonExpr(firstExpr, lowExpr, GetComparisonType(PredicateType.lte)));
                     booleanExprList.Add(GetBooleanComparisonExpr(firstExpr, highExpr, GetComparisonType(PredicateType.gte))); ;
-                    return ConcatBooleanExprWithAnd(booleanExprList);
+                    return ConcatBooleanExprWithOr(booleanExprList);
                 case PredicateType.gteAndlte:
                     lowExpr = GetValueExpr(predicate.Low);
                     highExpr = GetValueExpr(predicate.High);
                     booleanExprList.Add(GetBooleanComparisonExpr(firstExpr, lowExpr, GetComparisonType(PredicateType.gte)));
                     booleanExprList.Add(GetBooleanComparisonExpr(firstExpr, highExpr, GetComparisonType(PredicateType.lte))); ;
                     return ConcatBooleanExprWithAnd(booleanExprList);
-                case PredicateType.ltAndgte:
+                case PredicateType.ltOrgte:
                     lowExpr = GetValueExpr(predicate.Low);
                     highExpr = GetValueExpr(predicate.High);
                     booleanExprList.Add(GetBooleanComparisonExpr(firstExpr, lowExpr, GetComparisonType(PredicateType.lt)));
                     booleanExprList.Add(GetBooleanComparisonExpr(firstExpr, highExpr, GetComparisonType(PredicateType.gte))); ;
-                    return ConcatBooleanExprWithAnd(booleanExprList);
+                    return ConcatBooleanExprWithOr(booleanExprList);
                 default:
                     return GetBooleanComparisonExpr(firstExpr, secondExpr, GetComparisonType(predicate.PredicateType));
             }
@@ -217,8 +233,11 @@ namespace GraphView
             foreach (var booleanExpr in booleanExprList)
             {
                 if (booleanExpr == null) continue;
+                WBooleanExpression newExpr = type == BooleanBinaryExpressionType.Or
+                    ? GetBooleanParenthesisExpr(booleanExpr)
+                    : booleanExpr;
                 concatExpr = concatExpr == null ? booleanExpr
-                                                : GetBooleanBinaryExpr(booleanExpr, concatExpr, type);
+                                                : GetBooleanBinaryExpr(newExpr, concatExpr, type);
             }
             if (concatExpr == null)
                 return null;

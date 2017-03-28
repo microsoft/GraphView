@@ -31,11 +31,24 @@ namespace GraphView
         public Predicate(PredicateType type, params object[] values)
         {
             Values = new List<object>();
-            foreach(var value in values)
+            if (values != null)
             {
-                Values.Add(value);
+                foreach (var value in values)
+                {
+                    Values.Add(value);
+                }
             }
             PredicateType = type;
+        }
+
+        public Predicate And(Predicate predicate)
+        {
+            return new AndPredicate(this, predicate);
+        }
+
+        public Predicate Or(Predicate predicate)
+        {
+            return new OrPredicate(this, predicate);
         }
 
         public static Predicate eq(string value)
@@ -125,6 +138,28 @@ namespace GraphView
 
         public static Predicate not(Predicate predicate)
         {
+            if (predicate is AndPredicate)
+            {
+                // (a * b)' = a' + b'
+                var andPredicate = predicate as AndPredicate;
+                List<Predicate> predicates = new List<Predicate>();
+                foreach (var p in andPredicate.PredicateList)
+                {
+                    predicates.Add(not(p));
+                }
+                return new OrPredicate(predicates.ToArray());
+            }
+            if (predicate is OrPredicate)
+            {
+                // (a + b)' = a' * b'
+                var orPredicate = predicate as OrPredicate;
+                List<Predicate> predicates = new List<Predicate>();
+                foreach (var p in orPredicate.PredicateList)
+                {
+                    predicates.Add(not(p));
+                }
+                return new AndPredicate(predicates.ToArray());
+            }
             if (predicate.PredicateType == PredicateType.eq)
             {
                 predicate.PredicateType = PredicateType.neq;
@@ -157,7 +192,12 @@ namespace GraphView
             }
             if (predicate.PredicateType == PredicateType.inside)
             {
-                predicate.PredicateType = PredicateType.lteAndgte;
+                predicate.PredicateType = PredicateType.lteOrgte;
+                return predicate;
+            }
+            if (predicate.PredicateType == PredicateType.lteOrgte)
+            {
+                predicate.PredicateType = PredicateType.inside;
                 return predicate;
             }
             if (predicate.PredicateType == PredicateType.outside)
@@ -165,9 +205,19 @@ namespace GraphView
                 predicate.PredicateType = PredicateType.gteAndlte;
                 return predicate;
             }
+            if (predicate.PredicateType == PredicateType.gteAndlte)
+            {
+                predicate.PredicateType = PredicateType.outside;
+                return predicate;
+            }
             if (predicate.PredicateType == PredicateType.between)
             {
-                predicate.PredicateType = PredicateType.ltAndgte;
+                predicate.PredicateType = PredicateType.ltOrgte;
+                return predicate;
+            }
+            if (predicate.PredicateType == PredicateType.ltOrgte)
+            {
+                predicate.PredicateType = PredicateType.between;
                 return predicate;
             }
             if (predicate.PredicateType == PredicateType.within)
@@ -184,8 +234,31 @@ namespace GraphView
         }
     }
 
+    public class AndPredicate: Predicate
+    {
+        public List<Predicate> PredicateList { get; set; }
+
+        public AndPredicate(params Predicate[] predicates): base(PredicateType.and, null)
+        {
+            PredicateList = new List<Predicate>(predicates);
+        }
+    }
+
+    public class OrPredicate : Predicate
+    {
+        public List<Predicate> PredicateList { get; set; }
+
+        public OrPredicate(params Predicate[] predicates): base(PredicateType.or, null)
+        {
+            PredicateList = new List<Predicate>(predicates);
+        }
+    }
+
     public enum PredicateType
     {
+        and,
+        or,
+
         eq,
         neq,
         lt,
@@ -198,8 +271,8 @@ namespace GraphView
         within,
         without,
 
-        lteAndgte,
+        lteOrgte,
         gteAndlte,
-        ltAndgte
+        ltOrgte
     }
 }
