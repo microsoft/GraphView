@@ -526,10 +526,10 @@ namespace GraphView
 #if DEBUG
             JObject vertexObject = this.Connection.RetrieveDocumentById(vertexId);
             Debug.Assert(vertexObject != null);
-            Debug.Assert(vertexObject["_edge"] is JArray);
-            //Debug.Assert(((JArray)vertexObject["_edge"]).Count == 0);
-            Debug.Assert(vertexObject["_reverse_edge"] is JArray);
-            //Debug.Assert(((JArray)vertexObject["_reverse_edge"]).Count == 0);
+            Debug.Assert(vertexObject[KW_VERTEX_EDGE] is JArray);
+            //Debug.Assert(((JArray)vertexObject[KW_VERTEX_EDGE]).Count == 0);
+            Debug.Assert(vertexObject[KW_VERTEX_REV_EDGE] is JArray);
+            //Debug.Assert(((JArray)vertexObject[KW_VERTEX_REV_EDGE]).Count == 0);
 #endif
             // NOTE: for vertex document, id = _partition
             this.Connection.ReplaceOrDeleteDocumentAsync(vertexId, null, vertexId).Wait();

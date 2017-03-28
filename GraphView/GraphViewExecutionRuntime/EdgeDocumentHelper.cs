@@ -150,7 +150,7 @@ namespace GraphView
                 Debug.Assert((bool)edgeDocument[KW_EDGEDOC_ISREVERSE] == isReverse, $"(bool)edgeDocument['{KW_EDGEDOC_ISREVERSE}'] == isReverse");
                 Debug.Assert((string)edgeDocument[KW_EDGEDOC_VERTEXID] == (string)vertexObject[KW_DOC_ID], $"(string)edgeDocument['{KW_EDGEDOC_VERTEXID}'] == (string)vertexObject['{KW_DOC_ID}']");
 
-                JArray edgesArray = (JArray)edgeDocument["_edge"];
+                JArray edgesArray = (JArray)edgeDocument[KW_EDGEDOC_EDGE];
                 Debug.Assert(edgesArray != null, "edgesArray != null");
                 Debug.Assert(edgesArray.Count > 0, "edgesArray.Count > 0");
 
@@ -187,7 +187,7 @@ namespace GraphView
                         [KW_DOC_PARTITION] = vertexObject[KW_DOC_PARTITION],
                         [KW_EDGEDOC_ISREVERSE] = isReverse,
                         [KW_EDGEDOC_VERTEXID] = (string)vertexObject[KW_DOC_ID],
-                        ["_edge"] = new JArray(edgeObject)
+                        [KW_EDGEDOC_EDGE] = new JArray(edgeObject)
                     };
                     lastEdgeDocId = connection.CreateDocumentAsync(edgeDocObject).Result;
 
@@ -308,7 +308,7 @@ namespace GraphView
                 [KW_DOC_PARTITION] = vertexObject[KW_DOC_PARTITION],
                 [KW_EDGEDOC_ISREVERSE] = spillReverse.Value,
                 [KW_EDGEDOC_VERTEXID] = (string)vertexObject[KW_DOC_ID],
-                ["_edge"] = new JArray(targetEdgeArray.Last),
+                [KW_EDGEDOC_EDGE] = new JArray(targetEdgeArray.Last),
             };
             newEdgeDocId = connection.CreateDocumentAsync(newEdgeDocObject).Result;
             targetEdgeArray.Last.Remove();  // Remove the currently create edge appended just now
@@ -319,7 +319,7 @@ namespace GraphView
                 [KW_DOC_PARTITION] = vertexObject[KW_DOC_PARTITION],
                 [KW_EDGEDOC_ISREVERSE] = spillReverse.Value,
                 [KW_EDGEDOC_VERTEXID] = (string)vertexObject[KW_DOC_ID],
-                ["_edge"] = targetEdgeArray,
+                [KW_EDGEDOC_EDGE] = targetEdgeArray,
             };
             existEdgeDocId = connection.CreateDocumentAsync(existEdgeDocObject).Result;
 
@@ -431,7 +431,7 @@ namespace GraphView
                 Debug.Assert((string)edgeDocument[KW_EDGEDOC_VERTEXID] == (string)vertexObject[KW_DOC_ID], $"(string)edgeDocument['{KW_EDGEDOC_VERTEXID}'] == (string)vertexObject['id']");
 
                 // The edge to be removed must exist! (garanteed by caller)
-                JArray edgesArray = (JArray)edgeDocument["_edge"];
+                JArray edgesArray = (JArray)edgeDocument[KW_EDGEDOC_EDGE];
                 Debug.Assert(edgesArray != null, "edgesArray != null");
                 Debug.Assert(edgesArray.Count > 0, "edgesArray.Count > 0");
                 if (isReverse) {
@@ -525,16 +525,16 @@ namespace GraphView
                 // Large vertex
 
                 JObject edgeDocObject = connection.RetrieveDocumentById(edgeDocId);
-                edgeDocObject["_edge"].Children<JObject>().First(
+                edgeDocObject[KW_EDGEDOC_EDGE].Children<JObject>().First(
                     e => (string)e[KW_EDGE_ID] == (string)newEdgeObject[KW_EDGE_ID] &&
                          (string)e[srcOrSinkVInEdgeObject] == (string)newEdgeObject[srcOrSinkVInEdgeObject]
                 ).Remove();
-                ((JArray)edgeDocObject["_edge"]).Add(newEdgeObject);
+                ((JArray)edgeDocObject[KW_EDGEDOC_EDGE]).Add(newEdgeObject);
                 UploadOne(connection, edgeDocId, edgeDocObject, out tooLarge);
                 if (tooLarge) {
                     // Handle this situation: The modified edge is too large to be filled into the original edge-document
                     // Remove the edgeObject added just now, and upload the original edge-document
-                    ((JArray)edgeDocObject["_edge"]).Last.Remove();
+                    ((JArray)edgeDocObject[KW_EDGEDOC_EDGE]).Last.Remove();
                     UploadOne(connection, edgeDocId, edgeDocObject, out tooLarge);
                     Debug.Assert(!tooLarge);
 

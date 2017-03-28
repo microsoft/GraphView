@@ -347,8 +347,8 @@ namespace GraphView
                 {
                     string propertyName = property.PropertyName;
                     Debug.Assert(!VertexField.IsVertexMetaProperty(propertyName));
-                    Debug.Assert(!propertyName.Equals("_edge"));
-                    Debug.Assert(!propertyName.Equals("_reverse_edge"));
+                    Debug.Assert(!propertyName.Equals(KW_VERTEX_EDGE));
+                    Debug.Assert(!propertyName.Equals(KW_VERTEX_REV_EDGE));
 
                     switch (propertyName)
                     {
@@ -484,8 +484,8 @@ namespace GraphView
                     {
                         string propertyName = property.PropertyName;
                         Debug.Assert(!VertexField.IsVertexMetaProperty(propertyName));
-                        Debug.Assert(!propertyName.Equals("_edge"));
-                        Debug.Assert(!propertyName.Equals("_reverse_edge"));
+                        Debug.Assert(!propertyName.Equals(KW_VERTEX_EDGE));
+                        Debug.Assert(!propertyName.Equals(KW_VERTEX_REV_EDGE));
 
                         switch (propertyName)
                         {
@@ -652,8 +652,8 @@ namespace GraphView
                     {
                         string propertyName = property.PropertyName;
                         Debug.Assert(!VertexField.IsVertexMetaProperty(propertyName));
-                        Debug.Assert(!propertyName.Equals("_edge"));
-                        Debug.Assert(!propertyName.Equals("_reverse_edge"));
+                        Debug.Assert(!propertyName.Equals(KW_VERTEX_EDGE));
+                        Debug.Assert(!propertyName.Equals(KW_VERTEX_REV_EDGE));
 
                         switch (propertyName)
                         {
@@ -774,8 +774,8 @@ namespace GraphView
                 {
                     string propertyName = property.PropertyName;
                     Debug.Assert(!VertexField.IsVertexMetaProperty(propertyName));
-                    Debug.Assert(!propertyName.Equals("_edge"));
-                    Debug.Assert(!propertyName.Equals("_reverse_edge"));
+                    Debug.Assert(!propertyName.Equals(KW_VERTEX_EDGE));
+                    Debug.Assert(!propertyName.Equals(KW_VERTEX_REV_EDGE));
 
                     switch (propertyName)
                     {

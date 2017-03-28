@@ -25,13 +25,6 @@ namespace GraphView
             string vertexId = (string)vertexObject[KW_DOC_ID];
             string vertexLabel = (string)vertexObject[KW_VERTEX_LABEL];
 
-            //
-            // "_edge" & KW_VERTEX_REV_EDGE could be either JObject or JArray:
-            // - For vertexes that have numerous edges (too large to be filled in one document),
-            //     they are JObject indicating the documents storing their in/out edges.
-            //     The schema is defined in Schema.txt
-            // - For small vertexes, they are JArray directly showing all the edges.
-            //
             JArray forwardAdjList = null;
             JArray backwardAdjList = null;
 
@@ -2161,7 +2154,7 @@ namespace GraphView
                 Debug.Assert(((string) edgeDocObject[KW_EDGEDOC_VERTEXID]).Equals(vertexId),
                     $"((string)edgeDocObject['{KW_EDGEDOC_VERTEXID}']).Equals(vertexId)");
 
-                JArray edgesArray = (JArray) edgeDocObject["_edge"];
+                JArray edgesArray = (JArray) edgeDocObject[KW_EDGEDOC_EDGE];
                 Debug.Assert(edgesArray != null, "edgesArray != null");
                 Debug.Assert(edgesArray.Count > 0, "edgesArray.Count > 0");
                 if (isReverse) {

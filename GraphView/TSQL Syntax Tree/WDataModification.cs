@@ -144,31 +144,7 @@ namespace GraphView
             if (visitor != null)
                 visitor.Visit(this);
         }
-
-        /// <summary>
-        /// Construct a Json's string which contains all the information about the new node.
-        /// </summary>
-        /// <returns></returns>
-        public string ConstructNode()
-        {
-            string Json_str = "{}";
-
-            var cnt = InsertSource as WValuesInsertSource;
-            for (int i = 0; i < Columns.Count(); i++)
-            {
-                string s1 = Columns[i].MultiPartIdentifier.Identifiers[0].Value;
-                var cnt2 = (cnt.RowValues[0].ColumnValues[i] as WValueExpression);
-                string s2 = cnt2.Value;
-                if (cnt2.SingleQuoted)
-                    s2 = '\"' + s2 + '\"';
-                Json_str = GraphViewJsonCommand.insert_property(Json_str, s2, s1).ToString();
-            }
-            //Insert "_edge" & "_reverse_edge" into the string.
-            Json_str = GraphViewJsonCommand.insert_property(Json_str, "[]", "_edge").ToString();
-            Json_str = GraphViewJsonCommand.insert_property(Json_str, "[]", "_reverse_edge").ToString();
-
-            return Json_str;
-        }
+        
     }
 
     public partial class WInsertEdgeSpecification : WInsertSpecification

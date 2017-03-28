@@ -14,8 +14,8 @@ VertexDocument (Small):
 	"label": ...,  // optional					// KW_VERTEX_LABLE
 
 	// Are incoming/outgoing edges spilled?
-	"__graphviewEdgeSpilled": true/false		// KW_VERTEX_EDGE_SPILLED
-	"__graphviewRevEdgeSpilled": true/false		// KW_VERTEX_REVEDGE_SPILLED
+	"_edgeSpilled": true/false					// KW_VERTEX_EDGE_SPILLED
+	"_revEdgeSpilled": true/false				// KW_VERTEX_REVEDGE_SPILLED
 
 	<VertexProperties>
 	...
@@ -55,7 +55,7 @@ EdgeDocument:
 	"_is_reverse": true/false,   // indicate whether this vertex is source(false) or sink (true)
 												// KW_EDGEDOC_ISREVERSE
 
-	"_edge": [									// TODO: "_edges" still hardcoded
+	"_edge": [									// KW_EDGEDOC_EDGE
 		<EdgeObject/RevEdgeObject>, ...
 	]
 }
