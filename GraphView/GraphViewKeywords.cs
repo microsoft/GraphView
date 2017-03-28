@@ -41,8 +41,8 @@ namespace GraphView
         public const string KW_VERTEX_EDGE = GremlinKeyword.EdgeAdj;
         public const string KW_VERTEX_REV_EDGE = GremlinKeyword.ReverseEdgeAdj;
         //public const string KW_VERTEX_NEXTOFFSET = "_nextEdgeOffset";
-        public const string KW_VERTEX_EDGE_SPILLED = "__graphviewEdgeSpilled";
-        public const string KW_VERTEX_REVEDGE_SPILLED = "__graphviewRevEdgeSpilled";
+        public const string KW_VERTEX_EDGE_SPILLED = "_edgeSpilled";
+        public const string KW_VERTEX_REVEDGE_SPILLED = "_revEdgeSpilled";
 
         public const string KW_PROPERTY_ID = "id";
         public const string KW_PROPERTY_VALUE = "_value";
