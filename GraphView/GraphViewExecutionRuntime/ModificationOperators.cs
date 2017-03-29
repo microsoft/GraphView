@@ -195,7 +195,7 @@ namespace GraphView
             VertexSinglePropertyField vertexSingleProperty = (VertexSinglePropertyField)metaProperty.Parent;
 
             VertexField vertexField = vertexSingleProperty.VertexProperty.Vertex;
-            JObject vertexObject = this.connection.RetrieveDocumentById(vertexField.VertexId);
+            JObject vertexObject = vertexField.VertexJObject;
 
             Debug.Assert(vertexObject[vertexSingleProperty.PropertyName] != null);
 
@@ -580,21 +580,12 @@ namespace GraphView
             //string srcJsonDocument = srcVertexField.JsonDocument;
             //string sinkJsonDocument = sinkVertexField.JsonDocument;
             
-            JObject srcVertexObject = this.Connection.RetrieveDocumentById(srcId);
-            JObject sinkVertexObject;
+            JObject srcVertexObject = srcVertexField.VertexJObject;
+            JObject sinkVertexObject = sinkVertexField.VertexJObject;
             if (srcId.Equals(sinkId)) {
-                // MUST not use JObject.DeepClone() here!
-                sinkVertexObject = srcVertexObject;
+                Debug.Assert(ReferenceEquals(sinkVertexObject, srcVertexObject));
+                Debug.Assert(ReferenceEquals(sinkVertexField, srcVertexField));
             }
-            else {
-                sinkVertexObject = this.Connection.RetrieveDocumentById(sinkId);
-            }
-
-            //VertexField srcVertexField = (srcFieldObject as VertexField)
-            //                              ?? Connection.VertexCache.GetVertexField(srcId, srcVertexObject);
-            //VertexField sinkVertexField = (sinkFieldObject as VertexField)
-            //                               ?? Connection.VertexCache.GetVertexField(sinkId, sinkVertexObject);
-
 
 
             //

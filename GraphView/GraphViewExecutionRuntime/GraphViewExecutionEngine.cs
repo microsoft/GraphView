@@ -1193,8 +1193,14 @@ namespace GraphView
         public string OutVLabel { get; private set; }
         public string InV { get; private set; }
         public string OutV { get; private set; }
-        public string EdgeDocID { get; set; }
-        //public long Offset { get; private set; }
+
+
+        private readonly Wrap<string> _edgeDocId = new Wrap<string>();
+        public string EdgeDocID {
+            get { return this._edgeDocId.Value; }
+            set { this._edgeDocId.Value = value; }
+        }
+
 
         public string EdgeId => this.EdgeProperties[KW_EDGE_ID].PropertyValue;
 
@@ -1212,16 +1218,18 @@ namespace GraphView
 
         public EdgeField(EdgeField rhs, string otherV)
         {
-            this.EdgeProperties = rhs.EdgeProperties;
+            // Copy construction by value
             this.Label = rhs.Label;
             this.InVLabel = rhs.InVLabel;
             this.OutVLabel = rhs.OutVLabel;
             this.InV = rhs.InV;
             this.OutV = rhs.OutV;
-            this.EdgeDocID = rhs.EdgeDocID;
-            //this.Offset = rhs.Offset;
 
             this.OtherV = otherV;
+
+            // Copy construction by reference (shallow copy)
+            this.EdgeProperties = rhs.EdgeProperties;
+            this._edgeDocId = rhs._edgeDocId;
         }
 
         public override FieldObject this[string propertyName]

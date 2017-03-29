@@ -11,6 +11,22 @@ using static GraphView.GraphViewKeywords;
 
 namespace GraphView
 {
+    internal class Wrap<T>
+    {
+        public T Value { get; set; }
+
+        public Wrap(T value = default(T))
+        {
+            this.Value = value;
+        }
+
+        public static implicit operator T(Wrap<T> wrap)
+        {
+            Debug.Assert(wrap != null);
+            return wrap.Value;
+        }
+    }
+
     internal static class EdgeDocumentHelper
     {
         /// <summary>
@@ -235,14 +251,14 @@ namespace GraphView
                     Debug.Assert(spillReverse != null);
                     Debug.Assert(vertexField != null);
                     if (spillReverse.Value) {
-                        Debug.Assert(vertexField.RevAdjacencyList.AllEdges.All(edge => edge.EdgeDocID == null));
                         foreach (EdgeField edge in vertexField.RevAdjacencyList.AllEdges) {
+                            Debug.Assert(edge.EdgeDocID == null);
                             edge.EdgeDocID = existEdgeDocId;
                         }
                     }
                     else {
-                        Debug.Assert(vertexField.AdjacencyList.AllEdges.All(edge => edge.EdgeDocID == null));
                         foreach (EdgeField edge in vertexField.AdjacencyList.AllEdges) {
+                            Debug.Assert(edge.EdgeDocID == null);
                             edge.EdgeDocID = existEdgeDocId;
                         }
                     }
