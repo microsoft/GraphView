@@ -45,12 +45,6 @@ namespace GraphView
 
         public OutputFormat OutputFormat { get; set; }
 
-        public bool UseReverseEdges
-        {
-            get { return GraphViewConnection.UseReverseEdges; }
-            set { this.GraphViewConnection.UseReverseEdges = value; }
-        }
-
         public GraphViewCommand(GraphViewConnection connecion)
         {
             GraphViewConnection = connecion;

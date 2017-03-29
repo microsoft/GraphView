@@ -18,102 +18,6 @@ namespace GraphView
 {
     internal abstract class FieldObject
     {
-        public static VertexField ConstructVertexField(GraphViewConnection connection, JObject vertexObject, Dictionary<string, JObject> edgeDocDict)
-        {
-            VertexField vertexField = new VertexField(connection);
-
-            string vertexId = (string)vertexObject[KW_DOC_ID];
-            string vertexLabel = (string)vertexObject[KW_VERTEX_LABEL];
-
-            JArray forwardAdjList = null;
-            JArray backwardAdjList = null;
-
-            foreach (JProperty property in vertexObject.Properties()) {
-
-                // For meta-properties
-                // "id", "label", "nextEdgeOffset", "partition", "is(rev)spilled"
-                if (VertexField.IsVertexMetaProperty(property.Name)) {
-                    vertexField.VertexMetaProperties.Add(property.Name, new ValuePropertyField(property, vertexField));
-                    continue;
-                }
-
-                // For other properties
-                switch (property.Name) {
-                case "_rid":
-                case "_self":
-                case "_etag":
-                case "_attachments":
-                case "_ts":
-                    continue;
-
-                case KW_VERTEX_EDGE: // "_edge"
-                    forwardAdjList = (JArray)property.Value;
-                    break;
-                case KW_VERTEX_REV_EDGE: // "_reverse_edge"
-                    backwardAdjList = (JArray)property.Value;
-                    break;
-
-                default: // user-defined properties
-                    vertexField.VertexProperties.Add(property.Name, new VertexPropertyField(property, vertexField));
-                    break;
-                }
-            }
-
-            Debug.Assert(forwardAdjList != null);
-            if (!EdgeDocumentHelper.IsSpilledVertex(vertexObject, false)) {
-                Debug.Assert(edgeDocDict == null, "Small vertexes should not have spilled edge-document");
-                vertexField.AdjacencyList = new AdjacencyListField(connection, vertexId, true);
-                foreach (JObject edgeObject in forwardAdjList.Cast<JObject>()) {
-                    vertexField.AdjacencyList.AddEdgeField(
-                        (string) edgeObject[KW_EDGE_ID],
-                        EdgeField.ConstructForwardEdgeField(vertexId, vertexLabel, null, edgeObject));
-                }
-            }
-            else {
-                vertexField.AdjacencyList = new AdjacencyListField(connection, vertexId, false);
-            }
-
-
-            Debug.Assert(backwardAdjList != null);
-            if (!EdgeDocumentHelper.IsSpilledVertex(vertexObject, true)) {
-                Debug.Assert(edgeDocDict == null, "Small vertexes should not have spilled edge-document");
-                vertexField.RevAdjacencyList = new AdjacencyListField(connection, vertexId, true);
-                foreach (JObject edgeObject in backwardAdjList.Cast<JObject>()) {
-                    vertexField.RevAdjacencyList.AddEdgeField(
-                        (string) edgeObject[KW_EDGE_ID],
-                        EdgeField.ConstructBackwardEdgeField(vertexId, vertexLabel, null, edgeObject));
-                }
-            }
-            else {
-                vertexField.RevAdjacencyList = new AdjacencyListField(connection, vertexId, false);
-            }
-
-            //Debug.Assert(forwardAdjList != null);
-            //if (!EdgeDocumentHelper.IsSpilledVertex(vertexObject, false)) {
-            //    Debug.Assert(edgeDocDict == null, "Small vertexes should not have spilled edge-document");
-            //    vertexField.AdjacencyList = GetForwardAdjacencyListField(vertexId, vertexLabel, forwardAdjList);
-            //}
-            //else {
-            //    Debug.Assert(edgeDocDict != null, "Large vertexes must have spilled edge-document");
-            //    vertexField.AdjacencyList = GetForwardAdjacencyListField(vertexId, vertexLabel, connection, forwardAdjList, edgeDocDict);
-            //}
-
-
-            //Debug.Assert(backwardAdjList != null);
-            //if (!EdgeDocumentHelper.IsSpilledVertex(vertexObject, true)) {
-            //    Debug.Assert(edgeDocDict == null, "Small vertexes should not have spilled edge-document");
-            //    vertexField.RevAdjacencyList = GetBackwardAdjacencyListField(vertexId, vertexLabel, backwardAdjList);
-            //}
-            //else {
-            //    Debug.Assert(edgeDocDict != null, "Large vertexes must have spilled edge-document");
-            //    vertexField.RevAdjacencyList = GetBackwardAdjacencyListField(vertexId, vertexLabel, connection, backwardAdjList, edgeDocDict);
-            //}
-
-            return vertexField;
-        }
-
-
-
         //public static AdjacencyListField GetForwardAdjacencyListField(
         //    string outVId, string outVLabel, JArray edgeArray)
         //{
@@ -1534,13 +1438,88 @@ namespace GraphView
         public bool HasBeenFetched { get; set; }
 
 
-        public AdjacencyListField(GraphViewConnection connection, string vertexId, bool hasBeenFetched)
+        public AdjacencyListField(
+            GraphViewConnection connection, 
+            string vertexId, 
+            string vertexLabel,
+            JArray edgeArray,
+            bool isReverseEdge,
+            bool isSpilled)
         {
             this._connection = connection;
             this._vertexId = vertexId;
 
-            this.HasBeenFetched = hasBeenFetched;
+            Debug.Assert(edgeArray != null);
+            if (!isSpilled) {
+                if (isReverseEdge) {
+                    foreach (JObject edgeObject in edgeArray.Cast<JObject>()) {
+                        this.AddEdgeField(
+                            (string) edgeObject[KW_EDGE_ID],
+                            EdgeField.ConstructBackwardEdgeField(vertexId, vertexLabel, null, edgeObject));
+                    }
+                }
+                else {
+                    foreach (JObject edgeObject in edgeArray.Cast<JObject>()) {
+                        this.AddEdgeField(
+                            (string)edgeObject[KW_EDGE_ID],
+                            EdgeField.ConstructForwardEdgeField(vertexId, vertexLabel, null, edgeObject));
+                    }
+                }
+                this.HasBeenFetched = true;
+            }
+            else {
+                this.HasBeenFetched = false;
+            }
         }
+
+
+        /// <summary>
+        /// Get REVERSE adjcency list for SPILLED vertex
+        /// </summary>
+        /// <param name="vertexField"></param>
+        /// <returns></returns>
+        public static AdjacencyListField GetReverseAdjacencyListOfVertex(VertexField vertexField)
+        {
+            Debug.Assert(EdgeDocumentHelper.IsSpilledVertex(vertexField.VertexJObject, true));
+
+            AdjacencyListField result = new AdjacencyListField(
+                vertexField.Connection, 
+                vertexField.VertexId, 
+                vertexField.VertexLabel,
+                (JArray)vertexField.VertexJObject[KW_VERTEX_REV_EDGE],
+                true,
+                true);
+
+            string query = $"SELECT {{" +
+                           $"  \"edge\": edge, " +
+                           $"  \"{KW_EDGE_SRCV}\": doc.{KW_DOC_ID}, " +
+                           $"  \"{KW_EDGE_SRCV_LABEL}\": doc.label" +
+                           $"}} AS incomingEdgeMetadata\n" +
+                           $"FROM doc\n" +
+                           $"JOIN edge IN doc._edge\n" +
+                           $"WHERE edge.{KW_EDGE_SINKV} = '{vertexField.VertexId}'\n";
+
+            foreach (JObject edgeDocument in vertexField.Connection.ExecuteQuery(query))
+            {
+                JObject edgeMetadata = (JObject)edgeDocument["incomingEdgeMetadata"];
+                JObject edgeObject = (JObject)edgeMetadata["edge"];
+                string srcV = edgeMetadata[KW_EDGE_SRCV].ToString();
+                string srcVLabel = edgeMetadata[KW_EDGE_SRCV_LABEL]?.ToString();
+
+                EdgeField edgeField = EdgeField.ConstructForwardEdgeField(srcV, srcVLabel, null, edgeObject);
+                edgeField.EdgeProperties.Add(KW_EDGE_SRCV, new EdgePropertyField(KW_EDGE_SRCV, srcV, JsonDataType.String, edgeField));
+                if (srcVLabel != null)
+                {
+                    edgeField.EdgeProperties.Add(KW_EDGE_SRCV_LABEL,
+                        new EdgePropertyField(KW_EDGE_SRCV_LABEL, srcVLabel, JsonDataType.String, edgeField));
+                }
+
+                result.AddEdgeField((string)edgeObject[KW_EDGE_ID], edgeField);
+            }
+
+            return result;
+        }
+
 
         public void AddEdgeField(string edgeId, EdgeField edgeField)
         {
@@ -1611,6 +1590,16 @@ namespace GraphView
             }
         }
 
+        // That is, the vertex document
+        public JObject VertexJObject { get; }
+
+        public GraphViewConnection Connection { get; }
+
+        public AdjacencyListField AdjacencyList { get; }
+
+        public AdjacencyListField RevAdjacencyList { get; }
+
+
         // <Property Name, VertexPropertyField>
         public Dictionary<string, VertexPropertyField> VertexProperties { get; } = new Dictionary<string, VertexPropertyField>();
 
@@ -1620,7 +1609,19 @@ namespace GraphView
         /// </summary>
         public Dictionary<string, ValuePropertyField> VertexMetaProperties { get; } = new Dictionary<string, ValuePropertyField>();
 
-        public string VertexId => this.VertexMetaProperties[KW_DOC_ID].PropertyValue;
+        public string VertexId {
+            get {
+                Debug.Assert(this.VertexMetaProperties.ContainsKey(KW_DOC_ID));
+                return this.VertexMetaProperties[KW_DOC_ID].PropertyValue;
+            }
+        }
+
+        public string VertexLabel {
+            get {
+                Debug.Assert(this.VertexMetaProperties.ContainsKey(KW_VERTEX_LABEL));
+                return this.VertexMetaProperties[KW_VERTEX_LABEL].PropertyValue;
+            }
+        }
 
 
         /// <summary>
@@ -1640,11 +1641,7 @@ namespace GraphView
             }
         }
 
-        public AdjacencyListField AdjacencyList { get; set; }
 
-        public AdjacencyListField RevAdjacencyList { get; set; }
-
-        private GraphViewConnection connection;
 
         public override FieldObject this[string propertyName]
         {
@@ -1671,13 +1668,6 @@ namespace GraphView
 
                 Debug.Assert(propertyField.Multiples.Count > 0, "Vertex's property must contains at least one value");
                 return propertyField;
-                //if (propertyField.Multiples.Count == 1) {
-                //    Debug.Assert(propertyField.Multiples[0].PropertyName == propertyName);
-                //    return propertyField.Multiples[0];
-                //}
-                //else {
-                //    return propertyField;
-                //}
             }
         }
 
@@ -1705,44 +1695,100 @@ namespace GraphView
         //    }
         //}
 
-
-        public VertexField(GraphViewConnection connection)
+        
+        public VertexField(GraphViewConnection connection, JObject vertexObject)
         {
-            VertexProperties = new Dictionary<string, VertexPropertyField>();
-            //AdjacencyList = new AdjacencyListField();
-            //RevAdjacencyList = new AdjacencyListField();
+            Debug.Assert(vertexObject != null);
+            this.VertexJObject = vertexObject;
 
-            this.connection = connection;
+            this.Connection = connection;
+
+            this.VertexProperties = new Dictionary<string, VertexPropertyField>();
+
+
+            //
+            // Now constuct this vertex field
+            //
+            string vertexId = (string)this.VertexJObject[KW_DOC_ID];
+            string vertexLabel = (string)this.VertexJObject[KW_VERTEX_LABEL];
+
+            JArray forwardAdjList = null;
+            JArray backwardAdjList = null;
+
+            foreach (JProperty property in this.VertexJObject.Properties())
+            {
+                // For meta-properties
+                // "id", "label", "partition", "is(rev)spilled"
+                if (VertexField.IsVertexMetaProperty(property.Name))
+                {
+                    this.VertexMetaProperties.Add(property.Name, new ValuePropertyField(property, this));
+                    continue;
+                }
+
+                // For other properties
+                switch (property.Name)
+                {
+                    case "_rid":
+                    case "_self":
+                    case "_etag":
+                    case "_attachments":
+                    case "_ts":
+                        continue;
+
+                    case KW_VERTEX_EDGE: // "_edge"
+                        forwardAdjList = (JArray)property.Value;
+                        break;
+                    case KW_VERTEX_REV_EDGE: // "_reverse_edge"
+                        backwardAdjList = (JArray)property.Value;
+                        break;
+
+                    default: // user-defined properties
+                        this.VertexProperties.Add(property.Name, new VertexPropertyField(property, this));
+                        break;
+                }
+            }
+
+
+            //
+            // Meta properties must exist
+            //
+            Debug.Assert(this.VertexMetaProperties.ContainsKey(KW_DOC_ID));
+            Debug.Assert(this.VertexMetaProperties.ContainsKey(KW_DOC_PARTITION));
+            Debug.Assert(this.VertexMetaProperties.ContainsKey(KW_VERTEX_LABEL));
+            Debug.Assert(this.VertexMetaProperties.ContainsKey(KW_VERTEX_EDGE_SPILLED));
+            Debug.Assert(this.VertexMetaProperties.ContainsKey(KW_VERTEX_REVEDGE_SPILLED));
+            // edge and reverse edge are not meta properties
+            Debug.Assert(!this.VertexMetaProperties.ContainsKey(KW_VERTEX_EDGE));
+            Debug.Assert(!this.VertexMetaProperties.ContainsKey(KW_VERTEX_REV_EDGE));
+
+
+            //
+            // Construct forward & backwark adjacency list
+            //
+            Debug.Assert(forwardAdjList != null);
+            this.AdjacencyList = new AdjacencyListField(
+                connection, vertexId, vertexLabel, forwardAdjList, false,
+                EdgeDocumentHelper.IsSpilledVertex(this.VertexJObject, false));
+
+            Debug.Assert(backwardAdjList != null);
+            this.RevAdjacencyList = new AdjacencyListField(
+                connection, vertexId, vertexLabel, backwardAdjList, true,
+                EdgeDocumentHelper.IsSpilledVertex(this.VertexJObject, true));
         }
+
 
         public override string ToString()
         {
-            ValuePropertyField idProperty;
-            string id;
-            if (VertexMetaProperties.TryGetValue("id", out idProperty))
-            {
-                id = idProperty.ToValue;
-            }
-            else
-            {
-                id = "";
-            }
-            return string.Format("v[{0}]", id);
+            Debug.Assert(this.VertexMetaProperties.ContainsKey(KW_DOC_ID));
+            return string.Format("v[{0}]", this.VertexId);
         }
 
         public override string ToValue
         {
             get
             {
-                ValuePropertyField idProperty;
-                if (VertexMetaProperties.TryGetValue("id", out idProperty))
-                {
-                    return idProperty.ToValue;
-                }
-                else
-                {
-                    return "";
-                }
+                Debug.Assert(this.VertexMetaProperties.ContainsKey(KW_DOC_ID));
+                return this.VertexId;
             }
         }
 
@@ -1772,7 +1818,7 @@ namespace GraphView
             //}
 
             if (!this.AdjacencyList.HasBeenFetched || !this.RevAdjacencyList.HasBeenFetched) {
-                EdgeDocumentHelper.ConstructSpilledAdjListsOfVertexCollection(connection, new HashSet<string> { VertexMetaProperties[KW_DOC_ID].PropertyValue });
+                EdgeDocumentHelper.ConstructSpilledAdjListsOfVertexCollection(this.Connection, new HashSet<string> { VertexMetaProperties[KW_DOC_ID].PropertyValue });
             }
 
             if (RevAdjacencyList != null && RevAdjacencyList.AllEdges.Any())

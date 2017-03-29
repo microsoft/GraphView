@@ -180,7 +180,7 @@ namespace GraphView
             }
 
             this.Identifier = $"{docDBEndpointUrl}\0{docDBDatabaseID}\0{docDBCollectionID}";
-            this.VertexCache = VertexObjectCache.FromConnection(this);
+            this.VertexCache = new VertexObjectCache(this);
 
             this.UseReverseEdges = true;
             

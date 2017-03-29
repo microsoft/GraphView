@@ -128,7 +128,7 @@ namespace GraphView
                 RawRecord edgeRecord = new RawRecord(edgeProperties.Count);
 
                 EdgeField edgeField =
-                    (vertexField[isReverseAdj ? KW_VERTEX_REV_EDGE : KW_VERTEX_EDGE] as AdjacencyListField)
+                    ((AdjacencyListField) vertexField[isReverseAdj ? KW_VERTEX_REV_EDGE : KW_VERTEX_EDGE])
                     .GetEdgeField(edgeId);
 
                 string startVertexId = vertexField[KW_DOC_ID].ToValue;
@@ -157,15 +157,15 @@ namespace GraphView
             HashSet<string> gotVertexIds = new HashSet<string>();
             HashSet<string> gotEdgeIds = new HashSet<string>();
             foreach (dynamic dynamicItem in items) {
-                JObject vertexObject = (JObject)((JObject)dynamicItem)[nodeAlias];
-                string vertexId = (string)vertexObject[KW_DOC_ID];
+                JObject tmpVertexObject = (JObject)((JObject)dynamicItem)[nodeAlias];
+                string vertexId = (string)tmpVertexObject[KW_DOC_ID];
 
                 if (crossApplyEdgeOnServer) {
                     //
                     // Note: checking gotVertexIds.Add(vertexId) is for the correctness of cardinality
                     //
-                    if (EdgeDocumentHelper.IsSpilledVertex(vertexObject, isReverseAdj) && gotVertexIds.Add(vertexId)) {
-                        VertexField vertexField = this.Connection.VertexCache.GetVertexField(vertexId, vertexObject);
+                    if (EdgeDocumentHelper.IsSpilledVertex(tmpVertexObject, isReverseAdj) && gotVertexIds.Add(vertexId)) {
+                        VertexField vertexField = this.Connection.VertexCache.AddOrUpdateVertexField(vertexId, tmpVertexObject);
                         yield return makeRawRecord(vertexField);
                     }
                     else
@@ -176,7 +176,7 @@ namespace GraphView
                         // Note: checking gotEdgeIds.Add(edgeId) is for the correctness of cardinality
                         //
                         if (gotEdgeIds.Add(edgeId)) {
-                            VertexField vertexField = this.Connection.VertexCache.GetVertexField(vertexId, vertexObject);
+                            VertexField vertexField = this.Connection.VertexCache.AddOrUpdateVertexField(vertexId, tmpVertexObject);
                             yield return makeCrossAppliedRecord(vertexField, edgeId);
                         }
                     }
@@ -186,7 +186,7 @@ namespace GraphView
                     if (!gotVertexIds.Add(vertexId)) {
                         continue;
                     }
-                    VertexField vertexField = this.Connection.VertexCache.GetVertexField(vertexId, vertexObject);
+                    VertexField vertexField = this.Connection.VertexCache.AddOrUpdateVertexField(vertexId, tmpVertexObject);
                     yield return makeRawRecord(vertexField);
                 }
             }

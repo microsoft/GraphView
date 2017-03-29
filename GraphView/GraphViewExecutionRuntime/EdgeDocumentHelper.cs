@@ -544,38 +544,7 @@ namespace GraphView
             }
         }
 
-        public static AdjacencyListField GetReverseAdjacencyListOfVertex(GraphViewConnection connection, string vertexId)
-        {
-            AdjacencyListField result = new AdjacencyListField(connection, vertexId, true);
 
-            string query = $"SELECT {{" +
-                           $"  \"edge\": edge, " +
-                           $"  \"{KW_EDGE_SRCV}\": doc.id, " +
-                           $"  \"{KW_EDGE_SRCV_LABEL}\": doc.label" +
-                           $"}} AS incomingEdgeMetadata\n" +
-                           $"FROM doc\n" +
-                           $"JOIN edge IN doc._edge\n" +
-                           $"WHERE edge.{KW_EDGE_SINKV} = '{vertexId}'\n";
-
-            foreach (JObject edgeDocument in connection.ExecuteQuery(query))
-            {
-                JObject edgeMetadata = (JObject)edgeDocument["incomingEdgeMetadata"];
-                JObject edgeObject = (JObject)edgeMetadata["edge"];
-                string srcV = edgeMetadata[KW_EDGE_SRCV].ToString();
-                string srcVLabel = edgeMetadata[KW_EDGE_SRCV_LABEL]?.ToString();
-
-                EdgeField edgeField = EdgeField.ConstructForwardEdgeField(srcV, srcVLabel, null, edgeObject);
-                edgeField.EdgeProperties.Add(KW_EDGE_SRCV, new EdgePropertyField(KW_EDGE_SRCV, srcV, JsonDataType.String, edgeField));
-                if (srcVLabel != null) {
-                    edgeField.EdgeProperties.Add(KW_EDGE_SRCV_LABEL,
-                        new EdgePropertyField(KW_EDGE_SRCV_LABEL, srcVLabel, JsonDataType.String, edgeField));
-                }
-
-                result.AddEdgeField((string)edgeObject[KW_EDGE_ID], edgeField);
-            }
-
-            return result;
-        }
 
         //public static Dictionary<string, AdjacencyListField> GetReverseAdjacencyListsOfVertexCollection(GraphViewConnection connection, HashSet<string> vertexIdSet)
         //{
