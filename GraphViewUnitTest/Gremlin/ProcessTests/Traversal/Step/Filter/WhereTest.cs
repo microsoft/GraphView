@@ -252,7 +252,9 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
                                                     .Where("a", Predicate.neq("b")).Values("name");
 
                 var result = traversal.Next();
-                CheckOrderedResults(new List<string> { "josh", "peter" }, result);
+
+                // The order of result is not predictable
+                CheckUnOrderedResults(new List<string> { "josh", "peter" }, result);
 
                 // Skipping this validation until we can fix the bugs.
             }
