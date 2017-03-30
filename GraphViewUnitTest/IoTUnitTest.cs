@@ -48,7 +48,7 @@ namespace GraphViewUnitTest
                 ConfigurationManager.AppSettings["DocDBKeyLocal"],
                 ConfigurationManager.AppSettings["DocDBDatabaseGremlin"],
                 ConfigurationManager.AppSettings["DocDBCollectionModern"]);
-            connection.ResetCollection();
+            connection.ResetCollection(edgeSpillThreshold: 1);
             graph = new GraphViewCommand(connection);
             graph.OutputFormat = OutputFormat.GraphSON;
             //graph.UseReverseEdges = false;

@@ -473,6 +473,9 @@ namespace GraphView
                     if ((string)edgeDocumentsArray[0][KW_DOC_ID] != edgeDocId) {
                         documentMap[edgeDocId] = new Tuple<JObject, string>(null, (string)edgeDocument[KW_DOC_PARTITION]);
                     }
+                    else {
+                        documentMap[edgeDocId] = new Tuple<JObject, string>(edgeDocument, (string)edgeDocument[KW_DOC_PARTITION]);
+                    }
 
                     // The vertex object needn't change
                     //documentMap[(string)vertexObject[KW_DOC_ID]] = new Tuple<JObject, string>(vertexObject, (string)vertexObject[KW_DOC_PARTITION]);

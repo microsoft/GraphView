@@ -80,6 +80,7 @@ namespace GraphView
         public string Value { get; set; }
         public JsonDataType JsonDataType { get; set; }
 
+        [DebuggerStepThrough]
         public StringField(string value, JsonDataType jsonDataType = JsonDataType.String)
         {
             Value = value;
@@ -2214,7 +2215,7 @@ namespace GraphView
 
                 JArray edgesArray = (JArray) edgeDocObject[KW_EDGEDOC_EDGE];
                 Debug.Assert(edgesArray != null, "edgesArray != null");
-                Debug.Assert(edgesArray.Count > 0, "edgesArray.Count > 0");
+                //Debug.Assert(edgesArray.Count > 0, "edgesArray.Count > 0");
                 if (isReverse) {
                     foreach (JObject edgeObject in edgesArray.Children<JObject>()) {
                         string edgeId = (string)edgeObject[KW_EDGE_ID];
