@@ -1423,25 +1423,20 @@ namespace GraphView
         private readonly Dictionary<string, EdgeField> _edges = new Dictionary<string, EdgeField>();
         private readonly GraphViewConnection _connection;
         private readonly string _vertexId;
-        private bool _isFetchingLaziedEdgesNow = false;  // To avoid recursive
 
-        // <edge's id, EdgeField>
-        private Dictionary<string, EdgeField> Edges {
-            get {
-                if (this._isFetchingLaziedEdgesNow) {
-                    return this._edges;
-                }
-
-                if (!this.HasBeenFetched) {
-                    this._isFetchingLaziedEdgesNow = true;
-                    EdgeDocumentHelper.ConstructSpilledAdjListsOfVertexCollection(this._connection, new HashSet<string> {this._vertexId});
-                    this._isFetchingLaziedEdgesNow = false;
-                }
-                return this._edges;
+        private void SyncIfLazy()
+        {
+            if (!this.HasBeenFetched) {
+                EdgeDocumentHelper.ConstructSpilledAdjListsOfVertexCollection(this._connection, new HashSet<string> {this._vertexId});
             }
         }
 
-        public IEnumerable<EdgeField> AllEdges => this.Edges.Values;
+        public IEnumerable<EdgeField> AllEdges {
+            get {
+                SyncIfLazy();
+                return this._edges.Values;
+            }
+        }
 
         public bool HasBeenFetched { get; set; }
 
@@ -1461,16 +1456,16 @@ namespace GraphView
             if (!isSpilled) {
                 if (isReverseEdge) {
                     foreach (JObject edgeObject in edgeArray.Cast<JObject>()) {
-                        this.AddEdgeField(
+                        this.TryAddEdgeField(
                             (string) edgeObject[KW_EDGE_ID],
-                            EdgeField.ConstructBackwardEdgeField(vertexId, vertexLabel, null, edgeObject));
+                            () => EdgeField.ConstructBackwardEdgeField(vertexId, vertexLabel, null, edgeObject));
                     }
                 }
                 else {
                     foreach (JObject edgeObject in edgeArray.Cast<JObject>()) {
-                        this.AddEdgeField(
+                        this.TryAddEdgeField(
                             (string)edgeObject[KW_EDGE_ID],
-                            EdgeField.ConstructForwardEdgeField(vertexId, vertexLabel, null, edgeObject));
+                            () => EdgeField.ConstructForwardEdgeField(vertexId, vertexLabel, null, edgeObject));
                     }
                 }
                 this.HasBeenFetched = true;
@@ -1522,27 +1517,36 @@ namespace GraphView
                         new EdgePropertyField(KW_EDGE_SRCV_LABEL, srcVLabel, JsonDataType.String, edgeField));
                 }
 
-                result.AddEdgeField((string)edgeObject[KW_EDGE_ID], edgeField);
+                result.TryAddEdgeField((string)edgeObject[KW_EDGE_ID], () => edgeField);
             }
 
             return result;
         }
 
-
-        public void AddEdgeField(string edgeId, EdgeField edgeField)
+        
+        public EdgeField TryAddEdgeField(string edgeId, Func<EdgeField> edgeIfNotExist)
         {
-            this.Edges.Add(edgeId, edgeField);
+            EdgeField edgeField;
+            if (!this._edges.TryGetValue(edgeId, out edgeField)) {
+                edgeField = edgeIfNotExist.Invoke();
+                this._edges.Add(edgeId, edgeField);
+            }
+            return edgeField;
         }
 
         public void RemoveEdgeField(string edgeId)
         {
-            this.Edges.Remove(edgeId);
+            SyncIfLazy();
+
+            this._edges.Remove(edgeId);
         }
 
         public EdgeField GetEdgeField(string edgeId)
         {
+            SyncIfLazy();
+
             EdgeField edgeField;
-            this.Edges.TryGetValue(edgeId, out edgeField);
+            this._edges.TryGetValue(edgeId, out edgeField);
             return edgeField;
         }
 
@@ -1552,13 +1556,13 @@ namespace GraphView
             StringBuilder sb = new StringBuilder();
 
             // The order is no longer important now
-            foreach (KeyValuePair<string, EdgeField> pair in Edges)
+            foreach (EdgeField edgeField in this.AllEdges)
             {
                 if (sb.Length > 0)
                 {
                     sb.Append(", ");
                 }
-                sb.Append(pair.Value.ToString());
+                sb.Append(edgeField.ToString());
             }
 
             return string.Format("[{0}]", sb.ToString());
@@ -1568,13 +1572,13 @@ namespace GraphView
         {
             StringBuilder sb = new StringBuilder();
 
-            foreach (KeyValuePair<string, EdgeField> pair in Edges)
+            foreach (EdgeField edgeField in this.AllEdges)
             {
                 if (sb.Length > 0)
                 {
                     sb.Append(", ");
                 }
-                sb.Append(pair.Value.ToGraphSON());
+                sb.Append(edgeField.ToGraphSON());
             }
 
             return string.Format("[{0}]", sb.ToString());
@@ -2213,22 +2217,18 @@ namespace GraphView
                 Debug.Assert(edgesArray.Count > 0, "edgesArray.Count > 0");
                 if (isReverse) {
                     foreach (JObject edgeObject in edgesArray.Children<JObject>()) {
-                        string edgeId = (string) edgeObject[KW_EDGE_ID];
-                        if (this.RevAdjacencyList.GetEdgeField(edgeId) == null) {
-                            this.RevAdjacencyList.AddEdgeField(
-                                edgeId,
-                                EdgeField.ConstructBackwardEdgeField(vertexId, vertexLabel, edgeDocId, edgeObject));
-                        }
+                        string edgeId = (string)edgeObject[KW_EDGE_ID];
+                        this.RevAdjacencyList.TryAddEdgeField(
+                            edgeId,
+                            () => EdgeField.ConstructBackwardEdgeField(vertexId, vertexLabel, edgeDocId, edgeObject));
                     }
                 }
                 else {
                     foreach (JObject edgeObject in edgesArray.Children<JObject>()) {
-                        string edgeId = (string) edgeObject[KW_EDGE_ID];
-                        if (this.AdjacencyList.GetEdgeField(edgeId) == null) {
-                            this.AdjacencyList.AddEdgeField(
-                                edgeId,
-                                EdgeField.ConstructForwardEdgeField(vertexId, vertexLabel, edgeDocId, edgeObject));
-                        }
+                        string edgeId = (string)edgeObject[KW_EDGE_ID];
+                        this.AdjacencyList.TryAddEdgeField(
+                            edgeId,
+                            () => EdgeField.ConstructForwardEdgeField(vertexId, vertexLabel, edgeDocId, edgeObject));
                     }
                 }
             }

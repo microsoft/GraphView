@@ -498,9 +498,6 @@ namespace GraphView
 
             VertexField vertex = this.Connection.VertexCache.GetVertexField(vertexId);
 
-            // Construct the adjacency list (in case lazied)
-            EdgeDocumentHelper.ConstructSpilledAdjListsOfVertexCollection(this.Connection, new HashSet<string> {vertexId});
-
             // Save a copy of Edges _IDs & drop outgoing edges
             List<string> outEdgeIds = vertex.AdjacencyList.AllEdges.Select(e => e.EdgeId).ToList();
             foreach (string outEdgeId in outEdgeIds) {
@@ -609,11 +606,13 @@ namespace GraphView
             //
             // Update vertex's adjacency list and reverse adjacency list (in vertex field)
             //
-            EdgeField outEdgeField = EdgeField.ConstructForwardEdgeField(srcId, srcVertexField[KW_VERTEX_LABEL]?.ToValue, outEdgeDocID, outEdgeObject);
-            EdgeField inEdgeField = EdgeField.ConstructBackwardEdgeField(sinkId, sinkVertexField[KW_VERTEX_LABEL]?.ToValue, inEdgeDocID, inEdgeObject);
+            EdgeField outEdgeField = srcVertexField.AdjacencyList.TryAddEdgeField(
+                (string)outEdgeObject[KW_EDGE_ID],
+                () => EdgeField.ConstructForwardEdgeField(srcId, srcVertexField[KW_VERTEX_LABEL]?.ToValue, outEdgeDocID, outEdgeObject));
 
-            srcVertexField.AdjacencyList.AddEdgeField(outEdgeField.EdgeId, outEdgeField);
-            sinkVertexField.RevAdjacencyList.AddEdgeField(inEdgeField.EdgeId, inEdgeField);
+            EdgeField inEdgeField = sinkVertexField.RevAdjacencyList.TryAddEdgeField(
+                (string)inEdgeObject[KW_EDGE_ID], 
+                ()=> EdgeField.ConstructBackwardEdgeField(sinkId, sinkVertexField[KW_VERTEX_LABEL]?.ToValue, inEdgeDocID, inEdgeObject));
 
 
             // Construct the newly added edge's RawRecord
