@@ -108,18 +108,25 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
 
                 Assert.AreEqual(2, results.Count);
 
-                List<object> actualList = new List<object>();
-                actualList.Add((string)results[0]["objects"][0]);
-                actualList.Add((int)results[0]["objects"][1]);
-                actualList.Add((string)results[0]["objects"][2]);
-                CheckPathResults(new List<object> { "marko", 32, "ripple" }, actualList);
+                int counter = 0;
+                foreach (dynamic result in results)
+                {
+                    List<object> actualList = new List<object>();
+                    actualList.Add((string)result["objects"][0]);
+                    actualList.Add((int)result["objects"][1]);
+                    actualList.Add((string)result["objects"][2]);
 
-                actualList.Clear();
-                actualList.Add((string)results[1]["objects"][0]);
-                actualList.Add((int)results[1]["objects"][1]);
-                actualList.Add((string)results[1]["objects"][2]);
-                CheckPathResults(new List<object> { "marko", 32, "lop" }, actualList);
+                    if (actualList.Last().Equals("ripple")) {
+                        CheckPathResults(new List<object> { "marko", 32, "ripple" }, actualList);
+                        counter++;
+                    }
+                    else {
+                        CheckPathResults(new List<object> { "marko", 32, "lop" }, actualList);
+                        counter++;
+                    }
+                }
 
+                Assert.AreEqual(2, counter);
             }
         }
 

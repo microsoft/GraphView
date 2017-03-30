@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Configuration;
 using System.Linq;
 using GraphView;
@@ -291,37 +292,38 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
 
                 dynamic results = JsonConvert.DeserializeObject<dynamic>(traversal.Next().FirstOrDefault());
 
+                List<string[]> AandBinPath = new List<string[]>();
+
+                foreach (dynamic result in results)
+                {
+                    Assert.AreEqual(3, result["objects"].Count);
+                    AandBinPath.Add(new [] {(string)result["objects"][0], (string)result["objects"][1]});
+                }
+
                 Assert.AreEqual(4, results.Count);
 
-                //
-                // NOTE: The third element should not be predictable!
-                // The order of vertices is NOT guaranteed when flowing into Dedup() step,
-                // thus the first vertex (Dedup() picked out) is not predictable
-                //
+                List<Tuple<string, string>> correctUnOrderedResults = new List<Tuple<string, string>>
+                {
+                    {new Tuple<string, string>("marko", "lop")},
+                    {new Tuple<string, string>("josh", "ripple")},
+                    {new Tuple<string, string>("josh", "lop")},
+                    {new Tuple<string, string>("peter", "lop")},
+                };
 
-                List<object> actualList = new List<object>();
-                actualList.Add((string)results[0]["objects"][0]);
-                actualList.Add((string)results[0]["objects"][1]);
-                //actualList.Add((string)results[0]["objects"][2]);
-                CheckPathResults(new [] {"marko", "lop"/*, "marko" */}, actualList);
+                int counter = 0;
+                foreach (string[] AandB in AandBinPath) {
+                    string a = AandB[0];
+                    string b = AandB[1];
 
-                actualList.Clear();
-                actualList.Add((string)results[1]["objects"][0]);
-                actualList.Add((string)results[1]["objects"][1]);
-                //actualList.Add((string)results[1]["objects"][2]);
-                CheckPathResults(new[] { "josh", "ripple"/*, "josh" */}, actualList);
+                    foreach (Tuple<string, string> t in correctUnOrderedResults) {
+                        if (a.Equals(t.Item1) && b.Equals(t.Item2)) {
+                            counter++;
+                            break;
+                        }
+                    }
+                }
 
-                actualList.Clear();
-                actualList.Add((string)results[2]["objects"][0]);
-                actualList.Add((string)results[2]["objects"][1]);
-                //actualList.Add((string)results[2]["objects"][2]);
-                CheckPathResults(new[] { "josh", "lop"/*, "marko" */}, actualList);
-
-                actualList.Clear();
-                actualList.Add((string)results[3]["objects"][0]);
-                actualList.Add((string)results[3]["objects"][1]);
-                //actualList.Add((string)results[3]["objects"][2]);
-                CheckPathResults(new[] { "peter", "lop"/*, "marko" */}, actualList);
+                Assert.AreEqual(4, counter);
             }
         }
 
