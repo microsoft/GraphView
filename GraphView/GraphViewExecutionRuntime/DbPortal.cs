@@ -164,7 +164,9 @@ namespace GraphView
                     //
                     // Note: checking gotVertexIds.Add(vertexId) is for the correctness of cardinality
                     //
-                    if (EdgeDocumentHelper.IsSpilledVertex(tmpVertexObject, isReverseAdj) && gotVertexIds.Add(vertexId)) {
+                    if (EdgeDocumentHelper.IsBuildingTheAdjacencyListLazily(
+                            tmpVertexObject, isReverseAdj, this.Connection.UseReverseEdges) 
+                        && gotVertexIds.Add(vertexId)) {
                         VertexField vertexField = this.Connection.VertexCache.AddOrUpdateVertexField(vertexId, tmpVertexObject);
                         yield return makeRawRecord(vertexField);
                     }
@@ -190,66 +192,6 @@ namespace GraphView
                     yield return makeRawRecord(vertexField);
                 }
             }
-
-            //// 
-            //// In case the spilled edge-document's amount is too much (and exceeds DocDB InClauseLimit),
-            //// Split the dictionary into multiple parts
-            ////
-            //// List<Dictionary<vertexId, vertexObject>>
-            //List<Dictionary<string, JObject>> vertexDicts = new List<Dictionary<string, JObject>>(
-            //    largeVertexes.Count / GraphViewConnection.InClauseLimit + 1);
-            //{
-            //    int index = 0;
-            //    Dictionary<string, JObject> current = null;
-            //    foreach (KeyValuePair<string, JObject> pair in largeVertexes) {
-            //        if (index == 0) {
-            //            current = new Dictionary<string, JObject>();
-            //            vertexDicts.Add(current);
-            //        }
-            //        current.Add(pair.Key, pair.Value);
-
-            //        if (index == GraphViewConnection.InClauseLimit - 1) {
-            //            index = 0;
-            //            current = null;
-            //        }
-            //    }
-            //}
-
-            //// Process each vertexDict in vertexDicts
-            //// Elements in a vertexDict are limited to "InClauseLimit" (thus can be batched)
-            //foreach (Dictionary<string, JObject> vertexDict in vertexDicts)
-            //{
-            //    string inClause = string.Join(", ", vertexDict.Keys.Select(vertexId => $"'{vertexId}'"));
-            //    string edgeDocumentsQuery =
-            //        $"SELECT *\n" +
-            //        $"FROM edgeDoc\n" +
-            //        $"WHERE edgeDoc.{KW_EDGEDOC_VERTEXID} IN ({inClause})";
-            //    IQueryable<dynamic> edgeDocuments = Connection.ExecuteQuery(edgeDocumentsQuery);
-
-            //    // Dictionary<vertexId, Dictionary<edgeDocumentId, edgeDocument>>
-            //    Dictionary<string, Dictionary<string, JObject>> edgeDict = new Dictionary<string, Dictionary<string, JObject>>();
-            //    foreach (JObject edgeDocument in edgeDocuments)
-            //    {
-            //        string vertexId = (string)edgeDocument[KW_EDGEDOC_VERTEXID];
-            //        Dictionary<string, JObject> edgeDocSet;
-            //        edgeDict.TryGetValue(vertexId, out edgeDocSet);
-            //        if (edgeDocSet == null)
-            //        {
-            //            edgeDocSet = new Dictionary<string, JObject>();
-            //            edgeDict.Add(vertexId, edgeDocSet);
-            //        }
-
-            //        edgeDocSet.Add((string)edgeDocument[KW_EDGE_ID], edgeDocument);
-            //    }
-
-            //    foreach (KeyValuePair<string, Dictionary<string, JObject>> pair in edgeDict)
-            //    {
-            //        string vertexId = pair.Key;
-            //        Dictionary<string, JObject> edgeDocDict = pair.Value;  // contains both in & out edges
-            //        VertexField vertexField = this.Connection.VertexCache.GetVertexField(vertexId, vertexDict[vertexId], edgeDocDict);
-            //        yield return makeRawRecord(vertexField);
-            //    }
-            //}
         }
     }
 }

@@ -42,16 +42,17 @@ namespace GraphViewUnitTest
         public void Setup()
         {
             GraphViewConnection connection = new GraphViewConnection(
-                //ConfigurationManager.AppSettings["DocDBEndPoint"],
-                ConfigurationManager.AppSettings["DocDBEndPointLocal"],
-                //ConfigurationManager.AppSettings["DocDBKey"],
-                ConfigurationManager.AppSettings["DocDBKeyLocal"],
-                ConfigurationManager.AppSettings["DocDBDatabaseGremlin"],
-                ConfigurationManager.AppSettings["DocDBCollectionModern"]);
-            connection.ResetCollection();
+                    //ConfigurationManager.AppSettings["DocDBEndPoint"],
+                    ConfigurationManager.AppSettings["DocDBEndPointLocal"],
+                    //ConfigurationManager.AppSettings["DocDBKey"],
+                    ConfigurationManager.AppSettings["DocDBKeyLocal"],
+                    ConfigurationManager.AppSettings["DocDBDatabaseGremlin"],
+                    ConfigurationManager.AppSettings["DocDBCollectionModern"],
+                    useReverseEdges:false)
+                    ;
+            connection.ResetCollection(edgeSpillThreshold: 1);
             graph = new GraphViewCommand(connection);
             graph.OutputFormat = OutputFormat.GraphSON;
-            //graph.UseReverseEdges = false;
         }
 
         public dynamic GetVertexPropertyValue(dynamic vertex, string property)

@@ -112,20 +112,29 @@ namespace GraphView
         internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
         {
             List<string> projectedField;
-            var edgeJsonObject = ConstructEdgeJsonObject(out projectedField);  // metadata remains missing
+            JObject edgeJsonObject = ConstructEdgeJsonObject(out projectedField);  // metadata remains missing
 
-            var srcSubQuery = Parameters[0] as WScalarSubquery;
-            var sinkSubQuery = Parameters[1] as WScalarSubquery;
+            WScalarSubquery srcSubQuery = Parameters[0] as WScalarSubquery;
+            WScalarSubquery sinkSubQuery = Parameters[1] as WScalarSubquery;
             if (srcSubQuery == null || sinkSubQuery == null)
                 throw new SyntaxErrorException("The first two parameters of AddE can only be WScalarSubquery.");
-            var otherVTagParameter = Parameters[2] as WValueExpression;
-            var otherVTag = int.Parse(otherVTagParameter.Value);
+            WValueExpression otherVTagParameter = Parameters[2] as WValueExpression;
+            Debug.Assert(otherVTagParameter != null, "otherVTagParameter != null");
+            //
+            // if otherVTag == 0, this newly added edge's otherV() is the src vertex.
+            // Otherwise, it's the sink vertex
+            //
+            int otherVTag = int.Parse(otherVTagParameter.Value);
 
-            var srcSubQueryFunction = srcSubQuery.CompileToFunction(context, dbConnection);
-            var sinkSubQueryFunction = sinkSubQuery.CompileToFunction(context, dbConnection);
+            QueryCompilationContext srcSubContext = new QueryCompilationContext(context);
+            GraphViewExecutionOperator srcSubQueryOp = srcSubQuery.SubQueryExpr.Compile(srcSubContext, dbConnection);
 
-            GraphViewExecutionOperator addEOp = new AddEOperator(context.CurrentExecutionOperator,
-                dbConnection, srcSubQueryFunction, sinkSubQueryFunction, otherVTag, edgeJsonObject, projectedField);
+            QueryCompilationContext sinkSubContext = new QueryCompilationContext(context);
+            GraphViewExecutionOperator sinkSubQueryOp = sinkSubQuery.SubQueryExpr.Compile(sinkSubContext, dbConnection);
+
+            GraphViewExecutionOperator addEOp = new AddEOperator(context.CurrentExecutionOperator, dbConnection,
+                srcSubContext.OuterContextOp, srcSubQueryOp, sinkSubContext.OuterContextOp, sinkSubQueryOp, 
+                otherVTag, edgeJsonObject, projectedField);
             context.CurrentExecutionOperator = addEOp;
 
             // Update context's record layout

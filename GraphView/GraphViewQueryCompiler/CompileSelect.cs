@@ -165,8 +165,12 @@ namespace GraphView
             }
         }
 
-        internal static bool CanBePushedToServer(MatchEdge matchEdge)
+        internal static bool CanBePushedToServer(bool useReverseEdges, MatchEdge matchEdge)
         {
+            if (IsTraversalThroughPhysicalReverseEdge(matchEdge) && !useReverseEdges) {
+                return false;
+            }
+
             return matchEdge != null && matchEdge.EdgeType != WEdgeType.BothEdge;
         }
 
@@ -188,14 +192,14 @@ namespace GraphView
                     {
                         MatchEdge pushedToServerEdge = null;
                         if (traversalEdge != null) {
-                            pushedToServerEdge = CanBePushedToServer(traversalEdge) ? traversalEdge : null;
+                            pushedToServerEdge = CanBePushedToServer(connection.UseReverseEdges, traversalEdge) ? traversalEdge : null;
                         }
                         //
                         // TODO: Refactor
                         //
                         else if (sourceNode.DanglingEdges.Count == 1)
                         {
-                            pushedToServerEdge = CanBePushedToServer(sourceNode.DanglingEdges[0])
+                            pushedToServerEdge = CanBePushedToServer(connection.UseReverseEdges, sourceNode.DanglingEdges[0])
                                 ? sourceNode.DanglingEdges[0]
                                 : null;
                         }

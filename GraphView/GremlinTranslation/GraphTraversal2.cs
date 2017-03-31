@@ -2,6 +2,7 @@
 using System.CodeDom.Compiler;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using System.Text;
@@ -17,18 +18,83 @@ namespace GraphView
         GraphSON
     }
 
+    public class GraphSONProjector
+    {
+        internal static string ToGraphSON(List<RawRecord> results, GraphViewConnection connection)
+        {
+            StringBuilder finalGraphSonResult = new StringBuilder("[");
+            HashSet<string> batchIdSet = new HashSet<string>();
+            Dictionary<int, VertexField> batchGraphSonDict = new Dictionary<int, VertexField>();
+
+            StringBuilder notBatchedGraphSonResult = new StringBuilder();
+            bool firstEntry = true;
+            foreach (RawRecord record in results)
+            {
+                if (firstEntry) {
+                    firstEntry = false;
+                }
+                else {
+                    notBatchedGraphSonResult.Append(", ");
+                }
+                FieldObject field = record[0];
+
+                VertexField vertexField = field as VertexField;
+                if (vertexField != null &&
+                    (!vertexField.AdjacencyList.HasBeenFetched || !vertexField.RevAdjacencyList.HasBeenFetched))
+                {
+                    string vertexId = vertexField[GraphViewKeywords.KW_DOC_ID].ToValue;
+                    batchIdSet.Add(vertexId);
+                    batchGraphSonDict.Add(notBatchedGraphSonResult.Length, vertexField);
+                    continue;
+                }
+
+                notBatchedGraphSonResult.Append(field.ToGraphSON());
+            }
+
+            if (batchIdSet.Any())
+            {
+                EdgeDocumentHelper.ConstructSpilledAdjListsOrVirtualRevAdjListsOfVertices(connection, batchIdSet);
+
+                int startIndex = 0;
+                foreach (KeyValuePair<int, VertexField> kvp in batchGraphSonDict)
+                {
+                    int insertedPosition = kvp.Key;
+                    int length = insertedPosition - startIndex;
+                    VertexField vertexField = kvp.Value;
+
+                    finalGraphSonResult.Append(notBatchedGraphSonResult.ToString(startIndex, length));
+                    finalGraphSonResult.Append(vertexField.ToGraphSON());
+                    startIndex = insertedPosition;
+                }
+
+                finalGraphSonResult.Append(notBatchedGraphSonResult.ToString(startIndex,
+                    notBatchedGraphSonResult.Length - startIndex));
+
+            }
+            else {
+                finalGraphSonResult.Append(notBatchedGraphSonResult.ToString());
+            }
+
+            finalGraphSonResult.Append("]");
+            return finalGraphSonResult.ToString();
+        }
+    }
+
     public class GraphTraversal2 : IEnumerable<string>
     {
         public class GraphTraversalIterator : IEnumerator<string>
         {
+            private GraphViewConnection connection;
             private string currentRecord;
             private GraphViewExecutionOperator currentOperator;
             OutputFormat outputFormat;
             bool firstCall;
 
-            internal GraphTraversalIterator(GraphViewExecutionOperator pCurrentOperator,OutputFormat outputFormat)
+            internal GraphTraversalIterator(GraphViewExecutionOperator pCurrentOperator, 
+                GraphViewConnection connection, OutputFormat outputFormat)
             {
-                currentOperator = pCurrentOperator;
+                this.connection = connection;
+                this.currentOperator = pCurrentOperator;
                 this.outputFormat = outputFormat;
                 this.firstCall = true;
             }
@@ -39,32 +105,25 @@ namespace GraphView
 
                 if (outputFormat == OutputFormat.GraphSON)
                 {
-                    RawRecord outputRec = null;
-                    StringBuilder graphsonBuilder = new StringBuilder();
-                    graphsonBuilder.Append("[");
-                    bool firstEntry = true;
-                    while ((outputRec = currentOperator.Next()) != null)
-                    {
-                        if (firstEntry)
-                        {
-                            firstEntry = false;
-                        }
-                        else
-                        {
-                            graphsonBuilder.Append(", ");
-                        }
-                        graphsonBuilder.Append(outputRec[0].ToGraphSON());
-                    }
-                    graphsonBuilder.Append("]");
+                    List<RawRecord> rawRecordResults = new List<RawRecord>();
 
-                    if (firstEntry && !firstCall)     // No results are pulled from the execution operator
-                    {
+                    RawRecord outputRec = null;
+                    bool firstEntry = true;
+                    while ((outputRec = currentOperator.Next()) != null) {
+                        rawRecordResults.Add(outputRec);
+                        firstEntry = false;
+                    }
+
+                    //
+                    // No results are pulled from the execution operator
+                    //
+                    if (firstEntry && !firstCall) {
                         return false;
                     }
                     else
                     {
                         firstCall = false;
-                        currentRecord = graphsonBuilder.ToString();
+                        currentRecord = GraphSONProjector.ToGraphSON(rawRecordResults, this.connection);
                         return true;
                     }
                 }
@@ -73,24 +132,14 @@ namespace GraphView
                     RawRecord outputRec = null;
                     if ((outputRec = currentOperator.Next()) != null)
                     {
-                        switch (outputFormat)
-                        {
-                            case OutputFormat.GraphSON:
-                                currentRecord = outputRec[0].ToGraphSON();
-                                break;
-                            default:
-                                currentRecord = outputRec[0].ToString();
-                                break;
-                        }
+                        currentRecord = outputRec[0].ToString();
                         return currentRecord != null;
                     }
                     else return false;
                 }
             }
 
-            public void Reset()
-            {
-            }
+            public void Reset() {}
 
             object IEnumerator.Current
             {
@@ -118,7 +167,7 @@ namespace GraphView
         {
             var sqlScript = LastGremlinTranslationOp.ToSqlScript();
             SqlScript = sqlScript.ToString();
-            it = new GraphTraversalIterator(sqlScript.Batches[0].Compile(null, Connection), outputFormat);
+            it = new GraphTraversalIterator(sqlScript.Batches[0].Compile(null, Connection), Connection, outputFormat);
             return it;
         }
 
@@ -156,16 +205,14 @@ namespace GraphView
 
         public List<string> Next()
         {
-            var sqlScript = LastGremlinTranslationOp.ToSqlScript();
+            WSqlScript sqlScript = LastGremlinTranslationOp.ToSqlScript();
             SqlScript = sqlScript.ToString();
-            //Console.WriteLine(str);     // Added temporarily for debugging purpose.
-            //Console.WriteLine();
 
-            var op = sqlScript.Batches[0].Compile(null, Connection);
-            var rawRecordResults = new List<RawRecord>();
+            GraphViewExecutionOperator op = sqlScript.Batches[0].Compile(null, Connection);
+            List<RawRecord> rawRecordResults = new List<RawRecord>();
             RawRecord outputRec = null;
-            while ((outputRec = op.Next()) != null)
-            {
+
+            while ((outputRec = op.Next()) != null) {
                 rawRecordResults.Add(outputRec);
             }
 
@@ -174,27 +221,10 @@ namespace GraphView
             switch (outputFormat)
             {
                 case OutputFormat.GraphSON:
-                    StringBuilder result = new StringBuilder("[");
-                    bool firstEntry = true;
-                    foreach (var record in rawRecordResults)
-                    {
-                        if (firstEntry)
-                        {
-                            firstEntry = false;
-                        }
-                        else
-                        {
-                            result.Append(", ");
-                        }
-                        FieldObject field = record[0];
-                        result.Append(field.ToGraphSON());
-                    }
-                    result.Append("]");
-                    results.Add(result.ToString());
+                    results.Add(GraphSONProjector.ToGraphSON(rawRecordResults, this.Connection));
                     break;
                 default:
-                    foreach (var record in rawRecordResults)
-                    {
+                    foreach (var record in rawRecordResults) {
                         FieldObject field = record[0];
                         results.Add(field.ToString());
                     }
@@ -1421,6 +1451,7 @@ namespace GraphView
             connectionList.Add(addDoubleQuotes(Connection.DocDBPrimaryKey));
             connectionList.Add(addDoubleQuotes(Connection.DocDBDatabaseId));
             connectionList.Add(addDoubleQuotes(Connection.DocDBCollectionId));
+            connectionList.Add(Connection.UseReverseEdges.ToString().ToLowerInvariant());
             return string.Join(",", connectionList);
         }
     }

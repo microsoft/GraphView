@@ -40,10 +40,8 @@ namespace GraphView
             Debug.Assert(vertexObject != null);
 
             JToken isSpilled = vertexObject[checkReverse ? KW_VERTEX_REVEDGE_SPILLED : KW_VERTEX_EDGE_SPILLED];
-            Debug.Assert(isSpilled != null);
-            Debug.Assert(isSpilled.Type == JTokenType.Boolean);
 
-            return (bool)isSpilled;
+            return isSpilled == null || (bool)isSpilled;
 
             //if (edgeContainer is JObject) {
             //    Debug.Assert(edgeContainer["_edges"] is JArray);
@@ -55,6 +53,27 @@ namespace GraphView
             //else {
             //    throw new Exception("Should not get here!");
             //}
+        }
+
+        /// <summary>
+        /// If a vertex got spilled adjacency/reverse adjacency list, lazy the construction of list.
+        /// If a vertex got a normal reverse adjacency list but useReverseEdges is false, the construction will be lazied, too.
+        /// </summary>
+        /// <param name="vertexObject"></param>
+        /// <param name="checkReverse">true if check the incoming edges, false if check the outgoing edges</param>
+        /// <param name="useReverseEdges"></param>
+        /// <returns></returns>
+        public static bool IsBuildingTheAdjacencyListLazily(JObject vertexObject, bool checkReverse, bool useReverseEdges)
+        {
+            Debug.Assert(vertexObject != null);
+
+            if (checkReverse && !useReverseEdges) {
+                return true;
+            }
+
+            JToken isSpilled = vertexObject[checkReverse ? KW_VERTEX_REVEDGE_SPILLED : KW_VERTEX_EDGE_SPILLED];
+
+            return isSpilled == null || (bool)isSpilled;
         }
 
 
@@ -124,7 +143,14 @@ namespace GraphView
             GraphViewJsonCommand.UpdateEdgeMetaProperty(inEdgeObject, edgeId, true, srcId, srcLabel);
 
             InsertEdgeObjectInternal(connection, srcVertexObject, srcVertexField, outEdgeObject, false, out outEdgeDocID); // srcVertex uploaded
-            InsertEdgeObjectInternal(connection, sinkVertexObject, sinkVertexField, inEdgeObject, true, out inEdgeDocID); // sinkVertex uploaded
+
+            if (connection.UseReverseEdges) {
+                InsertEdgeObjectInternal(connection, sinkVertexObject, sinkVertexField, inEdgeObject, true,
+                    out inEdgeDocID); // sinkVertex uploaded
+            }
+            else {
+                inEdgeDocID = EdgeDocumentHelper.VirtualReverseEdgeDocId;
+            }
         }
 
 
@@ -473,7 +499,9 @@ namespace GraphView
                     if ((string)edgeDocumentsArray[0][KW_DOC_ID] != edgeDocId) {
                         documentMap[edgeDocId] = new Tuple<JObject, string>(null, (string)edgeDocument[KW_DOC_PARTITION]);
                     }
-
+                    else {
+                        documentMap[edgeDocId] = new Tuple<JObject, string>(edgeDocument, (string)edgeDocument[KW_DOC_PARTITION]);
+                    }
                     // The vertex object needn't change
                     //documentMap[(string)vertexObject[KW_DOC_ID]] = new Tuple<JObject, string>(vertexObject, (string)vertexObject[KW_DOC_PARTITION]);
                 }
@@ -560,67 +588,18 @@ namespace GraphView
             }
         }
 
+        internal static string VirtualReverseEdge = "virtualReverseEdge";
+        internal static string VirtualReverseEdgeObject = "virtualReverseEdgeObject";
+        internal static string VirtualReverseEdgeDocId = "$VIRTUAL$";
 
-
-        //public static Dictionary<string, AdjacencyListField> GetReverseAdjacencyListsOfVertexCollection(GraphViewConnection connection, HashSet<string> vertexIdSet)
-        //{
-        //    Dictionary<string, AdjacencyListField> revAdjacencyListCollection = new Dictionary<string, AdjacencyListField>();
-
-        //    StringBuilder vertexIdList = new StringBuilder();
-
-        //    foreach (string vertexId in vertexIdSet)
-        //    {
-        //        if (vertexIdList.Length > 0) {
-        //            vertexIdList.Append(", ");
-        //        }
-        //        vertexIdList.AppendFormat("'{0}'", vertexId);
-
-        //        revAdjacencyListCollection[vertexId] = new AdjacencyListField();
-        //    }
-
-        //    string query = $"SELECT {{\"edge\": edge, " +
-        //                   $"  \"vertexId\": edge.{KW_EDGE_SINKV}, "+
-        //                   $"  \"{KW_EDGE_SRCV}\": doc.id, " +
-        //                   $"  \"{KW_EDGE_SRCV_LABEL}\": doc.label}} AS incomingEdgeMetadata\n" +
-        //                   $"FROM doc\n" +
-        //                   $"JOIN edge IN doc._edge\n" +
-        //                   $"WHERE edge.{KW_EDGE_SINKV} IN ({vertexIdList.ToString()})\n";
-
-        //    foreach (JObject edgeDocument in connection.ExecuteQuery(query))
-        //    {
-        //        JObject edgeMetadata = (JObject)edgeDocument["incomingEdgeMetadata"];
-        //        JObject edgeObject = (JObject)edgeMetadata["edge"];
-        //        string vertexId = edgeMetadata["vertexId"].ToString();
-        //        string srcV = edgeMetadata[KW_EDGE_SRCV].ToString();
-        //        string srcVLabel = edgeMetadata[KW_EDGE_SRCV_LABEL]?.ToString();
-
-        //        EdgeField edgeField = EdgeField.ConstructForwardEdgeField(srcV, srcVLabel, null, edgeObject);
-        //        edgeField.EdgeProperties.Add(KW_EDGE_SRCV, new EdgePropertyField(KW_EDGE_SRCV, srcV, JsonDataType.String, edgeField));
-        //        if (srcVLabel != null) {
-        //            edgeField.EdgeProperties.Add(KW_EDGE_SRCV_LABEL,
-        //                new EdgePropertyField(KW_EDGE_SRCV_LABEL, srcVLabel, JsonDataType.String, edgeField));
-        //        }
-
-        //        AdjacencyListField revAdjList = revAdjacencyListCollection[vertexId];
-        //        revAdjList.AddEdgeField((string)edgeObject[KW_EDGE_ID], edgeField);
-        //    }
-
-        //    return revAdjacencyListCollection;
-        //}
-
-        public static void ConstructSpilledAdjListsOfVertexCollection(GraphViewConnection connection,
-            HashSet<string> vertexIdSet)
+        /// <summary>
+        /// edgeDict: [vertexId, [spilled edge document id, spilled edge document]]
+        /// </summary>
+        /// <param name="edgeDict"></param>
+        /// <param name="edgeDocuments"></param>
+        private static void FillEdgeDict(Dictionary<string, Dictionary<string, JObject>> edgeDict,
+            List<dynamic> edgeDocuments)
         {
-            string inClause = string.Join(", ", vertexIdSet.Select(vertexId => $"'{vertexId}'"));
-            string edgeDocumentsQuery =
-                $"SELECT * " +
-                $"FROM edgeDoc " +
-                $"WHERE edgeDoc.{KW_EDGEDOC_VERTEXID} IN ({inClause})";
-            IQueryable<dynamic> edgeDocuments = connection.ExecuteQuery(edgeDocumentsQuery);
-
-            // Dictionary<vertexId, Dictionary<edgeDocumentId, edgeDocument>>
-            Dictionary<string, Dictionary<string, JObject>> edgeDict =
-                new Dictionary<string, Dictionary<string, JObject>>();
             foreach (JObject edgeDocument in edgeDocuments) {
                 string vertexId = (string)edgeDocument[KW_EDGEDOC_VERTEXID];
                 Dictionary<string, JObject> edgeDocSet;
@@ -632,6 +611,146 @@ namespace GraphView
 
                 edgeDocSet.Add((string)edgeDocument[KW_DOC_ID], edgeDocument);
             }
+        }
+
+        /// <summary>
+        /// Use forward edge objects to construct a virtual reverse edge document, whose schema is the same
+        /// as a real spilled reverse edge document.
+        /// </summary>
+        /// <param name="virtualReverseEdges"></param>
+        /// <param name="labelOfSrcVertexOfSpilledEdge"></param>
+        /// <returns></returns>
+        private static List<JObject> ConstructVirtualReverseEdgeDocuments(List<dynamic> virtualReverseEdges, Dictionary<string, string> labelOfSrcVertexOfSpilledEdge)
+        {
+            Dictionary<string, JObject> virtualReverseEdgeDocumentsDict = new Dictionary<string, JObject>();
+            foreach (JObject virtualReverseEdge in virtualReverseEdges)
+            {
+                JObject virtualReverseEdgeObject = (JObject)virtualReverseEdge[EdgeDocumentHelper.VirtualReverseEdge];
+
+                string srcV, srcVLabel;
+                //
+                // This is a spilled edge
+                //
+                if (virtualReverseEdgeObject[KW_EDGEDOC_VERTEXID] != null) {
+                    srcV = virtualReverseEdgeObject[KW_EDGEDOC_VERTEXID].ToString();
+                    srcVLabel = labelOfSrcVertexOfSpilledEdge[srcV];
+                } else {
+                    srcV = virtualReverseEdgeObject[KW_EDGE_SRCV].ToString();
+                    srcVLabel = virtualReverseEdgeObject[KW_EDGE_SRCV_LABEL]?.ToString();
+                }
+
+                JObject edgeObject = (JObject)virtualReverseEdgeObject[EdgeDocumentHelper.VirtualReverseEdgeObject];
+                string vertexId = (string)edgeObject[KW_EDGE_SINKV];
+
+                JObject virtualReverseEdgeDocument;
+                if (!virtualReverseEdgeDocumentsDict.TryGetValue(vertexId, out virtualReverseEdgeDocument)) {
+                    virtualReverseEdgeDocument = new JObject {
+                        { KW_DOC_ID, EdgeDocumentHelper.VirtualReverseEdgeDocId },
+                        { KW_EDGEDOC_VERTEXID, vertexId },
+                        { KW_EDGEDOC_ISREVERSE, true },
+                        { KW_EDGEDOC_EDGE, new JArray() }
+                    };
+                    virtualReverseEdgeDocumentsDict.Add(vertexId, virtualReverseEdgeDocument);
+                }
+
+                JArray reverseEdgeDocumentEdges = (JArray)virtualReverseEdgeDocument[KW_EDGEDOC_EDGE];
+                JObject virtualRevEdgeObject = edgeObject;
+                virtualRevEdgeObject.Add(KW_EDGE_SRCV, srcV);
+                if (srcVLabel != null) {
+                    virtualRevEdgeObject.Add(KW_EDGE_SRCV_LABEL, srcVLabel);
+                }
+                reverseEdgeDocumentEdges.Add(virtualRevEdgeObject);
+            }
+
+            return virtualReverseEdgeDocumentsDict.Values.ToList();
+        }
+
+        private static Dictionary<string, string> GetLabelOfSrcVertexOfSpilledEdges(
+            GraphViewConnection connection, List<dynamic> virtualReverseEdges)
+        {
+            Dictionary<string, string> labelOfVertexCollection = new Dictionary<string, string>();
+            HashSet<string> vertexIdSet = new HashSet<string>();
+
+            foreach (JObject virtualReverseEdge in virtualReverseEdges) {
+                JObject virtualReverseEdgeObject = (JObject)virtualReverseEdge[EdgeDocumentHelper.VirtualReverseEdge];
+                string vertexId = virtualReverseEdgeObject[KW_EDGEDOC_VERTEXID]?.ToString();
+                if (vertexId != null) {
+                    //
+                    // this is a spilled edge, so the srcVLabel is not in the spilled document and needs to be fetched
+                    //
+                    vertexIdSet.Add(vertexId);
+                }
+            }
+
+            if (vertexIdSet.Any()) {
+                string inClause = string.Join(", ", vertexIdSet.Select(vertexId => $"'{vertexId}'"));
+                string labelQuery =
+                    $"SELECT doc.{KW_VERTEX_LABEL}, doc.{KW_DOC_ID} " +
+                    $"FROM doc " +
+                    $"WHERE doc.{KW_DOC_ID} IN ({inClause})";
+                IQueryable<dynamic> vertexIdAndLabels = connection.ExecuteQuery(labelQuery);
+                foreach (JObject vertexIdAndLabel in vertexIdAndLabels) {
+                    string vertexId = vertexIdAndLabel[KW_DOC_ID].ToString();
+                    string vertexLabel = vertexIdAndLabel[KW_VERTEX_LABEL]?.ToString();
+                    labelOfVertexCollection[vertexId] = vertexLabel;
+                }
+            }
+
+            return labelOfVertexCollection;
+        }
+
+        /// <summary>
+        /// For every vertex in the vertexIdSet, retrieve their spilled edge documents to construct their forward or backward
+        /// adjacency list.
+        /// When connection.useReverseEdge is false, this method will retrieve all the forward edge documents whose sink
+        /// is the target vertex to build a virtual reverse adjacency list.
+        /// </summary>
+        /// <param name="connection"></param>
+        /// <param name="vertexIdSet"></param>
+        public static void ConstructSpilledAdjListsOrVirtualRevAdjListsOfVertices(GraphViewConnection connection,
+            HashSet<string> vertexIdSet)
+        {
+            if (!vertexIdSet.Any()) return;
+
+            string inClause = string.Join(", ", vertexIdSet.Select(vertexId => $"'{vertexId}'"));
+            string edgeDocumentsQuery =
+                $"SELECT * " +
+                $"FROM edgeDoc " +
+                $"WHERE edgeDoc.{KW_EDGEDOC_VERTEXID} IN ({inClause})";
+            List<dynamic> edgeDocuments = connection.ExecuteQuery(edgeDocumentsQuery).ToList();
+
+            // Dictionary<vertexId, Dictionary<edgeDocumentId, edgeDocument>>
+            Dictionary<string, Dictionary<string, JObject>> edgeDict =
+                new Dictionary<string, Dictionary<string, JObject>>();
+
+            EdgeDocumentHelper.FillEdgeDict(edgeDict, edgeDocuments);
+
+            //
+            // Use all edges whose sink is vertexId to construct a virtual reverse adjacency list of this vertex
+            //
+            if (!connection.UseReverseEdges)
+            {
+                edgeDocumentsQuery =
+                    $"SELECT {{" +
+                    $"  \"{EdgeDocumentHelper.VirtualReverseEdgeObject}\": edge, " +
+                    $"  \"{KW_EDGE_SRCV}\": doc.{KW_DOC_ID}, " +
+                    $"  \"{KW_EDGE_SRCV_LABEL}\": doc.{KW_EDGE_SRCV_LABEL}," +
+                    $"  \"{KW_EDGEDOC_VERTEXID}\": doc.{KW_EDGEDOC_VERTEXID}" +
+                    $"}} AS {EdgeDocumentHelper.VirtualReverseEdge}\n" +
+                    $"FROM doc\n" +
+                    $"JOIN edge IN doc.{GraphViewKeywords.KW_VERTEX_EDGE}\n" +
+                    $"WHERE edge.{KW_EDGE_SINKV} IN ({inClause})";
+
+                edgeDocuments = connection.ExecuteQuery(edgeDocumentsQuery).ToList();
+
+                Dictionary<string, string> labelOfSrcVertexOfSpilledEdges =
+                    EdgeDocumentHelper.GetLabelOfSrcVertexOfSpilledEdges(connection, edgeDocuments);
+
+                List<JObject> virtualReverseEdgeDocuments =
+                    EdgeDocumentHelper.ConstructVirtualReverseEdgeDocuments(edgeDocuments, labelOfSrcVertexOfSpilledEdges);
+
+                EdgeDocumentHelper.FillEdgeDict(edgeDict, virtualReverseEdgeDocuments.Cast<dynamic>().ToList());
+            }
 
             foreach (KeyValuePair<string, Dictionary<string, JObject>> pair in edgeDict)
             {
@@ -639,7 +758,15 @@ namespace GraphView
                 Dictionary<string, JObject> edgeDocDict = pair.Value; // contains both in & out edges
                 VertexField vertexField;
                 connection.VertexCache.TryGetVertexField(vertexId, out vertexField);
-                vertexField.ConstructSpilledAdjacencyListField(edgeDocDict);
+                vertexField.ConstructSpilledOrVirtualAdjacencyListField(edgeDocDict);
+                vertexIdSet.Remove(vertexId);
+            }
+
+            foreach (string vertexId in vertexIdSet)
+            {
+                VertexField vertexField;
+                connection.VertexCache.TryGetVertexField(vertexId, out vertexField);
+                vertexField.ConstructSpilledOrVirtualAdjacencyListField(new Dictionary<string, JObject>());
             }
         }
     }

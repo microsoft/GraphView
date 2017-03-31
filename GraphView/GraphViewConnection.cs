@@ -65,8 +65,6 @@ namespace GraphView
         public string DocDBDatabaseId { get; }
         public string DocDBCollectionId { get; }
 
-        public bool UseReverseEdges { get; set; }
-
         /// <summary>
         /// Whether to generate "id" for edgeObject
         /// </summary>
@@ -89,6 +87,15 @@ namespace GraphView
 
         internal CollectionType CollectionType { get; private set; }
 
+        private bool useReverseEdges;
+
+        /// <summary>
+        /// Warning: This is actually a collection meta property.
+        /// Once this flag is set to false and data modifications are applied on a collection, 
+        /// then it should never be set to true again.
+        /// </summary>
+        public bool UseReverseEdges => this.useReverseEdges;
+
         /// <summary>
         /// Initializes a new connection to DocDB.
         /// Contains four string: Url, Key, Database's ID, Collection's ID
@@ -102,6 +109,7 @@ namespace GraphView
             string docDBAuthorizationKey,
             string docDBDatabaseID,
             string docDBCollectionID,
+            bool useReverseEdges = true,
             CollectionType collectionType = CollectionType.UNDEFINED,
             string preferredLocation = null)
         {
@@ -116,6 +124,7 @@ namespace GraphView
             this.DocDBPrimaryKey = docDBAuthorizationKey;
             this.DocDBDatabaseId = docDBDatabaseID;
             this.DocDBCollectionId = docDBCollectionID;
+            this.useReverseEdges = useReverseEdges;
 
             ConnectionPolicy connectionPolicy = new ConnectionPolicy {
                 ConnectionMode = ConnectionMode.Direct,
@@ -181,9 +190,6 @@ namespace GraphView
 
             this.Identifier = $"{docDBEndpointUrl}\0{docDBDatabaseID}\0{docDBCollectionID}";
             this.VertexCache = new VertexObjectCache(this);
-
-            this.UseReverseEdges = true;
-            
 
             // Retrieve metadata from DocDB
             JObject metaObject = RetrieveDocumentById("metadata");

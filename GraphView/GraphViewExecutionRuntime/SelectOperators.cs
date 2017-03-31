@@ -2166,7 +2166,9 @@ namespace GraphView
                         if (index >= low && index < high) {
                             newMap.Add(entry.Key, entry.Value);
                         }
-                        ++index;
+                        if (++index >= high) {
+                            break;
+                        }
                     }
                     filteredObject = newMap;
                 }
@@ -4045,7 +4047,7 @@ namespace GraphView
         private readonly Queue<Tuple<RawRecord, string>> batchInputSequence;
 
         private readonly int outputRecordLength;
-        private bool hasConstructedSpilledAdjListsForCurrentBatch;
+        private bool hasConstructedSpilledAdjListsOrVirtualRevAdjListsForCurrentBatch;
 
         public AdjacencyListDecoder(
             GraphViewExecutionOperator inputOp,
@@ -4071,7 +4073,7 @@ namespace GraphView
             this.batchInputSequence = new Queue<Tuple<RawRecord, string>>();
 
             this.outputRecordLength = outputRecordLength;
-            this.hasConstructedSpilledAdjListsForCurrentBatch = false;
+            this.hasConstructedSpilledAdjListsOrVirtualRevAdjListsForCurrentBatch = false;
 
             this.Open();
         }
@@ -4204,7 +4206,7 @@ namespace GraphView
         /// <summary>
         /// Send one query to construct all the spilled adjacency lists of vertice in the inputSequence 
         /// </summary>
-        private void ConstructSpilledAdjListsInBatch()
+        private void ConstructSpilledAdjListsOrVirtualRevAdjListsInBatch()
         {
             HashSet<string> vertexIdCollection = new HashSet<string>();
             foreach (Tuple<RawRecord, string> tuple in batchInputSequence)
@@ -4225,7 +4227,7 @@ namespace GraphView
                 vertexIdCollection.Add(tuple.Item2);
             }
 
-            EdgeDocumentHelper.ConstructSpilledAdjListsOfVertexCollection(connection, vertexIdCollection);
+            EdgeDocumentHelper.ConstructSpilledAdjListsOrVirtualRevAdjListsOfVertices(connection, vertexIdCollection);
         }
 
         public override RawRecord Next()
@@ -4235,16 +4237,16 @@ namespace GraphView
             }
 
             while (this.batchInputSequence.Count >= batchSize
-                || this.hasConstructedSpilledAdjListsForCurrentBatch
+                || this.hasConstructedSpilledAdjListsOrVirtualRevAdjListsForCurrentBatch
                 || (this.batchInputSequence.Count != 0 && !this.inputOp.State()))
             {
-                if (!this.hasConstructedSpilledAdjListsForCurrentBatch) {
-                    this.ConstructSpilledAdjListsInBatch();
+                if (!this.hasConstructedSpilledAdjListsOrVirtualRevAdjListsForCurrentBatch) {
+                    this.ConstructSpilledAdjListsOrVirtualRevAdjListsInBatch();
                 }
 
                 Tuple<RawRecord, string> batchVertex = this.batchInputSequence.Dequeue();
 
-                this.hasConstructedSpilledAdjListsForCurrentBatch = this.batchInputSequence.Count > 0;
+                this.hasConstructedSpilledAdjListsOrVirtualRevAdjListsForCurrentBatch = this.batchInputSequence.Count > 0;
 
                 RawRecord currentRecord = batchVertex.Item1;
 
@@ -4301,16 +4303,16 @@ namespace GraphView
             }
 
             while (this.batchInputSequence.Count >= batchSize
-                 || this.hasConstructedSpilledAdjListsForCurrentBatch
+                 || this.hasConstructedSpilledAdjListsOrVirtualRevAdjListsForCurrentBatch
                  || (this.batchInputSequence.Count != 0 && !this.inputOp.State()))
             {
-                if (!this.hasConstructedSpilledAdjListsForCurrentBatch) {
-                    this.ConstructSpilledAdjListsInBatch();
+                if (!this.hasConstructedSpilledAdjListsOrVirtualRevAdjListsForCurrentBatch) {
+                    this.ConstructSpilledAdjListsOrVirtualRevAdjListsInBatch();
                 }
 
                 Tuple<RawRecord, string> batchVertex = this.batchInputSequence.Dequeue();
 
-                this.hasConstructedSpilledAdjListsForCurrentBatch = this.batchInputSequence.Count > 0;
+                this.hasConstructedSpilledAdjListsOrVirtualRevAdjListsForCurrentBatch = this.batchInputSequence.Count > 0;
 
                 RawRecord currentRecord = batchVertex.Item1;
 
@@ -4332,7 +4334,7 @@ namespace GraphView
             this.inputOp.ResetState();
             this.outputBuffer.Clear();
             this.batchInputSequence.Clear();
-            this.hasConstructedSpilledAdjListsForCurrentBatch = false;
+            this.hasConstructedSpilledAdjListsOrVirtualRevAdjListsForCurrentBatch = false;
             this.Open();
         }
     }

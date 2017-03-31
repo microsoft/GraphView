@@ -22,7 +22,9 @@ namespace GraphViewUnitTest.Gremlin
                 //ConfigurationManager.AppSettings["DocDBKey"],
                 ConfigurationManager.AppSettings["DocDBKeyLocal"],
                 ConfigurationManager.AppSettings["DocDBDatabaseGremlin"],
-                ConfigurationManager.AppSettings["DocDBCollectionModern"]);
+                ConfigurationManager.AppSettings["DocDBCollectionModern"],
+                useReverseEdges: true
+            );
 
         /// <summary>
         /// Do any necessary setup.
@@ -30,7 +32,7 @@ namespace GraphViewUnitTest.Gremlin
         [TestInitialize]
         public void Setup()
         {
-            GraphDataLoader.LoadGraphData(GraphData.MODERN);
+            GraphDataLoader.LoadGraphData(GraphData.MODERN, graphConnection.UseReverseEdges);
         }
 
         /// <summary>
