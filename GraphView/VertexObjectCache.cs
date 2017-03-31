@@ -6,7 +6,9 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.Documents;
 using Newtonsoft.Json.Linq;
+using static GraphView.GraphViewKeywords;
 
 namespace GraphView
 {
@@ -19,6 +21,46 @@ namespace GraphView
     internal sealed class VertexObjectCache
     {
         public GraphViewConnection Connection { get; }
+
+        private readonly Dictionary<string, string> _currentEtags = new Dictionary<string, string>();
+
+        public string GetCurrentEtag(string docId)
+        {
+            Debug.Assert(docId != null);
+            return this._currentEtags[docId];
+        }
+
+        public void RemoveEtag(string docId)
+        {
+            Debug.Assert(docId != null);
+            Debug.Assert(this._currentEtags.ContainsKey(docId));
+
+            this._currentEtags.Remove(docId);
+        }
+
+        public void SaveCurrentEtagNoOverride(JObject docObject)
+        {
+            string docId = (string)docObject[KW_DOC_ID];
+            string etag = (string)docObject[KW_DOC_ETAG];
+            Debug.Assert(docId != null);
+            Debug.Assert(etag != null);
+
+            if (!this._currentEtags.ContainsKey(docId))
+            {
+                this._currentEtags.Add(docId, etag);
+            }
+        }
+
+        public void UpdateCurrentEtag(Document document)
+        {
+            string docId = document.Id;
+            string etag = document.ETag;
+            Debug.Assert(docId != null);
+            Debug.Assert(etag != null);
+
+            this._currentEtags[docId] = etag;
+        }
+
 
         //
         // NOTE: _cachedVertex is ALWAYS up-to-date with DocDB!
@@ -51,6 +93,12 @@ namespace GraphView
                 // TODO: Update?
             }
             else {
+                //
+                // Update saved etags when Constructing a vertex field
+                // NOTE: For each vertex document, only ONE VertexField will be constructed ever.
+                //
+                this.SaveCurrentEtagNoOverride(vertexObject);
+
                 vertexField = new VertexField(this.Connection, vertexObject);
                 this._cachedVertexField.Add(vertexId, vertexField);
             }

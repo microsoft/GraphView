@@ -437,7 +437,7 @@ namespace GraphView
                 const string EDGE_SELECT_TAG = "edge";
                 string query = $"SELECT doc.{KW_DOC_ID}, {EDGE_SELECT_TAG}\n" +
                                $"FROM doc\n" +
-                               $"JOIN {EDGE_SELECT_TAG} IN doc._edge\n" +
+                               $"JOIN {EDGE_SELECT_TAG} IN doc.{KW_EDGEDOC_EDGE}\n" +
                                $"WHERE (doc.{KW_EDGEDOC_ISREVERSE} = {isReverseEdge.ToString().ToLowerInvariant()})\n" +
                                $"  AND ({EDGE_SELECT_TAG}.{KW_EDGE_ID} = '{edgeId}')\n";
 
@@ -601,6 +601,7 @@ namespace GraphView
             List<dynamic> edgeDocuments)
         {
             foreach (JObject edgeDocument in edgeDocuments) {
+
                 string vertexId = (string)edgeDocument[KW_EDGEDOC_VERTEXID];
                 Dictionary<string, JObject> edgeDocSet;
                 edgeDict.TryGetValue(vertexId, out edgeDocSet);
@@ -722,6 +723,11 @@ namespace GraphView
             // Dictionary<vertexId, Dictionary<edgeDocumentId, edgeDocument>>
             Dictionary<string, Dictionary<string, JObject>> edgeDict =
                 new Dictionary<string, Dictionary<string, JObject>>();
+
+            foreach (JObject edgeDocument in edgeDocuments) {
+                // Save edgeDocument's etag if necessary
+                connection.VertexCache.SaveCurrentEtagNoOverride(edgeDocument);
+            }
 
             EdgeDocumentHelper.FillEdgeDict(edgeDict, edgeDocuments);
 

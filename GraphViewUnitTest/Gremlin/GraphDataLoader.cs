@@ -72,7 +72,7 @@ namespace GraphViewUnitTest.Gremlin
                 ConfigurationManager.AppSettings["DocDBDatabaseGremlin"],
                 ConfigurationManager.AppSettings["DocDBCollectionClassic"],
                 useReverseEdges: useReverseEdge);
-            connection.ResetCollection(/*edgeSpillThreshold: 1*/);
+            connection.ResetCollection(edgeSpillThreshold: 1);
 
             GraphViewCommand graphCommand = new GraphViewCommand(connection);
 
@@ -103,7 +103,7 @@ namespace GraphViewUnitTest.Gremlin
                 ConfigurationManager.AppSettings["DocDBDatabaseGremlin"],
                 ConfigurationManager.AppSettings["DocDBCollectionModern"],
                 useReverseEdges: useReverseEdge);
-            connection.ResetCollection(/*edgeSpillThreshold: 1*/);
+            connection.ResetCollection(edgeSpillThreshold: 1);
 
             GraphViewCommand graphCommand = new GraphViewCommand(connection);
 

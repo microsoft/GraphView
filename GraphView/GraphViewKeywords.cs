@@ -36,6 +36,7 @@ namespace GraphView
 
         public const string KW_DOC_ID = "id";
         public const string KW_DOC_PARTITION = "_partition";
+        public const string KW_DOC_ETAG = "_etag";
 
         public const string KW_VERTEX_LABEL = "label";
         public const string KW_VERTEX_EDGE = GremlinKeyword.EdgeAdj;

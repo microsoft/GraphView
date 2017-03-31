@@ -336,6 +336,13 @@ namespace GraphView
 
             Document createdDocument = await this.DocDBClient.CreateDocumentAsync(this._docDBCollectionUri, docObject);
             Debug.Assert((string)docObject[KW_DOC_ID] == createdDocument.Id);
+
+            //
+            // Save the created document's etag
+            //
+            docObject[KW_DOC_ETAG] = createdDocument.ETag;
+            this.VertexCache.UpdateCurrentEtag(createdDocument);
+
             return createdDocument.Id;
         }
 
@@ -361,24 +368,39 @@ namespace GraphView
 
         internal async Task ReplaceOrDeleteDocumentAsync(string docId, JObject docObject, string partition)
         {
-            RequestOptions option = null;
-            if (this.CollectionType == CollectionType.PARTITIONED) {
-                option = new RequestOptions {
-                    PartitionKey = new PartitionKey(partition)
-                };
+            if (docObject != null) {
+                Debug.Assert((string)docObject[KW_DOC_ID] == docId);
             }
+
+            RequestOptions option = new RequestOptions();
+            if (this.CollectionType == CollectionType.PARTITIONED)
+            {
+                option.PartitionKey = new PartitionKey(partition);
+            }
+
+            option.AccessCondition = new AccessCondition
+            {
+                Type = AccessConditionType.IfMatch,
+                Condition = this.VertexCache.GetCurrentEtag(docId),
+            };
 
             Uri documentUri = UriFactory.CreateDocumentUri(this.DocDBDatabaseId, this.DocDBCollectionId, docId);
             if (docObject == null) {
                 this.DocDBClient.DeleteDocumentAsync(documentUri, option).Wait();
+
+                // Remove the document's etag from saved
+                this.VertexCache.RemoveEtag(docId);
             }
             else {
                 Debug.Assert(docObject[KW_DOC_ID] is JValue);
                 Debug.Assert((string)docObject[KW_DOC_ID] == docId, "The replaced document should match ID in the parameter");
                 Debug.Assert(partition != null && partition == (string)docObject[KW_DOC_PARTITION]);
 
-                await this.DocDBClient.ReplaceDocumentAsync(documentUri, docObject, option);
-                docObject[KW_DOC_ID] = docId;
+                Document document = await this.DocDBClient.ReplaceDocumentAsync(documentUri, docObject, option);
+
+                // Update the document's etag
+                docObject[KW_DOC_ETAG] = document.ETag;
+                this.VertexCache.UpdateCurrentEtag(document);
             }
         }
 
@@ -408,42 +430,32 @@ namespace GraphView
         {
             Debug.Assert(!string.IsNullOrEmpty(docId), "'docId' should not be null or empty");
 
-            try {
-                //
-                // It seems that DocDB won't return an empty result, but throw an exception instead!
-                // 
-                string script = $"SELECT * FROM Doc WHERE Doc.{KW_DOC_ID} = '{docId}'";
-                FeedOptions queryOptions = new FeedOptions {
-                    MaxItemCount = -1,  // dynamic paging
-                };
-                if (this.CollectionType == CollectionType.PARTITIONED) {
-                    queryOptions.EnableCrossPartitionQuery = true;
-                }
+            string script = $"SELECT * FROM Doc WHERE Doc.{KW_DOC_ID} = '{docId}'";
+            JObject result = ExecuteQueryUnique(script);
 
-                List<dynamic> result = this.DocDBClient.CreateDocumentQuery(
-                    UriFactory.CreateDocumentCollectionUri(this.DocDBDatabaseId, this.DocDBCollectionId),
-                    script,
-                    queryOptions
-                ).ToList();
+            //
+            // Save etag of the fetched document
+            // No override!
+            //
+            if (result != null) {
+                this.VertexCache.SaveCurrentEtagNoOverride(result);
+            }
 
-                Debug.Assert(result.Count <= 1, $"BUG: Found multiple documents sharing the same docId: {docId}");
-                return (result.Count == 0) ? null : (JObject)result[0];
-            }
-            catch (AggregateException aggex)
-                when ((aggex.InnerException as DocumentClientException)?.Error.Code == "NotFound") {  // HACK
-                return null;
-            }
+            return result;
         }
 
 
         internal IQueryable<dynamic> ExecuteQuery(string queryScript, FeedOptions queryOptions = null)
         {
-            if (queryOptions == null) {
-                queryOptions = new FeedOptions {
+            if (queryOptions == null)
+            {
+                queryOptions = new FeedOptions
+                {
                     MaxItemCount = -1,
                     EnableScanInQuery = true,
                 };
-                if (this.CollectionType == CollectionType.PARTITIONED) {
+                if (this.CollectionType == CollectionType.PARTITIONED)
+                {
                     queryOptions.EnableCrossPartitionQuery = true;
                 }
             }
@@ -456,13 +468,23 @@ namespace GraphView
 
         internal JObject ExecuteQueryUnique(string queryScript, FeedOptions queryOptions = null)
         {
-            List<dynamic> result = ExecuteQuery(queryScript, queryOptions).ToList();
+            try
+            {
+                //
+                // It seems that DocDB won't return an empty result, but throw an exception instead!
+                // 
+                List<dynamic> result = ExecuteQuery(queryScript, queryOptions).ToList();
 
-            Debug.Assert(result.Count <= 1, "A unique query should have at most 1 result");
-            return (result.Count == 0)
-                       ? null
-                       : result[0];
+                Debug.Assert(result.Count <= 1, "A unique query should have at most 1 result");
+                return (result.Count == 0)
+                           ? null
+                           : (JObject)result[0];
 
+            }
+            catch (AggregateException aggex) when ((aggex.InnerException as DocumentClientException)?.Error.Code == "NotFound")
+            {
+                return null;
+            }
         }
 
 
