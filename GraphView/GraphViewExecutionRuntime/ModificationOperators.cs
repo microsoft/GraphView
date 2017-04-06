@@ -87,11 +87,21 @@ namespace GraphView
         {
             JObject vertexObject = (JObject)this._vertexDocument.DeepClone();
 
-            string vertexId = GraphViewConnection.GenerateDocumentId();
-            Debug.Assert(vertexObject[KW_DOC_ID] == null);
             Debug.Assert(vertexObject[KW_DOC_PARTITION] == null);
-            vertexObject[KW_DOC_ID] = vertexId;
-            vertexObject[KW_DOC_PARTITION] = vertexId;
+            string vertexId = GraphViewConnection.GenerateDocumentId();
+            if (vertexObject[KW_DOC_ID] == null) {
+                vertexObject[KW_DOC_ID] = vertexId;
+                vertexObject[KW_DOC_PARTITION] = vertexId;
+            }
+            else {
+                Debug.Assert(vertexObject[KW_DOC_ID] is JValue);
+
+                // Only string id is supported!
+                Debug.Assert(((JValue)vertexObject[KW_DOC_ID]).Type == JTokenType.String);
+
+                // Assume user will not specify duplicated ids
+                vertexObject[KW_DOC_PARTITION] = vertexObject[KW_DOC_ID];
+            }
 
             this.Connection.CreateDocumentAsync(vertexObject).Wait();
 
