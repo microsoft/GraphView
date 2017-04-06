@@ -2652,13 +2652,13 @@ namespace GraphView
                     context.CurrentExecutionOperator, 
                     groupKeyFunction,
                     tempSourceOp, aggregatedSourceOp, aggregateOp, 
-                    this.IsProjectingACollection, 
-                    context.CarryOn ? context.RawRecordLayout.Count : -1);
+                    this.IsProjectingACollection,
+                    context.RawRecordLayout.Count);
 
                 context.CurrentExecutionOperator = groupOp;
 
-                if (!context.CarryOn)
-                    context.ClearField();
+                //if (!context.CarryOn)
+                //    context.ClearField();
                 // Change to correct ColumnGraphType
                 context.AddField(Alias.Value, GremlinKeyword.TableDefaultColumnName, ColumnGraphType.Value);
 
