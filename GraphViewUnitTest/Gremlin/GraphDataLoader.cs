@@ -107,12 +107,32 @@ namespace GraphViewUnitTest.Gremlin
 
             GraphViewCommand graphCommand = new GraphViewCommand(connection);
 
-            graphCommand.g().AddV("person").Property("name", "marko").Property("age", 29).Next();
-            graphCommand.g().AddV("person").Property("name", "vadas").Property("age", 27).Next();
-            graphCommand.g().AddV("software").Property("name", "lop").Property("lang", "java").Next();
-            graphCommand.g().AddV("person").Property("name", "josh").Property("age", 32).Next();
-            graphCommand.g().AddV("software").Property("name", "ripple").Property("lang", "java").Next();
-            graphCommand.g().AddV("person").Property("name", "peter").Property("age", 35).Next();
+            //
+            // NOTE: '#' charactor is now allowed in document id
+            // NOTE: '\' charactor is now allowed in document id
+            // NOTE: '?' charactor is now allowed in document id
+            // NOTE: '/' charactor is now allowed in document id
+            // NOTE: ' (single quote) charactor will cause an error now
+            //
+            //graphCommand.g().AddV("person").Property("id", "dummy!").Property("name", "marko").Property("age", 29).Next();
+            //graphCommand.g().AddV("person").Property("id", "特殊符号:~!@$%^&*()_+").Property("name", "vadas").Property("age", 27).Next();
+            //graphCommand.g().AddV("software").Property("id", "这是一个中文ID").Property("name", "lop").Property("lang", "java").Next();
+            //graphCommand.g().AddV("person").Property("id", "引号\"`").Property("name", "josh").Property("age", 32).Next();
+            //graphCommand.g().AddV("software").Property("id", "中文English(){}[]<>\"`~!@$%^^&*()_+-=|:;,.").Property("name", "ripple").Property("lang", "java").Next();
+            //graphCommand.g().AddV("person").Property("name", "peter").Property("age", 35).Next();
+            //graphCommand.g().V().Has("name", "marko").AddE("knows").Property("weight", 0.5d).To(graphCommand.g().V().Has("name", "vadas")).Next();
+            //graphCommand.g().V().Has("name", "marko").AddE("knows").Property("weight", 1.0d).To(graphCommand.g().V().Has("name", "josh")).Next();
+            //graphCommand.g().V().Has("name", "marko").AddE("created").Property("weight", 0.4d).To(graphCommand.g().V().Has("name", "lop")).Next();
+            //graphCommand.g().V().Has("name", "josh").AddE("created").Property("weight", 1.0d).To(graphCommand.g().V().Has("name", "ripple")).Next();
+            //graphCommand.g().V().Has("name", "josh").AddE("created").Property("weight", 0.4d).To(graphCommand.g().V().Has("name", "lop")).Next();
+            //graphCommand.g().V().Has("name", "peter").AddE("created").Property("weight", 0.2d).To(graphCommand.g().V().Has("name", "lop")).Next();
+
+            graphCommand.g().AddV("person").Property("id", "dummy").Property("name", "marko").Property("age", 29).Next();
+            graphCommand.g().AddV("person").Property("id", "特殊符号").Property("name", "vadas").Property("age", 27).Next();
+            graphCommand.g().AddV("software").Property("id", "这是一个中文ID").Property("name", "lop").Property("lang", "java").Next();
+            graphCommand.g().AddV("person").Property("id", "引号").Property("name", "josh").Property("age", 32).Next();
+            graphCommand.g().AddV("software").Property("id", "中文English").Property("name", "ripple").Property("lang", "java").Next();
+            graphCommand.g().AddV("person").Property("name", "peter").Property("age", 35).Next();  // Auto generate document id
             graphCommand.g().V().Has("name", "marko").AddE("knows").Property("weight", 0.5d).To(graphCommand.g().V().Has("name", "vadas")).Next();
             graphCommand.g().V().Has("name", "marko").AddE("knows").Property("weight", 1.0d).To(graphCommand.g().V().Has("name", "josh")).Next();
             graphCommand.g().V().Has("name", "marko").AddE("created").Property("weight", 0.4d).To(graphCommand.g().V().Has("name", "lop")).Next();

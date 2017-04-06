@@ -27,6 +27,24 @@ namespace GraphView
                 if (!projectedFieldList.Contains(vertexProperty.Key.Value))
                     projectedFieldList.Add(vertexProperty.Key.Value);
 
+                // Special treat the "id" property
+                if (vertexProperty.Key.Value == KW_DOC_ID) {
+                    if (vertexObject[KW_DOC_ID] == null) {
+                        JValue value = vertexProperty.Value.ToJValue();
+                        if (value.Type != JTokenType.String) {
+                            throw new GraphViewException("Vertex's ID must be a string");
+                        }
+                        if (string.IsNullOrEmpty((string)value)) {
+                            throw new GraphViewException("Vertex's ID must not be null or empty");
+                        }
+                        vertexObject[KW_DOC_ID] = (string)value;
+                    }
+                    else {
+                        throw new GraphViewException("Vertex's ID must not be specified more than once");
+                    }
+                    continue;
+                }
+
                 if (vertexProperty.Value.ToJValue() == null) {
                     continue;
                 }
