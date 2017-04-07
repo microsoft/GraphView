@@ -75,6 +75,9 @@ namespace GraphView
         /// </summary>
         public int EdgeSpillThreshold { get; private set; } = 0;
 
+        public string PartitionByKey { get; }
+
+
         internal VertexObjectCache VertexCache { get; }
 
         internal string Identifier { get; }
@@ -111,7 +114,7 @@ namespace GraphView
             string docDBCollectionID,
             bool useReverseEdges = true,
             CollectionType collectionType = CollectionType.UNDEFINED,
-            string preferredLocation = null)
+            string preferredLocation = null, string partitionByKey = null)
         {
             // TODO: Parameter checking!
 
@@ -125,6 +128,8 @@ namespace GraphView
             this.DocDBDatabaseId = docDBDatabaseID;
             this.DocDBCollectionId = docDBCollectionID;
             this.useReverseEdges = useReverseEdges;
+
+            this.PartitionByKey = partitionByKey;
 
             ConnectionPolicy connectionPolicy = new ConnectionPolicy {
                 ConnectionMode = ConnectionMode.Direct,
@@ -242,7 +247,7 @@ namespace GraphView
         ///   - collectionType = PARTITIONED: the newly created collection is PARTITIONED
         ///   - collectionType = UNDEFINED: an exception is thrown!
         /// </summary>
-        public void ResetCollection(CollectionType collectionType = CollectionType.STANDARD, int? edgeSpillThreshold = null)
+        public void ResetCollection(CollectionType collectionType = CollectionType.PARTITIONED, int? edgeSpillThreshold = null)
         {
             EnsureDatabaseExist();
 

@@ -75,11 +75,15 @@ namespace GraphView
 
         public override IEnumerator<RawRecord> GetVertices(JsonQuery vertexQuery)
         {
+            //
+            // HACK: Only vertex document has the field "_reverse_edge"
+            //
+            string filterIsVertex = $"{vertexQuery.Alias}.{KW_VERTEX_REV_EDGE} <> null";
             if (string.IsNullOrEmpty(vertexQuery.WhereSearchCondition)) {
-                vertexQuery.WhereSearchCondition = $"{vertexQuery.Alias}.{KW_DOC_ID} = {vertexQuery.Alias}.{KW_DOC_PARTITION}";
+                vertexQuery.WhereSearchCondition = filterIsVertex;
             }
             else {
-                vertexQuery.WhereSearchCondition = $"({vertexQuery.WhereSearchCondition}) AND ({vertexQuery.Alias}.{KW_DOC_ID} = {vertexQuery.Alias}.{KW_DOC_PARTITION})";
+                vertexQuery.WhereSearchCondition = $"({vertexQuery.WhereSearchCondition}) AND ({filterIsVertex})";
             }
 
             string queryScript = vertexQuery.ToString(DatabaseType.DocumentDB);

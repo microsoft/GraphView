@@ -312,7 +312,7 @@ namespace GraphView
         private static void SpillVertexEdgesToDocument(GraphViewConnection connection, JObject vertexObject, ref bool? spillReverse, out string existEdgeDocId, out string newEdgeDocId)
         {
             Debug.Assert(vertexObject[KW_DOC_PARTITION] != null);
-            Debug.Assert((string)vertexObject[KW_DOC_ID] == (string)vertexObject[KW_DOC_PARTITION]);
+            //Debug.Assert((string)vertexObject[KW_DOC_ID] == (string)vertexObject[KW_DOC_PARTITION]);
             if (spillReverse == null) {  
                 // Let this function decide whether incoming/outgoing edges to spill
                 Debug.Assert(!IsSpilledVertex(vertexObject, true) || !IsSpilledVertex(vertexObject, false));

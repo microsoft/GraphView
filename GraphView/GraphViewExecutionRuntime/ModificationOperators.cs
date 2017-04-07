@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -102,7 +103,19 @@ namespace GraphView
             }
 
             Debug.Assert(vertexObject[KW_DOC_PARTITION] == null);
-            vertexObject[KW_DOC_PARTITION] = vertexId;
+            if (this.Connection.PartitionByKey == null) {
+                //vertexObject[KW_DOC_PARTITION] = vertexId;
+                vertexObject[KW_DOC_PARTITION] = new Random(DateTime.Now.Ticks.GetHashCode()).NextDouble().ToString(CultureInfo.InvariantCulture);
+            }
+            else {
+                if (vertexObject[this.Connection.PartitionByKey] == null) {
+                    throw new GraphViewException($"AddV: Parition key '{this.Connection.PartitionByKey}' must be provided.");
+                }
+                if (JValue.CreateNull().Equals(vertexObject[this.Connection.PartitionByKey])) {
+                    throw new GraphViewException($"AddV: Parition key '{this.Connection.PartitionByKey}' must not be null.");
+                }
+                vertexObject[KW_DOC_PARTITION] = vertexObject[this.Connection.PartitionByKey].ToString();
+            }
 
 
             this.Connection.CreateDocumentAsync(vertexObject).Wait();
@@ -529,8 +542,8 @@ namespace GraphView
             }
 
             // Delete the vertex-document!
-#if DEBUG
             JObject vertexObject = vertex.VertexJObject;
+#if DEBUG
             //Debug.Assert(JToken.DeepEquals(vertexObject, this.Connection.RetrieveDocumentById(vertexId)));
 
             Debug.Assert(vertexObject[KW_VERTEX_EDGE] is JArray);
@@ -545,8 +558,7 @@ namespace GraphView
                 }
             }
 #endif
-            // NOTE: for vertex document, id = _partition
-            this.Connection.ReplaceOrDeleteDocumentAsync(vertexId, null, vertexId).Wait();
+            this.Connection.ReplaceOrDeleteDocumentAsync(vertexId, null, (string)vertexObject[KW_DOC_PARTITION]).Wait();
 
             // Update VertexCache
             this.Connection.VertexCache.TryRemoveVertexField(vertexId);
