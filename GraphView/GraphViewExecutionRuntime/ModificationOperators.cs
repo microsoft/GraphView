@@ -111,12 +111,25 @@ namespace GraphView
                 if (vertexObject[this.Connection.PartitionByKey] == null) {
                     throw new GraphViewException($"AddV: Parition key '{this.Connection.PartitionByKey}' must be provided.");
                 }
-                if (JValue.CreateNull().Equals(vertexObject[this.Connection.PartitionByKey])) {
-                    throw new GraphViewException($"AddV: Parition key '{this.Connection.PartitionByKey}' must not be null.");
-                }
-                vertexObject[KW_DOC_PARTITION] = vertexObject[this.Connection.PartitionByKey].ToString();
-            }
 
+                // Special treat "id" or "label" specified as partition key
+                string partition;
+                if (this.Connection.PartitionByKey == KW_DOC_ID ||
+                    this.Connection.PartitionByKey == KW_VERTEX_LABEL) {
+                    partition = (string)vertexObject[this.Connection.PartitionByKey];
+                }
+                else {
+                    JArray array = (JArray)vertexObject[this.Connection.PartitionByKey];
+                    Debug.Assert(array.Count > 0);
+                    if (array.Count > 1) {
+                        throw new GraphViewException("Property value on the partition key cannot be multiple-value");
+                    }
+
+                    partition = array[0][KW_PROPERTY_VALUE].ToString();
+                }
+
+                vertexObject[KW_DOC_PARTITION] = Convert.ToBase64String(Encoding.Unicode.GetBytes(partition));
+            }
 
             this.Connection.CreateDocumentAsync(vertexObject).Wait();
 
