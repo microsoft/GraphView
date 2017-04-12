@@ -633,7 +633,7 @@ namespace GraphView
 
             Compose1Field rhs = obj as Compose1Field;
             if (rhs == null) {
-                return false;
+                return this[this.DefaultProjectionKey].Equals(obj);
             }
 
             return this[this.DefaultProjectionKey].Equals(rhs[rhs.DefaultProjectionKey]);
