@@ -103,23 +103,22 @@ namespace GraphView
             }
 
             Debug.Assert(vertexObject[KW_DOC_PARTITION] == null);
-            if (this.Connection.PartitionByKey == null) {
-                //vertexObject[KW_DOC_PARTITION] = vertexId;
-                vertexObject[KW_DOC_PARTITION] = new Random(DateTime.Now.Ticks.GetHashCode()).NextDouble().ToString(CultureInfo.InvariantCulture);
-            }
-            else {
-                if (vertexObject[this.Connection.PartitionByKey] == null) {
-                    throw new GraphViewException($"AddV: Parition key '{this.Connection.PartitionByKey}' must be provided.");
+            if (this.Connection.PartitionByKeyIfViaGraphAPI != null) {
+
+                // Not the collection is created via GraphAPI
+
+                if (vertexObject[this.Connection.PartitionByKeyIfViaGraphAPI] == null) {
+                    throw new GraphViewException($"AddV: Parition key '{this.Connection.PartitionByKeyIfViaGraphAPI}' must be provided.");
                 }
 
                 // Special treat "id" or "label" specified as partition key
                 string partition;
-                if (this.Connection.PartitionByKey == KW_DOC_ID ||
-                    this.Connection.PartitionByKey == KW_VERTEX_LABEL) {
-                    partition = (string)vertexObject[this.Connection.PartitionByKey];
+                if (this.Connection.PartitionByKeyIfViaGraphAPI == KW_DOC_ID ||
+                    this.Connection.PartitionByKeyIfViaGraphAPI == KW_VERTEX_LABEL) {
+                    partition = (string)vertexObject[this.Connection.PartitionByKeyIfViaGraphAPI];
                 }
                 else {
-                    JArray array = (JArray)vertexObject[this.Connection.PartitionByKey];
+                    JArray array = (JArray)vertexObject[this.Connection.PartitionByKeyIfViaGraphAPI];
                     Debug.Assert(array.Count > 0);
                     if (array.Count > 1) {
                         throw new GraphViewException("Property value on the partition key cannot be multiple-value");
@@ -128,10 +127,21 @@ namespace GraphView
                     partition = array[0][KW_PROPERTY_VALUE].ToString();
                 }
 
-                vertexObject[KW_DOC_PARTITION] = Convert.ToBase64String(Encoding.Unicode.GetBytes(partition));
+                vertexObject[KW_DOC_PARTITION] = partition;
             }
 
-            this.Connection.CreateDocumentAsync(vertexObject).Wait();
+
+            //
+            // NOTE: We don't check whether the partition key exists. Let DocDB do it.
+            // If the vertex doesn't have the specified partition key, a DocumentClientException will be thrown.
+            //
+            try {
+                this.Connection.CreateDocumentAsync(vertexObject).Wait();
+            }
+            catch (AggregateException ex) {
+                throw new GraphViewException("Error when uploading the vertex" ,ex.InnerException);
+            }
+
 
             VertexField vertexField = Connection.VertexCache.AddOrUpdateVertexField(vertexId, vertexObject);
 
@@ -152,14 +162,12 @@ namespace GraphView
     internal class DropOperator : ModificationBaseOpertaor2
     {
         private readonly int dropTargetIndex;
-        private readonly GraphViewConnection connection;
         private readonly GraphViewExecutionOperator dummyInputOp;
 
         public DropOperator(GraphViewExecutionOperator dummyInputOp, GraphViewConnection connection, int dropTargetIndex)
             : base(dummyInputOp, connection)
         {
             this.dropTargetIndex = dropTargetIndex;
-            this.connection = connection;
             this.dummyInputOp = dummyInputOp;
         }
 
@@ -167,7 +175,7 @@ namespace GraphView
         {
             RawRecord record = new RawRecord();
             record.Append(new StringField(vertexField.VertexId));  // nodeIdIndex
-            DropNodeOperator op = new DropNodeOperator(this.dummyInputOp, this.connection, 0);
+            DropNodeOperator op = new DropNodeOperator(this.dummyInputOp, this.Connection, 0);
             op.DataModify(record);
 
             // Now VertexCacheObject has been updated (in DataModify)
@@ -178,7 +186,7 @@ namespace GraphView
             RawRecord record = new RawRecord();
             record.Append(new StringField(edgeField.OutV));  // srcIdIndex
             record.Append(new StringField(edgeField.EdgeId));  // edgeIdIndex
-            DropEdgeOperator op = new DropEdgeOperator(this.dummyInputOp, this.connection, 0, 1);
+            DropEdgeOperator op = new DropEdgeOperator(this.dummyInputOp, this.Connection, 0, 1);
             op.DataModify(record);
 
             // Now VertexCacheObject has been updated (in DataModify)
@@ -193,7 +201,8 @@ namespace GraphView
             Debug.Assert(vertexObject[vp.PropertyName] != null);
             vertexObject[vp.PropertyName].Remove();
 
-            this.connection.ReplaceOrDeleteDocumentAsync(vertexField.VertexId, vertexObject, (string)vertexObject[KW_DOC_PARTITION]).Wait();
+            this.Connection.ReplaceOrDeleteDocumentAsync(vertexField.VertexId, vertexObject, 
+                this.Connection.GetDocumentPartition(vertexObject)).Wait();
 
             // Update vertex field
             vertexField.VertexProperties.Remove(vp.PropertyName);
@@ -215,7 +224,7 @@ namespace GraphView
                 vertexProperty.Remove();
             }
 
-            this.connection.ReplaceOrDeleteDocumentAsync(vertexField.VertexId, vertexObject, (string)vertexObject[KW_DOC_PARTITION]).Wait();
+            this.Connection.ReplaceOrDeleteDocumentAsync(vertexField.VertexId, vertexObject, this.Connection.GetDocumentPartition(vertexObject)).Wait();
 
             // Update vertex field
             VertexPropertyField vertexPropertyField = vertexField.VertexProperties[vp.PropertyName];
@@ -245,7 +254,8 @@ namespace GraphView
             metaPropertyJObject?.Property(metaProperty.PropertyName)?.Remove();
 
             // Update DocDB
-            this.connection.ReplaceOrDeleteDocumentAsync(vertexField.VertexId, vertexObject, (string)vertexObject[KW_DOC_PARTITION]).Wait();
+            this.Connection.ReplaceOrDeleteDocumentAsync(vertexField.VertexId, vertexObject, 
+                this.Connection.GetDocumentPartition(vertexObject)).Wait();
 
             // Update vertex field
             vertexSingleProperty.MetaProperties.Remove(metaProperty.PropertyName);
@@ -283,7 +293,7 @@ namespace GraphView
                     0));
             UpdateEdgePropertiesOperator op = new UpdateEdgePropertiesOperator(
                 this.dummyInputOp, 
-                this.connection,
+                this.Connection,
                 0, 1, 
                 propertyList
                 );
@@ -407,7 +417,8 @@ namespace GraphView
             }
 
             // Upload to DocDB
-            this.Connection.ReplaceOrDeleteDocumentAsync(vertex.VertexId, vertexDocument, (string)vertexDocument[KW_DOC_PARTITION]).Wait();
+            this.Connection.ReplaceOrDeleteDocumentAsync(vertex.VertexId, vertexDocument, 
+                this.Connection.GetDocumentPartition(vertexDocument)).Wait();
         }
 
         private void UpdatePropertiesOfEdge(EdgeField edge)
@@ -451,7 +462,8 @@ namespace GraphView
             vp.Replace(singleProperty);
 
             // Upload to DocDB
-            this.Connection.ReplaceOrDeleteDocumentAsync(vertexId, vertexDocument, (string)vertexDocument[KW_DOC_PARTITION]).Wait();
+            this.Connection.ReplaceOrDeleteDocumentAsync(vertexId, vertexDocument, 
+                this.Connection.GetDocumentPartition(vertexDocument)).Wait();
         }
 
         internal override RawRecord DataModify(RawRecord record)
@@ -571,7 +583,8 @@ namespace GraphView
                 }
             }
 #endif
-            this.Connection.ReplaceOrDeleteDocumentAsync(vertexId, null, (string)vertexObject[KW_DOC_PARTITION]).Wait();
+            this.Connection.ReplaceOrDeleteDocumentAsync(vertexId, null, 
+                this.Connection.GetDocumentPartition(vertexObject)).Wait();
 
             // Update VertexCache
             this.Connection.VertexCache.TryRemoveVertexField(vertexId);

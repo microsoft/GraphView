@@ -16,15 +16,7 @@ namespace GraphViewUnitTest.Gremlin
     [TestClass]
     public class AbstractGremlinTest
     {
-        protected static GraphViewConnection graphConnection = new GraphViewConnection(
-                //ConfigurationManager.AppSettings["DocDBEndPoint"],
-                ConfigurationManager.AppSettings["DocDBEndPointLocal"],
-                //ConfigurationManager.AppSettings["DocDBKey"],
-                ConfigurationManager.AppSettings["DocDBKeyLocal"],
-                ConfigurationManager.AppSettings["DocDBDatabaseGremlin"],
-                ConfigurationManager.AppSettings["DocDBCollectionModern"],
-                useReverseEdges: true
-            );
+        protected static GraphViewConnection graphConnection;
 
         /// <summary>
         /// Do any necessary setup.
@@ -32,7 +24,21 @@ namespace GraphViewUnitTest.Gremlin
         [TestInitialize]
         public void Setup()
         {
-            GraphDataLoader.LoadGraphData(GraphData.MODERN, graphConnection.UseReverseEdges);
+            //string endpoint = ConfigurationManager.AppSettings["DocDBEndPoint"];
+            string endpoint = ConfigurationManager.AppSettings["DocDBEndPointLocal"];
+            //string authKey = ConfigurationManager.AppSettings["DocDBKey"];
+            string authKey = ConfigurationManager.AppSettings["DocDBKeyLocal"];
+            string databaseId = ConfigurationManager.AppSettings["DocDBDatabaseGremlin"];
+            string collectionId = ConfigurationManager.AppSettings["DocDBCollectionModern"];
+
+            GraphDataLoader.LoadGraphData(GraphData.MODERN);
+
+            graphConnection = new GraphViewConnection(
+                endpoint, authKey, databaseId, collectionId, 
+                GraphType.GraphAPIOnly,
+                edgeSpillThreshold: 1,
+                partitionByKeyIfViaGraphAPI: "label"
+            );
         }
 
         /// <summary>

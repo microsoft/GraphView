@@ -27,6 +27,10 @@ namespace GraphView
                 if (!projectedFieldList.Contains(vertexProperty.Key.Value))
                     projectedFieldList.Add(vertexProperty.Key.Value);
 
+                if (vertexProperty.Value.ToJValue() == null) {
+                    continue;
+                }
+
                 // Special treat the "id" property
                 if (vertexProperty.Key.Value == KW_DOC_ID) {
                     if (vertexObject[KW_DOC_ID] == null) {
@@ -42,10 +46,6 @@ namespace GraphView
                     else {
                         throw new GraphViewException("Vertex's ID must not be specified more than once");
                     }
-                    continue;
-                }
-
-                if (vertexProperty.Value.ToJValue() == null) {
                     continue;
                 }
 

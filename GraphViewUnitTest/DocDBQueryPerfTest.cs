@@ -15,8 +15,8 @@ namespace GraphViewUnitTest
         public void query1()
         {
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
-"MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
-"GroupMatch", "IOTTest");
+                "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+                "GroupMatch", "IOTTest", GraphType.GraphAPIOnly);
             var expTimes = 100;
             var sumTime = 0.0;
             var result = new List<Double>();
@@ -60,8 +60,8 @@ namespace GraphViewUnitTest
         public void query1_RandomId()
         {
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
-"MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
-"GroupMatch", "IOTTest");
+                "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+                "GroupMatch", "IOTTest", GraphType.GraphAPIOnly);
 
             GraphViewCommand graph = new GraphViewCommand(connection);
 
@@ -106,8 +106,8 @@ namespace GraphViewUnitTest
         public void query2()
         {
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
-"MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
-"GroupMatch", "IOTTest");
+                "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+                "GroupMatch", "IOTTest", GraphType.GraphAPIOnly);
             GraphViewCommand graph = new GraphViewCommand(connection);
 
             var expTimes = 100;
@@ -154,8 +154,8 @@ namespace GraphViewUnitTest
         public void query2_RandomId()
         {
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
-"MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
-"GroupMatch", "IOTTest");
+                "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+                "GroupMatch", "IOTTest", GraphType.GraphAPIOnly);
             GraphViewCommand graph = new GraphViewCommand(connection);
             var expTimes = 100;
             var sumTime = 0.0;

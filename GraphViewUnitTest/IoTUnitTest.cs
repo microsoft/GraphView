@@ -41,16 +41,17 @@ namespace GraphViewUnitTest
         [TestInitialize]
         public void Setup()
         {
-            GraphViewConnection connection = new GraphViewConnection(
-                    //ConfigurationManager.AppSettings["DocDBEndPoint"],
-                    ConfigurationManager.AppSettings["DocDBEndPointLocal"],
-                    //ConfigurationManager.AppSettings["DocDBKey"],
-                    ConfigurationManager.AppSettings["DocDBKeyLocal"],
-                    ConfigurationManager.AppSettings["DocDBDatabaseGremlin"],
-                    ConfigurationManager.AppSettings["DocDBCollectionModern"],
-                    useReverseEdges:false)
-                    ;
-            connection.ResetCollection(edgeSpillThreshold: 1);
+            //string endpoint = ConfigurationManager.AppSettings["DocDBEndPoint"];
+            string endpoint = ConfigurationManager.AppSettings["DocDBEndPointLocal"];
+            //string authKey = ConfigurationManager.AppSettings["DocDBKey"];
+            string authKey = ConfigurationManager.AppSettings["DocDBKeyLocal"];
+            string databaseId = ConfigurationManager.AppSettings["DocDBDatabaseGremlin"];
+            string collectionId = ConfigurationManager.AppSettings["DocDBCollectionModern"];
+
+            GraphViewConnection connection = GraphViewConnection.ResetGraphAPICollection(
+                endpoint, authKey, databaseId, collectionId
+                );
+
             graph = new GraphViewCommand(connection);
             graph.OutputFormat = OutputFormat.GraphSON;
         }

@@ -19,7 +19,7 @@ namespace GremlinTranslationOperator.Tests
         {
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
                 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
-                "GroupMatch", "Modern");
+                "GroupMatch", "Modern", GraphType.GraphAPIOnly);
 
             
             GraphTraversal2 graph = new GraphTraversal2(connection);
@@ -32,10 +32,9 @@ namespace GremlinTranslationOperator.Tests
         [TestMethod]
         public void TestModernGraph()
         {
-            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
+            GraphViewConnection connection = GraphViewConnection.ResetGraphAPICollection("https://graphview.documents.azure.com:443/",
                 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
-                "GroupMatch", "Modern");
-            connection.ResetCollection();
+                "GroupMatch", "GremlinFunctionalTestSuite");
 
             GraphViewCommand graph = new GraphViewCommand(connection);
 
@@ -60,7 +59,7 @@ namespace GremlinTranslationOperator.Tests
         {
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
                 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
-                "GroupMatch", "Modern");
+                "GroupMatch", "Modern", GraphType.GraphAPIOnly);
             GraphViewCommand graph = new GraphViewCommand(connection);
 
 
@@ -88,7 +87,7 @@ namespace GremlinTranslationOperator.Tests
         {
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
                 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
-                "GroupMatch", "Modern");
+                "GroupMatch", "Modern", GraphType.GraphAPIOnly);
             //connection.ResetCollection();
             GraphViewCommand graph = new GraphViewCommand(connection);
 
@@ -306,7 +305,7 @@ namespace GremlinTranslationOperator.Tests
         {
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
                 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
-                "GroupMatch", "MarvelUniverse");
+                "GroupMatch", "MarvelUniverse", GraphType.GraphAPIOnly);
 
             GraphViewCommand graph = new GraphViewCommand(connection);
 

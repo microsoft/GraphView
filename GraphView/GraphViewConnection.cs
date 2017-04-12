@@ -65,6 +65,9 @@ namespace GraphView
         public string DocDBDatabaseId { get; }
         public string DocDBCollectionId { get; }
 
+        public GraphType GraphType { get; }
+
+
         /// <summary>
         /// Whether to generate "id" for edgeObject
         /// </summary>
@@ -74,8 +77,6 @@ namespace GraphView
         /// Spill if how many edges are in a edge-document?
         /// </summary>
         public int EdgeSpillThreshold { get; private set; } = 0;
-
-        public string PartitionByKey { get; }
 
 
         internal VertexObjectCache VertexCache { get; }
@@ -90,14 +91,70 @@ namespace GraphView
 
         internal CollectionType CollectionType { get; private set; }
 
-        private bool useReverseEdges;
-
         /// <summary>
         /// Warning: This is actually a collection meta property.
         /// Once this flag is set to false and data modifications are applied on a collection, 
         /// then it should never be set to true again.
         /// </summary>
-        public bool UseReverseEdges => this.useReverseEdges;
+        public bool UseReverseEdges { get; }
+
+
+        public string PartitionByKeyIfViaGraphAPI { get; }  // Like "location"
+
+        public string PartitionPath { get; private set; }  // Like "/location/nested/_value"
+
+        public string PartitionPathTopLevel { get; private set; }  // Like "/location"
+
+
+
+        public static GraphViewConnection ResetGraphAPICollection(
+            string endpoint,
+            string authKey,
+            string databaseId,
+            string collectionId,
+            string partitionByKey = null)
+        {
+            using (DocumentClient client = new DocumentClient(
+                new Uri(endpoint), authKey, new ConnectionPolicy {
+                    ConnectionMode = ConnectionMode.Direct,
+                    ConnectionProtocol = Protocol.Tcp,
+                }
+            )) {
+                if (string.IsNullOrEmpty(partitionByKey)) {
+                    ResetCollection(client, databaseId, collectionId, null);
+                }
+                else {
+                    ResetCollection(client, databaseId, collectionId, $"/{KW_DOC_PARTITION}");
+                }
+            }
+
+            return new GraphViewConnection(endpoint, authKey, databaseId, collectionId, GraphType.GraphAPIOnly, false, 1, partitionByKey);
+        }
+
+        public static GraphViewConnection ResetFlatCollection(
+            string endpoint,
+            string authKey,
+            string databaseId,
+            string collectionId,
+            string partitionByKey = null)
+        {
+            using (DocumentClient client = new DocumentClient(
+                new Uri(endpoint), authKey, new ConnectionPolicy {
+                    ConnectionMode = ConnectionMode.Direct,
+                    ConnectionProtocol = Protocol.Tcp,
+                }
+            )) {
+                if (string.IsNullOrEmpty(partitionByKey)) {
+                    ResetCollection(client, databaseId, collectionId, null);
+                }
+                else {
+                    ResetCollection(client, databaseId, collectionId, $"/{partitionByKey}");
+                }
+            }
+
+            return new GraphViewConnection(endpoint, authKey, databaseId, collectionId, GraphType.CompatibleOnly, false, 1);
+        }
+
 
         /// <summary>
         /// Initializes a new connection to DocDB.
@@ -107,14 +164,20 @@ namespace GraphView
         /// <param name="docDBAuthorizationKey">The Key</param>
         /// <param name="docDBDatabaseID">Database's ID</param>
         /// <param name="docDBCollectionID">Collection's ID</param>
+        /// <param name="useReverseEdges"></param>
+        /// <param name="edgeSpillThreshold"></param>
+        /// <param name="partitionByKeyIfViaGraphAPI"></param>
+        /// <param name="preferredLocation"></param>
         public GraphViewConnection(
             string docDBEndpointUrl,
             string docDBAuthorizationKey,
             string docDBDatabaseID,
             string docDBCollectionID,
-            bool useReverseEdges = true,
-            CollectionType collectionType = CollectionType.UNDEFINED,
-            string preferredLocation = null, string partitionByKey = null)
+            GraphType graphType,
+            bool useReverseEdges = false,
+            int? edgeSpillThreshold = null,
+            string partitionByKeyIfViaGraphAPI = null,
+            string preferredLocation = null)
         {
             // TODO: Parameter checking!
 
@@ -127,9 +190,9 @@ namespace GraphView
             this.DocDBPrimaryKey = docDBAuthorizationKey;
             this.DocDBDatabaseId = docDBDatabaseID;
             this.DocDBCollectionId = docDBCollectionID;
-            this.useReverseEdges = useReverseEdges;
+            this.UseReverseEdges = useReverseEdges;
 
-            this.PartitionByKey = partitionByKey;
+            this.GraphType = graphType;
 
             ConnectionPolicy connectionPolicy = new ConnectionPolicy {
                 ConnectionMode = ConnectionMode.Direct,
@@ -146,15 +209,14 @@ namespace GraphView
 
 
             //
-            // Check whether it is a partition collection (if exists)
+            // Check whether it is a partitioned collection (if exists)
             //
             DocumentCollection docDBCollection;
             try {
-                docDBCollection = this.DocDBClient.CreateDocumentCollectionQuery(
-                                                             UriFactory.CreateDatabaseUri(this.DocDBDatabaseId))
-                                                         .Where(c => c.Id == this.DocDBCollectionId)
-                                                         .AsEnumerable()
-                                                         .FirstOrDefault();
+                docDBCollection = this.DocDBClient.CreateDocumentCollectionQuery(this._docDBDatabaseUri)
+                    .Where(c => c.Id == this.DocDBCollectionId)
+                    .AsEnumerable()
+                    .FirstOrDefault();
             }
             catch (AggregateException aggex) 
             when ((aggex.InnerException as DocumentClientException)?.Error.Code == "NotFound") {
@@ -163,52 +225,52 @@ namespace GraphView
                 docDBCollection = null;
             }
 
-            bool? isPartitionedNow = (docDBCollection?.PartitionKey.Paths.Count > 0);
-            if (isPartitionedNow.HasValue && isPartitionedNow.Value) {
-                if (collectionType == CollectionType.STANDARD) {
-                    throw new Exception("Can't specify CollectionType.STANDARD on an existing partitioned collection");
-                }
+            if (docDBCollection == null) {
+                throw new GraphViewException("This collection does not exist.");
             }
-            else if (isPartitionedNow.HasValue && !isPartitionedNow.Value) {
-                if (collectionType == CollectionType.PARTITIONED) {
-                    throw new Exception("Can't specify CollectionType.PARTITIONED on an existing standard collection");
-                }
-            }
-            this.CollectionType = collectionType;
 
-            if (collectionType == CollectionType.UNDEFINED) {
-                if (docDBCollection == null) {
-                    // Do nothing
-                }
-                else if (docDBCollection.PartitionKey != null && docDBCollection.PartitionKey.Paths.Count < 1) {
-                    this.CollectionType = CollectionType.STANDARD;
-                }
-                else if (docDBCollection.PartitionKey != null
-                         && docDBCollection.PartitionKey.Paths.Count > 0
-                         && docDBCollection.PartitionKey.Paths[0].Equals($"/{KW_DOC_PARTITION}", StringComparison.OrdinalIgnoreCase)) {
-                    this.CollectionType = CollectionType.PARTITIONED;
+            //
+            // If the collection has existed, try to retrive its partition key path
+            // If not partitioned, set `PartitionPath` to null
+            //
+            Collection<string> partitionKey = docDBCollection.PartitionKey.Paths;
+            if (partitionKey.Count == 1) {
+                this.CollectionType = CollectionType.PARTITIONED;
+
+                this.PartitionPath = partitionKey[0];
+                this.PartitionPathTopLevel = this.PartitionPath.Split(new[] {'/'}, StringSplitOptions.RemoveEmptyEntries)[0];
+
+                if (this.PartitionPath == $"/{KW_DOC_PARTITION}") {  // Partitioned, created via GraphAPI
+                    this.PartitionByKeyIfViaGraphAPI = partitionByKeyIfViaGraphAPI;
+                    Debug.Assert(partitionByKeyIfViaGraphAPI != null);
+                    Debug.Assert(graphType == GraphType.GraphAPIOnly);
                 }
                 else {
-                    throw new Exception(string.Format("Collection not properly configured. If you wish to configure a partitioned collection, please chose /{0} as partitionKey", KW_DOC_PARTITION));
+                    Debug.Assert(partitionByKeyIfViaGraphAPI == null);
                 }
+            }
+            else {
+                this.CollectionType = CollectionType.STANDARD;
+
+                Debug.Assert(partitionKey.Count == 0);
+                this.PartitionPath = null;
+                this.PartitionPathTopLevel = null;
+
+                Debug.Assert(partitionByKeyIfViaGraphAPI == null);
             }
 
             this.Identifier = $"{docDBEndpointUrl}\0{docDBDatabaseID}\0{docDBCollectionID}";
             this.VertexCache = new VertexObjectCache(this);
 
-            // Retrieve metadata from DocDB
-            JObject metaObject = RetrieveDocumentById("metadata");
-            if (metaObject != null) {
-                Debug.Assert((int?)metaObject["_edgeSpillThreshold"] != null);
-                this.EdgeSpillThreshold = (int)metaObject["_edgeSpillThreshold"];
-            }
-            Debug.Assert(this.EdgeSpillThreshold >= 0, "The edge-spill threshold should >= 0");
+            this.EdgeSpillThreshold = edgeSpillThreshold ?? 0;
         }
+
 
         internal DbPortal CreateDatabasePortal()
         {
             return new DocumentDbPortal(this);
         }
+
 
         /// <summary>
         /// Releases all resources used by GraphViewConnection.
@@ -223,16 +285,16 @@ namespace GraphView
         }
 
 
-        public void EnsureDatabaseExist()
+        public static void EnsureDatabaseExist(DocumentClient client, string databaseId)
         {
-            Database docDBDatabase = this.DocDBClient.CreateDatabaseQuery()
-                                         .Where(db => db.Id == this.DocDBDatabaseId)
-                                         .AsEnumerable()
-                                         .FirstOrDefault();
+            Database docDBDatabase = client.CreateDatabaseQuery()
+                                           .Where(db => db.Id == databaseId)
+                                           .AsEnumerable()
+                                           .FirstOrDefault();
 
             // If the database does not exist, create one
             if (docDBDatabase == null) {
-                this.DocDBClient.CreateDatabaseAsync(new Database {Id = this.DocDBDatabaseId}).Wait();
+                client.CreateDatabaseAsync(new Database {Id = databaseId}).Wait();
             }
         }
 
@@ -247,84 +309,52 @@ namespace GraphView
         ///   - collectionType = PARTITIONED: the newly created collection is PARTITIONED
         ///   - collectionType = UNDEFINED: an exception is thrown!
         /// </summary>
-        public void ResetCollection(CollectionType collectionType = CollectionType.PARTITIONED, int? edgeSpillThreshold = null)
+        private static void ResetCollection(
+            DocumentClient client, string databaseId, string collectionId,
+            string partitionPath = null)
         {
-            EnsureDatabaseExist();
+            EnsureDatabaseExist(client, databaseId);
 
-            DocumentCollection docDBCollection = this.DocDBClient.CreateDocumentCollectionQuery(this._docDBDatabaseUri)
-                                                     .Where(c => c.Id == this.DocDBCollectionId)
+            DocumentCollection docDBCollection = client.CreateDocumentCollectionQuery(UriFactory.CreateDatabaseUri(databaseId))
+                                                     .Where(c => c.Id == collectionId)
                                                      .AsEnumerable()
                                                      .FirstOrDefault();
 
             // Delete the collection if it exists
             if (docDBCollection != null) {
-                DeleteCollection();
+                DeleteCollection(client, databaseId, collectionId);
             }
 
-            switch (collectionType) {
-            case CollectionType.STANDARD:
-            case CollectionType.PARTITIONED:
-                break;
-            case CollectionType.UNDEFINED:
-                if (this.CollectionType == CollectionType.UNDEFINED) {
-                    throw new Exception("Can't specify CollectionType.UNDEFINED to reset a non-existing collection");
-                }
-                collectionType = this.CollectionType;
-                break;
-            default:
-                throw new ArgumentOutOfRangeException(nameof(collectionType), collectionType, null);
-            }
-
-            Debug.Assert(collectionType != CollectionType.UNDEFINED);
-            CreateCollection(collectionType == CollectionType.PARTITIONED);
-            this.CollectionType = collectionType;
-
-            //
-            // Create a meta-data document!
-            // Here we just store the "edgeSpillThreshold" in it
-            //
-            JValue jEdgeSpillThreshold;
-            if (edgeSpillThreshold == null || edgeSpillThreshold <= 0) {
-                jEdgeSpillThreshold = (JValue)0;
-                this.EdgeSpillThreshold = 0;
-            }
-            else {  // edgeSpillThreshold > 0
-                jEdgeSpillThreshold = (JValue)edgeSpillThreshold;
-                this.EdgeSpillThreshold = (int)edgeSpillThreshold;
-            }
-            JObject metaObject = new JObject {
-                [KW_DOC_ID] = "metadata",
-                [KW_DOC_PARTITION] = "metapartition",
-                ["_edgeSpillThreshold"] = jEdgeSpillThreshold
-            };
-            CreateDocumentAsync(metaObject).Wait();
-
-            Trace.WriteLine($"[ResetCollection] Database/Collection {this.DocDBDatabaseId}/{this.DocDBCollectionId} has been reset.");
+            CreateCollection(client, databaseId, collectionId, partitionPath);
+            
+            Trace.WriteLine($"[ResetCollection] Database/Collection {databaseId}/{collectionId} has been reset.");
         }
 
 
 
-        private void CreateCollection(bool isPartitionCollection)
+        private static void CreateCollection(DocumentClient client, string databaseId, string collectionId, string partitionPath = null)
         {
-            // TODO: Make the OfferType configurable?
-
             DocumentCollection collection = new DocumentCollection {
-                Id = this.DocDBCollectionId,
+                Id = collectionId,
             };
-            if (isPartitionCollection) {
-                collection.PartitionKey.Paths.Add($"/{KW_DOC_PARTITION}");
+            if (!string.IsNullOrEmpty(partitionPath)) {
+                collection.PartitionKey.Paths.Add(partitionPath);
             }
 
-            this.DocDBClient.CreateDocumentCollectionAsync(
-                this._docDBDatabaseUri,
+            client.CreateDocumentCollectionAsync(
+                UriFactory.CreateDatabaseUri(databaseId),
                 collection,
-                new RequestOptions {OfferType = "S3"}
+                new RequestOptions {
+                    OfferThroughput = 10000
+                }
             ).Wait();
         }
 
-        private void DeleteCollection()
+        private static void DeleteCollection(DocumentClient client, string databaseId, string collectionId)
         {
-            this.DocDBClient.DeleteDocumentCollectionAsync(this._docDBCollectionUri).Wait();
+            client.DeleteDocumentCollectionAsync(
+                UriFactory.CreateDocumentCollectionUri(databaseId, collectionId)
+            ).Wait();
         }
 
 
@@ -337,7 +367,7 @@ namespace GraphView
         {
             Debug.Assert(docObject != null, "The newly created document should not be null");
             Debug.Assert(docObject[KW_DOC_ID] != null, $"The newly created document should specify '{KW_DOC_ID}' field");
-            Debug.Assert(docObject[KW_DOC_PARTITION] != null, $"The newly created document should specify '{KW_DOC_PARTITION}' field");
+            //Debug.Assert(docObject[KW_DOC_PARTITION] != null, $"The newly created document should specify '{KW_DOC_PARTITION}' field");
 
             Document createdDocument = await this.DocDBClient.CreateDocumentAsync(this._docDBCollectionUri, docObject);
             Debug.Assert((string)docObject[KW_DOC_ID] == createdDocument.Id);
@@ -363,7 +393,7 @@ namespace GraphView
             foreach (JObject docObject in docObjects) {
                 Debug.Assert(docObject != null, "The newly created document should not be null");
                 Debug.Assert(docObject[KW_DOC_ID] != null, $"The newly created document should contain '{KW_DOC_ID}' field");
-                Debug.Assert(docObject[KW_DOC_PARTITION] != null, $"The newly created document should contain '{KW_DOC_PARTITION}' field");
+                //Debug.Assert(docObject[KW_DOC_PARTITION] != null, $"The newly created document should contain '{KW_DOC_PARTITION}' field");
 
                 Document createdDoc = await this.DocDBClient.CreateDocumentAsync(this._docDBCollectionUri, docObject);
                 Debug.Assert((string)docObject[KW_DOC_ID] == createdDoc.Id);
@@ -399,7 +429,7 @@ namespace GraphView
             else {
                 Debug.Assert(docObject[KW_DOC_ID] is JValue);
                 Debug.Assert((string)docObject[KW_DOC_ID] == docId, "The replaced document should match ID in the parameter");
-                Debug.Assert(partition != null && partition == (string)docObject[KW_DOC_PARTITION]);
+                //Debug.Assert(partition != null && partition == (string)docObject[KW_DOC_PARTITION]);
 
                 Document document = await this.DocDBClient.ReplaceDocumentAsync(documentUri, docObject, option);
 
@@ -422,9 +452,9 @@ namespace GraphView
                 JObject docObject = pair.Value.Item1;  // Can be null (null means deletion)
                 string partition = pair.Value.Item2;  // Partition
                 if (docObject != null) {
-                    Debug.Assert(partition == (string)docObject[KW_DOC_PARTITION]);
+                    Debug.Assert(partition == this.GetDocumentPartition(docObject));
                 }
-                await ReplaceOrDeleteDocumentAsync(docId, docObject, partition);
+                await this.ReplaceOrDeleteDocumentAsync(docId, docObject, partition);
             }
         }
 
@@ -447,6 +477,35 @@ namespace GraphView
             }
 
             return result;
+        }
+
+
+        public string GetDocumentPartition(JObject document)
+        {
+            if (this.PartitionPath == null) {
+                return null;
+            }
+
+            JToken token = document;
+            string[] paths = this.PartitionPath.Split(new []{'/'}, StringSplitOptions.RemoveEmptyEntries);
+            foreach (string part in paths) {
+                if (part.StartsWith("[")) {  // Like /[0]
+                    Debug.Assert(part.EndsWith("]"));
+                    Debug.Assert((token is JArray));
+                    token = ((JArray)token)[int.Parse(part.Substring(1, part.Length - 2))];
+                }
+                else if (part.StartsWith("\"")) {  // Like /"property with space"
+                    Debug.Assert(part.EndsWith("\""));
+                    token = token[part.Substring(1, part.Length - 2)];
+                }
+                else {   // Like /normal_property
+                    token = token[part];
+                }
+            }
+
+            Debug.Assert(token is JValue);
+            Debug.Assert(((JValue)token).Type == JTokenType.String);
+            return (string)token;
         }
 
 

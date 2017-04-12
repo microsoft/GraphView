@@ -16,6 +16,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// Creates a vertex with properties
         /// </summary>
         [TestMethod]
+        [Ignore]
         public async Task AddVertexTest()
         {
             GraphViewCommand cmd = new GraphViewCommand(graphConnection);
@@ -28,8 +29,6 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
             {
                 Console.WriteLine(result);
             }
-
-            graphConnection.ResetCollection();
         }
     }
 }

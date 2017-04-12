@@ -21,4 +21,13 @@ namespace GraphView
         /// </summary>
         UNDEFINED
     }
+
+    public enum GraphType
+    {
+        GraphAPIOnly,
+
+        CompatibleOnly,
+
+        Hybrid,
+    }
 }

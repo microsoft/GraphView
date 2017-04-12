@@ -1685,7 +1685,9 @@ namespace GraphView
             // Meta properties must exist
             //
             Debug.Assert(this.VertexMetaProperties.ContainsKey(KW_DOC_ID));
-            Debug.Assert(this.VertexMetaProperties.ContainsKey(KW_DOC_PARTITION));
+            if (connection.PartitionByKeyIfViaGraphAPI != null) {
+                Debug.Assert(this.VertexMetaProperties.ContainsKey(KW_DOC_PARTITION));
+            }
             Debug.Assert(this.VertexMetaProperties.ContainsKey(KW_VERTEX_LABEL));
             Debug.Assert(this.VertexMetaProperties.ContainsKey(KW_VERTEX_EDGE_SPILLED));
             Debug.Assert(this.VertexMetaProperties.ContainsKey(KW_VERTEX_REVEDGE_SPILLED));

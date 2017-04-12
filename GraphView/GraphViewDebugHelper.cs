@@ -18,7 +18,7 @@ namespace GraphView
         {
             this._connection = connection;
         }
-
+        /*
         public List<JObject> GetAllEdges(bool isReverse, string vertexId = null)
         {
             if (isReverse) {
@@ -69,5 +69,6 @@ namespace GraphView
 
             return ret;
         }
+        */
     }
 }

@@ -15,10 +15,10 @@ namespace GraphViewUnitTest
         [TestMethod]
         public void LoadClassicGraphData()
         {
-            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
+            GraphViewConnection connection = GraphViewConnection.ResetGraphAPICollection("https://graphview.documents.azure.com:443/",
               "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
               "GroupMatch", "MarvelTest");
-            connection.ResetCollection();
+
             GraphViewCommand graphCommand = new GraphViewCommand(connection);
 
             graphCommand.g().AddV("person").Property("name", "marko").Property("age", 29).Next();
@@ -43,7 +43,7 @@ namespace GraphViewUnitTest
         {
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
               "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
-              "GroupMatch", "MarvelTest");
+              "GroupMatch", "MarvelTest", GraphType.GraphAPIOnly);
             GraphViewCommand graph = new GraphViewCommand(connection);
 
             var src1 = graph.g().V().HasLabel("person").Has("name", Predicate.eq("marko")).Values("id").Next()[0];

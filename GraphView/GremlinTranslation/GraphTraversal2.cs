@@ -1451,7 +1451,7 @@ namespace GraphView
             connectionList.Add(addDoubleQuotes(Connection.DocDBPrimaryKey));
             connectionList.Add(addDoubleQuotes(Connection.DocDBDatabaseId));
             connectionList.Add(addDoubleQuotes(Connection.DocDBCollectionId));
-            connectionList.Add(Connection.UseReverseEdges.ToString().ToLowerInvariant());
+            connectionList.Add($"{nameof(GraphType)}.{this.Connection.GraphType}");
             return string.Join(",", connectionList);
         }
     }

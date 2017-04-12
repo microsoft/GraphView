@@ -20,15 +20,15 @@ namespace GraphViewUnitTest.Gremlin
         /// </summary>
         /// <param name="graphData">The type of graph data to load from among the TinkerPop samples.</param>
         /// <param name="useReverseEdge"></param>
-        public static void LoadGraphData(GraphData graphData, bool useReverseEdge)
+        public static void LoadGraphData(GraphData graphData)
         {
             switch (graphData)
             {
                 case GraphData.CLASSIC:
-                    LoadClassicGraphData(useReverseEdge);
+                    LoadClassicGraphData();
                     break;
                 case GraphData.MODERN:
-                    LoadModernGraphData(useReverseEdge);
+                    LoadModernGraphData();
                     break;
                 case GraphData.CREW:
                     throw new NotImplementedException("Crew requires supporting properties as documents themselves! This implementation currently does not support that functionality!!!");
@@ -62,17 +62,17 @@ namespace GraphViewUnitTest.Gremlin
             }
         }
 
-        private static void LoadClassicGraphData(bool useReverseEdge)
+        private static void LoadClassicGraphData()
         {
-            GraphViewConnection connection = new GraphViewConnection(
-                //ConfigurationManager.AppSettings["DocDBEndPoint"],
-                ConfigurationManager.AppSettings["DocDBEndPointLocal"],
-                //ConfigurationManager.AppSettings["DocDBKey"],
-                ConfigurationManager.AppSettings["DocDBKeyLocal"],
-                ConfigurationManager.AppSettings["DocDBDatabaseGremlin"],
-                ConfigurationManager.AppSettings["DocDBCollectionClassic"],
-                useReverseEdges: useReverseEdge);
-            connection.ResetCollection(edgeSpillThreshold: 1);
+            //string endpoint = ConfigurationManager.AppSettings["DocDBEndPoint"];
+            string endpoint = ConfigurationManager.AppSettings["DocDBEndPointLocal"];
+            //string authKey = ConfigurationManager.AppSettings["DocDBKey"];
+            string authKey = ConfigurationManager.AppSettings["DocDBKeyLocal"];
+            string databaseId = ConfigurationManager.AppSettings["DocDBDatabaseGremlin"];
+            string collectionId = ConfigurationManager.AppSettings["DocDBCollectionClassic"];
+
+            GraphViewConnection connection = GraphViewConnection.ResetGraphAPICollection(endpoint, authKey, databaseId, collectionId, "label");
+
 
             GraphViewCommand graphCommand = new GraphViewCommand(connection);
 
@@ -93,17 +93,18 @@ namespace GraphViewUnitTest.Gremlin
             connection.Dispose();
         }
 
-        private static void LoadModernGraphData(bool useReverseEdge)
+        private static void LoadModernGraphData()
         {
-            GraphViewConnection connection = new GraphViewConnection(
-                //ConfigurationManager.AppSettings["DocDBEndPoint"],
-                ConfigurationManager.AppSettings["DocDBEndPointLocal"],
-                //ConfigurationManager.AppSettings["DocDBKey"],
-                ConfigurationManager.AppSettings["DocDBKeyLocal"],
-                ConfigurationManager.AppSettings["DocDBDatabaseGremlin"],
-                ConfigurationManager.AppSettings["DocDBCollectionModern"],
-                useReverseEdges: useReverseEdge);
-            connection.ResetCollection(edgeSpillThreshold: 1);
+
+            //string endpoint = ConfigurationManager.AppSettings["DocDBEndPoint"];
+            string endpoint = ConfigurationManager.AppSettings["DocDBEndPointLocal"];
+            //string authKey = ConfigurationManager.AppSettings["DocDBKey"];
+            string authKey = ConfigurationManager.AppSettings["DocDBKeyLocal"];
+            string databaseId = ConfigurationManager.AppSettings["DocDBDatabaseGremlin"];
+            string collectionId = ConfigurationManager.AppSettings["DocDBCollectionModern"];
+
+            GraphViewConnection connection = GraphViewConnection.ResetGraphAPICollection(endpoint, authKey, databaseId, collectionId, "label");
+
 
             GraphViewCommand graphCommand = new GraphViewCommand(connection);
 
@@ -146,15 +147,13 @@ namespace GraphViewUnitTest.Gremlin
 
         private static void ClearGraphData(string CollectionName)
         {
-            GraphViewConnection connection = new GraphViewConnection(
-                //ConfigurationManager.AppSettings["DocDBEndPoint"],
-                ConfigurationManager.AppSettings["DocDBEndPointLocal"],
-                //ConfigurationManager.AppSettings["DocDBKey"],
-                ConfigurationManager.AppSettings["DocDBKeyLocal"],
-                ConfigurationManager.AppSettings["DocDBDatabaseGremlin"],
-                CollectionName);
-            connection.ResetCollection();
-            connection.Dispose();
+            //string endpoint = ConfigurationManager.AppSettings["DocDBEndPoint"];
+            string endpoint = ConfigurationManager.AppSettings["DocDBEndPointLocal"];
+            //string authKey = ConfigurationManager.AppSettings["DocDBKey"];
+            string authKey = ConfigurationManager.AppSettings["DocDBKeyLocal"];
+            string databaseId = ConfigurationManager.AppSettings["DocDBDatabaseGremlin"];
+
+            GraphViewConnection.ResetGraphAPICollection(endpoint, authKey, databaseId, CollectionName/*, "name"*/);
         }
     }
 }
