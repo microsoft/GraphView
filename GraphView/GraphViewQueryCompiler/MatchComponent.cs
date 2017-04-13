@@ -46,9 +46,7 @@ namespace GraphView
         // Stores the split count of a materialized node
         public Dictionary<MatchNode, int> MaterializedNodeSplitCount { get; set; }
 
-        public List<Tuple<MatchNode, MatchEdge>> TraversalChain { get; set; }
-
-        public List<Tuple<MatchNode, MatchEdge, MatchNode, List<MatchEdge>, List<MatchEdge>>> TraversalChain2 { get; set; }
+        public List<Tuple<MatchNode, MatchEdge, MatchNode, List<MatchEdge>, List<MatchEdge>>> TraversalChain { get; set; }
 
         public int ActiveNodeCount
         {
@@ -78,8 +76,7 @@ namespace GraphView
             Nodes = new Dictionary<string, MatchNode>();
             EdgeMaterilizedDict = new Dictionary<MatchEdge, bool>();
             MaterializedNodeSplitCount = new Dictionary<MatchNode, int>();
-            TraversalChain = new List<Tuple<MatchNode, MatchEdge>>();
-            TraversalChain2 = new List<Tuple<MatchNode, MatchEdge, MatchNode, List<MatchEdge>, List<MatchEdge>>>();
+            this.TraversalChain = new List<Tuple<MatchNode, MatchEdge, MatchNode, List<MatchEdge>, List<MatchEdge>>>();
             UnmaterializedNodeMapping = new Dictionary<MatchNode, List<MatchEdge>>();
             SinkNodeStatisticsDict = new Dictionary<MatchNode, Statistics>();
             NodeToMaterializedEdgesDict = new Dictionary<string, List<Tuple<MatchEdge, MaterializedEdgeType>>>();
@@ -118,16 +115,10 @@ namespace GraphView
                 UnmaterializedNodeMapping[nodeMapping.Key] = new List<MatchEdge>(nodeMapping.Value);
             }
 
-            TraversalChain = new List<Tuple<MatchNode, MatchEdge>>();
+            this.TraversalChain = new List<Tuple<MatchNode, MatchEdge, MatchNode, List<MatchEdge>, List<MatchEdge>>>();
             foreach (var chain in component.TraversalChain)
             {
-                TraversalChain.Add(new Tuple<MatchNode, MatchEdge>(chain.Item1, chain.Item2));
-            }
-
-            TraversalChain2 = new List<Tuple<MatchNode, MatchEdge, MatchNode, List<MatchEdge>, List<MatchEdge>>>();
-            foreach (var chain in component.TraversalChain2)
-            {
-                TraversalChain2.Add(new Tuple<MatchNode, MatchEdge, MatchNode, List<MatchEdge>, List<MatchEdge>>(
+                this.TraversalChain.Add(new Tuple<MatchNode, MatchEdge, MatchNode, List<MatchEdge>, List<MatchEdge>>(
                     chain.Item1, chain.Item2, chain.Item3, chain.Item4, chain.Item5));
             }
 

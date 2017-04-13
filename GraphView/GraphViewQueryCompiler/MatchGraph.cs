@@ -38,7 +38,6 @@ namespace GraphView
         public MatchNode SinkNode { get; set; }
         public bool IsReversed { get; set; }
         public WEdgeType EdgeType { get; set; }
-        public bool IsFromOuterContext { get; set; }
         public bool IsDanglingEdge { get; set; }
 
         /// <summary>
@@ -138,14 +137,6 @@ namespace GraphView
         internal JsonQuery AttachedJsonQuery { get; set; }
         public HashSet<string> Properties { get; set; }
 
-        public bool IsFromOuterContext { get; set; }
-
-        /// <summary>
-        /// True, if this node alias is defined in one of the parent query contexts;
-        /// false, if the node alias is defined in the current query context.
-        /// </summary>
-        public bool External { get; set; }
-
         /// <summary>
         /// The density value of the GlobalNodeId Column of the corresponding node table.
         /// This value is used to estimate the join selectivity of A-->B. 
@@ -157,11 +148,6 @@ namespace GraphView
         /// can be associated with this node variable. 
         /// </summary>
         public IList<WBooleanExpression> Predicates { get; set; }
-
-        public string RefAlias
-        {
-            get { return NodeAlias + (External ? "Prime" : ""); }
-        }
 
         public override bool Equals(object obj)
         {
@@ -193,8 +179,6 @@ namespace GraphView
             this.TableRowCount = rhs.TableRowCount;
             this.AttachedJsonQuery = rhs.AttachedJsonQuery;
             this.Properties = new HashSet<string>(rhs.Properties);
-            this.IsFromOuterContext = rhs.IsFromOuterContext;
-            this.External = rhs.External;
             this.GlobalNodeIdDensity = rhs.GlobalNodeIdDensity;
             this.Predicates = rhs.Predicates;
         }
@@ -205,9 +189,14 @@ namespace GraphView
         public Dictionary<string, MatchNode> Nodes { get; set; }
         public Dictionary<string, MatchEdge> Edges { get; set; }
         public Dictionary<MatchNode, bool> IsTailNode { get; set; }
-        public List<Tuple<MatchNode, MatchEdge>> TraversalChain { get; set; }
-        public List<Tuple<MatchNode, MatchEdge, MatchNode, List<MatchEdge>, List<MatchEdge>>> TraversalChain2 { get; set; }
-        public Dictionary<string, List<Tuple<MatchEdge, MaterializedEdgeType>>> NodeToMaterializedEdgesDict { get; set; } 
+
+        /// Item1: current node. A query will be sent to the server to fetch this node if this is the first time it appears in the whole list.
+        /// Item2: the traversalEdge whose sink is current node.
+        /// Item3: traversalEdges whose source is currentNode. 
+        ///        This list will either contain 0 or 1 traversal edge in the current version, and it will be pushed to server if possible.
+        /// Item4: backwardMatchingEdges.
+        /// Item5: forwardMatchingEdges.
+        public List<Tuple<MatchNode, MatchEdge, List<MatchEdge>, List<MatchEdge>, List<MatchEdge>>> TraversalOrder { get; set; }
 
         public ConnectedComponent()
         {
