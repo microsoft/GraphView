@@ -21,6 +21,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         /// Equivalent gremlin: "g.V.age.is(32)"
         /// </summary>
         [TestMethod]
+        [TestModernCompatible]
         public void VerticesValuesAgeIs32()
         {
             using (GraphViewCommand GraphViewCommand = new GraphViewCommand(graphConnection))

@@ -87,12 +87,17 @@ namespace GraphView
         /// <param name="docId"></param>
         /// <param name="docObject"></param>
         /// <param name="tooLarge"></param>
-        private static void UploadOne(GraphViewConnection connection, string docId, JObject docObject, out bool tooLarge)
+        private static void UploadOne(GraphViewConnection connection, string docId, JObject docObject, bool isCreate, out bool tooLarge)
         {
             tooLarge = false;
             try {
                 Debug.Assert(docObject != null);
-                connection.ReplaceOrDeleteDocumentAsync(docId, docObject, connection.GetDocumentPartition(docObject)).Wait();
+                if (isCreate) {
+                    connection.CreateDocumentAsync(docObject).Wait();
+                }
+                else {
+                    connection.ReplaceOrDeleteDocumentAsync(docId, docObject, connection.GetDocumentPartition(docObject)).Wait();
+                }
             }
             catch (AggregateException ex)
                 when ((ex.InnerException as DocumentClientException)?.Error.Code == "RequestEntityTooLarge") {
@@ -145,8 +150,7 @@ namespace GraphView
             InsertEdgeObjectInternal(connection, srcVertexObject, srcVertexField, outEdgeObject, false, out outEdgeDocID); // srcVertex uploaded
 
             if (connection.UseReverseEdges) {
-                InsertEdgeObjectInternal(connection, sinkVertexObject, sinkVertexField, inEdgeObject, true,
-                    out inEdgeDocID); // sinkVertex uploaded
+                InsertEdgeObjectInternal(connection, sinkVertexObject, sinkVertexField, inEdgeObject, true, out inEdgeDocID); // sinkVertex uploaded
             }
             else {
                 inEdgeDocID = EdgeDocumentHelper.VirtualReverseEdgeDocId;
@@ -180,6 +184,36 @@ namespace GraphView
             bool tooLarge;
             JArray edgeContainer = (JArray)vertexObject[isReverse ? KW_VERTEX_REV_EDGE : KW_VERTEX_EDGE]; // JArray or JObject
             bool isSpilled = IsSpilledVertex(vertexObject, isReverse);
+
+            //
+            // This graph is compatible only, thus add an edge-document directly
+            //
+            if (connection.GraphType != GraphType.CompatibleOnly) {
+                Debug.Assert(connection.EdgeSpillThreshold == 1);
+
+                // Create a new edge-document to store the edge.
+                JObject edgeDocObject = new JObject {
+                    [KW_DOC_ID] = GraphViewConnection.GenerateDocumentId(),
+                    [KW_EDGEDOC_ISREVERSE] = isReverse,
+                    [KW_EDGEDOC_VERTEXID] = (string)vertexObject[KW_DOC_ID],
+                    [KW_EDGEDOC_EDGE] = new JArray(edgeObject)
+                };
+                if (connection.PartitionPathTopLevel != null) {
+                    // This may be KW_DOC_PARTITION, maybe not
+                    edgeDocObject[connection.PartitionPathTopLevel] = vertexObject[connection.PartitionPathTopLevel];
+                }
+
+                // Upload the edge-document
+                bool dummyTooLarge;
+                UploadOne(connection, (string)edgeDocObject[KW_DOC_ID], edgeDocObject, true, out dummyTooLarge);
+                Debug.Assert(!dummyTooLarge);
+
+
+                newEdgeDocId = (string)edgeDocObject[KW_DOC_ID];
+                return;
+            }
+
+
             if (isSpilled) {
                 // Now it is a large-degree vertex, and contains at least 1 edge-document
                 JArray edgeDocumentsArray = edgeContainer;
@@ -218,7 +252,7 @@ namespace GraphView
                 // If the edge-document is not too large (reach the threshold), try to
                 //   upload the edge into the document
                 if (!tooLarge) {
-                    UploadOne(connection, lastEdgeDocId, edgeDocument, out tooLarge);
+                    UploadOne(connection, lastEdgeDocId, edgeDocument, false, out tooLarge);
                 }
                 if (tooLarge) {
                     // The edge is too large to be filled into the last edge-document
@@ -249,7 +283,7 @@ namespace GraphView
 
                 // Upload the vertex documention (at least, its _nextXxx is changed)
                 bool dummyTooLarge;
-                UploadOne(connection, (string)vertexObject[KW_DOC_ID], vertexObject, out dummyTooLarge);
+                UploadOne(connection, (string)vertexObject[KW_DOC_ID], vertexObject, false, out dummyTooLarge);
                 Debug.Assert(!dummyTooLarge);
             }
             else {
@@ -269,7 +303,7 @@ namespace GraphView
                 }
 
                 if (!tooLarge) {
-                    UploadOne(connection, (string)vertexObject[KW_DOC_ID], vertexObject, out tooLarge);
+                    UploadOne(connection, (string)vertexObject[KW_DOC_ID], vertexObject, false, out tooLarge);
                 }
                 if (tooLarge) {
                     string existEdgeDocId;
@@ -395,7 +429,7 @@ namespace GraphView
             }
 
             bool dummyTooLarge;
-            UploadOne(connection, (string)vertexObject[KW_DOC_ID], vertexObject, out dummyTooLarge);
+            UploadOne(connection, (string)vertexObject[KW_DOC_ID], vertexObject, false, out dummyTooLarge);
             Debug.Assert(!dummyTooLarge);
         }
 
@@ -565,7 +599,7 @@ namespace GraphView
                 ).Remove();
                 edgeContainer.Add(newEdgeObject);
 
-                UploadOne(connection, (string)vertexObject[KW_DOC_ID], vertexObject, out tooLarge);
+                UploadOne(connection, (string)vertexObject[KW_DOC_ID], vertexObject, false, out tooLarge);
                 if (tooLarge) {
                     // Handle this situation: The updated edge is too large to be filled into the vertex-document
                     string existEdgeDocId, newEdgeDocId;
@@ -582,12 +616,17 @@ namespace GraphView
                          (string)e[srcOrSinkVInEdgeObject] == (string)newEdgeObject[srcOrSinkVInEdgeObject]
                 ).Remove();
                 ((JArray)edgeDocObject[KW_EDGEDOC_EDGE]).Add(newEdgeObject);
-                UploadOne(connection, edgeDocId, edgeDocObject, out tooLarge);
+                UploadOne(connection, edgeDocId, edgeDocObject, false, out tooLarge);
                 if (tooLarge) {
+
+                    if (connection.EdgeSpillThreshold == 1) {
+                        throw new GraphViewException("The edge is too large to be stored in one document!");
+                    }
+
                     // Handle this situation: The modified edge is too large to be filled into the original edge-document
                     // Remove the edgeObject added just now, and upload the original edge-document
                     ((JArray)edgeDocObject[KW_EDGEDOC_EDGE]).Last.Remove();
-                    UploadOne(connection, edgeDocId, edgeDocObject, out tooLarge);
+                    UploadOne(connection, edgeDocId, edgeDocObject, false, out tooLarge);
                     Debug.Assert(!tooLarge);
 
                     // Insert the edgeObject to one of the vertex's edge-documents

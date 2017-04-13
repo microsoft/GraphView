@@ -2,14 +2,28 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Configuration;
+using System.Diagnostics;
 using System.Linq;
 using GraphView;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using System.Reflection;
 
 namespace GraphViewUnitTest.Gremlin
 {
+    [AttributeUsage(AttributeTargets.Method)]
+    public class TestModernCompatibleAttribute : Attribute
+    {
+        public bool InitialFlat { get; }
+
+        public TestModernCompatibleAttribute(bool initialFlat = true)
+        {
+            this.InitialFlat = initialFlat;
+        }
+    }
+
+
     /// <summary>
     /// Abstract test class that contains helper methods, and common setup/cleanup.
     /// </summary>
@@ -17,6 +31,8 @@ namespace GraphViewUnitTest.Gremlin
     public class AbstractGremlinTest
     {
         protected static GraphViewConnection graphConnection;
+
+        public TestContext TestContext { get; set; }
 
         /// <summary>
         /// Do any necessary setup.
@@ -39,7 +55,18 @@ namespace GraphViewUnitTest.Gremlin
                 edgeSpillThreshold: 1,
                 partitionByKeyIfViaGraphAPI: "label"
             );
+
+
+            Type classType = Type.GetType(TestContext.FullyQualifiedTestClassName);
+            MethodInfo method = classType.GetMethod(TestContext.TestName, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+            TestModernCompatibleAttribute attr = method.GetCustomAttribute<TestModernCompatibleAttribute>();
+            if (attr != null && attr.InitialFlat) {
+                Console.WriteLine($"[{TestContext.TestName}] Convert the graph to flat!");
+
+                GraphDataLoader.ResetToCompatibleData_Modern(graphConnection);
+            }
         }
+
 
         /// <summary>
         /// Do any necessary cleanup.

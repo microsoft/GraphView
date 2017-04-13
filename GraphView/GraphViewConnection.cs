@@ -164,9 +164,10 @@ namespace GraphView
         /// <param name="docDBAuthorizationKey">The Key</param>
         /// <param name="docDBDatabaseID">Database's ID</param>
         /// <param name="docDBCollectionID">Collection's ID</param>
-        /// <param name="useReverseEdges"></param>
-        /// <param name="edgeSpillThreshold"></param>
-        /// <param name="partitionByKeyIfViaGraphAPI"></param>
+        /// <param name="graphType">The type of graph, compatible only, graph api only, or hybrid</param>
+        /// <param name="useReverseEdges">Whether use reverse edges</param>
+        /// <param name="edgeSpillThreshold">For compatible and hybrid graph, it must be 1.</param>
+        /// <param name="partitionByKeyIfViaGraphAPI">This parameter takes effect only when creating a partitioned collection using graph api.</param>
         /// <param name="preferredLocation"></param>
         public GraphViewConnection(
             string docDBEndpointUrl,
@@ -257,6 +258,10 @@ namespace GraphView
                 this.PartitionPathTopLevel = null;
 
                 Debug.Assert(partitionByKeyIfViaGraphAPI == null);
+            }
+
+            if (graphType != GraphType.GraphAPIOnly) {
+                Debug.Assert(edgeSpillThreshold == 1);
             }
 
             this.Identifier = $"{docDBEndpointUrl}\0{docDBDatabaseID}\0{docDBCollectionID}";

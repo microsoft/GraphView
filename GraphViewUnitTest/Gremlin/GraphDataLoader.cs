@@ -6,8 +6,13 @@ using GraphView;
 
 namespace GraphViewUnitTest.Gremlin
 {
+    using Microsoft.Azure.Documents;
+    using Microsoft.Azure.Documents.Client;
+    using Newtonsoft.Json.Linq;
     using System;
+    using System.Collections.Generic;
     using System.Configuration;
+    using System.Linq;
     using System.Threading.Tasks;
 
     /// <summary>
@@ -15,6 +20,58 @@ namespace GraphViewUnitTest.Gremlin
     /// </summary>
     public static class GraphDataLoader
     {
+        public static void ResetToCompatibleData_Modern(GraphViewConnection connection)
+        {
+            DocumentClient client = new DocumentClient(
+                new Uri(connection.DocDBUrl),
+                connection.DocDBPrimaryKey,
+                new ConnectionPolicy {
+                    ConnectionMode = ConnectionMode.Direct,
+                    ConnectionProtocol = Protocol.Tcp
+                });
+            DocumentCollection collection = client.ReadDocumentCollectionAsync(
+                UriFactory.CreateDocumentCollectionUri(connection.DocDBDatabaseId, connection.DocDBCollectionId)).Result;
+
+            // Remove all existing documents
+            JObject[] docs = client.CreateDocumentQuery<JObject>(
+                collection.SelfLink,
+                new FeedOptions {
+                    EnableCrossPartitionQuery = true
+                }).ToArray();
+            Task.WaitAll(
+                docs.Select(doc => client.DeleteDocumentAsync(
+                    UriFactory.CreateDocumentUri(connection.DocDBDatabaseId, connection.DocDBCollectionId, (string)doc["id"]),
+                    new RequestOptions {
+                        PartitionKey = new PartitionKey(connection.GetDocumentPartition(doc))
+                    }
+                    )).ToArray());
+
+            // Add new documents
+            List<Task> tasks = new List<Task>();
+            Action<string> createDoc = (docString) => {
+                tasks.Add(client.CreateDocumentAsync(collection.SelfLink, JObject.Parse(docString), disableAutomaticIdGeneration: true));
+            };
+            createDoc("{\"label\":\"person\",\"id\":\"dummy\",\"name\":\"marko\",\"age\":19}");
+            createDoc("{\"label\":\"person\",\"id\":\"特殊符号\",\"name\":\"vadas\",\"age\":27}");
+            createDoc("{\"label\":\"software\",\"id\":\"这是一个中文ID\",\"name\":\"lop\",\"lang\":\"java\"}");
+            createDoc("{\"label\":\"person\",\"id\":\"引号\",\"name\":\"josh\",\"age\":32}");
+            createDoc("{\"label\":\"software\",\"id\":\"中文English\",\"name\":\"ripple\",\"lang\":\"java\"}");
+            createDoc("{\"label\":\"person\",\"name\":\"peter\",\"age\":35,\"id\":\"ID_13\"}");
+
+            createDoc("{\"id\":\"ID_15\",\"_is_reverse\":false,\"_vertex_id\":\"dummy\",\"_edge\":[{\"label\":\"knows\",\"weight\":0.5,\"id\":\"ID_14\",\"_sinkV\":\"特殊符号\",\"_sinkVLabel\":\"person\"}],\"label\":\"person\"}");
+            createDoc("{\"id\":\"ID_17\",\"_is_reverse\":false,\"_vertex_id\":\"dummy\",\"_edge\":[{\"label\":\"knows\",\"weight\":1,\"id\":\"ID_16\",\"_sinkV\":\"引号\",\"_sinkVLabel\":\"person\"}],\"label\":\"person\"}");
+            createDoc("{\"id\":\"ID_19\",\"_is_reverse\":false,\"_vertex_id\":\"dummy\",\"_edge\":[{\"label\":\"created\",\"weight\":0.4,\"id\":\"ID_18\",\"_sinkV\":\"这是一个中文ID\",\"_sinkVLabel\":\"software\"}],\"label\":\"person\"}");
+            createDoc("{\"id\":\"ID_21\",\"_is_reverse\":false,\"_vertex_id\":\"引号\",\"_edge\":[{\"label\":\"created\",\"weight\":1,\"id\":\"ID_20\",\"_sinkV\":\"中文English\",\"_sinkVLabel\":\"software\"}],\"label\":\"person\"}");
+            createDoc("{\"id\":\"ID_23\",\"_is_reverse\":false,\"_vertex_id\":\"引号\",\"_edge\":[{\"label\":\"created\",\"weight\":0.4,\"id\":\"ID_22\",\"_sinkV\":\"这是一个中文ID\",\"_sinkVLabel\":\"software\"}],\"label\":\"person\"}");
+            createDoc("{\"id\":\"ID_25\",\"_is_reverse\":false,\"_vertex_id\":\"ID_13\",\"_edge\":[{\"label\":\"created\",\"weight\":0.2,\"id\":\"ID_24\",\"_sinkV\":\"这是一个中文ID\",\"_sinkVLabel\":\"software\"}],\"label\":\"person\"}");
+
+            // Wait for all of them to finish
+            Task.WaitAll(tasks.ToArray());
+
+            client.Dispose();
+        }
+
+
         /// <summary>
         /// Generates and Loads the correct Graph Db, on the local document Db instance.
         /// </summary>

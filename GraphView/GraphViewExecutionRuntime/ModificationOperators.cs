@@ -80,6 +80,10 @@ namespace GraphView
         public AddVOperator(GraphViewExecutionOperator inputOp, GraphViewConnection connection, JObject vertexDocument, List<string> projectedFieldList)
             : base(inputOp, connection)
         {
+            if (connection.GraphType != GraphType.GraphAPIOnly) {
+                throw new GraphViewException("Add vertex is supported only in pure GraphAPI graph.");
+            }
+
             this._vertexDocument = vertexDocument;
             this._projectedFieldList = projectedFieldList;
         }
@@ -194,6 +198,10 @@ namespace GraphView
 
         private void DropVertexProperty(VertexPropertyField vp)
         {
+            if (this.Connection.GraphType != GraphType.GraphAPIOnly) {
+                throw new GraphViewException("Drop vertex property is supported only in pure GraphAPI graph.");
+            }
+
             // Update DocDB
             VertexField vertexField = vp.Vertex;
             JObject vertexObject = vertexField.VertexJObject;
@@ -210,6 +218,10 @@ namespace GraphView
 
         private void DropVertexSingleProperty(VertexSinglePropertyField vp)
         {
+            if (this.Connection.GraphType != GraphType.GraphAPIOnly) {
+                throw new GraphViewException("Drop vertex property is supported only in pure GraphAPI graph.");
+            }
+
             // Update DocDB
             VertexField vertexField = vp.VertexProperty.Vertex;
             JObject vertexObject = vertexField.VertexJObject;
@@ -238,6 +250,10 @@ namespace GraphView
 
         private void DropVertexPropertyMetaProperty(ValuePropertyField metaProperty)
         {
+            if (this.Connection.GraphType != GraphType.GraphAPIOnly) {
+                throw new GraphViewException("Drop vertex property is supported only in pure GraphAPI graph.");
+            }
+
             Debug.Assert(metaProperty.Parent is VertexSinglePropertyField);
             VertexSinglePropertyField vertexSingleProperty = (VertexSinglePropertyField)metaProperty.Parent;
 
@@ -372,6 +388,10 @@ namespace GraphView
 
         private void UpdatePropertiesOfVertex(VertexField vertex)
         {
+            if (this.Connection.GraphType != GraphType.GraphAPIOnly) {
+                throw new GraphViewException("Update vertex property is supported only in pure GraphAPI graph.");
+            }
+
             JObject vertexDocument = vertex.VertexJObject;
             foreach (WPropertyExpression property in this.updateProperties) {
                 Debug.Assert(property.Value != null);
@@ -443,6 +463,10 @@ namespace GraphView
 
         private void UpdateMetaPropertiesOfSingleVertexProperty(VertexSinglePropertyField vp)
         {
+            if (this.Connection.GraphType != GraphType.GraphAPIOnly) {
+                throw new GraphViewException("Update vertex property is supported only in pure GraphAPI graph.");
+            }
+
             string vertexId = vp.VertexProperty.Vertex.VertexId;
             JObject vertexDocument = vp.VertexProperty.Vertex.VertexJObject;
             JObject singleProperty = (JObject)((JArray)vertexDocument[vp.PropertyName])
@@ -646,8 +670,8 @@ namespace GraphView
 
             if (srcVertexField == null || sinkVertexField == null) return null;
 
-            string srcId = srcVertexField["id"].ToValue;
-            string sinkId = sinkVertexField["id"].ToValue;
+            string srcId = srcVertexField[KW_DOC_ID].ToValue;
+            string sinkId = sinkVertexField[KW_DOC_ID].ToValue;
 
             JObject srcVertexObject = srcVertexField.VertexJObject;
             JObject sinkVertexObject = sinkVertexField.VertexJObject;
