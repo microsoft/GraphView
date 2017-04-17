@@ -77,34 +77,42 @@ namespace GraphView
     {
         private Queue<RawRecord> outputBuffer;
         private JsonQuery vertexQuery;
+        private JsonQuery vertexViaExternalAPIQuery;
         private GraphViewConnection connection;
 
         private IEnumerator<RawRecord> verticesEnumerator;
+        private IEnumerator<RawRecord> verticesViaExternalAPIEnumerator;
 
-        public FetchNodeOperator2(GraphViewConnection connection, JsonQuery vertexQuery)
+        public FetchNodeOperator2(GraphViewConnection connection, JsonQuery vertexQuery, JsonQuery vertexViaExternalAPIQuery)
         {
-            Open();
+            this.Open();
             this.connection = connection;
             this.vertexQuery = vertexQuery;
-            verticesEnumerator = connection.CreateDatabasePortal().GetVertices(vertexQuery);
+            this.vertexViaExternalAPIQuery = vertexViaExternalAPIQuery;
+            this.verticesEnumerator = connection.CreateDatabasePortal().GetVertices(vertexQuery);
+            this.verticesViaExternalAPIEnumerator = connection.CreateDatabasePortal().GetVerticesViaExternalAPI(vertexViaExternalAPIQuery);
         }
 
         public override RawRecord Next()
         {
-            if (verticesEnumerator.MoveNext())
-            {
-                return verticesEnumerator.Current;
+            if (this.connection.GraphType != GraphType.CompatibleOnly && this.verticesEnumerator.MoveNext()) {
+                return this.verticesEnumerator.Current;
             }
 
-            Close();
+            if (this.connection.GraphType != GraphType.GraphAPIOnly && this.verticesViaExternalAPIEnumerator.MoveNext()) {
+                return this.verticesViaExternalAPIEnumerator.Current;
+            }
+
+            this.Close();
             return null;
         }
 
         public override void ResetState()
         {
-            verticesEnumerator = connection.CreateDatabasePortal().GetVertices(vertexQuery);
-            outputBuffer?.Clear();
-            Open();
+            this.verticesEnumerator = this.connection.CreateDatabasePortal().GetVertices(this.vertexQuery);
+            this.verticesViaExternalAPIEnumerator = connection.CreateDatabasePortal().GetVerticesViaExternalAPI(this.vertexViaExternalAPIQuery);
+            this.outputBuffer?.Clear();
+            this.Open();
         }
     }
 
@@ -134,6 +142,7 @@ namespace GraphView
         // It is null if the sink vertex has no predicates and no properties other than sink vertex ID
         // are to be returned.  
         private JsonQuery sinkVertexQuery;
+        private JsonQuery sinkVertexViaExternalAPIQuery;
 
         // A list of index pairs, each specifying which field in the source record 
         // must match the field in the sink record. 
@@ -146,14 +155,16 @@ namespace GraphView
             GraphViewConnection connection,
             int sinkIndex,
             JsonQuery sinkVertexQuery,
+            JsonQuery sinkVertexViaExternalAPIQuery,
             List<Tuple<int, int>> matchingIndexes,
             int outputBufferSize = 10000)
         {
-            Open();
+            this.Open();
             this.inputOp = inputOp;
             this.connection = connection;
             this.adjacencyListSinkIndex = sinkIndex;
             this.sinkVertexQuery = sinkVertexQuery;
+            this.sinkVertexViaExternalAPIQuery = sinkVertexViaExternalAPIQuery;
             this.matchingIndexes = matchingIndexes;
             this.outputBufferSize = outputBufferSize;
         }
@@ -245,13 +256,39 @@ namespace GraphView
                             string.Format("({0}) AND {1}", sinkVertexQuery.WhereSearchCondition, inClause);
                     }
 
+                    string spilledEdgeDocumentsInClause =
+                        $"{this.sinkVertexViaExternalAPIQuery.Alias}.{GraphViewKeywords.KW_EDGEDOC_VERTEXID} IN ({sinkReferenceList.ToString()})";
+                    JsonQuery toSendViaExternalAPIQuery = new JsonQuery(this.sinkVertexQuery);
+
+                    if (string.IsNullOrEmpty(toSendViaExternalAPIQuery.WhereSearchCondition)) {
+                        toSendViaExternalAPIQuery.WhereSearchCondition =
+                            $"({inClause}) OR ({spilledEdgeDocumentsInClause})";
+                    }
+                    else {
+                        toSendViaExternalAPIQuery.WhereSearchCondition =
+                            $"(({toSendViaExternalAPIQuery.WhereSearchCondition}) AND {inClause}) OR ({spilledEdgeDocumentsInClause})";
+                    }
+
                     using (DbPortal databasePortal = connection.CreateDatabasePortal())
                     {
                         IEnumerator<RawRecord> verticesEnumerator = databasePortal.GetVertices(toSendQuery);
 
-                        while (verticesEnumerator.MoveNext())
+                        while (this.connection.GraphType != GraphType.CompatibleOnly && verticesEnumerator.MoveNext())
                         {
                             RawRecord rec = verticesEnumerator.Current;
+                            if (!sinkVertexCollection.ContainsKey(rec[0].ToValue))
+                            {
+                                sinkVertexCollection.Add(rec[0].ToValue, new List<RawRecord>());
+                            }
+                            sinkVertexCollection[rec[0].ToValue].Add(rec);
+                        }
+
+                        IEnumerator<RawRecord> verticesViaExternalAPIEnumerator =
+                            databasePortal.GetVerticesViaExternalAPI(toSendViaExternalAPIQuery);
+
+                        while (this.connection.GraphType != GraphType.GraphAPIOnly && verticesViaExternalAPIEnumerator.MoveNext())
+                        {
+                            RawRecord rec = verticesViaExternalAPIEnumerator.Current;
                             if (!sinkVertexCollection.ContainsKey(rec[0].ToValue))
                             {
                                 sinkVertexCollection.Add(rec[0].ToValue, new List<RawRecord>());
@@ -343,12 +380,14 @@ namespace GraphView
         // It is null if the sink vertex has no predicates and no properties other than sink vertex ID
         // are to be returned.  
         private JsonQuery sinkVertexQuery;
+        private JsonQuery sinkVertexViaExternalAPIQuery;
 
         public BothVOperator(
             GraphViewExecutionOperator inputOp,
             GraphViewConnection connection,
             List<int> sinkIndexes,
             JsonQuery sinkVertexQuery,
+            JsonQuery sinkVertexViaExternalAPIQuery,
             int outputBufferSize = 1000)
         {
             Open();
@@ -356,6 +395,7 @@ namespace GraphView
             this.connection = connection;
             this.adjacencyListSinkIndexes = sinkIndexes;
             this.sinkVertexQuery = sinkVertexQuery;
+            this.sinkVertexViaExternalAPIQuery = sinkVertexViaExternalAPIQuery;
             this.outputBufferSize = outputBufferSize;
         }
 
@@ -448,13 +488,39 @@ namespace GraphView
                             string.Format("({0}) AND {1}", sinkVertexQuery.WhereSearchCondition, inClause);
                     }
 
+                    string spilledEdgeDocumentsInClause =
+                        $"{this.sinkVertexViaExternalAPIQuery.Alias}.{GraphViewKeywords.KW_EDGEDOC_VERTEXID} IN ({sinkReferenceList.ToString()})";
+                    JsonQuery toSendViaExternalAPIQuery = new JsonQuery(this.sinkVertexQuery);
+
+                    if (string.IsNullOrEmpty(toSendViaExternalAPIQuery.WhereSearchCondition)) {
+                        toSendViaExternalAPIQuery.WhereSearchCondition =
+                            $"({inClause}) OR ({spilledEdgeDocumentsInClause})";
+                    }
+                    else {
+                        toSendViaExternalAPIQuery.WhereSearchCondition =
+                            $"(({toSendViaExternalAPIQuery.WhereSearchCondition}) AND {inClause}) OR ({spilledEdgeDocumentsInClause})";
+                    }
+
                     using (DbPortal databasePortal = connection.CreateDatabasePortal())
                     {
                         IEnumerator<RawRecord> verticesEnumerator = databasePortal.GetVertices(toSendQuery);
 
-                        while (verticesEnumerator.MoveNext())
+                        while (this.connection.GraphType != GraphType.CompatibleOnly && verticesEnumerator.MoveNext())
                         {
                             RawRecord rec = verticesEnumerator.Current;
+                            if (!sinkVertexCollection.ContainsKey(rec[0].ToValue))
+                            {
+                                sinkVertexCollection.Add(rec[0].ToValue, new List<RawRecord>());
+                            }
+                            sinkVertexCollection[rec[0].ToValue].Add(rec);
+                        }
+
+                        IEnumerator<RawRecord> verticesViaExternalAPIEnumerator =
+                            databasePortal.GetVerticesViaExternalAPI(toSendViaExternalAPIQuery);
+
+                        while (this.connection.GraphType != GraphType.GraphAPIOnly && verticesViaExternalAPIEnumerator.MoveNext())
+                        {
+                            RawRecord rec = verticesViaExternalAPIEnumerator.Current;
                             if (!sinkVertexCollection.ContainsKey(rec[0].ToValue))
                             {
                                 sinkVertexCollection.Add(rec[0].ToValue, new List<RawRecord>());
@@ -4233,7 +4299,7 @@ namespace GraphView
         public override RawRecord Next()
         {
             if (this.outputBuffer.Count > 0) {
-                return outputBuffer.Dequeue();
+                return this.outputBuffer.Dequeue();
             }
 
             while (this.batchInputSequence.Count >= batchSize

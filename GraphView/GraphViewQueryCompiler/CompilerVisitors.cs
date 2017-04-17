@@ -178,10 +178,12 @@ namespace GraphView
         //  value: original column name>
         //
         private Dictionary<string, string> referencedProperties;
+        private HashSet<string> flatProperties;
 
-        public NormalizeNodePredicatesWColumnReferenceExpressionVisitor()
+        public NormalizeNodePredicatesWColumnReferenceExpressionVisitor(string partitionKey)
         {
-            referencedProperties = new Dictionary<string, string>();
+            this.referencedProperties = new Dictionary<string, string>();
+            this.flatProperties = new HashSet<string> { GremlinKeyword.NodeID, GremlinKeyword.Label, partitionKey };
         }
 
         public Dictionary<string, string> Invoke(WBooleanExpression booleanExpression)
@@ -189,7 +191,7 @@ namespace GraphView
             if (booleanExpression != null)
                 booleanExpression.Accept(this);
 
-            return referencedProperties;
+            return this.referencedProperties;
         }
 
         public override void Visit(WColumnReferenceExpression columnReference)
@@ -201,14 +203,12 @@ namespace GraphView
             {
                 string originalColumnName = columnList[1].Value;
 
-                if (originalColumnName.Equals(GremlinKeyword.NodeID) ||
-                    originalColumnName.Equals(GremlinKeyword.Label))
-                {
+                if (this.flatProperties.Contains(originalColumnName)) {
                     return;
                 }
 
                 string encodeName = EncodeString(originalColumnName);
-                referencedProperties[encodeName] = originalColumnName;
+                this.referencedProperties[encodeName] = originalColumnName;
                 columnList[0].Value = encodeName;
                 columnList[1].Value = GraphViewKeywords.KW_PROPERTY_VALUE;
             }

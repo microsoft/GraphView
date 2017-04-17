@@ -1518,6 +1518,7 @@ namespace GraphView
             case KW_DOC_ID:
             case KW_DOC_PARTITION:
             case KW_VERTEX_LABEL:
+            case KW_VERTEX_VIAGRAPHAPI:
             //case KW_VERTEX_NEXTOFFSET:
             case KW_VERTEX_EDGE_SPILLED:
             case KW_VERTEX_REVEDGE_SPILLED:
@@ -1999,7 +2000,7 @@ namespace GraphView
         /// <param name="vertexLabel"></param>
         /// <param name="isReverse"></param>
         /// <param name="edgeDocDict"></param>
-        private void ConstructSpilledOrVirtualAdjacencyListField(
+        internal void ConstructSpilledOrVirtualAdjacencyListField(
             string vertexId, string vertexLabel, bool isReverse, Dictionary<string, JObject> edgeDocDict)
         {
             if (isReverse) {

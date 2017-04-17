@@ -644,7 +644,7 @@ namespace GraphView
         /// </summary>
         /// <param name="edgeDict"></param>
         /// <param name="edgeDocuments"></param>
-        private static void FillEdgeDict(Dictionary<string, Dictionary<string, JObject>> edgeDict,
+        internal static void FillEdgeDict(Dictionary<string, Dictionary<string, JObject>> edgeDict,
             List<dynamic> edgeDocuments)
         {
             foreach (JObject edgeDocument in edgeDocuments) {

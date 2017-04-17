@@ -2,6 +2,7 @@
 // Copyright (c) Microsoft Corporation.  All rights reserved.
 //------------------------------------------------------------
 
+using System.Collections.ObjectModel;
 using GraphView;
 
 namespace GraphViewUnitTest.Gremlin
@@ -20,31 +21,47 @@ namespace GraphViewUnitTest.Gremlin
     /// </summary>
     public static class GraphDataLoader
     {
-        public static void ResetToCompatibleData_Modern(GraphViewConnection connection)
+        public static void ResetToCompatibleData_Modern(string endpoint, string authKey, string databaseId, string collectionId)
         {
             DocumentClient client = new DocumentClient(
-                new Uri(connection.DocDBUrl),
-                connection.DocDBPrimaryKey,
+                new Uri(endpoint),
+                authKey,
                 new ConnectionPolicy {
                     ConnectionMode = ConnectionMode.Direct,
                     ConnectionProtocol = Protocol.Tcp
                 });
-            DocumentCollection collection = client.ReadDocumentCollectionAsync(
-                UriFactory.CreateDocumentCollectionUri(connection.DocDBDatabaseId, connection.DocDBCollectionId)).Result;
 
             // Remove all existing documents
-            JObject[] docs = client.CreateDocumentQuery<JObject>(
-                collection.SelfLink,
-                new FeedOptions {
-                    EnableCrossPartitionQuery = true
-                }).ToArray();
-            Task.WaitAll(
-                docs.Select(doc => client.DeleteDocumentAsync(
-                    UriFactory.CreateDocumentUri(connection.DocDBDatabaseId, connection.DocDBCollectionId, (string)doc["id"]),
-                    new RequestOptions {
-                        PartitionKey = new PartitionKey(connection.GetDocumentPartition(doc))
+            //JObject[] docs = client.CreateDocumentQuery<JObject>(
+            //    collection.SelfLink,
+            //    new FeedOptions {
+            //        EnableCrossPartitionQuery = true
+            //    }).ToArray();
+            //Task.WaitAll(
+            //    docs.Select(doc => client.DeleteDocumentAsync(
+            //        UriFactory.CreateDocumentUri(connection.DocDBDatabaseId, connection.DocDBCollectionId, (string)doc["id"]),
+            //        new RequestOptions {
+            //            PartitionKey = new PartitionKey(connection.GetDocumentPartition(doc))
+            //        }
+            //        )).ToArray());
+
+            // Just remove & recreate the collection
+            client.DeleteDocumentCollectionAsync(
+                UriFactory.CreateDocumentCollectionUri(databaseId, collectionId)
+            ).Wait();
+
+            client.CreateDocumentCollectionAsync(
+                UriFactory.CreateDatabaseUri(databaseId),
+                new DocumentCollection {
+                    Id = collectionId,
+                    PartitionKey = new PartitionKeyDefinition {
+                        Paths = new Collection<string> { "/label" }
                     }
-                    )).ToArray());
+                }
+            ).Wait();
+            DocumentCollection collection = client.ReadDocumentCollectionAsync(
+                UriFactory.CreateDocumentCollectionUri(databaseId, collectionId)).Result;
+
 
             // Add new documents
             List<Task> tasks = new List<Task>();
@@ -58,12 +75,12 @@ namespace GraphViewUnitTest.Gremlin
             createDoc("{\"label\":\"software\",\"id\":\"中文English\",\"name\":\"ripple\",\"lang\":\"java\"}");
             createDoc("{\"label\":\"person\",\"name\":\"peter\",\"age\":35,\"id\":\"ID_13\"}");
 
-            createDoc("{\"id\":\"ID_15\",\"_is_reverse\":false,\"_vertex_id\":\"dummy\",\"_edge\":[{\"label\":\"knows\",\"weight\":0.5,\"id\":\"ID_14\",\"_sinkV\":\"特殊符号\",\"_sinkVLabel\":\"person\"}],\"label\":\"person\"}");
-            createDoc("{\"id\":\"ID_17\",\"_is_reverse\":false,\"_vertex_id\":\"dummy\",\"_edge\":[{\"label\":\"knows\",\"weight\":1,\"id\":\"ID_16\",\"_sinkV\":\"引号\",\"_sinkVLabel\":\"person\"}],\"label\":\"person\"}");
-            createDoc("{\"id\":\"ID_19\",\"_is_reverse\":false,\"_vertex_id\":\"dummy\",\"_edge\":[{\"label\":\"created\",\"weight\":0.4,\"id\":\"ID_18\",\"_sinkV\":\"这是一个中文ID\",\"_sinkVLabel\":\"software\"}],\"label\":\"person\"}");
-            createDoc("{\"id\":\"ID_21\",\"_is_reverse\":false,\"_vertex_id\":\"引号\",\"_edge\":[{\"label\":\"created\",\"weight\":1,\"id\":\"ID_20\",\"_sinkV\":\"中文English\",\"_sinkVLabel\":\"software\"}],\"label\":\"person\"}");
-            createDoc("{\"id\":\"ID_23\",\"_is_reverse\":false,\"_vertex_id\":\"引号\",\"_edge\":[{\"label\":\"created\",\"weight\":0.4,\"id\":\"ID_22\",\"_sinkV\":\"这是一个中文ID\",\"_sinkVLabel\":\"software\"}],\"label\":\"person\"}");
-            createDoc("{\"id\":\"ID_25\",\"_is_reverse\":false,\"_vertex_id\":\"ID_13\",\"_edge\":[{\"label\":\"created\",\"weight\":0.2,\"id\":\"ID_24\",\"_sinkV\":\"这是一个中文ID\",\"_sinkVLabel\":\"software\"}],\"label\":\"person\"}");
+            createDoc("{\"id\":\"ID_15\",\"_is_reverse\":false,\"_vertex_id\":\"dummy\",\"label\":\"person\",\"_edge\":[{\"label\":\"knows\",\"weight\":0.5,\"id\":\"ID_14\",\"_sinkV\":\"特殊符号\",\"_sinkVLabel\":\"person\"}],\"label\":\"person\"}");
+            createDoc("{\"id\":\"ID_17\",\"_is_reverse\":false,\"_vertex_id\":\"dummy\",\"label\":\"person\",\"_edge\":[{\"label\":\"knows\",\"weight\":1,\"id\":\"ID_16\",\"_sinkV\":\"引号\",\"_sinkVLabel\":\"person\"}],\"label\":\"person\"}");
+            createDoc("{\"id\":\"ID_19\",\"_is_reverse\":false,\"_vertex_id\":\"dummy\",\"label\":\"person\",\"_edge\":[{\"label\":\"created\",\"weight\":0.4,\"id\":\"ID_18\",\"_sinkV\":\"这是一个中文ID\",\"_sinkVLabel\":\"software\"}],\"label\":\"person\"}");
+            createDoc("{\"id\":\"ID_21\",\"_is_reverse\":false,\"_vertex_id\":\"引号\" ,\"label\":\"person\",\"_edge\":[{\"label\":\"created\",\"weight\":1,\"id\":\"ID_20\",\"_sinkV\":\"中文English\",\"_sinkVLabel\":\"software\"}],\"label\":\"person\"}");
+            createDoc("{\"id\":\"ID_23\",\"_is_reverse\":false,\"_vertex_id\":\"引号\" ,\"label\":\"person\",\"_edge\":[{\"label\":\"created\",\"weight\":0.4,\"id\":\"ID_22\",\"_sinkV\":\"这是一个中文ID\",\"_sinkVLabel\":\"software\"}],\"label\":\"person\"}");
+            createDoc("{\"id\":\"ID_25\",\"_is_reverse\":false,\"_vertex_id\":\"ID_13\",\"label\":\"person\",\"_edge\":[{\"label\":\"created\",\"weight\":0.2,\"id\":\"ID_24\",\"_sinkV\":\"这是一个中文ID\",\"_sinkVLabel\":\"software\"}],\"label\":\"person\"}");
 
             // Wait for all of them to finish
             Task.WaitAll(tasks.ToArray());

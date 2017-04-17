@@ -49,21 +49,29 @@ namespace GraphViewUnitTest.Gremlin
 
             GraphDataLoader.LoadGraphData(GraphData.MODERN);
 
-            graphConnection = new GraphViewConnection(
-                endpoint, authKey, databaseId, collectionId, 
-                GraphType.GraphAPIOnly,
-                edgeSpillThreshold: 1,
-                partitionByKeyIfViaGraphAPI: "label"
-            );
-
-
             Type classType = Type.GetType(TestContext.FullyQualifiedTestClassName);
             MethodInfo method = classType.GetMethod(TestContext.TestName, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
             TestModernCompatibleAttribute attr = method.GetCustomAttribute<TestModernCompatibleAttribute>();
             if (attr != null && attr.InitialFlat) {
                 Console.WriteLine($"[{TestContext.TestName}] Convert the graph to flat!");
 
-                GraphDataLoader.ResetToCompatibleData_Modern(graphConnection);
+                GraphDataLoader.ResetToCompatibleData_Modern(endpoint, authKey, databaseId, collectionId);
+
+                graphConnection = new GraphViewConnection(
+                    endpoint, authKey, databaseId, collectionId,
+                    GraphType.CompatibleOnly,
+                    edgeSpillThreshold: 1,
+                    partitionByKeyIfViaGraphAPI: null
+                );
+
+            }
+            else {
+                graphConnection = new GraphViewConnection(
+                    endpoint, authKey, databaseId, collectionId,
+                    GraphType.GraphAPIOnly,
+                    edgeSpillThreshold: 1,
+                    partitionByKeyIfViaGraphAPI: "label"
+                );
             }
         }
 
