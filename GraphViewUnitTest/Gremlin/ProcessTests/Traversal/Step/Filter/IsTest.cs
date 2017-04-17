@@ -40,6 +40,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         /// Equivalent gremlin: "gremlin-groovy", "g.V.age.is(lte(30))"
         /// </summary>
         [TestMethod]
+        [TestModernCompatible]
         public void VerticesValuesAgeIsLTE30()
         {
             using (GraphViewCommand GraphViewCommand = new GraphViewCommand(graphConnection))
@@ -74,6 +75,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         /// Equivalent gremlin: "g.V.where(__.in('created').count.is(1)).name"
         /// </summary>
         [TestMethod]
+        [TestModernCompatible]
         public void VerticesWhereInCreatedCountIs1ValuesName()
         {
             using (GraphViewCommand GraphViewCommand = new GraphViewCommand(graphConnection))
@@ -91,6 +93,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         /// Equivalent gremlin: "gremlin-groovy", "g.V.where(__.in('created').count.is(gte(2l))).name"
         /// </summary>
         [TestMethod]
+        [TestModernCompatible]
         public void VerticesWhereInCreatedCountIsGTE2ValuesName()
         {
             using (GraphViewCommand GraphViewCommand = new GraphViewCommand(graphConnection))

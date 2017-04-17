@@ -17,6 +17,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// Gremlin: g.V().as("a").flatMap(select("a"));
         /// </summary>
         [TestMethod]
+        [TestModernCompatible]
         public void FlatMapWithSelect()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))

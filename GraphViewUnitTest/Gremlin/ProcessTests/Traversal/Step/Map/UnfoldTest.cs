@@ -19,6 +19,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// Equivalent gremlin: "g.V.local(__.outE.fold).unfold"
         /// </summary>
         [TestMethod]
+        [TestModernCompatible]
         public void LocalOutEFoldUnfold()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -73,6 +74,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// Equivalent gremlin: "g.V(v1Id).repeat(__.both.simplePath).until(hasId(v6Id)).path.by('name').unfold", "v1Id", v1Id, "v6Id", v6Id
         /// </summary>
         [TestMethod]
+        [TestModernCompatible]
         public void HasVIdRepeatBothSimplePathUntilHasIdVPathByNameUnfold()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))

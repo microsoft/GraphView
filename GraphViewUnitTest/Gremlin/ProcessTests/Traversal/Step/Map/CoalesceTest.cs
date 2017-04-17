@@ -18,6 +18,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// Gremlin: g.V().coalesce(out("foo"), out("bar"));
         /// </summary>
         [TestMethod]
+        [TestModernCompatible]
         public void CoalesceWithNonexistentTraversals()
         {
             using (GraphViewCommand GraphViewCommand = new GraphViewCommand(graphConnection))
@@ -38,6 +39,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// Gremlin: g.V(v1Id).coalesce(out("knows"), out("created")).values("name");
         /// </summary>
         [TestMethod]
+        [TestModernCompatible]
         public void CoalesceWithTwoTraversals()
         {
             using (GraphViewCommand GraphViewCommand = new GraphViewCommand(graphConnection))
@@ -60,6 +62,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// Gremlin: g.V(v1Id).coalesce(out("created"), out("knows")).values("name");
         /// </summary>
         [TestMethod]
+        [TestModernCompatible]
         public void CoalesceWithTraversalsInDifferentOrder()
         {
             using (GraphViewCommand GraphViewCommand = new GraphViewCommand(graphConnection))
@@ -82,6 +85,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// Gremlin: g.V().coalesce(out("likes"), out("knows"), out("created")).<String>groupCount().by("name");
         /// </summary>
         [TestMethod]
+        [TestModernCompatible]
         public void CoalesceWithGroupCount()
         {
             using (GraphViewCommand GraphViewCommand = new GraphViewCommand(graphConnection))
@@ -110,6 +114,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// </summary>
 
         [TestMethod]
+        [TestModernCompatible]
         public void CoalesceWithPath()
         {
             using (GraphViewCommand GraphViewCommand = new GraphViewCommand(graphConnection))

@@ -68,7 +68,7 @@ namespace GraphViewUnitTest.Gremlin
             Action<string> createDoc = (docString) => {
                 tasks.Add(client.CreateDocumentAsync(collection.SelfLink, JObject.Parse(docString), disableAutomaticIdGeneration: true));
             };
-            createDoc("{\"label\":\"person\",\"id\":\"dummy\",\"name\":\"marko\",\"age\":19}");
+            createDoc("{\"label\":\"person\",\"id\":\"dummy\",\"name\":\"marko\",\"age\":29}");
             createDoc("{\"label\":\"person\",\"id\":\"特殊符号\",\"name\":\"vadas\",\"age\":27}");
             createDoc("{\"label\":\"software\",\"id\":\"这是一个中文ID\",\"name\":\"lop\",\"lang\":\"java\"}");
             createDoc("{\"label\":\"person\",\"id\":\"引号\",\"name\":\"josh\",\"age\":32}");

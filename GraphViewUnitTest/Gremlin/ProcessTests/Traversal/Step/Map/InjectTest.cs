@@ -22,6 +22,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// https://msdata.visualstudio.com/DocumentDB/_workitems/edit/37567
         /// </remarks>
         [TestMethod]
+        [TestModernCompatible]
         public void BasicInject()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))

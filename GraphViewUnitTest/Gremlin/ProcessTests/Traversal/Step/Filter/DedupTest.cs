@@ -22,6 +22,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         /// Gremlin: g.V().out().in().values("name").fold().dedup(Scope.local).unfold();
         /// </summary>
         [TestMethod]
+        [TestModernCompatible]
         public void DedupLocalScope()
         {
             using (GraphViewCommand GraphViewCommand = new GraphViewCommand(graphConnection))
@@ -45,6 +46,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         /// Gremlin: g.V().out().as("x").in().as("y").select("x", "y").by("name").fold().dedup(Scope.local, "x", "y").unfold();
         /// </summary>
         [TestMethod]
+        [TestModernCompatible]
         public void DedupLocalMultipleLabels()
         {
             using (GraphViewCommand GraphViewCommand = new GraphViewCommand(graphConnection))
@@ -80,6 +82,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         /// Gremlin: g.V().both().dedup().values("name");
         /// </summary>
         [TestMethod]
+        [TestModernCompatible]
         public void DedupWithBoth()
         {
             using (GraphViewCommand GraphViewCommand = new GraphViewCommand(graphConnection))
@@ -100,6 +103,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         /// Gremlin: g.V().both().has(T.label, "software").dedup().by("lang").values("name");
         /// </summary>
         [TestMethod]
+        [TestModernCompatible]
         public void DedupBy()
         {
             using (GraphViewCommand GraphViewCommand = new GraphViewCommand(graphConnection))
@@ -151,6 +155,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         /// Gremlin: g.V().both().both().<String>values("name").dedup();
         /// </summary>
         [TestMethod]
+        [TestModernCompatible]
         public void DedupLargeAmountStrings()
         {
             using (GraphViewCommand GraphViewCommand = new GraphViewCommand(graphConnection))
@@ -172,6 +177,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         /// Gremlin: g.V().both().both().dedup()
         /// </summary>
         [TestMethod]
+        [TestModernCompatible]
         public void DedupLargeAmountVertexes()
         {
             using (GraphViewCommand GraphViewCommand = new GraphViewCommand(graphConnection))
@@ -200,6 +206,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         /// Gremlin: g.V().both().both().dedup().by(T.label);
         /// </summary>
         [TestMethod]
+        [TestModernCompatible]
         public void DedupByLabel()
         {
             using (GraphViewCommand GraphViewCommand = new GraphViewCommand(graphConnection))
@@ -221,6 +228,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         /// Gremlin: g.V().<String, List<Double>>group().by(T.label).by(bothE().values("weight").dedup().fold());
         /// </summary>
         [TestMethod]
+        [TestModernCompatible]
         public void DedupInsideBy()
         {
             using (GraphViewCommand GraphViewCommand = new GraphViewCommand(graphConnection))
@@ -248,6 +256,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         /// Gremlin: g.V().as("a").both().as("b").dedup("a", "b").by(T.label).select("a", "b");
         /// </summary>
         [TestMethod]
+        [TestModernCompatible]
         public void DedupMultipleLabels()
         {
             using (GraphViewCommand GraphViewCommand = new GraphViewCommand(graphConnection))
@@ -333,6 +342,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         /// Gremlin: g.V().outE().as("e").inV().as("v").select("e").order().by("weight", Order.incr).select("v").<String>values("name").dedup();
         /// </summary>
         [TestMethod]
+        [TestModernCompatible]
         public void DedupWithOrder()
         {
             using (GraphViewCommand GraphViewCommand = new GraphViewCommand(graphConnection))
@@ -360,6 +370,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         /// Gremlin: g.V().both().both().dedup().by(__.outE().count()).values("name");
         /// </summary>
         [TestMethod]
+        [TestModernCompatible]
         public void DedupByAnonymousTraversal()
         {
             using (GraphViewCommand GraphViewCommand = new GraphViewCommand(graphConnection))
@@ -388,6 +399,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         /// Gremlin: g.V().groupCount().select(values).<Long>unfold().dedup();
         /// </summary>
         [TestMethod]
+        [TestModernCompatible]
         public void DedupWithGroupCount()
         {
             using (GraphViewCommand GraphViewCommand = new GraphViewCommand(graphConnection))
@@ -410,6 +422,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         /// Gremlin: g.V().as("a").repeat(both()).times(3).emit().values("name").as("b").group().by(select("a")).by(select("b").dedup().order().fold()).select(values).<Collection<String>>unfold().dedup();
         /// </summary>
         [TestMethod]
+        [TestModernCompatible]
         public void TwoDedups()
         {
             using (GraphViewCommand GraphViewCommand = new GraphViewCommand(graphConnection))
@@ -442,6 +455,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         /// Gremlin: g.V().repeat(dedup()).times(2).count();
         /// </summary>
         [TestMethod]
+        [TestModernCompatible]
         public void DedupInsideRepeat()
         {
             using (GraphViewCommand GraphViewCommand = new GraphViewCommand(graphConnection))
@@ -455,7 +469,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
 
                 var result = traversal.Next();
 
-                CheckOrderedResults(new string[] { "marko", "vadas", "lop", "josh", "ripple", "peter" }, result);
+                CheckUnOrderedResults(new string[] { "marko", "vadas", "lop", "josh", "ripple", "peter" }, result);
             }
         }
     }

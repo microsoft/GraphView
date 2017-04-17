@@ -14,6 +14,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// Equivalent gremlin: "g.V.local(__.outE.count())"
         /// </summary>
         [TestMethod]
+        [TestModernCompatible]
         public void VerticesLocalOutECount()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -31,6 +32,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// Equivalent gremlin: "g.V(v4Id).local(__.bothE('knows', 'created').limit(1))", "v4Id", v4Id
         /// </summary>
         [TestMethod]
+        [TestModernCompatible]
         public void VertexWithIdLocalBothEKnowsCreatedLimit1()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -59,6 +61,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// Equivalent gremlin: "g.V(v4Id).local(__.bothE.limit(1)).otherV.name", "v4Id", v4Id
         /// </summary>
         [TestMethod]
+        [TestModernCompatible]
         public void VertexWithIdLocalBothELimit1OtherVName()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -78,6 +81,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// Equivalent gremlin: "g.V(v4Id).local(__.bothE.limit(2)).otherV.name", "v4Id", v4Id
         /// </summary>
         [TestMethod]
+        [TestModernCompatible]
         public void VertexWithIdLocalBothELimit2OtherVName()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -100,6 +104,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// Equivalent gremlin: "g.V().local(__.inE('knows').limit(2).outV).name"
         /// </summary>
         [TestMethod]
+        [TestModernCompatible]
         public void VertexWithIdLocalInEKnowsLimit2OutVName()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -122,6 +127,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// Equivalent gremlin: "g.V(v4Id).local(__.bothE('created').limit(1))", "v4Id", v4Id);
         /// </summary>
         [TestMethod]
+        [TestModernCompatible]
         public void VertexWithIdLocalBothECreatedLimit1()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -148,6 +154,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// Equivalent gremlin: "g.V(v1Id).local(__.outE('knows').limit(1)).inV.name", "v1Id", v1Id
         /// </summary>
         [TestMethod]
+        [TestModernCompatible]
         public void VertexWithIdLocalOutEKnowsLimit1InVName()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -167,6 +174,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// Equivalent gremlin: "g.V().local(__.bothE('created').limit(1)).otherV.name");
         /// </summary>
         [TestMethod]
+        [TestModernCompatible]
         public void VerticesLocalBothECreatedLimit1OtherVName()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))

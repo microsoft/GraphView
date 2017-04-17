@@ -16,6 +16,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// Gremlin: g.V().constant(123);
         /// </summary>
         [TestMethod]
+        [TestModernCompatible]
         public void ConstantWithVertex()
         {
             using (GraphViewCommand GraphViewCommand = new GraphViewCommand(graphConnection))
@@ -37,6 +38,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// https://msdata.visualstudio.com/DocumentDB/_workitems/edit/36801
         /// </remarks>
         [TestMethod]
+        [TestModernCompatible]
         public void ConstantWithChoose()
         {
             using (GraphViewCommand GraphViewCommand = new GraphViewCommand(graphConnection))

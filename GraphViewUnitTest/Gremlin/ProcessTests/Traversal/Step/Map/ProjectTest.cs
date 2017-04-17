@@ -22,6 +22,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// WorkItem: https://msdata.visualstudio.com/DocumentDB/_workitems/edit/37476
         /// </remarks>
         [TestMethod]
+        [TestModernCompatible]
         public void HasLabelPersonProjectABByOutECountByAge()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -51,6 +52,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// Equivalent gremlin: "g.V.out('created').project('a', 'b').by('name').by(__.in('created').count).order.by(select('b'),decr).select('a')"
         /// </summary>
         [TestMethod]
+        [TestModernCompatible]
         public void VerticesOutCreatedProjectABByNameByInCreatedCountOrderBySelectB()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))

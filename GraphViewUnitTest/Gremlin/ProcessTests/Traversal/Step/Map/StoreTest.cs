@@ -15,6 +15,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// Equivalent gremlin: "g.V().store('a').by('name').out().cap('a')"
         /// </summary>
         [TestMethod]
+        [TestModernCompatible]
         public void VerticesStoreAByNameOutCapA()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -36,6 +37,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// </remarks>
         [TestMethod]
         [TestCategory("Ignore")] // P0: regression
+        [TestModernCompatible]
         public void VertexWithIdStoreAByNameOutStoreAByNameValuesNameCapA()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -58,6 +60,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// </remarks>
         [TestMethod]
         [TestCategory("Ignore")] // P0: regression
+        [TestModernCompatible]
         public void VerticesStoreAByOutECountOutOutStoreAByInECreatedValuesWeightSumCapA()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))

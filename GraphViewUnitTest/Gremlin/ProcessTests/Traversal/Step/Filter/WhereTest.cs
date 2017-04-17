@@ -23,6 +23,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         /// <remarks>
         /// </remarks>
         [TestMethod]
+        [TestModernCompatible]
         public void WhereNeqTest()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -38,6 +39,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         /// Equivalent gremlin: "g.V.has('age').as('a').out.in.has('age').as('b').select('a','b').where('a', eq('b'))"
         /// </summary>
         [TestMethod]
+        [TestModernCompatible]
         public void VerticesHasAgeAsAOutInHasAgeAsBSelectABWhereAEqB()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -80,6 +82,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         /// Equivalent gremlin: "g.V.has('age').as('a').out.in.has('age').as('b').select('a','b').where('a', neq('b'))"
         /// </summary>
         [TestMethod]
+        [TestModernCompatible]
         public void VerticesHasAgeAsAOutInHasAgeAsBSelectABWhereANeqB()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -241,6 +244,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         /// Equivalent gremlin: "g.V(v1Id).as('a').out('created').in('created').as('b').where('a', neq('b')).name", "v1Id", v1Id
         /// </summary>
         [TestMethod]
+        [TestModernCompatible]
         public void HasVextexIdAsAOutCreatedInCreatedAsBWhereANeqBValuesName()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -265,6 +269,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         /// Equivalent gremlin: "g.V(v1Id).as('a').out('created').in('created').as('b').where(__.as('b').out('created').has('name','ripple')).values('age','name')", "v1Id", v1Id
         /// </summary>
         [TestMethod]
+        [TestModernCompatible]
         public void HasVextexIdAsAOutCreatedInCreatedAsBWhereAsBOutCreatedHasNameRippleValuesAgeName()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -288,6 +293,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         /// Equivalent gremlin: "g.V(v1Id).as('a').out('created').in('created').where(eq('a')).name", "v1Id", v1Id
         /// </summary>
         [TestMethod]
+        [TestModernCompatible]
         public void HasVertexIdAsAOutCreatedInCreatedWhereEqAVaulesName()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -308,6 +314,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         /// Equivalent gremlin: "g.V(v1Id).as('a').out('created').in('created').where(neq('a')).name", "v1Id", v1Id
         /// </summary>
         [TestMethod]
+        [TestModernCompatible]
         public void HasVertexIdAsAOutCreatedInCreatedWhereNeqAVaulesName()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -333,6 +340,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         /// WorkItem: https://msdata.visualstudio.com/DocumentDB/_workitems/edit/38576
         /// </remarks>
         [TestMethod]
+        [TestModernCompatible]
         public void HasVertexIdOutAggregateXOutWhereNotWithinX()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -426,6 +434,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         /// Equivalent gremlin: "g.V.where(__.not(out('created'))).name"
         /// </summary>
         [TestMethod]
+        [TestModernCompatible]
         public void VerticesWhereNotOutCreatedValuesN()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -502,6 +511,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         /// WorkItem: https://msdata.visualstudio.com/DocumentDB/_workitems/edit/38580
         /// </remarks>
         [TestMethod]
+        [TestModernCompatible]
         public void VerticesWhereOutCreatedAndOutKnowsORInKnowsValueName()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))

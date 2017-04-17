@@ -250,7 +250,7 @@ namespace GraphView
         private void DropVertexPropertyMetaProperty(ValuePropertyField metaProperty)
         {
             if (this.Connection.GraphType != GraphType.GraphAPIOnly) {
-                throw new GraphViewException("Drop vertex property is supported only in pure GraphAPI graph.");
+                throw new GraphViewException("Drop vertex property is supported only in GraphAPI vertex.");
             }
 
             Debug.Assert(metaProperty.Parent is VertexSinglePropertyField);
@@ -387,8 +387,8 @@ namespace GraphView
 
         private void UpdatePropertiesOfVertex(VertexField vertex)
         {
-            if (this.Connection.GraphType != GraphType.GraphAPIOnly) {
-                throw new GraphViewException("Update vertex property is supported only in pure GraphAPI graph.");
+            if (!vertex.ViaGraphAPI) {
+                throw new GraphViewException("Update vertex property is not supported on external vertex.");
             }
 
             JObject vertexDocument = vertex.VertexJObject;
@@ -592,17 +592,17 @@ namespace GraphView
             // Delete the vertex-document!
             JObject vertexObject = vertex.VertexJObject;
 #if DEBUG
-            //Debug.Assert(JToken.DeepEquals(vertexObject, this.Connection.RetrieveDocumentById(vertexId)));
+            if (vertex.ViaGraphAPI) {
+                Debug.Assert(vertexObject[KW_VERTEX_EDGE] is JArray);
+                if (!EdgeDocumentHelper.IsSpilledVertex(vertexObject, false)) {
+                    Debug.Assert(((JArray)vertexObject[KW_VERTEX_EDGE]).Count == 0);
+                }
 
-            Debug.Assert(vertexObject[KW_VERTEX_EDGE] is JArray);
-            if (!EdgeDocumentHelper.IsSpilledVertex(vertexObject, false)) {
-                Debug.Assert(((JArray)vertexObject[KW_VERTEX_EDGE]).Count == 0);
-            }
-
-            if (this.Connection.UseReverseEdges) {
-                Debug.Assert(vertexObject[KW_VERTEX_REV_EDGE] is JArray);
-                if (!EdgeDocumentHelper.IsSpilledVertex(vertexObject, true)) {
-                    Debug.Assert(((JArray)vertexObject[KW_VERTEX_REV_EDGE]).Count == 0);
+                if (this.Connection.UseReverseEdges) {
+                    Debug.Assert(vertexObject[KW_VERTEX_REV_EDGE] is JArray);
+                    if (!EdgeDocumentHelper.IsSpilledVertex(vertexObject, true)) {
+                        Debug.Assert(((JArray)vertexObject[KW_VERTEX_REV_EDGE]).Count == 0);
+                    }
                 }
             }
 #endif

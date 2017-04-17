@@ -19,6 +19,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// Gremlin: g.V().fold();
         /// </summary>
         [TestMethod]
+        [TestModernCompatible]
         public void BasicFold()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -39,6 +40,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// Gremlin: g.V().fold().unfold();
         /// </summary>
         [TestMethod]
+        [TestModernCompatible]
         public void FoldThenUnfold()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))

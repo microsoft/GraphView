@@ -17,6 +17,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// Equivalent gremlin: "g.V.has('age').properties('name', 'age').value"
         /// </summary>
         [TestMethod]
+        [TestModernCompatible]
         public void VerticesHasAgePropertiesNameAgeValue()
         {
             //using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -35,6 +36,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// Equivalent gremlin: "g.V.has('age').properties('age', 'name').value"
         /// </summary>
         [TestMethod]
+        [TestModernCompatible]
         public void VerticesHasAgePropertiesAgeNameValue()
         {
             //using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -53,6 +55,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// Equivalent gremlin: "g.V.has('age').properties().has(T.id, nameId).value()", "nameId", nameId
         /// </summary>
         [TestMethod]
+        [TestModernCompatible]
         public void VerticesHasAgePropertiesHasIdNameIdValue()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -76,6 +79,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// NOTE: original test also does asserts on Vertex Property Ids, but since we do not support Vertex Property Ids, I've skipped doing these asserts.
         /// </remarks>
         [TestMethod]
+        [TestModernCompatible]
         public void VerticesHasAgePropertiesName()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))

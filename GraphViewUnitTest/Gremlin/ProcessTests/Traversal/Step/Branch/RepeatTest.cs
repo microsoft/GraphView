@@ -22,6 +22,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Branch
         /// </summary>
         [TestMethod]
         [Owner("zhlian")]
+        [TestModernCompatible]
         public void VerticesRepeatOutTimes2EmitPath()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -54,6 +55,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Branch
         /// </remarks>
         [TestMethod]
         [Owner("zhlian")]
+        [TestModernCompatible]
         public void VerticesRepeatOutTimes2RepeatInTimes2ValuesName()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -82,6 +84,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Branch
         /// </remarks>
         [TestMethod]
         [Owner("zhlian")]
+        [TestModernCompatible]
         public void VerticesRepeatOutTimes2()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -107,6 +110,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Branch
         /// </remarks>
         [TestMethod]
         [Owner("zhlian")]
+        [TestModernCompatible]
         public void VerticesRepeatOutTimes2Emit()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -144,6 +148,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Branch
         /// </remarks>
         [TestMethod]
         [Owner("zhlian")]
+        [TestModernCompatible]
         public void HasVertexIdTimes2RepeatOutValuesName()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -189,6 +194,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Branch
         /// </summary>
         [TestMethod]
         [Owner("zhlian")]
+        [TestModernCompatible]
         public void VerticesEmitTimes2RepeatOutPath()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -206,6 +212,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Branch
         /// </summary>
         [TestMethod]
         [Owner("zhlian")]
+        [TestModernCompatible]
         public void VerticesEmitRepeatOutTimes2Path()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -228,6 +235,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Branch
         /// </remarks>
         [TestMethod]
         [Owner("zhlian")]
+        [TestModernCompatible]
         public void HasVertexIdEmitHasLabelPersonRepeatOutValuesName()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -252,6 +260,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Branch
         /// </summary>
         [TestMethod]
         [Owner("zhlian")]
+        [TestModernCompatible]
         public void VerticesRepeatGroupCountMByNameOutTimes2CapM()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -276,6 +285,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Branch
         /// </summary>
         [TestMethod]
         [Owner("zhlian")]
+        [TestModernCompatible]
         public void VerticesRepeatBothTimes10AsAOutAsBSelectAB()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -305,6 +315,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Branch
         /// </remarks>
         [TestMethod]
         [Owner("zhlian")]
+        [TestModernCompatible]
         public void HasVertexIdRepeatOutUntilOutECountIs0ValuesName()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))

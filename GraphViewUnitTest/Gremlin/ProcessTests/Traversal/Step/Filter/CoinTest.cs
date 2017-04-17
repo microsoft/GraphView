@@ -12,6 +12,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
     public class CoinTest : AbstractGremlinTest
     {
         [TestMethod]
+        [TestModernCompatible]
         public void CoinWithProbabilityEq1()
         {
             using (GraphViewCommand command = new GraphViewCommand(graphConnection)) {
@@ -22,6 +23,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         }
 
         [TestMethod]
+        [TestModernCompatible]
         public void CoinWithProbabilityEq0()
         {
             using (GraphViewCommand command = new GraphViewCommand(graphConnection)) {
@@ -33,6 +35,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         }
 
         [TestMethod]
+        [TestModernCompatible]
         public void CoinWithProbabilityEqHalf()
         {
             using (GraphViewCommand command = new GraphViewCommand(graphConnection)) {

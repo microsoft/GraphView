@@ -15,6 +15,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// Gremlin: g.V(v1Id).values("name").path();
         /// </summary>
         [TestMethod]
+        [TestModernCompatible]
         public void get_g_VX1X_name_path()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -36,6 +37,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// Gremlin: g.V(v1Id).out().path().by("age").by("name");
         /// </summary>
         [TestMethod]
+        [TestModernCompatible]
         public void get_g_VX1X_out_path_byXageX_byXnameX()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -62,6 +64,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// Gremlin: g.V().repeat(__.out()).times(2).path().by().by("name").by("lang");
         /// </summary>
         [TestMethod]
+        [TestModernCompatible]
         public void get_g_V_repeatXoutX_timesX2X_path_by_byXnameX_byXlangX()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -95,6 +98,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// Gremlin: g.V().out().out().path().by("name").by("age")
         /// </summary>
         [TestMethod]
+        [TestModernCompatible]
         public void get_g_V_out_out_path_byXnameX_byXageX()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -135,6 +139,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// Gremlin: g.V().as("a").has("name", "marko").as("b").has("age", 29).as("c").path()
         /// </summary>
         [TestMethod]
+        [TestModernCompatible]
         public void get_g_V_asXaX_hasXname_markoX_asXbX_hasXage_29X_asXcX_path()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))

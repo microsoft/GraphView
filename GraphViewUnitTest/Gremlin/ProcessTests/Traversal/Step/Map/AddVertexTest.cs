@@ -13,6 +13,7 @@ namespace GraphViewUnitTest.Gremlin
     public class AddVertexTest : AbstractGremlinTest
     {
         [TestMethod]
+        [TestModernCompatible]
         public void Test_g_V_AddV()
         {
             using (GraphViewCommand GraphViewCommand = new GraphViewCommand(graphConnection))

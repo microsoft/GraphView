@@ -19,6 +19,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Branch
         /// Equivalent gremlin: "g.V.union(__.out, __.in).name"
         /// </summary>
         [TestMethod]
+        [TestModernCompatible]
         public void UnionOutAndInVertices()
         {
             using (GraphViewCommand GraphViewCommand = new GraphViewCommand(graphConnection))
@@ -42,6 +43,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Branch
         /// WorkItem to track this: https://msdata.visualstudio.com/DocumentDB/_workitems/edit/36529
         /// </remarks>
         [TestMethod]
+        [TestModernCompatible]
         public void HasVertexIdUnionOutAndOutRepeatTimes2()
         {
             using (GraphViewCommand GraphViewCommand = new GraphViewCommand(graphConnection))
@@ -70,6 +72,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Branch
         /// WorkItem to track this: https://msdata.visualstudio.com/DocumentDB/_workitems/edit/36531
         /// </remarks>
         [TestMethod]
+        [TestModernCompatible]
         public void ChooseIfPersonThenUnionOutLangOutAndOutNameElseInLabel()
         {
             using (GraphViewCommand GraphViewCommand = new GraphViewCommand(graphConnection))
@@ -94,6 +97,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Branch
         /// <remarks>
         /// </remarks>
         [TestMethod]
+        [TestModernCompatible]
         public void ChooseIfPersonThenUnionOutLangOutAndOutNameElseInLabelGroupCount()
         {
             using (GraphViewCommand GraphViewCommand = new GraphViewCommand(graphConnection))
@@ -124,6 +128,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Branch
         /// </summary>
 
         [TestMethod]
+        [TestModernCompatible]
         public void UnionRepeatUnionOutCreatedInCreatedTimes2RepeatUnionInCreatedOutCreatedTimes2LabelGroupCount()
         {
             using (GraphViewCommand GraphViewCommand = new GraphViewCommand(graphConnection))
@@ -156,6 +161,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Branch
         /// WorkItem to track this: https://msdata.visualstudio.com/DocumentDB/_workitems/edit/36732
         /// </remarks>
         [TestMethod]
+        [TestModernCompatible]
         public void HasVId1VId2LocalUnionOutECountInECountOutEWeightSum()
         {
             using (GraphViewCommand GraphViewCommand = new GraphViewCommand(graphConnection))
@@ -182,6 +188,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Branch
         /// Equivalent gremlin: "g.V(v1Id, v2Id).union(outE().count, inE().count, outE().weight.sum)", "v1Id", v1Id, "v2Id", v2Id
         /// </summary>
         [TestMethod]
+        [TestModernCompatible]
         public void HasVId1VId2UnionOutECountInECountOutEWeightSum()
         {
             using (GraphViewCommand GraphViewCommand = new GraphViewCommand(graphConnection))

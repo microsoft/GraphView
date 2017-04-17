@@ -16,6 +16,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// Gremlin: g.V().choose(out().count()).option(2, __.values("name")).option(3, __.valueMap())
         /// </summary>
         [TestMethod]
+        [TestModernCompatible]
         public void get_g_V_chooseXout_countX_optionX2L__nameX_optionX3L__valueMapX()
         {
             using (GraphViewCommand GraphViewCommand = new GraphViewCommand(graphConnection))
@@ -38,6 +39,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// Gremlin: g.V().choose(hasLabel("person").and().out("created"), out("knows"), identity()).values("name");
         /// </summary>
         [TestMethod]
+        [TestModernCompatible]
         public void get_g_V_chooseXhasLabelXpersonX_and_outXcreatedX__outXknowsX__identityX_name()
         {
             using (GraphViewCommand GraphViewCommand = new GraphViewCommand(graphConnection))
@@ -57,6 +59,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// Gremlin: g.V().choose(label()).option("blah", out("knows")).option("bleep", out("created")).option(Pick.none, identity()).values("name")
         /// </summary>
         [TestMethod]
+        [TestModernCompatible]
         public void get_g_V_chooseXlabelX_optionXblah__outXknowsXX_optionXbleep__outXcreatedXX_optionXnone__identityX_name()
         {
             using (GraphViewCommand GraphViewCommand = new GraphViewCommand(graphConnection))
@@ -79,6 +82,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// Gremlin: g.V().choose(out("knows").count().is(gt(0)), out("knows")).values("name");
         /// </summary>
         [TestMethod]
+        [TestModernCompatible]
         public void get_g_V_chooseXoutXknowsX_count_isXgtX0XX__outXknowsXX_name()
         {
             using (GraphViewCommand GraphViewCommand = new GraphViewCommand(graphConnection))

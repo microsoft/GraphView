@@ -499,6 +499,18 @@ namespace GraphView
             string srcVertexId, string edgeId)
         {
             JArray edgeContainer = (JArray)vertexObject[isReverse ? KW_VERTEX_REV_EDGE : KW_VERTEX_EDGE];
+
+            // Check is this vertex an external vertex?
+            if (vertexObject[KW_VERTEX_VIAGRAPHAPI] == null) {
+#if DEBUG
+                JObject edgeDocument = connection.RetrieveDocumentById(edgeDocId);
+                Debug.Assert(connection.GetDocumentPartition(edgeDocument) == connection.GetDocumentPartition(vertexObject));
+#endif
+                documentMap[edgeDocId] = new Tuple<JObject, string>(null, connection.GetDocumentPartition(vertexObject));
+                return;
+            }
+
+
             if (IsSpilledVertex(vertexObject, isReverse)) {
                 // Now it is a large-degree vertex, and contains at least 1 edge-document
                 Debug.Assert(!string.IsNullOrEmpty(edgeDocId), "!string.IsNullOrEmpty(edgeDocId)");

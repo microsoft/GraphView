@@ -24,6 +24,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         /// </summary>
         [TestMethod]
         [Owner("zhlian")]
+        [TestModernCompatible]
         public void VIdOutLimit2()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -42,6 +43,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         /// </summary>
         [TestMethod]
         [Owner("zhlian")]
+        [TestModernCompatible]
         public void LocalOutELimit1InVLimit3()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -59,6 +61,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         /// </summary>
         [TestMethod]
         [Owner("zhlian")]
+        [TestModernCompatible]
         public void VIdOutKnowsOutECreatedRange0_1InV()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -78,6 +81,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         /// </summary>
         [TestMethod]
         [Owner("zhlian")]
+        [TestModernCompatible]
         public void VIdOutKnowsOutCreatedRange0_1()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -97,6 +101,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         /// </summary>
         [TestMethod]
         [Owner("zhlian")]
+        [TestModernCompatible]
         public void VIdOutCreatedInCreatedRange1_3()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -116,6 +121,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         /// </summary>
         [TestMethod]
         [Owner("zhlian")]
+        [TestModernCompatible]
         public void VIdOutCreatedInECreatedRange1_3OutV()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -135,6 +141,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         /// </summary>
         [TestMethod]
         [Owner("zhlian")]
+        [TestModernCompatible]
         public void RepeatBothTimes3Range5_11()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -152,6 +159,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         /// </summary>
         [TestMethod]
         [Owner("zhlian")]
+        [TestModernCompatible]
         public void AsAInAsAInASASelectAByUnfoldValuesNameFoldLimitLocal_2()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -169,6 +177,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         /// </summary>
         [TestMethod]
         [Owner("zhlian")]
+        [TestModernCompatible]
         public void AsAInAsAInASASelectAByUnfoldValuesNameFoldLimitLocal_1()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -203,6 +212,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         /// </summary>
         [TestMethod]
         [Owner("zhlian")]
+        [TestModernCompatible]
         public void AsAOutAsAOutASASelectAByUnfoldValuesNameFoldLimitRangeLocal_1_2()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -218,6 +228,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         /// </summary>
         [TestMethod]
         [Owner("zhlian")]
+        [TestModernCompatible]
         public void AsAOutAsAOutASASelectAByUnfoldValuesNameFoldLimitRangeLocal_4_5()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -232,6 +243,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         /// Equivalent gremlin: "g.V().as("a").in().as("b").in().as("c").<Map<String, String>>select("a","b","c").by("name").limit(local, 2)"
         /// </summary>
         [TestMethod]
+        [TestModernCompatible]
         public void AsAInAsBInASCSelectA_B_CByNameLimitLocal_2()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -249,6 +261,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         /// </summary>
         [TestMethod]
         [Owner("zhlian")]
+        [TestModernCompatible]
         public void AsAInAsBInASCSelectA_B_CByNameLimitLocal_1()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -266,6 +279,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         /// </summary>
         [TestMethod]
         [Owner("zhlian")]
+        [TestModernCompatible]
         public void AsAOutAsBOutASCSelectA_B_CByNameRangeLocal_1_3()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -283,6 +297,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         /// </summary>
         [TestMethod]
         [Owner("zhlian")]
+        [TestModernCompatible]
         public void AsAOutAsBOutASCSelectA_B_CByNameRangeLocal_1_2()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))

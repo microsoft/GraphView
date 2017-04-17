@@ -10,6 +10,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
     public class GroupTest : AbstractGremlinTest
     {
         [TestMethod]
+        [TestModernCompatible]
         public void g_V_Group()
         {
             using (GraphViewCommand GraphViewCommand = new GraphViewCommand(graphConnection))
@@ -26,6 +27,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         }
 
         [TestMethod]
+        [TestModernCompatible]
         public void g_V_Group_by()
         {
             using (GraphViewCommand GraphViewCommand = new GraphViewCommand(graphConnection))

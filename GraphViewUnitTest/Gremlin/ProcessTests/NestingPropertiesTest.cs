@@ -47,6 +47,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests
         }
 
         [TestMethod]
+        [TestModernCompatible]
         public void DropMixPropertiesTest()
         {
             using (GraphViewCommand command = new GraphViewCommand(graphConnection))
@@ -59,12 +60,15 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests
 
                 Assert.AreEqual(9, (int)result.Count);
 
-                command.g().V(id).Union(GraphTraversal2.__().Out(), GraphTraversal2.__().OutE()).Properties().Drop().Next();
-                
-                traversal = command.g().V(id).Union(GraphTraversal2.__().Out(), GraphTraversal2.__().OutE()).Properties();
-                result = JsonConvert.DeserializeObject<dynamic>(traversal.Next().FirstOrDefault());
+                if (graphConnection.GraphType == GraphType.GraphAPIOnly)
+                {
+                    command.g().V(id).Union(GraphTraversal2.__().Out(), GraphTraversal2.__().OutE()).Properties().Drop().Next();
 
-                Assert.AreEqual(0, (int)result.Count);
+                    traversal = command.g().V(id).Union(GraphTraversal2.__().Out(), GraphTraversal2.__().OutE()).Properties();
+                    result = JsonConvert.DeserializeObject<dynamic>(traversal.Next().FirstOrDefault());
+
+                    Assert.AreEqual(0, (int)result.Count);
+                }
             }
         }
 

@@ -57,6 +57,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// Equivalent gremlin: "g.V().out().out().tree().by(T.id)"
         /// </summary>
         [TestMethod]
+        [TestModernCompatible]
         public void VerticesOutOutTreeById()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -73,6 +74,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// Equivalent gremlin: "g.V().out().out().tree()"
         /// </summary>
         [TestMethod]
+        [TestModernCompatible]
         public void VerticesOutOutTree()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -89,6 +91,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// Equivalent gremlin: "g.V().out().out().tree("a").cap("a")"
         /// </summary>
         [TestMethod]
+        [TestModernCompatible]
         public void VerticesOutOutTreeACapA()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -151,7 +154,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// Equivalent gremlin: "g.V().out().out().out().tree()"
         /// </summary>
         [TestMethod]
-
+        [TestModernCompatible]
         public void VerticesOutOutOutTree()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))

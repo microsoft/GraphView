@@ -25,6 +25,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// </remarks>
         [Owner("xunsun")]
         [TestMethod]
+       [TestModernCompatible]
         public void GetVertexByIdList()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -50,6 +51,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// </summary>
         [Owner("xunsun")]
         [TestMethod]
+        [TestModernCompatible]
         public void GetAllVertexes()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -68,6 +70,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// </summary>
         [Owner("xunsun")]
         [TestMethod]
+        [TestModernCompatible]
         public void GetOutVertexes()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -89,6 +92,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// </summary>
         [Owner("xunsun")]
         [TestMethod]
+        [TestModernCompatible]
         public void GetInVertexes()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -111,6 +115,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// </summary>
         [Owner("xunsun")]
         [TestMethod]
+        [TestModernCompatible]
         public void GetBothVertexes()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -132,6 +137,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// </summary>
         [Owner("xunsun")]
         [TestMethod]
+        [TestModernCompatible]
         public void GetAllEdges()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -154,6 +160,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// </remarks>
         [Owner("xunsun")]
         [TestMethod]
+        [TestModernCompatible]
         public void GetEdgeById()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -176,6 +183,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// </summary>
         [Owner("xunsun")]
         [TestMethod]
+        [TestModernCompatible]
         public void GetOutEdges()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -198,6 +206,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// </summary>
         [Owner("xunsun")]
         [TestMethod]
+        [TestModernCompatible]
         public void GetInEdges()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -224,6 +233,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// </remarks>
         [Owner("xunsun")]
         [TestMethod]
+        [TestModernCompatible]
         public void GetBothEdgesFiltedByLabel()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -258,6 +268,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// </remarks>
         [Owner("xunsun")]
         [TestMethod]
+        [TestModernCompatible]
         public void GetBothEdges()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -282,6 +293,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// </summary>
         [Owner("xunsun")]
         [TestMethod]
+        [TestModernCompatible]
         public void GetOutEdgeInVertex()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -305,6 +317,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// </summary>
         [Owner("xunsun")]
         [TestMethod]
+        [TestModernCompatible]
         public void GetInEdgeOutVertex()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -327,6 +340,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// </summary>
         [Owner("xunsun")]
         [TestMethod]
+        [TestModernCompatible]
         public void GetOutEdgeOutVertexFilteredByProperty()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -351,6 +365,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// </summary>
         [Owner("xunsun")]
         [TestMethod]
+        [TestModernCompatible]
         public void CombinationOfInOutBoth()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -410,6 +425,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// </summary>
         [Owner("xunsun")]
         [TestMethod]
+        [TestModernCompatible]
         public void GetOutEdgeOtherVertex()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -436,6 +452,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// </remarks>
         [Owner("xunsun")]
         [TestMethod]
+        [TestModernCompatible]
         public void GetBothEdgeOtherVertex()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -463,6 +480,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// </remarks>
         [Owner("xunsun")]
         [TestMethod]
+        [TestModernCompatible]
         public void GetBothEdgeOtherVertexFilteredByProperty()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -490,6 +508,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// </summary>
         [Owner("xunsun")]
         [TestMethod]
+        [TestModernCompatible]
         public void GetOutVertexFilteredByEdgeLabel()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -515,6 +534,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// </remarks>
         [Owner("xunsun")]
         [TestMethod]
+        [TestModernCompatible]
         public void VertexHasIdByIdList()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -544,6 +564,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         [ExpectedException(typeof(ArgumentException))]
         [Owner("xunsun")]
         [TestMethod]
+        [TestModernCompatible]
         public void GetVertexByInvalidId()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -565,6 +586,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         [ExpectedException(typeof(ArgumentException))]
         [Owner("xunsun")]
         [TestMethod]
+        [TestModernCompatible]
         public void GetVertexHasIdByInvalidId()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))

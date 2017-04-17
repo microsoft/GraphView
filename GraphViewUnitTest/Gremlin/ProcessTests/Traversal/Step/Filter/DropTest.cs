@@ -16,6 +16,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         /// Equivalent gremlin: "g.V.outE.drop"
         /// </summary>
         [TestMethod]
+        [TestModernCompatible]
         public void OutEdgesDrop()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -35,6 +36,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         /// Equivalent gremlin: "g.V.drop"
         /// </summary>
         [TestMethod]
+        [TestModernCompatible]
         public void VerticesAndEdgesDrop()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -49,6 +51,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
                 Assert.AreEqual(0, edgeTraversalAfterDrop.Next().Count);
             }
         }
+
         [TestMethod]
         public void DropEdge()
         {
@@ -73,6 +76,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         }
 
         [TestMethod]
+        [TestModernCompatible]
         public void DropVertex()
         {
             using (GraphViewCommand command = new GraphViewCommand(graphConnection))
@@ -85,6 +89,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         }
 
         [TestMethod]
+        [TestModernCompatible]
         public void DropEdgeProperties()
         {
             using (GraphViewCommand command = new GraphViewCommand(graphConnection))
@@ -118,6 +123,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         }
 
         [TestMethod]
+        [TestModernCompatible]
         public void DropVertexProperties()
         {
             using (GraphViewCommand command = new GraphViewCommand(graphConnection))

@@ -12,6 +12,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// Equivalent gremlin: "g.V.or(has('age',gt(27)), outE().count.is(gte(2l))).name"
         /// </summary>
         [TestMethod]
+        [TestModernCompatible]
         public void VerticesOrHasAgeGT27OutECountIsGTE2ValuesName()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -33,6 +34,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// Equivalent gremlin: "g.V.or(outE('knows'), has(T.label, 'software') | has('age',gte(35))).name"
         /// </summary>
         [TestMethod]
+        [TestModernCompatible]
         public void VerticesOrOutEKnowsHasLabelSoftwareOrHasAgeGTE35ValuesName()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -61,6 +63,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// Equivalent gremlin: "g.V().as('a').or(__.select('a'), __.select('a'))"
         /// </summary>
         [TestMethod]
+        [TestModernCompatible]
         public void VerticesAsAOrSelectASelectA()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))

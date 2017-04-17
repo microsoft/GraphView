@@ -21,6 +21,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// Equivalent gremlin: "g.V(v1Id).as('a').out('knows').as('b').select('a','b')", "v1Id", v1Id
         /// </summary>
         [TestMethod]
+        [TestModernCompatible]
         public void HasVertexIdAsAOutKnowsAsBSelectAB()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -52,6 +53,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// Equivalent gremlin: "g.V(v1Id).as('a').out('knows').as('b').select('a','b').by('name')", "v1Id", v1Id
         /// </summary>
         [TestMethod]
+        [TestModernCompatible]
         public void HasVertexIdAsAOutKnowsAsBSelectABByName()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -83,6 +85,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// Equivalent gremlin: "g.V(v1Id).as('a').out('knows').as('b').select('a')", "v1Id", v1Id
         /// </summary>
         [TestMethod]
+        [TestModernCompatible]
         public void HasVertexIdAsAOutKnowsAsBSelectA()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -116,6 +119,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// WorkItem: https://msdata.visualstudio.com/DocumentDB/_workitems/edit/37417
         /// </remarks>
         [TestMethod]
+        [TestModernCompatible]
         public void HasVertexIdAsAOutKnowsAsBSelectAByName()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -144,6 +148,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// Equivalent gremlin: "g.V.as('a').out.as('b').select('a','b').by('name')"
         /// </summary>
         [TestMethod]
+        [TestModernCompatible]
         public void VerticesAsAOutAsBSelectABByName()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -170,6 +175,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// Equivalent gremlin: "g.V.as('a').out.aggregate('x').as('b').select('a','b').by('name')"
         /// </summary>
         [TestMethod]
+        [TestModernCompatible]
         public void VerticesAsAOutAggregateXAsBSelectABByName()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -197,6 +203,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// Equivalent gremlin: "g.V().as('a').name.order().as('b').select('a','b').by('name').by"
         /// </summary>
         [TestMethod]
+        [TestModernCompatible]
         public void VerticesAsAValuesNameOrderAsBSelectABByNameBy()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -237,6 +244,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// Equivalent gremlin: "g.V.has('name',__.is('marko')).as('a').select('a')"
         /// </summary>
         [TestMethod]
+        [TestModernCompatible]
         public void HasNameIsMarkoAsASelectA()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -258,6 +266,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// Equivalent gremlin: "g.V().label().groupCount().as('x').select('x')"
         /// </summary>
         [TestMethod]
+        [TestModernCompatible]
         public void VerticesLabelGroupCountAsXSelectX()
         {
             //using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -280,6 +289,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// Equivalent gremlin: "g.V.hasLabel('person').as('p').map(__.bothE.label.groupCount()).as('r').select('p','r')"
         /// </summary>
         [TestMethod]
+        [TestModernCompatible]
         public void HasLabelPersonAsPMapBothELabelGroupCountAsRSelectPR()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -326,6 +336,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// Equivalent gremlin: "g.V.choose(__.outE().count().is(0L), __.as('a'), __.as('b')).choose(select('a'),select('a'),select('b'))"
         /// </summary>
         [TestMethod]
+        [TestModernCompatible]
         public void ChooseOutECountIs0AsAsBChooseSelectASelectASelectB()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -373,6 +384,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// Equivalent gremlin: "g.V(v1Id).as('here').out.select('here')", "v1Id", v1Id
         /// </summary>
         [TestMethod]
+        [TestModernCompatible]
         public void HasVertexIdAsHereOutSelectHere()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -398,6 +410,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// Equivalent gremlin: "g.V(v4Id).out.as('here').has('lang', 'java').select('here')", "v4Id", v4Id
         /// </summary>
         [TestMethod]
+        [TestModernCompatible]
         public void HasVertexIdOutAsHereHasLangJavaSelectHere()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -425,6 +438,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// Equivalent gremlin: "g.V(v1Id).outE.as('here').inV.has('name', 'vadas').select('here')", "v1Id", v1Id
         /// </summary>
         [TestMethod]
+        [TestModernCompatible]
         public void HasVertexIdOutEAsHereInVHasNameVadasSelectHere()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -451,6 +465,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// Equivalent gremlin: "g.V(v4Id).out.as('here').has('lang', 'java').select('here').name", "v4Id", v4Id
         /// </summary>
         [TestMethod]
+        [TestModernCompatible]
         public void HasVertexIdOutAsHereHasLangJavaSelectHereName()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -470,6 +485,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// Equivalent gremlin: "g.V(v1Id).outE('knows').has('weight', 1.0d).as('here').inV.has('name', 'josh').select('here')", "v1Id", v1Id
         /// </summary>
         [TestMethod]
+        [TestModernCompatible]
         public void HasVertexIdOutEKnowsHasWeight1AsHereInVHasNameJoshSelectHere()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -490,6 +506,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// Equivalent gremlin: "g.V(v1Id).outE('knows').as('here').has('weight', 1.0d).as('fake').inV.has('name', 'josh').select('here')", "v1Id", v1Id)
         /// </summary>
         [TestMethod]
+        [TestModernCompatible]
         public void HasVertexIdOutEKnowsAsHereHasWeight1AsFakeInVHasNameJoshSelectHere()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -510,6 +527,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// Equivalent gremlin: "g.V().as('here').out.name.select('here')"
         /// </summary>
         [TestMethod]
+        [TestModernCompatible]
         public void VerticesAsHereOutValuesNameSelectHere()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -530,6 +548,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         ///                         __.as('project').in('created').in('knows').has('name', 'marko').select('project')).groupCount().by('name')"
         /// </summary>
         [TestMethod]
+        [TestModernCompatible]
         public void VerticesOutCreatedUnionAsProjectInCreatedHasNameMarkoSelectProjectAsProjectInCreatedInKnowsHasNameMarkoSelectProjectGroupCountByName()
         {
             //using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -552,6 +571,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// Equivalent gremlin: "g.V.as('a').has('name', 'marko').as('b').as('c').select('a','b','c').by().by('name').by('age')"
         /// </summary>
         [TestMethod]
+        [TestModernCompatible]
         public void VerticesAsAHasNameMarkoAsBAsCSelectABCByByNameByAge()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -578,6 +598,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         ///                         by(__.in('created').values('name').fold().order(local))"
         /// </summary>
         [TestMethod]
+        [TestModernCompatible]
         public void HasLabelSoftwareAsNameAsLanguageAsCreatorsSelectNameLanguageCreatorsByNameByLangByInCreatedValuesNameFoldOrderLocal()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -615,6 +636,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// Equivalent gremlin: "g.V." + (null == pop ? "select('a')" : "select(${pop}, 'a')"
         /// </summary>
         [TestMethod]
+        [TestModernCompatible]
         public void VerticesSelectA()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -641,6 +663,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// Equivalent gremlin: "g.V.until(__.out.out).repeat(__.in.as('a')).select('a').by(tail(local).name)"
         /// </summary>
         [TestMethod]
+        [TestModernCompatible]
         public void VerticesUntilOutOutRepeatInAsASelectAByTailLocalName()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -661,6 +684,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// Equivalent gremlin: "g.V.until(__.out.out).repeat(__.in.as('a').in.as('b')).select('a','b').by('name')"
         /// </summary>
         [TestMethod]
+        [TestModernCompatible]
         public void VerticesUntilOutOutRepeatInAsAInAsBSelectABByName()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -685,6 +709,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// Equivalent gremlin: "g.V().as('a').where(out('knows')).select('a')"
         /// </summary>
         [TestMethod]
+        [TestModernCompatible]
         public void VerticesAsAWhereOutKnowsSelectA()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -706,6 +731,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// Equivalent gremlin: "g.V.outE.weight.groupCount.select(keys).unfold"
         /// </summary>
         [TestMethod]
+        [TestModernCompatible]
         public void VerticesOutEValuesWeightGroupCountSelectKeys()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -724,6 +750,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// Equivalent gremlin: "g.V.outE.weight.groupCount.select(values).unfold"
         /// </summary>
         [TestMethod]
+        [TestModernCompatible]
         public void VerticesOutEValuesWeightGroupCountSelectValues()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -743,6 +770,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// Equivalent gremlin: "g.V.as('a').out('knows').as('b').local(select('a', 'b').by('name'))"
         /// </summary>
         [TestMethod]
+        [TestModernCompatible]
         public void VerticesAsAOutKnowsAsBLocalSelectABByName()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
