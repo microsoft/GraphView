@@ -14,7 +14,7 @@ namespace GraphViewUnitTest
         {
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
                 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
-                "GroupMatch", "MarvelTest", GraphType.GraphAPIOnly);
+                "GroupMatch", "MarvelTest", GraphType.GraphAPIOnly, AbstractGremlinTest.TEST_USE_REVERSE_EDGE, 1, AbstractGremlinTest.TEST_PARTITION_BY_KEY);
 
             GraphViewCommand graph = new GraphViewCommand(connection);
             graph.OutputFormat = OutputFormat.GraphSON;
@@ -31,7 +31,7 @@ namespace GraphViewUnitTest
         {
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
                 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
-                "GroupMatch", "MarvelTest", GraphType.GraphAPIOnly);
+                "GroupMatch", "MarvelTest", GraphType.GraphAPIOnly, AbstractGremlinTest.TEST_USE_REVERSE_EDGE, 1, AbstractGremlinTest.TEST_PARTITION_BY_KEY);
 
             GraphViewCommand cmd = new GraphViewCommand(connection);
             cmd.CommandText =
@@ -50,7 +50,7 @@ namespace GraphViewUnitTest
         {
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
                 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
-                "GroupMatch", "MarvelTest", GraphType.GraphAPIOnly);
+                "GroupMatch", "MarvelTest", GraphType.GraphAPIOnly, AbstractGremlinTest.TEST_USE_REVERSE_EDGE, 1, AbstractGremlinTest.TEST_PARTITION_BY_KEY);
 
             GraphViewCommand cmd = new GraphViewCommand(connection);
             cmd.CommandText =
@@ -69,7 +69,7 @@ namespace GraphViewUnitTest
         {
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
                 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
-                "GroupMatch", "MarvelTest", GraphType.GraphAPIOnly);
+                "GroupMatch", "MarvelTest", GraphType.GraphAPIOnly, AbstractGremlinTest.TEST_USE_REVERSE_EDGE, 1, AbstractGremlinTest.TEST_PARTITION_BY_KEY);
             GraphViewCommand graph = new GraphViewCommand(connection);
 
             var results =
@@ -93,7 +93,7 @@ namespace GraphViewUnitTest
         {
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
                 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
-                "GroupMatch", "MarvelTest", GraphType.GraphAPIOnly);
+                "GroupMatch", "MarvelTest", GraphType.GraphAPIOnly, AbstractGremlinTest.TEST_USE_REVERSE_EDGE, 1, AbstractGremlinTest.TEST_PARTITION_BY_KEY);
             GraphViewCommand graph = new GraphViewCommand(connection);
             graph.CommandText = "g.V().has('weapon', 'lasso').as('character').out('appeared').as('comicbook').select('comicbook').next()";
             graph.OutputFormat = OutputFormat.GraphSON;
@@ -110,7 +110,7 @@ namespace GraphViewUnitTest
         {
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
                 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
-                "GroupMatch", "MarvelTest", GraphType.GraphAPIOnly);
+                "GroupMatch", "MarvelTest", GraphType.GraphAPIOnly, AbstractGremlinTest.TEST_USE_REVERSE_EDGE, 1, AbstractGremlinTest.TEST_PARTITION_BY_KEY);
             GraphViewCommand graph = new GraphViewCommand(connection);
             var results = graph.g().V().Has("name", "AVF 4").In("appeared").Values("name").Next();
 
@@ -125,7 +125,7 @@ namespace GraphViewUnitTest
         {
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
                 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
-                "GroupMatch", "MarvelTest", GraphType.GraphAPIOnly);
+                "GroupMatch", "MarvelTest", GraphType.GraphAPIOnly, AbstractGremlinTest.TEST_USE_REVERSE_EDGE, 1, AbstractGremlinTest.TEST_PARTITION_BY_KEY);
             GraphViewCommand graph = new GraphViewCommand(connection);
             graph.CommandText = "g.V().has('name', 'AVF 4').in('appeared').values('name').next()";
             var results = graph.Execute();
@@ -141,7 +141,7 @@ namespace GraphViewUnitTest
         {
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
                 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
-                "GroupMatch", "MarvelTest", GraphType.GraphAPIOnly);
+                "GroupMatch", "MarvelTest", GraphType.GraphAPIOnly, AbstractGremlinTest.TEST_USE_REVERSE_EDGE, 1, AbstractGremlinTest.TEST_PARTITION_BY_KEY);
             GraphViewCommand graph = new GraphViewCommand(connection);
             var results = graph.g().V().Has("name", "AVF 4").In("appeared").Has("weapon", "shield").Values("name").Next();
 
@@ -156,7 +156,7 @@ namespace GraphViewUnitTest
         {
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
                 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
-                "GroupMatch", "MarvelTest", GraphType.GraphAPIOnly);
+                "GroupMatch", "MarvelTest", GraphType.GraphAPIOnly, AbstractGremlinTest.TEST_USE_REVERSE_EDGE, 1, AbstractGremlinTest.TEST_PARTITION_BY_KEY);
             GraphViewCommand graph = new GraphViewCommand(connection);
             graph.CommandText = "g.V().has('name', 'AVF 4').in('appeared').has('weapon', 'shield').values('name').next()";
             var results = graph.Execute();
@@ -175,7 +175,7 @@ namespace GraphViewUnitTest
         {
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
                 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
-                "GroupMatch", "MarvelTest", GraphType.GraphAPIOnly);
+                "GroupMatch", "MarvelTest", GraphType.GraphAPIOnly, AbstractGremlinTest.TEST_USE_REVERSE_EDGE, 1, AbstractGremlinTest.TEST_PARTITION_BY_KEY);
             GraphViewCommand graph = new GraphViewCommand(connection);
             var results =
                 graph.g().V()
@@ -196,7 +196,7 @@ namespace GraphViewUnitTest
         {
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
                 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
-                "GroupMatch", "MarvelTest", GraphType.GraphAPIOnly);
+                "GroupMatch", "MarvelTest", GraphType.GraphAPIOnly, AbstractGremlinTest.TEST_USE_REVERSE_EDGE, 1, AbstractGremlinTest.TEST_PARTITION_BY_KEY);
             GraphViewCommand graph = new GraphViewCommand(connection);
             var results =
                 graph.g().V()
@@ -222,7 +222,7 @@ namespace GraphViewUnitTest
         {
             GraphViewConnection connection = GraphViewConnection.ResetGraphAPICollection("https://graphview.documents.azure.com:443/",
                 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
-                "GroupMatch", "MarvelTest", AbstractGremlinTest.TEST_USE_REVERSE_EDGE, "label");
+                "GroupMatch", "MarvelTest", AbstractGremlinTest.TEST_USE_REVERSE_EDGE, AbstractGremlinTest.TEST_PARTITION_BY_KEY);
 
             GraphViewCommand graph = new GraphViewCommand(connection);
 
@@ -240,7 +240,7 @@ namespace GraphViewUnitTest
         {
             GraphViewConnection connection = GraphViewConnection.ResetGraphAPICollection("https://graphview.documents.azure.com:443/",
                 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
-                "GroupMatch", "MarvelTest", AbstractGremlinTest.TEST_USE_REVERSE_EDGE, "label");
+                "GroupMatch", "MarvelTest", AbstractGremlinTest.TEST_USE_REVERSE_EDGE, AbstractGremlinTest.TEST_PARTITION_BY_KEY);
 
             GraphViewCommand cmd = new GraphViewCommand(connection);
 

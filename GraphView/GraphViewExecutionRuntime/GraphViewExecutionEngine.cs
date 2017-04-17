@@ -1143,10 +1143,11 @@ namespace GraphView
               ]
             */
             /* PATCH:
-              For compatile vertex document, multiProperty looks like: 
+              For external vertex document, multiProperty looks like: 
+              For partition-by porperty in any vertex document, multiProperty looks like: 
                 <propName>: <Value>
             */
-            if (!this.Vertex.ViaGraphAPI)
+            if (!this.Vertex.ViaGraphAPI || multiProperty.Value is JValue)
             {
                 Debug.Assert(multiProperty.Name == this.PropertyName);
                 Debug.Assert(multiProperty.Value is JValue);
@@ -1734,9 +1735,7 @@ namespace GraphView
             // Meta properties must exist
             //
             Debug.Assert(this.VertexMetaProperties.ContainsKey(KW_DOC_ID));
-            if (connection.PartitionByKeyIfViaGraphAPI != null) {
-                Debug.Assert(this.VertexMetaProperties.ContainsKey(KW_DOC_PARTITION));
-            }
+
             if (this.ViaGraphAPI) {
                 Debug.Assert(this.VertexMetaProperties.ContainsKey(KW_VERTEX_LABEL));
                 Debug.Assert(this.VertexMetaProperties.ContainsKey(KW_VERTEX_VIAGRAPHAPI));

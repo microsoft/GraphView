@@ -53,7 +53,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         }
 
         [TestMethod]
-        public void DropEdge()
+        public void CustomTest1()
         {
             using (GraphViewCommand command = new GraphViewCommand(graphConnection))
             {
@@ -63,11 +63,20 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
                 //GraphTraversal2 traversal = command.g().V().Has("name", "marko").Property("name", "twet");
 
                 //command.OutputFormat = OutputFormat.GraphSON;
-                List<string> result = command.g().V().Has("name", "marko").Property("name", "twet").Values("name").Next();
-                
-                foreach (string s in result)
+                try
                 {
-                    Console.WriteLine(s);
+                    List<string> result = command.g().V().Has("name", "marko").Property("name", "twet").Values("name").Next();
+
+                    foreach (string s in result)
+                    {
+                        Console.WriteLine(s);
+                    }
+
+                    if (TEST_PARTITION_BY_KEY == "name") Assert.Fail();
+                }
+                catch (GraphViewException ex)
+                when (ex.Message == "Can't update vertex's \"name\"" && TEST_PARTITION_BY_KEY == "name") {
+                    // This is expected
                 }
 
                 //Assert.AreEqual(0, GetEdgeCount(command));
@@ -106,14 +115,15 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         {
             using (GraphViewCommand command = new GraphViewCommand(graphConnection))
             {
-                List<string> result = command.g().AddV().Property("name", "jinjin", "meta1", "metavalue")
-                                                        .Property("name", "jinjin", "meta1", "metavalue").Next();
+                List<string> result = command.g().AddV().Property("name", "asdfasdfasdf")
+                                                        .Property("name233", "jinjin", "meta1", "metavalue")
+                                                        .Property("name233", "jinjin", "meta1", "metavalue").Next();
                
-                result = command.g().V().Has("name", "jinjin").Properties("name").Properties().Next();
+                result = command.g().V().Has("name233", "jinjin").Properties("name233").Properties().Next();
                 Assert.AreEqual(2, result.Count);
 
-                command.g().V().Has("name", "jinjin").Properties("name").Properties().Drop().Next();
-                result = command.g().V().Has("name", "jinjin").Properties("name").Properties().Next();
+                command.g().V().Has("name233", "jinjin").Properties("name233").Properties().Drop().Next();
+                result = command.g().V().Has("name233", "jinjin").Properties("name233").Properties().Next();
 
                 //var temp = command.g().V().Has("name", "jinjin").Next();
                 //Console.WriteLine(temp);

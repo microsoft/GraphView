@@ -34,11 +34,15 @@ namespace GraphView
 
                 // Special treat the partition key
                 if (connection.CollectionType == CollectionType.PARTITIONED) {
-                    Debug.Assert(connection.PartitionPathTopLevel != null);
-                    if (vertexProperty.Key.Value == connection.PartitionPathTopLevel) {
-                        if (vertexObject[connection.PartitionPathTopLevel] == null) {
+                    Debug.Assert(connection.RealPartitionKey != null);
+                    if (vertexProperty.Key.Value == connection.RealPartitionKey) {
+                        if (vertexProperty.MetaProperties.Count > 0) {
+                            throw new GraphViewException("Partition value must not have meta properties");
+                        }
+
+                        if (vertexObject[connection.RealPartitionKey] == null) {
                             JValue value = vertexProperty.Value.ToJValue();
-                            vertexObject[connection.PartitionPathTopLevel] = value;
+                            vertexObject[connection.RealPartitionKey] = value;
                         }
                         else {
                             throw new GraphViewException("Partition value must not be a list");

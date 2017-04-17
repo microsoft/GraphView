@@ -206,7 +206,7 @@ namespace GraphView
                             }
                         }
 
-                        string partitionKey = connection.PartitionPathTopLevel?.Substring(1);
+                        string partitionKey = connection.RealPartitionKey;
                         ConstructJsonQueryOnNode(currentNode, pushedToServerEdge, partitionKey);
                         ConstructJsonQueryOnNodeViaExternalAPI(currentNode, null);
                         processedNodes.Add(currentNode.NodeAlias);
@@ -1723,7 +1723,7 @@ namespace GraphView
                 matchNode.Properties.Add(populateProperty.Value);
             }
 
-            WSelectQueryBlock.ConstructJsonQueryOnNode(matchNode, null, dbConnection.PartitionPathTopLevel?.Substring(1));
+            WSelectQueryBlock.ConstructJsonQueryOnNode(matchNode, null, dbConnection.RealPartitionKey);
             WSelectQueryBlock.ConstructJsonQueryOnNodeViaExternalAPI(matchNode, null);
 
             FetchNodeOperator2 fetchNodeOp = new FetchNodeOperator2(
@@ -1773,7 +1773,7 @@ namespace GraphView
             // Construct JSON query
             //
             if (isSendQueryRequired) {
-                WSelectQueryBlock.ConstructJsonQueryOnNode(matchNode, null, dbConnection.PartitionPathTopLevel?.Substring(1));
+                WSelectQueryBlock.ConstructJsonQueryOnNode(matchNode, null, dbConnection.RealPartitionKey);
                 WSelectQueryBlock.ConstructJsonQueryOnNodeViaExternalAPI(matchNode, null);
             }
 
@@ -1835,7 +1835,7 @@ namespace GraphView
             // Construct JSON query
             //
             if (isSendQueryRequired) {
-                WSelectQueryBlock.ConstructJsonQueryOnNode(matchNode, null, dbConnection.PartitionPathTopLevel?.Substring(1));
+                WSelectQueryBlock.ConstructJsonQueryOnNode(matchNode, null, dbConnection.RealPartitionKey);
                 WSelectQueryBlock.ConstructJsonQueryOnNodeViaExternalAPI(matchNode, null);
             }
 

@@ -99,11 +99,11 @@ namespace GraphView
         public bool UseReverseEdges { get; }
 
 
-        public string PartitionByKeyIfViaGraphAPI { get; }  // Like "location"
+        public string RealPartitionKey { get; }  // Like "location", "id"... but not "_partition"
 
-        public string PartitionPath { get; private set; }  // Like "/location/nested/_value"
+        private string PartitionPath { get; }  // Like "/location/nested/_value"
 
-        public string PartitionPathTopLevel { get; private set; }  // Like "/location"
+        public string PartitionPathTopLevel { get; }  // Like "location"
 
 
 
@@ -153,7 +153,7 @@ namespace GraphView
                 }
             }
 
-            return new GraphViewConnection(endpoint, authKey, databaseId, collectionId, GraphType.CompatibleOnly, false, 1);
+            return new GraphViewConnection(endpoint, authKey, databaseId, collectionId, GraphType.CompatibleOnly, false, 1, null);
         }
 
 
@@ -176,9 +176,9 @@ namespace GraphView
             string docDBDatabaseID,
             string docDBCollectionID,
             GraphType graphType,
-            bool useReverseEdges = false,
-            int? edgeSpillThreshold = null,
-            string partitionByKeyIfViaGraphAPI = null,
+            bool useReverseEdges,
+            int? edgeSpillThreshold,
+            string partitionByKeyIfViaGraphAPI,
             string preferredLocation = null)
         {
             // TODO: Parameter checking!
@@ -243,12 +243,13 @@ namespace GraphView
                 this.PartitionPathTopLevel = this.PartitionPath.Split(new[] {'/'}, StringSplitOptions.RemoveEmptyEntries)[0];
 
                 if (this.PartitionPath == $"/{KW_DOC_PARTITION}") {  // Partitioned, created via GraphAPI
-                    this.PartitionByKeyIfViaGraphAPI = partitionByKeyIfViaGraphAPI;
                     Debug.Assert(partitionByKeyIfViaGraphAPI != null);
                     Debug.Assert(graphType == GraphType.GraphAPIOnly);
+                    this.RealPartitionKey = partitionByKeyIfViaGraphAPI;
                 }
                 else {
                     Debug.Assert(partitionByKeyIfViaGraphAPI == null);
+                    this.RealPartitionKey = this.PartitionPathTopLevel;
                 }
             }
             else {
@@ -257,6 +258,7 @@ namespace GraphView
                 Debug.Assert(partitionKey.Count == 0);
                 this.PartitionPath = null;
                 this.PartitionPathTopLevel = null;
+                this.RealPartitionKey = null;
 
                 Debug.Assert(partitionByKeyIfViaGraphAPI == null);
             }

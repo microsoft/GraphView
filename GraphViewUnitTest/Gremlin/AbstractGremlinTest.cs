@@ -32,6 +32,14 @@ namespace GraphViewUnitTest.Gremlin
     {
         internal const bool TEST_USE_REVERSE_EDGE = true;
 
+#if TEST_PARTITION_BY_NAME
+        internal const string TEST_PARTITION_BY_KEY = "name";
+#elif TEST_PARTITION_BY_LABEL
+        internal const string TEST_PARTITION_BY_KEY = "label";
+#else
+        "Can't compile me!"
+#endif
+
         protected static GraphViewConnection graphConnection;
 
         public TestContext TestContext { get; set; }
@@ -77,7 +85,7 @@ namespace GraphViewUnitTest.Gremlin
                     GraphType.GraphAPIOnly,
                     edgeSpillThreshold: 1,
                     useReverseEdges: TEST_USE_REVERSE_EDGE,
-                    partitionByKeyIfViaGraphAPI: "label"
+                    partitionByKeyIfViaGraphAPI: TEST_PARTITION_BY_KEY
                 );
             }
         }

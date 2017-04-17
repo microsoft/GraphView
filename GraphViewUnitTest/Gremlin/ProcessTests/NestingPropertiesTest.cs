@@ -20,10 +20,10 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests
                 command.OutputFormat = OutputFormat.GraphSON;
                 command.g()
                     .AddV()
-                    .Property("name", "marko", "meta1", "meta1Value")
-                    .Property("name", "mike", "meta2", "meta2Value")
+                    .Property("name233", "marko", "meta1", "meta1Value")
+                    .Property("name233", "mike", "meta2", "meta2Value")
                     .Next();
-                var traversal = command.g().V().Properties("name").Properties();
+                var traversal = command.g().V().Properties("name233").Properties();
                 var result = JsonConvert.DeserializeObject<dynamic>(traversal.Next().FirstOrDefault());
                 Assert.AreEqual(2, (int)result.Count);
                 Assert.AreEqual("meta1", (string)result[0].key);
@@ -31,15 +31,15 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests
                 Assert.AreEqual("meta2", (string)result[1].key);
                 Assert.AreEqual("meta2Value", (string)result[1].value);
 
-                traversal = command.g().V().Properties("name").Has("meta1", "meta1Value");
+                traversal = command.g().V().Properties("name233").Has("meta1", "meta1Value");
                 result = JsonConvert.DeserializeObject<dynamic>(traversal.Next().FirstOrDefault());
-                Assert.AreEqual("name", (string)result[0].label);
+                Assert.AreEqual("name233", (string)result[0].label);
                 Assert.AreEqual("marko", (string)result[0].value);
 
                 if (graphConnection.GraphType == GraphType.GraphAPIOnly)
                 {
                     command.g().V().Properties().Properties().Drop().Next();
-                    traversal = command.g().V().Properties("name").Properties();
+                    traversal = command.g().V().Properties("name233").Properties();
                     result = JsonConvert.DeserializeObject<dynamic>(traversal.Next().FirstOrDefault());
                     Assert.AreEqual(0, result.Count);
                 }
@@ -78,6 +78,9 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests
         /// <remarks>
         /// Add id of properties in ToGraphSon format
         /// </remarks>
+#if TEST_PARTITION_BY_NAME
+        [ExpectedException(typeof(GraphViewException), "Partition value must not have meta properties")]
+#endif
         [TestMethod]
         public void DropMultiPropertiesAndMetaPropertiesTest()
         {

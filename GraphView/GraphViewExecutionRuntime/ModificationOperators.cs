@@ -107,28 +107,24 @@ namespace GraphView
             }
 
             Debug.Assert(vertexObject[KW_DOC_PARTITION] == null);
-            if (this.Connection.PartitionByKeyIfViaGraphAPI != null) {
+            if (this.Connection.PartitionPathTopLevel == KW_DOC_PARTITION) {
 
-                // Not the collection is created via GraphAPI
+                // Now the collection is created via GraphAPI
 
-                if (vertexObject[this.Connection.PartitionByKeyIfViaGraphAPI] == null) {
-                    throw new GraphViewException($"AddV: Parition key '{this.Connection.PartitionByKeyIfViaGraphAPI}' must be provided.");
+                if (vertexObject[this.Connection.RealPartitionKey] == null) {
+                    throw new GraphViewException($"AddV: Parition key '{this.Connection.RealPartitionKey}' must be provided.");
                 }
 
                 // Special treat "id" or "label" specified as partition key
-                string partition;
-                if (this.Connection.PartitionByKeyIfViaGraphAPI == KW_DOC_ID ||
-                    this.Connection.PartitionByKeyIfViaGraphAPI == KW_VERTEX_LABEL) {
-                    partition = (string)vertexObject[this.Connection.PartitionByKeyIfViaGraphAPI];
+                JValue partition;
+                if (this.Connection.RealPartitionKey == KW_DOC_ID ||
+                    this.Connection.RealPartitionKey == KW_VERTEX_LABEL)
+                {
+                    partition = (JValue)(string)vertexObject[this.Connection.RealPartitionKey];
                 }
                 else {
-                    JArray array = (JArray)vertexObject[this.Connection.PartitionByKeyIfViaGraphAPI];
-                    Debug.Assert(array.Count > 0);
-                    if (array.Count > 1) {
-                        throw new GraphViewException("Property value on the partition key cannot be multiple-value");
-                    }
-
-                    partition = array[0][KW_PROPERTY_VALUE].ToString();
+                    JValue value = (JValue)vertexObject[this.Connection.RealPartitionKey];
+                    partition = value;
                 }
 
                 vertexObject[KW_DOC_PARTITION] = partition;
@@ -397,6 +393,9 @@ namespace GraphView
 
                 VertexPropertyField vertexProperty;
                 string name = property.Key.Value;
+                if (vertexDocument[name] is JValue) {
+                    throw new GraphViewException($"Can't update vertex's \"{name}\"");
+                }
 
                 // Construct single property
                 JObject meta = new JObject();
