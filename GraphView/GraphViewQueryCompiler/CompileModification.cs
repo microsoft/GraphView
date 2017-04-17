@@ -11,7 +11,7 @@ namespace GraphView
 {
     partial class WAddVTableReference2
     {
-        public JObject ConstructNodeJsonDocument(string vertexLabel, List<WPropertyExpression> vertexProperties, out List<string> projectedFieldList)
+        public JObject ConstructNodeJsonDocument(GraphViewConnection connection, string vertexLabel, List<WPropertyExpression> vertexProperties, out List<string> projectedFieldList)
         {
             Debug.Assert(vertexLabel != null);
             JObject vertexObject = new JObject {
@@ -30,6 +30,21 @@ namespace GraphView
 
                 if (vertexProperty.Value.ToJValue() == null) {
                     continue;
+                }
+
+                // Special treat the partition key
+                if (connection.CollectionType == CollectionType.PARTITIONED) {
+                    Debug.Assert(connection.PartitionPathTopLevel != null);
+                    if (vertexProperty.Key.Value == connection.PartitionPathTopLevel) {
+                        if (vertexObject[connection.PartitionPathTopLevel] == null) {
+                            JValue value = vertexProperty.Value.ToJValue();
+                            vertexObject[connection.PartitionPathTopLevel] = value;
+                        }
+                        else {
+                            throw new GraphViewException("Partition value must not be a list");
+                        }
+                        continue;
+                    }
                 }
 
                 // Special treat the "id" property
@@ -103,7 +118,7 @@ namespace GraphView
 
             List<string> projectedField;
 
-            JObject nodeJsonDocument = ConstructNodeJsonDocument(labelValue.Value, vertexProperties, out projectedField);
+            JObject nodeJsonDocument = ConstructNodeJsonDocument(dbConnection, labelValue.Value, vertexProperties, out projectedField);
 
             AddVOperator addVOp = new AddVOperator(
                 context.CurrentExecutionOperator,

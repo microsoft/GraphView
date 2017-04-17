@@ -188,7 +188,7 @@ namespace GraphView
             //
             // This graph is compatible only, thus add an edge-document directly
             //
-            if (connection.GraphType != GraphType.CompatibleOnly) {
+            if (connection.GraphType != GraphType.GraphAPIOnly || connection.EdgeSpillThreshold == 1) {
                 Debug.Assert(connection.EdgeSpillThreshold == 1);
 
                 // Create a new edge-document to store the edge.

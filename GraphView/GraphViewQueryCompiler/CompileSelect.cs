@@ -254,11 +254,12 @@ namespace GraphView
                 }
             }
 
-            WBooleanExpression nodeCondition = null;
+            WBooleanExpression tempNodeCondition = null;
             foreach (WBooleanExpression predicate in node.Predicates) {
-                nodeCondition = WBooleanBinaryExpression.Conjunction(nodeCondition, predicate);
+                tempNodeCondition = WBooleanBinaryExpression.Conjunction(tempNodeCondition, predicate);
             }
 
+            WBooleanExpression nodeCondition = tempNodeCondition.Copy();
             BooleanWValueExpressionVisitor booleanWValueExpressionVisitor = new BooleanWValueExpressionVisitor();
             booleanWValueExpressionVisitor.Invoke(nodeCondition);
 

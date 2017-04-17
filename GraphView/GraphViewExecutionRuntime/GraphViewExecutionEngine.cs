@@ -718,6 +718,14 @@ namespace GraphView
         public VertexPropertyField VertexProperty { get; }
 
 
+        public VertexSinglePropertyField(string propertyId, string propertyName, JValue value, VertexPropertyField vertexProperty)
+            : base(propertyName, value.ToString(), JsonDataTypeHelper.GetJsonDataType(value.Type))
+        {
+            this.VertexProperty = vertexProperty;
+            this.PropertyId = propertyId;
+        }
+
+
         public VertexSinglePropertyField(string propertyName, JObject vertexSinglePropertyObject, VertexPropertyField vertexPropertyField) 
             : base(propertyName, 
                   vertexSinglePropertyObject[KW_PROPERTY_VALUE].ToString(), 
@@ -757,6 +765,13 @@ namespace GraphView
                 return propertyField;
             }
         }
+
+        public void Replace(JValue onlyValue)
+        {
+            this.PropertyValue = onlyValue.ToString();
+            this.JsonDataType = JsonDataTypeHelper.GetJsonDataType(onlyValue.Type);
+        }
+
 
         public void Replace(JObject vertexSinglePropertyObject)
         {
@@ -1043,8 +1058,8 @@ namespace GraphView
         public VertexPropertyField(JProperty multiProperty, VertexField vertexField)
             : base(multiProperty.Name, null, JsonDataType.Array)
         {
-            this.Replace(multiProperty);
             this.Vertex = vertexField;
+            this.Replace(multiProperty);
         }
 
         public override string ToGraphSON()
@@ -1127,6 +1142,29 @@ namespace GraphView
                 ...
               ]
             */
+            /* PATCH:
+              For compatile vertex document, multiProperty looks like: 
+                <propName>: <Value>
+            */
+            if (!this.Vertex.ViaGraphAPI)
+            {
+                Debug.Assert(multiProperty.Name == this.PropertyName);
+                Debug.Assert(multiProperty.Value is JValue);
+                this.PropertyValue = null;
+                this.JsonDataType = JsonDataType.Array;
+
+                string propId = $"{Vertex.VertexId}|{multiProperty.Name}";
+                if (!this.Multiples.ContainsKey(propId)) {
+                    this.Multiples[propId] = new VertexSinglePropertyField(propId, multiProperty.Name, (JValue)multiProperty.Value, this);
+                }
+                else {
+                    this.Multiples[propId].Replace((JValue)multiProperty.Value);
+                }
+
+                return;
+            }
+
+
             Debug.Assert(multiProperty.Name == this.PropertyName);
             Debug.Assert(multiProperty.Value is JArray);
             this.PropertyValue = null;
@@ -1425,8 +1463,9 @@ namespace GraphView
             this._connection = connection;
             this._vertexId = vertexId;
 
-            Debug.Assert(edgeArray != null);
             if (!isSpilled) {
+                Debug.Assert(edgeArray != null);
+
                 if (isReverseEdge) {
                     foreach (JObject edgeObject in edgeArray.Cast<JObject>()) {
                         this.TryAddEdgeField(
@@ -1534,6 +1573,8 @@ namespace GraphView
         public AdjacencyListField AdjacencyList { get; }
 
         public AdjacencyListField RevAdjacencyList { get; }
+
+        public bool ViaGraphAPI => ((bool?)(JValue)this.VertexJObject[KW_VERTEX_VIAGRAPHAPI] == true);
 
 
         // <Property Name, VertexPropertyField>
@@ -1648,17 +1689,19 @@ namespace GraphView
             JArray forwardAdjList = null;
             JArray backwardAdjList = null;
 
+            // Add meta properties
+            // "id", "label", "partition", "is(rev)spilled"
             foreach (JProperty property in this.VertexJObject.Properties())
             {
-                // For meta-properties
-                // "id", "label", "partition", "is(rev)spilled"
-                if (VertexField.IsVertexMetaProperty(property.Name))
-                {
-                    this.VertexMetaProperties.Add(property.Name, new ValuePropertyField(property, this));
-                    continue;
-                }
+                if (!VertexField.IsVertexMetaProperty(property.Name)) continue;
+                this.VertexMetaProperties.Add(property.Name, new ValuePropertyField(property, this));
+            }
 
-                // For other properties
+            // Add other properties
+            foreach (JProperty property in this.VertexJObject.Properties())
+            {
+                if (VertexField.IsVertexMetaProperty(property.Name)) continue;
+
                 switch (property.Name)
                 {
                     case "_rid":
@@ -1681,6 +1724,11 @@ namespace GraphView
                 }
             }
 
+            if (!this.VertexMetaProperties.ContainsKey(KW_VERTEX_VIAGRAPHAPI))
+            {
+                this.VertexMetaProperties[KW_VERTEX_VIAGRAPHAPI] = new ValuePropertyField(KW_VERTEX_VIAGRAPHAPI, "false", JsonDataType.Boolean, this);
+            }
+
 
             //
             // Meta properties must exist
@@ -1689,26 +1737,35 @@ namespace GraphView
             if (connection.PartitionByKeyIfViaGraphAPI != null) {
                 Debug.Assert(this.VertexMetaProperties.ContainsKey(KW_DOC_PARTITION));
             }
-            Debug.Assert(this.VertexMetaProperties.ContainsKey(KW_VERTEX_LABEL));
-            Debug.Assert(this.VertexMetaProperties.ContainsKey(KW_VERTEX_EDGE_SPILLED));
-            Debug.Assert(this.VertexMetaProperties.ContainsKey(KW_VERTEX_REVEDGE_SPILLED));
-            // edge and reverse edge are not meta properties
-            Debug.Assert(!this.VertexMetaProperties.ContainsKey(KW_VERTEX_EDGE));
-            Debug.Assert(!this.VertexMetaProperties.ContainsKey(KW_VERTEX_REV_EDGE));
+            if (this.ViaGraphAPI) {
+                Debug.Assert(this.VertexMetaProperties.ContainsKey(KW_VERTEX_LABEL));
+                Debug.Assert(this.VertexMetaProperties.ContainsKey(KW_VERTEX_EDGE_SPILLED));
+                Debug.Assert(this.VertexMetaProperties.ContainsKey(KW_VERTEX_REVEDGE_SPILLED));
+
+                // edge and reverse edge are not meta properties
+                Debug.Assert(!this.VertexMetaProperties.ContainsKey(KW_VERTEX_EDGE));
+                Debug.Assert(!this.VertexMetaProperties.ContainsKey(KW_VERTEX_REV_EDGE));
+            }
 
 
             //
             // Construct forward & backwark adjacency list
             //
-            Debug.Assert(forwardAdjList != null);
-            this.AdjacencyList = new AdjacencyListField(
-                connection, vertexId, vertexLabel, forwardAdjList, false,
-                EdgeDocumentHelper.IsBuildingTheAdjacencyListLazily(this.VertexJObject, false, connection.UseReverseEdges));
+            if (this.ViaGraphAPI) {
+                Debug.Assert(forwardAdjList != null);
+                this.AdjacencyList = new AdjacencyListField(
+                    connection, vertexId, vertexLabel, forwardAdjList, false,
+                    EdgeDocumentHelper.IsBuildingTheAdjacencyListLazily(this.VertexJObject, false, connection.UseReverseEdges));
 
-            Debug.Assert(backwardAdjList != null);
-            this.RevAdjacencyList = new AdjacencyListField(
-                connection, vertexId, vertexLabel, backwardAdjList, true,
-                EdgeDocumentHelper.IsBuildingTheAdjacencyListLazily(this.VertexJObject, true, connection.UseReverseEdges));
+                Debug.Assert(backwardAdjList != null);
+                this.RevAdjacencyList = new AdjacencyListField(
+                    connection, vertexId, vertexLabel, backwardAdjList, true,
+                    EdgeDocumentHelper.IsBuildingTheAdjacencyListLazily(this.VertexJObject, true, connection.UseReverseEdges));
+            }
+            else {
+                this.AdjacencyList = new AdjacencyListField(connection, vertexId, vertexLabel, null, false, true);
+                this.RevAdjacencyList = new AdjacencyListField(connection, vertexId, vertexLabel, null, true, true);
+            }
         }
 
 

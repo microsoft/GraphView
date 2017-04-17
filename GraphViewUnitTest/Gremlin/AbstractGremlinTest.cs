@@ -47,7 +47,6 @@ namespace GraphViewUnitTest.Gremlin
             string databaseId = ConfigurationManager.AppSettings["DocDBDatabaseGremlin"];
             string collectionId = ConfigurationManager.AppSettings["DocDBCollectionModern"];
 
-            GraphDataLoader.LoadGraphData(GraphData.MODERN);
 
             Type classType = Type.GetType(TestContext.FullyQualifiedTestClassName);
             MethodInfo method = classType.GetMethod(TestContext.TestName, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
@@ -66,6 +65,10 @@ namespace GraphViewUnitTest.Gremlin
 
             }
             else {
+                Console.WriteLine($"[{TestContext.TestName}] Via Graph API!");
+
+                GraphDataLoader.LoadGraphData(GraphData.MODERN);
+
                 graphConnection = new GraphViewConnection(
                     endpoint, authKey, databaseId, collectionId,
                     GraphType.GraphAPIOnly,

@@ -80,9 +80,9 @@ namespace GraphView
         public AddVOperator(GraphViewExecutionOperator inputOp, GraphViewConnection connection, JObject vertexDocument, List<string> projectedFieldList)
             : base(inputOp, connection)
         {
-            if (connection.GraphType != GraphType.GraphAPIOnly) {
-                throw new GraphViewException("Add vertex is supported only in pure GraphAPI graph.");
-            }
+            //if (connection.GraphType != GraphType.GraphAPIOnly) {
+            //    throw new GraphViewException("Add vertex is supported only in pure GraphAPI graph.");
+            //}
 
             this._vertexDocument = vertexDocument;
             this._projectedFieldList = projectedFieldList;
@@ -133,7 +133,6 @@ namespace GraphView
 
                 vertexObject[KW_DOC_PARTITION] = partition;
             }
-
 
             //
             // NOTE: We don't check whether the partition key exists. Let DocDB do it.

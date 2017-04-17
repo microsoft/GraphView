@@ -16,6 +16,7 @@ namespace GraphViewUnitTest.Gremlin
         /// Gremlin: g.V(v1Id).as("a").out("created").addE("createdBy").to("a");
         /// </summary>
         [TestMethod]
+        [TestModernCompatible]
         public void AddEdgeWithNoExtraProperty()
         {
             using (GraphViewCommand GraphViewCommand = new GraphViewCommand(graphConnection))
@@ -48,6 +49,7 @@ namespace GraphViewUnitTest.Gremlin
         /// Gremlin: g.V(v1Id).as("a").out("created").addE("createdBy").to("a").property("weight", 2.0d);
         /// </summary>
         [TestMethod]
+        [TestModernCompatible]
         public void AddEdgeWithOneProperty()
         {
             using (GraphViewCommand GraphViewCommand = new GraphViewCommand(graphConnection))
@@ -86,6 +88,7 @@ namespace GraphViewUnitTest.Gremlin
         /// Bug item: https://msdata.visualstudio.com/DocumentDB/_workitems/edit/36616
         /// </remarks>
         [TestMethod]
+        [TestModernCompatible]
         public void AddMultipleEdges()
         {
             using (GraphViewCommand GraphViewCommand = new GraphViewCommand(graphConnection))
@@ -128,6 +131,7 @@ namespace GraphViewUnitTest.Gremlin
         /// Gremlin: g.V().as("a").out("created").in("created").where(P.neq("a")).as("b").addE("codeveloper").from("a").to("b").property("year", 2009);
         /// </summary>
         [TestMethod]
+        [TestModernCompatible]
         public void AddEdgeWithWhere()
         {
             using (GraphViewCommand GraphViewCommand = new GraphViewCommand(graphConnection))
@@ -172,6 +176,7 @@ namespace GraphViewUnitTest.Gremlin
         /// Gremlin: g.V().as("a").in("created").addE("createdBy").from("a").property("year", 2009).property("acl", "public");
         /// </summary>
         [TestMethod]
+        [TestModernCompatible]
         public void AddEdgeWithMultipleProperties()
         {
             using (GraphViewCommand GraphViewCommand = new GraphViewCommand(graphConnection))
@@ -218,6 +223,7 @@ namespace GraphViewUnitTest.Gremlin
         /// https://msdata.visualstudio.com/DocumentDB/_workitems/edit/36546
         /// </remarks>
         [TestMethod]
+        [TestModernCompatible]
         public void AddEdgeThenGetLabel()
         {
             using (GraphViewCommand GraphViewCommand = new GraphViewCommand(graphConnection))

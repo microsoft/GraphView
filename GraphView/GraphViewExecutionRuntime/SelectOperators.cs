@@ -258,7 +258,7 @@ namespace GraphView
 
                     string spilledEdgeDocumentsInClause =
                         $"{this.sinkVertexViaExternalAPIQuery.Alias}.{GraphViewKeywords.KW_EDGEDOC_VERTEXID} IN ({sinkReferenceList.ToString()})";
-                    JsonQuery toSendViaExternalAPIQuery = new JsonQuery(this.sinkVertexQuery);
+                    JsonQuery toSendViaExternalAPIQuery = new JsonQuery(this.sinkVertexViaExternalAPIQuery);
 
                     if (string.IsNullOrEmpty(toSendViaExternalAPIQuery.WhereSearchCondition)) {
                         toSendViaExternalAPIQuery.WhereSearchCondition =

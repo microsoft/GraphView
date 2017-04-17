@@ -12,6 +12,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests
     public class MultiPropertiesAndMetaPropertiesTest : AbstractGremlinTest
     {
         [TestMethod]
+        [TestModernCompatible]
         public void AddVWithMultiPropertiesAndMetaProperties()
         {
             using (GraphViewCommand command = new GraphViewCommand(graphConnection))
