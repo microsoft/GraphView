@@ -395,12 +395,9 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// from org/apache/tinkerpop/gremlin/process/traversal/step/map/VertexTest.java
         /// Gremlin: g.V(v1Id).outE("knows").bothV().values("name");
         /// </summary>
-        /// <remarks>
-        /// V().BothV() does not work
-        /// https://msdata.visualstudio.com/DocumentDB/_workitems/edit/37909
-        /// </remarks>
         [Owner("xunsun")]
         [TestMethod]
+        [TestModernCompatible]
         public void GetOutEdgeBothVertex()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))

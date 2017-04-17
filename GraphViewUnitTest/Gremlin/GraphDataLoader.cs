@@ -4,6 +4,7 @@
 
 using System.Collections.ObjectModel;
 using GraphView;
+using Microsoft.Azure.Documents.Linq;
 
 namespace GraphViewUnitTest.Gremlin
 {
@@ -46,9 +47,14 @@ namespace GraphViewUnitTest.Gremlin
             //        )).ToArray());
 
             // Just remove & recreate the collection
-            client.DeleteDocumentCollectionAsync(
-                UriFactory.CreateDocumentCollectionUri(databaseId, collectionId)
-            ).Wait();
+            try {
+                client.DeleteDocumentCollectionAsync(
+                    UriFactory.CreateDocumentCollectionUri(databaseId, collectionId)
+                ).Wait();
+            }
+            catch (AggregateException aggex) {
+                aggex.Handle(ex => ((ex as DocumentClientException)?.Error.Code == "NotFound"));
+            }
 
             client.CreateDocumentCollectionAsync(
                 UriFactory.CreateDatabaseUri(databaseId),
