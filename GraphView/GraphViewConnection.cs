@@ -65,7 +65,7 @@ namespace GraphView
         public string DocDBDatabaseId { get; }
         public string DocDBCollectionId { get; }
 
-        public GraphType GraphType { get; }
+        public GraphType GraphType { get; internal set; }
 
 
         /// <summary>

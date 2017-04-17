@@ -1739,6 +1739,7 @@ namespace GraphView
             }
             if (this.ViaGraphAPI) {
                 Debug.Assert(this.VertexMetaProperties.ContainsKey(KW_VERTEX_LABEL));
+                Debug.Assert(this.VertexMetaProperties.ContainsKey(KW_VERTEX_VIAGRAPHAPI));
                 Debug.Assert(this.VertexMetaProperties.ContainsKey(KW_VERTEX_EDGE_SPILLED));
                 Debug.Assert(this.VertexMetaProperties.ContainsKey(KW_VERTEX_REVEDGE_SPILLED));
 
@@ -1992,17 +1993,11 @@ namespace GraphView
             foreach (KeyValuePair<string, VertexPropertyField> kvp in VertexProperties)
             {
                 string propertyName = kvp.Key;
-                switch (propertyName)
-                {
-                    case KW_DOC_ID:
-                    case KW_DOC_PARTITION:
-                    case KW_VERTEX_LABEL:
-                    case KW_VERTEX_EDGE:
-                    case KW_VERTEX_REV_EDGE:
-                    //case KW_VERTEX_NEXTOFFSET:
-                        continue;
-                    default:
-                        break;
+                if (VertexField.IsVertexMetaProperty(propertyName)) {
+                    Debug.Assert(false, "Bug!");
+                }
+                if (propertyName == KW_VERTEX_EDGE || propertyName == KW_VERTEX_REV_EDGE) {
+                    Debug.Assert(false, "Bug!");
                 }
 
                 if (firstVertexProperty)

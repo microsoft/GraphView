@@ -11,6 +11,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests
     public class CustomTest : AbstractGremlinTest
     {
         [TestMethod]
+        [TestModernCompatible]
         public void AddVWithNestingProperties()
         {
             using (GraphViewCommand command = new GraphViewCommand(graphConnection))

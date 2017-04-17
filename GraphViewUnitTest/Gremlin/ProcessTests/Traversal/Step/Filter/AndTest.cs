@@ -1,9 +1,11 @@
 ﻿using System;
+using System.Collections.Generic;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.Configuration;
 using System.Linq;
 using GraphView;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
 {
@@ -80,9 +82,10 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
                     .In("created")
                     .As("a")
                     .Values("name");
-                var result = JsonConvert.DeserializeObject<dynamic>(traversal.Next().FirstOrDefault()).First;
+                List<string> tmp = traversal.Next();
+                var result = JsonConvert.DeserializeObject<JArray>(tmp.FirstOrDefault()).First;
 
-                Assert.AreEqual(vertex, (string)result.id);
+                Assert.AreEqual(vertex, (string)result["id"]);
             }
         }
 

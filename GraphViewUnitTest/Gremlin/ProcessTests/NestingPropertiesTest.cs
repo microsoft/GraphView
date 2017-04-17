@@ -36,10 +36,13 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests
                 Assert.AreEqual("name", (string)result[0].label);
                 Assert.AreEqual("marko", (string)result[0].value);
 
-                command.g().V().Properties().Properties().Drop().Next();
-                traversal = command.g().V().Properties("name").Properties();
-                result = JsonConvert.DeserializeObject<dynamic>(traversal.Next().FirstOrDefault());
-                Assert.AreEqual(0, result.Count);
+                if (graphConnection.GraphType == GraphType.GraphAPIOnly)
+                {
+                    command.g().V().Properties().Properties().Drop().Next();
+                    traversal = command.g().V().Properties("name").Properties();
+                    result = JsonConvert.DeserializeObject<dynamic>(traversal.Next().FirstOrDefault());
+                    Assert.AreEqual(0, result.Count);
+                }
             }
         }
 

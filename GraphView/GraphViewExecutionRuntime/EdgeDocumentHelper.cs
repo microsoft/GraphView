@@ -538,7 +538,8 @@ namespace GraphView
                     //
                     // If the empty document is not the latest document, delete the edge-document, 
                     // and add the vertex-document to the upload list
-                    if ((string)edgeDocumentsArray[0][KW_DOC_ID] != edgeDocId) {
+                    if (connection.EdgeSpillThreshold == 1 ||
+                        (string)edgeDocumentsArray[0][KW_DOC_ID] != edgeDocId) {
                         documentMap[edgeDocId] = new Tuple<JObject, string>(null, connection.GetDocumentPartition(edgeDocument));
                     }
                     else {

@@ -304,15 +304,13 @@ namespace GraphView
 
             bool hasNodePredicates = nodeCondition != null;
             bool hasEdgePredicates = edgeCondition != null;
-            bool hasBothNodePredicatesAndEdgePredicates = hasNodePredicates && hasEdgePredicates;
             //
             // (IS_DEFINED(nodeAlias._viaGraphAPI) = true AND (nodeCondition)) AND (edgeCondition)
             //
-            string searchConditionString = string.Format("(IS_DEFINED({0}.{1}) = true {2}){3}{4}",
+            string searchConditionString = string.Format("(IS_DEFINED({0}.{1}) = true{2}){3}",
                 nodeAlias, GraphViewKeywords.KW_VERTEX_VIAGRAPHAPI,
-                hasNodePredicates ? $"AND ({nodeCondition.ToString()})" : "",
-                hasBothNodePredicatesAndEdgePredicates ? " AND " : "",
-                hasEdgePredicates ? $"({edgeConditionString})" : "");
+                hasNodePredicates ? $" AND ({nodeCondition.ToString()})" : "",
+                hasEdgePredicates ? $" AND ({edgeConditionString})" : "");
 
             JsonQuery jsonQuery = new JsonQuery
             {

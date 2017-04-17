@@ -87,11 +87,18 @@ namespace GraphView
                 //GraphViewJsonCommand.AppendVertexSinglePropertyToVertex(vertexObject);
             }
 
-            vertexObject[KW_VERTEX_EDGE] = new JArray();
-            vertexObject[KW_VERTEX_REV_EDGE] = new JArray();
-            vertexObject[KW_VERTEX_EDGE_SPILLED] = false;
-            vertexObject[KW_VERTEX_REVEDGE_SPILLED] = false;
-            //vertexObject[KW_VERTEX_NEXTOFFSET] = 0;
+            if (connection.EdgeSpillThreshold == 1) {
+                vertexObject[KW_VERTEX_EDGE] = new JArray { "dummy" };
+                vertexObject[KW_VERTEX_REV_EDGE] = new JArray { "dummy" };
+                vertexObject[KW_VERTEX_EDGE_SPILLED] = true;
+                vertexObject[KW_VERTEX_REVEDGE_SPILLED] = true;
+            }
+            else {
+                vertexObject[KW_VERTEX_EDGE] = new JArray();
+                vertexObject[KW_VERTEX_REV_EDGE] = new JArray();
+                vertexObject[KW_VERTEX_EDGE_SPILLED] = false;
+                vertexObject[KW_VERTEX_REVEDGE_SPILLED] = false;
+            }
 
             return vertexObject;
         }
@@ -134,6 +141,11 @@ namespace GraphView
                     ? GraphViewReservedProperties.ReservedNodePropertiesColumnGraphTypes[propertyName]
                     : ColumnGraphType.Value;
                 context.AddField(Alias.Value, propertyName, columnGraphType);
+            }
+
+            // Convert the connection to Hybrid if necessary
+            if (dbConnection.GraphType != GraphType.GraphAPIOnly) {
+                dbConnection.GraphType = GraphType.Hybrid;
             }
 
             return addVOp;
