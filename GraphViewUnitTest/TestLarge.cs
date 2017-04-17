@@ -6,6 +6,7 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using GraphView;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using GraphViewUnitTest.Gremlin;
 
 namespace GraphViewUnitTest
 {
@@ -31,7 +32,7 @@ namespace GraphViewUnitTest
             }
             string collectionName = $"[{frame.GetMethod().Name}]{tips}";
 
-            GraphViewConnection connection = GraphViewConnection.ResetGraphAPICollection(DOCDB_URL, DOCDB_AUTHKEY, DOCDB_DATABASE, collectionName);
+            GraphViewConnection connection = GraphViewConnection.ResetGraphAPICollection(DOCDB_URL, DOCDB_AUTHKEY, DOCDB_DATABASE, collectionName, AbstractGremlinTest.TEST_USE_REVERSE_EDGE);
 
             return connection;
         }

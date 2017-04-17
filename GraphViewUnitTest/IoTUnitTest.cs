@@ -49,7 +49,7 @@ namespace GraphViewUnitTest
             string collectionId = ConfigurationManager.AppSettings["DocDBCollectionModern"];
 
             GraphViewConnection connection = GraphViewConnection.ResetGraphAPICollection(
-                endpoint, authKey, databaseId, collectionId
+                endpoint, authKey, databaseId, collectionId, AbstractGremlinTest.TEST_USE_REVERSE_EDGE
                 );
 
             graph = new GraphViewCommand(connection);

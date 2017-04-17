@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using GraphView;
+using GraphViewUnitTest.Gremlin;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace GraphViewUnitTest
@@ -18,7 +19,7 @@ namespace GraphViewUnitTest
         {
             return GraphViewConnection.ResetGraphAPICollection("https://graphview.documents.azure.com:443/",
                 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
-                "GroupMatch", "GremlinFunctionalTestSuite");
+                "GroupMatch", "GremlinFunctionalTestSuite", AbstractGremlinTest.TEST_USE_REVERSE_EDGE);
 
             //return GraphViewConnection.ResetGraphAPICollection("https://localhost:8081/",
             //    "C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==",

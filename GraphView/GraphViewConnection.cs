@@ -112,6 +112,7 @@ namespace GraphView
             string authKey,
             string databaseId,
             string collectionId,
+            bool useReverseEdge,
             string partitionByKey = null)
         {
             using (DocumentClient client = new DocumentClient(
@@ -128,7 +129,7 @@ namespace GraphView
                 }
             }
 
-            return new GraphViewConnection(endpoint, authKey, databaseId, collectionId, GraphType.GraphAPIOnly, false, 1, partitionByKey);
+            return new GraphViewConnection(endpoint, authKey, databaseId, collectionId, GraphType.GraphAPIOnly, useReverseEdge, 1, partitionByKey);
         }
 
         public static GraphViewConnection ResetFlatCollection(
@@ -448,7 +449,7 @@ namespace GraphView
         {
 #if DEBUG
             // Make sure that there aren't two docObject (not null) sharing the same reference
-            List<Tuple<JObject, string>> docObjectList = documentsMap.Values.Where(docObject => docObject != null).ToList();
+            List<Tuple<JObject, string>> docObjectList = documentsMap.Values.Where(tuple => tuple.Item1 != null).ToList();
             HashSet<Tuple<JObject, string>> docObjectSet = new HashSet<Tuple<JObject, string>>(docObjectList);
             Debug.Assert(docObjectList.Count == docObjectSet.Count, "Replacing documents with two docObject sharing the same reference");
 #endif
@@ -558,7 +559,7 @@ namespace GraphView
 
 
 #if EASY_DEBUG
-        private static long __currId = 0;
+        private static long __currId = 1000;
 #endif       
         internal static string GenerateDocumentId()
         {

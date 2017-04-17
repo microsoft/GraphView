@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using GraphView;
+using GraphViewUnitTest.Gremlin;
 using Microsoft.SqlServer.TransactSql.ScriptDom;
 
 namespace GraphViewUnitTest
@@ -17,7 +18,7 @@ namespace GraphViewUnitTest
         {
             GraphViewConnection connection = GraphViewConnection.ResetGraphAPICollection("https://graphview.documents.azure.com:443/",
               "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
-              "GroupMatch", "MarvelTest");
+              "GroupMatch", "MarvelTest", AbstractGremlinTest.TEST_USE_REVERSE_EDGE);
 
             GraphViewCommand graphCommand = new GraphViewCommand(connection);
 

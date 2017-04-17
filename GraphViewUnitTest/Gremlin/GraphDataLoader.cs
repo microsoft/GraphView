@@ -22,7 +22,7 @@ namespace GraphViewUnitTest.Gremlin
     /// </summary>
     public static class GraphDataLoader
     {
-        public static void ResetToCompatibleData_Modern(string endpoint, string authKey, string databaseId, string collectionId)
+        public static void ResetToCompatibleData_Modern(string endpoint, string authKey, string databaseId, string collectionId, bool useReverseEdge)
         {
             DocumentClient client = new DocumentClient(
                 new Uri(endpoint),
@@ -81,12 +81,28 @@ namespace GraphViewUnitTest.Gremlin
             createDoc("{\"label\":\"software\",\"id\":\"中文English\",\"name\":\"ripple\",\"lang\":\"java\"}");
             createDoc("{\"label\":\"person\",\"name\":\"peter\",\"age\":35,\"id\":\"ID_13\"}");
 
-            createDoc("{\"id\":\"ID_15\",\"_is_reverse\":false,\"_vertex_id\":\"dummy\",\"label\":\"person\",\"_edge\":[{\"label\":\"knows\",\"weight\":0.5,\"id\":\"ID_14\",\"_sinkV\":\"特殊符号\",\"_sinkVLabel\":\"person\"}],\"label\":\"person\"}");
-            createDoc("{\"id\":\"ID_17\",\"_is_reverse\":false,\"_vertex_id\":\"dummy\",\"label\":\"person\",\"_edge\":[{\"label\":\"knows\",\"weight\":1,\"id\":\"ID_16\",\"_sinkV\":\"引号\",\"_sinkVLabel\":\"person\"}],\"label\":\"person\"}");
-            createDoc("{\"id\":\"ID_19\",\"_is_reverse\":false,\"_vertex_id\":\"dummy\",\"label\":\"person\",\"_edge\":[{\"label\":\"created\",\"weight\":0.4,\"id\":\"ID_18\",\"_sinkV\":\"这是一个中文ID\",\"_sinkVLabel\":\"software\"}],\"label\":\"person\"}");
-            createDoc("{\"id\":\"ID_21\",\"_is_reverse\":false,\"_vertex_id\":\"引号\" ,\"label\":\"person\",\"_edge\":[{\"label\":\"created\",\"weight\":1,\"id\":\"ID_20\",\"_sinkV\":\"中文English\",\"_sinkVLabel\":\"software\"}],\"label\":\"person\"}");
-            createDoc("{\"id\":\"ID_23\",\"_is_reverse\":false,\"_vertex_id\":\"引号\" ,\"label\":\"person\",\"_edge\":[{\"label\":\"created\",\"weight\":0.4,\"id\":\"ID_22\",\"_sinkV\":\"这是一个中文ID\",\"_sinkVLabel\":\"software\"}],\"label\":\"person\"}");
-            createDoc("{\"id\":\"ID_25\",\"_is_reverse\":false,\"_vertex_id\":\"ID_13\",\"label\":\"person\",\"_edge\":[{\"label\":\"created\",\"weight\":0.2,\"id\":\"ID_24\",\"_sinkV\":\"这是一个中文ID\",\"_sinkVLabel\":\"software\"}],\"label\":\"person\"}");
+            if (useReverseEdge) {
+                createDoc("{\"id\":\"ID_15\",\"_is_reverse\":false,\"_vertex_id\":\"dummy\",\"_edge\":[{\"label\":\"knows\",\"weight\":0.5,\"id\":\"ID_14\",\"_sinkV\":\"特殊符号\",\"_sinkVLabel\":\"person\"}],\"label\":\"person\"}");
+                createDoc("{\"id\":\"ID_16\",\"_is_reverse\":true,\"_vertex_id\":\"特殊符号\",\"_edge\":[{\"label\":\"knows\",\"weight\":0.5,\"id\":\"ID_14\",\"_srcV\":\"dummy\",\"_srcVLabel\":\"person\"}],\"label\":\"person\"}");
+                createDoc("{\"id\":\"ID_18\",\"_is_reverse\":false,\"_vertex_id\":\"dummy\",\"_edge\":[{\"label\":\"knows\",\"weight\":1,\"id\":\"ID_17\",\"_sinkV\":\"引号\",\"_sinkVLabel\":\"person\"}],\"label\":\"person\"}");
+                createDoc("{\"id\":\"ID_19\",\"_is_reverse\":true,\"_vertex_id\":\"引号\",\"_edge\":[{\"label\":\"knows\",\"weight\":1,\"id\":\"ID_17\",\"_srcV\":\"dummy\",\"_srcVLabel\":\"person\"}],\"label\":\"person\"}");
+                createDoc("{\"id\":\"ID_21\",\"_is_reverse\":false,\"_vertex_id\":\"dummy\",\"_edge\":[{\"label\":\"created\",\"weight\":0.4,\"id\":\"ID_20\",\"_sinkV\":\"这是一个中文ID\",\"_sinkVLabel\":\"software\"}],\"label\":\"person\"}");
+                createDoc("{\"id\":\"ID_22\",\"_is_reverse\":true,\"_vertex_id\":\"这是一个中文ID\",\"_edge\":[{\"label\":\"created\",\"weight\":0.4,\"id\":\"ID_20\",\"_srcV\":\"dummy\",\"_srcVLabel\":\"person\"}],\"label\":\"software\"}");
+                createDoc("{\"id\":\"ID_24\",\"_is_reverse\":false,\"_vertex_id\":\"引号\",\"_edge\":[{\"label\":\"created\",\"weight\":1,\"id\":\"ID_23\",\"_sinkV\":\"中文English\",\"_sinkVLabel\":\"software\"}],\"label\":\"person\"}");
+                createDoc("{\"id\":\"ID_25\",\"_is_reverse\":true,\"_vertex_id\":\"中文English\",\"_edge\":[{\"label\":\"created\",\"weight\":1,\"id\":\"ID_23\",\"_srcV\":\"引号\",\"_srcVLabel\":\"person\"}],\"label\":\"software\"}");
+                createDoc("{\"id\":\"ID_27\",\"_is_reverse\":false,\"_vertex_id\":\"引号\",\"_edge\":[{\"label\":\"created\",\"weight\":0.4,\"id\":\"ID_26\",\"_sinkV\":\"这是一个中文ID\",\"_sinkVLabel\":\"software\"}],\"label\":\"person\"}");
+                createDoc("{\"id\":\"ID_28\",\"_is_reverse\":true,\"_vertex_id\":\"这是一个中文ID\",\"_edge\":[{\"label\":\"created\",\"weight\":0.4,\"id\":\"ID_26\",\"_srcV\":\"引号\",\"_srcVLabel\":\"person\"}],\"label\":\"software\"}");
+                createDoc("{\"id\":\"ID_30\",\"_is_reverse\":false,\"_vertex_id\":\"ID_13\",\"_edge\":[{\"label\":\"created\",\"weight\":0.2,\"id\":\"ID_29\",\"_sinkV\":\"这是一个中文ID\",\"_sinkVLabel\":\"software\"}],\"label\":\"person\"}");
+                createDoc("{\"id\":\"ID_31\",\"_is_reverse\":true,\"_vertex_id\":\"这是一个中文ID\",\"_edge\":[{\"label\":\"created\",\"weight\":0.2,\"id\":\"ID_29\",\"_srcV\":\"ID_13\",\"_srcVLabel\":\"person\"}],\"label\":\"software\"}");
+            }
+            else {
+                createDoc("{\"id\":\"ID_15\",\"_is_reverse\":false,\"_vertex_id\":\"dummy\",\"label\":\"person\",\"_edge\":[{\"label\":\"knows\",\"weight\":0.5,\"id\":\"ID_14\",\"_sinkV\":\"特殊符号\",\"_sinkVLabel\":\"person\"}],\"label\":\"person\"}");
+                createDoc("{\"id\":\"ID_17\",\"_is_reverse\":false,\"_vertex_id\":\"dummy\",\"label\":\"person\",\"_edge\":[{\"label\":\"knows\",\"weight\":1,\"id\":\"ID_16\",\"_sinkV\":\"引号\",\"_sinkVLabel\":\"person\"}],\"label\":\"person\"}");
+                createDoc("{\"id\":\"ID_19\",\"_is_reverse\":false,\"_vertex_id\":\"dummy\",\"label\":\"person\",\"_edge\":[{\"label\":\"created\",\"weight\":0.4,\"id\":\"ID_18\",\"_sinkV\":\"这是一个中文ID\",\"_sinkVLabel\":\"software\"}],\"label\":\"person\"}");
+                createDoc("{\"id\":\"ID_21\",\"_is_reverse\":false,\"_vertex_id\":\"引号\" ,\"label\":\"person\",\"_edge\":[{\"label\":\"created\",\"weight\":1,\"id\":\"ID_20\",\"_sinkV\":\"中文English\",\"_sinkVLabel\":\"software\"}],\"label\":\"person\"}");
+                createDoc("{\"id\":\"ID_23\",\"_is_reverse\":false,\"_vertex_id\":\"引号\" ,\"label\":\"person\",\"_edge\":[{\"label\":\"created\",\"weight\":0.4,\"id\":\"ID_22\",\"_sinkV\":\"这是一个中文ID\",\"_sinkVLabel\":\"software\"}],\"label\":\"person\"}");
+                createDoc("{\"id\":\"ID_25\",\"_is_reverse\":false,\"_vertex_id\":\"ID_13\",\"label\":\"person\",\"_edge\":[{\"label\":\"created\",\"weight\":0.2,\"id\":\"ID_24\",\"_sinkV\":\"这是一个中文ID\",\"_sinkVLabel\":\"software\"}],\"label\":\"person\"}");
+            }
 
             // Wait for all of them to finish
             Task.WaitAll(tasks.ToArray());
@@ -151,7 +167,7 @@ namespace GraphViewUnitTest.Gremlin
             string databaseId = ConfigurationManager.AppSettings["DocDBDatabaseGremlin"];
             string collectionId = ConfigurationManager.AppSettings["DocDBCollectionClassic"];
 
-            GraphViewConnection connection = GraphViewConnection.ResetGraphAPICollection(endpoint, authKey, databaseId, collectionId, "label");
+            GraphViewConnection connection = GraphViewConnection.ResetGraphAPICollection(endpoint, authKey, databaseId, collectionId, AbstractGremlinTest.TEST_USE_REVERSE_EDGE, "label");
 
 
             GraphViewCommand graphCommand = new GraphViewCommand(connection);
@@ -183,7 +199,7 @@ namespace GraphViewUnitTest.Gremlin
             string databaseId = ConfigurationManager.AppSettings["DocDBDatabaseGremlin"];
             string collectionId = ConfigurationManager.AppSettings["DocDBCollectionModern"];
 
-            GraphViewConnection connection = GraphViewConnection.ResetGraphAPICollection(endpoint, authKey, databaseId, collectionId, "label");
+            GraphViewConnection connection = GraphViewConnection.ResetGraphAPICollection(endpoint, authKey, databaseId, collectionId, AbstractGremlinTest.TEST_USE_REVERSE_EDGE, "label");
 
 
             GraphViewCommand graphCommand = new GraphViewCommand(connection);
@@ -233,7 +249,7 @@ namespace GraphViewUnitTest.Gremlin
             string authKey = ConfigurationManager.AppSettings["DocDBKeyLocal"];
             string databaseId = ConfigurationManager.AppSettings["DocDBDatabaseGremlin"];
 
-            GraphViewConnection.ResetGraphAPICollection(endpoint, authKey, databaseId, CollectionName/*, "name"*/);
+            GraphViewConnection.ResetGraphAPICollection(endpoint, authKey, databaseId, CollectionName, AbstractGremlinTest.TEST_USE_REVERSE_EDGE/*, "name"*/);
         }
     }
 }

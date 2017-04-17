@@ -7,6 +7,7 @@ using System.Text;
 using System.CodeDom.Compiler;
 using System.Reflection;
 using System.Text.RegularExpressions;
+using GraphViewUnitTest.Gremlin;
 using Microsoft.CSharp;
 
 namespace GremlinTranslationOperator.Tests
@@ -34,7 +35,7 @@ namespace GremlinTranslationOperator.Tests
         {
             GraphViewConnection connection = GraphViewConnection.ResetGraphAPICollection("https://graphview.documents.azure.com:443/",
                 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
-                "GroupMatch", "GremlinFunctionalTestSuite");
+                "GroupMatch", "GremlinFunctionalTestSuite", AbstractGremlinTest.TEST_USE_REVERSE_EDGE);
 
             GraphViewCommand graph = new GraphViewCommand(connection);
 

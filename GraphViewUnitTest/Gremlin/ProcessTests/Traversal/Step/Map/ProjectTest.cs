@@ -1,4 +1,5 @@
-﻿using System.Linq;
+﻿using System.Collections.Generic;
+using System.Linq;
 using GraphView;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Newtonsoft.Json;
@@ -34,16 +35,26 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
                                                     .By(GraphTraversal2.__().OutE().Count())
                                                     .By("age");
 
-                dynamic result = JsonConvert.DeserializeObject<dynamic>(traversal.FirstOrDefault());
+                dynamic results = JsonConvert.DeserializeObject<dynamic>(traversal.FirstOrDefault());
 
-                Assert.AreEqual(3, (int)result[0]["a"]);
-                Assert.AreEqual(29, (int)result[0]["b"]);
-                Assert.AreEqual(0, (int)result[1]["a"]);
-                Assert.AreEqual(27, (int)result[1]["b"]);
-                Assert.AreEqual(2, (int)result[2]["a"]);
-                Assert.AreEqual(32, (int)result[2]["b"]);
-                Assert.AreEqual(1, (int)result[3]["a"]);
-                Assert.AreEqual(35, (int)result[3]["b"]);
+                List<string> ans = new List<string>();
+                foreach (dynamic result in results)
+                {
+                    List<string> temp = new List<string>();
+                    temp.Add(result["a"].ToString());
+                    temp.Add(result["b"].ToString());
+                    ans.Add(string.Join(",", temp));
+                    temp.Clear();
+                }
+
+                List<string> expect = new List<string> {
+                    "3,29",
+                    "0,27",
+                    "2,32",
+                    "1,35"
+                };
+
+                CheckUnOrderedResults(expect, ans);
             }
         }
 

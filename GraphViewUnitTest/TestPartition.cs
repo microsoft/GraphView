@@ -9,6 +9,7 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 using GraphView;
+using GraphViewUnitTest.Gremlin;
 using Microsoft.Azure.Documents;
 using Microsoft.Azure.Documents.Client;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -38,7 +39,7 @@ namespace GraphViewUnitTest
             }
             string collectionName = $"[{frame.GetMethod().Name}]{tips}";
 
-            GraphViewConnection connection = GraphViewConnection.ResetGraphAPICollection(DOCDB_URL, DOCDB_AUTHKEY, DOCDB_DATABASE, collectionName);
+            GraphViewConnection connection = GraphViewConnection.ResetGraphAPICollection(DOCDB_URL, DOCDB_AUTHKEY, DOCDB_DATABASE, collectionName, AbstractGremlinTest.TEST_USE_REVERSE_EDGE);
 
             return connection;
         }

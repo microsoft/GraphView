@@ -30,6 +30,8 @@ namespace GraphViewUnitTest.Gremlin
     [TestClass]
     public class AbstractGremlinTest
     {
+        internal const bool TEST_USE_REVERSE_EDGE = true;
+
         protected static GraphViewConnection graphConnection;
 
         public TestContext TestContext { get; set; }
@@ -54,12 +56,13 @@ namespace GraphViewUnitTest.Gremlin
             if (attr != null && attr.InitialFlat) {
                 Console.WriteLine($"[{TestContext.TestName}] Convert the graph to flat!");
 
-                GraphDataLoader.ResetToCompatibleData_Modern(endpoint, authKey, databaseId, collectionId);
+                GraphDataLoader.ResetToCompatibleData_Modern(endpoint, authKey, databaseId, collectionId, TEST_USE_REVERSE_EDGE);
 
                 graphConnection = new GraphViewConnection(
                     endpoint, authKey, databaseId, collectionId,
                     GraphType.CompatibleOnly,
                     edgeSpillThreshold: 1,
+                    useReverseEdges: TEST_USE_REVERSE_EDGE,
                     partitionByKeyIfViaGraphAPI: null
                 );
 
@@ -73,6 +76,7 @@ namespace GraphViewUnitTest.Gremlin
                     endpoint, authKey, databaseId, collectionId,
                     GraphType.GraphAPIOnly,
                     edgeSpillThreshold: 1,
+                    useReverseEdges: TEST_USE_REVERSE_EDGE,
                     partitionByKeyIfViaGraphAPI: "label"
                 );
             }

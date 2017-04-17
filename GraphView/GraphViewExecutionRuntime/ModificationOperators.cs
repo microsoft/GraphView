@@ -777,6 +777,7 @@ namespace GraphView
                 }
             }
 
+            // <docId, <docJson, partition>>
             Dictionary<string, Tuple<JObject, string>> uploadDocuments = new Dictionary<string, Tuple<JObject, string>>();
             EdgeDocumentHelper.RemoveEdge(uploadDocuments, this.Connection, srcEdgeDocId, srcVertexObject, false, srcId, edgeId);
             if (this.Connection.UseReverseEdges) {
