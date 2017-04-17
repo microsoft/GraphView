@@ -183,7 +183,10 @@ namespace GraphView
         public NormalizeNodePredicatesWColumnReferenceExpressionVisitor(string partitionKey)
         {
             this.referencedProperties = new Dictionary<string, string>();
-            this.flatProperties = new HashSet<string> { GremlinKeyword.NodeID, GremlinKeyword.Label, partitionKey };
+            this.flatProperties = new HashSet<string> { GremlinKeyword.NodeID, GremlinKeyword.Label };
+            if (partitionKey != null) {
+                this.flatProperties.Add(partitionKey);
+            }
         }
 
         public Dictionary<string, string> Invoke(WBooleanExpression booleanExpression)
