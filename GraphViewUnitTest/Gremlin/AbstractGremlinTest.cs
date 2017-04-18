@@ -57,7 +57,6 @@ namespace GraphViewUnitTest.Gremlin
             string databaseId = ConfigurationManager.AppSettings["DocDBDatabaseGremlin"];
             string collectionId = ConfigurationManager.AppSettings["DocDBCollectionModern"];
 
-
             Type classType = Type.GetType(TestContext.FullyQualifiedTestClassName);
             MethodInfo method = classType.GetMethod(TestContext.TestName, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
             TestModernCompatibleAttribute attr = method.GetCustomAttribute<TestModernCompatibleAttribute>();

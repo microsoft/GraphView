@@ -1319,8 +1319,10 @@ namespace GraphView
                 //case KW_EDGE_OFFSET:
                 case KW_EDGE_SRCV:
                 case KW_EDGE_SRCV_LABEL:
+                case KW_EDGE_SRCV_PARTITION:
                 case KW_EDGE_SINKV:
                 case KW_EDGE_SINKV_LABEL:
+                case KW_EDGE_SINKV_PARTITION:
                 case KW_EDGE_ID:
 
                 //case GremlinKeyword.EdgeSourceV:
@@ -1577,6 +1579,8 @@ namespace GraphView
 
         public bool ViaGraphAPI => ((bool?)(JValue)this.VertexJObject[KW_VERTEX_VIAGRAPHAPI] == true);
 
+        public string Partition { get; }
+
 
         // <Property Name, VertexPropertyField>
         public Dictionary<string, VertexPropertyField> VertexProperties { get; } = new Dictionary<string, VertexPropertyField>();
@@ -1680,6 +1684,14 @@ namespace GraphView
             this.VertexJObject = vertexObject;
             this.VertexProperties = new Dictionary<string, VertexPropertyField>();
 
+            // The partition value
+            if (connection.CollectionType == CollectionType.STANDARD) {
+                this.Partition = null;
+            }
+            else {
+                Debug.Assert(connection.CollectionType == CollectionType.PARTITIONED);
+                this.Partition = connection.GetDocumentPartition(vertexObject);
+            }
 
             //
             // Now constuct this vertex field
@@ -1849,6 +1861,8 @@ namespace GraphView
                             case KW_EDGE_SINKV:
                             case KW_EDGE_SRCV_LABEL:
                             case KW_EDGE_SINKV_LABEL:
+                            case KW_EDGE_SRCV_PARTITION:
+                            case KW_EDGE_SINKV_PARTITION:
                                 continue;
                             default:
                                 break;
@@ -1943,6 +1957,8 @@ namespace GraphView
                             case KW_EDGE_SINKV:
                             case KW_EDGE_SRCV_LABEL:
                             case KW_EDGE_SINKV_LABEL:
+                            case KW_EDGE_SRCV_PARTITION:
+                            case KW_EDGE_SINKV_PARTITION:
                                 continue;
                             default:
                                     break;

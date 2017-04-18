@@ -20,6 +20,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests
                 command.OutputFormat = OutputFormat.GraphSON;
                 command.g()
                     .AddV()
+                    .Property(TEST_PARTITION_BY_KEY, "====")
                     .Property("name233", "marko", "meta1", "meta1Value")
                     .Property("name233", "mike", "meta2", "meta2Value")
                     .Next();

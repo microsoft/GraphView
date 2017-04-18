@@ -561,7 +561,7 @@ namespace GraphView
 
 
 #if EASY_DEBUG
-        private static long __currId = 1000;
+        private static long __currId = 0;
 #endif       
         internal static string GenerateDocumentId()
         {

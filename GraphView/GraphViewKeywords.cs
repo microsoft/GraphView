@@ -55,8 +55,10 @@ namespace GraphView
         //public const string KW_EDGE_OFFSET = "_offset";
         public const string KW_EDGE_SRCV = "_srcV";
         public const string KW_EDGE_SRCV_LABEL = "_srcVLabel";
+        public const string KW_EDGE_SRCV_PARTITION = "_srcVPartition";
         public const string KW_EDGE_SINKV = "_sinkV";
         public const string KW_EDGE_SINKV_LABEL = "_sinkVLabel";
+        public const string KW_EDGE_SINKV_PARTITION = "_sinkVPartition";
 
         public const string KW_EDGEDOC_VERTEXID = "_vertex_id";
         public const string KW_EDGEDOC_ISREVERSE = "_is_reverse";

@@ -126,6 +126,8 @@ namespace GraphView
                 case KW_EDGE_SRCV_LABEL:
                 case KW_EDGE_SINKV:
                 case KW_EDGE_SINKV_LABEL:
+                case KW_EDGE_SRCV_PARTITION:
+                case KW_EDGE_SINKV_PARTITION:
                 case KW_EDGE_LABEL:
                     continue;
                 default:
@@ -140,16 +142,18 @@ namespace GraphView
 
         [DebuggerStepThrough]
         public static void UpdateEdgeMetaProperty(
-            JObject edgeJObject, string edgeId, bool isReverseEdge, string srcOrSinkVId, string srcOrSinkVLabel)
+            JObject edgeJObject, string edgeId, bool isReverseEdge, string srcOrSinkVId, string srcOrSinkVLabel, string srcOrSinkPartition)
         {
             edgeJObject[KW_EDGE_ID] = edgeId;
             if (isReverseEdge) {
                 edgeJObject[KW_EDGE_SRCV] = srcOrSinkVId;
                 edgeJObject[KW_EDGE_SRCV_LABEL] = (JValue)srcOrSinkVLabel ?? JValue.CreateNull();
+                edgeJObject[KW_EDGE_SRCV_PARTITION] = (JValue)srcOrSinkPartition ?? JValue.CreateNull();
             }
             else {
                 edgeJObject[KW_EDGE_SINKV] = srcOrSinkVId;
                 edgeJObject[KW_EDGE_SINKV_LABEL] = (JValue)srcOrSinkVLabel ?? JValue.CreateNull();
+                edgeJObject[KW_EDGE_SINKV_PARTITION] = (JValue)srcOrSinkPartition ?? JValue.CreateNull();
             }
         }
     }

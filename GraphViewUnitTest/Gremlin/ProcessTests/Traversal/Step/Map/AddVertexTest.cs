@@ -19,10 +19,10 @@ namespace GraphViewUnitTest.Gremlin
             using (GraphViewCommand GraphViewCommand = new GraphViewCommand(graphConnection))
             {
                 GraphViewCommand.OutputFormat = OutputFormat.GraphSON;
-                GraphViewCommand.g().AddV("V1").Property("Prop1", "Value1").Next();
-                GraphViewCommand.g().AddV("V2").Property("Prop2", "Value2").Next();
-                GraphViewCommand.g().AddV("V3").Property("Prop3", "Value3").Next();
-                var traversal = GraphViewCommand.g().V().AddV().Property("P", "PV");
+                GraphViewCommand.g().AddV("V1").Property(TEST_PARTITION_BY_KEY, "Value1").Next();
+                GraphViewCommand.g().AddV("V2").Property(TEST_PARTITION_BY_KEY, "Value2").Next();
+                GraphViewCommand.g().AddV("V3").Property(TEST_PARTITION_BY_KEY, "Value3").Next();
+                var traversal = GraphViewCommand.g().V().AddV().Property(TEST_PARTITION_BY_KEY, "PV");
                 dynamic result = JsonConvert.DeserializeObject<dynamic>(traversal.Next().FirstOrDefault());
                 Console.WriteLine(result);
             }

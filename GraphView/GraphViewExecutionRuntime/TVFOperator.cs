@@ -390,6 +390,8 @@ namespace GraphView
                         case KW_EDGE_SINKV:
                         case KW_EDGE_SRCV_LABEL:
                         case KW_EDGE_SINKV_LABEL:
+                        case KW_EDGE_SRCV_PARTITION:
+                        case KW_EDGE_SINKV_PARTITION:
                             continue;
                         default:
                             RawRecord r = new RawRecord();
@@ -549,6 +551,8 @@ namespace GraphView
                             case KW_EDGE_SINKV:
                             case KW_EDGE_SRCV_LABEL:
                             case KW_EDGE_SINKV_LABEL:
+                            case KW_EDGE_SRCV_PARTITION:
+                            case KW_EDGE_SINKV_PARTITION:
                                 continue;
                             default:
                                 valueMap.Add(new StringField(propertyName),
@@ -710,6 +714,8 @@ namespace GraphView
                             case KW_EDGE_SINKV:
                             case KW_EDGE_SRCV_LABEL:
                             case KW_EDGE_SINKV_LABEL:
+                            case KW_EDGE_SRCV_PARTITION:
+                            case KW_EDGE_SINKV_PARTITION:
                                 continue;
                             default:
                                 valueMap.Add(new StringField(propertyName), edgePropertyField);
@@ -815,6 +821,8 @@ namespace GraphView
                         case KW_EDGE_SINKV:
                         case KW_EDGE_SRCV_LABEL:
                         case KW_EDGE_SINKV_LABEL:
+                        case KW_EDGE_SRCV_PARTITION:
+                        case KW_EDGE_SINKV_PARTITION:
                             continue;
                         default:
                             RawRecord r = new RawRecord();

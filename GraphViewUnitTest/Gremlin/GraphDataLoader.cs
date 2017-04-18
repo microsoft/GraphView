@@ -79,63 +79,63 @@ namespace GraphViewUnitTest.Gremlin
             createDoc("{\"label\":\"software\",\"id\":\"这是一个中文ID\",\"name\":\"lop\",\"lang\":\"java\"}");
             createDoc("{\"label\":\"person\",\"id\":\"引号\",\"name\":\"josh\",\"age\":32}");
             createDoc("{\"label\":\"software\",\"id\":\"中文English\",\"name\":\"ripple\",\"lang\":\"java\"}");
-            createDoc("{\"label\":\"person\",\"name\":\"peter\",\"age\":35,\"id\":\"ID_13\"}");
+            createDoc("{\"label\":\"person\",\"name\":\"peter\",\"age\":35,\"id\":\"ID_1007\"}");
 
             string partitionByKey = AbstractGremlinTest.TEST_PARTITION_BY_KEY;
             if (partitionByKey == "name")
             {
                 if (useReverseEdge)
                 {
-                    createDoc("{\"id\":\"ID_15\",\"_is_reverse\":false,\"_vertex_id\":\"dummy\",\"_edge\":[{\"label\":\"knows\",\"weight\":0.5,\"id\":\"ID_14\",\"_sinkV\":\"特殊符号\",\"_sinkVLabel\":\"person\"}],\"" + partitionByKey + "\":\"marko\"}");
-                    createDoc("{\"id\":\"ID_16\",\"_is_reverse\":true,\"_vertex_id\":\"特殊符号\",\"_edge\":[{\"label\":\"knows\",\"weight\":0.5,\"id\":\"ID_14\",\"_srcV\":\"dummy\",\"_srcVLabel\":\"person\"}],\"" + partitionByKey + "\":\"vadas\"}");
-                    createDoc("{\"id\":\"ID_18\",\"_is_reverse\":false,\"_vertex_id\":\"dummy\",\"_edge\":[{\"label\":\"knows\",\"weight\":1,\"id\":\"ID_17\",\"_sinkV\":\"引号\",\"_sinkVLabel\":\"person\"}],\"" + partitionByKey + "\":\"marko\"}");
-                    createDoc("{\"id\":\"ID_19\",\"_is_reverse\":true,\"_vertex_id\":\"引号\",\"_edge\":[{\"label\":\"knows\",\"weight\":1,\"id\":\"ID_17\",\"_srcV\":\"dummy\",\"_srcVLabel\":\"person\"}],\"" + partitionByKey + "\":\"josh\"}");
-                    createDoc("{\"id\":\"ID_21\",\"_is_reverse\":false,\"_vertex_id\":\"dummy\",\"_edge\":[{\"label\":\"created\",\"weight\":0.4,\"id\":\"ID_20\",\"_sinkV\":\"这是一个中文ID\",\"_sinkVLabel\":\"software\"}],\"" + partitionByKey + "\":\"marko\"}");
-                    createDoc("{\"id\":\"ID_22\",\"_is_reverse\":true,\"_vertex_id\":\"这是一个中文ID\",\"_edge\":[{\"label\":\"created\",\"weight\":0.4,\"id\":\"ID_20\",\"_srcV\":\"dummy\",\"_srcVLabel\":\"person\"}],\"" + partitionByKey + "\":\"lop\"}");
-                    createDoc("{\"id\":\"ID_24\",\"_is_reverse\":false,\"_vertex_id\":\"引号\",\"_edge\":[{\"label\":\"created\",\"weight\":1,\"id\":\"ID_23\",\"_sinkV\":\"中文English\",\"_sinkVLabel\":\"software\"}],\"" + partitionByKey + "\":\"josh\"}");
-                    createDoc("{\"id\":\"ID_25\",\"_is_reverse\":true,\"_vertex_id\":\"中文English\",\"_edge\":[{\"label\":\"created\",\"weight\":1,\"id\":\"ID_23\",\"_srcV\":\"引号\",\"_srcVLabel\":\"person\"}],\"" + partitionByKey + "\":\"ripple\"}");
-                    createDoc("{\"id\":\"ID_27\",\"_is_reverse\":false,\"_vertex_id\":\"引号\",\"_edge\":[{\"label\":\"created\",\"weight\":0.4,\"id\":\"ID_26\",\"_sinkV\":\"这是一个中文ID\",\"_sinkVLabel\":\"software\"}],\"" + partitionByKey + "\":\"josh\"}");
-                    createDoc("{\"id\":\"ID_28\",\"_is_reverse\":true,\"_vertex_id\":\"这是一个中文ID\",\"_edge\":[{\"label\":\"created\",\"weight\":0.4,\"id\":\"ID_26\",\"_srcV\":\"引号\",\"_srcVLabel\":\"person\"}],\"" + partitionByKey + "\":\"lop\"}");
-                    createDoc("{\"id\":\"ID_30\",\"_is_reverse\":false,\"_vertex_id\":\"ID_13\",\"_edge\":[{\"label\":\"created\",\"weight\":0.2,\"id\":\"ID_29\",\"_sinkV\":\"这是一个中文ID\",\"_sinkVLabel\":\"software\"}],\"" + partitionByKey + "\":\"peter\"}");
-                    createDoc("{\"id\":\"ID_31\",\"_is_reverse\":true,\"_vertex_id\":\"这是一个中文ID\",\"_edge\":[{\"label\":\"created\",\"weight\":0.2,\"id\":\"ID_29\",\"_srcV\":\"ID_13\",\"_srcVLabel\":\"person\"}],\"" + partitionByKey + "\":\"lop\"}");
+                    createDoc("{\"id\":\"ID_1009\",\"_is_reverse\":false,\"_vertex_id\":\"dummy\",\"_edge\":[{\"label\":\"knows\",\"weight\":0.5,\"id\":\"ID_1008\",\"_sinkV\":\"特殊符号\",\"_sinkVLabel\":\"person\",\"_sinkVPartition\":\"vadas\"}],\"name\":\"marko\"}");
+                    createDoc("{\"id\":\"ID_1010\",\"_is_reverse\":true,\"_vertex_id\":\"特殊符号\",\"_edge\":[{\"label\":\"knows\",\"weight\":0.5,\"id\":\"ID_1008\",\"_srcV\":\"dummy\",\"_srcVLabel\":\"person\",\"_srcVPartition\":\"marko\"}],\"name\":\"vadas\"}");
+                    createDoc("{\"id\":\"ID_1012\",\"_is_reverse\":false,\"_vertex_id\":\"dummy\",\"_edge\":[{\"label\":\"knows\",\"weight\":1,\"id\":\"ID_1011\",\"_sinkV\":\"引号\",\"_sinkVLabel\":\"person\",\"_sinkVPartition\":\"josh\"}],\"name\":\"marko\"}");
+                    createDoc("{\"id\":\"ID_1013\",\"_is_reverse\":true,\"_vertex_id\":\"引号\",\"_edge\":[{\"label\":\"knows\",\"weight\":1,\"id\":\"ID_1011\",\"_srcV\":\"dummy\",\"_srcVLabel\":\"person\",\"_srcVPartition\":\"marko\"}],\"name\":\"josh\"}");
+                    createDoc("{\"id\":\"ID_1015\",\"_is_reverse\":false,\"_vertex_id\":\"dummy\",\"_edge\":[{\"label\":\"created\",\"weight\":0.4,\"id\":\"ID_1014\",\"_sinkV\":\"这是一个中文ID\",\"_sinkVLabel\":\"software\",\"_sinkVPartition\":\"lop\"}],\"name\":\"marko\"}");
+                    createDoc("{\"id\":\"ID_1016\",\"_is_reverse\":true,\"_vertex_id\":\"这是一个中文ID\",\"_edge\":[{\"label\":\"created\",\"weight\":0.4,\"id\":\"ID_1014\",\"_srcV\":\"dummy\",\"_srcVLabel\":\"person\",\"_srcVPartition\":\"marko\"}],\"name\":\"lop\"}");
+                    createDoc("{\"id\":\"ID_1018\",\"_is_reverse\":false,\"_vertex_id\":\"引号\",\"_edge\":[{\"label\":\"created\",\"weight\":1,\"id\":\"ID_1017\",\"_sinkV\":\"中文English\",\"_sinkVLabel\":\"software\",\"_sinkVPartition\":\"ripple\"}],\"name\":\"josh\"}");
+                    createDoc("{\"id\":\"ID_1019\",\"_is_reverse\":true,\"_vertex_id\":\"中文English\",\"_edge\":[{\"label\":\"created\",\"weight\":1,\"id\":\"ID_1017\",\"_srcV\":\"引号\",\"_srcVLabel\":\"person\",\"_srcVPartition\":\"josh\"}],\"name\":\"ripple\"}");
+                    createDoc("{\"id\":\"ID_1021\",\"_is_reverse\":false,\"_vertex_id\":\"引号\",\"_edge\":[{\"label\":\"created\",\"weight\":0.4,\"id\":\"ID_1020\",\"_sinkV\":\"这是一个中文ID\",\"_sinkVLabel\":\"software\",\"_sinkVPartition\":\"lop\"}],\"name\":\"josh\"}");
+                    createDoc("{\"id\":\"ID_1022\",\"_is_reverse\":true,\"_vertex_id\":\"这是一个中文ID\",\"_edge\":[{\"label\":\"created\",\"weight\":0.4,\"id\":\"ID_1020\",\"_srcV\":\"引号\",\"_srcVLabel\":\"person\",\"_srcVPartition\":\"josh\"}],\"name\":\"lop\"}");
+                    createDoc("{\"id\":\"ID_1024\",\"_is_reverse\":false,\"_vertex_id\":\"ID_1007\",\"_edge\":[{\"label\":\"created\",\"weight\":0.2,\"id\":\"ID_1023\",\"_sinkV\":\"这是一个中文ID\",\"_sinkVLabel\":\"software\",\"_sinkVPartition\":\"lop\"}],\"name\":\"peter\"}");
+                    createDoc("{\"id\":\"ID_1025\",\"_is_reverse\":true,\"_vertex_id\":\"这是一个中文ID\",\"_edge\":[{\"label\":\"created\",\"weight\":0.2,\"id\":\"ID_1023\",\"_srcV\":\"ID_1007\",\"_srcVLabel\":\"person\",\"_srcVPartition\":\"peter\"}],\"name\":\"lop\"}");
                 }
                 else
                 {
-                    createDoc("{\"id\":\"ID_15\",\"_is_reverse\":false,\"_vertex_id\":\"dummy\",\"label\":\"person\",\"_edge\":[{\"label\":\"knows\",\"weight\":0.5,\"id\":\"ID_14\",\"_sinkV\":\"特殊符号\",\"_sinkVLabel\":\"person\"}],\"" + partitionByKey + "\":\"marko\"}");
-                    createDoc("{\"id\":\"ID_17\",\"_is_reverse\":false,\"_vertex_id\":\"dummy\",\"label\":\"person\",\"_edge\":[{\"label\":\"knows\",\"weight\":1,\"id\":\"ID_16\",\"_sinkV\":\"引号\",\"_sinkVLabel\":\"person\"}],\"" + partitionByKey + "\":\"marko\"}");
-                    createDoc("{\"id\":\"ID_19\",\"_is_reverse\":false,\"_vertex_id\":\"dummy\",\"label\":\"person\",\"_edge\":[{\"label\":\"created\",\"weight\":0.4,\"id\":\"ID_18\",\"_sinkV\":\"这是一个中文ID\",\"_sinkVLabel\":\"software\"}],\"" + partitionByKey + "\":\"marko\"}");
-                    createDoc("{\"id\":\"ID_21\",\"_is_reverse\":false,\"_vertex_id\":\"引号\" ,\"label\":\"person\",\"_edge\":[{\"label\":\"created\",\"weight\":1,\"id\":\"ID_20\",\"_sinkV\":\"中文English\",\"_sinkVLabel\":\"software\"}],\"" + partitionByKey + "\":\"josh\"}");
-                    createDoc("{\"id\":\"ID_23\",\"_is_reverse\":false,\"_vertex_id\":\"引号\" ,\"label\":\"person\",\"_edge\":[{\"label\":\"created\",\"weight\":0.4,\"id\":\"ID_22\",\"_sinkV\":\"这是一个中文ID\",\"_sinkVLabel\":\"software\"}],\"" + partitionByKey + "\":\"josh\"}");
-                    createDoc("{\"id\":\"ID_25\",\"_is_reverse\":false,\"_vertex_id\":\"ID_13\",\"label\":\"person\",\"_edge\":[{\"label\":\"created\",\"weight\":0.2,\"id\":\"ID_24\",\"_sinkV\":\"这是一个中文ID\",\"_sinkVLabel\":\"software\"}],\"" + partitionByKey + "\":\"peter\"}");
+                    createDoc("{\"id\":\"ID_1009\",\"_is_reverse\":false,\"_vertex_id\":\"dummy\",\"_edge\":[{\"label\":\"knows\",\"weight\":0.5,\"id\":\"ID_1008\",\"_sinkV\":\"特殊符号\",\"_sinkVLabel\":\"person\",\"_sinkVPartition\":\"vadas\"}],\"name\":\"marko\"}");
+                    createDoc("{\"id\":\"ID_1012\",\"_is_reverse\":false,\"_vertex_id\":\"dummy\",\"_edge\":[{\"label\":\"knows\",\"weight\":1,\"id\":\"ID_1011\",\"_sinkV\":\"引号\",\"_sinkVLabel\":\"person\",\"_sinkVPartition\":\"josh\"}],\"name\":\"marko\"}");
+                    createDoc("{\"id\":\"ID_1015\",\"_is_reverse\":false,\"_vertex_id\":\"dummy\",\"_edge\":[{\"label\":\"created\",\"weight\":0.4,\"id\":\"ID_1014\",\"_sinkV\":\"这是一个中文ID\",\"_sinkVLabel\":\"software\",\"_sinkVPartition\":\"lop\"}],\"name\":\"marko\"}");
+                    createDoc("{\"id\":\"ID_1018\",\"_is_reverse\":false,\"_vertex_id\":\"引号\",\"_edge\":[{\"label\":\"created\",\"weight\":1,\"id\":\"ID_1017\",\"_sinkV\":\"中文English\",\"_sinkVLabel\":\"software\",\"_sinkVPartition\":\"ripple\"}],\"name\":\"josh\"}");
+                    createDoc("{\"id\":\"ID_1021\",\"_is_reverse\":false,\"_vertex_id\":\"引号\",\"_edge\":[{\"label\":\"created\",\"weight\":0.4,\"id\":\"ID_1020\",\"_sinkV\":\"这是一个中文ID\",\"_sinkVLabel\":\"software\",\"_sinkVPartition\":\"lop\"}],\"name\":\"josh\"}");
+                    createDoc("{\"id\":\"ID_1024\",\"_is_reverse\":false,\"_vertex_id\":\"ID_1007\",\"_edge\":[{\"label\":\"created\",\"weight\":0.2,\"id\":\"ID_1023\",\"_sinkV\":\"这是一个中文ID\",\"_sinkVLabel\":\"software\",\"_sinkVPartition\":\"lop\"}],\"name\":\"peter\"}");
                 }
             }
-            else if (partitionByKey == "label")
-            {
-                if (useReverseEdge)
-                {
-                    createDoc("{\"id\":\"ID_15\",\"_is_reverse\":false,\"_vertex_id\":\"dummy\",\"_edge\":[{\"label\":\"knows\",\"weight\":0.5,\"id\":\"ID_14\",\"_sinkV\":\"特殊符号\",\"_sinkVLabel\":\"person\"}],\"label\":\"person\"}");
-                    createDoc("{\"id\":\"ID_16\",\"_is_reverse\":true,\"_vertex_id\":\"特殊符号\",\"_edge\":[{\"label\":\"knows\",\"weight\":0.5,\"id\":\"ID_14\",\"_srcV\":\"dummy\",\"_srcVLabel\":\"person\"}],\"label\":\"person\"}");
-                    createDoc("{\"id\":\"ID_18\",\"_is_reverse\":false,\"_vertex_id\":\"dummy\",\"_edge\":[{\"label\":\"knows\",\"weight\":1,\"id\":\"ID_17\",\"_sinkV\":\"引号\",\"_sinkVLabel\":\"person\"}],\"label\":\"person\"}");
-                    createDoc("{\"id\":\"ID_19\",\"_is_reverse\":true,\"_vertex_id\":\"引号\",\"_edge\":[{\"label\":\"knows\",\"weight\":1,\"id\":\"ID_17\",\"_srcV\":\"dummy\",\"_srcVLabel\":\"person\"}],\"label\":\"person\"}");
-                    createDoc("{\"id\":\"ID_21\",\"_is_reverse\":false,\"_vertex_id\":\"dummy\",\"_edge\":[{\"label\":\"created\",\"weight\":0.4,\"id\":\"ID_20\",\"_sinkV\":\"这是一个中文ID\",\"_sinkVLabel\":\"software\"}],\"label\":\"person\"}");
-                    createDoc("{\"id\":\"ID_22\",\"_is_reverse\":true,\"_vertex_id\":\"这是一个中文ID\",\"_edge\":[{\"label\":\"created\",\"weight\":0.4,\"id\":\"ID_20\",\"_srcV\":\"dummy\",\"_srcVLabel\":\"person\"}],\"label\":\"software\"}");
-                    createDoc("{\"id\":\"ID_24\",\"_is_reverse\":false,\"_vertex_id\":\"引号\",\"_edge\":[{\"label\":\"created\",\"weight\":1,\"id\":\"ID_23\",\"_sinkV\":\"中文English\",\"_sinkVLabel\":\"software\"}],\"label\":\"person\"}");
-                    createDoc("{\"id\":\"ID_25\",\"_is_reverse\":true,\"_vertex_id\":\"中文English\",\"_edge\":[{\"label\":\"created\",\"weight\":1,\"id\":\"ID_23\",\"_srcV\":\"引号\",\"_srcVLabel\":\"person\"}],\"label\":\"software\"}");
-                    createDoc("{\"id\":\"ID_27\",\"_is_reverse\":false,\"_vertex_id\":\"引号\",\"_edge\":[{\"label\":\"created\",\"weight\":0.4,\"id\":\"ID_26\",\"_sinkV\":\"这是一个中文ID\",\"_sinkVLabel\":\"software\"}],\"label\":\"person\"}");
-                    createDoc("{\"id\":\"ID_28\",\"_is_reverse\":true,\"_vertex_id\":\"这是一个中文ID\",\"_edge\":[{\"label\":\"created\",\"weight\":0.4,\"id\":\"ID_26\",\"_srcV\":\"引号\",\"_srcVLabel\":\"person\"}],\"label\":\"software\"}");
-                    createDoc("{\"id\":\"ID_30\",\"_is_reverse\":false,\"_vertex_id\":\"ID_13\",\"_edge\":[{\"label\":\"created\",\"weight\":0.2,\"id\":\"ID_29\",\"_sinkV\":\"这是一个中文ID\",\"_sinkVLabel\":\"software\"}],\"label\":\"person\"}");
-                    createDoc("{\"id\":\"ID_31\",\"_is_reverse\":true,\"_vertex_id\":\"这是一个中文ID\",\"_edge\":[{\"label\":\"created\",\"weight\":0.2,\"id\":\"ID_29\",\"_srcV\":\"ID_13\",\"_srcVLabel\":\"person\"}],\"label\":\"software\"}");
-                }
-                else
-                {
-                    createDoc("{\"id\":\"ID_15\",\"_is_reverse\":false,\"_vertex_id\":\"dummy\",\"_edge\":[{\"label\":\"knows\",\"weight\":0.5,\"id\":\"ID_14\",\"_sinkV\":\"特殊符号\",\"_sinkVLabel\":\"person\"}],\"label\":\"person\"}");
-                    createDoc("{\"id\":\"ID_18\",\"_is_reverse\":false,\"_vertex_id\":\"dummy\",\"_edge\":[{\"label\":\"knows\",\"weight\":1,\"id\":\"ID_17\",\"_sinkV\":\"引号\",\"_sinkVLabel\":\"person\"}],\"label\":\"person\"}");
-                    createDoc("{\"id\":\"ID_21\",\"_is_reverse\":false,\"_vertex_id\":\"dummy\",\"_edge\":[{\"label\":\"created\",\"weight\":0.4,\"id\":\"ID_20\",\"_sinkV\":\"这是一个中文ID\",\"_sinkVLabel\":\"software\"}],\"label\":\"person\"}");
-                    createDoc("{\"id\":\"ID_24\",\"_is_reverse\":false,\"_vertex_id\":\"引号\",\"_edge\":[{\"label\":\"created\",\"weight\":1,\"id\":\"ID_23\",\"_sinkV\":\"中文English\",\"_sinkVLabel\":\"software\"}],\"label\":\"person\"}");
-                    createDoc("{\"id\":\"ID_27\",\"_is_reverse\":false,\"_vertex_id\":\"引号\",\"_edge\":[{\"label\":\"created\",\"weight\":0.4,\"id\":\"ID_26\",\"_sinkV\":\"这是一个中文ID\",\"_sinkVLabel\":\"software\"}],\"label\":\"person\"}");
-                    createDoc("{\"id\":\"ID_30\",\"_is_reverse\":false,\"_vertex_id\":\"ID_13\",\"_edge\":[{\"label\":\"created\",\"weight\":0.2,\"id\":\"ID_29\",\"_sinkV\":\"这是一个中文ID\",\"_sinkVLabel\":\"software\"}],\"label\":\"person\"}");
-                }
-            }
+            //else if (partitionByKey == "label")
+            //{
+            //    if (useReverseEdge)
+            //    {
+            //        createDoc("{\"id\":\"ID_15\",\"_is_reverse\":false,\"_vertex_id\":\"dummy\",\"_edge\":[{\"label\":\"knows\",\"weight\":0.5,\"id\":\"ID_14\",\"_sinkV\":\"特殊符号\",\"_sinkVLabel\":\"person\"}],\"label\":\"person\"}");
+            //        createDoc("{\"id\":\"ID_16\",\"_is_reverse\":true,\"_vertex_id\":\"特殊符号\",\"_edge\":[{\"label\":\"knows\",\"weight\":0.5,\"id\":\"ID_14\",\"_srcV\":\"dummy\",\"_srcVLabel\":\"person\"}],\"label\":\"person\"}");
+            //        createDoc("{\"id\":\"ID_18\",\"_is_reverse\":false,\"_vertex_id\":\"dummy\",\"_edge\":[{\"label\":\"knows\",\"weight\":1,\"id\":\"ID_17\",\"_sinkV\":\"引号\",\"_sinkVLabel\":\"person\"}],\"label\":\"person\"}");
+            //        createDoc("{\"id\":\"ID_19\",\"_is_reverse\":true,\"_vertex_id\":\"引号\",\"_edge\":[{\"label\":\"knows\",\"weight\":1,\"id\":\"ID_17\",\"_srcV\":\"dummy\",\"_srcVLabel\":\"person\"}],\"label\":\"person\"}");
+            //        createDoc("{\"id\":\"ID_21\",\"_is_reverse\":false,\"_vertex_id\":\"dummy\",\"_edge\":[{\"label\":\"created\",\"weight\":0.4,\"id\":\"ID_20\",\"_sinkV\":\"这是一个中文ID\",\"_sinkVLabel\":\"software\"}],\"label\":\"person\"}");
+            //        createDoc("{\"id\":\"ID_22\",\"_is_reverse\":true,\"_vertex_id\":\"这是一个中文ID\",\"_edge\":[{\"label\":\"created\",\"weight\":0.4,\"id\":\"ID_20\",\"_srcV\":\"dummy\",\"_srcVLabel\":\"person\"}],\"label\":\"software\"}");
+            //        createDoc("{\"id\":\"ID_24\",\"_is_reverse\":false,\"_vertex_id\":\"引号\",\"_edge\":[{\"label\":\"created\",\"weight\":1,\"id\":\"ID_23\",\"_sinkV\":\"中文English\",\"_sinkVLabel\":\"software\"}],\"label\":\"person\"}");
+            //        createDoc("{\"id\":\"ID_25\",\"_is_reverse\":true,\"_vertex_id\":\"中文English\",\"_edge\":[{\"label\":\"created\",\"weight\":1,\"id\":\"ID_23\",\"_srcV\":\"引号\",\"_srcVLabel\":\"person\"}],\"label\":\"software\"}");
+            //        createDoc("{\"id\":\"ID_27\",\"_is_reverse\":false,\"_vertex_id\":\"引号\",\"_edge\":[{\"label\":\"created\",\"weight\":0.4,\"id\":\"ID_26\",\"_sinkV\":\"这是一个中文ID\",\"_sinkVLabel\":\"software\"}],\"label\":\"person\"}");
+            //        createDoc("{\"id\":\"ID_28\",\"_is_reverse\":true,\"_vertex_id\":\"这是一个中文ID\",\"_edge\":[{\"label\":\"created\",\"weight\":0.4,\"id\":\"ID_26\",\"_srcV\":\"引号\",\"_srcVLabel\":\"person\"}],\"label\":\"software\"}");
+            //        createDoc("{\"id\":\"ID_30\",\"_is_reverse\":false,\"_vertex_id\":\"ID_13\",\"_edge\":[{\"label\":\"created\",\"weight\":0.2,\"id\":\"ID_29\",\"_sinkV\":\"这是一个中文ID\",\"_sinkVLabel\":\"software\"}],\"label\":\"person\"}");
+            //        createDoc("{\"id\":\"ID_31\",\"_is_reverse\":true,\"_vertex_id\":\"这是一个中文ID\",\"_edge\":[{\"label\":\"created\",\"weight\":0.2,\"id\":\"ID_29\",\"_srcV\":\"ID_13\",\"_srcVLabel\":\"person\"}],\"label\":\"software\"}");
+            //    }
+            //    else
+            //    {
+            //        createDoc("{\"id\":\"ID_15\",\"_is_reverse\":false,\"_vertex_id\":\"dummy\",\"_edge\":[{\"label\":\"knows\",\"weight\":0.5,\"id\":\"ID_14\",\"_sinkV\":\"特殊符号\",\"_sinkVLabel\":\"person\"}],\"label\":\"person\"}");
+            //        createDoc("{\"id\":\"ID_18\",\"_is_reverse\":false,\"_vertex_id\":\"dummy\",\"_edge\":[{\"label\":\"knows\",\"weight\":1,\"id\":\"ID_17\",\"_sinkV\":\"引号\",\"_sinkVLabel\":\"person\"}],\"label\":\"person\"}");
+            //        createDoc("{\"id\":\"ID_21\",\"_is_reverse\":false,\"_vertex_id\":\"dummy\",\"_edge\":[{\"label\":\"created\",\"weight\":0.4,\"id\":\"ID_20\",\"_sinkV\":\"这是一个中文ID\",\"_sinkVLabel\":\"software\"}],\"label\":\"person\"}");
+            //        createDoc("{\"id\":\"ID_24\",\"_is_reverse\":false,\"_vertex_id\":\"引号\",\"_edge\":[{\"label\":\"created\",\"weight\":1,\"id\":\"ID_23\",\"_sinkV\":\"中文English\",\"_sinkVLabel\":\"software\"}],\"label\":\"person\"}");
+            //        createDoc("{\"id\":\"ID_27\",\"_is_reverse\":false,\"_vertex_id\":\"引号\",\"_edge\":[{\"label\":\"created\",\"weight\":0.4,\"id\":\"ID_26\",\"_sinkV\":\"这是一个中文ID\",\"_sinkVLabel\":\"software\"}],\"label\":\"person\"}");
+            //        createDoc("{\"id\":\"ID_30\",\"_is_reverse\":false,\"_vertex_id\":\"ID_13\",\"_edge\":[{\"label\":\"created\",\"weight\":0.2,\"id\":\"ID_29\",\"_sinkV\":\"这是一个中文ID\",\"_sinkVLabel\":\"software\"}],\"label\":\"person\"}");
+            //    }
+            //}
             else
             {
                 throw new Exception("Not supported!");
