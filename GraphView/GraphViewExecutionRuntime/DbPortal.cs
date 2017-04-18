@@ -125,8 +125,8 @@ namespace GraphView
                     ((AdjacencyListField) vertexField[isReverseAdj ? KW_VERTEX_REV_EDGE : KW_VERTEX_EDGE])
                     .GetEdgeField(edgeId);
 
-                string startVertexId = vertexField[KW_DOC_ID].ToValue;
-                AdjacencyListDecoder.FillMetaField(edgeRecord, edgeField, startVertexId, isStartVertexTheOriginVertex, isReverseAdj);
+                string startVertexId = vertexField.VertexId;
+                AdjacencyListDecoder.FillMetaField(edgeRecord, edgeField, startVertexId, vertexField.Partition, isStartVertexTheOriginVertex, isReverseAdj);
                 AdjacencyListDecoder.FillPropertyField(edgeRecord, edgeField, edgeProperties);
 
                 nodeRecord.Append(edgeRecord);
@@ -260,7 +260,7 @@ namespace GraphView
                     else {
                         string vertexLabel = vertexField[GraphViewKeywords.KW_VERTEX_LABEL].ToValue;
                         if (!vertexField.AdjacencyList.HasBeenFetched) {
-                            vertexField.ConstructSpilledOrVirtualAdjacencyListField(vertexId, vertexLabel, false, edgeDocDict);
+                            vertexField.ConstructSpilledOrVirtualAdjacencyListField(vertexId, vertexLabel, vertexField.Partition, false, edgeDocDict);
                         }
                     }
                     gotVertexIds.Remove(vertexId);
@@ -275,7 +275,7 @@ namespace GraphView
                     else {
                         string vertexLabel = vertexField[GraphViewKeywords.KW_VERTEX_LABEL].ToValue;
                         if (!vertexField.AdjacencyList.HasBeenFetched) {
-                            vertexField.ConstructSpilledOrVirtualAdjacencyListField(vertexId, vertexLabel, false, new Dictionary<string, JObject>());
+                            vertexField.ConstructSpilledOrVirtualAdjacencyListField(vertexId, vertexLabel, vertexField.Partition, false, new Dictionary<string, JObject>());
                         }
                     }
                 }

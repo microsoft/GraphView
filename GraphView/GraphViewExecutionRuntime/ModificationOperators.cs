@@ -702,11 +702,11 @@ namespace GraphView
             //
             EdgeField outEdgeField = srcVertexField.AdjacencyList.TryAddEdgeField(
                 (string)outEdgeObject[KW_EDGE_ID],
-                () => EdgeField.ConstructForwardEdgeField(srcId, srcVertexField[KW_VERTEX_LABEL]?.ToValue, outEdgeDocID, outEdgeObject));
+                () => EdgeField.ConstructForwardEdgeField(srcId, srcVertexField.VertexLabel, srcVertexField.Partition, outEdgeDocID, outEdgeObject));
 
             EdgeField inEdgeField = sinkVertexField.RevAdjacencyList.TryAddEdgeField(
                 (string)inEdgeObject[KW_EDGE_ID], 
-                ()=> EdgeField.ConstructBackwardEdgeField(sinkId, sinkVertexField[KW_VERTEX_LABEL]?.ToValue, inEdgeDocID, inEdgeObject));
+                () => EdgeField.ConstructBackwardEdgeField(sinkId, sinkVertexField.VertexLabel, sinkVertexField.Partition, inEdgeDocID, inEdgeObject));
 
 
             // Construct the newly added edge's RawRecord

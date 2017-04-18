@@ -4153,26 +4153,29 @@ namespace GraphView
         /// <param name="isReversedAdjList"></param>
         /// <param name="isStartVertexTheOriginVertex"></param>
         internal static void FillMetaField(RawRecord record, EdgeField edge, 
-            string startVertexId, bool isStartVertexTheOriginVertex, bool isReversedAdjList)
+            string startVertexId, string startVertexPartition, bool isStartVertexTheOriginVertex, bool isReversedAdjList)
         {
-            string otherValue;
+            string otherValue, otherVPartition;
             if (isStartVertexTheOriginVertex) {
                 if (isReversedAdjList) {
-                    otherValue = edge[KW_EDGE_SRCV].ToValue;
+                    otherValue = edge.OutV;
+                    otherVPartition = edge.OutVPartition;
                 }
                 else {
-                    otherValue = edge[KW_EDGE_SINKV].ToValue;
+                    otherValue = edge.InV;
+                    otherVPartition = edge.InVPartition;
                 }
             }
             else {
                 otherValue = startVertexId;
+                otherVPartition = startVertexPartition;
             }
 
             record.fieldValues[0] = new StringField(edge.OutV);
             record.fieldValues[1] = new StringField(edge.InV);
             record.fieldValues[2] = new StringField(otherValue);
             record.fieldValues[3] = new StringField(edge.EdgeId);
-            record.fieldValues[4] = new EdgeField(edge, otherValue);
+            record.fieldValues[4] = new EdgeField(edge, otherValue, otherVPartition);
         }
 
         /// <summary>
@@ -4203,7 +4206,8 @@ namespace GraphView
                 // Construct new record
                 RawRecord edgeRecord = new RawRecord(this.projectedFields.Count);
 
-                AdjacencyListDecoder.FillMetaField(edgeRecord, edge, startVertexId, this.isStartVertexTheOriginVertex, isReverse);
+                string startVertexPartition = connection.VertexCache.GetVertexField(startVertexId).Partition;
+                AdjacencyListDecoder.FillMetaField(edgeRecord, edge, startVertexId, startVertexPartition, this.isStartVertexTheOriginVertex, isReverse);
                 AdjacencyListDecoder.FillPropertyField(edgeRecord, edge, this.projectedFields);
 
                 if (this.edgePredicate != null && !this.edgePredicate.Evaluate(edgeRecord)) {
