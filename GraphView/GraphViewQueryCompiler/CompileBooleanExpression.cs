@@ -44,6 +44,27 @@ namespace GraphView
         }
     }
 
+    public partial class WInPredicate
+    {
+        internal override BooleanFunction CompileToFunction(QueryCompilationContext context, GraphViewConnection dbConnection)
+        {
+            ScalarFunction lhsFunction;
+            if (this.Expression != null) {
+                lhsFunction = this.Expression.CompileToFunction(context, dbConnection);
+            }
+            else if (this.Subquery != null) {
+                lhsFunction = this.Subquery.CompileToFunction(context, dbConnection);
+            }
+            else {
+                throw new QueryCompilationException("Expression and Subquery can't all be null in a WInPredicate.");
+            }
+
+            List<ScalarFunction> values = this.Values.Select(value => value.CompileToFunction(context, dbConnection)).ToList();
+
+            return new InFunction(lhsFunction, values, this.NotDefined);
+        }
+    }
+
     public partial class WBooleanNotExpression
     {
         internal override BooleanFunction CompileToFunction(QueryCompilationContext context, GraphViewConnection dbConnection)

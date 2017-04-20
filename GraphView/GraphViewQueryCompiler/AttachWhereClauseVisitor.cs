@@ -37,19 +37,19 @@ namespace GraphView
     /// </summary>
     internal class BooleanExpressionNormalizeVisitor : WSqlFragmentVisitor
     {
-        private List<WBooleanExpression> _normalizedList;
+        private List<WBooleanExpression> normalizedList;
 
         public List<WBooleanExpression> Invoke(WBooleanExpression expr)
         {
-            _normalizedList = new List<WBooleanExpression>();
+            this.normalizedList = new List<WBooleanExpression>();
             expr.Accept(this);
 
-            return _normalizedList;
+            return this.normalizedList;
         }
 
         private void Extract(WBooleanExpression expr)
         {
-            _normalizedList.Add(expr);
+            this.normalizedList.Add(expr);
         }
 
         public override void Visit(WBooleanBinaryExpression node)
@@ -60,48 +60,53 @@ namespace GraphView
             }
             else
             {
-                Extract(new WBooleanParenthesisExpression { Expression = node });
+                this.Extract(new WBooleanParenthesisExpression { Expression = node });
             }
         }
 
         public override void Visit(WBooleanComparisonExpression node)
         {
-            Extract(node);
+            this.Extract(node);
         }
 
         public override void Visit(WBooleanIsNullExpression node)
         {
-            Extract(node);
+            //Extract(node);
+            throw new QueryCompilationException("WBooleanIsNullExpression is not supported yet.");
         }
 
         public override void Visit(WBetweenExpression node)
         {
-            Extract(node);
+            //Extract(node);
+            throw new QueryCompilationException("WBetweenExpression is not supported yet.");
         }
 
         public override void Visit(WLikePredicate node)
         {
-            Extract(node);
+            //Extract(node);
+            throw new QueryCompilationException("WBetweenExpression is not supported yet.");
+
         }
 
         public override void Visit(WInPredicate node)
         {
-            Extract(node);
+            this.Extract(node);
         }
 
         public override void Visit(WSubqueryComparisonPredicate node)
         {
-            Extract(node);
+            //Extract(node);
+            throw new QueryCompilationException("WSubqueryComparisonPredicate is not supported yet.");
         }
 
         public override void Visit(WExistsPredicate node)
         {
-            Extract(node);
+            this.Extract(node);
         }
 
         public override void Visit(WBooleanNotExpression node)
         {
-            Extract(node);
+            this.Extract(node);
         }
     }
 

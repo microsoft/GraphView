@@ -283,6 +283,83 @@ namespace GraphView
         }
     }
 
+    internal class InFunction : BooleanFunction
+    {
+        private ScalarFunction lhsFunction;
+        private List<ScalarFunction> values;
+        private bool notDefined;
+
+        public InFunction(ScalarFunction lhsFunction, List<ScalarFunction> values, bool notDefined)
+        {
+            this.lhsFunction = lhsFunction;
+            this.values = values;
+            this.notDefined = notDefined;
+        }
+
+        private static bool In(string lhsValue, JsonDataType lhsDataType, RawRecord record, List<ScalarFunction> values)
+        {
+            foreach (ScalarFunction valueFunction in values) {
+                JsonDataType rhsDataType = valueFunction.DataType();
+                JsonDataType targetType = lhsDataType > rhsDataType ? lhsDataType : rhsDataType;
+                string rhsValue = valueFunction.Evaluate(record)?.ToValue;
+
+                if (ComparisonFunction.Compare(lhsValue, rhsValue, targetType, BooleanComparisonType.Equals)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        private static bool NotIn(string lhsValue, JsonDataType lhsDataType, RawRecord record, List<ScalarFunction> values)
+        {
+            foreach (ScalarFunction valueFunction in values) {
+                JsonDataType rhsDataType = valueFunction.DataType();
+                JsonDataType targetType = lhsDataType > rhsDataType ? lhsDataType : rhsDataType;
+                string rhsValue = valueFunction.Evaluate(record)?.ToValue;
+
+                if (ComparisonFunction.Compare(lhsValue, rhsValue, targetType, BooleanComparisonType.Equals)) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        public override bool Evaluate(RawRecord record)
+        {
+            FieldObject lhs = this.lhsFunction.Evaluate(record);
+
+            if (lhs == null) {
+                return false;
+            }
+
+            if (lhs is VertexPropertyField) {
+                VertexPropertyField vp = (VertexPropertyField) lhs;
+                foreach (VertexSinglePropertyField vsp in vp.Multiples.Values) {
+                    JsonDataType lhsDataType = vsp.JsonDataType;
+                    if (this.notDefined) {
+                        if (NotIn(vsp.ToValue, lhsDataType, record, this.values)) {
+                            return true;
+                        }
+                    }
+                    else {
+                        if (In(vsp.ToValue, lhsDataType, record, this.values)) {
+                            return true;
+                        }
+                    }
+                }
+
+                return false;
+            }
+            else {
+                string lhsValue = lhs.ToValue;
+                JsonDataType lhsDataType = this.lhsFunction.DataType();
+                return this.notDefined
+                    ? NotIn(lhsValue, lhsDataType, record, this.values)
+                    : In(lhsValue, lhsDataType, record, this.values);
+            }
+        }
+    }
+
     //internal class FieldComparisonFunction : ComparisonBooleanFunction
     //{
     //    //internal int LhsFieldIndex;
@@ -325,7 +402,7 @@ namespace GraphView
     //            default:
     //                return false;
     //        }
-            
+
     //    }
     //}
 
