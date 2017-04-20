@@ -399,12 +399,6 @@ namespace GraphView
         public bool IsList { get; set; }
     }
 
-    public partial class WBoundBothEdgeTableReference : WSchemaObjectFunctionTableReference {}
-
-    public partial class WBoundOutEdgeTableReference : WSchemaObjectFunctionTableReference {}
-
-    public partial class WBoundInEdgeTableReference : WSchemaObjectFunctionTableReference {}
-
     public partial class WDecompose1TableReference : WSchemaObjectFunctionTableReference { }
 
     public partial class WFlatMapTableReference : WSchemaObjectFunctionTableReference {}
@@ -412,10 +406,6 @@ namespace GraphView
     public partial class WKeyTableReference : WSchemaObjectFunctionTableReference {}
 
     public partial class WLocalTableReference : WSchemaObjectFunctionTableReference {}
-
-    public partial class WBoundBothNodeTableReference : WSchemaObjectFunctionTableReference {}
-
-    public partial class WBoundOutNodeTableReference : WSchemaObjectFunctionTableReference {}
 
     public partial class WBoundNodeTableReference : WSchemaObjectFunctionTableReference { }
 
@@ -551,6 +541,30 @@ namespace GraphView
     public partial class WValueMapTableReference : WSchemaObjectFunctionTableReference { }
 
     public partial class WPropertyMapTableReference : WSchemaObjectFunctionTableReference { }
+
+    public abstract partial class WEdgeToVertexTableReference : WSchemaObjectFunctionTableReference
+    {
+        internal abstract TraversalOperator2.TraversalTypeEnum GetTraversalTypeParameter();
+    }
+
+    public partial class WEdgeToSourceVertexTableReference : WEdgeToVertexTableReference { }
+
+    public partial class WEdgeToSinkVertexTableReference : WEdgeToVertexTableReference { }
+
+    public partial class WEdgeToOtherVertexTableReference : WEdgeToVertexTableReference { }
+
+    public partial class WEdgeToBothVertexTableReference : WEdgeToVertexTableReference { }
+
+    public abstract partial class WVertexToEdgeTableReference : WSchemaObjectFunctionTableReference
+    {
+        internal abstract Tuple<bool, bool> GetAdjListDecoderCrossApplyTypeParameter();
+    }
+
+    public partial class WVertexToForwardEdgeTableReference : WVertexToEdgeTableReference { }
+
+    public partial class WVertexToBackwordEdgeTableReference : WVertexToEdgeTableReference { }
+
+    public partial class WVertexToBothEdgeTableReference : WVertexToEdgeTableReference { }
 
     public partial class WChooseTableReference : WSchemaObjectFunctionTableReference { }
 

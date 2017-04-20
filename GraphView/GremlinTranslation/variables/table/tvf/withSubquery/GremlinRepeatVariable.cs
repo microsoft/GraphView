@@ -18,201 +18,199 @@ namespace GraphView
                                     GremlinVariableType variableType)
             : base(variableType)
         {
-            RepeatContext = repeatContext;
-            InputVariable = inputVariable;
-            RepeatCondition = repeatCondition;
+            this.RepeatContext = repeatContext;
+            this.InputVariable = inputVariable;
+            this.RepeatCondition = repeatCondition;
         }
 
         internal override void Populate(string property)
         {
             base.Populate(property);
 
-            InputVariable.Populate(property);
-            RepeatContext.Populate(property);
+            this.InputVariable.Populate(property);
+            this.RepeatContext.Populate(property);
         }
 
         internal override void PopulateStepProperty(string property)
         {
-            RepeatContext.ContextLocalPath.PopulateStepProperty(property);
+            this.RepeatContext.ContextLocalPath.PopulateStepProperty(property);
         }
 
         internal override void PopulateLocalPath()
         {
-            if (ProjectedProperties.Contains(GremlinKeyword.Path)) return;
-            ProjectedProperties.Add(GremlinKeyword.Path);
-            RepeatContext.PopulateLocalPath();
+            if (this.ProjectedProperties.Contains(GremlinKeyword.Path)) return;
+            this.ProjectedProperties.Add(GremlinKeyword.Path);
+            this.RepeatContext.PopulateLocalPath();
         }
 
         internal override WScalarExpression ToStepScalarExpr()
         {
-            return SqlUtil.GetColumnReferenceExpr(GetVariableName(), GremlinKeyword.Path);
+            return SqlUtil.GetColumnReferenceExpr(this.GetVariableName(), GremlinKeyword.Path);
         }
 
         internal override List<GremlinVariable> FetchAllVars()
         {
             List<GremlinVariable> variableList = new List<GremlinVariable>() { this };
-            variableList.AddRange(InputVariable.FetchAllVars());
-            variableList.AddRange(RepeatContext.FetchAllVars());
-            if (RepeatCondition.EmitContext != null)
-                variableList.AddRange(RepeatCondition.EmitContext.FetchAllVars());
-            if (RepeatCondition.TerminationContext != null)
-                variableList.AddRange(RepeatCondition.TerminationContext.FetchAllVars());
+            variableList.AddRange(this.InputVariable.FetchAllVars());
+            variableList.AddRange(this.RepeatContext.FetchAllVars());
+            if (this.RepeatCondition.EmitContext != null)
+                variableList.AddRange(this.RepeatCondition.EmitContext.FetchAllVars());
+            if (this.RepeatCondition.TerminationContext != null)
+                variableList.AddRange(this.RepeatCondition.TerminationContext.FetchAllVars());
             return variableList;
         }
 
         internal override List<GremlinVariable> FetchAllTableVars()
         {
             List<GremlinVariable> variableList = new List<GremlinVariable>() { this };
-            variableList.AddRange(RepeatContext.FetchAllTableVars());
-            if (RepeatCondition.EmitContext != null)
-                variableList.AddRange(RepeatCondition.EmitContext.FetchAllTableVars());
-            if (RepeatCondition.TerminationContext != null)
-                variableList.AddRange(RepeatCondition.TerminationContext.FetchAllTableVars());
+            variableList.AddRange(this.RepeatContext.FetchAllTableVars());
+            if (this.RepeatCondition.EmitContext != null)
+                variableList.AddRange(this.RepeatCondition.EmitContext.FetchAllTableVars());
+            if (this.RepeatCondition.TerminationContext != null)
+                variableList.AddRange(this.RepeatCondition.TerminationContext.FetchAllTableVars());
             return variableList;
         }
 
         public override WTableReference ToTableReference()
         {
-            if (RepeatContext.ContextLocalPath != null)
+            if (this.RepeatContext.ContextLocalPath != null)
             {
-                RepeatContext.ContextLocalPath.PathList.Insert(0, null);
-                RepeatContext.ContextLocalPath.IsInRepeatContext = true;
+                this.RepeatContext.ContextLocalPath.PathList.Insert(0, null);
+                this.RepeatContext.ContextLocalPath.IsInRepeatContext = true;
             }
 
             //The following two variables are used for manually creating SelectScalarExpression of repeat
-            List<WSelectScalarExpression> repeatFirstSelect = new List<WSelectScalarExpression>();
-            List<WSelectScalarExpression> repeatSecondSelect = new List<WSelectScalarExpression>();
+            List<WSelectScalarExpression> firstSelectList = new List<WSelectScalarExpression>();
+            List<WSelectScalarExpression> secondSelectList = new List<WSelectScalarExpression>();
 
             // The following two variables are used for Generating a Map
-            // such as N_0.id -> key_0 
+            // such as N_0.id -> R.key_0 
             // Then we will use this map to replace ColumnRefernceExpression in the syntax tree which matchs n_0.id to R_0.key_0 
-            Dictionary<WColumnReferenceExpression, string> repeatVistorMap = new Dictionary<WColumnReferenceExpression, string>();
-            Dictionary<WColumnReferenceExpression, string> conditionVistorMap = new Dictionary<WColumnReferenceExpression, string>();
+            Dictionary<Tuple<string, string>, Tuple<string, string>> inputVariableVistorMap = new Dictionary<Tuple<string, string>, Tuple<string, string>>();
+            Dictionary<Tuple<string, string>, Tuple<string, string>> outerVariablesVistorMap = new Dictionary<Tuple<string, string>, Tuple<string, string>>();
 
             //We should generate the syntax tree firstly
             //Some variables will populate ProjectProperty only when we call the ToTableReference function where they appear.
-            WRepeatConditionExpression repeatConditionExpr = GetRepeatConditionExpression();
-            WSelectQueryBlock repeatQueryBlock = RepeatContext.ToSelectQueryBlock();
+            WRepeatConditionExpression repeatConditionExpr = this.GetRepeatConditionExpression();
+            WSelectQueryBlock repeatQueryBlock = this.RepeatContext.ToSelectQueryBlock();
 
-            // TODO: explain this step in detail
-            var repeatNewToOldSelectedVarMap = GetNewToOldSelectedVarMap(RepeatContext);
-            if (!repeatNewToOldSelectedVarMap.ContainsKey(RepeatContext.PivotVariable))
-                repeatNewToOldSelectedVarMap[RepeatContext.PivotVariable] = RepeatContext.VariableList.First();
-            foreach (var pair in repeatNewToOldSelectedVarMap)
+            List<GremlinVariable> outerVariables = this.GetOuterVariables(this.RepeatContext);
+            outerVariables.AddRange(this.GetOuterVariables(this.RepeatCondition.TerminationContext));
+            outerVariables.AddRange(this.GetOuterVariables(this.RepeatCondition.EmitContext));
+            foreach (GremlinVariable outerVariable in outerVariables)
             {
-                GremlinVariable newVariable = pair.Key;
-                GremlinVariable oldVariable = pair.Value;
-                foreach (var property in pair.Value.ProjectedProperties)
+                foreach (string property in outerVariable.ProjectedProperties)
                 {
-                    var aliasName = GenerateKey();
-                    var firstSelectColumn = oldVariable.GetVariableProperty(property).ToScalarExpression() as WColumnReferenceExpression;
-                    var secondSelectColumn = newVariable.GetVariableProperty(property).ToScalarExpression() as WColumnReferenceExpression;
+                    string aliasName = this.GenerateKey();
+                    WScalarExpression firstSelectColumn = outerVariable.GetVariableProperty(property).ToScalarExpression() as WColumnReferenceExpression;
+                    WScalarExpression secondSelectColumn = SqlUtil.GetColumnReferenceExpr(GremlinKeyword.RepeatInitalTableName, aliasName);
 
-                    repeatFirstSelect.Add(SqlUtil.GetSelectScalarExpr(firstSelectColumn, aliasName));
-                    repeatSecondSelect.Add(SqlUtil.GetSelectScalarExpr(secondSelectColumn, aliasName));
-                    repeatVistorMap[firstSelectColumn.Copy()] = aliasName;
+                    firstSelectList.Add(SqlUtil.GetSelectScalarExpr(firstSelectColumn, aliasName));
+                    secondSelectList.Add(SqlUtil.GetSelectScalarExpr(secondSelectColumn, aliasName));
+
+                    Tuple<string, string> key = new Tuple<string, string>(outerVariable.GetVariableName(), property);
+                    Tuple<string, string> value = new Tuple<string, string>(GremlinKeyword.RepeatInitalTableName, aliasName);
+                    outerVariablesVistorMap[key] = value;
                 }
             }
 
-            if (RepeatCondition.TerminationContext != null && RepeatCondition.TerminationContext.VariableList.Count > 0)
+            GremlinVariable repeatInputVariable = this.RepeatContext.VariableList.First();
+            GremlinVariable repeatPivotVariable = this.RepeatContext.PivotVariable;
+            foreach (string property in repeatInputVariable.ProjectedProperties)
             {
-                var terminatedNewToOldSelectedVarMap = GetNewToOldSelectedVarMap(RepeatCondition.TerminationContext);
-                if (!terminatedNewToOldSelectedVarMap.ContainsKey(RepeatContext.PivotVariable))
-                    terminatedNewToOldSelectedVarMap[RepeatContext.PivotVariable] = RepeatCondition.TerminationContext.VariableList.First();
-                foreach (var pair in terminatedNewToOldSelectedVarMap)
+                string aliasName = this.GenerateKey();
+                WScalarExpression firstSelectColumn = repeatInputVariable.GetVariableProperty(property).ToScalarExpression() as WColumnReferenceExpression;
+                WScalarExpression secondSelectColumn = repeatPivotVariable.GetVariableProperty(property).ToScalarExpression() as WColumnReferenceExpression;
+
+                firstSelectList.Add(SqlUtil.GetSelectScalarExpr(firstSelectColumn, aliasName));
+                secondSelectList.Add(SqlUtil.GetSelectScalarExpr(secondSelectColumn, aliasName));
+
+                Tuple<string, string> key = new Tuple<string, string>(repeatInputVariable.GetVariableName(), property);
+                Tuple<string, string> value = new Tuple<string, string>(GremlinKeyword.RepeatInitalTableName, aliasName);
+                inputVariableVistorMap[key] = value;
+            }
+
+            if (this.RepeatCondition.TerminationContext != null && this.RepeatCondition.TerminationContext.VariableList.Count > 0)
+            {
+                GremlinVariable untilInputVariable = this.RepeatCondition.TerminationContext.VariableList.First();
+                foreach (string property in untilInputVariable.ProjectedProperties)
                 {
-                    GremlinVariable newVariable = pair.Key;
-                    GremlinVariable oldVariable = pair.Value;
-                    foreach (var property in oldVariable.ProjectedProperties)
-                    {
-                        var aliasName = GenerateKey();
-                        var firstSelectColumn = RepeatCondition.StartFromContext
-                            ? oldVariable.GetVariableProperty(property).ToScalarExpression()
-                            : SqlUtil.GetValueExpr(null);
-                        var secondSelectColumn = newVariable.GetVariableProperty(property).ToScalarExpression() as WColumnReferenceExpression;
+                    string aliasName = this.GenerateKey();
+                    WScalarExpression firstSelectColumn = untilInputVariable.GetVariableProperty(property).ToScalarExpression() as WColumnReferenceExpression;
+                    WScalarExpression secondSelectColumn = repeatPivotVariable.GetVariableProperty(property).ToScalarExpression() as WColumnReferenceExpression;
 
-                        repeatFirstSelect.Add(SqlUtil.GetSelectScalarExpr(firstSelectColumn, aliasName));
-                        repeatSecondSelect.Add(SqlUtil.GetSelectScalarExpr(secondSelectColumn, aliasName));
+                    firstSelectList.Add(SqlUtil.GetSelectScalarExpr(firstSelectColumn, aliasName));
+                    secondSelectList.Add(SqlUtil.GetSelectScalarExpr(secondSelectColumn, aliasName));
 
-                        if (RepeatCondition.StartFromContext)
-                            conditionVistorMap[(firstSelectColumn as WColumnReferenceExpression).Copy()] = aliasName;
-                        else
-                            conditionVistorMap[secondSelectColumn.Copy()] = aliasName;
-                    }
+                    Tuple<string, string> key = new Tuple<string, string>(untilInputVariable.GetVariableName(), property);
+                    Tuple<string, string> value = new Tuple<string, string>(GremlinKeyword.RepeatInitalTableName, aliasName);
+                    inputVariableVistorMap[key] = value;
                 }
             }
 
-            if (RepeatCondition.EmitContext != null && RepeatCondition.EmitContext.VariableList.Count > 0)
+            if (this.RepeatCondition.EmitContext != null && this.RepeatCondition.EmitContext.VariableList.Count > 0)
             {
-                var terminatedNewToOldSelectedVarMap = GetNewToOldSelectedVarMap(RepeatCondition.EmitContext);
-                if (!terminatedNewToOldSelectedVarMap.ContainsKey(RepeatContext.PivotVariable))
-                    terminatedNewToOldSelectedVarMap[RepeatContext.PivotVariable] = RepeatCondition.EmitContext.VariableList.First();
-                foreach (var pair in terminatedNewToOldSelectedVarMap)
+                GremlinVariable emitInputVariable = this.RepeatCondition.EmitContext.VariableList.First();
+                foreach (string property in emitInputVariable.ProjectedProperties)
                 {
-                    GremlinVariable newVariable = pair.Key;
-                    GremlinVariable oldVariable = pair.Value;
-                    foreach (var property in pair.Value.ProjectedProperties)
-                    {
-                        var aliasName = GenerateKey();
-                        var firstSelectColumn = RepeatCondition.IsEmitContext
-                            ? oldVariable.GetVariableProperty(property).ToScalarExpression()
-                            : SqlUtil.GetValueExpr(null);
-                        var secondSelectColumn = newVariable.GetVariableProperty(property).ToScalarExpression() as WColumnReferenceExpression;
+                    string aliasName = this.GenerateKey();
+                    WScalarExpression firstSelectColumn = emitInputVariable.GetVariableProperty(property).ToScalarExpression() as WColumnReferenceExpression;
+                    WScalarExpression secondSelectColumn = repeatPivotVariable.GetVariableProperty(property).ToScalarExpression() as WColumnReferenceExpression;
 
-                        repeatFirstSelect.Add(SqlUtil.GetSelectScalarExpr(firstSelectColumn, aliasName));
-                        repeatSecondSelect.Add(SqlUtil.GetSelectScalarExpr(secondSelectColumn, aliasName));
+                    firstSelectList.Add(SqlUtil.GetSelectScalarExpr(firstSelectColumn, aliasName));
+                    secondSelectList.Add(SqlUtil.GetSelectScalarExpr(secondSelectColumn, aliasName));
 
-                        if (RepeatCondition.IsEmitContext)
-                            conditionVistorMap[(firstSelectColumn as WColumnReferenceExpression).Copy()] = aliasName;
-                        else
-                            conditionVistorMap[secondSelectColumn.Copy()] = aliasName;
-                    }
+                    Tuple<string, string> key = new Tuple<string, string>(emitInputVariable.GetVariableName(), property);
+                    Tuple<string, string> value = new Tuple<string, string>(GremlinKeyword.RepeatInitalTableName, aliasName);
+                    inputVariableVistorMap[key] = value;
                 }
             }
 
-            foreach (var property in ProjectedProperties)
+            foreach (string property in this.ProjectedProperties)
             {
                 if (property == GremlinKeyword.Path)
                 {
-                    repeatFirstSelect.Add(SqlUtil.GetSelectScalarExpr(SqlUtil.GetValueExpr(null), GremlinKeyword.Path));
-                    repeatSecondSelect.Add(SqlUtil.GetSelectScalarExpr(RepeatContext.ContextLocalPath.DefaultProjection().ToScalarExpression(), GremlinKeyword.Path));
+                    firstSelectList.Add(SqlUtil.GetSelectScalarExpr(SqlUtil.GetValueExpr(null), GremlinKeyword.Path));
+                    secondSelectList.Add(SqlUtil.GetSelectScalarExpr(this.RepeatContext.ContextLocalPath.DefaultProjection().ToScalarExpression(), GremlinKeyword.Path));
                     continue;
                 }
-                WScalarExpression firstExpr = InputVariable.ProjectedProperties.Contains(property)
-                    ? InputVariable.GetVariableProperty(property).ToScalarExpression()
+                WScalarExpression firstExpr = this.InputVariable.ProjectedProperties.Contains(property)
+                    ? this.InputVariable.GetVariableProperty(property).ToScalarExpression()
                     : SqlUtil.GetValueExpr(null);
 
-                WScalarExpression secondExpr = RepeatContext.PivotVariable.ProjectedProperties.Contains(property)
-                    ? RepeatContext.PivotVariable.GetVariableProperty(property).ToScalarExpression()
+                WScalarExpression secondExpr = this.RepeatContext.PivotVariable.ProjectedProperties.Contains(property)
+                    ? this.RepeatContext.PivotVariable.GetVariableProperty(property).ToScalarExpression()
                     : SqlUtil.GetValueExpr(null);
 
-                repeatFirstSelect.Add(SqlUtil.GetSelectScalarExpr(firstExpr, property));
-                repeatSecondSelect.Add(SqlUtil.GetSelectScalarExpr(secondExpr, property));
+                firstSelectList.Add(SqlUtil.GetSelectScalarExpr(firstExpr, property));
+                secondSelectList.Add(SqlUtil.GetSelectScalarExpr(secondExpr, property));
             }
 
             WSelectQueryBlock firstQueryExpr = new WSelectQueryBlock();
-            foreach (var selectColumnExpr in repeatFirstSelect)
+            foreach (WSelectScalarExpression selectColumnExpr in firstSelectList)
             {
                 firstQueryExpr.SelectElements.Add(selectColumnExpr);
             }
 
-            repeatQueryBlock = RepeatContext.ToSelectQueryBlock();
+            repeatQueryBlock = this.RepeatContext.ToSelectQueryBlock();
             repeatQueryBlock.SelectElements.Clear();
-            foreach (var selectColumnExpr in repeatSecondSelect)
+            foreach (WSelectScalarExpression selectColumnExpr in secondSelectList)
             {
                 repeatQueryBlock.SelectElements.Add(selectColumnExpr);
             }
 
             //Replace N_0.id -> R_0.key_0, when N_0 is a outer variable
-            new ModifyColumnNameVisitor().Invoke(repeatQueryBlock, repeatVistorMap);
-            new ModifyColumnNameVisitor().Invoke(repeatConditionExpr, conditionVistorMap);
+            new ModifyOuterVariablesVisitor().Invoke(repeatQueryBlock, outerVariablesVistorMap);
+            new ModifyOuterVariablesVisitor().Invoke(repeatConditionExpr, outerVariablesVistorMap);
+            new ModifyColumnNameVisitor().Invoke(repeatQueryBlock, inputVariableVistorMap);
+            new ModifyColumnNameVisitor().Invoke(repeatConditionExpr, inputVariableVistorMap);
 
             List<WScalarExpression> repeatParameters = new List<WScalarExpression>()
             {
                 SqlUtil.GetScalarSubquery(SqlUtil.GetBinaryQueryExpr(firstQueryExpr, repeatQueryBlock)),
                 repeatConditionExpr
             };
-            var tableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Repeat, repeatParameters, GetVariableName());
+            WSchemaObjectFunctionTableReference tableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Repeat, repeatParameters, this.GetVariableName());
 
             return SqlUtil.GetCrossApplyTableReference(tableRef);
         }
@@ -221,34 +219,34 @@ namespace GraphView
         {
             return new WRepeatConditionExpression()
             {
-                EmitCondition = RepeatCondition.EmitContext?.ToSqlBoolean(),
-                TerminationCondition = RepeatCondition.TerminationContext?.ToSqlBoolean(),
-                RepeatTimes = RepeatCondition.RepeatTimes,
-                StartFromContext = RepeatCondition.StartFromContext,
-                EmitContext = RepeatCondition.IsEmitContext
+                EmitCondition = this.RepeatCondition.EmitContext?.ToSqlBoolean(),
+                TerminationCondition = this.RepeatCondition.TerminationContext?.ToSqlBoolean(),
+                RepeatTimes = this.RepeatCondition.RepeatTimes,
+                StartFromContext = this.RepeatCondition.StartFromContext,
+                EmitContext = this.RepeatCondition.IsEmitContext
             };
         }
 
-        public Dictionary<GremlinVariable, GremlinVariable> GetNewToOldSelectedVarMap(GremlinToSqlContext context)
-        { 
-            Dictionary<GremlinVariable, GremlinVariable> newToOldSelectedVarMap = new Dictionary<GremlinVariable, GremlinVariable>();
-            if (context == null) return newToOldSelectedVarMap;
+        public List<GremlinVariable> GetOuterVariables(GremlinToSqlContext context)
+        {
+            List<GremlinVariable> outerVariables = new List<GremlinVariable>();
+            if (context == null) return outerVariables;
 
-            var allVariables = context.FetchAllVars().Distinct().ToList();
-            var allTableVariables = context.FetchAllTableVars();
-            for (var i = 1; i < allVariables.Count; i++)
+            List<GremlinVariable> allVariables = context.FetchAllVars().Distinct().ToList();
+            List<GremlinVariable> allTableVariables = context.FetchAllTableVars();
+            for (int i = 1; i < allVariables.Count; i++)
             {
                 if (!allTableVariables.Select(var => var.GetVariableName()).ToList().Contains(allVariables[i].GetVariableName()))
                 {
-                    newToOldSelectedVarMap[allVariables[i]] = allVariables[i];
+                    outerVariables.Add(allVariables[i]);
                 }
             }
-            return newToOldSelectedVarMap;
+            return outerVariables;
         }
 
         public string GenerateKey()
         {
-            return GremlinKeyword.RepeatColumnPrefix + count++;
+            return GremlinKeyword.RepeatColumnPrefix + this.count++;
         }
 
         private int count;
@@ -256,9 +254,9 @@ namespace GraphView
 
     internal class ModifyColumnNameVisitor : WSqlFragmentVisitor
     {
-        private Dictionary<WColumnReferenceExpression, string> map;
+        private Dictionary<Tuple<string, string>, Tuple<string, string>> map;
 
-        public void Invoke(WSqlFragment queryBlock, Dictionary<WColumnReferenceExpression, string> map)
+        public void Invoke(WSqlFragment queryBlock, Dictionary<Tuple<string, string>, Tuple<string, string>> map)
         {
             this.map = map;
             queryBlock.Accept(this);
@@ -266,15 +264,38 @@ namespace GraphView
 
         public override void Visit(WColumnReferenceExpression columnReference)
         {
-            var key = columnReference.TableReference;
-            var value = columnReference.ColumnName;
-            foreach (var item in map)
+            string key = columnReference.TableReference;
+            string value = columnReference.ColumnName;
+            foreach (KeyValuePair<Tuple<string, string>, Tuple<string, string>> item in this.map)
             {
-                if (item.Key.TableReference.Equals(key) && item.Key.ColumnName.Equals(value))
+                if (item.Key.Item1.Equals(key) && item.Key.Item2.Equals(value))
                 {
-                    columnReference.MultiPartIdentifier.Identifiers[0].Value = GremlinKeyword.RepeatInitalTableName;
-                    columnReference.MultiPartIdentifier.Identifiers[1].Value = item.Value;
+                    columnReference.MultiPartIdentifier.Identifiers[0].Value = item.Value.Item1;
+                    columnReference.MultiPartIdentifier.Identifiers[1].Value = item.Value.Item2;
                 }
+            }
+        }
+    }
+
+    internal class ModifyOuterVariablesVisitor : WSqlFragmentVisitor
+    {
+        private Dictionary<Tuple<string, string>, Tuple<string, string>> map;
+
+        public void Invoke(WSqlFragment queryBlock, Dictionary<Tuple<string, string>, Tuple<string, string>> map)
+        {
+            this.map = map;
+            queryBlock.Accept(this);
+        }
+
+        public override void Visit(WSchemaObjectFunctionTableReference pathTable)
+        {
+            if (pathTable is WPathTableReference)
+            {
+                new ModifyColumnNameVisitor().Invoke(pathTable, this.map);
+            }
+            else
+            {
+                pathTable.AcceptChildren(this);
             }
         }
     }

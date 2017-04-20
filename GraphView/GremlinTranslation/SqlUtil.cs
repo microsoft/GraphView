@@ -336,15 +336,6 @@ namespace GraphView
                 case GremlinKeyword.func.Constant:
                     funcTableRef = new WConstantReference();
                     break;
-                case GremlinKeyword.func.OutE:
-                    funcTableRef = new WBoundOutEdgeTableReference();
-                    break;
-                case GremlinKeyword.func.InE:
-                    funcTableRef = new WBoundInEdgeTableReference();
-                    break;
-                case GremlinKeyword.func.BothE:
-                    funcTableRef = new WBoundBothEdgeTableReference();
-                    break;
                 case GremlinKeyword.func.FlatMap:
                     funcTableRef = new WFlatMapTableReference();
                     break;
@@ -353,15 +344,6 @@ namespace GraphView
                     break;
                 case GremlinKeyword.func.Local:
                     funcTableRef = new WLocalTableReference();
-                    break;
-                case GremlinKeyword.func.EtoV:
-                    funcTableRef = new WBoundOutNodeTableReference();
-                    break;
-                case GremlinKeyword.func.V:
-                    funcTableRef = new WBoundNodeTableReference();
-                    break;
-                case GremlinKeyword.func.BothV:
-                    funcTableRef = new WBoundBothNodeTableReference();
                     break;
                 case GremlinKeyword.func.Optional:
                     funcTableRef = new WOptionalTableReference();
@@ -512,6 +494,27 @@ namespace GraphView
                     break;
                 case GremlinKeyword.func.GraphViewLabel:
                     funcTableRef = new WLabelTableReference();
+                    break;
+                case GremlinKeyword.func.EdgeToSourceVertex:
+                    funcTableRef = new WEdgeToSourceVertexTableReference();
+                    break;
+                case GremlinKeyword.func.EdgeToSinkVertex:
+                    funcTableRef = new WEdgeToSinkVertexTableReference();
+                    break;
+                case GremlinKeyword.func.EdgeToOtherVertex:
+                    funcTableRef = new WEdgeToOtherVertexTableReference();
+                    break;
+                case GremlinKeyword.func.EdgeToBothVertex:
+                    funcTableRef = new WEdgeToBothVertexTableReference();
+                    break;
+                case GremlinKeyword.func.VertexToForwardEdge:
+                    funcTableRef = new WVertexToForwardEdgeTableReference();
+                    break;
+                case GremlinKeyword.func.VertexToBackwardEdge:
+                    funcTableRef = new WVertexToBackwordEdgeTableReference();
+                    break;
+                case GremlinKeyword.func.VertexToBothEdge:
+                    funcTableRef = new WVertexToBothEdgeTableReference();
                     break;
                 default:
                     throw new NotImplementedException();

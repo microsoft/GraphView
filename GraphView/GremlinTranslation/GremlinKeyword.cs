@@ -107,6 +107,13 @@ namespace GraphView
             public const string SelectColumn = "SelectColumn";
             public const string GraphViewId = "Id";
             public const string GraphViewLabel = "Label";
+            public const string EdgeToSourceVertex = "EdgeToSourceVertex";
+            public const string EdgeToSinkVertex = "EdgeToSinkVertex";
+            public const string EdgeToOtherVertex = "EdgeToOtherVertex";
+            public const string EdgeToBothVertex = "EdgeToBothVertex";
+            public const string VertexToForwardEdge = "VertexToForwardEdge";
+            public const string VertexToBackwardEdge = "VertexToBackwardEdge";
+            public const string VertexToBothEdge = "VertexToBothEdge";
         }
 
         public enum Pop

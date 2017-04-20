@@ -184,31 +184,20 @@ namespace GraphView
 
         internal virtual void Both(GremlinToSqlContext currentContext, List<string> edgeLabels)
         {
-            GremlinVariableProperty sourceProperty = GetVariableProperty(GremlinKeyword.NodeID);
-            GremlinVariableProperty adjReverseEdge = GetVariableProperty(GremlinKeyword.ReverseEdgeAdj);
-            GremlinVariableProperty adjEdge = GetVariableProperty(GremlinKeyword.EdgeAdj);
-            GremlinBoundEdgeTableVariable bothEdgeTable = new GremlinBoundEdgeTableVariable(sourceProperty,
-                                                                             adjEdge,
-                                                                             adjReverseEdge,
-                                                                             WEdgeType.BothEdge);
+            GremlinVertexToBothEdgeVariable bothEdgeTable = new GremlinVertexToBothEdgeVariable(this);
             currentContext.VariableList.Add(bothEdgeTable);
             currentContext.TableReferences.Add(bothEdgeTable);
             currentContext.AddLabelPredicateForEdge(bothEdgeTable, edgeLabels);
 
-            GremlinVariableProperty otherProperty = bothEdgeTable.GetVariableProperty(GremlinKeyword.EdgeOtherV);
-            GremlinBoundVertexVariable otherVertex = new GremlinBoundVertexVariable(otherProperty);
-            currentContext.VariableList.Add(otherVertex);
-            currentContext.TableReferences.Add(otherVertex);
-            currentContext.SetPivotVariable(otherVertex);
+            GremlinEdgeToOtherVertexVariable otherSourceVertex = new GremlinEdgeToOtherVertexVariable(bothEdgeTable);
+            currentContext.VariableList.Add(otherSourceVertex);
+            currentContext.TableReferences.Add(otherSourceVertex);
+            currentContext.SetPivotVariable(otherSourceVertex);
         }
 
         internal virtual void BothE(GremlinToSqlContext currentContext, List<string> edgeLabels)
         {
-            GremlinVariableProperty sourceProperty = GetVariableProperty(GremlinKeyword.NodeID);
-            GremlinVariableProperty adjReverseEdge = GetVariableProperty(GremlinKeyword.ReverseEdgeAdj);
-            GremlinVariableProperty adjEdge = GetVariableProperty(GremlinKeyword.EdgeAdj);
-            GremlinBoundEdgeTableVariable bothEdgeTable = new GremlinBoundEdgeTableVariable(sourceProperty, adjEdge, adjReverseEdge,
-                WEdgeType.BothEdge);
+            GremlinVertexToBothEdgeVariable bothEdgeTable = new GremlinVertexToBothEdgeVariable(this);
             currentContext.VariableList.Add(bothEdgeTable);
             currentContext.TableReferences.Add(bothEdgeTable);
             currentContext.AddLabelPredicateForEdge(bothEdgeTable, edgeLabels);
@@ -218,13 +207,11 @@ namespace GraphView
 
         internal virtual void BothV(GremlinToSqlContext currentContext)
         {
-            GremlinVariableProperty sourceProperty = GetVariableProperty(GremlinKeyword.EdgeSourceV);
-            GremlinVariableProperty sinkProperty = GetVariableProperty(GremlinKeyword.EdgeSinkV);
-            GremlinBoundVertexVariable bothVertex = new GremlinBoundVertexVariable(sourceProperty, sinkProperty);
+            GremlinEdgeToBothVertexVariable bothSourceVertex = new GremlinEdgeToBothVertexVariable(this);
 
-            currentContext.VariableList.Add(bothVertex);
-            currentContext.TableReferences.Add(bothVertex);
-            currentContext.SetPivotVariable(bothVertex);
+            currentContext.VariableList.Add(bothSourceVertex);
+            currentContext.TableReferences.Add(bothSourceVertex);
+            currentContext.SetPivotVariable(bothSourceVertex);
         }
 
         internal virtual void Cap(GremlinToSqlContext currentContext, List<string> sideEffectKeys)
@@ -436,26 +423,21 @@ namespace GraphView
 
         internal virtual void In(GremlinToSqlContext currentContext, List<string> edgeLabels)
         {
-            GremlinVariableProperty sourceProperty = GetVariableProperty(GremlinKeyword.NodeID);
-            GremlinVariableProperty adjReverseEdge = GetVariableProperty(GremlinKeyword.ReverseEdgeAdj);
-            GremlinBoundEdgeTableVariable inEdgeTable = new GremlinBoundEdgeTableVariable(sourceProperty, adjReverseEdge, WEdgeType.InEdge);
+            GremlinVertexToBackwardEdgeVariable inEdgeTable = new GremlinVertexToBackwardEdgeVariable(this);
             currentContext.VariableList.Add(inEdgeTable);
             currentContext.TableReferences.Add(inEdgeTable);
             currentContext.AddLabelPredicateForEdge(inEdgeTable, edgeLabels);
 
-            GremlinVariableProperty edgeProperty = inEdgeTable.GetVariableProperty(GremlinKeyword.EdgeSourceV);
-            GremlinBoundVertexVariable outVertex = new GremlinBoundVertexVariable(edgeProperty);
-            currentContext.VariableList.Add(outVertex);
-            currentContext.TableReferences.Add(outVertex);
+            GremlinEdgeToSourceVertexVariable outSourceVertex = new GremlinEdgeToSourceVertexVariable(inEdgeTable);
+            currentContext.VariableList.Add(outSourceVertex);
+            currentContext.TableReferences.Add(outSourceVertex);
 
-            currentContext.SetPivotVariable(outVertex);
+            currentContext.SetPivotVariable(outSourceVertex);
         }
 
         internal virtual void InE(GremlinToSqlContext currentContext, List<string> edgeLabels)
         {
-            GremlinVariableProperty sourceProperty = GetVariableProperty(GremlinKeyword.NodeID);
-            GremlinVariableProperty adjReverseEdge = GetVariableProperty(GremlinKeyword.ReverseEdgeAdj);
-            GremlinBoundEdgeTableVariable inEdgeTable = new GremlinBoundEdgeTableVariable(sourceProperty, adjReverseEdge, WEdgeType.InEdge);
+            GremlinVertexToBackwardEdgeVariable inEdgeTable = new GremlinVertexToBackwardEdgeVariable(this);
             currentContext.VariableList.Add(inEdgeTable);
             currentContext.TableReferences.Add(inEdgeTable);
             currentContext.AddLabelPredicateForEdge(inEdgeTable, edgeLabels);
@@ -472,8 +454,7 @@ namespace GraphView
 
         internal virtual void InV(GremlinToSqlContext currentContext)
         {
-            GremlinVariableProperty sinkProperty = GetVariableProperty(GremlinKeyword.EdgeSinkV);
-            GremlinTableVariable inVertex = new GremlinBoundVertexVariable(sinkProperty);
+            GremlinEdgeToSinkVertexVariable inVertex = new GremlinEdgeToSinkVertexVariable(this);
             currentContext.VariableList.Add(inVertex);
             currentContext.TableReferences.Add(inVertex);
             currentContext.SetPivotVariable(inVertex);
@@ -624,35 +605,29 @@ namespace GraphView
 
         internal virtual void OtherV(GremlinToSqlContext currentContext)
         {
-            GremlinVariableProperty otherProperty = GetVariableProperty(GremlinKeyword.EdgeOtherV);
-            GremlinBoundVertexVariable otherVertex = new GremlinBoundVertexVariable(otherProperty);
-            currentContext.VariableList.Add(otherVertex);
-            currentContext.TableReferences.Add(otherVertex);
-            currentContext.SetPivotVariable(otherVertex);
+            GremlinEdgeToOtherVertexVariable otherSourceVertex = new GremlinEdgeToOtherVertexVariable(this);
+            currentContext.VariableList.Add(otherSourceVertex);
+            currentContext.TableReferences.Add(otherSourceVertex);
+            currentContext.SetPivotVariable(otherSourceVertex);
         }
 
         internal virtual void Out(GremlinToSqlContext currentContext, List<string> edgeLabels)
         {
-            GremlinVariableProperty sourceProperty = GetVariableProperty(GremlinKeyword.NodeID);
-            GremlinVariableProperty adjEdge = GetVariableProperty(GremlinKeyword.EdgeAdj);
-            GremlinBoundEdgeTableVariable outEdgeTable = new GremlinBoundEdgeTableVariable(sourceProperty, adjEdge, WEdgeType.OutEdge);
+            GremlinVertexToForwardEdgeVariable outEdgeTable = new GremlinVertexToForwardEdgeVariable(this);
             currentContext.VariableList.Add(outEdgeTable);
             currentContext.TableReferences.Add(outEdgeTable);
             currentContext.AddLabelPredicateForEdge(outEdgeTable, edgeLabels);
 
-            GremlinVariableProperty sinkProperty = outEdgeTable.GetVariableProperty(GremlinKeyword.EdgeSinkV);
-            GremlinBoundVertexVariable inVertex = new GremlinBoundVertexVariable(sinkProperty);
-            currentContext.VariableList.Add(inVertex);
-            currentContext.TableReferences.Add(inVertex);
+            GremlinEdgeToSinkVertexVariable inSourceVertex = new GremlinEdgeToSinkVertexVariable(outEdgeTable);
+            currentContext.VariableList.Add(inSourceVertex);
+            currentContext.TableReferences.Add(inSourceVertex);
 
-            currentContext.SetPivotVariable(inVertex);
+            currentContext.SetPivotVariable(inSourceVertex);
         }
 
         internal virtual void OutE(GremlinToSqlContext currentContext, List<string> edgeLabels)
         {
-            GremlinVariableProperty sourceProperty = GetVariableProperty(GremlinKeyword.NodeID);
-            GremlinVariableProperty adjEdge = GetVariableProperty(GremlinKeyword.EdgeAdj);
-            GremlinBoundEdgeTableVariable outEdgeTable = new GremlinBoundEdgeTableVariable(sourceProperty, adjEdge, WEdgeType.OutEdge);
+            GremlinVertexToForwardEdgeVariable outEdgeTable = new GremlinVertexToForwardEdgeVariable(this);
             currentContext.VariableList.Add(outEdgeTable);
             currentContext.TableReferences.Add(outEdgeTable);
             currentContext.AddLabelPredicateForEdge(outEdgeTable, edgeLabels);
@@ -662,8 +637,7 @@ namespace GraphView
 
         internal virtual void OutV(GremlinToSqlContext currentContext)
         {
-            GremlinVariableProperty sourceProperty = GetVariableProperty(GremlinKeyword.EdgeSourceV);
-            GremlinTableVariable outVertex = new GremlinBoundVertexVariable(sourceProperty);
+            GremlinEdgeToSourceVertexVariable outVertex = new GremlinEdgeToSourceVertexVariable(this);
             currentContext.VariableList.Add(outVertex);
             currentContext.TableReferences.Add(outVertex);
             currentContext.SetPivotVariable(outVertex);
@@ -784,7 +758,7 @@ namespace GraphView
                         repeatContext.ContextLocalPath.Populate(property);
                     }
                     pathVariable.IsInRepeatContext = true;
-                    pathVariable.PathList.Insert(pathVariable.PathList.FindLastIndex(p => p == repeatContext.StepList.First()), null);
+                    pathVariable.PathList.Insert(pathVariable.PathList.FindLastIndex(p => p.GetVariableName() == this.GetVariableName()), null);
                 }
             }
         }

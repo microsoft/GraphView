@@ -169,7 +169,7 @@
     <Compile Include="GremlinTranslation\variables\table\tvf\withoutSubquery\GremlinValueMapVariable.cs" />
     <Compile Include="GremlinTranslation\variables\table\tvf\withSubquery\GremlinOrderVariable.cs" />
     <Compile Include="GremlinTranslation\variables\table\tvf\withSubquery\GremlinAddEVariable.cs" />
-    <Compile Include="GremlinTranslation\variables\table\edge\GremlinBoundEdgeVariable.cs" />
+    <Compile Include="GremlinTranslation\variables\table\edge\GremlinVertexToEdgeVariable.cs" />
     <Compile Include="GremlinTranslation\variables\GremlinContextVariable.cs" />
     <Compile Include="GremlinTranslation\GremlinToSqlContext.cs" />
     <Compile Include="GremlinTranslation\variables\GremlinVariable.cs" />
@@ -210,6 +210,7 @@
     <Compile Include="GremlinTranslation\variables\table\tvf\withoutSubquery\GremlinValueVariable.cs" />
     <Compile Include="GremlinTranslation\variables\table\tvf\withoutSubquery\GremlinAddVVariable.cs" />
     <Compile Include="GremlinTranslation\variables\table\vertex\GremlinBoundVertexVariable.cs" />
+    <Compile Include="GremlinTranslation\variables\table\vertex\GremlinEdgeToVertexVariable.cs" />
     <Compile Include="GremlinTranslation\variables\table\vertex\GremlinFreeVertexVariable.cs" />
     <Compile Include="GraphViewExecutionRuntime\TVFOperator.cs" />
     <Compile Include="GraphViewQueryCompiler\GraphOptimizer.cs" />
