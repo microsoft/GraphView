@@ -1463,7 +1463,7 @@ namespace GraphView
                 EdgeDocumentHelper.ConstructSpilledAdjListsOrVirtualRevAdjListsOfVertices(
                     this._connection,
                     new HashSet<string> {this._vertexId}, 
-                    new HashSet<string> {this._vertexPartitionKey});
+                    this._vertexPartitionKey != null ? new HashSet<string> {this._vertexPartitionKey} : new HashSet<string>());
             }
         }
 
