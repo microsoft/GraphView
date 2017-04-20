@@ -630,11 +630,18 @@ namespace GraphView
 
                 FieldObject step = accessPathStepFunc.Evaluate(record);
                 if (step == null) {
-                    PathStepField lastPathStep = path.Any() ? (PathStepField) path[path.Count - 1] : null;
-                    if (lastPathStep != null) {
-                        foreach (string label in stepLabels) {
-                            lastPathStep.AddLabel(label);
-                        }
+                    PathStepField lastPathStep;
+
+                    if (path.Any()) {
+                        lastPathStep = (PathStepField)path[path.Count - 1];
+                    }
+                    else {
+                        lastPathStep = new PathStepField(null);
+                        path.Add(lastPathStep);
+                    }
+
+                    foreach (string label in stepLabels) {
+                        lastPathStep.AddLabel(label);
                     }
                     continue;
                 }
