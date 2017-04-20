@@ -221,7 +221,7 @@ namespace GraphView
                 Debug.Assert(edgeDocumentsArray.Count == 1, "edgeDocumentsArray.Count == 1");
 
                 string lastEdgeDocId = (string)edgeDocumentsArray.Last[KW_DOC_ID];
-                JObject edgeDocument = connection.RetrieveDocumentById(lastEdgeDocId);
+                JObject edgeDocument = connection.RetrieveDocumentById(lastEdgeDocId, vertexField.Partition);
                 Debug.Assert(((string)edgeDocument[KW_DOC_ID]).Equals(lastEdgeDocId), $"((string)edgeDocument[{KW_DOC_ID}]).Equals(lastEdgeDocId)");
                 Debug.Assert((bool)edgeDocument[KW_EDGEDOC_ISREVERSE] == isReverse, $"(bool)edgeDocument['{KW_EDGEDOC_ISREVERSE}'] == isReverse");
                 Debug.Assert((string)edgeDocument[KW_EDGEDOC_VERTEXID] == (string)vertexObject[KW_DOC_ID], $"(string)edgeDocument['{KW_EDGEDOC_VERTEXID}'] == (string)vertexObject['{KW_DOC_ID}']");
@@ -477,11 +477,13 @@ namespace GraphView
                 //string edgeDocIdList = string.Join(", ", edgeContainer.Children<JObject>().Select(e => $"'{e[KW_DOC_ID]}'"));
 
                 const string EDGE_SELECT_TAG = "edge";
+                string partition = connection.GetDocumentPartition(vertexObject);
                 string query = $"SELECT doc.{KW_DOC_ID}, {EDGE_SELECT_TAG}\n" +
                                $"FROM doc\n" +
                                $"JOIN {EDGE_SELECT_TAG} IN doc.{KW_EDGEDOC_EDGE}\n" +
                                $"WHERE (doc.{KW_EDGEDOC_ISREVERSE} = {isReverseEdge.ToString().ToLowerInvariant()})\n" +
-                               $"  AND ({EDGE_SELECT_TAG}.{KW_EDGE_ID} = '{edgeId}')\n";
+                               $"  AND ({EDGE_SELECT_TAG}.{KW_EDGE_ID} = '{edgeId}')\n" + 
+                               (partition != null ? $" AND (doc{connection.GetPartitionPathIndexer()} = '{partition}')" : "");
 
                 JObject result = connection.ExecuteQueryUnique(query);
                 edgeDocId = (string) result?[KW_DOC_ID];
@@ -503,7 +505,7 @@ namespace GraphView
             // Check is this vertex an external vertex?
             if (vertexObject[KW_VERTEX_VIAGRAPHAPI] == null) {
 #if DEBUG
-                JObject edgeDocument = connection.RetrieveDocumentById(edgeDocId);
+                JObject edgeDocument = connection.RetrieveDocumentById(edgeDocId, connection.GetDocumentPartition(vertexObject));
                 Debug.Assert(connection.GetDocumentPartition(edgeDocument) == connection.GetDocumentPartition(vertexObject));
 #endif
                 documentMap[edgeDocId] = new Tuple<JObject, string>(null, connection.GetDocumentPartition(vertexObject));
@@ -519,7 +521,7 @@ namespace GraphView
                 Debug.Assert(edgeDocumentsArray != null, "edgeDocuments != null");
                 Debug.Assert(edgeDocumentsArray.Count == 1, "edgeDocuments.Count == 1");
 
-                JObject edgeDocument = connection.RetrieveDocumentById(edgeDocId);
+                JObject edgeDocument = connection.RetrieveDocumentById(edgeDocId, connection.GetDocumentPartition(vertexObject));
                 //Debug.Assert(edgeDocument[KW_DOC_PARTITION] != null);
                 //Debug.Assert(vertexObject[KW_DOC_PARTITION] != null);
                 Debug.Assert(((string)edgeDocument[KW_DOC_ID]).Equals(edgeDocId), $"((string)edgeDocument['{KW_DOC_ID}']).Equals(edgeDocId)");
@@ -623,7 +625,7 @@ namespace GraphView
             else {
                 // Large vertex
 
-                JObject edgeDocObject = connection.RetrieveDocumentById(edgeDocId);
+                JObject edgeDocObject = connection.RetrieveDocumentById(edgeDocId, connection.GetDocumentPartition(vertexObject));
                 edgeDocObject[KW_EDGEDOC_EDGE].Children<JObject>().First(
                     e => (string)e[KW_EDGE_ID] == (string)newEdgeObject[KW_EDGE_ID] &&
                          (string)e[srcOrSinkVInEdgeObject] == (string)newEdgeObject[srcOrSinkVInEdgeObject]
@@ -699,6 +701,7 @@ namespace GraphView
                     srcV = virtualReverseEdgeObject[KW_EDGE_SRCV].ToString();
                     srcVLabel = virtualReverseEdgeObject[KW_EDGE_SRCV_LABEL]?.ToString();
                 }
+                string srcVPartition = virtualReverseEdgeObject[KW_EDGE_SRCV_PARTITION]?.ToString();
 
                 JObject edgeObject = (JObject)virtualReverseEdgeObject[EdgeDocumentHelper.VirtualReverseEdgeObject];
                 string vertexId = (string)edgeObject[KW_EDGE_SINKV];
@@ -720,6 +723,9 @@ namespace GraphView
                 if (srcVLabel != null) {
                     virtualRevEdgeObject.Add(KW_EDGE_SRCV_LABEL, srcVLabel);
                 }
+                if (srcVPartition != null) {
+                    virtualRevEdgeObject.Add(KW_EDGE_SRCV_PARTITION, srcVPartition);
+                }
                 reverseEdgeDocumentEdges.Add(virtualRevEdgeObject);
             }
 
@@ -731,24 +737,33 @@ namespace GraphView
         {
             Dictionary<string, string> labelOfVertexCollection = new Dictionary<string, string>();
             HashSet<string> vertexIdSet = new HashSet<string>();
+            HashSet<string> vertexPartitionSet = new HashSet<string>();
 
             foreach (JObject virtualReverseEdge in virtualReverseEdges) {
                 JObject virtualReverseEdgeObject = (JObject)virtualReverseEdge[EdgeDocumentHelper.VirtualReverseEdge];
                 string vertexId = virtualReverseEdgeObject[KW_EDGEDOC_VERTEXID]?.ToString();
+                string vertexPartition = virtualReverseEdgeObject[KW_EDGE_SRCV_PARTITION]?.ToString();
                 if (vertexId != null) {
                     //
                     // this is a spilled edge, so the srcVLabel is not in the spilled document and needs to be fetched
                     //
                     vertexIdSet.Add(vertexId);
+                    if (vertexPartition != null) {
+                        vertexPartitionSet.Add(vertexPartition);
+                    }
                 }
             }
 
             if (vertexIdSet.Any()) {
                 string inClause = string.Join(", ", vertexIdSet.Select(vertexId => $"'{vertexId}'"));
+                string partitionInClause = string.Join(", ", vertexPartitionSet.Select(partition => $"'{partition}'"));
                 string labelQuery =
                     $"SELECT doc.{KW_VERTEX_LABEL}, doc.{KW_DOC_ID} " +
                     $"FROM doc " +
-                    $"WHERE doc.{KW_DOC_ID} IN ({inClause})";
+                    $"WHERE doc.{KW_DOC_ID} IN ({inClause})" +
+                    (string.IsNullOrEmpty(partitionInClause)
+                        ? ""
+                        : $" AND doc{connection.GetPartitionPathIndexer()} IN ({partitionInClause})");
                 IQueryable<dynamic> vertexIdAndLabels = connection.ExecuteQuery(labelQuery);
                 foreach (JObject vertexIdAndLabel in vertexIdAndLabels) {
                     string vertexId = vertexIdAndLabel[KW_DOC_ID].ToString();
@@ -768,16 +783,21 @@ namespace GraphView
         /// </summary>
         /// <param name="connection"></param>
         /// <param name="vertexIdSet"></param>
+        /// <param name="vertexPartitionKeySet"></param>
         public static void ConstructSpilledAdjListsOrVirtualRevAdjListsOfVertices(GraphViewConnection connection,
-            HashSet<string> vertexIdSet)
+            HashSet<string> vertexIdSet, HashSet<string> vertexPartitionKeySet)
         {
             if (!vertexIdSet.Any()) return;
 
             string inClause = string.Join(", ", vertexIdSet.Select(vertexId => $"'{vertexId}'"));
+            string partitionInClause = string.Join(", ", vertexPartitionKeySet.Select(partitionKey => $"'{partitionKey}'"));
             string edgeDocumentsQuery =
                 $"SELECT * " +
                 $"FROM edgeDoc " +
-                $"WHERE edgeDoc.{KW_EDGEDOC_VERTEXID} IN ({inClause})";
+                $"WHERE edgeDoc.{KW_EDGEDOC_VERTEXID} IN ({inClause})" +
+                (string.IsNullOrEmpty(partitionInClause)
+                    ? ""
+                    : $" AND edgeDoc{connection.GetPartitionPathIndexer()} IN ({partitionInClause})");
             List<dynamic> edgeDocuments = connection.ExecuteQuery(edgeDocumentsQuery).ToList();
 
             // Dictionary<vertexId, Dictionary<edgeDocumentId, edgeDocument>>
@@ -800,7 +820,10 @@ namespace GraphView
                     $"SELECT {{" +
                     $"  \"{EdgeDocumentHelper.VirtualReverseEdgeObject}\": edge, " +
                     $"  \"{KW_EDGE_SRCV}\": doc.{KW_DOC_ID}, " +
-                    $"  \"{KW_EDGE_SRCV_LABEL}\": doc.{KW_EDGE_SRCV_LABEL}," +
+                    $"  \"{KW_EDGE_SRCV_LABEL}\": doc.{KW_VERTEX_LABEL}," +
+                    (connection.PartitionPath != null 
+                        ? $"  \"{KW_EDGE_SRCV_PARTITION}\": doc{connection.GetPartitionPathIndexer()}," 
+                        : "") + 
                     $"  \"{KW_EDGEDOC_VERTEXID}\": doc.{KW_EDGEDOC_VERTEXID}" +
                     $"}} AS {EdgeDocumentHelper.VirtualReverseEdge}\n" +
                     $"FROM doc\n" +

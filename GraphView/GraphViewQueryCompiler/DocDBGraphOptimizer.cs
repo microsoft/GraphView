@@ -159,19 +159,19 @@ namespace GraphView
             return newComponent;
         }
 
-        private List<string> PopulateAdjacencyListProperties(MatchEdge edge)
-        {
-            if (edge.EdgeType == WEdgeType.BothEdge)
-                return new List<string> { GremlinKeyword.EdgeAdj, GremlinKeyword.ReverseEdgeAdj };
-            //
-            // IsTraversalThroughPhysicalReverseEdge
-            //
-            if ((edge.EdgeType == WEdgeType.OutEdge && edge.IsReversed)
-                || edge.EdgeType == WEdgeType.InEdge && !edge.IsReversed)
-                return new List<string> { GremlinKeyword.ReverseEdgeAdj };
-            else
-                return new List<string> { GremlinKeyword.EdgeAdj };
-        }
+        //private List<string> PopulateAdjacencyListProperties(MatchEdge edge)
+        //{
+        //    if (edge.EdgeType == WEdgeType.BothEdge)
+        //        return new List<string> { GremlinKeyword.EdgeAdj, GremlinKeyword.ReverseEdgeAdj };
+        //    //
+        //    // IsTraversalThroughPhysicalReverseEdge
+        //    //
+        //    if ((edge.EdgeType == WEdgeType.OutEdge && edge.IsReversed)
+        //        || edge.EdgeType == WEdgeType.InEdge && !edge.IsReversed)
+        //        return new List<string> { GremlinKeyword.ReverseEdgeAdj };
+        //    else
+        //        return new List<string> { GremlinKeyword.EdgeAdj };
+        //}
 
         private void UpdateComponent(MatchComponent curComponent, CandidateJoinUnit candidateTree)
         {
@@ -210,11 +210,12 @@ namespace GraphView
                     MatchEdge edge = t.Item2;
 
                     edgeMaterializedDict[edge] = true;
-                    List<string> adjListProperties = this.PopulateAdjacencyListProperties(edge);
+                    //List<string> adjListProperties = this.PopulateAdjacencyListProperties(edge);
                     MatchNode node = curComponent.Nodes[edge.SourceNode.NodeAlias];
-                    foreach (string adjListProperty in adjListProperties) {
-                        node.Properties.Add(adjListProperty);
-                    }
+                    node.Properties.Add(GremlinKeyword.Star);
+                    //foreach (string adjListProperty in adjListProperties) {
+                    //    node.Properties.Add(adjListProperty);
+                    //}
                 }
             }
 
@@ -226,11 +227,12 @@ namespace GraphView
                     MatchEdge edge = t.Item2;
 
                     edgeMaterializedDict[edge] = true;
-                    List<string> adjListProperties = this.PopulateAdjacencyListProperties(edge);
+                    //List<string> adjListProperties = this.PopulateAdjacencyListProperties(edge);
                     MatchNode node = curComponent.Nodes[edge.SourceNode.NodeAlias];
-                    foreach (string adjListProperty in adjListProperties) {
-                        node.Properties.Add(adjListProperty);
-                    }
+                    node.Properties.Add(GremlinKeyword.Star);
+                    //foreach (string adjListProperty in adjListProperties) {
+                    //    node.Properties.Add(adjListProperty);
+                    //}
                 }
             }
 

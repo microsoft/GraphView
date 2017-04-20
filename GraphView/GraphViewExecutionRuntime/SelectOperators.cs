@@ -135,8 +135,14 @@ namespace GraphView
         private GraphViewConnection connection;
         private GraphViewExecutionOperator inputOp;
         
-        // The index of the adjacency list in the record from which the traversal starts
-        private int adjacencyListSinkIndex = -1;
+        internal enum TraversalTypeEnum
+        { Source, Sink, Other, Both }
+
+        private int edgeFieldIndex;
+        //
+        // traversal type indicates which vertexId of the EdgeField would be used as the traversal destination 
+        //
+        private TraversalTypeEnum traversalType;
 
         // The query that describes predicates on the sink vertices and its properties to return.
         // It is null if the sink vertex has no predicates and no properties other than sink vertex ID
@@ -144,6 +150,7 @@ namespace GraphView
         private JsonQuery sinkVertexQuery;
         private JsonQuery sinkVertexViaExternalAPIQuery;
 
+        // Deprecated currently.
         // A list of index pairs, each specifying which field in the source record 
         // must match the field in the sink record. 
         // This list is not null when sink vertices have edges pointing back 
@@ -153,7 +160,8 @@ namespace GraphView
         public TraversalOperator2(
             GraphViewExecutionOperator inputOp,
             GraphViewConnection connection,
-            int sinkIndex,
+            int edgeFieldIndex,
+            TraversalTypeEnum traversalType,
             JsonQuery sinkVertexQuery,
             JsonQuery sinkVertexViaExternalAPIQuery,
             List<Tuple<int, int>> matchingIndexes,
@@ -162,7 +170,8 @@ namespace GraphView
             this.Open();
             this.inputOp = inputOp;
             this.connection = connection;
-            this.adjacencyListSinkIndex = sinkIndex;
+            this.edgeFieldIndex = edgeFieldIndex;
+            this.traversalType = traversalType;
             this.sinkVertexQuery = sinkVertexQuery;
             this.sinkVertexViaExternalAPIQuery = sinkVertexViaExternalAPIQuery;
             this.matchingIndexes = matchingIndexes;
@@ -171,25 +180,46 @@ namespace GraphView
 
         public override RawRecord Next()
         {
-            if (outputBuffer == null)
-            {
-                outputBuffer = new Queue<RawRecord>(outputBufferSize);
+            if (this.outputBuffer == null) {
+                this.outputBuffer = new Queue<RawRecord>(this.outputBufferSize);
             }
 
-            while (outputBuffer.Count < outputBufferSize && inputOp.State())
+            while (this.outputBuffer.Count < this.outputBufferSize && this.inputOp.State())
             {
-                List<Tuple<RawRecord, string>> inputSequence = new List<Tuple<RawRecord, string>>(batchSize);
+                //
+                // <RawRecord, id, partition key>
+                //
+                List<Tuple<RawRecord, string, string>> inputSequence = new List<Tuple<RawRecord, string, string>>(this.batchSize);
 
                 // Loads a batch of source records
-                for (int i = 0; i < batchSize && inputOp.State(); i++)
+                for (int i = 0; i < this.batchSize && this.inputOp.State(); i++)
                 {
-                    RawRecord record = inputOp.Next();
-                    if (record == null)
-                    {
+                    RawRecord record = this.inputOp.Next();
+                    if (record == null) {
                         break;
                     }
 
-                    inputSequence.Add(new Tuple<RawRecord, string>(record, record[adjacencyListSinkIndex].ToValue));
+                    EdgeField edgeField = record[this.edgeFieldIndex] as EdgeField;
+                    Debug.Assert(edgeField != null, "edgeField != null");
+
+                    switch (this.traversalType)
+                    {
+                        case TraversalTypeEnum.Source:
+                            inputSequence.Add(new Tuple<RawRecord, string, string>(record, edgeField.OutV, edgeField.OutVPartition));
+                            break;
+                        case TraversalTypeEnum.Sink:
+                            inputSequence.Add(new Tuple<RawRecord, string, string>(record, edgeField.InV, edgeField.InVPartition));
+                            break;
+                        case TraversalTypeEnum.Other:
+                            inputSequence.Add(new Tuple<RawRecord, string, string>(record, edgeField.OtherV, edgeField.OtherVPartition));
+                            break;
+                        case TraversalTypeEnum.Both:
+                            inputSequence.Add(new Tuple<RawRecord, string, string>(record, edgeField.InV, edgeField.InVPartition));
+                            inputSequence.Add(new Tuple<RawRecord, string, string>(record, edgeField.OutV, edgeField.OutVPartition));
+                            break;
+                        default:
+                            throw new ArgumentOutOfRangeException();
+                    }
                 }
 
                 // When sinkVertexQuery is null, only sink vertices' IDs are to be returned. 
@@ -197,7 +227,7 @@ namespace GraphView
                 // the sink vertices.  
                 if (sinkVertexQuery == null)
                 {
-                    foreach (Tuple<RawRecord, string> pair in inputSequence)
+                    foreach (Tuple<RawRecord, string, string> pair in inputSequence)
                     {
                         RawRecord resultRecord = new RawRecord { fieldValues = new List<FieldObject>() };
                         resultRecord.Append(pair.Item1);
@@ -213,7 +243,9 @@ namespace GraphView
                 Dictionary<string, List<RawRecord>> sinkVertexCollection = new Dictionary<string, List<RawRecord>>(GraphViewConnection.InClauseLimit);
 
                 HashSet<string> sinkReferenceSet = new HashSet<string>();
+                HashSet<string> sinkPartitionSet = new HashSet<string>();
                 StringBuilder sinkReferenceList = new StringBuilder();
+                StringBuilder sinkPartitionList = new StringBuilder();
                 // Given a list of sink references, sends queries to the underlying system
                 // to retrieve the sink vertices. To reduce the number of queries to send,
                 // we pack multiple sink references in one query using the IN clause, i.e., 
@@ -224,60 +256,63 @@ namespace GraphView
                 while (j < inputSequence.Count)
                 {
                     sinkReferenceSet.Clear();
+                    sinkPartitionSet.Clear();
 
                     //TODO: Verify whether DocumentDB still has inClauseLimit
                     while (sinkReferenceSet.Count < GraphViewConnection.InClauseLimit && j < inputSequence.Count)
                     {
-                        sinkReferenceSet.Add(inputSequence[j].Item2);
+                        string sinkReferenceId = inputSequence[j].Item2;
+                        string sinkPartitionKey = inputSequence[j].Item3;
+                        sinkReferenceSet.Add(sinkReferenceId);
+                        if (!string.IsNullOrEmpty(sinkPartitionKey))
+                            sinkPartitionSet.Add(sinkPartitionKey);
                         j++;
                     }
 
                     sinkReferenceList.Clear();
-                    foreach (string sinkRef in sinkReferenceSet)
-                    {
-                        if (sinkReferenceList.Length > 0)
-                        {
-                            sinkReferenceList.Append(", ");
-                        }
-                        sinkReferenceList.AppendFormat("'{0}'", sinkRef);
-                    }
+                    sinkReferenceList.Append(string.Join(", ", sinkReferenceSet.Select(sinkRef => $"'{sinkRef}'")));
 
-                    string inClause = string.Format("{0}.id IN ({1})", sinkVertexQuery.Alias, sinkReferenceList.ToString());
+                    sinkPartitionList.Clear();
+                    sinkPartitionList.Append(string.Join(", ", sinkPartitionSet.Select(partition => $"'{partition}'")));
 
-                    JsonQuery toSendQuery = new JsonQuery(sinkVertexQuery);
+                    string inClause = $"{this.sinkVertexQuery.Alias}.id IN ({sinkReferenceList.ToString()})";
 
-                    if (string.IsNullOrEmpty(toSendQuery.WhereSearchCondition))
-                    {
+                    JsonQuery toSendQuery = new JsonQuery(this.sinkVertexQuery);
+                    if (string.IsNullOrEmpty(toSendQuery.WhereSearchCondition)) {
                         toSendQuery.WhereSearchCondition = inClause;
                     }
-                    else
-                    {
-                        toSendQuery.WhereSearchCondition = 
-                            string.Format("({0}) AND {1}", sinkVertexQuery.WhereSearchCondition, inClause);
+                    else {
+                        toSendQuery.WhereSearchCondition = $"({this.sinkVertexQuery.WhereSearchCondition}) AND {inClause}";
                     }
 
                     string spilledEdgeDocumentsInClause =
                         $"{this.sinkVertexViaExternalAPIQuery.Alias}.{GraphViewKeywords.KW_EDGEDOC_VERTEXID} IN ({sinkReferenceList.ToString()})";
-                    JsonQuery toSendViaExternalAPIQuery = new JsonQuery(this.sinkVertexViaExternalAPIQuery);
 
+                    JsonQuery toSendViaExternalAPIQuery = new JsonQuery(this.sinkVertexViaExternalAPIQuery);
                     if (string.IsNullOrEmpty(toSendViaExternalAPIQuery.WhereSearchCondition)) {
-                        toSendViaExternalAPIQuery.WhereSearchCondition =
-                            $"({inClause}) OR ({spilledEdgeDocumentsInClause})";
+                        toSendViaExternalAPIQuery.WhereSearchCondition = $"({inClause}) OR ({spilledEdgeDocumentsInClause})";
                     }
                     else {
                         toSendViaExternalAPIQuery.WhereSearchCondition =
                             $"(({toSendViaExternalAPIQuery.WhereSearchCondition}) AND {inClause}) OR ({spilledEdgeDocumentsInClause})";
                     }
 
-                    using (DbPortal databasePortal = connection.CreateDatabasePortal())
+                    string partitionInClause = sinkPartitionList.Length > 0
+                        ? $" AND {this.sinkVertexQuery.Alias}{this.connection.GetPartitionPathIndexer()} IN ({sinkPartitionList.ToString()})"
+                        : "";
+
+                    toSendQuery.WhereSearchCondition =
+                        $"{toSendQuery.WhereSearchCondition}{partitionInClause}";
+                    toSendViaExternalAPIQuery.WhereSearchCondition =
+                        $"{toSendViaExternalAPIQuery.WhereSearchCondition}{partitionInClause}";
+
+                    using (DbPortal databasePortal = this.connection.CreateDatabasePortal())
                     {
                         IEnumerator<RawRecord> verticesEnumerator = databasePortal.GetVertices(toSendQuery);
 
-                        while (this.connection.GraphType != GraphType.CompatibleOnly && verticesEnumerator.MoveNext())
-                        {
+                        while (this.connection.GraphType != GraphType.CompatibleOnly && verticesEnumerator.MoveNext()) {
                             RawRecord rec = verticesEnumerator.Current;
-                            if (!sinkVertexCollection.ContainsKey(rec[0].ToValue))
-                            {
+                            if (!sinkVertexCollection.ContainsKey(rec[0].ToValue)) {
                                 sinkVertexCollection.Add(rec[0].ToValue, new List<RawRecord>());
                             }
                             sinkVertexCollection[rec[0].ToValue].Add(rec);
@@ -286,11 +321,9 @@ namespace GraphView
                         IEnumerator<RawRecord> verticesViaExternalAPIEnumerator =
                             databasePortal.GetVerticesViaExternalAPI(toSendViaExternalAPIQuery);
 
-                        while (this.connection.GraphType != GraphType.GraphAPIOnly && verticesViaExternalAPIEnumerator.MoveNext())
-                        {
+                        while (this.connection.GraphType != GraphType.GraphAPIOnly && verticesViaExternalAPIEnumerator.MoveNext()) {
                             RawRecord rec = verticesViaExternalAPIEnumerator.Current;
-                            if (!sinkVertexCollection.ContainsKey(rec[0].ToValue))
-                            {
+                            if (!sinkVertexCollection.ContainsKey(rec[0].ToValue)) {
                                 sinkVertexCollection.Add(rec[0].ToValue, new List<RawRecord>());
                             }
                             sinkVertexCollection[rec[0].ToValue].Add(rec);
@@ -298,10 +331,9 @@ namespace GraphView
                     }
                 }
 
-                foreach (Tuple<RawRecord, string> pair in inputSequence)
+                foreach (Tuple<RawRecord, string, string> pair in inputSequence)
                 {
-                    if (!sinkVertexCollection.ContainsKey(pair.Item2))
-                    {
+                    if (!sinkVertexCollection.ContainsKey(pair.Item2)) {
                         continue;
                     }
 
@@ -310,13 +342,13 @@ namespace GraphView
                     
                     foreach (RawRecord sinkRec in sinkRecList)
                     {
-                        if (matchingIndexes != null && matchingIndexes.Count > 0)
+                        if (this.matchingIndexes != null && this.matchingIndexes.Count > 0)
                         {
                             int k = 0;
-                            for (; k < matchingIndexes.Count; k++)
+                            for (; k < this.matchingIndexes.Count; k++)
                             {
-                                int sourceMatchIndex = matchingIndexes[k].Item1;
-                                int sinkMatchIndex = matchingIndexes[k].Item2;
+                                int sourceMatchIndex = this.matchingIndexes[k].Item1;
+                                int sinkMatchIndex = this.matchingIndexes[k].Item2;
                                 if (!sourceRec[sourceMatchIndex].ToValue.Equals(sinkRec[sinkMatchIndex].ToValue, StringComparison.OrdinalIgnoreCase))
                                 //if (sourceRec[sourceMatchIndex] != sinkRec[sinkMatchIndex])
                                 {
@@ -325,7 +357,7 @@ namespace GraphView
                             }
 
                             // The source-sink record pair is the result only when it passes all matching tests. 
-                            if (k < matchingIndexes.Count)
+                            if (k < this.matchingIndexes.Count)
                             {
                                 continue;
                             }
@@ -334,236 +366,22 @@ namespace GraphView
                         RawRecord resultRec = new RawRecord(sourceRec);
                         resultRec.Append(sinkRec);
 
-                        outputBuffer.Enqueue(resultRec);
+                        this.outputBuffer.Enqueue(resultRec);
                     }
                 }
             }
 
-            if (outputBuffer.Count == 0)
-            {
-                if (!inputOp.State())
-                    Close();
+            if (this.outputBuffer.Count == 0) {
+                if (!this.inputOp.State())
+                    this.Close();
                 return null;
             }
-            else if (outputBuffer.Count == 1)
-            {
-                Close();
-                return outputBuffer.Dequeue();
+            else if (this.outputBuffer.Count == 1) {
+                this.Close();
+                return this.outputBuffer.Dequeue();
             }
-            else
-            {
-                return outputBuffer.Dequeue();
-            }
-        }
-
-        public override void ResetState()
-        {
-            inputOp.ResetState();
-            outputBuffer?.Clear();
-            Open();
-        }
-    }
-
-    internal class BothVOperator : GraphViewExecutionOperator
-    {
-        private int outputBufferSize;
-        private int batchSize = 100;
-        private int inClauseLimit = 200;
-        private Queue<RawRecord> outputBuffer;
-        private GraphViewConnection connection;
-        private GraphViewExecutionOperator inputOp;
-
-
-        private List<int> adjacencyListSinkIndexes;
-
-        // The query that describes predicates on the sink vertices and its properties to return.
-        // It is null if the sink vertex has no predicates and no properties other than sink vertex ID
-        // are to be returned.  
-        private JsonQuery sinkVertexQuery;
-        private JsonQuery sinkVertexViaExternalAPIQuery;
-
-        public BothVOperator(
-            GraphViewExecutionOperator inputOp,
-            GraphViewConnection connection,
-            List<int> sinkIndexes,
-            JsonQuery sinkVertexQuery,
-            JsonQuery sinkVertexViaExternalAPIQuery,
-            int outputBufferSize = 1000)
-        {
-            Open();
-            this.inputOp = inputOp;
-            this.connection = connection;
-            this.adjacencyListSinkIndexes = sinkIndexes;
-            this.sinkVertexQuery = sinkVertexQuery;
-            this.sinkVertexViaExternalAPIQuery = sinkVertexViaExternalAPIQuery;
-            this.outputBufferSize = outputBufferSize;
-        }
-
-        public override RawRecord Next()
-        {
-            if (outputBuffer == null)
-            {
-                outputBuffer = new Queue<RawRecord>(outputBufferSize);
-            }
-
-            while (outputBuffer.Count < outputBufferSize && inputOp.State())
-            {
-                List<Tuple<RawRecord, string>> inputSequence = new List<Tuple<RawRecord, string>>(batchSize);
-
-                // Loads a batch of source records
-                for (int i = 0; i < batchSize && inputOp.State(); i++)
-                {
-                    RawRecord record = inputOp.Next();
-                    if (record == null)
-                    {
-                        break;
-                    }
-
-                    foreach (var adjacencyListSinkIndex in adjacencyListSinkIndexes)
-                    {
-                        inputSequence.Add(new Tuple<RawRecord, string>(record, record[adjacencyListSinkIndex].ToValue));
-                    }
-                }
-
-                // When sinkVertexQuery is null, only sink vertices' IDs are to be returned. 
-                // As a result, there is no need to send queries the underlying system to retrieve 
-                // the sink vertices.  
-                if (sinkVertexQuery == null)
-                {
-                    foreach (Tuple<RawRecord, string> pair in inputSequence)
-                    {
-                        RawRecord resultRecord = new RawRecord { fieldValues = new List<FieldObject>() };
-                        resultRecord.Append(pair.Item1);
-                        resultRecord.Append(new StringField(pair.Item2));
-                        outputBuffer.Enqueue(resultRecord);
-                    }
-
-                    continue;
-                }
-
-                // Groups records returned by sinkVertexQuery by sink vertices' references
-                Dictionary<string, List<RawRecord>> sinkVertexCollection = new Dictionary<string, List<RawRecord>>(inClauseLimit);
-
-                HashSet<string> sinkReferenceSet = new HashSet<string>();
-                StringBuilder sinkReferenceList = new StringBuilder();
-                // Given a list of sink references, sends queries to the underlying system
-                // to retrieve the sink vertices. To reduce the number of queries to send,
-                // we pack multiple sink references in one query using the IN clause, i.e., 
-                // IN (ref1, ref2, ...). Since the total number of references to locate may exceed
-                // the limit that is allowed in the IN clause, we may need to send more than one 
-                // query to retrieve all sink vertices. 
-                int j = 0;
-                while (j < inputSequence.Count)
-                {
-                    sinkReferenceSet.Clear();
-
-                    //TODO: Verify whether DocumentDB still has inClauseLimit
-                    while (sinkReferenceSet.Count < inClauseLimit && j < inputSequence.Count)
-                    {
-                        sinkReferenceSet.Add(inputSequence[j].Item2);
-                        j++;
-                    }
-
-                    sinkReferenceList.Clear();
-                    foreach (string sinkRef in sinkReferenceSet)
-                    {
-                        if (sinkReferenceList.Length > 0)
-                        {
-                            sinkReferenceList.Append(", ");
-                        }
-                        sinkReferenceList.AppendFormat("'{0}'", sinkRef);
-                    }
-
-                    string inClause = string.Format("{0}.id IN ({1})", sinkVertexQuery.Alias, sinkReferenceList.ToString());
-
-                    JsonQuery toSendQuery = new JsonQuery(sinkVertexQuery);
-
-                    if (string.IsNullOrEmpty(toSendQuery.WhereSearchCondition))
-                    {
-                        toSendQuery.WhereSearchCondition = inClause;
-                    }
-                    else
-                    {
-                        toSendQuery.WhereSearchCondition =
-                            string.Format("({0}) AND {1}", sinkVertexQuery.WhereSearchCondition, inClause);
-                    }
-
-                    string spilledEdgeDocumentsInClause =
-                        $"{this.sinkVertexViaExternalAPIQuery.Alias}.{GraphViewKeywords.KW_EDGEDOC_VERTEXID} IN ({sinkReferenceList.ToString()})";
-                    JsonQuery toSendViaExternalAPIQuery = new JsonQuery(this.sinkVertexViaExternalAPIQuery);
-
-                    if (string.IsNullOrEmpty(toSendViaExternalAPIQuery.WhereSearchCondition)) {
-                        toSendViaExternalAPIQuery.WhereSearchCondition =
-                            $"({inClause}) OR ({spilledEdgeDocumentsInClause})";
-                    }
-                    else {
-                        toSendViaExternalAPIQuery.WhereSearchCondition =
-                            $"(({toSendViaExternalAPIQuery.WhereSearchCondition}) AND {inClause}) OR ({spilledEdgeDocumentsInClause})";
-                    }
-
-                    using (DbPortal databasePortal = connection.CreateDatabasePortal())
-                    {
-                        IEnumerator<RawRecord> verticesEnumerator = databasePortal.GetVertices(toSendQuery);
-
-                        while (this.connection.GraphType != GraphType.CompatibleOnly && verticesEnumerator.MoveNext())
-                        {
-                            RawRecord rec = verticesEnumerator.Current;
-                            if (!sinkVertexCollection.ContainsKey(rec[0].ToValue))
-                            {
-                                sinkVertexCollection.Add(rec[0].ToValue, new List<RawRecord>());
-                            }
-                            sinkVertexCollection[rec[0].ToValue].Add(rec);
-                        }
-
-                        IEnumerator<RawRecord> verticesViaExternalAPIEnumerator =
-                            databasePortal.GetVerticesViaExternalAPI(toSendViaExternalAPIQuery);
-
-                        while (this.connection.GraphType != GraphType.GraphAPIOnly && verticesViaExternalAPIEnumerator.MoveNext())
-                        {
-                            RawRecord rec = verticesViaExternalAPIEnumerator.Current;
-                            if (!sinkVertexCollection.ContainsKey(rec[0].ToValue))
-                            {
-                                sinkVertexCollection.Add(rec[0].ToValue, new List<RawRecord>());
-                            }
-                            sinkVertexCollection[rec[0].ToValue].Add(rec);
-                        }
-                    }
-                }
-
-                foreach (Tuple<RawRecord, string> pair in inputSequence)
-                {
-                    if (!sinkVertexCollection.ContainsKey(pair.Item2))
-                    {
-                        continue;
-                    }
-
-                    RawRecord sourceRec = pair.Item1;
-                    List<RawRecord> sinkRecList = sinkVertexCollection[pair.Item2];
-
-                    foreach (RawRecord sinkRec in sinkRecList)
-                    {
-                        RawRecord resultRec = new RawRecord(sourceRec);
-                        resultRec.Append(sinkRec);
-
-                        outputBuffer.Enqueue(resultRec);
-                    }
-                }
-            }
-
-            if (outputBuffer.Count == 0)
-            {
-                if (!inputOp.State())
-                    Close();
-                return null;
-            }
-            else if (outputBuffer.Count == 1)
-            {
-                Close();
-                return outputBuffer.Dequeue();
-            }
-            else
-            {
-                return outputBuffer.Dequeue();
+            else {
+                return this.outputBuffer.Dequeue();
             }
         }
 
@@ -4098,8 +3916,8 @@ namespace GraphView
         private readonly GraphViewExecutionOperator inputOp;
         private readonly int startVertexIndex;
 
-        private readonly int adjacencyListIndex;
-        private readonly int revAdjacencyListIndex;
+        private readonly bool crossApplyForwardAdjacencyList;
+        private readonly bool crossApplyBackwardAdjacencyList;
 
         private readonly BooleanFunction edgePredicate;
         private readonly List<string> projectedFields;
@@ -4115,10 +3933,12 @@ namespace GraphView
         private readonly int outputRecordLength;
         private bool hasConstructedSpilledAdjListsOrVirtualRevAdjListsForCurrentBatch;
 
+        public List<string> debug { get; set; }
+
         public AdjacencyListDecoder(
             GraphViewExecutionOperator inputOp,
-            int startVertexIndex, 
-            int adjacencyListIndex, int revAdjacencyListIndex,
+            int startVertexIndex,
+            bool crossApplyForwardAdjacencyList, bool crossApplyBackwardAdjacencyList,
             bool isStartVertexTheOriginVertex,
             BooleanFunction edgePredicate, List<string> projectedFields,
             GraphViewConnection connection,
@@ -4128,8 +3948,8 @@ namespace GraphView
             this.inputOp = inputOp;
             this.outputBuffer = new Queue<RawRecord>();
             this.startVertexIndex = startVertexIndex;
-            this.adjacencyListIndex = adjacencyListIndex;
-            this.revAdjacencyListIndex = revAdjacencyListIndex;
+            this.crossApplyForwardAdjacencyList = crossApplyForwardAdjacencyList;
+            this.crossApplyBackwardAdjacencyList = crossApplyBackwardAdjacencyList;
             this.isStartVertexTheOriginVertex = isStartVertexTheOriginVertex;
             this.edgePredicate = edgePredicate;
             this.projectedFields = projectedFields;
@@ -4151,6 +3971,7 @@ namespace GraphView
         /// <param name="edge"></param>
         /// <param name="startVertexId"></param>
         /// <param name="isReversedAdjList"></param>
+        /// <param name="startVertexPartition"></param>
         /// <param name="isStartVertexTheOriginVertex"></param>
         internal static void FillMetaField(RawRecord record, EdgeField edge, 
             string startVertexId, string startVertexPartition, bool isStartVertexTheOriginVertex, bool isReversedAdjList)
@@ -4198,7 +4019,7 @@ namespace GraphView
         /// <param name="startVertexId"></param>
         /// <param name="isReverse"></param>
         /// <returns></returns>
-        private List<RawRecord> DecodeAdjacencyList(AdjacencyListField adjacencyList, string startVertexId, bool isReverse)
+        private List<RawRecord> DecodeAdjacencyList(AdjacencyListField adjacencyList, string startVertexId, string startVertexPartition, bool isReverse)
         {
             List<RawRecord> edgeRecordCollection = new List<RawRecord>();
 
@@ -4206,7 +4027,6 @@ namespace GraphView
                 // Construct new record
                 RawRecord edgeRecord = new RawRecord(this.projectedFields.Count);
 
-                string startVertexPartition = connection.VertexCache.GetVertexField(startVertexId).Partition;
                 AdjacencyListDecoder.FillMetaField(edgeRecord, edge, startVertexId, startVertexPartition, this.isStartVertexTheOriginVertex, isReverse);
                 AdjacencyListDecoder.FillPropertyField(edgeRecord, edge, this.projectedFields);
 
@@ -4229,26 +4049,22 @@ namespace GraphView
         private List<RawRecord> Decode(RawRecord record)
         {
             List<RawRecord> results = new List<RawRecord>();
-            string startVertexId = record[this.startVertexIndex].ToValue;
+            VertexField startVertex = record[this.startVertexIndex] as VertexField;
+            if (startVertex == null) {
+                throw new GraphViewException($"{record[this.startVertexIndex].ToString()} cannot be cast to a vertex.");
+            }
+            string startVertexId = startVertex.VertexId;
 
-            if (this.adjacencyListIndex >= 0)
-            {
-                AdjacencyListField adj = record[this.adjacencyListIndex] as AdjacencyListField;
-                if (adj == null)
-                    throw new GraphViewException(
-                        $"The FieldObject at {this.adjacencyListIndex} is not a adjacency list but {(record[this.adjacencyListIndex] != null ? record[this.adjacencyListIndex].ToString() : "null")}");
-
-                results.AddRange(this.DecodeAdjacencyList(adj, startVertexId, false));
+            if (this.crossApplyForwardAdjacencyList) {
+                AdjacencyListField adj = ((VertexField)record[this.startVertexIndex]).AdjacencyList;
+                Debug.Assert(adj.HasBeenFetched);
+                results.AddRange(this.DecodeAdjacencyList(adj, startVertexId, startVertex.Partition, false));
             }
 
-            if (this.revAdjacencyListIndex >= 0)
-            {
-                AdjacencyListField revAdj = record[this.revAdjacencyListIndex] as AdjacencyListField;
-                if (revAdj == null)
-                    throw new GraphViewException(
-                        $"The FieldObject at {this.revAdjacencyListIndex} is not a reverse adjacency list but {(record[this.revAdjacencyListIndex] != null ? record[this.revAdjacencyListIndex].ToString() : "null")}");
-
-                results.AddRange(this.DecodeAdjacencyList(revAdj, startVertexId, true));
+            if (this.crossApplyBackwardAdjacencyList) {
+                AdjacencyListField revAdj = ((VertexField)record[this.startVertexIndex]).RevAdjacencyList;
+                Debug.Assert(revAdj.HasBeenFetched);
+                results.AddRange(this.DecodeAdjacencyList(revAdj, startVertexId, startVertex.Partition, true));
             }
 
             return results;
@@ -4263,7 +4079,7 @@ namespace GraphView
         {
             List<RawRecord> results = new List<RawRecord>();
 
-            foreach (RawRecord edgeRecord in Decode(record)) {
+            foreach (RawRecord edgeRecord in this.Decode(record)) {
                 RawRecord r = new RawRecord(record);
                 r.Append(edgeRecord);
 
@@ -4279,25 +4095,26 @@ namespace GraphView
         private void ConstructSpilledAdjListsOrVirtualRevAdjListsInBatch()
         {
             HashSet<string> vertexIdCollection = new HashSet<string>();
-            foreach (Tuple<RawRecord, string> tuple in batchInputSequence)
-            {
+            HashSet<string> vertexPartitionKeyCollection = new HashSet<string>();
+            foreach (Tuple<RawRecord, string> tuple in this.batchInputSequence) {
                 string vertexId = tuple.Item2;
-                VertexField vertexField;
-                this.connection.VertexCache.TryGetVertexField(vertexId, out vertexField);
-                if (vertexField != null)
-                {
-                    AdjacencyListField adj = vertexField[GraphViewKeywords.KW_VERTEX_EDGE] as AdjacencyListField;
-                    AdjacencyListField revAdj = vertexField[GraphViewKeywords.KW_VERTEX_REV_EDGE] as AdjacencyListField;
-                    Debug.Assert(adj != null, "adj != null");
-                    Debug.Assert(revAdj != null, "revAdj != null");
-                    if (adj.HasBeenFetched && revAdj.HasBeenFetched) {
-                        continue;
-                    }
+                VertexField vertexField = (VertexField)(tuple.Item1[this.startVertexIndex]);
+
+                AdjacencyListField adj = vertexField.AdjacencyList;
+                AdjacencyListField revAdj = vertexField.RevAdjacencyList;
+                Debug.Assert(adj != null, "adj != null");
+                Debug.Assert(revAdj != null, "revAdj != null");
+                if (adj.HasBeenFetched && revAdj.HasBeenFetched) {
+                    continue;
                 }
-                vertexIdCollection.Add(tuple.Item2);
+
+                vertexIdCollection.Add(vertexId);
+                if (vertexField.Partition != null) {
+                    vertexPartitionKeyCollection.Add(vertexField.Partition);
+                }
             }
 
-            EdgeDocumentHelper.ConstructSpilledAdjListsOrVirtualRevAdjListsOfVertices(connection, vertexIdCollection);
+            EdgeDocumentHelper.ConstructSpilledAdjListsOrVirtualRevAdjListsOfVertices(this.connection, vertexIdCollection, vertexPartitionKeyCollection);
         }
 
         public override RawRecord Next()
@@ -4306,7 +4123,7 @@ namespace GraphView
                 return this.outputBuffer.Dequeue();
             }
 
-            while (this.batchInputSequence.Count >= batchSize
+            while (this.batchInputSequence.Count >= this.batchSize
                 || this.hasConstructedSpilledAdjListsOrVirtualRevAdjListsForCurrentBatch
                 || (this.batchInputSequence.Count != 0 && !this.inputOp.State()))
             {
@@ -4344,21 +4161,25 @@ namespace GraphView
                     return currentRecord;
                 }
 
-                if (this.adjacencyListIndex >= 0)
-                {
-                    AdjacencyListField adj = currentRecord[this.adjacencyListIndex] as AdjacencyListField;
+                VertexField startVertex = currentRecord[this.startVertexIndex] as VertexField;
+                if (startVertex == null) {
+                    throw new GraphViewException($"{currentRecord[this.startVertexIndex].ToString()} cannot be cast to a vertex.");
+                }
+                string startVertexId = startVertex.VertexId;
+
+                if (this.crossApplyForwardAdjacencyList) {
+                    AdjacencyListField adj = startVertex.AdjacencyList;
                     Debug.Assert(adj != null, "adj != null");
                     if (!adj.HasBeenFetched) {
-                        this.batchInputSequence.Enqueue(new Tuple<RawRecord, string>(currentRecord, currentRecord[this.startVertexIndex].ToValue));
+                        this.batchInputSequence.Enqueue(new Tuple<RawRecord, string>(currentRecord, startVertexId));
                         continue;
                     }
                 }
-                else if (this.revAdjacencyListIndex >= 0)
-                {
-                    AdjacencyListField revAdj = currentRecord[this.revAdjacencyListIndex] as AdjacencyListField;
+                if (this.crossApplyBackwardAdjacencyList) {
+                    AdjacencyListField revAdj = startVertex.RevAdjacencyList;
                     Debug.Assert(revAdj != null, "revAdj != null");
                     if (!revAdj.HasBeenFetched) {
-                        this.batchInputSequence.Enqueue(new Tuple<RawRecord, string>(currentRecord, currentRecord[this.startVertexIndex].ToValue));
+                        this.batchInputSequence.Enqueue(new Tuple<RawRecord, string>(currentRecord, startVertexId));
                         continue;
                     }
                 }

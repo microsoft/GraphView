@@ -75,11 +75,11 @@ namespace GraphView
         }
 
 
-        public VertexField GetVertexField(string vertexId)
+        public VertexField GetVertexField(string vertexId, string partition = null)
         {
             VertexField result;
             if (!this._cachedVertexField.TryGetValue(vertexId, out result)) {
-                JObject vertexObject = this.Connection.RetrieveDocumentById(vertexId);
+                JObject vertexObject = this.Connection.RetrieveDocumentById(vertexId, partition);
                 result = new VertexField(this.Connection, vertexObject);
                 this._cachedVertexField.Add(vertexId, result);
             }

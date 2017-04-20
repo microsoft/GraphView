@@ -356,11 +356,13 @@ namespace GraphView
             bool hasNodePredicates = nodeCondition != null;
 
             //
-            // (IS_DEFINED(nodeAlias._viaGraphAPI) = false AND (nodeCondition))
+            // (IS_DEFINED(nodeAlias._viaGraphAPI) = false AND IS_DEFINED(nodeAlias._vertex_id) = false AND (nodeCondition))
             //
-            string searchConditionString = string.Format("(IS_DEFINED({0}.{1}) = false {2})",
-                nodeAlias, GraphViewKeywords.KW_VERTEX_VIAGRAPHAPI,
-                hasNodePredicates ? $"AND ({nodeCondition.ToString()})" : "");
+            string searchConditionString = string.Format("(IS_DEFINED({0}.{1}) = false AND IS_DEFINED({0}.{2}) = false{3})",
+                nodeAlias, 
+                GraphViewKeywords.KW_VERTEX_VIAGRAPHAPI,
+                GraphViewKeywords.KW_EDGEDOC_ISREVERSE,
+                hasNodePredicates ? $" AND ({nodeCondition.ToString()})" : "");
 
             JsonQuery jsonQuery = new JsonQuery
             {
@@ -524,17 +526,18 @@ namespace GraphView
                             else
                             {
                                 srcNode.DanglingEdges.Add(edgeFromSrcNode);
-                                if (edgeFromSrcNode.EdgeType == WEdgeType.BothEdge)
-                                {
-                                    srcNode.Properties.Add(GremlinKeyword.EdgeAdj);
-                                    srcNode.Properties.Add(GremlinKeyword.ReverseEdgeAdj);
-                                }
-                                else if (edgeFromSrcNode.EdgeType == WEdgeType.OutEdge) {
-                                    srcNode.Properties.Add(GremlinKeyword.EdgeAdj);
-                                }
-                                else {
-                                    srcNode.Properties.Add(GremlinKeyword.ReverseEdgeAdj);
-                                }
+                                srcNode.Properties.Add(GremlinKeyword.Star);
+                                //if (edgeFromSrcNode.EdgeType == WEdgeType.BothEdge)
+                                //{
+                                //    srcNode.Properties.Add(GremlinKeyword.EdgeAdj);
+                                //    srcNode.Properties.Add(GremlinKeyword.ReverseEdgeAdj);
+                                //}
+                                //else if (edgeFromSrcNode.EdgeType == WEdgeType.OutEdge) {
+                                //    srcNode.Properties.Add(GremlinKeyword.EdgeAdj);
+                                //}
+                                //else {
+                                //    srcNode.Properties.Add(GremlinKeyword.ReverseEdgeAdj);
+                                //}
                             }
                         }
                         if (path.Tail == null) continue;
@@ -663,29 +666,22 @@ namespace GraphView
         }
 
         /// <summary>
-        /// Return adjacency list's index.
-        /// Item1 is _edge's index and Item2 is _reverse_edge's index.
-        /// They are set to -1 if not used.
+        /// Return adjacency list's type as the parameter of adjacency list decoder
+        /// Item1 indicates whether to cross apply forward adjacency list
+        /// Item2 indicates whether to cross apply backward adjacency list
         /// </summary>
         /// <param name="context"></param>
         /// <param name="edge"></param>
         /// <returns></returns>
-        private Tuple<int, int> LocateAdjacencyListIndexes(QueryCompilationContext context, MatchEdge edge)
+        private Tuple<bool, bool> GetAdjDecoderCrossApplyTypeParameter(MatchEdge edge)
         {
-            WColumnReferenceExpression adjListColumn = new WColumnReferenceExpression(edge.SourceNode.NodeAlias,
-                GremlinKeyword.EdgeAdj);
-            WColumnReferenceExpression revAdjListColumn = new WColumnReferenceExpression(edge.SourceNode.NodeAlias,
-                GremlinKeyword.ReverseEdgeAdj);
-
             if (edge.EdgeType == WEdgeType.BothEdge)
-                return new Tuple<int, int>(
-                    context.LocateColumnReference(adjListColumn), 
-                    context.LocateColumnReference(revAdjListColumn));
+                return new Tuple<bool, bool>(true, true);
 
             if (IsTraversalThroughPhysicalReverseEdge(edge))
-                return new Tuple<int, int>(-1, context.LocateColumnReference(revAdjListColumn));
+                return new Tuple<bool, bool>(false, true);
             else
-                return new Tuple<int, int>(context.LocateColumnReference(adjListColumn), -1);
+                return new Tuple<bool, bool>(true, false);
         }
 
         /// <summary>
@@ -702,15 +698,20 @@ namespace GraphView
         }
 
         /// <summary>
-        /// Locate the edge's traversal column's index in the context
+        /// Return traversal type
         /// </summary>
         /// <param name="context"></param>
         /// <param name="edge"></param>
         /// <returns></returns>
-        private int LocateAdjacencyListTraversalIndex(QueryCompilationContext context, MatchEdge edge)
+        private TraversalOperator2.TraversalTypeEnum GetTraversalType(MatchEdge edge)
         {
-            var adjListTraversalColumn = GetAdjacencyListTraversalColumn(edge);
-            return context.LocateColumnReference(adjListTraversalColumn);
+            if (edge.EdgeType == WEdgeType.BothEdge) {
+                return TraversalOperator2.TraversalTypeEnum.Other;
+            }
+
+            return IsTraversalThroughPhysicalReverseEdge(edge)
+                ? TraversalOperator2.TraversalTypeEnum.Source
+                : TraversalOperator2.TraversalTypeEnum.Sink;
         }
 
         /// <summary>
@@ -795,13 +796,13 @@ namespace GraphView
 
             foreach (MatchEdge edge in edges)
             {
-                Tuple<int, int> edgeIndexTuple = this.LocateAdjacencyListIndexes(context, edge);
+                Tuple<bool, bool> crossApplyTypeTuple = this.GetAdjDecoderCrossApplyTypeParameter(edge);
                 QueryCompilationContext localEdgeContext = this.GenerateLocalContextForAdjacentListDecoder(edge.EdgeAlias, edge.Properties);
                 WBooleanExpression edgePredicates = edge.RetrievePredicatesExpression();
                 operatorChain.Add(new AdjacencyListDecoder(
                     operatorChain.Last(),
-                    context.LocateColumnReference(edge.SourceNode.NodeAlias, GremlinKeyword.NodeID),
-                    edgeIndexTuple.Item1, edgeIndexTuple.Item2, !edge.IsReversed,
+                    context.LocateColumnReference(edge.SourceNode.NodeAlias, GremlinKeyword.Star),
+                    crossApplyTypeTuple.Item1, crossApplyTypeTuple.Item2, !edge.IsReversed,
                     edgePredicates != null ? edgePredicates.CompileToFunction(localEdgeContext, connection) : null,
                     edge.Properties, connection, context.RawRecordLayout.Count + edge.Properties.Count));
                 context.CurrentExecutionOperator = operatorChain.Last();
@@ -969,14 +970,14 @@ namespace GraphView
                     else if (!processedNodes.Contains(currentNode.NodeAlias))
                     {
                         //
-                        // This traversalEdge is the one whose sink is current node, and it has been cross applied before
+                        // This traversalEdge is the one whose sink is current node, and it has been pushed to server
                         //
-                        int traversalEdgeSinkIndex = this.LocateAdjacencyListTraversalIndex(context, tuple.Item2);
-
+                        MatchEdge traversalEdge = tuple.Item2;
                         operatorChain.Add(new TraversalOperator2(
                             operatorChain.Last(), 
                             connection,
-                            traversalEdgeSinkIndex, 
+                            context.LocateColumnReference(traversalEdge.EdgeAlias, GremlinKeyword.Star),
+                            this.GetTraversalType(traversalEdge),
                             currentNode.AttachedJsonQuery,
                             currentNode.AttachedJsonQueryOfNodesViaExternalAPI, 
                             null));
@@ -1742,24 +1743,27 @@ namespace GraphView
         }
     }
 
-    partial class WBoundOutNodeTableReference
+    partial class WEdgeToVertexTableReference
     {
+        private const int edgeFieldParameteIndex = 0;
+        private const int populatePropertyParameterStartIndex = 1;
+
         internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
         {
-            WColumnReferenceExpression sinkParameter = Parameters[0] as WColumnReferenceExpression;
-            int sinkIndex = context.LocateColumnReference(sinkParameter);
-            string nodeAlias = Alias.Value;
+            WColumnReferenceExpression edgeFieldParameter = this.Parameters[edgeFieldParameteIndex] as WColumnReferenceExpression;
+            Debug.Assert(edgeFieldParameter != null, "edgeFieldParameter != null");
+            int edgeFieldIndex = context.LocateColumnReference(edgeFieldParameter);
 
-            MatchNode matchNode = new MatchNode
-            {
+            string nodeAlias = this.Alias.Value;
+
+            MatchNode matchNode = new MatchNode {
                 AttachedJsonQuery = null,
                 NodeAlias = nodeAlias,
                 Predicates = new List<WBooleanExpression>(),
                 Properties = new HashSet<string>(GraphViewReservedProperties.InitialPopulateNodeProperties),
             };
 
-            for (int i = 1; i < this.Parameters.Count; i++)
-            {
+            for (int i = populatePropertyParameterStartIndex; i < this.Parameters.Count; i++) {
                 WValueExpression populateProperty = this.Parameters[i] as WValueExpression;
                 Debug.Assert(populateProperty != null, "populateProperty != null");
 
@@ -1777,7 +1781,9 @@ namespace GraphView
                 WSelectQueryBlock.ConstructJsonQueryOnNodeViaExternalAPI(matchNode, null);
             }
 
-            TraversalOperator2 traversalOp = new TraversalOperator2(context.CurrentExecutionOperator, dbConnection, sinkIndex,
+            TraversalOperator2 traversalOp = new TraversalOperator2(
+                context.CurrentExecutionOperator, dbConnection, 
+                edgeFieldIndex, this.GetTraversalTypeParameter(),
                 matchNode.AttachedJsonQuery, matchNode.AttachedJsonQueryOfNodesViaExternalAPI, null);
             context.CurrentExecutionOperator = traversalOp;
 
@@ -1798,93 +1804,73 @@ namespace GraphView
         }
     }
 
-    partial class WBoundBothNodeTableReference
+    partial class WEdgeToSinkVertexTableReference
     {
-        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
+        internal override TraversalOperator2.TraversalTypeEnum GetTraversalTypeParameter()
         {
-            WColumnReferenceExpression firstSinkParameter = Parameters[0] as WColumnReferenceExpression;
-            WColumnReferenceExpression secondSinkParameter = Parameters[1] as WColumnReferenceExpression;
-            List<int> sinkIndexes = new List<int>
-            {
-                context.LocateColumnReference(firstSinkParameter),
-                context.LocateColumnReference(secondSinkParameter)
-            };
-
-            string nodeAlias = Alias.Value;
-
-            MatchNode matchNode = new MatchNode
-            {
-                AttachedJsonQuery = null,
-                NodeAlias = nodeAlias,
-                Predicates = new List<WBooleanExpression>(),
-                Properties = new HashSet<string>(GraphViewReservedProperties.InitialPopulateNodeProperties),
-            };
-
-            for (int i = 2; i < this.Parameters.Count; i++)
-            {
-                WValueExpression populateProperty = this.Parameters[i] as WValueExpression;
-                Debug.Assert(populateProperty != null, "populateProperty != null");
-
-                matchNode.Properties.Add(populateProperty.Value);
-            }
-
-            bool isSendQueryRequired = !(matchNode.Properties.Count == 1 &&
-                                         matchNode.Properties.First().Equals(GraphViewKeywords.KW_DOC_ID));
-
-            //
-            // Construct JSON query
-            //
-            if (isSendQueryRequired) {
-                WSelectQueryBlock.ConstructJsonQueryOnNode(matchNode, null, dbConnection.RealPartitionKey);
-                WSelectQueryBlock.ConstructJsonQueryOnNodeViaExternalAPI(matchNode, null);
-            }
-
-            BothVOperator bothVOp = new BothVOperator(context.CurrentExecutionOperator, dbConnection, sinkIndexes,
-                matchNode.AttachedJsonQuery, matchNode.AttachedJsonQueryOfNodesViaExternalAPI);
-            context.CurrentExecutionOperator = bothVOp;
-
-            //
-            // Update context's record layout
-            //
-            if (isSendQueryRequired) {
-                foreach (string propertyName in matchNode.Properties) {
-                    ColumnGraphType columnGraphType = GraphViewReservedProperties.IsNodeReservedProperty(propertyName)
-                        ? GraphViewReservedProperties.ReservedNodePropertiesColumnGraphTypes[propertyName]
-                        : ColumnGraphType.Value;
-                    context.AddField(nodeAlias, propertyName, columnGraphType);
-                }
-            }
-            else {
-                context.AddField(nodeAlias, GremlinKeyword.NodeID, ColumnGraphType.VertexId);
-            }
-
-            return bothVOp;
+            return TraversalOperator2.TraversalTypeEnum.Sink;
         }
     }
 
-    partial class WBoundOutEdgeTableReference
+    partial class WEdgeToSourceVertexTableReference
     {
+        internal override TraversalOperator2.TraversalTypeEnum GetTraversalTypeParameter()
+        {
+            return TraversalOperator2.TraversalTypeEnum.Source;
+        }
+    }
+
+    partial class WEdgeToOtherVertexTableReference
+    {
+        internal override TraversalOperator2.TraversalTypeEnum GetTraversalTypeParameter()
+        {
+            return TraversalOperator2.TraversalTypeEnum.Other;
+        }
+    }
+
+    partial class WEdgeToBothVertexTableReference
+    {
+        internal override TraversalOperator2.TraversalTypeEnum GetTraversalTypeParameter()
+        {
+            return TraversalOperator2.TraversalTypeEnum.Both;
+        }
+    }
+
+    partial class WVertexToEdgeTableReference
+    {
+        private const int startVertexParameterIndex = 0;
+        private const int populatePropertyParameterStartIndex = 1;
+
         internal override GraphViewExecutionOperator Compile(QueryCompilationContext context,
             GraphViewConnection dbConnection)
         {
-            var startVertexIdParameter = Parameters[0] as WColumnReferenceExpression;
-            var adjListParameter = Parameters[1] as WColumnReferenceExpression;
-            
-            var startVertexIndex = context.LocateColumnReference(startVertexIdParameter);
-            var adjListIndex = context.LocateColumnReference(adjListParameter);
+            WColumnReferenceExpression startVertexParameter = this.Parameters[startVertexParameterIndex] as WColumnReferenceExpression;
+            Debug.Assert(startVertexParameter != null, "startVertexParameter != null");
+            int startVertexIndex = context.LocateColumnReference(startVertexParameter);
 
-            var edgeAlias = Alias.Value;
-            var projectFields = new List<string>(GraphViewReservedProperties.ReservedEdgeProperties);
+            string edgeAlias = this.Alias.Value;
+            List<string> projectFields = new List<string>(GraphViewReservedProperties.ReservedEdgeProperties);
 
-            for (int i = 2; i < Parameters.Count; i++)
-            {
-                var field = (Parameters[i] as WValueExpression).Value;
+            for (int i = populatePropertyParameterStartIndex; i < this.Parameters.Count; i++) {
+                WValueExpression propertyParameter = this.Parameters[i] as WValueExpression;
+                Debug.Assert(propertyParameter != null, "propertyParameter != null");
+                string field = propertyParameter.Value;
                 if (!projectFields.Contains(field))
                     projectFields.Add(field);
             }
 
-            var adjListDecoder = new AdjacencyListDecoder(context.CurrentExecutionOperator, startVertexIndex,
-                adjListIndex, -1, true, null, projectFields, dbConnection, context.RawRecordLayout.Count + projectFields.Count);
+            Tuple<bool, bool> crossApplyTypeParameter = this.GetAdjListDecoderCrossApplyTypeParameter();
+            bool crossApplyForwardAdj = crossApplyTypeParameter.Item1;
+            bool crossApplyBackwardAdj = crossApplyTypeParameter.Item2;
+
+            AdjacencyListDecoder adjListDecoder = new AdjacencyListDecoder(
+                context.CurrentExecutionOperator, startVertexIndex,
+                crossApplyForwardAdj, crossApplyBackwardAdj, 
+                true, null, 
+                projectFields, dbConnection, 
+                context.RawRecordLayout.Count + projectFields.Count);
+            adjListDecoder.debug =
+                context.RawRecordLayout.Select(kvp => kvp.Key.ToString() + ", " + kvp.Value.ToString()).ToList();
             context.CurrentExecutionOperator = adjListDecoder;
 
             // Update context's record layout
@@ -1894,8 +1880,7 @@ namespace GraphView
             context.AddField(edgeAlias, GremlinKeyword.EdgeID, ColumnGraphType.EdgeId);
             context.AddField(edgeAlias, GremlinKeyword.Star, ColumnGraphType.EdgeObject);
 
-            for (var i = GraphViewReservedProperties.ReservedEdgeProperties.Count; i < projectFields.Count; i++)
-            {
+            for (int i = GraphViewReservedProperties.ReservedEdgeProperties.Count; i < projectFields.Count; i++) {
                 context.AddField(edgeAlias, projectFields[i], ColumnGraphType.Value);
             }
 
@@ -1903,83 +1888,27 @@ namespace GraphView
         }
     }
 
-    partial class WBoundInEdgeTableReference
+    partial class WVertexToForwardEdgeTableReference
     {
-        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
+        internal override Tuple<bool, bool> GetAdjListDecoderCrossApplyTypeParameter()
         {
-            var startVertexIdParameter = Parameters[0] as WColumnReferenceExpression;
-            var revAdjListParameter = Parameters[1] as WColumnReferenceExpression;
-
-            var startVertexIndex = context.LocateColumnReference(startVertexIdParameter);
-            var revAdjListIndex = context.LocateColumnReference(revAdjListParameter);
-
-            var edgeAlias = Alias.Value;
-            var projectFields = new List<string>(GraphViewReservedProperties.ReservedEdgeProperties);
-
-            for (int i = 2; i < Parameters.Count; i++)
-            {
-                var field = (Parameters[i] as WValueExpression).Value;
-                if (!projectFields.Contains(field))
-                    projectFields.Add(field);
-            }
-
-            var adjListDecoder = new AdjacencyListDecoder(context.CurrentExecutionOperator, startVertexIndex,
-               - 1, revAdjListIndex, true, null, projectFields, dbConnection, context.RawRecordLayout.Count + projectFields.Count);
-            context.CurrentExecutionOperator = adjListDecoder;
-
-            // Update context's record layout
-            context.AddField(edgeAlias, GremlinKeyword.EdgeSourceV, ColumnGraphType.EdgeSource);
-            context.AddField(edgeAlias, GremlinKeyword.EdgeSinkV, ColumnGraphType.EdgeSink);
-            context.AddField(edgeAlias, GremlinKeyword.EdgeOtherV, ColumnGraphType.Value);
-            context.AddField(edgeAlias, GremlinKeyword.EdgeID, ColumnGraphType.EdgeId);
-            context.AddField(edgeAlias, GremlinKeyword.Star, ColumnGraphType.EdgeObject);
-            for (var i = GraphViewReservedProperties.ReservedEdgeProperties.Count; i < projectFields.Count; i++)
-            {
-                context.AddField(edgeAlias, projectFields[i], ColumnGraphType.Value);
-            }
-
-            return adjListDecoder;
+            return new Tuple<bool, bool>(true, false);
         }
     }
 
-    partial class WBoundBothEdgeTableReference
+    partial class WVertexToBackwordEdgeTableReference
     {
-        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
+        internal override Tuple<bool, bool> GetAdjListDecoderCrossApplyTypeParameter()
         {
-            var startVertexIdParameter = Parameters[0] as WColumnReferenceExpression;
-            var adjListParameter = Parameters[1] as WColumnReferenceExpression;
-            var revAdjListParameter = Parameters[2] as WColumnReferenceExpression;
+            return new Tuple<bool, bool>(false, true);
+        }
+    }
 
-            var startVertexIndex = context.LocateColumnReference(startVertexIdParameter);
-            var adjListIndex = context.LocateColumnReference(adjListParameter);
-            var revAdjListIndex = context.LocateColumnReference(revAdjListParameter);
-
-            var edgeAlias = Alias.Value;
-            var projectFields = new List<string>(GraphViewReservedProperties.ReservedEdgeProperties);
-
-            for (int i = 3; i < Parameters.Count; i++)
-            {
-                var field = (Parameters[i] as WValueExpression).Value;
-                if (!projectFields.Contains(field))
-                    projectFields.Add(field);
-            }
-
-            var adjListDecoder = new AdjacencyListDecoder(context.CurrentExecutionOperator, startVertexIndex,
-                adjListIndex, revAdjListIndex, true, null, projectFields, dbConnection, context.RawRecordLayout.Count + projectFields.Count);
-            context.CurrentExecutionOperator = adjListDecoder;
-
-            // Update context's record layout
-            context.AddField(edgeAlias, GremlinKeyword.EdgeSourceV, ColumnGraphType.EdgeSource);
-            context.AddField(edgeAlias, GremlinKeyword.EdgeSinkV, ColumnGraphType.EdgeSink);
-            context.AddField(edgeAlias, GremlinKeyword.EdgeOtherV, ColumnGraphType.Value);
-            context.AddField(edgeAlias, GremlinKeyword.EdgeID, ColumnGraphType.EdgeId);
-            context.AddField(edgeAlias, GremlinKeyword.Star, ColumnGraphType.EdgeObject);
-            for (var i = GraphViewReservedProperties.ReservedEdgeProperties.Count; i < projectFields.Count; i++)
-            {
-                context.AddField(edgeAlias, projectFields[i], ColumnGraphType.Value);
-            }
-
-            return adjListDecoder;
+    partial class WVertexToBothEdgeTableReference
+    {
+        internal override Tuple<bool, bool> GetAdjListDecoderCrossApplyTypeParameter()
+        {
+            return new Tuple<bool, bool>(true, true);
         }
     }
 

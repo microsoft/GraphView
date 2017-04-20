@@ -183,9 +183,8 @@ namespace GraphView
         private void DropEdge(EdgeField edgeField)
         {
             RawRecord record = new RawRecord();
-            record.Append(new StringField(edgeField.OutV));  // srcIdIndex
-            record.Append(new StringField(edgeField.EdgeId));  // edgeIdIndex
-            DropEdgeOperator op = new DropEdgeOperator(this.dummyInputOp, this.Connection, 0, 1);
+            record.Append(edgeField);
+            DropEdgeOperator op = new DropEdgeOperator(this.dummyInputOp, this.Connection, 0);
             op.DataModify(record);
 
             // Now VertexCacheObject has been updated (in DataModify)
@@ -305,12 +304,11 @@ namespace GraphView
             UpdateEdgePropertiesOperator op = new UpdateEdgePropertiesOperator(
                 this.dummyInputOp, 
                 this.Connection,
-                0, 1, 
+                0, 
                 propertyList
                 );
             RawRecord record = new RawRecord();
-            record.Append(new StringField(ep.Edge.OutV));
-            record.Append(new StringField(ep.Edge.EdgeId));
+            record.Append(ep.Edge);
             op.DataModify(record);
 
             // Now VertexCacheObject has been updated (in DataModify)
@@ -453,9 +451,8 @@ namespace GraphView
             }
 
             RawRecord record = new RawRecord();
-            record.Append(new StringField(edge.OutV));
-            record.Append(new StringField(edge.EdgeId));
-            UpdateEdgePropertiesOperator op = new UpdateEdgePropertiesOperator(this.InputOperator, this.Connection, 0, 1, propertyList);
+            record.Append(edge);
+            UpdateEdgePropertiesOperator op = new UpdateEdgePropertiesOperator(this.InputOperator, this.Connection, 0, propertyList);
             op.DataModify(record);
         }
 
@@ -565,26 +562,36 @@ namespace GraphView
             string vertexId = record[this._nodeIdIndex].ToValue;
 
             // Temporarily change
-            DropEdgeOperator dropEdgeOp = new DropEdgeOperator(null, this.Connection, 0, 1);
+            DropEdgeOperator dropEdgeOp = new DropEdgeOperator(null, this.Connection, 0);
             RawRecord temp = new RawRecord(2);
 
             VertexField vertex = this.Connection.VertexCache.GetVertexField(vertexId);
 
             // Save a copy of Edges _IDs & drop outgoing edges
-            List<string> outEdgeIds = vertex.AdjacencyList.AllEdges.Select(e => e.EdgeId).ToList();
-            foreach (string outEdgeId in outEdgeIds) {
-                temp.fieldValues[0] = new StringField(vertexId);
-                temp.fieldValues[1] = new StringField(outEdgeId);
+            //List<string> outEdgeIds = vertex.AdjacencyList.AllEdges.Select(e => e.EdgeId).ToList();
+            //foreach (string outEdgeId in outEdgeIds) {
+            //    temp.fieldValues[0] = new StringField(vertexId);
+            //    temp.fieldValues[1] = new StringField(outEdgeId);
+            //    dropEdgeOp.DataModify(temp);
+            //}
+
+            foreach (EdgeField outEdge in vertex.AdjacencyList.AllEdges.ToList()) {
+                temp.fieldValues[0] = outEdge;
                 dropEdgeOp.DataModify(temp);
             }
 
             // Save a copy of incoming Edges <srcVertexId, edgeOffsetInSrcVertex> & drop them
-            List<Tuple<string, string>> inEdges = vertex.RevAdjacencyList.AllEdges.Select(
-                e => new Tuple<string, string>(e.OutV, e.EdgeId)).ToList();
-            foreach (var inEdge in inEdges)
-            {
-                temp.fieldValues[0] = new StringField(inEdge.Item1); // srcVertexId
-                temp.fieldValues[1] = new StringField(inEdge.Item2); // edgeIdInSrcVertex
+            //List<Tuple<string, string>> inEdges = vertex.RevAdjacencyList.AllEdges.Select(
+            //    e => new Tuple<string, string>(e.OutV, e.EdgeId)).ToList();
+            //foreach (var inEdge in inEdges)
+            //{
+            //    temp.fieldValues[0] = new StringField(inEdge.Item1); // srcVertexId
+            //    temp.fieldValues[1] = new StringField(inEdge.Item2); // edgeIdInSrcVertex
+            //    dropEdgeOp.DataModify(temp);
+            //}
+
+            foreach (EdgeField inEdge in vertex.RevAdjacencyList.AllEdges.ToList()) {
+                temp.fieldValues[0] = inEdge;
                 dropEdgeOp.DataModify(temp);
             }
 
@@ -730,22 +737,22 @@ namespace GraphView
 
     internal class DropEdgeOperator : ModificationBaseOpertaor2
     {
-        private readonly int _srcIdIndex;
-        private readonly int _edgeIdIndex;
+        private readonly int edgeFieldIndex;
 
-        public DropEdgeOperator(GraphViewExecutionOperator inputOp, GraphViewConnection connection, int pSrcIdIndex, int pEdgeIdIndex)
+        public DropEdgeOperator(GraphViewExecutionOperator inputOp, GraphViewConnection connection, int edgeFieldIndex)
             : base(inputOp, connection)
         {
-            this._srcIdIndex = pSrcIdIndex;
-            this._edgeIdIndex = pEdgeIdIndex;
+            this.edgeFieldIndex = edgeFieldIndex;
         }
 
         internal override RawRecord DataModify(RawRecord record)
         {
-            string srcId = record[this._srcIdIndex].ToValue;
-            string edgeId = record[this._edgeIdIndex].ToValue;
+            EdgeField edgeField = (EdgeField)record[this.edgeFieldIndex];
+            string srcId = edgeField.OutV;
+            string edgeId = edgeField.EdgeId;
+            string srcVertexPartition = edgeField.OutVPartition;
 
-            VertexField srcVertexField = this.Connection.VertexCache.GetVertexField(srcId);
+            VertexField srcVertexField = this.Connection.VertexCache.GetVertexField(srcId, srcVertexPartition);
             JObject srcVertexObject = srcVertexField.VertexJObject;
             JObject srcEdgeObject;
             string srcEdgeDocId;
@@ -759,7 +766,8 @@ namespace GraphView
             }
 
             string sinkId = (string)srcEdgeObject[KW_EDGE_SINKV];
-            VertexField sinkVertexField = this.Connection.VertexCache.GetVertexField(sinkId);
+            string sinkVertexPartition = srcEdgeObject[KW_EDGE_SINKV_PARTITION].ToObject<string>();
+            VertexField sinkVertexField = this.Connection.VertexCache.GetVertexField(sinkId, sinkVertexPartition);
             JObject sinkVertexObject = sinkVertexField.VertexJObject;
             string sinkEdgeDocId = null;
 
@@ -956,26 +964,26 @@ namespace GraphView
 
     internal class UpdateEdgePropertiesOperator : UpdatePropertiesBaseOperator
     {
-        private readonly int _srcVertexIdIndex;
-        private readonly int _edgeIdIndex;
+        private readonly int edgeFieldIndex;
 
         public UpdateEdgePropertiesOperator(
             GraphViewExecutionOperator inputOp, GraphViewConnection connection,
-            int srcVertexIdIndex, int edgeIdIndex,
+            int edgeFieldIndex,
             List<Tuple<WValueExpression, WValueExpression, int>> propertiesList,
             UpdatePropertyMode pMode = UpdatePropertyMode.Set)
             : base(inputOp, connection, propertiesList, pMode)
         {
-            this._srcVertexIdIndex = srcVertexIdIndex;
-            this._edgeIdIndex = edgeIdIndex;
+            this.edgeFieldIndex = edgeFieldIndex;
         }
 
         internal override RawRecord DataModify(RawRecord record)
         {
-            string edgeId = record[this._edgeIdIndex].ToValue;
-            string srcVertexId = record[this._srcVertexIdIndex].ToValue;
+            EdgeField edgeField = (EdgeField)record[this.edgeFieldIndex];
+            string edgeId = edgeField.EdgeId;
+            string srcVertexId = edgeField.OutV;
+            string srcVertexPartition = edgeField.OutVPartition;
 
-            VertexField srcVertexField = this.Connection.VertexCache.GetVertexField(srcVertexId);
+            VertexField srcVertexField = this.Connection.VertexCache.GetVertexField(srcVertexId, srcVertexPartition);
             JObject srcVertexObject = srcVertexField.VertexJObject;
             string outEdgeDocId;
             JObject outEdgeObject;
@@ -989,7 +997,8 @@ namespace GraphView
             }
 
             string sinkVertexId = (string)outEdgeObject[KW_EDGE_SINKV];
-            VertexField sinkVertexField = this.Connection.VertexCache.GetVertexField(sinkVertexId);
+            string sinkVertexPartition = outEdgeObject[KW_EDGE_SINKV_PARTITION].ToObject<string>();
+            VertexField sinkVertexField = this.Connection.VertexCache.GetVertexField(sinkVertexId, sinkVertexPartition);
             JObject sinkVertexObject = sinkVertexField.VertexJObject;
             string inEdgeDocId = null;
             JObject inEdgeObject = null;

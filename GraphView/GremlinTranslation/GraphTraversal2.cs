@@ -24,6 +24,7 @@ namespace GraphView
         {
             StringBuilder finalGraphSonResult = new StringBuilder("[");
             HashSet<string> batchIdSet = new HashSet<string>();
+            HashSet<string> batchPartitionKeySet = new HashSet<string>();
             Dictionary<int, VertexField> batchGraphSonDict = new Dictionary<int, VertexField>();
 
             StringBuilder notBatchedGraphSonResult = new StringBuilder();
@@ -44,6 +45,9 @@ namespace GraphView
                 {
                     string vertexId = vertexField[GraphViewKeywords.KW_DOC_ID].ToValue;
                     batchIdSet.Add(vertexId);
+                    if (vertexField.Partition != null) {
+                        batchPartitionKeySet.Add(vertexField.Partition);
+                    }
                     batchGraphSonDict.Add(notBatchedGraphSonResult.Length, vertexField);
                     continue;
                 }
@@ -53,7 +57,7 @@ namespace GraphView
 
             if (batchIdSet.Any())
             {
-                EdgeDocumentHelper.ConstructSpilledAdjListsOrVirtualRevAdjListsOfVertices(connection, batchIdSet);
+                EdgeDocumentHelper.ConstructSpilledAdjListsOrVirtualRevAdjListsOfVertices(connection, batchIdSet, batchPartitionKeySet);
 
                 int startIndex = 0;
                 foreach (KeyValuePair<int, VertexField> kvp in batchGraphSonDict)

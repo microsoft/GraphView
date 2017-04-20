@@ -37,6 +37,7 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Reflection;
+using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Azure.Documents;
 using Microsoft.Azure.Documents.Client;
@@ -101,7 +102,7 @@ namespace GraphView
 
         public string RealPartitionKey { get; }  // Like "location", "id"... but not "_partition"
 
-        private string PartitionPath { get; }  // Like "/location/nested/_value"
+        public string PartitionPath { get; }  // Like "/location/nested/_value"
 
         public string PartitionPathTopLevel { get; }  // Like "location"
 
@@ -469,12 +470,17 @@ namespace GraphView
 
 
 
-        internal JObject RetrieveDocumentById(string docId)
+        internal JObject RetrieveDocumentById(string docId, string partition)
         {
             Debug.Assert(!string.IsNullOrEmpty(docId), "'docId' should not be null or empty");
 
-            string script = $"SELECT * FROM Doc WHERE Doc.{KW_DOC_ID} = '{docId}'";
-            JObject result = ExecuteQueryUnique(script);
+            if (partition != null) {
+                Debug.Assert(this.PartitionPath != null);
+            }
+
+            string script = $"SELECT * FROM Doc WHERE Doc.{KW_DOC_ID} = '{docId}'" +
+                            (partition != null ? $" AND Doc{this.GetPartitionPathIndexer()} = '{partition}'" : "");
+            JObject result = this.ExecuteQueryUnique(script);
 
             //
             // Save etag of the fetched document
@@ -514,6 +520,31 @@ namespace GraphView
             Debug.Assert(token is JValue);
             Debug.Assert(((JValue)token).Type == JTokenType.String);
             return (string)token;
+        }
+
+        public string GetPartitionPathIndexer()
+        {
+            if (this.PartitionPath == null) {
+                return "";
+            }
+
+            StringBuilder partitionIndexerBuilder = new StringBuilder();
+            string[] paths = this.PartitionPath.Split(new[] { '/' }, StringSplitOptions.RemoveEmptyEntries);
+            foreach (string part in paths) {
+                if (part.StartsWith("[")) {  // Like /[0]
+                    Debug.Assert(part.EndsWith("]"));
+                    partitionIndexerBuilder.Append(part);
+                }
+                else if (part.StartsWith("\"")) {  // Like /"property with space"
+                    Debug.Assert(part.EndsWith("\""));
+                    partitionIndexerBuilder.AppendFormat("[{0}]", part);
+                }
+                else {   // Like /normal_property
+                    partitionIndexerBuilder.AppendFormat("[\"{0}\"]", part);
+                }
+            }
+
+            return partitionIndexerBuilder.ToString();
         }
 
 

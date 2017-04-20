@@ -1241,6 +1241,8 @@ namespace GraphView
             this.OutVLabel = rhs.OutVLabel;
             this.InV = rhs.InV;
             this.OutV = rhs.OutV;
+            this.InVPartition = rhs.InVPartition;
+            this.OutVPartition = rhs.OutVPartition;
 
             this.OtherV = otherV;
             this.OtherVPartition = otherVPartition;
@@ -1255,6 +1257,9 @@ namespace GraphView
             get
             {
                 if (propertyName.Equals("*", StringComparison.OrdinalIgnoreCase))
+                    return this;
+
+                if (propertyName.Equals(GraphViewKeywords.KW_TABLE_DEFAULT_COLUMN_NAME, StringComparison.OrdinalIgnoreCase))
                     return this;
 
                 switch (propertyName)
@@ -1404,7 +1409,7 @@ namespace GraphView
                     edgeField.Label = property.Value.ToString();
                     break;
                 case KW_EDGE_SINKV_PARTITION:
-                    edgeField.InVPartition = property.Value.ToString();
+                    edgeField.InVPartition = property.Value.ToObject<string>();
                     break;
                 }
             }
@@ -1436,7 +1441,7 @@ namespace GraphView
                     edgeField.Label = property.Value.ToString();
                     break;
                 case KW_EDGE_SRCV_PARTITION:
-                    edgeField.OutVPartition = property.Value.ToString();
+                    edgeField.OutVPartition = property.Value.ToObject<string>();
                     break;
                 }
             }
@@ -1450,11 +1455,15 @@ namespace GraphView
         private readonly Dictionary<string, EdgeField> _edges = new Dictionary<string, EdgeField>();
         private readonly GraphViewConnection _connection;
         private readonly string _vertexId;
+        private readonly string _vertexPartitionKey;
 
         private void SyncIfLazy()
         {
             if (!this.HasBeenFetched) {
-                EdgeDocumentHelper.ConstructSpilledAdjListsOrVirtualRevAdjListsOfVertices(this._connection, new HashSet<string> {this._vertexId});
+                EdgeDocumentHelper.ConstructSpilledAdjListsOrVirtualRevAdjListsOfVertices(
+                    this._connection,
+                    new HashSet<string> {this._vertexId}, 
+                    new HashSet<string> {this._vertexPartitionKey});
             }
         }
 
@@ -1478,6 +1487,7 @@ namespace GraphView
         {
             this._connection = connection;
             this._vertexId = vertexId;
+            this._vertexPartitionKey = vertexPartition;
 
             if (!isSpilled) {
                 Debug.Assert(edgeArray != null);
@@ -1647,6 +1657,9 @@ namespace GraphView
                     return this.VertexMetaProperties[propertyName];
 
                 if (propertyName.Equals("*", StringComparison.OrdinalIgnoreCase))
+                    return this;
+
+                if (propertyName.Equals(GraphViewKeywords.KW_TABLE_DEFAULT_COLUMN_NAME, StringComparison.OrdinalIgnoreCase))
                     return this;
 
                 if (propertyName.Equals(KW_VERTEX_EDGE, StringComparison.OrdinalIgnoreCase))
