@@ -201,7 +201,7 @@ namespace GraphView
             JObject vertexObject = vertexField.VertexJObject;
 
             Debug.Assert(vertexObject[vp.PropertyName] != null);
-            vertexObject[vp.PropertyName].Remove();
+            vertexObject.Property(vp.PropertyName).Remove();
 
             this.Connection.ReplaceOrDeleteDocumentAsync(vertexField.VertexId, vertexObject, 
                 this.Connection.GetDocumentPartition(vertexObject)).Wait();
@@ -226,8 +226,8 @@ namespace GraphView
             vertexProperty
                 .First(singleProperty => (string)singleProperty[GraphViewKeywords.KW_PROPERTY_ID] == vp.PropertyId)
                 .Remove();
-            if (vertexObject.Count == 0) {
-                vertexProperty.Remove();
+            if (vertexProperty.Count == 0) {
+               vertexObject.Property(vp.PropertyName).Remove();
             }
 
             this.Connection.ReplaceOrDeleteDocumentAsync(vertexField.VertexId, vertexObject, this.Connection.GetDocumentPartition(vertexObject)).Wait();
