@@ -495,6 +495,9 @@ namespace GraphView
                 case GremlinKeyword.func.GraphViewLabel:
                     funcTableRef = new WLabelTableReference();
                     break;
+                case GremlinKeyword.func.V:
+                    funcTableRef = new WBoundNodeTableReference();
+                    break;
                 case GremlinKeyword.func.EdgeToSourceVertex:
                     funcTableRef = new WEdgeToSourceVertexTableReference();
                     break;
