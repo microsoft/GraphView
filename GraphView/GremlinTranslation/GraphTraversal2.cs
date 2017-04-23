@@ -1456,6 +1456,9 @@ namespace GraphView
             connectionList.Add(addDoubleQuotes(Connection.DocDBDatabaseId));
             connectionList.Add(addDoubleQuotes(Connection.DocDBCollectionId));
             connectionList.Add($"{nameof(GraphType)}.{this.Connection.GraphType}");
+            connectionList.Add(Connection.UseReverseEdges.ToString().ToLower());
+            connectionList.Add(Connection.EdgeSpillThreshold.ToString());
+            connectionList.Add(Connection.RealPartitionKey != null ? addDoubleQuotes(Connection.RealPartitionKey) : "null");
             return string.Join(",", connectionList);
         }
     }

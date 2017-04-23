@@ -56,15 +56,30 @@ namespace GraphViewUnitTest.Gremlin
                 aggex.Handle(ex => ((ex as DocumentClientException)?.Error.Code == "NotFound"));
             }
 
-            client.CreateDocumentCollectionAsync(
-                UriFactory.CreateDatabaseUri(databaseId),
-                new DocumentCollection {
-                    Id = collectionId,
-                    PartitionKey = new PartitionKeyDefinition {
-                        Paths = new Collection<string> { $"/{AbstractGremlinTest.TEST_PARTITION_BY_KEY}" }
+            if (!string.IsNullOrEmpty(AbstractGremlinTest.TEST_PARTITION_BY_KEY))
+            {
+                client.CreateDocumentCollectionAsync(
+                    UriFactory.CreateDatabaseUri(databaseId),
+                    new DocumentCollection
+                    {
+                        Id = collectionId,
+                        PartitionKey = new PartitionKeyDefinition
+                        {
+                            Paths = new Collection<string> {$"/{AbstractGremlinTest.TEST_PARTITION_BY_KEY}"}
+                        }
                     }
-                }
-            ).Wait();
+                ).Wait();
+            }
+            else
+            {
+                client.CreateDocumentCollectionAsync(
+                    UriFactory.CreateDatabaseUri(databaseId),
+                    new DocumentCollection {
+                        Id = collectionId
+                    }
+                ).Wait();
+            }
+
             DocumentCollection collection = client.ReadDocumentCollectionAsync(
                 UriFactory.CreateDocumentCollectionUri(databaseId, collectionId)).Result;
 
@@ -109,33 +124,33 @@ namespace GraphViewUnitTest.Gremlin
                     createDoc("{\"id\":\"ID_1024\",\"_is_reverse\":false,\"_vertex_id\":\"ID_1007\",\"_edge\":[{\"label\":\"created\",\"weight\":0.2,\"id\":\"ID_1023\",\"_sinkV\":\"这是一个中文ID\",\"_sinkVLabel\":\"software\",\"_sinkVPartition\":\"lop\"}],\"name\":\"peter\"}");
                 }
             }
-            //else if (partitionByKey == "label")
-            //{
-            //    if (useReverseEdge)
-            //    {
-            //        createDoc("{\"id\":\"ID_15\",\"_is_reverse\":false,\"_vertex_id\":\"dummy\",\"_edge\":[{\"label\":\"knows\",\"weight\":0.5,\"id\":\"ID_14\",\"_sinkV\":\"特殊符号\",\"_sinkVLabel\":\"person\"}],\"label\":\"person\"}");
-            //        createDoc("{\"id\":\"ID_16\",\"_is_reverse\":true,\"_vertex_id\":\"特殊符号\",\"_edge\":[{\"label\":\"knows\",\"weight\":0.5,\"id\":\"ID_14\",\"_srcV\":\"dummy\",\"_srcVLabel\":\"person\"}],\"label\":\"person\"}");
-            //        createDoc("{\"id\":\"ID_18\",\"_is_reverse\":false,\"_vertex_id\":\"dummy\",\"_edge\":[{\"label\":\"knows\",\"weight\":1,\"id\":\"ID_17\",\"_sinkV\":\"引号\",\"_sinkVLabel\":\"person\"}],\"label\":\"person\"}");
-            //        createDoc("{\"id\":\"ID_19\",\"_is_reverse\":true,\"_vertex_id\":\"引号\",\"_edge\":[{\"label\":\"knows\",\"weight\":1,\"id\":\"ID_17\",\"_srcV\":\"dummy\",\"_srcVLabel\":\"person\"}],\"label\":\"person\"}");
-            //        createDoc("{\"id\":\"ID_21\",\"_is_reverse\":false,\"_vertex_id\":\"dummy\",\"_edge\":[{\"label\":\"created\",\"weight\":0.4,\"id\":\"ID_20\",\"_sinkV\":\"这是一个中文ID\",\"_sinkVLabel\":\"software\"}],\"label\":\"person\"}");
-            //        createDoc("{\"id\":\"ID_22\",\"_is_reverse\":true,\"_vertex_id\":\"这是一个中文ID\",\"_edge\":[{\"label\":\"created\",\"weight\":0.4,\"id\":\"ID_20\",\"_srcV\":\"dummy\",\"_srcVLabel\":\"person\"}],\"label\":\"software\"}");
-            //        createDoc("{\"id\":\"ID_24\",\"_is_reverse\":false,\"_vertex_id\":\"引号\",\"_edge\":[{\"label\":\"created\",\"weight\":1,\"id\":\"ID_23\",\"_sinkV\":\"中文English\",\"_sinkVLabel\":\"software\"}],\"label\":\"person\"}");
-            //        createDoc("{\"id\":\"ID_25\",\"_is_reverse\":true,\"_vertex_id\":\"中文English\",\"_edge\":[{\"label\":\"created\",\"weight\":1,\"id\":\"ID_23\",\"_srcV\":\"引号\",\"_srcVLabel\":\"person\"}],\"label\":\"software\"}");
-            //        createDoc("{\"id\":\"ID_27\",\"_is_reverse\":false,\"_vertex_id\":\"引号\",\"_edge\":[{\"label\":\"created\",\"weight\":0.4,\"id\":\"ID_26\",\"_sinkV\":\"这是一个中文ID\",\"_sinkVLabel\":\"software\"}],\"label\":\"person\"}");
-            //        createDoc("{\"id\":\"ID_28\",\"_is_reverse\":true,\"_vertex_id\":\"这是一个中文ID\",\"_edge\":[{\"label\":\"created\",\"weight\":0.4,\"id\":\"ID_26\",\"_srcV\":\"引号\",\"_srcVLabel\":\"person\"}],\"label\":\"software\"}");
-            //        createDoc("{\"id\":\"ID_30\",\"_is_reverse\":false,\"_vertex_id\":\"ID_13\",\"_edge\":[{\"label\":\"created\",\"weight\":0.2,\"id\":\"ID_29\",\"_sinkV\":\"这是一个中文ID\",\"_sinkVLabel\":\"software\"}],\"label\":\"person\"}");
-            //        createDoc("{\"id\":\"ID_31\",\"_is_reverse\":true,\"_vertex_id\":\"这是一个中文ID\",\"_edge\":[{\"label\":\"created\",\"weight\":0.2,\"id\":\"ID_29\",\"_srcV\":\"ID_13\",\"_srcVLabel\":\"person\"}],\"label\":\"software\"}");
-            //    }
-            //    else
-            //    {
-            //        createDoc("{\"id\":\"ID_15\",\"_is_reverse\":false,\"_vertex_id\":\"dummy\",\"_edge\":[{\"label\":\"knows\",\"weight\":0.5,\"id\":\"ID_14\",\"_sinkV\":\"特殊符号\",\"_sinkVLabel\":\"person\"}],\"label\":\"person\"}");
-            //        createDoc("{\"id\":\"ID_18\",\"_is_reverse\":false,\"_vertex_id\":\"dummy\",\"_edge\":[{\"label\":\"knows\",\"weight\":1,\"id\":\"ID_17\",\"_sinkV\":\"引号\",\"_sinkVLabel\":\"person\"}],\"label\":\"person\"}");
-            //        createDoc("{\"id\":\"ID_21\",\"_is_reverse\":false,\"_vertex_id\":\"dummy\",\"_edge\":[{\"label\":\"created\",\"weight\":0.4,\"id\":\"ID_20\",\"_sinkV\":\"这是一个中文ID\",\"_sinkVLabel\":\"software\"}],\"label\":\"person\"}");
-            //        createDoc("{\"id\":\"ID_24\",\"_is_reverse\":false,\"_vertex_id\":\"引号\",\"_edge\":[{\"label\":\"created\",\"weight\":1,\"id\":\"ID_23\",\"_sinkV\":\"中文English\",\"_sinkVLabel\":\"software\"}],\"label\":\"person\"}");
-            //        createDoc("{\"id\":\"ID_27\",\"_is_reverse\":false,\"_vertex_id\":\"引号\",\"_edge\":[{\"label\":\"created\",\"weight\":0.4,\"id\":\"ID_26\",\"_sinkV\":\"这是一个中文ID\",\"_sinkVLabel\":\"software\"}],\"label\":\"person\"}");
-            //        createDoc("{\"id\":\"ID_30\",\"_is_reverse\":false,\"_vertex_id\":\"ID_13\",\"_edge\":[{\"label\":\"created\",\"weight\":0.2,\"id\":\"ID_29\",\"_sinkV\":\"这是一个中文ID\",\"_sinkVLabel\":\"software\"}],\"label\":\"person\"}");
-            //    }
-            //}
+            else if (partitionByKey == "label")
+            {
+                if (useReverseEdge)
+                {
+                    createDoc("{\"id\":\"ID_15\",\"_is_reverse\":false,\"_vertex_id\":\"dummy\",\"_edge\":[{\"label\":\"knows\",\"weight\":0.5,\"id\":\"ID_14\",\"_sinkV\":\"特殊符号\",\"_sinkVLabel\":\"person\",\"_sinkVPartition\":\"person\"}],\"label\":\"person\"}");
+                    createDoc("{\"id\":\"ID_16\",\"_is_reverse\":true,\"_vertex_id\":\"特殊符号\",\"_edge\":[{\"label\":\"knows\",\"weight\":0.5,\"id\":\"ID_14\",\"_srcV\":\"dummy\",\"_srcVLabel\":\"person\",\"_srcVPartition\":\"person\"}],\"label\":\"person\"}");
+                    createDoc("{\"id\":\"ID_18\",\"_is_reverse\":false,\"_vertex_id\":\"dummy\",\"_edge\":[{\"label\":\"knows\",\"weight\":1,\"id\":\"ID_17\",\"_sinkV\":\"引号\",\"_sinkVLabel\":\"person\",\"_sinkVPartition\":\"person\"}],\"label\":\"person\"}");
+                    createDoc("{\"id\":\"ID_19\",\"_is_reverse\":true,\"_vertex_id\":\"引号\",\"_edge\":[{\"label\":\"knows\",\"weight\":1,\"id\":\"ID_17\",\"_srcV\":\"dummy\",\"_srcVLabel\":\"person\",\"_srcVPartition\":\"person\"}],\"label\":\"person\"}");
+                    createDoc("{\"id\":\"ID_21\",\"_is_reverse\":false,\"_vertex_id\":\"dummy\",\"_edge\":[{\"label\":\"created\",\"weight\":0.4,\"id\":\"ID_20\",\"_sinkV\":\"这是一个中文ID\",\"_sinkVLabel\":\"software\",\"_sinkVPartition\":\"software\"}],\"label\":\"person\"}");
+                    createDoc("{\"id\":\"ID_22\",\"_is_reverse\":true,\"_vertex_id\":\"这是一个中文ID\",\"_edge\":[{\"label\":\"created\",\"weight\":0.4,\"id\":\"ID_20\",\"_srcV\":\"dummy\",\"_srcVLabel\":\"person\",\"_srcVPartition\":\"person\"}],\"label\":\"software\"}");
+                    createDoc("{\"id\":\"ID_24\",\"_is_reverse\":false,\"_vertex_id\":\"引号\",\"_edge\":[{\"label\":\"created\",\"weight\":1,\"id\":\"ID_23\",\"_sinkV\":\"中文English\",\"_sinkVLabel\":\"software\",\"_sinkVPartition\":\"software\"}],\"label\":\"person\"}");
+                    createDoc("{\"id\":\"ID_25\",\"_is_reverse\":true,\"_vertex_id\":\"中文English\",\"_edge\":[{\"label\":\"created\",\"weight\":1,\"id\":\"ID_23\",\"_srcV\":\"引号\",\"_srcVLabel\":\"person\",\"_srcVPartition\":\"person\"}],\"label\":\"software\"}");
+                    createDoc("{\"id\":\"ID_27\",\"_is_reverse\":false,\"_vertex_id\":\"引号\",\"_edge\":[{\"label\":\"created\",\"weight\":0.4,\"id\":\"ID_26\",\"_sinkV\":\"这是一个中文ID\",\"_sinkVLabel\":\"software\",\"_sinkVPartition\":\"software\"}],\"label\":\"person\"}");
+                    createDoc("{\"id\":\"ID_28\",\"_is_reverse\":true,\"_vertex_id\":\"这是一个中文ID\",\"_edge\":[{\"label\":\"created\",\"weight\":0.4,\"id\":\"ID_26\",\"_srcV\":\"引号\",\"_srcVLabel\":\"person\",\"_srcVPartition\":\"person\"}],\"label\":\"software\"}");
+                    createDoc("{\"id\":\"ID_30\",\"_is_reverse\":false,\"_vertex_id\":\"ID_1007\",\"_edge\":[{\"label\":\"created\",\"weight\":0.2,\"id\":\"ID_29\",\"_sinkV\":\"这是一个中文ID\",\"_sinkVLabel\":\"software\",\"_sinkVPartition\":\"software\"}],\"label\":\"person\"}");
+                    createDoc("{\"id\":\"ID_31\",\"_is_reverse\":true,\"_vertex_id\":\"这是一个中文ID\",\"_edge\":[{\"label\":\"created\",\"weight\":0.2,\"id\":\"ID_29\",\"_srcV\":\"ID_1007\",\"_srcVLabel\":\"person\",\"_srcVPartition\":\"person\"}],\"label\":\"software\"}");
+                }
+                else
+                {
+                    createDoc("{\"id\":\"ID_15\",\"_is_reverse\":false,\"_vertex_id\":\"dummy\",\"_edge\":[{\"label\":\"knows\",\"weight\":0.5,\"id\":\"ID_14\",\"_sinkV\":\"特殊符号\",\"_sinkVLabel\":\"person\",\"_sinkVPartition\":\"person\"}],\"label\":\"person\"}");
+                    createDoc("{\"id\":\"ID_18\",\"_is_reverse\":false,\"_vertex_id\":\"dummy\",\"_edge\":[{\"label\":\"knows\",\"weight\":1,\"id\":\"ID_17\",\"_sinkV\":\"引号\",\"_sinkVLabel\":\"person\",\"_sinkVPartition\":\"person\"}],\"label\":\"person\"}");
+                    createDoc("{\"id\":\"ID_21\",\"_is_reverse\":false,\"_vertex_id\":\"dummy\",\"_edge\":[{\"label\":\"created\",\"weight\":0.4,\"id\":\"ID_20\",\"_sinkV\":\"这是一个中文ID\",\"_sinkVLabel\":\"software\",\"_sinkVPartition\":\"software\"}],\"label\":\"person\"}");
+                    createDoc("{\"id\":\"ID_24\",\"_is_reverse\":false,\"_vertex_id\":\"引号\",\"_edge\":[{\"label\":\"created\",\"weight\":1,\"id\":\"ID_23\",\"_sinkV\":\"中文English\",\"_sinkVLabel\":\"software\",\"_sinkVPartition\":\"software\"}],\"label\":\"person\"}");
+                    createDoc("{\"id\":\"ID_27\",\"_is_reverse\":false,\"_vertex_id\":\"引号\",\"_edge\":[{\"label\":\"created\",\"weight\":0.4,\"id\":\"ID_26\",\"_sinkV\":\"这是一个中文ID\",\"_sinkVLabel\":\"software\",\"_sinkVPartition\":\"software\"}],\"label\":\"person\"}");
+                    createDoc("{\"id\":\"ID_30\",\"_is_reverse\":false,\"_vertex_id\":\"ID_1007\",\"_edge\":[{\"label\":\"created\",\"weight\":0.2,\"id\":\"ID_29\",\"_sinkV\":\"这是一个中文ID\",\"_sinkVLabel\":\"software\",\"_sinkVPartition\":\"software\"}],\"label\":\"person\"}");
+                }
+            }
             else
             {
                 throw new Exception("Not supported!");
@@ -204,7 +219,9 @@ namespace GraphViewUnitTest.Gremlin
             string databaseId = ConfigurationManager.AppSettings["DocDBDatabaseGremlin"];
             string collectionId = ConfigurationManager.AppSettings["DocDBCollectionClassic"];
 
-            GraphViewConnection connection = GraphViewConnection.ResetGraphAPICollection(endpoint, authKey, databaseId, collectionId, AbstractGremlinTest.TEST_USE_REVERSE_EDGE, AbstractGremlinTest.TEST_PARTITION_BY_KEY);
+            GraphViewConnection connection = GraphViewConnection.ResetGraphAPICollection(endpoint, authKey, databaseId,
+                collectionId, AbstractGremlinTest.TEST_USE_REVERSE_EDGE,
+                AbstractGremlinTest.TEST_SPILLED_EDGE_THRESHOLD_VIAGRAPHAPI, AbstractGremlinTest.TEST_PARTITION_BY_KEY);
 
 
             GraphViewCommand graphCommand = new GraphViewCommand(connection);
@@ -236,7 +253,9 @@ namespace GraphViewUnitTest.Gremlin
             string databaseId = ConfigurationManager.AppSettings["DocDBDatabaseGremlin"];
             string collectionId = ConfigurationManager.AppSettings["DocDBCollectionModern"];
 
-            GraphViewConnection connection = GraphViewConnection.ResetGraphAPICollection(endpoint, authKey, databaseId, collectionId, AbstractGremlinTest.TEST_USE_REVERSE_EDGE, AbstractGremlinTest.TEST_PARTITION_BY_KEY);
+            GraphViewConnection connection = GraphViewConnection.ResetGraphAPICollection(endpoint, authKey, databaseId,
+                collectionId, AbstractGremlinTest.TEST_USE_REVERSE_EDGE,
+                AbstractGremlinTest.TEST_SPILLED_EDGE_THRESHOLD_VIAGRAPHAPI, AbstractGremlinTest.TEST_PARTITION_BY_KEY);
 
 
             GraphViewCommand graphCommand = new GraphViewCommand(connection);
@@ -286,7 +305,10 @@ namespace GraphViewUnitTest.Gremlin
             string authKey = ConfigurationManager.AppSettings["DocDBKeyLocal"];
             string databaseId = ConfigurationManager.AppSettings["DocDBDatabaseGremlin"];
 
-            GraphViewConnection.ResetGraphAPICollection(endpoint, authKey, databaseId, CollectionName, AbstractGremlinTest.TEST_USE_REVERSE_EDGE/*, "name"*/);
+            GraphViewConnection.ResetGraphAPICollection(endpoint, authKey, databaseId, CollectionName,
+                AbstractGremlinTest.TEST_USE_REVERSE_EDGE, AbstractGremlinTest.TEST_SPILLED_EDGE_THRESHOLD_VIAGRAPHAPI,
+                AbstractGremlinTest.TEST_PARTITION_BY_KEY);
+
         }
     }
 }

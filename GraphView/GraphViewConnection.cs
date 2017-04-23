@@ -114,6 +114,7 @@ namespace GraphView
             string databaseId,
             string collectionId,
             bool useReverseEdge,
+            int spilledEdgeThreshold,
             string partitionByKey = null)
         {
             using (DocumentClient client = new DocumentClient(
@@ -130,7 +131,8 @@ namespace GraphView
                 }
             }
 
-            return new GraphViewConnection(endpoint, authKey, databaseId, collectionId, GraphType.GraphAPIOnly, useReverseEdge, 1, partitionByKey);
+            return new GraphViewConnection(endpoint, authKey, databaseId, collectionId, GraphType.GraphAPIOnly,
+                useReverseEdge, spilledEdgeThreshold, partitionByKey);
         }
 
         public static GraphViewConnection ResetFlatCollection(

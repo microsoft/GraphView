@@ -40,6 +40,8 @@ namespace GraphViewUnitTest.Gremlin
         "Can't compile me!"
 #endif
 
+        internal const int TEST_SPILLED_EDGE_THRESHOLD_VIAGRAPHAPI = 1;
+
         protected static GraphViewConnection graphConnection;
 
         public TestContext TestContext { get; set; }
@@ -82,7 +84,7 @@ namespace GraphViewUnitTest.Gremlin
                 graphConnection = new GraphViewConnection(
                     endpoint, authKey, databaseId, collectionId,
                     GraphType.GraphAPIOnly,
-                    edgeSpillThreshold: 1,
+                    edgeSpillThreshold: AbstractGremlinTest.TEST_SPILLED_EDGE_THRESHOLD_VIAGRAPHAPI,
                     useReverseEdges: TEST_USE_REVERSE_EDGE,
                     partitionByKeyIfViaGraphAPI: TEST_PARTITION_BY_KEY
                 );

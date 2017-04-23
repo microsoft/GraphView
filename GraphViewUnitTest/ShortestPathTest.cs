@@ -18,7 +18,7 @@ namespace GraphViewUnitTest
         {
             GraphViewConnection connection = GraphViewConnection.ResetGraphAPICollection("https://graphview.documents.azure.com:443/",
               "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
-              "GroupMatch", "MarvelTest", AbstractGremlinTest.TEST_USE_REVERSE_EDGE);
+              "GroupMatch", "MarvelTest", AbstractGremlinTest.TEST_USE_REVERSE_EDGE, AbstractGremlinTest.TEST_SPILLED_EDGE_THRESHOLD_VIAGRAPHAPI);
 
             GraphViewCommand graphCommand = new GraphViewCommand(connection);
 
