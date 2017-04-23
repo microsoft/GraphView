@@ -590,12 +590,12 @@ namespace GraphView
         }
     }
 
-    internal class Compose1Field : FieldObject
+    internal class CompositeField : FieldObject
     {
         private Dictionary<string, FieldObject> compositeFieldObject { get; set; }
         public string DefaultProjectionKey { get; set; }
 
-        public Compose1Field(Dictionary<string, FieldObject> compositeFieldObject, string defaultProjectionKey)
+        public CompositeField(Dictionary<string, FieldObject> compositeFieldObject, string defaultProjectionKey)
         {
             this.compositeFieldObject = compositeFieldObject;
             DefaultProjectionKey = defaultProjectionKey;
@@ -631,7 +631,7 @@ namespace GraphView
         {
             if (Object.ReferenceEquals(this, obj)) return true;
 
-            Compose1Field rhs = obj as Compose1Field;
+            CompositeField rhs = obj as CompositeField;
             if (rhs == null) {
                 return this[this.DefaultProjectionKey].Equals(obj);
             }
@@ -1460,7 +1460,7 @@ namespace GraphView
         private void SyncIfLazy()
         {
             if (!this.HasBeenFetched) {
-                EdgeDocumentHelper.ConstructSpilledAdjListsOrVirtualRevAdjListsOfVertices(
+                EdgeDocumentHelper.ConstructLazyAdjacencyList(
                     this._connection,
                     new HashSet<string> {this._vertexId}, 
                     this._vertexPartitionKey != null ? new HashSet<string> {this._vertexPartitionKey} : new HashSet<string>());

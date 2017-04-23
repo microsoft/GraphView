@@ -146,7 +146,7 @@ namespace GraphView
                         targetFieldsAndTheirNames.Add(new Tuple<string, int>(name.Value, context.LocateColumnReference(columnRef)));
                     }
 
-                    return new Compose1(targetFieldsAndTheirNames, defaultProjectionKey.Value);
+                    return new ComposeCompositeField(targetFieldsAndTheirNames, defaultProjectionKey.Value);
                 case "compose2":
                     List<ScalarFunction> inputOfCompose2 = new List<ScalarFunction>();
 

@@ -448,7 +448,7 @@ namespace GraphView
                     funcTableRef = new WRangeTableReference();
                     break;
                 case GremlinKeyword.func.Decompose1:
-                    funcTableRef = new WDecompose1TableReference();
+                    funcTableRef = new WDecomposeTableReference();
                     break;
                 case GremlinKeyword.func.Tree:
                     funcTableRef = new WTreeTableReference();

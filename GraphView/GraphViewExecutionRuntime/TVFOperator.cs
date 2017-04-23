@@ -883,7 +883,7 @@ namespace GraphView
                 {
                     Dictionary<string, FieldObject> compositeFieldObjects = new Dictionary<string, FieldObject>();
                     compositeFieldObjects.Add(defaultProjectionKey, constantValueFunc.Evaluate(null));
-                    collection.Add(new Compose1Field(compositeFieldObjects, defaultProjectionKey));
+                    collection.Add(new CompositeField(compositeFieldObjects, defaultProjectionKey));
                 }
                 result.Append(new CollectionField(collection));
             }
@@ -898,9 +898,11 @@ namespace GraphView
     internal class PathOperator : GraphViewExecutionOperator
     {
         private GraphViewExecutionOperator inputOp;
-        //
-        // If the boolean value is true, then it's a subPath to be unfolded
-        //
+        // The scalar function in a path step is either a ComposeCompositeField function 
+        // or a column reference. The former wrapps all fields of a single step into one column 
+        // that are needed by the By functions. The latter refers to a sub-path produced by a 
+        // Gremlin step (or TVF) that has one or more steps.  
+        // The boolean value indicates a path step is a sub-path or not. 
         private List<Tuple<ScalarFunction, bool, HashSet<string>>> pathStepList;
         private List<ScalarFunction> byFuncList;
 
@@ -950,6 +952,9 @@ namespace GraphView
                     bool needsUnfold = tuple.Item2;
                     HashSet<string> stepLabels = tuple.Item3;
 
+                    // g.V().FlatMap(__.As('a'))
+                    // For a path starting from a context variable (__), the first step is null. 
+                    // The labels of the first step will be passed to whatever proceeds the context variable.
                     if (accessPathStepFunc == null) {
                         PathStepField pathStepField = new PathStepField(null);
                         foreach (string label in stepLabels) {
@@ -996,7 +1001,7 @@ namespace GraphView
                                 continue;
                             }
 
-                            FieldObject pathStep = GetStepProjectionResult(subPathStep.StepFieldObject, ref activeByFuncIndex);
+                            FieldObject pathStep = this.GetStepProjectionResult(subPathStep.StepFieldObject, ref activeByFuncIndex);
                             PathStepField pathStepField = new PathStepField(pathStep);
                             foreach (string label in subPathStep.Labels) {
                                 pathStepField.AddLabel(label);
@@ -1011,13 +1016,15 @@ namespace GraphView
                     }
                     else
                     {
-                        FieldObject pathStep = GetStepProjectionResult(step, ref activeByFuncIndex);
+                        FieldObject pathStep = this.GetStepProjectionResult(step, ref activeByFuncIndex);
 
-                        Compose1Field compose1PathStep = pathStep as Compose1Field;
+                        CompositeField compose1PathStep = pathStep as CompositeField;
                         Debug.Assert(compose1PathStep != null, "compose1PathStep != null");
-                        //
                         // g.V().optional(__.count().V()).path()
-                        //
+                        // When records in a pipeline go through an aggregation operator,
+                        // this operator produces only record and resets all the fields populated 
+                        // by prior steps to null. By path() semantics, all prior steps do not
+                        // appear in the path expression either.   
                         if (compose1PathStep[compose1PathStep.DefaultProjectionKey] == null) {
                             continue;
                         }
@@ -1162,7 +1169,7 @@ namespace GraphView
                     if (pathStep == null) continue;
                     RawRecord flatRecord = new RawRecord();
 
-                    Compose1Field compose1StepField = pathStep.StepFieldObject as Compose1Field;
+                    CompositeField compose1StepField = pathStep.StepFieldObject as CompositeField;
                     Debug.Assert(compose1StepField != null, "compose1StepField != null");
                     //
                     // Extract only needed columns from Compose1Field
@@ -1182,7 +1189,7 @@ namespace GraphView
                     if (singleObj == null) continue;
                     RawRecord flatRecord = new RawRecord();
 
-                    Compose1Field compose1ObjField = singleObj as Compose1Field;
+                    CompositeField compose1ObjField = singleObj as CompositeField;
                     Debug.Assert(compose1ObjField != null, "compose1ObjField != null");
                     //
                     // Extract only needed columns from Compose1Field

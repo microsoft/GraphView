@@ -2349,7 +2349,7 @@ namespace GraphView
                     {
                         Dictionary<string, FieldObject> compositeFieldObjects = new Dictionary<string, FieldObject>();
                         compositeFieldObjects.Add(defaultProjectionKey, injectValueFunc.Evaluate(null));
-                        collection.Add(new Compose1Field(compositeFieldObjects, defaultProjectionKey));
+                        collection.Add(new CompositeField(compositeFieldObjects, defaultProjectionKey));
                     }
 
                     //
@@ -3542,7 +3542,7 @@ namespace GraphView
             while (this.inputOp.State() && (inputRecord = this.inputOp.Next()) != null)
             {
                 FieldObject inputObj = inputRecord[this.decomposeTargetIndex];
-                Compose1Field compose1Obj = inputRecord[this.decomposeTargetIndex] as Compose1Field;
+                CompositeField compose1Obj = inputRecord[this.decomposeTargetIndex] as CompositeField;
 
                 RawRecord r = new RawRecord(inputRecord);
                 if (compose1Obj != null)
@@ -3703,7 +3703,7 @@ namespace GraphView
             {
                 Dictionary<string, FieldObject> compositeFieldObject = new Dictionary<string, FieldObject>();
                 compositeFieldObject.Add(this.tableDefaultColumnName, globalSideEffectObject.Terminate());
-                selectObject = new Compose1Field(compositeFieldObject, this.tableDefaultColumnName);
+                selectObject = new CompositeField(compositeFieldObject, this.tableDefaultColumnName);
             }
             else if (inputMap != null && inputMap.ContainsKey(labelStringField)) {
                 selectObject = inputMap[labelStringField];
@@ -3748,7 +3748,7 @@ namespace GraphView
                 {
                     Dictionary<string, FieldObject> compositeFieldObject = new Dictionary<string, FieldObject>();
                     compositeFieldObject.Add(this.tableDefaultColumnName, new CollectionField(selectObjects));
-                    selectObject = new Compose1Field(compositeFieldObject, this.tableDefaultColumnName);
+                    selectObject = new CompositeField(compositeFieldObject, this.tableDefaultColumnName);
                 }
             }
 
@@ -3895,7 +3895,7 @@ namespace GraphView
                     continue;
                 }
 
-                Compose1Field projectionResult = this.GetProjectionResult(selectObject) as Compose1Field;
+                CompositeField projectionResult = this.GetProjectionResult(selectObject) as CompositeField;
                 Debug.Assert(projectionResult != null, "projectionResult is Compose1Field.");
 
                 RawRecord r = new RawRecord(inputRec);
@@ -3928,10 +3928,18 @@ namespace GraphView
         private readonly GraphViewConnection connection;
 
         private readonly int batchSize;
-        private readonly Queue<Tuple<RawRecord, string>> batchInputSequence;
+        // RawRecord: the input record with the lazy adjacency list
+        // string: the Id of the vertex of the adjacency list to be decoded
+        private readonly Queue<Tuple<RawRecord, string>> lazyAdjacencyListBatch;
+        private bool isLazyBatchProcessed;
 
+        /// <summary>
+        /// The length of a record produced by this decoder operator.
+        /// If an input record has the same length, meaning the adjacency list has 
+        /// been decoded by a prior operator, i.e., FetchNodeOp or TraversalOp,
+        /// it is bypassed to the next operator.
+        /// </summary>
         private readonly int outputRecordLength;
-        private bool hasConstructedSpilledAdjListsOrVirtualRevAdjListsForCurrentBatch;
 
         public List<string> debug { get; set; }
 
@@ -3956,10 +3964,10 @@ namespace GraphView
             this.connection = connection;
 
             this.batchSize = batchSize;
-            this.batchInputSequence = new Queue<Tuple<RawRecord, string>>();
+            this.lazyAdjacencyListBatch = new Queue<Tuple<RawRecord, string>>();
 
             this.outputRecordLength = outputRecordLength;
-            this.hasConstructedSpilledAdjListsOrVirtualRevAdjListsForCurrentBatch = false;
+            this.isLazyBatchProcessed = false;
 
             this.Open();
         }
@@ -4092,11 +4100,11 @@ namespace GraphView
         /// <summary>
         /// Send one query to construct all the spilled adjacency lists of vertice in the inputSequence 
         /// </summary>
-        private void ConstructSpilledAdjListsOrVirtualRevAdjListsInBatch()
+        private void ConstructLazyAdjacencyListInBatch()
         {
             HashSet<string> vertexIdCollection = new HashSet<string>();
             HashSet<string> vertexPartitionKeyCollection = new HashSet<string>();
-            foreach (Tuple<RawRecord, string> tuple in this.batchInputSequence) {
+            foreach (Tuple<RawRecord, string> tuple in this.lazyAdjacencyListBatch) {
                 string vertexId = tuple.Item2;
                 VertexField vertexField = (VertexField)(tuple.Item1[this.startVertexIndex]);
 
@@ -4114,7 +4122,7 @@ namespace GraphView
                 }
             }
 
-            EdgeDocumentHelper.ConstructSpilledAdjListsOrVirtualRevAdjListsOfVertices(this.connection, vertexIdCollection, vertexPartitionKeyCollection);
+            EdgeDocumentHelper.ConstructLazyAdjacencyList(this.connection, vertexIdCollection, vertexPartitionKeyCollection);
         }
 
         public override RawRecord Next()
@@ -4123,17 +4131,17 @@ namespace GraphView
                 return this.outputBuffer.Dequeue();
             }
 
-            while (this.batchInputSequence.Count >= this.batchSize
-                || this.hasConstructedSpilledAdjListsOrVirtualRevAdjListsForCurrentBatch
-                || (this.batchInputSequence.Count != 0 && !this.inputOp.State()))
+            while (this.lazyAdjacencyListBatch.Count >= this.batchSize
+                || this.isLazyBatchProcessed
+                || (this.lazyAdjacencyListBatch.Count != 0 && !this.inputOp.State()))
             {
-                if (!this.hasConstructedSpilledAdjListsOrVirtualRevAdjListsForCurrentBatch) {
-                    this.ConstructSpilledAdjListsOrVirtualRevAdjListsInBatch();
+                if (!this.isLazyBatchProcessed) {
+                    this.ConstructLazyAdjacencyListInBatch();
                 }
 
-                Tuple<RawRecord, string> batchVertex = this.batchInputSequence.Dequeue();
+                Tuple<RawRecord, string> batchVertex = this.lazyAdjacencyListBatch.Dequeue();
 
-                this.hasConstructedSpilledAdjListsOrVirtualRevAdjListsForCurrentBatch = this.batchInputSequence.Count > 0;
+                this.isLazyBatchProcessed = this.lazyAdjacencyListBatch.Count > 0;
 
                 RawRecord currentRecord = batchVertex.Item1;
 
@@ -4171,7 +4179,7 @@ namespace GraphView
                     AdjacencyListField adj = startVertex.AdjacencyList;
                     Debug.Assert(adj != null, "adj != null");
                     if (!adj.HasBeenFetched) {
-                        this.batchInputSequence.Enqueue(new Tuple<RawRecord, string>(currentRecord, startVertexId));
+                        this.lazyAdjacencyListBatch.Enqueue(new Tuple<RawRecord, string>(currentRecord, startVertexId));
                         continue;
                     }
                 }
@@ -4179,7 +4187,7 @@ namespace GraphView
                     AdjacencyListField revAdj = startVertex.RevAdjacencyList;
                     Debug.Assert(revAdj != null, "revAdj != null");
                     if (!revAdj.HasBeenFetched) {
-                        this.batchInputSequence.Enqueue(new Tuple<RawRecord, string>(currentRecord, startVertexId));
+                        this.lazyAdjacencyListBatch.Enqueue(new Tuple<RawRecord, string>(currentRecord, startVertexId));
                         continue;
                     }
                 }
@@ -4193,17 +4201,17 @@ namespace GraphView
                 }
             }
 
-            while (this.batchInputSequence.Count >= batchSize
-                 || this.hasConstructedSpilledAdjListsOrVirtualRevAdjListsForCurrentBatch
-                 || (this.batchInputSequence.Count != 0 && !this.inputOp.State()))
+            while (this.lazyAdjacencyListBatch.Count >= batchSize
+                 || this.isLazyBatchProcessed
+                 || (this.lazyAdjacencyListBatch.Count != 0 && !this.inputOp.State()))
             {
-                if (!this.hasConstructedSpilledAdjListsOrVirtualRevAdjListsForCurrentBatch) {
-                    this.ConstructSpilledAdjListsOrVirtualRevAdjListsInBatch();
+                if (!this.isLazyBatchProcessed) {
+                    this.ConstructLazyAdjacencyListInBatch();
                 }
 
-                Tuple<RawRecord, string> batchVertex = this.batchInputSequence.Dequeue();
+                Tuple<RawRecord, string> batchVertex = this.lazyAdjacencyListBatch.Dequeue();
 
-                this.hasConstructedSpilledAdjListsOrVirtualRevAdjListsForCurrentBatch = this.batchInputSequence.Count > 0;
+                this.isLazyBatchProcessed = this.lazyAdjacencyListBatch.Count > 0;
 
                 RawRecord currentRecord = batchVertex.Item1;
 
@@ -4224,8 +4232,8 @@ namespace GraphView
         {
             this.inputOp.ResetState();
             this.outputBuffer.Clear();
-            this.batchInputSequence.Clear();
-            this.hasConstructedSpilledAdjListsOrVirtualRevAdjListsForCurrentBatch = false;
+            this.lazyAdjacencyListBatch.Clear();
+            this.isLazyBatchProcessed = false;
             this.Open();
         }
     }

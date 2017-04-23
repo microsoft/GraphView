@@ -399,7 +399,7 @@ namespace GraphView
         public bool IsList { get; set; }
     }
 
-    public partial class WDecompose1TableReference : WSchemaObjectFunctionTableReference { }
+    public partial class WDecomposeTableReference : WSchemaObjectFunctionTableReference { }
 
     public partial class WFlatMapTableReference : WSchemaObjectFunctionTableReference {}
 

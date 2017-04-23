@@ -63,7 +63,10 @@ namespace GraphView
         /// <param name="checkReverse">true if check the incoming edges, false if check the outgoing edges</param>
         /// <param name="useReverseEdges"></param>
         /// <returns></returns>
-        public static bool IsBuildingTheAdjacencyListLazily(JObject vertexObject, bool checkReverse, bool useReverseEdges)
+        public static bool IsBuildingTheAdjacencyListLazily(
+            JObject vertexObject, 
+            bool checkReverse, 
+            bool useReverseEdges)
         {
             Debug.Assert(vertexObject != null);
 
@@ -784,7 +787,7 @@ namespace GraphView
         /// <param name="connection"></param>
         /// <param name="vertexIdSet"></param>
         /// <param name="vertexPartitionKeySet"></param>
-        public static void ConstructSpilledAdjListsOrVirtualRevAdjListsOfVertices(GraphViewConnection connection,
+        public static void ConstructLazyAdjacencyList(GraphViewConnection connection,
             HashSet<string> vertexIdSet, HashSet<string> vertexPartitionKeySet)
         {
             if (!vertexIdSet.Any()) return;

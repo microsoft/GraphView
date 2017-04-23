@@ -380,12 +380,12 @@ namespace GraphView
         }
     }
 
-    internal class Compose1 : ScalarFunction
+    internal class ComposeCompositeField : ScalarFunction
     {
         List<Tuple<string, int>> targetFieldsAndTheirNames;
         string defaultProjectionKey;
         
-        public Compose1(List<Tuple<string, int>> targetFieldsAndTheirNames, string defaultProjectionKey)
+        public ComposeCompositeField(List<Tuple<string, int>> targetFieldsAndTheirNames, string defaultProjectionKey)
         {
             this.targetFieldsAndTheirNames = targetFieldsAndTheirNames;
             this.defaultProjectionKey = defaultProjectionKey;
@@ -398,7 +398,7 @@ namespace GraphView
                 compositField[p.Item1] = record[p.Item2];
             }
 
-            return new Compose1Field(compositField, defaultProjectionKey);
+            return new CompositeField(compositField, defaultProjectionKey);
         }
 
         public override JsonDataType DataType()
@@ -432,7 +432,7 @@ namespace GraphView
                     CollectionField subCompose2 = input.Evaluate(record) as CollectionField;
                     results.AddRange(subCompose2.Collection);
                 }
-                else if (input is Compose1)
+                else if (input is ComposeCompositeField)
                 {
                     results.Add(input.Evaluate(record));
                 }
@@ -478,9 +478,9 @@ namespace GraphView
             {
                 foreach (FieldObject fieldObject in arrayObject.Collection)
                 {
-                    if (fieldObject is Compose1Field)
+                    if (fieldObject is CompositeField)
                     {
-                        Compose1Field compose1Field = fieldObject as Compose1Field;
+                        CompositeField compose1Field = fieldObject as CompositeField;
                         if (checkObject.Equals(compose1Field[compose1Field.DefaultProjectionKey]))
                             return new StringField("false", JsonDataType.Boolean);
                     }
@@ -525,9 +525,9 @@ namespace GraphView
             {
                 foreach (FieldObject fieldObject in arrayObject.Collection)
                 {
-                    if (fieldObject is Compose1Field)
+                    if (fieldObject is CompositeField)
                     {
-                        Compose1Field compose1Field = fieldObject as Compose1Field;
+                        CompositeField compose1Field = fieldObject as CompositeField;
                         if (checkObject.Equals(compose1Field[compose1Field.DefaultProjectionKey]))
                             return new StringField("true", JsonDataType.Boolean);
                     }

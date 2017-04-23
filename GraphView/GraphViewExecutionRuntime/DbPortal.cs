@@ -148,30 +148,34 @@ namespace GraphView
                 return rawRecord;
             };
 
-            HashSet<string> gotVertexIds = new HashSet<string>();
-            HashSet<string> gotEdgeIds = new HashSet<string>();
+            HashSet<string> uniqueVertexIds = new HashSet<string>();
+            HashSet<string> uniqueEdgeIds = new HashSet<string>();
             foreach (dynamic dynamicItem in items) {
                 JObject tmpVertexObject = (JObject)((JObject)dynamicItem)[nodeAlias];
                 string vertexId = (string)tmpVertexObject[KW_DOC_ID];
 
                 if (crossApplyEdgeOnServer) {
-                    //
-                    // Note: checking gotVertexIds.Add(vertexId) is for the correctness of cardinality
-                    //
+                    // Note: since vertex properties can be multi-valued, 
+                    // a DocumentDB query needs a join clause in the FROM clause
+                    // to retrieve vertex property values, which may result in 
+                    // the same vertex being returned multiple times. 
+                    // We use the hash set uniqueVertexIds to ensure one vertex is 
+                    // produced only once. 
                     if (EdgeDocumentHelper.IsBuildingTheAdjacencyListLazily(
-                            tmpVertexObject, isReverseAdj, this.Connection.UseReverseEdges) 
-                        && gotVertexIds.Add(vertexId)) {
+                            tmpVertexObject, 
+                            isReverseAdj, 
+                            this.Connection.UseReverseEdges) && 
+                            uniqueVertexIds.Add(vertexId))
+                    {
                         VertexField vertexField = this.Connection.VertexCache.AddOrUpdateVertexField(vertexId, tmpVertexObject);
                         yield return makeRawRecord(vertexField);
                     }
-                    else
+                    else // When the DocumentDB query crosses apply edges 
                     {
                         JObject edgeObjct = (JObject)((JObject)dynamicItem)[edgeAlias];
                         string edgeId = (string)edgeObjct[KW_EDGE_ID];
-                        //
-                        // Note: checking gotEdgeIds.Add(edgeId) is for the correctness of cardinality
-                        //
-                        if (gotEdgeIds.Add(edgeId)) {
+
+                        if (uniqueEdgeIds.Add(edgeId)) {
                             VertexField vertexField = this.Connection.VertexCache.AddOrUpdateVertexField(vertexId, tmpVertexObject);
                             yield return makeCrossAppliedRecord(vertexField, edgeId);
                         }
@@ -179,7 +183,7 @@ namespace GraphView
                 }
                 else
                 {
-                    if (!gotVertexIds.Add(vertexId)) {
+                    if (!uniqueVertexIds.Add(vertexId)) {
                         continue;
                     }
                     VertexField vertexField = this.Connection.VertexCache.AddOrUpdateVertexField(vertexId, tmpVertexObject);
@@ -188,6 +192,13 @@ namespace GraphView
             }
         }
 
+        /// <summary>
+        /// Retrieve vertices in conventional JSON documents. The JSON query to send
+        /// returns both vertex documents and edge documents, from which 
+        /// vertex fields are constructed and returned. 
+        /// </summary>
+        /// <param name="vertexQuery"></param>
+        /// <returns></returns>
         public override IEnumerator<RawRecord> GetVerticesViaExternalAPI(JsonQuery vertexQuery)
         {
             string queryScript = vertexQuery.ToString(DatabaseType.DocumentDB);

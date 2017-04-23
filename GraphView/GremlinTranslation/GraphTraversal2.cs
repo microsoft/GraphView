@@ -57,7 +57,7 @@ namespace GraphView
 
             if (batchIdSet.Any())
             {
-                EdgeDocumentHelper.ConstructSpilledAdjListsOrVirtualRevAdjListsOfVertices(connection, batchIdSet, batchPartitionKeySet);
+                EdgeDocumentHelper.ConstructLazyAdjacencyList(connection, batchIdSet, batchPartitionKeySet);
 
                 int startIndex = 0;
                 foreach (KeyValuePair<int, VertexField> kvp in batchGraphSonDict)

@@ -2954,7 +2954,12 @@ namespace GraphView
         }
     }
 
-    partial class WDecompose1TableReference
+    /// <summary>
+    /// The table-valued function that takes as input a CompositeField field in an input record, 
+    /// and outputs a new record in which members in the CompositeField field populated as separate
+    /// fields/columns. 
+    /// </summary>
+    partial class WDecomposeTableReference
     {
         internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
         {
@@ -3191,14 +3196,19 @@ namespace GraphView
         }
     }
 
+    /// <summary>
+    /// This table-valued function is for Map.select(keys) or Map.select(values)
+    /// </summary>
     partial class WSelectColumnTableReference
     {
         internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
         {
+            // inputTargetParameter always points to MapField
             WColumnReferenceExpression inputTargetParameter = this.Parameters[0] as WColumnReferenceExpression;
             Debug.Assert(inputTargetParameter != null, "inputTargetParameter != null");
             int inputTargetIndex = context.LocateColumnReference(inputTargetParameter);
 
+            // Whether extracts keys or values from MapField
             WValueExpression selectParameter = this.Parameters[1] as WValueExpression;
             Debug.Assert(selectParameter != null, "selectParameter != null");
             bool isSelectKeys = selectParameter.Value.Equals("keys", StringComparison.OrdinalIgnoreCase);
@@ -3212,6 +3222,9 @@ namespace GraphView
         }
     }
 
+    /// <summary>
+    /// This TVF is for select() of more than one key. The result of this function is MapField.
+    /// </summary>
     partial class WSelectTableReference
     {
         internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbcConnection)
@@ -3271,14 +3284,28 @@ namespace GraphView
         }
     }
 
+    /// <summary>
+    /// The TVF is for select() of a single key. The result of the function follows the following precedence:
+    /// 
+    /// 1) if there is a global table tagged with key through store()/aggregate()/group()/groupCount()/tree(),
+    /// return for each record a new record with an additional field containing the content of the table.
+    /// 2) if the prior step returns MapField, select the key from the map.   
+    /// 3) Otherwise, 
+    ///     when the key appears only once, the result is 
+    ///     a record in which the tagged (composite) field's elements are populated as individual fields. 
+    ///     When the key appears more than once, the result is an array (CollectionField) with each array element
+    ///     being tagged CompositeField. 
+    /// </summary>
     partial class WSelectOneTableReference
     {
         internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbcConnection)
         {
+            // inputObjectParameter points to the table reference right before WPathTableReference
             WColumnReferenceExpression inputObjectParameter = this.Parameters[0] as WColumnReferenceExpression;
             Debug.Assert(inputObjectParameter != null, "inputObjectParameter != null");
             int inputObjectIndex = context.LocateColumnReference(inputObjectParameter);
 
+            // WPathTableReference always proceeds WSelectOneTableReference in the FROM clause
             WColumnReferenceExpression pathParameter = this.Parameters[1] as WColumnReferenceExpression;
             Debug.Assert(pathParameter != null, "pathParameter != null");
             int pathIndex = context.LocateColumnReference(pathParameter);
