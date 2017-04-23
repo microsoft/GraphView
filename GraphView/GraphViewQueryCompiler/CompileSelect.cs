@@ -1869,8 +1869,7 @@ namespace GraphView
                 true, null, 
                 projectFields, dbConnection, 
                 context.RawRecordLayout.Count + projectFields.Count);
-            adjListDecoder.debug =
-                context.RawRecordLayout.Select(kvp => kvp.Key.ToString() + ", " + kvp.Value.ToString()).ToList();
+
             context.CurrentExecutionOperator = adjListDecoder;
 
             // Update context's record layout

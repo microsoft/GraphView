@@ -3941,8 +3941,6 @@ namespace GraphView
         /// </summary>
         private readonly int outputRecordLength;
 
-        public List<string> debug { get; set; }
-
         public AdjacencyListDecoder(
             GraphViewExecutionOperator inputOp,
             int startVertexIndex,
