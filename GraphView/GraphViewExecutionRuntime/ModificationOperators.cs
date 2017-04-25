@@ -80,10 +80,6 @@ namespace GraphView
         public AddVOperator(GraphViewExecutionOperator inputOp, GraphViewConnection connection, JObject vertexDocument, List<string> projectedFieldList)
             : base(inputOp, connection)
         {
-            //if (connection.GraphType != GraphType.GraphAPIOnly) {
-            //    throw new GraphViewException("Add vertex is supported only in pure GraphAPI graph.");
-            //}
-
             this._vertexDocument = vertexDocument;
             this._projectedFieldList = projectedFieldList;
         }
@@ -192,10 +188,6 @@ namespace GraphView
 
         private void DropVertexProperty(VertexPropertyField vp)
         {
-            if (this.Connection.GraphType != GraphType.GraphAPIOnly) {
-                throw new GraphViewException("Drop vertex property is supported only in pure GraphAPI graph.");
-            }
-
             // Update DocDB
             VertexField vertexField = vp.Vertex;
             JObject vertexObject = vertexField.VertexJObject;
@@ -212,8 +204,10 @@ namespace GraphView
 
         private void DropVertexSingleProperty(VertexSinglePropertyField vp)
         {
-            if (this.Connection.GraphType != GraphType.GraphAPIOnly) {
-                throw new GraphViewException("Drop vertex property is supported only in pure GraphAPI graph.");
+            if (!vp.VertexProperty.Vertex.ViaGraphAPI) {
+                // Just drop the whole property!
+                this.DropVertexProperty(vp.VertexProperty);
+                return;
             }
 
             // Update DocDB
@@ -244,8 +238,9 @@ namespace GraphView
 
         private void DropVertexPropertyMetaProperty(ValuePropertyField metaProperty)
         {
-            if (this.Connection.GraphType != GraphType.GraphAPIOnly) {
-                throw new GraphViewException("Drop vertex property is supported only in GraphAPI vertex.");
+            Debug.Assert(metaProperty.Parent is VertexSinglePropertyField);
+            if (!((VertexSinglePropertyField)metaProperty.Parent).VertexProperty.Vertex.ViaGraphAPI) {
+                throw new GraphViewException("BUG: Compatible vertices should not have meta properties.");
             }
 
             Debug.Assert(metaProperty.Parent is VertexSinglePropertyField);
@@ -381,59 +376,88 @@ namespace GraphView
 
         private void UpdatePropertiesOfVertex(VertexField vertex)
         {
-            if (!vertex.ViaGraphAPI) {
-                throw new GraphViewException("Update vertex property is not supported on external vertex.");
-            }
-
             JObject vertexDocument = vertex.VertexJObject;
-            foreach (WPropertyExpression property in this.updateProperties) {
-                Debug.Assert(property.Value != null);
 
-                VertexPropertyField vertexProperty;
-                string name = property.Key.Value;
-                if (vertexDocument[name] is JValue) {
-                    throw new GraphViewException($"Can't update vertex's \"{name}\"");
+            if (!vertex.ViaGraphAPI) {
+                foreach (WPropertyExpression property in this.updateProperties) {
+                    if (property.Cardinality == GremlinKeyword.PropertyCardinality.List) {
+                        throw new GraphViewException("Duplicated property on compatible vertex is not supported");
+                    }
+                    if (property.MetaProperties.Count > 0) {
+                        throw new GraphViewException("Property's meta property on compatible vertex is not supported");
+                    }
+
+                    string name = property.Key.Value;
+                    if (name == this.Connection.RealPartitionKey) {
+                        throw new GraphViewException("Updating the partition-by property is not supported.");
+                    }
+
+                    vertexDocument[name] = property.Value.ToJValue();
+
+                    // Update vertex field
+                    VertexPropertyField vertexProperty;
+                    bool existed = vertex.VertexProperties.TryGetValue(name, out vertexProperty);
+                    if (!existed) {
+                        vertexProperty = new VertexPropertyField(vertexDocument.Property(name), vertex);
+                        vertex.VertexProperties.Add(name, vertexProperty);
+                    }
+                    else {
+                        vertexProperty.Replace(vertexDocument.Property(name));
+                    }
                 }
 
-                // Construct single property
-                JObject meta = new JObject();
-                foreach (KeyValuePair<WValueExpression, WValueExpression> pair in property.MetaProperties) {
-                    meta[pair.Key.Value] = pair.Value.ToJValue();
-                }
-                JObject singleProperty = new JObject {
-                    [KW_PROPERTY_VALUE] = property.Value.ToJValue(),
-                    [KW_PROPERTY_ID] = GraphViewConnection.GenerateDocumentId(),
-                    [KW_PROPERTY_META] = meta,
-                };
+            }
+            else {
+                foreach (WPropertyExpression property in this.updateProperties) {
+                    Debug.Assert(property.Value != null);
 
-                // Set / Append to multiProperty
-                JArray multiProperty;
-                if (vertexDocument[name] == null) {
-                    multiProperty = new JArray();
-                    vertexDocument[name] = multiProperty;
-                }
-                else {
-                    multiProperty = (JArray)vertexDocument[name];
-                }
+                    VertexPropertyField vertexProperty;
+                    string name = property.Key.Value;
+                    if (name == this.Connection.RealPartitionKey) {
+                        throw new GraphViewException("Updating the partition-by property is not supported.");
+                    }
 
-                if (property.Cardinality == GremlinKeyword.PropertyCardinality.Single) {
-                    multiProperty.Clear();
-                }
-                multiProperty.Add(singleProperty);
+                    // Construct single property
+                    JObject meta = new JObject();
+                    foreach (KeyValuePair<WValueExpression, WValueExpression> pair in property.MetaProperties) {
+                        meta[pair.Key.Value] = pair.Value.ToJValue();
+                    }
+                    JObject singleProperty = new JObject {
+                        [KW_PROPERTY_VALUE] = property.Value.ToJValue(),
+                        [KW_PROPERTY_ID] = GraphViewConnection.GenerateDocumentId(),
+                        [KW_PROPERTY_META] = meta,
+                    };
 
-                // Update vertex field
-                bool existed = vertex.VertexProperties.TryGetValue(name, out vertexProperty);
-                if (!existed) {
-                    vertexProperty = new VertexPropertyField(vertexDocument.Property(name), vertex);
-                    vertex.VertexProperties.Add(name, vertexProperty);
-                }
-                else {
-                    vertexProperty.Replace(vertexDocument.Property(name));
+                    // Set / Append to multiProperty
+                    JArray multiProperty;
+                    if (vertexDocument[name] == null) {
+                        multiProperty = new JArray();
+                        vertexDocument[name] = multiProperty;
+                    }
+                    else {
+                        multiProperty = (JArray)vertexDocument[name];
+                    }
+
+                    if (property.Cardinality == GremlinKeyword.PropertyCardinality.Single) {
+                        multiProperty.Clear();
+                    }
+                    multiProperty.Add(singleProperty);
+
+                    // Update vertex field
+                    bool existed = vertex.VertexProperties.TryGetValue(name, out vertexProperty);
+                    if (!existed) {
+                        vertexProperty = new VertexPropertyField(vertexDocument.Property(name), vertex);
+                        vertex.VertexProperties.Add(name, vertexProperty);
+                    }
+                    else {
+                        vertexProperty.Replace(vertexDocument.Property(name));
+                    }
                 }
             }
 
             // Upload to DocDB
-            this.Connection.ReplaceOrDeleteDocumentAsync(vertex.VertexId, vertexDocument, 
+            this.Connection.ReplaceOrDeleteDocumentAsync(
+                vertex.VertexId, vertexDocument,
                 this.Connection.GetDocumentPartition(vertexDocument)).Wait();
         }
 
@@ -458,8 +482,8 @@ namespace GraphView
 
         private void UpdateMetaPropertiesOfSingleVertexProperty(VertexSinglePropertyField vp)
         {
-            if (this.Connection.GraphType != GraphType.GraphAPIOnly) {
-                throw new GraphViewException("Update vertex property is supported only in pure GraphAPI graph.");
+            if (!vp.VertexProperty.Vertex.ViaGraphAPI) {
+                throw new GraphViewException("Update vertex meta property is supported only in pure GraphAPI vertices.");
             }
 
             string vertexId = vp.VertexProperty.Vertex.VertexId;

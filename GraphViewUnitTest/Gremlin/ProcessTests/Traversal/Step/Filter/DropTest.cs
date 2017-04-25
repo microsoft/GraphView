@@ -53,6 +53,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         }
 
         [TestMethod]
+        [TestModernCompatible]
         public void CustomTest1()
         {
             using (GraphViewCommand command = new GraphViewCommand(graphConnection))
@@ -75,7 +76,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
                     if (TEST_PARTITION_BY_KEY == "name") Assert.Fail();
                 }
                 catch (GraphViewException ex)
-                when (ex.Message == "Can't update vertex's \"name\"" && TEST_PARTITION_BY_KEY == "name") {
+                when (ex.Message == "Updating the partition-by property is not supported." && TEST_PARTITION_BY_KEY == "name") {
                     // This is expected
                 }
 
