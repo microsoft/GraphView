@@ -1146,8 +1146,9 @@ namespace GraphView
               For external vertex document, multiProperty looks like: 
               For partition-by porperty in any vertex document, multiProperty looks like: 
                 <propName>: <Value>
+              NOTE: Now only the partition-by porperty in external vertex document has this format
             */
-            if (!this.Vertex.ViaGraphAPI || multiProperty.Value is JValue)
+            if (multiProperty.Value is JValue)
             {
                 Debug.Assert(multiProperty.Name == this.PropertyName);
                 Debug.Assert(multiProperty.Value is JValue);
@@ -1159,7 +1160,8 @@ namespace GraphView
                     this.Multiples[propId] = new VertexSinglePropertyField(propId, multiProperty.Name, (JValue)multiProperty.Value, this);
                 }
                 else {
-                    this.Multiples[propId].Replace((JValue)multiProperty.Value);
+                    //this.Multiples[propId].Replace((JValue)multiProperty.Value);
+                    throw new Exception($"BUG: Property '{multiProperty.Name}' should be immutable.");
                 }
 
                 return;
@@ -1758,7 +1760,9 @@ namespace GraphView
                         break;
 
                     default: // user-defined properties
-                        this.VertexProperties.Add(property.Name, new VertexPropertyField(property, this));
+                        if (property.Name == connection.RealPartitionKey || !(property.Value is JValue)) {
+                            this.VertexProperties.Add(property.Name, new VertexPropertyField(property, this));
+                        }
                         break;
                 }
             }

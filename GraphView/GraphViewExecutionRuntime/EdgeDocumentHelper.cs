@@ -767,7 +767,7 @@ namespace GraphView
                     (string.IsNullOrEmpty(partitionInClause)
                         ? ""
                         : $" AND doc{connection.GetPartitionPathIndexer()} IN ({partitionInClause})");
-                IQueryable<dynamic> vertexIdAndLabels = connection.ExecuteQuery(labelQuery);
+                IEnumerable<dynamic> vertexIdAndLabels = connection.ExecuteQuery(labelQuery);
                 foreach (JObject vertexIdAndLabel in vertexIdAndLabels) {
                     string vertexId = vertexIdAndLabel[KW_DOC_ID].ToString();
                     string vertexLabel = vertexIdAndLabel[KW_VERTEX_LABEL]?.ToString();

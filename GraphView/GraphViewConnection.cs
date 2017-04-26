@@ -550,7 +550,7 @@ namespace GraphView
         }
 
 
-        internal IQueryable<dynamic> ExecuteQuery(string queryScript, FeedOptions queryOptions = null)
+        internal IEnumerable<dynamic> ExecuteQuery(string queryScript, FeedOptions queryOptions = null)
         {
             if (queryOptions == null)
             {

@@ -77,7 +77,7 @@ namespace GraphView
         public override IEnumerator<RawRecord> GetVertices(JsonQuery vertexQuery)
         {
             string queryScript = vertexQuery.ToString(DatabaseType.DocumentDB);
-            IQueryable<dynamic> items = this.Connection.ExecuteQuery(queryScript);
+            IEnumerable<dynamic> items = this.Connection.ExecuteQuery(queryScript);
             List<string> nodeProperties = new List<string>(vertexQuery.NodeProperties);
             List<string> edgeProperties = new List<string>(vertexQuery.EdgeProperties);
 
@@ -202,7 +202,7 @@ namespace GraphView
         public override IEnumerator<RawRecord> GetVerticesViaExternalAPI(JsonQuery vertexQuery)
         {
             string queryScript = vertexQuery.ToString(DatabaseType.DocumentDB);
-            IQueryable<dynamic> items = this.Connection.ExecuteQuery(queryScript);
+            IEnumerable<dynamic> items = this.Connection.ExecuteQuery(queryScript);
             List<string> nodeProperties = new List<string>(vertexQuery.NodeProperties);
 
             string nodeAlias = nodeProperties[0];

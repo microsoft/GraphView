@@ -204,10 +204,13 @@ namespace GraphView
 
         private void DropVertexSingleProperty(VertexSinglePropertyField vp)
         {
-            if (!vp.VertexProperty.Vertex.ViaGraphAPI) {
-                // Just drop the whole property!
-                this.DropVertexProperty(vp.VertexProperty);
-                return;
+            //if (!vp.VertexProperty.Vertex.ViaGraphAPI) {
+            //    // Just drop the whole property!
+            //    this.DropVertexProperty(vp.VertexProperty);
+            //    return;
+            //}
+            if (vp.PropertyName == this.Connection.RealPartitionKey) {
+                throw new GraphViewException("Drop the partition-by property is not supported");
             }
 
             // Update DocDB
@@ -239,9 +242,14 @@ namespace GraphView
         private void DropVertexPropertyMetaProperty(ValuePropertyField metaProperty)
         {
             Debug.Assert(metaProperty.Parent is VertexSinglePropertyField);
-            if (!((VertexSinglePropertyField)metaProperty.Parent).VertexProperty.Vertex.ViaGraphAPI) {
-                throw new GraphViewException("BUG: Compatible vertices should not have meta properties.");
+#if DEBUG
+            VertexSinglePropertyField vsp = (VertexSinglePropertyField)metaProperty.Parent;
+            VertexField vertex = vsp.VertexProperty.Vertex;
+            if (!vertex.ViaGraphAPI) {
+                Debug.Assert(vertex.VertexJObject[vsp.PropertyName] is JObject);
+                ////throw new GraphViewException("BUG: Compatible vertices should not have meta properties.");
             }
+#endif
 
             Debug.Assert(metaProperty.Parent is VertexSinglePropertyField);
             VertexSinglePropertyField vertexSingleProperty = (VertexSinglePropertyField)metaProperty.Parent;
@@ -378,80 +386,54 @@ namespace GraphView
         {
             JObject vertexDocument = vertex.VertexJObject;
 
-            if (!vertex.ViaGraphAPI) {
-                foreach (WPropertyExpression property in this.updateProperties) {
-                    if (property.Cardinality == GremlinKeyword.PropertyCardinality.List) {
-                        throw new GraphViewException("Duplicated property on compatible vertex is not supported");
-                    }
-                    if (property.MetaProperties.Count > 0) {
-                        throw new GraphViewException("Property's meta property on compatible vertex is not supported");
-                    }
+            foreach (WPropertyExpression property in this.updateProperties) {
+                Debug.Assert(property.Value != null);
 
-                    string name = property.Key.Value;
-                    if (name == this.Connection.RealPartitionKey) {
-                        throw new GraphViewException("Updating the partition-by property is not supported.");
-                    }
-
-                    vertexDocument[name] = property.Value.ToJValue();
-
-                    // Update vertex field
-                    VertexPropertyField vertexProperty;
-                    bool existed = vertex.VertexProperties.TryGetValue(name, out vertexProperty);
-                    if (!existed) {
-                        vertexProperty = new VertexPropertyField(vertexDocument.Property(name), vertex);
-                        vertex.VertexProperties.Add(name, vertexProperty);
-                    }
-                    else {
-                        vertexProperty.Replace(vertexDocument.Property(name));
-                    }
+                VertexPropertyField vertexProperty;
+                string name = property.Key.Value;
+                if (name == this.Connection.RealPartitionKey) {
+                    throw new GraphViewException("Updating the partition-by property is not supported.");
                 }
 
-            }
-            else {
-                foreach (WPropertyExpression property in this.updateProperties) {
-                    Debug.Assert(property.Value != null);
+                if (!vertex.ViaGraphAPI && vertexDocument[name] is JValue) {
+                    // Add/Update an existing flat vertex property
+                    throw new GraphViewException($"The adding/updating property '{name}' already exists as flat.");
+                }
 
-                    VertexPropertyField vertexProperty;
-                    string name = property.Key.Value;
-                    if (name == this.Connection.RealPartitionKey) {
-                        throw new GraphViewException("Updating the partition-by property is not supported.");
-                    }
+                // Construct single property
+                JObject meta = new JObject();
+                foreach (KeyValuePair<WValueExpression, WValueExpression> pair in property.MetaProperties) {
+                    meta[pair.Key.Value] = pair.Value.ToJValue();
+                }
+                JObject singleProperty = new JObject {
+                    [KW_PROPERTY_VALUE] = property.Value.ToJValue(),
+                    [KW_PROPERTY_ID] = GraphViewConnection.GenerateDocumentId(),
+                    [KW_PROPERTY_META] = meta,
+                };
 
-                    // Construct single property
-                    JObject meta = new JObject();
-                    foreach (KeyValuePair<WValueExpression, WValueExpression> pair in property.MetaProperties) {
-                        meta[pair.Key.Value] = pair.Value.ToJValue();
-                    }
-                    JObject singleProperty = new JObject {
-                        [KW_PROPERTY_VALUE] = property.Value.ToJValue(),
-                        [KW_PROPERTY_ID] = GraphViewConnection.GenerateDocumentId(),
-                        [KW_PROPERTY_META] = meta,
-                    };
+                // Set / Append to multiProperty
+                JArray multiProperty;
+                if (vertexDocument[name] == null) {
+                    multiProperty = new JArray();
+                    vertexDocument[name] = multiProperty;
+                }
+                else {
+                    multiProperty = (JArray)vertexDocument[name];
+                }
 
-                    // Set / Append to multiProperty
-                    JArray multiProperty;
-                    if (vertexDocument[name] == null) {
-                        multiProperty = new JArray();
-                        vertexDocument[name] = multiProperty;
-                    }
-                    else {
-                        multiProperty = (JArray)vertexDocument[name];
-                    }
+                if (property.Cardinality == GremlinKeyword.PropertyCardinality.Single) {
+                    multiProperty.Clear();
+                }
+                multiProperty.Add(singleProperty);
 
-                    if (property.Cardinality == GremlinKeyword.PropertyCardinality.Single) {
-                        multiProperty.Clear();
-                    }
-                    multiProperty.Add(singleProperty);
-
-                    // Update vertex field
-                    bool existed = vertex.VertexProperties.TryGetValue(name, out vertexProperty);
-                    if (!existed) {
-                        vertexProperty = new VertexPropertyField(vertexDocument.Property(name), vertex);
-                        vertex.VertexProperties.Add(name, vertexProperty);
-                    }
-                    else {
-                        vertexProperty.Replace(vertexDocument.Property(name));
-                    }
+                // Update vertex field
+                bool existed = vertex.VertexProperties.TryGetValue(name, out vertexProperty);
+                if (!existed) {
+                    vertexProperty = new VertexPropertyField(vertexDocument.Property(name), vertex);
+                    vertex.VertexProperties.Add(name, vertexProperty);
+                }
+                else {
+                    vertexProperty.Replace(vertexDocument.Property(name));
                 }
             }
 
@@ -483,7 +465,11 @@ namespace GraphView
         private void UpdateMetaPropertiesOfSingleVertexProperty(VertexSinglePropertyField vp)
         {
             if (!vp.VertexProperty.Vertex.ViaGraphAPI) {
-                throw new GraphViewException("Update vertex meta property is supported only in pure GraphAPI vertices.");
+                //throw new GraphViewException("Update vertex meta property is supported only in pure GraphAPI vertices.");
+
+                // We know this property must be added via GraphAPI (if exist)
+                JToken prop = vp.VertexProperty.Vertex.VertexJObject[vp.PropertyName];
+                Debug.Assert(prop == null || prop is JObject);
             }
 
             string vertexId = vp.VertexProperty.Vertex.VertexId;
