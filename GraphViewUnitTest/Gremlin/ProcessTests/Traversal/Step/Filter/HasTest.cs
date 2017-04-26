@@ -132,7 +132,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         /// Equivalent gremlin: "g.V.has('age',gt(30))"
         /// </summary>
         [TestMethod]
-        [TestModernCompatible]
+        [TestModernCompatible(false)]
         public void HasAgeGT30()
         {
             using (GraphViewCommand GraphViewCommand = new GraphViewCommand(graphConnection))
@@ -159,7 +159,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         /// WorkItem to track this: https://msdata.visualstudio.com/DocumentDB/_workitems/edit/36516
         /// </remarks>
         [TestMethod]
-        [TestModernCompatible]
+        [TestModernCompatible(false)]
         public void HasAgeIsGT30()
         {
             using (GraphViewCommand GraphViewCommand = new GraphViewCommand(graphConnection))
@@ -180,7 +180,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         /// Equivalent gremlin: "g.V(v1Id).has('age',gt(30))", "v1Id", v1Id
         /// </summary>
         [TestMethod]
-        [TestModernCompatible]
+        [TestModernCompatible(false)]
         public void HasVIdHasAgeGT30()
         {
             using (GraphViewCommand GraphViewCommand = new GraphViewCommand(graphConnection))
@@ -211,7 +211,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         /// WorkItem to track this: https://msdata.visualstudio.com/DocumentDB/_workitems/edit/36516
         /// </remarks>
         [TestMethod]
-        [TestModernCompatible]
+        [TestModernCompatible(false)]
         public void HasIdTraversalHasVIdHasAgeGT30()
         {
             using (GraphViewCommand GraphViewCommand = new GraphViewCommand(graphConnection))
@@ -348,7 +348,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         /// Equivalent gremlin: "g.V.has('person', 'name', 'marko').age"
         /// </summary>
         [TestMethod]
-        [TestModernCompatible]
+        [TestModernCompatible(false)]
         public void HasPersonNameMarkoAge()
         {
             using (GraphViewCommand GraphViewCommand = new GraphViewCommand(graphConnection))
@@ -437,7 +437,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         /// WorkItem to track this: https://msdata.visualstudio.com/DocumentDB/_workitems/edit/36527
         /// </remarks>
         [TestMethod]
-        [TestModernCompatible]
+        [TestModernCompatible(false)]
         public void HasLabelPersonHasAgeNotLTE10AndNotBetween11n20ANDLT29OrEQ35()
         {
             using (GraphViewCommand GraphViewCommand = new GraphViewCommand(graphConnection))

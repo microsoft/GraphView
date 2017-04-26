@@ -77,31 +77,31 @@ namespace GraphView
     {
         private Queue<RawRecord> outputBuffer;
         private JsonQuery vertexQuery;
-        private JsonQuery vertexViaExternalAPIQuery;
+        //private JsonQuery vertexViaExternalAPIQuery;
         private GraphViewConnection connection;
 
         private IEnumerator<RawRecord> verticesEnumerator;
-        private IEnumerator<RawRecord> verticesViaExternalAPIEnumerator;
+        //private IEnumerator<RawRecord> verticesViaExternalAPIEnumerator;
 
-        public FetchNodeOperator2(GraphViewConnection connection, JsonQuery vertexQuery, JsonQuery vertexViaExternalAPIQuery)
+        public FetchNodeOperator2(GraphViewConnection connection, JsonQuery vertexQuery/*, JsonQuery vertexViaExternalAPIQuery*/)
         {
             this.Open();
             this.connection = connection;
             this.vertexQuery = vertexQuery;
-            this.vertexViaExternalAPIQuery = vertexViaExternalAPIQuery;
+            //this.vertexViaExternalAPIQuery = vertexViaExternalAPIQuery;
             this.verticesEnumerator = connection.CreateDatabasePortal().GetVertices(vertexQuery);
-            this.verticesViaExternalAPIEnumerator = connection.CreateDatabasePortal().GetVerticesViaExternalAPI(vertexViaExternalAPIQuery);
+            //this.verticesViaExternalAPIEnumerator = connection.CreateDatabasePortal().GetVerticesViaExternalAPI(vertexViaExternalAPIQuery);
         }
 
         public override RawRecord Next()
         {
-            if (this.connection.GraphType != GraphType.CompatibleOnly && this.verticesEnumerator.MoveNext()) {
+            if (/*this.connection.GraphType != GraphType.CompatibleOnly && */this.verticesEnumerator.MoveNext()) {
                 return this.verticesEnumerator.Current;
             }
 
-            if (this.connection.GraphType != GraphType.GraphAPIOnly && this.verticesViaExternalAPIEnumerator.MoveNext()) {
-                return this.verticesViaExternalAPIEnumerator.Current;
-            }
+            //if (this.connection.GraphType != GraphType.GraphAPIOnly && this.verticesViaExternalAPIEnumerator.MoveNext()) {
+            //    return this.verticesViaExternalAPIEnumerator.Current;
+            //}
 
             this.Close();
             return null;
@@ -110,7 +110,7 @@ namespace GraphView
         public override void ResetState()
         {
             this.verticesEnumerator = this.connection.CreateDatabasePortal().GetVertices(this.vertexQuery);
-            this.verticesViaExternalAPIEnumerator = connection.CreateDatabasePortal().GetVerticesViaExternalAPI(this.vertexViaExternalAPIQuery);
+            //this.verticesViaExternalAPIEnumerator = connection.CreateDatabasePortal().GetVerticesViaExternalAPI(this.vertexViaExternalAPIQuery);
             this.outputBuffer?.Clear();
             this.Open();
         }
@@ -148,7 +148,7 @@ namespace GraphView
         // It is null if the sink vertex has no predicates and no properties other than sink vertex ID
         // are to be returned.  
         private JsonQuery sinkVertexQuery;
-        private JsonQuery sinkVertexViaExternalAPIQuery;
+        //private JsonQuery sinkVertexViaExternalAPIQuery;
 
         // Deprecated currently.
         // A list of index pairs, each specifying which field in the source record 
@@ -163,7 +163,7 @@ namespace GraphView
             int edgeFieldIndex,
             TraversalTypeEnum traversalType,
             JsonQuery sinkVertexQuery,
-            JsonQuery sinkVertexViaExternalAPIQuery,
+            //JsonQuery sinkVertexViaExternalAPIQuery,
             List<Tuple<int, int>> matchingIndexes,
             int outputBufferSize = 10000)
         {
@@ -173,7 +173,7 @@ namespace GraphView
             this.edgeFieldIndex = edgeFieldIndex;
             this.traversalType = traversalType;
             this.sinkVertexQuery = sinkVertexQuery;
-            this.sinkVertexViaExternalAPIQuery = sinkVertexViaExternalAPIQuery;
+            //this.sinkVertexViaExternalAPIQuery = sinkVertexViaExternalAPIQuery;
             this.matchingIndexes = matchingIndexes;
             this.outputBufferSize = outputBufferSize;
         }
@@ -285,49 +285,60 @@ namespace GraphView
                         toSendQuery.WhereSearchCondition = $"({this.sinkVertexQuery.WhereSearchCondition}) AND {inClause}";
                     }
 
-                    string spilledEdgeDocumentsInClause =
-                        $"{this.sinkVertexViaExternalAPIQuery.Alias}.{GraphViewKeywords.KW_EDGEDOC_VERTEXID} IN ({sinkReferenceList.ToString()})";
+                    //string spilledEdgeDocumentsInClause =
+                    //    $"{this.sinkVertexViaExternalAPIQuery.Alias}.{GraphViewKeywords.KW_EDGEDOC_VERTEXID} IN ({sinkReferenceList.ToString()})";
 
-                    JsonQuery toSendViaExternalAPIQuery = new JsonQuery(this.sinkVertexViaExternalAPIQuery);
-                    if (string.IsNullOrEmpty(toSendViaExternalAPIQuery.WhereSearchCondition)) {
-                        toSendViaExternalAPIQuery.WhereSearchCondition = $"({inClause}) OR ({spilledEdgeDocumentsInClause})";
-                    }
-                    else {
-                        toSendViaExternalAPIQuery.WhereSearchCondition =
-                            $"(({toSendViaExternalAPIQuery.WhereSearchCondition}) AND {inClause}) OR ({spilledEdgeDocumentsInClause})";
-                    }
+                    //JsonQuery toSendViaExternalAPIQuery = new JsonQuery(this.sinkVertexViaExternalAPIQuery);
+                    //if (string.IsNullOrEmpty(toSendViaExternalAPIQuery.WhereSearchCondition)) {
+                    //    toSendViaExternalAPIQuery.WhereSearchCondition = $"({inClause}) OR ({spilledEdgeDocumentsInClause})";
+                    //}
+                    //else {
+                    //    toSendViaExternalAPIQuery.WhereSearchCondition =
+                    //        $"(({toSendViaExternalAPIQuery.WhereSearchCondition}) AND {inClause}) OR ({spilledEdgeDocumentsInClause})";
+                    //}
 
-                    string partitionInClause = sinkPartitionList.Length > 0
-                        ? $" AND {this.sinkVertexQuery.Alias}{this.connection.GetPartitionPathIndexer()} IN ({sinkPartitionList.ToString()})"
-                        : "";
+                    //string partitionInClause = sinkPartitionList.Length > 0
+                    //    ? $" AND {this.sinkVertexQuery.Alias}{this.connection.GetPartitionPathIndexer()} IN ({sinkPartitionList.ToString()})"
+                    //    : "";
 
-                    toSendQuery.WhereSearchCondition =
-                        $"{toSendQuery.WhereSearchCondition}{partitionInClause}";
-                    toSendViaExternalAPIQuery.WhereSearchCondition =
-                        $"{toSendViaExternalAPIQuery.WhereSearchCondition}{partitionInClause}";
+                    //toSendQuery.WhereSearchCondition =
+                    //    $"{toSendQuery.WhereSearchCondition}{partitionInClause}";
+                    //toSendViaExternalAPIQuery.WhereSearchCondition =
+                    //    $"{toSendViaExternalAPIQuery.WhereSearchCondition}{partitionInClause}";
 
                     using (DbPortal databasePortal = this.connection.CreateDatabasePortal())
                     {
                         IEnumerator<RawRecord> verticesEnumerator = databasePortal.GetVertices(toSendQuery);
 
-                        while (this.connection.GraphType != GraphType.CompatibleOnly && verticesEnumerator.MoveNext()) {
-                            RawRecord rec = verticesEnumerator.Current;
+                        // The following lines are added for debugging convenience
+                        // It nearly does no harm to performance
+                        List<RawRecord> temp = new List<RawRecord>();
+                        while (verticesEnumerator.MoveNext()) {
+                            temp.Add(verticesEnumerator.Current);
+                        }
+
+                        //
+                        // Now no matter whether this graph is CompatibleOnly, we should construct the sink vertices
+                        //
+                        //if (this.connection.GraphType != GraphType.CompatibleOnly) {
+                        foreach (RawRecord rec in temp) {
                             if (!sinkVertexCollection.ContainsKey(rec[0].ToValue)) {
                                 sinkVertexCollection.Add(rec[0].ToValue, new List<RawRecord>());
                             }
                             sinkVertexCollection[rec[0].ToValue].Add(rec);
                         }
+                        //}
 
-                        IEnumerator<RawRecord> verticesViaExternalAPIEnumerator =
-                            databasePortal.GetVerticesViaExternalAPI(toSendViaExternalAPIQuery);
+                        //IEnumerator<RawRecord> verticesViaExternalAPIEnumerator =
+                        //    databasePortal.GetVerticesViaExternalAPI(toSendViaExternalAPIQuery);
 
-                        while (this.connection.GraphType != GraphType.GraphAPIOnly && verticesViaExternalAPIEnumerator.MoveNext()) {
-                            RawRecord rec = verticesViaExternalAPIEnumerator.Current;
-                            if (!sinkVertexCollection.ContainsKey(rec[0].ToValue)) {
-                                sinkVertexCollection.Add(rec[0].ToValue, new List<RawRecord>());
-                            }
-                            sinkVertexCollection[rec[0].ToValue].Add(rec);
-                        }
+                        //while (this.connection.GraphType != GraphType.GraphAPIOnly && verticesViaExternalAPIEnumerator.MoveNext()) {
+                        //    RawRecord rec = verticesViaExternalAPIEnumerator.Current;
+                        //    if (!sinkVertexCollection.ContainsKey(rec[0].ToValue)) {
+                        //        sinkVertexCollection.Add(rec[0].ToValue, new List<RawRecord>());
+                        //    }
+                        //    sinkVertexCollection[rec[0].ToValue].Add(rec);
+                        //}
                     }
                 }
 

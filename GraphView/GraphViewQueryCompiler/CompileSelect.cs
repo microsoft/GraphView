@@ -163,9 +163,15 @@ namespace GraphView
             }
         }
 
-        internal static bool CanBePushedToServer(bool useReverseEdges, MatchEdge matchEdge)
+        internal static bool CanBePushedToServer(GraphViewConnection connection, MatchEdge matchEdge)
         {
-            if (IsTraversalThroughPhysicalReverseEdge(matchEdge) && !useReverseEdges) {
+            // For Compatible & Hybrid, we can't push edge predicates to server side
+            if (connection.GraphType != GraphType.GraphAPIOnly) {
+                Debug.Assert(connection.EdgeSpillThreshold == 1);
+                return false;
+            }
+
+            if (IsTraversalThroughPhysicalReverseEdge(matchEdge) && !connection.UseReverseEdges) {
                 return false;
             }
 
@@ -193,22 +199,21 @@ namespace GraphView
                         {
                             if (traversalEdge != null)
                             {
-                                pushedToServerEdge = CanBePushedToServer(connection.UseReverseEdges, traversalEdge)
+                                pushedToServerEdge = CanBePushedToServer(connection, traversalEdge)
                                     ? traversalEdge
                                     : null;
                             }
                             else if (currentNode.DanglingEdges.Count == 1)
                             {
-                                pushedToServerEdge = CanBePushedToServer(connection.UseReverseEdges,
-                                    currentNode.DanglingEdges[0])
+                                pushedToServerEdge = CanBePushedToServer(connection, currentNode.DanglingEdges[0])
                                     ? currentNode.DanglingEdges[0]
                                     : null;
                             }
                         }
 
                         string partitionKey = connection.RealPartitionKey;
-                        ConstructJsonQueryOnNode(currentNode, pushedToServerEdge, partitionKey);
-                        ConstructJsonQueryOnNodeViaExternalAPI(currentNode, null);
+                        ConstructJsonQueryOnNode(connection, currentNode, pushedToServerEdge, partitionKey);
+                        //ConstructJsonQueryOnNodeViaExternalAPI(currentNode, null);
                         processedNodes.Add(currentNode.NodeAlias);
                     }
                 }
@@ -216,7 +221,7 @@ namespace GraphView
         }
         
 
-        internal static void ConstructJsonQueryOnNode(MatchNode node, MatchEdge edge, string partitionKey)
+        internal static void ConstructJsonQueryOnNode(GraphViewConnection connection, MatchNode node, MatchEdge edge, string partitionKey)
         {
             string nodeAlias = node.NodeAlias;
             string edgeAlias = null;
@@ -275,6 +280,15 @@ namespace GraphView
             }
 
             WBooleanExpression edgeCondition = null;
+            
+            //
+            // Now we don't try to use a JOIN clause to fetch the edges along with the vertex unless in GraphAPI only graph
+            // Thus, `edgeCondition` is always null
+            //
+            if (connection.GraphType != GraphType.GraphAPIOnly) {
+                Debug.Assert(edge == null);
+            }
+
             if (edge != null)
             {
                 joinStrBuilder.AppendFormat(" JOIN {0} IN {1}.{2} ", edgeAlias, nodeAlias,
@@ -291,6 +305,8 @@ namespace GraphView
                 DMultiPartIdentifierVisitor normalizeEdgePredicatesColumnReferenceExpressionVisitor = new DMultiPartIdentifierVisitor();
                 normalizeEdgePredicatesColumnReferenceExpressionVisitor.Invoke(edgeCondition);
             }
+            
+
             string edgeConditionString = edgeCondition?.ToString();
             if (!string.IsNullOrEmpty(edgeConditionString))
             {
@@ -307,8 +323,14 @@ namespace GraphView
             //
             // (IS_DEFINED(nodeAlias._viaGraphAPI) = true AND (nodeCondition)) AND (edgeCondition)
             //
-            string searchConditionString = string.Format("(IS_DEFINED({0}.{1}) = true{2}){3}",
-                nodeAlias, GraphViewKeywords.KW_VERTEX_VIAGRAPHAPI,
+            //string searchConditionString = string.Format(
+            //    "(IS_DEFINED({0}.{1}) = true{2}){3}",
+            //    nodeAlias, GraphViewKeywords.KW_VERTEX_VIAGRAPHAPI,
+            //    hasNodePredicates ? $" AND ({nodeCondition.ToString()})" : "",
+            //    hasEdgePredicates ? $" AND ({edgeConditionString})" : "");
+            string searchConditionString = string.Format(
+                "(IS_DEFINED({0}.{1}) = false {2}) {3}",
+                nodeAlias, GraphViewKeywords.KW_EDGEDOC_IDENTIFIER,
                 hasNodePredicates ? $" AND ({nodeCondition.ToString()})" : "",
                 hasEdgePredicates ? $" AND ({edgeConditionString})" : "");
 
@@ -324,6 +346,7 @@ namespace GraphView
             node.AttachedJsonQuery = jsonQuery;
         }
 
+        /*
         internal static void ConstructJsonQueryOnNodeViaExternalAPI(MatchNode node, MatchEdge edge)
         {
             string nodeAlias = node.NodeAlias;
@@ -375,6 +398,7 @@ namespace GraphView
             };
             node.AttachedJsonQueryOfNodesViaExternalAPI = jsonQuery;
         }
+        */
 
         private MatchGraph ConstructGraph2(out List<WTableReferenceWithAlias> nonVertexTableReferences)
         {
@@ -944,8 +968,8 @@ namespace GraphView
 
                         FetchNodeOperator2 fetchNodeOp = new FetchNodeOperator2(
                             connection, 
-                            currentNode.AttachedJsonQuery, 
-                            currentNode.AttachedJsonQueryOfNodesViaExternalAPI);
+                            currentNode.AttachedJsonQuery
+                            /*currentNode.AttachedJsonQueryOfNodesViaExternalAPI*/);
 
                         //
                         // The graph contains more than one component
@@ -979,7 +1003,7 @@ namespace GraphView
                             context.LocateColumnReference(traversalEdge.EdgeAlias, GremlinKeyword.Star),
                             this.GetTraversalType(traversalEdge),
                             currentNode.AttachedJsonQuery,
-                            currentNode.AttachedJsonQueryOfNodesViaExternalAPI, 
+                            //currentNode.AttachedJsonQueryOfNodesViaExternalAPI, 
                             null));
                         context.CurrentExecutionOperator = operatorChain.Last();
                         //
@@ -1724,13 +1748,13 @@ namespace GraphView
                 matchNode.Properties.Add(populateProperty.Value);
             }
 
-            WSelectQueryBlock.ConstructJsonQueryOnNode(matchNode, null, dbConnection.RealPartitionKey);
-            WSelectQueryBlock.ConstructJsonQueryOnNodeViaExternalAPI(matchNode, null);
+            WSelectQueryBlock.ConstructJsonQueryOnNode(dbConnection, matchNode, null, dbConnection.RealPartitionKey);
+            //WSelectQueryBlock.ConstructJsonQueryOnNodeViaExternalAPI(matchNode, null);
 
             FetchNodeOperator2 fetchNodeOp = new FetchNodeOperator2(
                 dbConnection, 
-                matchNode.AttachedJsonQuery,
-                matchNode.AttachedJsonQueryOfNodesViaExternalAPI);
+                matchNode.AttachedJsonQuery
+                /*matchNode.AttachedJsonQueryOfNodesViaExternalAPI*/);
 
             foreach (string propertyName in matchNode.Properties) {
                 ColumnGraphType columnGraphType = GraphViewReservedProperties.IsNodeReservedProperty(propertyName)
@@ -1777,14 +1801,14 @@ namespace GraphView
             // Construct JSON query
             //
             if (isSendQueryRequired) {
-                WSelectQueryBlock.ConstructJsonQueryOnNode(matchNode, null, dbConnection.RealPartitionKey);
-                WSelectQueryBlock.ConstructJsonQueryOnNodeViaExternalAPI(matchNode, null);
+                WSelectQueryBlock.ConstructJsonQueryOnNode(dbConnection, matchNode, null, dbConnection.RealPartitionKey);
+                //WSelectQueryBlock.ConstructJsonQueryOnNodeViaExternalAPI(matchNode, null);
             }
 
             TraversalOperator2 traversalOp = new TraversalOperator2(
                 context.CurrentExecutionOperator, dbConnection, 
                 edgeFieldIndex, this.GetTraversalTypeParameter(),
-                matchNode.AttachedJsonQuery, matchNode.AttachedJsonQueryOfNodesViaExternalAPI, null);
+                matchNode.AttachedJsonQuery/*, matchNode.AttachedJsonQueryOfNodesViaExternalAPI*/, null);
             context.CurrentExecutionOperator = traversalOp;
 
             // Update context's record layout

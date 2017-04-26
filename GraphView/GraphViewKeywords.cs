@@ -39,7 +39,6 @@ namespace GraphView
         public const string KW_DOC_ETAG = "_etag";
 
         public const string KW_VERTEX_LABEL = "label";
-        public const string KW_VERTEX_VIAGRAPHAPI = "_viaGraphAPI";
         public const string KW_VERTEX_EDGE = GremlinKeyword.EdgeAdj;
         public const string KW_VERTEX_REV_EDGE = GremlinKeyword.ReverseEdgeAdj;
         //public const string KW_VERTEX_NEXTOFFSET = "_nextEdgeOffset";
@@ -63,6 +62,7 @@ namespace GraphView
         public const string KW_EDGEDOC_VERTEXID = "_vertex_id";
         public const string KW_EDGEDOC_ISREVERSE = "_is_reverse";
         public const string KW_EDGEDOC_EDGE = KW_VERTEX_EDGE;
+        public const string KW_EDGEDOC_IDENTIFIER = "_isEdgeDoc";
 
         public static string KW_TABLE_DEFAULT_COLUMN_NAME = GremlinKeyword.TableDefaultColumnName;
 

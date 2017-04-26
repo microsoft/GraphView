@@ -39,7 +39,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         /// Equivalent gremlin: "g.V.has('age').as('a').out.in.has('age').as('b').select('a','b').where('a', eq('b'))"
         /// </summary>
         [TestMethod]
-        [TestModernCompatible]
+        [TestModernCompatible(false)]
         public void VerticesHasAgeAsAOutInHasAgeAsBSelectABWhereAEqB()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -82,7 +82,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         /// Equivalent gremlin: "g.V.has('age').as('a').out.in.has('age').as('b').select('a','b').where('a', neq('b'))"
         /// </summary>
         [TestMethod]
-        [TestModernCompatible]
+        [TestModernCompatible(false)]
         public void VerticesHasAgeAsAOutInHasAgeAsBSelectABWhereANeqB()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -269,7 +269,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         /// Equivalent gremlin: "g.V(v1Id).as('a').out('created').in('created').as('b').where(__.as('b').out('created').has('name','ripple')).values('age','name')", "v1Id", v1Id
         /// </summary>
         [TestMethod]
-        [TestModernCompatible]
+        [TestModernCompatible(false)]
         public void HasVextexIdAsAOutCreatedInCreatedAsBWhereAsBOutCreatedHasNameRippleValuesAgeName()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))

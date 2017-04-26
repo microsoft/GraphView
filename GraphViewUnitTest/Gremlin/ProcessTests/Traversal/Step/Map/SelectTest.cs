@@ -410,7 +410,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// Equivalent gremlin: "g.V(v4Id).out.as('here').has('lang', 'java').select('here')", "v4Id", v4Id
         /// </summary>
         [TestMethod]
-        [TestModernCompatible]
+        [TestModernCompatible(false)]
         public void HasVertexIdOutAsHereHasLangJavaSelectHere()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -465,7 +465,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// Equivalent gremlin: "g.V(v4Id).out.as('here').has('lang', 'java').select('here').name", "v4Id", v4Id
         /// </summary>
         [TestMethod]
-        [TestModernCompatible]
+        [TestModernCompatible(false)]
         public void HasVertexIdOutAsHereHasLangJavaSelectHereName()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -571,7 +571,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// Equivalent gremlin: "g.V.as('a').has('name', 'marko').as('b').as('c').select('a','b','c').by().by('name').by('age')"
         /// </summary>
         [TestMethod]
-        [TestModernCompatible]
+        [TestModernCompatible(false)]
         public void VerticesAsAHasNameMarkoAsBAsCSelectABCByByNameByAge()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -598,7 +598,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         ///                         by(__.in('created').values('name').fold().order(local))"
         /// </summary>
         [TestMethod]
-        [TestModernCompatible]
+        [TestModernCompatible(false)]
         public void HasLabelSoftwareAsNameAsLanguageAsCreatorsSelectNameLanguageCreatorsByNameByLangByInCreatedValuesNameFoldOrderLocal()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))

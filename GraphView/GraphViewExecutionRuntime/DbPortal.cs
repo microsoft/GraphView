@@ -64,7 +64,7 @@ namespace GraphView
         public void Dispose() { }
 
         public abstract IEnumerator<RawRecord> GetVertices(JsonQuery vertexQuery);
-        public abstract IEnumerator<RawRecord> GetVerticesViaExternalAPI(JsonQuery vertexQuery);
+        //public abstract IEnumerator<RawRecord> GetVerticesViaExternalAPI(JsonQuery vertexQuery);
     }
 
     internal class DocumentDbPortal : DbPortal
@@ -192,6 +192,7 @@ namespace GraphView
             }
         }
 
+        /*
         /// <summary>
         /// Retrieve vertices in conventional JSON documents. The JSON query to send
         /// returns both vertex documents and edge documents, from which 
@@ -296,5 +297,6 @@ namespace GraphView
                 yield return record;
             }
         }
+        */
     }
 }

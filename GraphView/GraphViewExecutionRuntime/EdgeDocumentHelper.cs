@@ -199,7 +199,8 @@ namespace GraphView
                     [KW_DOC_ID] = GraphViewConnection.GenerateDocumentId(),
                     [KW_EDGEDOC_ISREVERSE] = isReverse,
                     [KW_EDGEDOC_VERTEXID] = (string)vertexObject[KW_DOC_ID],
-                    [KW_EDGEDOC_EDGE] = new JArray(edgeObject)
+                    [KW_EDGEDOC_EDGE] = new JArray(edgeObject),
+                    [KW_EDGEDOC_IDENTIFIER] = (JValue)true,
                 };
                 if (connection.PartitionPathTopLevel != null) {
                     // This may be KW_DOC_PARTITION, maybe not
@@ -499,14 +500,15 @@ namespace GraphView
             Dictionary<string, Tuple<JObject, string>> documentMap,
             GraphViewConnection connection,
             string edgeDocId,
-            JObject vertexObject,
+            VertexField vertexField,
             bool isReverse,
             string srcVertexId, string edgeId)
         {
+            JObject vertexObject = vertexField.VertexJObject;
             JArray edgeContainer = (JArray)vertexObject[isReverse ? KW_VERTEX_REV_EDGE : KW_VERTEX_EDGE];
 
             // Check is this vertex an external vertex?
-            if (vertexObject[KW_VERTEX_VIAGRAPHAPI] == null) {
+            if (!vertexField.ViaGraphAPI) {
 #if DEBUG
                 JObject edgeDocument = connection.RetrieveDocumentById(edgeDocId, connection.GetDocumentPartition(vertexObject));
                 Debug.Assert(connection.GetDocumentPartition(edgeDocument) == connection.GetDocumentPartition(vertexObject));

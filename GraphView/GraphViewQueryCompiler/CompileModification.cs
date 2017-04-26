@@ -16,7 +16,7 @@ namespace GraphView
             Debug.Assert(vertexLabel != null);
             JObject vertexObject = new JObject {
                 [KW_VERTEX_LABEL] = vertexLabel,
-                [KW_VERTEX_VIAGRAPHAPI] = true
+                //[KW_VERTEX_VIAGRAPHAPI] = true
             };
 
             projectedFieldList = new List<string>(GraphViewReservedProperties.InitialPopulateNodeProperties);

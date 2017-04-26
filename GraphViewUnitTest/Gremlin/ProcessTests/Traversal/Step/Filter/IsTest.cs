@@ -21,7 +21,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         /// Equivalent gremlin: "g.V.age.is(32)"
         /// </summary>
         [TestMethod]
-        [TestModernCompatible]
+        [TestModernCompatible(false)]
         public void VerticesValuesAgeIs32()
         {
             using (GraphViewCommand GraphViewCommand = new GraphViewCommand(graphConnection))
@@ -40,7 +40,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         /// Equivalent gremlin: "gremlin-groovy", "g.V.age.is(lte(30))"
         /// </summary>
         [TestMethod]
-        [TestModernCompatible]
+        [TestModernCompatible(false)]
         public void VerticesValuesAgeIsLTE30()
         {
             using (GraphViewCommand GraphViewCommand = new GraphViewCommand(graphConnection))
@@ -58,6 +58,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         /// Equivalent gremlin: "gremlin-groovy", "g.V.age.is(gte(29)).is(lt(34))"
         /// </summary>
         [TestMethod]
+        [TestModernCompatible(false)]
         public void VerticesValuesAgeIsGTE29IsLT34()
         {
             using (GraphViewCommand GraphViewCommand = new GraphViewCommand(graphConnection))

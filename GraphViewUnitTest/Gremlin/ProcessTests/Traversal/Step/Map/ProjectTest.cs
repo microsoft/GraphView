@@ -23,7 +23,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// WorkItem: https://msdata.visualstudio.com/DocumentDB/_workitems/edit/37476
         /// </remarks>
         [TestMethod]
-        [TestModernCompatible]
+        [TestModernCompatible(false)]
         public void HasLabelPersonProjectABByOutECountByAge()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))

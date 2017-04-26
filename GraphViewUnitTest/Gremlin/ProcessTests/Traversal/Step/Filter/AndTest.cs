@@ -18,7 +18,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         /// Gremlin: g.V().and(has("age", P.gt(27)), outE().count().is(P.gte(2l))).values("name");
         /// </summary>
         [TestMethod]
-        [TestModernCompatible]
+        [TestModernCompatible(false)]
         public void AndWithParameters()
         {
             using (GraphViewCommand GraphViewCommand = new GraphViewCommand(graphConnection))
@@ -44,7 +44,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         /// https://msdata.visualstudio.com/DocumentDB/_workitems/edit/36511
         /// </remarks>
         [TestMethod]
-        [TestModernCompatible]
+        [TestModernCompatible(false)]
         public void AndAsInfixNotation()
         {
             using (GraphViewCommand GraphViewCommand = new GraphViewCommand(graphConnection))

@@ -59,7 +59,12 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests
                 var traversal = command.g().V(id).Union(GraphTraversal2.__().Out(), GraphTraversal2.__().OutE()).Properties();
                 var result = JsonConvert.DeserializeObject<dynamic>(traversal.Next().FirstOrDefault());
 
-                Assert.AreEqual(9, (int)result.Count);
+                if (graphConnection.GraphType != GraphType.GraphAPIOnly) {
+                    Assert.AreEqual(6, (int)result.Count);
+                }
+                else {
+                    Assert.AreEqual(9, (int)result.Count);
+                }
 
                 if (graphConnection.GraphType == GraphType.GraphAPIOnly)
                 {

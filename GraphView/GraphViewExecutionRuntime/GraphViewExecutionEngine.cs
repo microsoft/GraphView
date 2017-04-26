@@ -1585,7 +1585,7 @@ namespace GraphView
             case KW_DOC_ID:
             case KW_DOC_PARTITION:
             case KW_VERTEX_LABEL:
-            case KW_VERTEX_VIAGRAPHAPI:
+            //case KW_VERTEX_VIAGRAPHAPI:
             //case KW_VERTEX_NEXTOFFSET:
             case KW_VERTEX_EDGE_SPILLED:
             case KW_VERTEX_REVEDGE_SPILLED:
@@ -1602,7 +1602,7 @@ namespace GraphView
 
         public AdjacencyListField RevAdjacencyList { get; }
 
-        public bool ViaGraphAPI => ((bool?)(JValue)this.VertexJObject[KW_VERTEX_VIAGRAPHAPI] == true);
+        public bool ViaGraphAPI => (this.VertexJObject[KW_VERTEX_EDGE] != null);
 
         public string Partition { get; }
 
@@ -1767,11 +1767,6 @@ namespace GraphView
                 }
             }
 
-            if (!this.VertexMetaProperties.ContainsKey(KW_VERTEX_VIAGRAPHAPI))
-            {
-                this.VertexMetaProperties[KW_VERTEX_VIAGRAPHAPI] = new ValuePropertyField(KW_VERTEX_VIAGRAPHAPI, "false", JsonDataType.Boolean, this);
-            }
-
 
             //
             // Meta properties must exist
@@ -1780,7 +1775,7 @@ namespace GraphView
 
             if (this.ViaGraphAPI) {
                 Debug.Assert(this.VertexMetaProperties.ContainsKey(KW_VERTEX_LABEL));
-                Debug.Assert(this.VertexMetaProperties.ContainsKey(KW_VERTEX_VIAGRAPHAPI));
+                //Debug.Assert(this.VertexMetaProperties.ContainsKey(KW_VERTEX_VIAGRAPHAPI));
                 Debug.Assert(this.VertexMetaProperties.ContainsKey(KW_VERTEX_EDGE_SPILLED));
                 Debug.Assert(this.VertexMetaProperties.ContainsKey(KW_VERTEX_REVEDGE_SPILLED));
 

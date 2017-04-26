@@ -16,7 +16,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// Gremlin: g.V().choose(out().count()).option(2, __.values("name")).option(3, __.valueMap())
         /// </summary>
         [TestMethod]
-        [TestModernCompatible]
+        [TestModernCompatible(false)]
         public void get_g_V_chooseXout_countX_optionX2L__nameX_optionX3L__valueMapX()
         {
             using (GraphViewCommand GraphViewCommand = new GraphViewCommand(graphConnection))

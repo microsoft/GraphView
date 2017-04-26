@@ -72,7 +72,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Branch
         /// WorkItem to track this: https://msdata.visualstudio.com/DocumentDB/_workitems/edit/36531
         /// </remarks>
         [TestMethod]
-        [TestModernCompatible]
+        [TestModernCompatible(false)]
         public void ChooseIfPersonThenUnionOutLangOutAndOutNameElseInLabel()
         {
             using (GraphViewCommand GraphViewCommand = new GraphViewCommand(graphConnection))
@@ -97,7 +97,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Branch
         /// <remarks>
         /// </remarks>
         [TestMethod]
-        [TestModernCompatible]
+        [TestModernCompatible(false)]
         public void ChooseIfPersonThenUnionOutLangOutAndOutNameElseInLabelGroupCount()
         {
             using (GraphViewCommand GraphViewCommand = new GraphViewCommand(graphConnection))

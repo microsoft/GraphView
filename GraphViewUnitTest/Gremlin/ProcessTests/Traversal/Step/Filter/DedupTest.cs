@@ -103,7 +103,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         /// Gremlin: g.V().both().has(T.label, "software").dedup().by("lang").values("name");
         /// </summary>
         [TestMethod]
-        [TestModernCompatible]
+        [TestModernCompatible(false)]
         public void DedupBy()
         {
             using (GraphViewCommand GraphViewCommand = new GraphViewCommand(graphConnection))

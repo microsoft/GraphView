@@ -135,7 +135,7 @@ namespace GraphView
         public double EstimatedRows { get; set; }
         public int TableRowCount { get; set; }
         internal JsonQuery AttachedJsonQuery { get; set; }
-        internal JsonQuery AttachedJsonQueryOfNodesViaExternalAPI { get; set; }
+        //internal JsonQuery AttachedJsonQueryOfNodesViaExternalAPI { get; set; }
         public HashSet<string> Properties { get; set; }
 
         /// <summary>
@@ -179,7 +179,7 @@ namespace GraphView
             this.EstimatedRows = rhs.EstimatedRows;
             this.TableRowCount = rhs.TableRowCount;
             this.AttachedJsonQuery = rhs.AttachedJsonQuery;
-            this.AttachedJsonQueryOfNodesViaExternalAPI = rhs.AttachedJsonQueryOfNodesViaExternalAPI;
+            //this.AttachedJsonQueryOfNodesViaExternalAPI = rhs.AttachedJsonQueryOfNodesViaExternalAPI;
             this.Properties = new HashSet<string>(rhs.Properties);
             this.GlobalNodeIdDensity = rhs.GlobalNodeIdDensity;
             this.Predicates = rhs.Predicates;
