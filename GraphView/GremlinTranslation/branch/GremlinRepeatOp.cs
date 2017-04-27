@@ -18,20 +18,29 @@ namespace GraphView
         public bool StartFromContext { get; set; }
         public bool EmitContext { get; set; }
         public bool IsEmit { get; set; }
+        // i.e. times().repeat()   or   until().repeat()   or   emit().repeat()
+        public bool IsFake { get; set; }
 
         public GremlinRepeatOp(GraphTraversal2 repeatTraversal)
         {
             RepeatTraversal = repeatTraversal;
+            IsFake = false;
             RepeatTimes = -1;
         }
 
         public GremlinRepeatOp()
         {
+            IsFake = true;
             RepeatTimes = -1;
         }
 
         internal override GremlinToSqlContext GetContext()
         {
+            if (this.IsFake)
+            {
+                throw new TranslationException("The fake repeat operator can not get context");
+            }
+
             GremlinToSqlContext inputContext = GetInputContext();
             if (inputContext.PivotVariable == null)
             {

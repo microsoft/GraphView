@@ -62,6 +62,16 @@ namespace GraphView
     }
 
     [Serializable]
+    public class TranslationException : GraphViewException
+    {
+        public TranslationException() { }
+        public TranslationException(string message) : base(message) { }
+        public TranslationException(string message, Exception innerException) :
+            base(message, innerException)
+        { }
+    }
+
+    [Serializable]
     public class QueryCompilationException : GraphViewException
     {
         public QueryCompilationException() { }

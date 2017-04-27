@@ -25,6 +25,16 @@ namespace GraphView
                 throw new QueryCompilationException("The PivotVariable can't be null.");
             }
 
+            if (ByGraphTraversal.Count == 0)
+            {
+                ByGraphTraversal.Add(GraphTraversal2.__());
+            }
+
+            if (ByGraphTraversal.Count > ProjectKeys.Count)
+            {
+                ByGraphTraversal.RemoveRange(ProjectKeys.Count, ByGraphTraversal.Count - ProjectKeys.Count);
+            }
+
             List<GremlinToSqlContext> byContexts = new List<GremlinToSqlContext>();
             foreach (var traversal in ByGraphTraversal)
             {
@@ -36,6 +46,7 @@ namespace GraphView
 
             return inputContext;
         }
+
         public override void ModulateBy(GraphTraversal2 traversal)
         {
             ByGraphTraversal.Add(traversal);

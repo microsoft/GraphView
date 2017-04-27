@@ -578,9 +578,10 @@ namespace GraphView
 
         public GraphTraversal2 Emit()
         {
-            if (GetEndOp() is GremlinRepeatOp)
+            GremlinRepeatOp lastOp = GetEndOp() as GremlinRepeatOp;
+            if (lastOp != null && lastOp.IsEmit == false)
             {
-                (GetEndOp() as GremlinRepeatOp).IsEmit = true;
+                lastOp.IsEmit = true;
             }
             else
             {
@@ -593,10 +594,11 @@ namespace GraphView
 
         public GraphTraversal2 Emit(Predicate emitPredicate)
         {
-            if (GetEndOp() is GremlinRepeatOp)
+            GremlinRepeatOp lastOp = GetEndOp() as GremlinRepeatOp;
+            if (lastOp != null && lastOp.IsEmit == false)
             {
-                (GetEndOp() as GremlinRepeatOp).IsEmit = true;
-                (GetEndOp() as GremlinRepeatOp).EmitPredicate = emitPredicate;
+                lastOp.IsEmit = true;
+                lastOp.EmitPredicate = emitPredicate;
             }
             else
             {
@@ -610,10 +612,11 @@ namespace GraphView
 
         public GraphTraversal2 Emit(GraphTraversal2 emitTraversal)
         {
-            if (GetEndOp() is GremlinRepeatOp)
+            GremlinRepeatOp lastOp = GetEndOp() as GremlinRepeatOp;
+            if (lastOp != null && lastOp.IsEmit == false)
             {
-                (GetEndOp() as GremlinRepeatOp).IsEmit = true;
-                (GetEndOp() as GremlinRepeatOp).EmitTraversal = emitTraversal;
+                lastOp.IsEmit = true;
+                lastOp.EmitTraversal = emitTraversal;
             }
             else
             {
@@ -1064,9 +1067,11 @@ namespace GraphView
 
         public GraphTraversal2 Repeat(GraphTraversal2 repeatTraversal)
         {
-            if (GetEndOp() is GremlinRepeatOp)
+            if (GetEndOp() is GremlinRepeatOp && (GetEndOp() as GremlinRepeatOp).IsFake)
             {
+                // Repeat after emit/until/times
                 (GetEndOp() as GremlinRepeatOp).RepeatTraversal = repeatTraversal;
+                (GetEndOp() as GremlinRepeatOp).IsFake = false;
             }
             else
             {
@@ -1166,9 +1171,11 @@ namespace GraphView
 
         public GraphTraversal2 Times(int maxLoops)
         {
-            if (GetEndOp() is GremlinRepeatOp)
+            maxLoops = Math.Max(maxLoops, 1);
+            GremlinRepeatOp lastOp = (GetEndOp() as GremlinRepeatOp);
+            if (lastOp != null && lastOp.RepeatTimes == -1 && lastOp.TerminationTraversal == null)
             {
-                (GetEndOp() as GremlinRepeatOp).RepeatTimes = maxLoops;
+                lastOp.RepeatTimes = maxLoops;
             }
             else
             {
@@ -1232,9 +1239,10 @@ namespace GraphView
 
         public GraphTraversal2 Until(Predicate untilPredicate)
         {
-            if (GetEndOp() is GremlinRepeatOp)
+            GremlinRepeatOp lastOp = GetEndOp() as GremlinRepeatOp;
+            if (lastOp != null && lastOp.RepeatTimes == -1 && lastOp.TerminationTraversal == null)
             {
-                (GetEndOp() as GremlinRepeatOp).TerminationPredicate = untilPredicate;
+                lastOp.TerminationPredicate = untilPredicate;
             }
             else
             {
@@ -1247,9 +1255,10 @@ namespace GraphView
 
         public GraphTraversal2 Until(GraphTraversal2 untilTraversal)
         {
-            if (GetEndOp() is GremlinRepeatOp)
+            GremlinRepeatOp lastOp = GetEndOp() as GremlinRepeatOp;
+            if (lastOp != null && lastOp.RepeatTimes == -1 && lastOp.TerminationTraversal == null)
             {
-                (GetEndOp() as GremlinRepeatOp).TerminationTraversal = untilTraversal;
+                lastOp.TerminationTraversal = untilTraversal;
             }
             else
             {
