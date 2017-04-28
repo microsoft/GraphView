@@ -1441,7 +1441,7 @@ namespace GraphView
 
             UnionOperator unionOp = new UnionOperator(context.CurrentExecutionOperator, containerOp);
 
-            bool isUnionWithoutAnyBranch = Parameters.Count == 0;
+            bool isUnionWithoutAnyBranch = Parameters.Count == 0 || Parameters[0] is WValueExpression;
 
             WSelectQueryBlock firstSelectQuery = null;
             if (!isUnionWithoutAnyBranch)
