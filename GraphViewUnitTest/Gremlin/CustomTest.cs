@@ -54,5 +54,20 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests
                 Debugger.Break();
             }
         }
+
+
+        [TestMethod]
+        public void NoneReversedEdges()
+        {
+            using (GraphViewCommand command = new GraphViewCommand(graphConnection))
+            {
+                var result = command.g().V().BothE().Next();
+                foreach (var r in result)
+                {
+                    Console.WriteLine(r);
+                }
+                Debugger.Break();
+            }
+        }
     }
 }

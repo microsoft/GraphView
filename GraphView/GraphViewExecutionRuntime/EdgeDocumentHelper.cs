@@ -199,6 +199,7 @@ namespace GraphView
                     [KW_DOC_ID] = GraphViewConnection.GenerateDocumentId(),
                     [KW_EDGEDOC_ISREVERSE] = isReverse,
                     [KW_EDGEDOC_VERTEXID] = (string)vertexObject[KW_DOC_ID],
+                    [KW_EDGEDOC_VERTEX_LABEL] = (string)vertexObject[KW_VERTEX_LABEL],
                     [KW_EDGEDOC_EDGE] = new JArray(edgeObject),
                     [KW_EDGEDOC_IDENTIFIER] = (JValue)true,
                 };
@@ -266,6 +267,7 @@ namespace GraphView
                         [KW_DOC_ID] = GraphViewConnection.GenerateDocumentId(),
                         [KW_EDGEDOC_ISREVERSE] = isReverse,
                         [KW_EDGEDOC_VERTEXID] = (string)vertexObject[KW_DOC_ID],
+                        [KW_EDGEDOC_VERTEX_LABEL] = (string)vertexObject[KW_VERTEX_LABEL],
                         [KW_EDGEDOC_EDGE] = new JArray(edgeObject)
                     };
                     if (connection.PartitionPathTopLevel != null) {
@@ -390,6 +392,7 @@ namespace GraphView
                 [KW_DOC_ID] = GraphViewConnection.GenerateDocumentId(),
                 [KW_EDGEDOC_ISREVERSE] = spillReverse.Value,
                 [KW_EDGEDOC_VERTEXID] = (string)vertexObject[KW_DOC_ID],
+                [KW_EDGEDOC_VERTEX_LABEL] = (string)vertexObject[KW_VERTEX_LABEL],
                 [KW_EDGEDOC_EDGE] = new JArray(targetEdgeArray.Last),
             };
             if (connection.PartitionPathTopLevel != null) {
@@ -404,6 +407,7 @@ namespace GraphView
                 [KW_DOC_ID] = GraphViewConnection.GenerateDocumentId(),
                 [KW_EDGEDOC_ISREVERSE] = spillReverse.Value,
                 [KW_EDGEDOC_VERTEXID] = (string)vertexObject[KW_DOC_ID],
+                [KW_EDGEDOC_VERTEX_LABEL] = (string)vertexObject[KW_VERTEX_LABEL],
                 [KW_EDGEDOC_EDGE] = targetEdgeArray,
             };
             if (connection.PartitionPathTopLevel != null) {
@@ -686,9 +690,8 @@ namespace GraphView
         /// as a real spilled reverse edge document.
         /// </summary>
         /// <param name="virtualReverseEdges"></param>
-        /// <param name="labelOfSrcVertexOfSpilledEdge"></param>
         /// <returns></returns>
-        private static List<JObject> ConstructVirtualReverseEdgeDocuments(List<dynamic> virtualReverseEdges, Dictionary<string, string> labelOfSrcVertexOfSpilledEdge)
+        private static List<JObject> ConstructVirtualReverseEdgeDocuments(List<dynamic> virtualReverseEdges)
         {
             Dictionary<string, JObject> virtualReverseEdgeDocumentsDict = new Dictionary<string, JObject>();
             foreach (JObject virtualReverseEdge in virtualReverseEdges)
@@ -696,12 +699,12 @@ namespace GraphView
                 JObject virtualReverseEdgeObject = (JObject)virtualReverseEdge[EdgeDocumentHelper.VirtualReverseEdge];
 
                 string srcV, srcVLabel;
-                //
+
                 // This is a spilled edge
-                //
                 if (virtualReverseEdgeObject[KW_EDGEDOC_VERTEXID] != null) {
                     srcV = virtualReverseEdgeObject[KW_EDGEDOC_VERTEXID].ToString();
-                    srcVLabel = labelOfSrcVertexOfSpilledEdge[srcV];
+//                    srcVLabel = labelOfSrcVertexOfSpilledEdge[srcV];
+                    srcVLabel = virtualReverseEdgeObject[KW_EDGEDOC_VERTEX_LABEL].ToString();
                 } else {
                     srcV = virtualReverseEdgeObject[KW_EDGE_SRCV].ToString();
                     srcVLabel = virtualReverseEdgeObject[KW_EDGE_SRCV_LABEL]?.ToString();
@@ -710,12 +713,14 @@ namespace GraphView
 
                 JObject edgeObject = (JObject)virtualReverseEdgeObject[EdgeDocumentHelper.VirtualReverseEdgeObject];
                 string vertexId = (string)edgeObject[KW_EDGE_SINKV];
+                string vertexLabel = (string) edgeObject[KW_EDGE_SINKV_LABEL];
 
                 JObject virtualReverseEdgeDocument;
                 if (!virtualReverseEdgeDocumentsDict.TryGetValue(vertexId, out virtualReverseEdgeDocument)) {
                     virtualReverseEdgeDocument = new JObject {
                         { KW_DOC_ID, EdgeDocumentHelper.VirtualReverseEdgeDocId },
                         { KW_EDGEDOC_VERTEXID, vertexId },
+                        { KW_EDGEDOC_VERTEX_LABEL, vertexLabel },
                         { KW_EDGEDOC_ISREVERSE, true },
                         { KW_EDGEDOC_EDGE, new JArray() }
                     };
@@ -793,7 +798,6 @@ namespace GraphView
             HashSet<string> vertexIdSet, HashSet<string> vertexPartitionKeySet)
         {
             if (!vertexIdSet.Any()) return;
-
             string inClause = string.Join(", ", vertexIdSet.Select(vertexId => $"'{vertexId}'"));
             string partitionInClause = string.Join(", ", vertexPartitionKeySet.Select(partitionKey => $"'{partitionKey}'"));
             string edgeDocumentsQuery =
@@ -829,7 +833,8 @@ namespace GraphView
                     (connection.PartitionPath != null 
                         ? $"  \"{KW_EDGE_SRCV_PARTITION}\": doc{connection.GetPartitionPathIndexer()}," 
                         : "") + 
-                    $"  \"{KW_EDGEDOC_VERTEXID}\": doc.{KW_EDGEDOC_VERTEXID}" +
+                    $"  \"{KW_EDGEDOC_VERTEXID}\": doc.{KW_EDGEDOC_VERTEXID}," +
+                    $"  \"{KW_EDGEDOC_VERTEX_LABEL}\": doc.{KW_EDGEDOC_VERTEX_LABEL}" +
                     $"}} AS {EdgeDocumentHelper.VirtualReverseEdge}\n" +
                     $"FROM doc\n" +
                     $"JOIN edge IN doc.{GraphViewKeywords.KW_VERTEX_EDGE}\n" +
@@ -837,11 +842,10 @@ namespace GraphView
 
                 edgeDocuments = connection.ExecuteQuery(edgeDocumentsQuery).ToList();
 
-                Dictionary<string, string> labelOfSrcVertexOfSpilledEdges =
-                    EdgeDocumentHelper.GetLabelOfSrcVertexOfSpilledEdges(connection, edgeDocuments);
+//                Dictionary<string, string> labelOfSrcVertexOfSpilledEdges =
+//                    EdgeDocumentHelper.GetLabelOfSrcVertexOfSpilledEdges(connection, edgeDocuments);
 
-                List<JObject> virtualReverseEdgeDocuments =
-                    EdgeDocumentHelper.ConstructVirtualReverseEdgeDocuments(edgeDocuments, labelOfSrcVertexOfSpilledEdges);
+                List<JObject> virtualReverseEdgeDocuments = EdgeDocumentHelper.ConstructVirtualReverseEdgeDocuments(edgeDocuments);
 
                 EdgeDocumentHelper.FillEdgeDict(edgeDict, virtualReverseEdgeDocuments.Cast<dynamic>().ToList());
             }

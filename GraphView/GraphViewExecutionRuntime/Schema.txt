@@ -50,6 +50,8 @@ EdgeDocument:
 												// KW_DOC_ID
 	"_vertex_id": ...,   // id of current VertexDocument
 												// KW_EDGEDOC_VERTEXID
+	"_vertex_label": ..., // label of current VertexDocument
+												// KW_EDGEDOC_VERTEX_LABEL
 	"_partition": ...,   // = _partition of the vertex = _vertex_id (tricky!)
 												// KW_DOC_PARTITION
 	"_is_reverse": true/false,   // indicate whether this vertex is source(false) or sink (true)

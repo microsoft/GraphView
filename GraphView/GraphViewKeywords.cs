@@ -60,6 +60,7 @@ namespace GraphView
         public const string KW_EDGE_SINKV_PARTITION = "_sinkVPartition";
 
         public const string KW_EDGEDOC_VERTEXID = "_vertex_id";
+        public const string KW_EDGEDOC_VERTEX_LABEL = "_vertex_label";
         public const string KW_EDGEDOC_ISREVERSE = "_is_reverse";
         public const string KW_EDGEDOC_EDGE = KW_VERTEX_EDGE;
         public const string KW_EDGEDOC_IDENTIFIER = "_isEdgeDoc";
