@@ -1664,7 +1664,7 @@ namespace GraphView
                             }
                         }
 
-                        this.priorStates.Enqueue(initialRec);
+                        this.newStates.Enqueue(initialRec);
                     }
                     this.currentRepeatTimes++;
                     if (this.repeatResultBuffer.Count > 0) {
@@ -1676,37 +1676,31 @@ namespace GraphView
                 //
                 while (this.currentRepeatTimes <= this.repeatTimes)
                 {
+                    Queue<RawRecord> tmpQueue = this.priorStates;
+                    this.priorStates = this.newStates;
+                    this.newStates = tmpQueue;
+
                     this.PrepareInnerOpSource(this.priorStates);
                     this.innerOp.ResetState();
 
                     RawRecord newRec;
-                    while ((newRec = innerOp.Next()) != null) {
+                    while ((newRec = this.innerOp.Next()) != null)
+                    {
                         this.newStates.Enqueue(newRec);
-                        if (this.emitCondition != null && this.emitCondition.Evaluate(newRec)) {
+                        //
+                        // In the last round, the emit condition needn't to be considered
+                        //
+                        if (this.currentRepeatTimes == this.repeatTimes ||
+                            (this.emitCondition != null && this.emitCondition.Evaluate(newRec)))
+                        {
                             this.repeatResultBuffer.Enqueue(newRec);
                         }
                     }
 
+                    this.currentRepeatTimes++;
                     if (this.repeatResultBuffer.Count > 0) {
                         return this.repeatResultBuffer.Dequeue();
                     }
-
-                    Queue<RawRecord> tmpQueue = this.priorStates;
-                    this.priorStates = this.newStates;
-                    this.newStates = tmpQueue;
-                    this.currentRepeatTimes++;
-                }
-
-                //
-                // if emitCondition != null, the results of the final round iteration have already been emitted
-                //
-                if (this.emitCondition == null) {
-                    foreach (RawRecord resultRec in priorStates) {
-                        this.repeatResultBuffer.Enqueue(resultRec);
-                    }
-                }
-                if (this.repeatResultBuffer.Count > 0) {
-                    return this.repeatResultBuffer.Dequeue();
                 }
             }
             else
