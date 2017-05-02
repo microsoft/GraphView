@@ -82,5 +82,19 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
                 CheckUnOrderedResults(new [] {"lop", "lop", "lop", "ripple"}, result);
             }
         }
+
+        [TestMethod]
+        [TestModernCompatibleAttribute]
+        public void ProjectWithoutByClause()
+        {
+            using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
+            {
+                var traversal = graphCommand.g().V().Project("a").Select("a").Values("name");
+
+                var result = traversal.Next();
+
+                CheckUnOrderedResults(new[] { "marko", "vadas", "lop", "josh" , "ripple" , "peter" }, result);
+            }
+        }
     }
 }

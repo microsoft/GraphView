@@ -2474,18 +2474,5 @@ namespace GraphView
 
         // Number of vertices processed so far
         internal int NumberOfProcessedVertices;
-
-
-        //
-        // [Obsolete]: Use GraphViewConnection.ExecuteQuery()
-        //
-        //internal static IQueryable<dynamic> SendQuery(string script, GraphViewConnection connection)
-        //{
-        //    FeedOptions QueryOptions = new FeedOptions { MaxItemCount = -1 };
-        //    IQueryable<dynamic> Result = connection.DocDBClient.CreateDocumentQuery(
-        //        UriFactory.CreateDocumentCollectionUri(connection.DocDBDatabaseId, connection.DocDBCollectionId), 
-        //        script, QueryOptions);
-        //    return Result;
-        //}
     }
 }

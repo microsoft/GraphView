@@ -31,9 +31,8 @@ namespace GraphView
 
             inputContext.VariableList.Add(newVariable);
             inputContext.TableReferences.Add(newVariable);
-            inputContext.SetPivotVariable(newVariable);
 
-            inputContext.PivotVariable.OutE(inputContext, new List<string>());
+            newVariable.OutE(inputContext, new List<string>());
 
             if (EdgeIdsOrElements.Count > 0)
             {

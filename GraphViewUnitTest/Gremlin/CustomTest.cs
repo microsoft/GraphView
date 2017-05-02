@@ -17,7 +17,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests
         {
             using (GraphViewCommand command = new GraphViewCommand(graphConnection))
             {
-                var traversal = command.g().V().Union().V();
+                var traversal = command.g().V().Project("a").Select("a").Values("name");
                 var result = traversal.Next();
             }
         }

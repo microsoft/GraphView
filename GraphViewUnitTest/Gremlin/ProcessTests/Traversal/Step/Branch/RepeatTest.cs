@@ -333,5 +333,42 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Branch
                 CheckUnOrderedResults(new string[] { "lop", "lop", "ripple", "vadas" }, results);
             }
         }
+
+        [TestMethod]
+        [TestModernCompatible]
+        public void RepeatTimes2Repeat()
+        {
+            using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
+            {
+                var traversal =
+                    graphCommand.g()
+                        .V()
+                        .Repeat(GraphTraversal2.__().Out())
+                        .Times(2)
+                        .Repeat(GraphTraversal2.__().In())
+                        .Values("name");
+
+                var results = traversal.Next();
+                CheckUnOrderedResults(new string[] {}, results);
+            }
+        }
+
+        [TestMethod]
+        [TestModernCompatible]
+        public void RepeatTimesLessThanZero()
+        {
+            using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
+            {
+                var traversal =
+                    graphCommand.g()
+                        .V()
+                        .Repeat(GraphTraversal2.__().Out())
+                        .Times(-1)
+                        .Values("name");
+
+                var results = traversal.Next();
+                CheckUnOrderedResults(new string[] { "lop", "lop", "lop", "vadas", "josh", "ripple" }, results);
+            }
+        }
     }
 }

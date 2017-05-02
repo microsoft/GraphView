@@ -208,6 +208,19 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Branch
                 CheckUnOrderedResults(new double[] { 3d, 1.9d, 1d }, ((JArray)result).Select(j => j.ToObject<double>()).ToList());
             }
         }
+
+        [TestMethod]
+        [TestModernCompatible]
+        public void UnionWithoutBranch()
+        {
+            using (GraphViewCommand GraphViewCommand = new GraphViewCommand(graphConnection))
+            {
+                var traversal = GraphViewCommand.g().V().Union().V().Count();
+                var results = traversal.Next();
+
+                CheckUnOrderedResults(new string[] { "0" }, results);
+            }
+        }
     }
 }
 
