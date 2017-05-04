@@ -83,12 +83,14 @@ namespace GraphView
                     vertexObject[name] = propArray;
                 }
 
-                propArray.Add(new JObject {
+                JObject prop = new JObject {
                     [KW_PROPERTY_VALUE] = vertexProperty.Value.ToJValue(),
                     [KW_PROPERTY_ID] = GraphViewConnection.GenerateDocumentId(),
-                    [KW_PROPERTY_META] = meta,
-                });
-                //GraphViewJsonCommand.AppendVertexSinglePropertyToVertex(vertexObject);
+                };
+                if (meta.Count >0) {
+                    prop[KW_PROPERTY_META] = meta;
+                }
+                propArray.Add(prop);
             }
 
             if (connection.EdgeSpillThreshold == 1) {

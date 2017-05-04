@@ -408,8 +408,10 @@ namespace GraphView
                 JObject singleProperty = new JObject {
                     [KW_PROPERTY_VALUE] = property.Value.ToJValue(),
                     [KW_PROPERTY_ID] = GraphViewConnection.GenerateDocumentId(),
-                    [KW_PROPERTY_META] = meta,
                 };
+                if (meta.Count > 0) {
+                    singleProperty[KW_PROPERTY_META] = meta;
+                }
 
                 // Set / Append to multiProperty
                 JArray multiProperty;
@@ -477,6 +479,11 @@ namespace GraphView
             JObject singleProperty = (JObject)((JArray)vertexDocument[vp.PropertyName])
                 .First(single => (string) single[KW_PROPERTY_ID] == vp.PropertyId);
             JObject meta = (JObject)singleProperty[KW_PROPERTY_META];
+
+            if (meta == null && this.updateProperties.Count > 0) {
+                meta = new JObject();
+                singleProperty[KW_PROPERTY_META] = meta;
+            }
 
             foreach (WPropertyExpression property in this.updateProperties) {
                 if (property.Cardinality == GremlinKeyword.PropertyCardinality.List ||

@@ -793,15 +793,17 @@ namespace GraphView
             this.JsonDataType = JsonDataTypeHelper.GetJsonDataType(value.Type);
 
             HashSet<string> metaPropertyKeysToRemove = new HashSet<string>(this.MetaProperties.Keys);
-            foreach (JProperty metaProperty in vertexSinglePropertyObject[KW_PROPERTY_META].Children<JProperty>()) {
-                ValuePropertyField valueProp;
-                bool found = this.MetaProperties.TryGetValue(metaProperty.Name, out valueProp);
-                if (found) {
-                    valueProp.Replace(metaProperty);
-                    metaPropertyKeysToRemove.Remove(metaProperty.Name);
-                }
-                else {
-                    this.MetaProperties.Add(metaProperty.Name, new ValuePropertyField(metaProperty, this));
+            if (vertexSinglePropertyObject.Property(KW_PROPERTY_META) != null) {
+                foreach (JProperty metaProperty in vertexSinglePropertyObject[KW_PROPERTY_META].Children<JProperty>()) {
+                    ValuePropertyField valueProp;
+                    bool found = this.MetaProperties.TryGetValue(metaProperty.Name, out valueProp);
+                    if (found) {
+                        valueProp.Replace(metaProperty);
+                        metaPropertyKeysToRemove.Remove(metaProperty.Name);
+                    }
+                    else {
+                        this.MetaProperties.Add(metaProperty.Name, new ValuePropertyField(metaProperty, this));
+                    }
                 }
             }
 
@@ -1178,7 +1180,7 @@ namespace GraphView
             foreach (JObject vertexPropertyObject in ((JArray)multiProperty.Value).Values<JObject>()) {
                 Debug.Assert(vertexPropertyObject[KW_PROPERTY_VALUE] is JValue);
                 Debug.Assert(vertexPropertyObject[KW_PROPERTY_ID] is JValue);
-                Debug.Assert(vertexPropertyObject[KW_PROPERTY_META] is JObject);
+                //Debug.Assert(vertexPropertyObject[KW_PROPERTY_META] is JObject);
 
                 string propId = (string) vertexPropertyObject[KW_PROPERTY_ID];
                 if (metaPropIdToRemove.Remove(propId)) {
