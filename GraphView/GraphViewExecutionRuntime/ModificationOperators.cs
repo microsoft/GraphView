@@ -246,7 +246,7 @@ namespace GraphView
             VertexSinglePropertyField vsp = (VertexSinglePropertyField)metaProperty.Parent;
             VertexField vertex = vsp.VertexProperty.Vertex;
             if (!vertex.ViaGraphAPI) {
-                Debug.Assert(vertex.VertexJObject[vsp.PropertyName] is JObject);
+                Debug.Assert(vertex.VertexJObject[vsp.PropertyName] is JArray);
                 ////throw new GraphViewException("BUG: Compatible vertices should not have meta properties.");
             }
 #endif
@@ -267,7 +267,7 @@ namespace GraphView
             if (metaPropertyJObject != null) {
                 metaPropertyJObject.Property(metaProperty.PropertyName)?.Remove();
                 if (metaPropertyJObject.Count == 0) {
-                    metaPropertyJObject.Remove();
+                    ((JObject)propertyJToken).Remove(KW_PROPERTY_META);
                 }
             }
 
