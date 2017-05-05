@@ -264,7 +264,12 @@ namespace GraphView
 
             JObject metaPropertyJObject = (JObject) propertyJToken?[KW_PROPERTY_META];
 
-            metaPropertyJObject?.Property(metaProperty.PropertyName)?.Remove();
+            if (metaPropertyJObject != null) {
+                metaPropertyJObject.Property(metaProperty.PropertyName)?.Remove();
+                if (metaPropertyJObject.Count == 0) {
+                    metaPropertyJObject.Remove();
+                }
+            }
 
             // Update DocDB
             this.Connection.ReplaceOrDeleteDocumentAsync(vertexField.VertexId, vertexObject, 
