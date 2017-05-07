@@ -1544,6 +1544,11 @@ namespace GraphView
             return edgeField;
         }
 
+        public bool TryGetEdgeField(string edgeId, out EdgeField edgeField)
+        {
+            return this._edges.TryGetValue(edgeId, out edgeField);
+        }
+
 
         public override string ToString()
         {
@@ -2081,6 +2086,34 @@ namespace GraphView
             }
             if (!this.RevAdjacencyList.HasBeenFetched) {
                 this.ConstructSpilledOrVirtualAdjacencyListField(vertexId, vertexLabel, this.Partition, true, edgeDocDict);
+            }
+        }
+
+        internal void ConstructPartialLazyAdjacencyList(List<Tuple<string, JObject>> edgeDocIdandEdgeObjects, bool isReverse)
+        {
+            if (isReverse)
+            {
+                foreach (Tuple<string, JObject> tuple in edgeDocIdandEdgeObjects)
+                {
+                    string edgeDocId = tuple.Item1;
+                    JObject edgeObject = tuple.Item2;
+                    string edgeId = (string)edgeObject[KW_EDGE_ID];
+                    this.RevAdjacencyList.TryAddEdgeField(
+                        edgeId,
+                        () => EdgeField.ConstructBackwardEdgeField(this.VertexId, this.VertexLabel, this.Partition, edgeDocId, edgeObject));
+                }
+            }
+            else
+            {
+                foreach (Tuple<string, JObject> tuple in edgeDocIdandEdgeObjects)
+                {
+                    string edgeDocId = tuple.Item1;
+                    JObject edgeObject = tuple.Item2;
+                    string edgeId = (string)edgeObject[KW_EDGE_ID];
+                    this.AdjacencyList.TryAddEdgeField(
+                        edgeId,
+                        () => EdgeField.ConstructForwardEdgeField(this.VertexId, this.VertexLabel, this.Partition, edgeDocId, edgeObject));
+                }
             }
         }
 

@@ -178,6 +178,33 @@ namespace GraphView
             return matchEdge != null && matchEdge.EdgeType != WEdgeType.BothEdge;
         }
 
+        internal static MatchEdge GetPushedToServerEdge(GraphViewConnection connection,
+            Tuple<MatchNode, MatchEdge, List<MatchEdge>, List<MatchEdge>, List<MatchEdge>> tuple)
+        {
+            MatchNode currentNode = tuple.Item1;
+            MatchEdge traversalEdge = tuple.Item3.Count > 0 ? tuple.Item3[0] : null;
+            bool hasNoBackwardingOrForwardingEdges = tuple.Item4.Count == 0 && tuple.Item5.Count == 0;
+
+            MatchEdge pushedToServerEdge = null;
+            if (hasNoBackwardingOrForwardingEdges)
+            {
+                if (traversalEdge != null)
+                {
+                    pushedToServerEdge = CanBePushedToServer(connection, traversalEdge)
+                        ? traversalEdge
+                        : null;
+                }
+                else if (currentNode.DanglingEdges.Count == 1)
+                {
+                    pushedToServerEdge = CanBePushedToServer(connection, currentNode.DanglingEdges[0])
+                        ? currentNode.DanglingEdges[0]
+                        : null;
+                }
+            }
+
+            return pushedToServerEdge;
+        }
+
         internal static void ConstructJsonQueries(GraphViewConnection connection, MatchGraph graphPattern)
         {
             foreach (ConnectedComponent subGraph in graphPattern.ConnectedSubGraphs)
@@ -186,6 +213,7 @@ namespace GraphView
                 List<Tuple<MatchNode, MatchEdge, List<MatchEdge>, List<MatchEdge>, List<MatchEdge>>> traversalOrder =
                     subGraph.TraversalOrder;
 
+                bool isFirstNodeInTheComponent = true;
                 foreach (Tuple<MatchNode, MatchEdge, List<MatchEdge>, List<MatchEdge>, List<MatchEdge>> tuple in traversalOrder)
                 {
                     MatchNode currentNode = tuple.Item1;
@@ -194,20 +222,21 @@ namespace GraphView
 
                     if (!processedNodes.Contains(currentNode.NodeAlias))
                     {
-                        MatchEdge pushedToServerEdge = null;
-                        if (hasNoBackwardingOrForwardingEdges)
+                        MatchEdge pushedToServerEdge = GetPushedToServerEdge(connection, tuple);
+                        //
+                        // For the g.E() case
+                        //
+                        if (hasNoBackwardingOrForwardingEdges && traversalEdge == null && currentNode.DanglingEdges.Count == 1)
                         {
-                            if (traversalEdge != null)
+                            MatchEdge danglingEdge = currentNode.DanglingEdges[0];
+                            if (isFirstNodeInTheComponent && danglingEdge.EdgeType == WEdgeType.OutEdge && 
+                                (currentNode.Predicates == null || !currentNode.Predicates.Any()))
                             {
-                                pushedToServerEdge = CanBePushedToServer(connection, traversalEdge)
-                                    ? traversalEdge
-                                    : null;
-                            }
-                            else if (currentNode.DanglingEdges.Count == 1)
-                            {
-                                pushedToServerEdge = CanBePushedToServer(connection, currentNode.DanglingEdges[0])
-                                    ? currentNode.DanglingEdges[0]
-                                    : null;
+                                ConstructJsonQueryOnEdge(connection, currentNode, danglingEdge);
+                                isFirstNodeInTheComponent = false;
+                                currentNode.IsDummyNode = true;
+                                processedNodes.Add(currentNode.NodeAlias);
+                                continue;
                             }
                         }
 
@@ -215,6 +244,7 @@ namespace GraphView
                         ConstructJsonQueryOnNode(connection, currentNode, pushedToServerEdge, partitionKey);
                         //ConstructJsonQueryOnNodeViaExternalAPI(currentNode, null);
                         processedNodes.Add(currentNode.NodeAlias);
+                        isFirstNodeInTheComponent = false;
                     }
                 }
             }
@@ -344,6 +374,60 @@ namespace GraphView
                 EdgeProperties = edgeProperties,
             };
             node.AttachedJsonQuery = jsonQuery;
+        }
+
+        internal static void ConstructJsonQueryOnEdge(GraphViewConnection connection, MatchNode node, MatchEdge edge)
+        {
+            string nodeAlias = node.NodeAlias;
+            string edgeAlias = edge.EdgeAlias;
+            StringBuilder selectStrBuilder = new StringBuilder();
+            StringBuilder joinStrBuilder = new StringBuilder();
+            List<string> nodeProperties = new List<string> { nodeAlias };
+            List<string> edgeProperties = new List<string> { edgeAlias };
+            nodeProperties.AddRange(node.Properties);
+            edgeProperties.AddRange(edge.Properties);
+
+            //
+            // SELECT N_0, E_0 FROM Node N_0 Join E_0 IN N_0._edge
+            //
+            selectStrBuilder.AppendFormat("{0}, {1}", nodeAlias, edgeAlias);
+            joinStrBuilder.AppendFormat(" JOIN {0} IN {1}.{2} ", edgeAlias, nodeAlias, GraphViewKeywords.KW_VERTEX_EDGE);
+
+            WBooleanExpression tempEdgeCondition = null;
+            foreach (WBooleanExpression predicate in edge.Predicates)
+            {
+                tempEdgeCondition = WBooleanBinaryExpression.Conjunction(tempEdgeCondition, predicate);
+            }
+
+            BooleanWValueExpressionVisitor booleanWValueExpressionVisitor = new BooleanWValueExpressionVisitor();
+            booleanWValueExpressionVisitor.Invoke(tempEdgeCondition);
+
+            WBooleanExpression edgeCondition = tempEdgeCondition.Copy();
+            DMultiPartIdentifierVisitor normalizeEdgePredicatesColumnReferenceExpressionVisitor = new DMultiPartIdentifierVisitor();
+            normalizeEdgePredicatesColumnReferenceExpressionVisitor.Invoke(edgeCondition);
+
+            string edgeConditionString = edgeCondition?.ToString();
+
+            //
+            // WHERE ((N_0._isEdgeDoc = true AND N_0._is_reverse = false) OR N_0._edgeSpilled = false)
+            // AND (edgeConditionString)
+            //
+            string searchConditionString = string.Format(
+                "(({0}.{1} = true AND {0}.{2} = false) OR {0}.{3} = false){4}",
+                nodeAlias, GraphViewKeywords.KW_EDGEDOC_IDENTIFIER, 
+                GraphViewKeywords.KW_EDGEDOC_ISREVERSE, GraphViewKeywords.KW_VERTEX_EDGE_SPILLED,
+                string.IsNullOrEmpty(edgeConditionString) ? "" : $" AND ({edgeConditionString})");
+
+            JsonQuery jsonQuery = new JsonQuery
+            {
+                Alias = nodeAlias,
+                JoinClause = joinStrBuilder.ToString(),
+                SelectClause = selectStrBuilder.ToString(),
+                WhereSearchCondition = searchConditionString,
+                NodeProperties = nodeProperties,
+                EdgeProperties = edgeProperties,
+            };
+            edge.AttachedJsonQuery = jsonQuery;
         }
 
         /*
@@ -966,23 +1050,26 @@ namespace GraphView
                     {
                         isFirstNodeInTheComponent = false;
 
-                        FetchNodeOperator2 fetchNodeOp = new FetchNodeOperator2(
-                            connection, 
-                            currentNode.AttachedJsonQuery
-                            /*currentNode.AttachedJsonQueryOfNodesViaExternalAPI*/);
+                        GraphViewExecutionOperator startOp = currentNode.IsDummyNode
+                            ? (GraphViewExecutionOperator)(new FetchEdgeOperator(connection,
+                                currentNode.DanglingEdges[0].AttachedJsonQuery))
+                            : new FetchNodeOperator2(
+                                connection,
+                                currentNode.AttachedJsonQuery
+                                /*currentNode.AttachedJsonQueryOfNodesViaExternalAPI*/);
 
                         //
                         // The graph contains more than one component
                         //
                         if (operatorChain.Any())
-                            operatorChain.Add(new CartesianProductOperator2(operatorChain.Last(), fetchNodeOp));
+                            operatorChain.Add(new CartesianProductOperator2(operatorChain.Last(), startOp));
                         //
                         // This WSelectQueryBlock is a sub query
                         //
                         else if (context.OuterContextOp != null)
-                            operatorChain.Add(new CartesianProductOperator2(context.OuterContextOp, fetchNodeOp));
+                            operatorChain.Add(new CartesianProductOperator2(context.OuterContextOp, startOp));
                         else
-                            operatorChain.Add(fetchNodeOp);
+                            operatorChain.Add(startOp);
 
                         context.CurrentExecutionOperator = operatorChain.Last();
                         //
@@ -990,6 +1077,21 @@ namespace GraphView
                         //
                         this.UpdateNodeLayout(currentNode.NodeAlias, currentNode.Properties, context);
                         tableReferences.Add(currentNode.NodeAlias, TableGraphType.Vertex);
+
+                        if (currentNode.IsDummyNode)
+                        {
+                            Debug.Assert(currentNode.DanglingEdges.Count == 1);
+                            MatchEdge danglingEdge = currentNode.DanglingEdges[0];
+
+                            this.UpdateEdgeLayout(danglingEdge.EdgeAlias, danglingEdge.Properties, context);
+                            tableReferences.Add(danglingEdge.EdgeAlias, TableGraphType.Edge);
+
+                            CheckRemainingPredicatesAndAppendFilterOp(context, connection,
+                                new HashSet<string>(tableReferences.Keys), predicatesAccessedTableReferences,
+                                operatorChain);
+
+                            continue;
+                        }
                     }
                     else if (!processedNodes.Contains(currentNode.NodeAlias))
                     {

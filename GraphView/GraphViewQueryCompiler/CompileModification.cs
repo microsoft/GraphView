@@ -94,8 +94,8 @@ namespace GraphView
             }
 
             if (connection.EdgeSpillThreshold == 1) {
-                vertexObject[KW_VERTEX_EDGE] = new JArray { "dummy" };
-                vertexObject[KW_VERTEX_REV_EDGE] = new JArray { "dummy" };
+                vertexObject[KW_VERTEX_EDGE] = new JArray { KW_VERTEX_DUMMY_EDGE };
+                vertexObject[KW_VERTEX_REV_EDGE] = new JArray { KW_VERTEX_DUMMY_EDGE };
                 vertexObject[KW_VERTEX_EDGE_SPILLED] = true;
                 vertexObject[KW_VERTEX_REVEDGE_SPILLED] = true;
             }

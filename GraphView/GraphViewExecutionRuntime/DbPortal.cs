@@ -63,8 +63,10 @@ namespace GraphView
 
         public void Dispose() { }
 
-        public abstract IEnumerator<RawRecord> GetVertices(JsonQuery vertexQuery);
+        public abstract IEnumerator<RawRecord> GetVerticesAndEdgesViaVertices(JsonQuery vertexQuery);
         //public abstract IEnumerator<RawRecord> GetVerticesViaExternalAPI(JsonQuery vertexQuery);
+
+        public abstract IEnumerator<RawRecord> GetVerticesAndEdgesViaEdges(JsonQuery edgeQuery);
     }
 
     internal class DocumentDbPortal : DbPortal
@@ -74,7 +76,7 @@ namespace GraphView
             Connection = connection;
         }
 
-        public override IEnumerator<RawRecord> GetVertices(JsonQuery vertexQuery)
+        public override IEnumerator<RawRecord> GetVerticesAndEdgesViaVertices(JsonQuery vertexQuery)
         {
             string queryScript = vertexQuery.ToString(DatabaseType.DocumentDB);
             IEnumerable<dynamic> items = this.Connection.ExecuteQuery(queryScript);
@@ -188,6 +190,129 @@ namespace GraphView
                     }
                     VertexField vertexField = this.Connection.VertexCache.AddOrUpdateVertexField(vertexId, tmpVertexObject);
                     yield return makeRawRecord(vertexField);
+                }
+            }
+        }
+
+        public override IEnumerator<RawRecord> GetVerticesAndEdgesViaEdges(JsonQuery edgeQuery)
+        {
+            string queryScript = edgeQuery.ToString(DatabaseType.DocumentDB);
+            IEnumerable<dynamic> items = this.Connection.ExecuteQuery(queryScript);
+            List<string> nodeProperties = new List<string>(edgeQuery.NodeProperties);
+            List<string> edgeProperties = new List<string>(edgeQuery.EdgeProperties);
+
+            string nodeAlias = nodeProperties[0];
+            nodeProperties.RemoveAt(0);
+
+            string edgeAlias = edgeProperties[0];
+            edgeProperties.RemoveAt(0);
+
+            HashSet<string> spilledVertexIdSet = new HashSet<string>();
+            HashSet<string> spilledVertexPartitionSet = new HashSet<string>();
+            //
+            // <vertex id, edge id>
+            //
+            Dictionary<string, List<string>> vertexIdAndEdgeIdsDict = new Dictionary<string, List<string>>();
+            //
+            // <vertex id, <edgeDocumentId, edgeObject>>
+            //
+            Dictionary<string, List<Tuple<string, JObject>>> vertexIdAndEdgeObjectsDict =
+                new Dictionary<string, List<Tuple<string, JObject>>>();
+
+            foreach (dynamic dynamicItem in items)
+            {
+                JObject tmpObject = (JObject)((JObject)dynamicItem)[nodeAlias];
+                JObject edgeObject = (JObject)((JObject)dynamicItem)[edgeAlias];
+                //
+                // This is a spilled edge document
+                //
+                if (tmpObject[KW_EDGEDOC_VERTEXID] != null)
+                {
+                    string vertexId = tmpObject[KW_EDGEDOC_VERTEXID].ToString();
+                    spilledVertexIdSet.Add(vertexId);
+                    string partition = this.Connection.GetDocumentPartition(tmpObject);
+                    if (partition != null) {
+                        spilledVertexPartitionSet.Add(partition);
+                    }
+
+                    List<Tuple<string, JObject>> edgeObjects;
+                    if (!vertexIdAndEdgeObjectsDict.TryGetValue(vertexId, out edgeObjects))
+                    {
+                        edgeObjects = new List<Tuple<string, JObject>>();
+                        vertexIdAndEdgeObjectsDict.Add(vertexId, edgeObjects);
+                    }
+                    edgeObjects.Add(new Tuple<string, JObject>((string)tmpObject[KW_DOC_ID], edgeObject));
+
+                    List<string> edgeIds;
+                    if (!vertexIdAndEdgeIdsDict.TryGetValue(vertexId, out edgeIds))
+                    {
+                        edgeIds = new List<string>();
+                        vertexIdAndEdgeIdsDict.Add(vertexId, edgeIds);
+                    }
+                    edgeIds.Add((string)edgeObject[KW_DOC_ID]);
+                }
+                else
+                {
+                    string vertexId = (string)tmpObject[KW_DOC_ID];
+                    this.Connection.VertexCache.AddOrUpdateVertexField(vertexId, tmpObject);
+                    List<string> edgeIds;
+                    if (!vertexIdAndEdgeIdsDict.TryGetValue(vertexId, out edgeIds))
+                    {
+                        edgeIds = new List<string>();
+                        vertexIdAndEdgeIdsDict.Add(vertexId, edgeIds);
+                    }
+                    edgeIds.Add((string)edgeObject[KW_DOC_ID]);
+                }
+            }
+
+            if (spilledVertexIdSet.Any())
+            {
+                string idInClause = string.Join(", ", spilledVertexIdSet.Select(id => $"'{id}'"));
+                string partitionInClause = string.Join(", ", spilledVertexPartitionSet.Select(partition => $"'{partition}'"));
+                queryScript = $"SELECT * FROM Node WHERE Node.id IN ({idInClause})" +
+                              (string.IsNullOrEmpty(partitionInClause)
+                                  ? ""
+                                  : $" AND Node{this.Connection.GetPartitionPathIndexer()} IN ({partitionInClause})");
+                IEnumerable<dynamic> spilledVertices = this.Connection.ExecuteQuery(queryScript);
+                foreach (dynamic vertex in spilledVertices)
+                {
+                    JObject vertexObject = (JObject)vertex;
+                    string vertexId = (string)vertexObject[KW_DOC_ID];
+                    VertexField vertexField = this.Connection.VertexCache.AddOrUpdateVertexField(vertexId, vertexObject);
+                    vertexField.ConstructPartialLazyAdjacencyList(vertexIdAndEdgeObjectsDict[vertexId], false);
+                }
+            }
+
+            foreach (KeyValuePair<string, List<string>> pair in vertexIdAndEdgeIdsDict)
+            {
+                string vertexId = pair.Key;
+                List<string> edgeIds = pair.Value;
+                VertexField vertexField = this.Connection.VertexCache.GetVertexField(vertexId);
+
+                foreach (string edgeId in edgeIds)
+                {
+                    RawRecord nodeRecord = new RawRecord();
+                    //
+                    // Fill node property field
+                    //
+                    foreach (string propertyName in nodeProperties)
+                    {
+                        FieldObject propertyValue = vertexField[propertyName];
+                        nodeRecord.Append(propertyValue);
+                    }
+
+                    RawRecord edgeRecord = new RawRecord(edgeProperties.Count);
+
+                    EdgeField edgeField;
+                    vertexField.AdjacencyList.TryGetEdgeField(edgeId, out edgeField);
+                    Debug.Assert(edgeField != null, "edgeField != null");
+
+                    string startVertexId = vertexField.VertexId;
+                    AdjacencyListDecoder.FillMetaField(edgeRecord, edgeField, startVertexId, vertexField.Partition, true, false);
+                    AdjacencyListDecoder.FillPropertyField(edgeRecord, edgeField, edgeProperties);
+
+                    nodeRecord.Append(edgeRecord);
+                    yield return nodeRecord;
                 }
             }
         }

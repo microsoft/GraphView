@@ -39,6 +39,7 @@ namespace GraphView
         public bool IsReversed { get; set; }
         public WEdgeType EdgeType { get; set; }
         public bool IsDanglingEdge { get; set; }
+        internal JsonQuery AttachedJsonQuery { get; set; }
 
         /// <summary>
         /// Schema Object of the node table/node view which the edge is bound to.
@@ -137,6 +138,8 @@ namespace GraphView
         internal JsonQuery AttachedJsonQuery { get; set; }
         //internal JsonQuery AttachedJsonQueryOfNodesViaExternalAPI { get; set; }
         public HashSet<string> Properties { get; set; }
+        // For the g.E() case
+        public bool IsDummyNode { get; set; }
 
         /// <summary>
         /// The density value of the GlobalNodeId Column of the corresponding node table.
@@ -181,6 +184,7 @@ namespace GraphView
             this.AttachedJsonQuery = rhs.AttachedJsonQuery;
             //this.AttachedJsonQueryOfNodesViaExternalAPI = rhs.AttachedJsonQueryOfNodesViaExternalAPI;
             this.Properties = new HashSet<string>(rhs.Properties);
+            this.IsDummyNode = rhs.IsDummyNode;
             this.GlobalNodeIdDensity = rhs.GlobalNodeIdDensity;
             this.Predicates = rhs.Predicates;
         }

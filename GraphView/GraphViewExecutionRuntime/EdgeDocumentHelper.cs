@@ -268,7 +268,8 @@ namespace GraphView
                         [KW_EDGEDOC_ISREVERSE] = isReverse,
                         [KW_EDGEDOC_VERTEXID] = (string)vertexObject[KW_DOC_ID],
                         [KW_EDGEDOC_VERTEX_LABEL] = (string)vertexObject[KW_VERTEX_LABEL],
-                        [KW_EDGEDOC_EDGE] = new JArray(edgeObject)
+                        [KW_EDGEDOC_EDGE] = new JArray(edgeObject),
+                        [KW_EDGEDOC_IDENTIFIER] = (JValue)true,
                     };
                     if (connection.PartitionPathTopLevel != null) {
                         // This may be KW_DOC_PARTITION, maybe not
@@ -394,6 +395,7 @@ namespace GraphView
                 [KW_EDGEDOC_VERTEXID] = (string)vertexObject[KW_DOC_ID],
                 [KW_EDGEDOC_VERTEX_LABEL] = (string)vertexObject[KW_VERTEX_LABEL],
                 [KW_EDGEDOC_EDGE] = new JArray(targetEdgeArray.Last),
+                [KW_EDGEDOC_IDENTIFIER] = (JValue)true,
             };
             if (connection.PartitionPathTopLevel != null) {
                 newEdgeDocObject[connection.PartitionPathTopLevel] = vertexObject[connection.PartitionPathTopLevel];
@@ -409,6 +411,7 @@ namespace GraphView
                 [KW_EDGEDOC_VERTEXID] = (string)vertexObject[KW_DOC_ID],
                 [KW_EDGEDOC_VERTEX_LABEL] = (string)vertexObject[KW_VERTEX_LABEL],
                 [KW_EDGEDOC_EDGE] = targetEdgeArray,
+                [KW_EDGEDOC_IDENTIFIER] = (JValue)true,
             };
             if (connection.PartitionPathTopLevel != null) {
                 existEdgeDocObject[connection.PartitionPathTopLevel] = vertexObject[connection.PartitionPathTopLevel];
@@ -742,49 +745,6 @@ namespace GraphView
             return virtualReverseEdgeDocumentsDict.Values.ToList();
         }
 
-        private static Dictionary<string, string> GetLabelOfSrcVertexOfSpilledEdges(
-            GraphViewConnection connection, List<dynamic> virtualReverseEdges)
-        {
-            Dictionary<string, string> labelOfVertexCollection = new Dictionary<string, string>();
-            HashSet<string> vertexIdSet = new HashSet<string>();
-            HashSet<string> vertexPartitionSet = new HashSet<string>();
-
-            foreach (JObject virtualReverseEdge in virtualReverseEdges) {
-                JObject virtualReverseEdgeObject = (JObject)virtualReverseEdge[EdgeDocumentHelper.VirtualReverseEdge];
-                string vertexId = virtualReverseEdgeObject[KW_EDGEDOC_VERTEXID]?.ToString();
-                string vertexPartition = virtualReverseEdgeObject[KW_EDGE_SRCV_PARTITION]?.ToString();
-                if (vertexId != null) {
-                    //
-                    // this is a spilled edge, so the srcVLabel is not in the spilled document and needs to be fetched
-                    //
-                    vertexIdSet.Add(vertexId);
-                    if (vertexPartition != null) {
-                        vertexPartitionSet.Add(vertexPartition);
-                    }
-                }
-            }
-
-            if (vertexIdSet.Any()) {
-                string inClause = string.Join(", ", vertexIdSet.Select(vertexId => $"'{vertexId}'"));
-                string partitionInClause = string.Join(", ", vertexPartitionSet.Select(partition => $"'{partition}'"));
-                string labelQuery =
-                    $"SELECT doc.{KW_VERTEX_LABEL}, doc.{KW_DOC_ID} " +
-                    $"FROM doc " +
-                    $"WHERE doc.{KW_DOC_ID} IN ({inClause})" +
-                    (string.IsNullOrEmpty(partitionInClause)
-                        ? ""
-                        : $" AND doc{connection.GetPartitionPathIndexer()} IN ({partitionInClause})");
-                IEnumerable<dynamic> vertexIdAndLabels = connection.ExecuteQuery(labelQuery);
-                foreach (JObject vertexIdAndLabel in vertexIdAndLabels) {
-                    string vertexId = vertexIdAndLabel[KW_DOC_ID].ToString();
-                    string vertexLabel = vertexIdAndLabel[KW_VERTEX_LABEL]?.ToString();
-                    labelOfVertexCollection[vertexId] = vertexLabel;
-                }
-            }
-
-            return labelOfVertexCollection;
-        }
-
         /// <summary>
         /// For every vertex in the vertexIdSet, retrieve their spilled edge documents to construct their forward or backward
         /// adjacency list.
@@ -841,9 +801,6 @@ namespace GraphView
                     $"WHERE edge.{KW_EDGE_SINKV} IN ({inClause})";
 
                 edgeDocuments = connection.ExecuteQuery(edgeDocumentsQuery).ToList();
-
-//                Dictionary<string, string> labelOfSrcVertexOfSpilledEdges =
-//                    EdgeDocumentHelper.GetLabelOfSrcVertexOfSpilledEdges(connection, edgeDocuments);
 
                 List<JObject> virtualReverseEdgeDocuments = EdgeDocumentHelper.ConstructVirtualReverseEdgeDocuments(edgeDocuments);
 

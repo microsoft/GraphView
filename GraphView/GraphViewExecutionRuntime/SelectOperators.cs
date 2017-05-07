@@ -89,7 +89,7 @@ namespace GraphView
             this.connection = connection;
             this.vertexQuery = vertexQuery;
             //this.vertexViaExternalAPIQuery = vertexViaExternalAPIQuery;
-            this.verticesEnumerator = connection.CreateDatabasePortal().GetVertices(vertexQuery);
+            this.verticesEnumerator = connection.CreateDatabasePortal().GetVerticesAndEdgesViaVertices(vertexQuery);
             //this.verticesViaExternalAPIEnumerator = connection.CreateDatabasePortal().GetVerticesViaExternalAPI(vertexViaExternalAPIQuery);
         }
 
@@ -109,9 +109,42 @@ namespace GraphView
 
         public override void ResetState()
         {
-            this.verticesEnumerator = this.connection.CreateDatabasePortal().GetVertices(this.vertexQuery);
+            this.verticesEnumerator = this.connection.CreateDatabasePortal().GetVerticesAndEdgesViaVertices(this.vertexQuery);
             //this.verticesViaExternalAPIEnumerator = connection.CreateDatabasePortal().GetVerticesViaExternalAPI(this.vertexViaExternalAPIQuery);
             this.outputBuffer?.Clear();
+            this.Open();
+        }
+    }
+
+    internal class FetchEdgeOperator : GraphViewExecutionOperator
+    {
+        private JsonQuery edgeQuery;
+        private GraphViewConnection connection;
+
+        private IEnumerator<RawRecord> verticesAndEdgesEnumerator;
+
+        public FetchEdgeOperator(GraphViewConnection connection, JsonQuery edgeQuery)
+        {
+            this.Open();
+            this.connection = connection;
+            this.edgeQuery = edgeQuery;
+            this.verticesAndEdgesEnumerator = connection.CreateDatabasePortal().GetVerticesAndEdgesViaEdges(edgeQuery);
+        }
+
+        public override RawRecord Next()
+        {
+            if (this.verticesAndEdgesEnumerator.MoveNext())
+            {
+                return this.verticesAndEdgesEnumerator.Current;
+            }
+
+            this.Close();
+            return null;
+        }
+
+        public override void ResetState()
+        {
+            this.verticesAndEdgesEnumerator = this.connection.CreateDatabasePortal().GetVerticesAndEdgesViaEdges(this.edgeQuery);
             this.Open();
         }
     }
@@ -308,7 +341,7 @@ namespace GraphView
 
                     using (DbPortal databasePortal = this.connection.CreateDatabasePortal())
                     {
-                        IEnumerator<RawRecord> verticesEnumerator = databasePortal.GetVertices(toSendQuery);
+                        IEnumerator<RawRecord> verticesEnumerator = databasePortal.GetVerticesAndEdgesViaVertices(toSendQuery);
 
                         // The following lines are added for debugging convenience
                         // It nearly does no harm to performance

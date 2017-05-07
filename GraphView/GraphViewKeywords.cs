@@ -44,6 +44,7 @@ namespace GraphView
         //public const string KW_VERTEX_NEXTOFFSET = "_nextEdgeOffset";
         public const string KW_VERTEX_EDGE_SPILLED = "_edgeSpilled";
         public const string KW_VERTEX_REVEDGE_SPILLED = "_revEdgeSpilled";
+        public const string KW_VERTEX_DUMMY_EDGE = "dummy";
 
         public const string KW_PROPERTY_ID = "id";
         public const string KW_PROPERTY_VALUE = "_value";
