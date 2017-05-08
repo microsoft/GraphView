@@ -314,7 +314,7 @@ namespace GraphView
 
                     FieldObject aggregateResult = aggregateTraversalRecord?.RetriveData(0);
                     if (aggregateResult == null) {
-                        return null;
+                        continue;
                     }
 
                     result[key] = aggregateResult;
@@ -585,8 +585,7 @@ namespace GraphView
                     FieldObject aggregateResult = aggregateTraversalRecord?.RetriveData(0);
                     if (aggregateResult == null)
                     {
-                        this.Close();
-                        return null;
+                        continue;
                     }
 
                     result[key] = aggregateResult;
