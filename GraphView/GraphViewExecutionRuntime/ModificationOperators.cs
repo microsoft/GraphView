@@ -1036,8 +1036,8 @@ namespace GraphView
                     out inEdgeObject, out inEdgeDocId);
             }
 
-            EdgeField outEdgeField = srcVertexField.AdjacencyList.GetEdgeField(edgeId);
-            EdgeField inEdgeField = sinkVertexField.RevAdjacencyList.GetEdgeField(edgeId);
+            EdgeField outEdgeField = srcVertexField.AdjacencyList.GetEdgeField(edgeId, true);
+            EdgeField inEdgeField = sinkVertexField.RevAdjacencyList.GetEdgeField(edgeId, true);
 
             // Drop all non-reserved properties
             if (this.PropertiesToBeUpdated.Count == 1 &&
