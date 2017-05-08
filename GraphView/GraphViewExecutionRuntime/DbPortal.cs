@@ -125,7 +125,7 @@ namespace GraphView
 
                 EdgeField edgeField =
                     ((AdjacencyListField) vertexField[isReverseAdj ? KW_VERTEX_REV_EDGE : KW_VERTEX_EDGE])
-                    .GetEdgeField(edgeId);
+                    .GetEdgeField(edgeId, true);
 
                 string startVertexId = vertexField.VertexId;
                 AdjacencyListDecoder.FillMetaField(edgeRecord, edgeField, startVertexId, vertexField.Partition, isStartVertexTheOriginVertex, isReverseAdj);

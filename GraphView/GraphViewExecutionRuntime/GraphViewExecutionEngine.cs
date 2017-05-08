@@ -1529,18 +1529,23 @@ namespace GraphView
 
         public void RemoveEdgeField(string edgeId)
         {
-            SyncIfLazy();
+            // If the edgeField does not exist, just do nothing!
+            //SyncIfLazy();
 
             this._edges.Remove(edgeId);
         }
 
-        public EdgeField GetEdgeField(string edgeId)
+        public EdgeField GetEdgeField(string edgeId, bool mustSucceed)
         {
-            SyncIfLazy();
-
             EdgeField edgeField;
-            this._edges.TryGetValue(edgeId, out edgeField);
-
+            bool found = this._edges.TryGetValue(edgeId, out edgeField);
+            if (!found) {
+                if (mustSucceed) {
+                    this.SyncIfLazy();
+                    found = this._edges.TryGetValue(edgeId, out edgeField);
+                    Debug.Assert(found);
+                }
+            }
             return edgeField;
         }
 
@@ -1828,6 +1833,7 @@ namespace GraphView
             }
         }
 
+        [DebuggerStepThrough]
         public override string ToGraphSON()
         {
             StringBuilder sb = new StringBuilder();
