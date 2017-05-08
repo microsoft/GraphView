@@ -3483,5 +3483,21 @@ namespace GraphView
             return selectOneOp;
         }
     }
+
+    partial class WCountLocalTableReference
+    {
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
+        {
+            WColumnReferenceExpression inputObjectParameter = this.Parameters[0] as WColumnReferenceExpression;
+            Debug.Assert(inputObjectParameter != null, "inputObjectParameter != null");
+            int inputObjectIndex = context.LocateColumnReference(inputObjectParameter);
+
+            CountLocalOperator countLocalOp = new CountLocalOperator(context.CurrentExecutionOperator, inputObjectIndex);
+            context.CurrentExecutionOperator = countLocalOp;
+            context.AddField(this.Alias.Value, GremlinKeyword.TableDefaultColumnName, ColumnGraphType.Value);
+
+            return countLocalOp;
+        }
+    }
 }
 
