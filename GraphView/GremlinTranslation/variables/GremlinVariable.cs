@@ -39,8 +39,10 @@ namespace GraphView
 
         internal virtual void Populate(string property)
         {
-            if (ProjectedProperties.Contains(property)) return;
-            ProjectedProperties.Add(property);
+            if (!ProjectedProperties.Contains(property))
+            {
+                ProjectedProperties.Add(property);
+            }
         }
 
         /// <summary>
