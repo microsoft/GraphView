@@ -3337,11 +3337,21 @@ namespace GraphView
             WValueExpression selectParameter = this.Parameters[1] as WValueExpression;
             Debug.Assert(selectParameter != null, "selectParameter != null");
             bool isSelectKeys = selectParameter.Value.Equals("keys", StringComparison.OrdinalIgnoreCase);
+            List<string> populateColumns = new List<string>();
+            for (int i = 2; i < this.Parameters.Count; i++)
+            {
+                WValueExpression populateParameter = this.Parameters[i] as WValueExpression;
+                Debug.Assert(populateParameter != null, "populateParameter != null");
+                populateColumns.Add(populateParameter.Value);
+            }
 
             SelectColumnOperator selectColumnOp = new SelectColumnOperator(context.CurrentExecutionOperator,
-                inputTargetIndex, isSelectKeys);
+                inputTargetIndex, isSelectKeys, populateColumns);
             context.CurrentExecutionOperator = selectColumnOp;
-            context.AddField(Alias.Value, GremlinKeyword.TableDefaultColumnName, ColumnGraphType.Value);
+            foreach (string populateColumnName in populateColumns)
+            {
+                context.AddField(Alias.Value, populateColumnName, ColumnGraphType.Value);
+            }
 
             return selectColumnOp;
         }

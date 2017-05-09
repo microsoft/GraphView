@@ -292,7 +292,11 @@ namespace GraphView
 
                         projectFields.Add(projectResult);
                     }
-                    result[key] = new CollectionField(projectFields);
+
+
+                    Dictionary<string, FieldObject> compositeFieldObjects = new Dictionary<string, FieldObject>();
+                    compositeFieldObjects.Add(GraphViewKeywords.KW_TABLE_DEFAULT_COLUMN_NAME, new CollectionField(projectFields));
+                    result[key] = new CompositeField(compositeFieldObjects, GraphViewKeywords.KW_TABLE_DEFAULT_COLUMN_NAME);
                 }
             }
             else
@@ -310,9 +314,13 @@ namespace GraphView
                         this.groupedSourceOp.Next();
                     }
 
-                    RawRecord aggregateTraversalRecord = this.aggregateOp.Next();
+                    RawRecord aggregateTraversalRecord = null;
+                    FieldObject aggregateResult = null;
+                    while (this.aggregateOp.State() && (aggregateTraversalRecord = this.aggregateOp.Next()) != null)
+                    {
+                        aggregateResult = aggregateTraversalRecord.RetriveData(0);
+                    }
 
-                    FieldObject aggregateResult = aggregateTraversalRecord?.RetriveData(0);
                     if (aggregateResult == null) {
                         continue;
                     }
@@ -562,7 +570,10 @@ namespace GraphView
 
                         projectFields.Add(projectResult);
                     }
-                    result[key] = new CollectionField(projectFields);
+
+                    Dictionary<string, FieldObject> compositeFieldObjects = new Dictionary<string, FieldObject>();
+                    compositeFieldObjects.Add(GraphViewKeywords.KW_TABLE_DEFAULT_COLUMN_NAME, new CollectionField(projectFields));
+                    result[key] = new CompositeField(compositeFieldObjects, GraphViewKeywords.KW_TABLE_DEFAULT_COLUMN_NAME);
                 }
             }
             else
@@ -580,9 +591,13 @@ namespace GraphView
                         this.groupedSourceOp.Next();
                     }
 
-                    RawRecord aggregateTraversalRecord = this.aggregateOp.Next();
+                    RawRecord aggregateTraversalRecord = null;
+                    FieldObject aggregateResult = null;
+                    while (this.aggregateOp.State() && (aggregateTraversalRecord = this.aggregateOp.Next()) != null)
+                    {
+                        aggregateResult = aggregateTraversalRecord.RetriveData(0);
+                    }
 
-                    FieldObject aggregateResult = aggregateTraversalRecord?.RetriveData(0);
                     if (aggregateResult == null)
                     {
                         continue;

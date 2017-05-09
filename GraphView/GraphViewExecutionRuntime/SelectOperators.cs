@@ -3618,6 +3618,7 @@ namespace GraphView
     {
         private readonly GraphViewExecutionOperator inputOp;
         private readonly int inputTargetIndex;
+        private readonly List<string> populateColumns;
 
         //
         // true, select(keys)
@@ -3628,11 +3629,13 @@ namespace GraphView
         public SelectColumnOperator(
             GraphViewExecutionOperator inputOp,
             int inputTargetIndex,
-            bool isSelectKeys)
+            bool isSelectKeys,
+            List<string> populateColumns)
         {
             this.inputOp = inputOp;
             this.inputTargetIndex = inputTargetIndex;
             this.isSelectKeys = isSelectKeys;
+            this.populateColumns = populateColumns;
 
             this.Open();
         }
@@ -3654,13 +3657,28 @@ namespace GraphView
                         columns.Add(this.isSelectKeys ? entry.Key : entry.Value);
                     }
 
-                    r.Append(new CollectionField(columns));
+                    foreach (string rawRecordColumnName in this.populateColumns)
+                    {
+                        if (rawRecordColumnName.Equals(GremlinKeyword.TableDefaultColumnName))
+                        {
+                            r.Append(new CollectionField(columns));
+                        }
+                        else
+                        {
+                            r.Append((FieldObject)null);
+                        }
+                    }
+
                     return r;
                 }
                 else if (selectObj is EntryField)
                 {
                     EntryField inputEntry = (EntryField) selectObj;
-                    r.Append(this.isSelectKeys ? inputEntry.Key : inputEntry.Value);
+                    CompositeField result = (CompositeField)(this.isSelectKeys ? inputEntry.Key : inputEntry.Value);
+                    foreach (string rawRecordColumnName in this.populateColumns)
+                    {
+                        r.Append(result[rawRecordColumnName]);
+                    }
                     return r;
                 }
                 else if (selectObj is PathField)
@@ -3682,7 +3700,18 @@ namespace GraphView
                         }
                     }
 
-                    r.Append(new CollectionField(columns));
+                    foreach (string rawRecordColumnName in this.populateColumns)
+                    {
+                        if (rawRecordColumnName.Equals(GremlinKeyword.TableDefaultColumnName))
+                        {
+                            r.Append(new CollectionField(columns));
+                        }
+                        else
+                        {
+                            r.Append((FieldObject)null);
+                        }
+                    }
+
                     return r;
                 }
                 throw new GraphViewException(string.Format("The provided object does not have acessible {0}.",
