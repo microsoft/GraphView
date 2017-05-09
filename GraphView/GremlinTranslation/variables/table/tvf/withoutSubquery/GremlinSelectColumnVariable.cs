@@ -35,6 +35,10 @@ namespace GraphView
             List<WScalarExpression> parameters = new List<WScalarExpression>();
             parameters.Add(InputVariable.DefaultProjection().ToScalarExpression());
             parameters.Add(SqlUtil.GetValueExpr(Column == GremlinKeyword.Column.Keys ? "Keys" : "Values"));
+            foreach (var property in this.ProjectedProperties)
+            {
+                parameters.Add(SqlUtil.GetValueExpr(property));
+            }
             var tableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.SelectColumn, parameters, GetVariableName());
             return SqlUtil.GetCrossApplyTableReference(tableRef);
         }

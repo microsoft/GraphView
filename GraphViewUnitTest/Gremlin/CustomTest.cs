@@ -17,8 +17,8 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests
         {
             using (GraphViewCommand command = new GraphViewCommand(graphConnection))
             {
-                var tmp1 = command.g().V().Has("name", "marko").Property("name2", "et", "meta", "t1").Next();
-                var tmp2 = command.g().V().Has("name", "marko").Properties("name2").Properties().Drop().Next();
+                var traversal = command.g().Inject(0).Union(command.g().V().Group(), command.g().E().Group()).Select(GremlinKeyword.Column.Keys).Values("name");
+                var result = traversal.Next();
             }
         }
 

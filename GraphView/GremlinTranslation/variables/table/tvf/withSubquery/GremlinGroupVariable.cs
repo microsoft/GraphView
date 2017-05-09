@@ -43,6 +43,7 @@ namespace GraphView
 
         internal override void Populate(string property)
         {
+            GroupByContext.Populate(property);
             ProjectByContext.Populate(property);
             base.Populate(property);
         }
