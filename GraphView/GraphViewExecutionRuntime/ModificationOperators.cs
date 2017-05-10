@@ -1081,7 +1081,7 @@ namespace GraphView
                         if (updatedProperty == null)
                             outEdgeField.EdgeProperties.Remove(keyExpression.Value);
                         else
-                            outEdgeField.UpdateEdgeProperty(updatedProperty, outEdgeField);
+                            outEdgeField.UpdateEdgeProperty(updatedProperty);
 
                         if (this.Connection.UseReverseEdges) {
                             // Modify edgeObject (update the edge property)
@@ -1094,7 +1094,7 @@ namespace GraphView
                             if (updatedProperty == null)
                                 inEdgeField.EdgeProperties.Remove(keyExpression.Value);
                             else
-                                inEdgeField.UpdateEdgeProperty(updatedProperty, inEdgeField);
+                                inEdgeField.UpdateEdgeProperty(updatedProperty);
                         }
                     }
                     else {

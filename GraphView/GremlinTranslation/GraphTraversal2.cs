@@ -29,6 +29,7 @@ namespace GraphView
 
             StringBuilder notBatchedGraphSonResult = new StringBuilder();
             bool firstEntry = true;
+            EdgeType edgeType = 0;
             foreach (RawRecord record in results)
             {
                 if (firstEntry) {
@@ -43,6 +44,13 @@ namespace GraphView
                 if (vertexField != null &&
                     (!vertexField.AdjacencyList.HasBeenFetched || !vertexField.RevAdjacencyList.HasBeenFetched))
                 {
+                    if (!vertexField.AdjacencyList.HasBeenFetched) {
+                        edgeType |= EdgeType.Outgoing;
+                    }
+                    if (!vertexField.RevAdjacencyList.HasBeenFetched) {
+                        edgeType |= EdgeType.Incoming;
+                    }
+
                     string vertexId = vertexField[GraphViewKeywords.KW_DOC_ID].ToValue;
                     batchIdSet.Add(vertexId);
                     if (vertexField.Partition != null) {
@@ -57,7 +65,7 @@ namespace GraphView
 
             if (batchIdSet.Any())
             {
-                EdgeDocumentHelper.ConstructLazyAdjacencyList(connection, batchIdSet, batchPartitionKeySet);
+                EdgeDocumentHelper.ConstructLazyAdjacencyList(connection, edgeType, batchIdSet, batchPartitionKeySet);
 
                 int startIndex = 0;
                 foreach (KeyValuePair<int, VertexField> kvp in batchGraphSonDict)

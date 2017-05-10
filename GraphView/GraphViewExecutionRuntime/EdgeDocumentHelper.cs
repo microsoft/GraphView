@@ -11,6 +11,14 @@ using static GraphView.GraphViewKeywords;
 
 namespace GraphView
 {
+    [Flags]
+    internal enum EdgeType : int
+    {
+        Outgoing = 1,
+        Incoming = 2,
+        Both = Outgoing | Incoming,
+    }
+
     internal class Wrap<T>
     {
         public T Value { get; set; }
@@ -752,21 +760,31 @@ namespace GraphView
         /// is the target vertex to build a virtual reverse adjacency list.
         /// </summary>
         /// <param name="connection"></param>
+        /// <param name="edgeType"></param>
         /// <param name="vertexIdSet"></param>
         /// <param name="vertexPartitionKeySet"></param>
-        public static void ConstructLazyAdjacencyList(GraphViewConnection connection,
-            HashSet<string> vertexIdSet, HashSet<string> vertexPartitionKeySet)
+        public static void ConstructLazyAdjacencyList(
+            GraphViewConnection connection,
+            EdgeType edgeType,
+            HashSet<string> vertexIdSet, 
+            HashSet<string> vertexPartitionKeySet)
         {
             if (!vertexIdSet.Any()) return;
+
             string inClause = string.Join(", ", vertexIdSet.Select(vertexId => $"'{vertexId}'"));
             string partitionInClause = string.Join(", ", vertexPartitionKeySet.Select(partitionKey => $"'{partitionKey}'"));
             string edgeDocumentsQuery =
                 $"SELECT * " +
                 $"FROM edgeDoc " +
-                $"WHERE edgeDoc.{KW_EDGEDOC_VERTEXID} IN ({inClause})" +
+                $"WHERE edgeDoc.{KW_EDGEDOC_VERTEXID} IN ({inClause}) " +
                 (string.IsNullOrEmpty(partitionInClause)
-                    ? ""
-                    : $" AND edgeDoc{connection.GetPartitionPathIndexer()} IN ({partitionInClause})");
+                     ? ""
+                     : $"AND edgeDoc{connection.GetPartitionPathIndexer()} IN ({partitionInClause}) ") +
+                (edgeType == EdgeType.Outgoing
+                     ? $"AND edgeDoc.{KW_EDGEDOC_ISREVERSE} = false "
+                     : edgeType == EdgeType.Incoming
+                         ? $"AND edgeDoc.{KW_EDGEDOC_ISREVERSE} = true "
+                         : "");
             List<dynamic> edgeDocuments = connection.ExecuteQuery(edgeDocumentsQuery).ToList();
 
             // Dictionary<vertexId, Dictionary<edgeDocumentId, edgeDocument>>
@@ -783,7 +801,7 @@ namespace GraphView
             //
             // Use all edges whose sink is vertexId to construct a virtual reverse adjacency list of this vertex
             //
-            if (!connection.UseReverseEdges)
+            if (!connection.UseReverseEdges && edgeType.HasFlag(EdgeType.Incoming))
             {
                 edgeDocumentsQuery =
                     $"SELECT {{" +
@@ -813,7 +831,7 @@ namespace GraphView
                 Dictionary<string, JObject> edgeDocDict = pair.Value; // contains both in & out edges
                 VertexField vertexField;
                 connection.VertexCache.TryGetVertexField(vertexId, out vertexField);
-                vertexField.ConstructSpilledOrVirtualAdjacencyListField(edgeDocDict);
+                vertexField.ConstructSpilledOrVirtualAdjacencyListField(edgeType, edgeDocDict);
                 vertexIdSet.Remove(vertexId);
             }
 
@@ -821,7 +839,7 @@ namespace GraphView
             {
                 VertexField vertexField;
                 connection.VertexCache.TryGetVertexField(vertexId, out vertexField);
-                vertexField.ConstructSpilledOrVirtualAdjacencyListField(new Dictionary<string, JObject>());
+                vertexField.ConstructSpilledOrVirtualAdjacencyListField(edgeType, new Dictionary<string, JObject>());
             }
         }
     }

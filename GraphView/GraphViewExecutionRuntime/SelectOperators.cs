@@ -4169,6 +4169,8 @@ namespace GraphView
         {
             HashSet<string> vertexIdCollection = new HashSet<string>();
             HashSet<string> vertexPartitionKeyCollection = new HashSet<string>();
+            EdgeType edgeType = 0;
+
             foreach (Tuple<RawRecord, string> tuple in this.lazyAdjacencyListBatch) {
                 string vertexId = tuple.Item2;
                 VertexField vertexField = (VertexField)(tuple.Item1[this.startVertexIndex]);
@@ -4177,18 +4179,31 @@ namespace GraphView
                 AdjacencyListField revAdj = vertexField.RevAdjacencyList;
                 Debug.Assert(adj != null, "adj != null");
                 Debug.Assert(revAdj != null, "revAdj != null");
-                if (adj.HasBeenFetched && revAdj.HasBeenFetched) {
-                    continue;
+
+                bool addThisEdge = false;
+                if (this.crossApplyForwardAdjacencyList && !adj.HasBeenFetched) {
+                    edgeType |= EdgeType.Outgoing;
+                    addThisEdge = true;
+                }
+                if (this.crossApplyBackwardAdjacencyList && !revAdj.HasBeenFetched) {
+                    edgeType |= EdgeType.Incoming;
+                    addThisEdge = true;
                 }
 
-                vertexIdCollection.Add(vertexId);
-                if (vertexField.Partition != null) {
-                    vertexPartitionKeyCollection.Add(vertexField.Partition);
+                if (addThisEdge) {
+                    vertexIdCollection.Add(vertexId);
+                    if (vertexField.Partition != null) {
+                        vertexPartitionKeyCollection.Add(vertexField.Partition);
+                    }
                 }
             }
 
-            EdgeDocumentHelper.ConstructLazyAdjacencyList(this.connection, vertexIdCollection, vertexPartitionKeyCollection);
+            Debug.Assert(edgeType != 0);
+            if (vertexIdCollection.Count > 0) {
+                EdgeDocumentHelper.ConstructLazyAdjacencyList(this.connection, edgeType, vertexIdCollection, vertexPartitionKeyCollection);
+            }
         }
+
 
         public override RawRecord Next()
         {
