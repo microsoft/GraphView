@@ -286,6 +286,12 @@ namespace GraphView
             return runtimeFunctionCount;
         }
 
+        public override void Visit(WExistsPredicate existsPredicate)
+        {
+            this.runtimeFunctionCount++;
+            existsPredicate.AcceptChildren(this);
+        }
+
         public override void Visit(WFunctionCall fcall)
         {
             switch (fcall.FunctionName.Value.ToLowerInvariant())
