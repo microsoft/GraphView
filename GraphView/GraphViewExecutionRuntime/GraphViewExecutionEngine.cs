@@ -1548,12 +1548,7 @@ namespace GraphView
             }
             return edgeField;
         }
-
-        public bool TryGetEdgeField(string edgeId, out EdgeField edgeField)
-        {
-            return this._edges.TryGetValue(edgeId, out edgeField);
-        }
-
+        
 
         public override string ToString()
         {

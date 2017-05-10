@@ -303,8 +303,7 @@ namespace GraphView
 
                     RawRecord edgeRecord = new RawRecord(edgeProperties.Count);
 
-                    EdgeField edgeField;
-                    vertexField.AdjacencyList.TryGetEdgeField(edgeId, out edgeField);
+                    EdgeField edgeField = vertexField.AdjacencyList.GetEdgeField(edgeId, false);
                     Debug.Assert(edgeField != null, "edgeField != null");
 
                     string startVertexId = vertexField.VertexId;

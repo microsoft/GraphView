@@ -30,7 +30,7 @@ namespace GraphViewUnitTest.Gremlin
     [TestClass]
     public class AbstractGremlinTest
     {
-        internal const bool TEST_USE_REVERSE_EDGE = true;
+        internal const bool TEST_USE_REVERSE_EDGE = false;
 
 #if TEST_PARTITION_BY_NAME
         internal const string TEST_PARTITION_BY_KEY = "name";

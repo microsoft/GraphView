@@ -1020,12 +1020,25 @@ namespace GraphView
 
             string sinkVertexId = (string)outEdgeObject[KW_EDGE_SINKV];
             string sinkVertexPartition = outEdgeObject[KW_EDGE_SINKV_PARTITION].ToObject<string>();
-            VertexField sinkVertexField = this.Connection.VertexCache.GetVertexField(sinkVertexId, sinkVertexPartition);
-            JObject sinkVertexObject = sinkVertexField.VertexJObject;
+            VertexField sinkVertexField;
+            JObject sinkVertexObject;
+            bool foundSink;
+            if (this.Connection.UseReverseEdges) {
+                sinkVertexField = this.Connection.VertexCache.GetVertexField(sinkVertexId, sinkVertexPartition);
+                sinkVertexObject = sinkVertexField.VertexJObject;
+                foundSink = true;
+            }
+            else {
+                foundSink = this.Connection.VertexCache.TryGetVertexField(sinkVertexId, out sinkVertexField);
+                sinkVertexObject = sinkVertexField?.VertexJObject;
+            }
+
             string inEdgeDocId = null;
             JObject inEdgeObject = null;
 
             if (this.Connection.UseReverseEdges) {
+                Debug.Assert(foundSink);
+
                 if (sinkVertexId.Equals(srcVertexId)) {
                     Debug.Assert(object.ReferenceEquals(sinkVertexField, srcVertexField));
                     Debug.Assert(object.ReferenceEquals(sinkVertexObject, srcVertexObject));
@@ -1037,7 +1050,12 @@ namespace GraphView
             }
 
             EdgeField outEdgeField = srcVertexField.AdjacencyList.GetEdgeField(edgeId, true);
-            EdgeField inEdgeField = sinkVertexField.RevAdjacencyList.GetEdgeField(edgeId, true);
+
+            // `inEdgeField` can be null in two cases:
+            //   - `sinkVertexField` is null
+            //   - `sinkVertexField` is in VertexCache, but its rev-edges are stilled lazy.
+            // NOTE: if UseReverseEdge is true, we have to fetch rev-edge to update its property.
+            EdgeField inEdgeField = sinkVertexField?.RevAdjacencyList.GetEdgeField(edgeId, false);
 
             // Drop all non-reserved properties
             if (this.PropertiesToBeUpdated.Count == 1 &&
@@ -1046,17 +1064,7 @@ namespace GraphView
                 !this.PropertiesToBeUpdated[0].Item2.SingleQuoted &&
                 this.PropertiesToBeUpdated[0].Item2.Value.Equals("null", StringComparison.OrdinalIgnoreCase))
             {
-                List<string> toBeDroppedProperties = GraphViewJsonCommand.DropAllEdgeProperties(outEdgeObject);
-                foreach (var propertyName in toBeDroppedProperties) {
-                    outEdgeField.EdgeProperties.Remove(propertyName);
-                }
-
-                if (this.Connection.UseReverseEdges) {
-                    toBeDroppedProperties = GraphViewJsonCommand.DropAllEdgeProperties(inEdgeObject);
-                }
-                foreach (var propertyName in toBeDroppedProperties) {
-                    inEdgeField.EdgeProperties.Remove(propertyName);
-                }
+                throw new Exception("BUG: This condition is obsolete. Code should not reach here now!");
             }
             else
             {
@@ -1080,14 +1088,17 @@ namespace GraphView
                             updatedProperty = GraphViewJsonCommand.UpdateProperty(inEdgeObject, keyExpression, valueExpression);
                         }
 
-                        // Update VertexCache
-                        if (updatedProperty == null)
-                            inEdgeField.EdgeProperties.Remove(keyExpression.Value);
-                        else
-                            inEdgeField.UpdateEdgeProperty(updatedProperty, inEdgeField);
+                        // Update VertexCache (if found)
+                        if (inEdgeField != null) {
+                            Debug.Assert(foundSink);
+                            if (updatedProperty == null)
+                                inEdgeField.EdgeProperties.Remove(keyExpression.Value);
+                            else
+                                inEdgeField.UpdateEdgeProperty(updatedProperty, inEdgeField);
+                        }
                     }
                     else {
-                        throw new NotImplementedException();
+                        throw new GraphViewException("Edges can't have duplicated-name properties.");
                     }
                 }
             }
