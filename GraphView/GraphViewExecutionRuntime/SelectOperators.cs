@@ -2603,66 +2603,56 @@ namespace GraphView
 
     internal class ProjectByOperator : GraphViewExecutionOperator
     {
-        private GraphViewExecutionOperator _inputOp;
-        private List<Tuple<ConstantSourceOperator, GraphViewExecutionOperator, string>> _projectList;
+        private GraphViewExecutionOperator inputOp;
+        private List<Tuple<string, ScalarFunction>> projectList;
 
         internal ProjectByOperator(GraphViewExecutionOperator pInputOperator)
         {
-            _inputOp = pInputOperator;
-            _projectList = new List<Tuple<ConstantSourceOperator, GraphViewExecutionOperator, string>>();
-            Open();
+            this.inputOp = pInputOperator;
+            this.projectList = new List<Tuple<string, ScalarFunction>>();
+            this.Open();
         }
 
-        public void AddProjectBy(ConstantSourceOperator contextOp, GraphViewExecutionOperator traversal, string key)
+        public void AddProjectBy(string key, ScalarFunction byFunction)
         {
-            _projectList.Add(new Tuple<ConstantSourceOperator, GraphViewExecutionOperator, string>(contextOp, traversal, key));
+            this.projectList.Add(new Tuple<string, ScalarFunction>(key, byFunction));
         }
 
         public override RawRecord Next()
         {
             RawRecord currentRecord;
 
-            while (_inputOp.State() && (currentRecord = _inputOp.Next()) != null)
+            while (this.inputOp.State() && (currentRecord = this.inputOp.Next()) != null)
             {
                 MapField projectMap = new MapField();
-                RawRecord extraRecord = new RawRecord();
 
-                foreach (var tuple in _projectList)
+                foreach (Tuple<string, ScalarFunction> tuple in this.projectList)
                 {
-                    string projectKey = tuple.Item3;
-                    ConstantSourceOperator projectContext = tuple.Item1;
-                    GraphViewExecutionOperator projectTraversal = tuple.Item2;
-                    projectContext.ConstantSource = currentRecord;
-                    projectTraversal.ResetState();
+                    string projectKey = tuple.Item1;
+                    ScalarFunction byFunction = tuple.Item2;
+                    FieldObject projectValue = byFunction.Evaluate(currentRecord);
 
-                    RawRecord projectRec = projectTraversal.Next();
-                    projectTraversal.Close();
-
-                    if (projectRec == null)
+                    if (projectValue == null)
                         throw new GraphViewException(
-                            string.Format("The provided traverser of key \"{0}\" does not map to a value.", projectKey));
+                            $"The provided traverser of key \"{projectKey}\" does not map to a value.");
 
-                    projectMap.Add(new StringField(projectKey), projectRec.RetriveData(0));
-                    for (var i = 1; i < projectRec.Length; i++)
-                        extraRecord.Append(projectRec[i]);
+                    projectMap.Add(new StringField(projectKey), projectValue);
                 }
 
-                var result = new RawRecord(currentRecord);
+                RawRecord result = new RawRecord(currentRecord);
                 result.Append(projectMap);
-                if (extraRecord.Length > 0)
-                    result.Append(extraRecord);
 
                 return result;
             }
 
-            Close();
+            this.Close();
             return null;
         }
 
         public override void ResetState()
         {
-            _inputOp.ResetState();
-            Open();
+            this.inputOp.ResetState();
+            this.Open();
         }
     }
 

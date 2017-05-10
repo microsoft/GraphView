@@ -2247,48 +2247,30 @@ namespace GraphView
 
     partial class WProjectTableReference
     {
+        private const int StartParameterIndex = 0;
+        private const int ParameterStep = 2;
+
         internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
         {
-            var projectByOp = new ProjectByOperator(context.CurrentExecutionOperator);
-            for (var i = 0; i < Parameters.Count; i += 2)
+            ProjectByOperator projectByOp = new ProjectByOperator(context.CurrentExecutionOperator);
+
+            for (int i = StartParameterIndex; i < this.Parameters.Count; i += ParameterStep)
             {
-                var scalarSubquery = Parameters[i] as WScalarSubquery;
+                WScalarSubquery scalarSubquery = this.Parameters[i] as WScalarSubquery;
                 if (scalarSubquery == null)
                     throw new SyntaxErrorException("The parameter of ProjectTableReference at an odd position has to be a WScalarSubquery.");
 
-                var projectName = Parameters[i + 1] as WValueExpression;
+                WValueExpression projectName = this.Parameters[i + 1] as WValueExpression;
                 if (projectName == null)
                     throw new SyntaxErrorException("The parameter of ProjectTableReference at an even position has to be a WValueExpression.");
 
-                QueryCompilationContext subcontext = new QueryCompilationContext(context);
-                GraphViewExecutionOperator projectOp = scalarSubquery.SubQueryExpr.Compile(subcontext, dbConnection);
+                ScalarFunction byFunction = scalarSubquery.CompileToFunction(context, dbConnection);
 
-                projectByOp.AddProjectBy(subcontext.OuterContextOp, projectOp, projectName.Value);
+                projectByOp.AddProjectBy(projectName.Value, byFunction);
             }
 
             context.CurrentExecutionOperator = projectByOp;
-            context.AddField(Alias.Value, GremlinKeyword.TableDefaultColumnName, ColumnGraphType.Value);
-
-            for (var i = 0; i < Parameters.Count; i += 2)
-            {
-                var scalarSubquery = Parameters[i] as WScalarSubquery;
-                if (scalarSubquery == null)
-                    throw new SyntaxErrorException("The parameter of ProjectTableReference at an odd position has to be a WScalarSubquery.");
-                var selectQuery = scalarSubquery.SubQueryExpr as WSelectQueryBlock;
-                if (selectQuery == null)
-                {
-                    throw new SyntaxErrorException("The input of a project table reference must be one or more select query blocks.");
-                }
-
-                for (var j = 1; j < selectQuery.SelectElements.Count; j++)
-                {
-                    var scalarExpr = selectQuery.SelectElements[j] as WSelectScalarExpression;
-                    var alias = scalarExpr.ColumnName;
-
-                    // TODO: Change to correct ColumnGraphType
-                    context.AddField(Alias.Value, alias, ColumnGraphType.Value);
-                }
-            }
+            context.AddField(this.Alias.Value, GremlinKeyword.TableDefaultColumnName, ColumnGraphType.Value);
 
             return projectByOp;
         }
