@@ -4188,8 +4188,8 @@ namespace GraphView
                 }
             }
 
-            Debug.Assert(edgeType != 0);
             if (vertexIdCollection.Count > 0) {
+                Debug.Assert(edgeType != 0);
                 EdgeDocumentHelper.ConstructLazyAdjacencyList(this.connection, edgeType, vertexIdCollection, vertexPartitionKeyCollection);
             }
         }
