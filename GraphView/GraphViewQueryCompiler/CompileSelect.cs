@@ -544,7 +544,7 @@ namespace GraphView
                                 srcNode.ReverseNeighbors = new List<MatchEdge>();
                                 srcNode.DanglingEdges = new List<MatchEdge>();
                                 srcNode.Predicates = new List<WBooleanExpression>();
-                                srcNode.Properties = new HashSet<string>(GraphViewReservedProperties.InitialPopulateNodeProperties);
+                                srcNode.Properties = new HashSet<string>();
                             }
 
                             // Consturct the edge of a path in MatchClause.Paths
@@ -661,7 +661,7 @@ namespace GraphView
                             destNode.ReverseNeighbors = new List<MatchEdge>();
                             destNode.DanglingEdges = new List<MatchEdge>();
                             destNode.Predicates = new List<WBooleanExpression>();
-                            destNode.Properties = new HashSet<string>(GraphViewReservedProperties.InitialPopulateNodeProperties);
+                            destNode.Properties = new HashSet<string>();
                         }
                         if (edgeToSrcNode != null)
                         {
@@ -708,7 +708,7 @@ namespace GraphView
                     patternNode.ReverseNeighbors = new List<MatchEdge>();
                     patternNode.DanglingEdges = new List<MatchEdge>();
                     patternNode.Predicates = new List<WBooleanExpression>();
-                    patternNode.Properties = new HashSet<string>(GraphViewReservedProperties.InitialPopulateNodeProperties);
+                    patternNode.Properties = new HashSet<string>();
                 }
 
                 if (!subGraphMap.ContainsKey(root))
@@ -1839,7 +1839,7 @@ namespace GraphView
                 AttachedJsonQuery = null,
                 NodeAlias = nodeAlias,
                 Predicates = new List<WBooleanExpression>(),
-                Properties = new HashSet<string>(GraphViewReservedProperties.InitialPopulateNodeProperties),
+                Properties = new HashSet<string>(),
             };
 
             foreach (WScalarExpression expression in this.Parameters)
@@ -1886,7 +1886,7 @@ namespace GraphView
                 AttachedJsonQuery = null,
                 NodeAlias = nodeAlias,
                 Predicates = new List<WBooleanExpression>(),
-                Properties = new HashSet<string>(GraphViewReservedProperties.InitialPopulateNodeProperties),
+                Properties = new HashSet<string>(),
             };
 
             for (int i = populatePropertyParameterStartIndex; i < this.Parameters.Count; i++) {

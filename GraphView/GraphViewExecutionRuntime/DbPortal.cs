@@ -63,7 +63,7 @@ namespace GraphView
 
         public void Dispose() { }
 
-        public abstract IEnumerator<RawRecord> GetVerticesAndEdgesViaVertices(JsonQuery vertexQuery);
+        public abstract IEnumerator<Tuple<VertexField, RawRecord>> GetVerticesAndEdgesViaVertices(JsonQuery vertexQuery);
         //public abstract IEnumerator<RawRecord> GetVerticesViaExternalAPI(JsonQuery vertexQuery);
 
         public abstract IEnumerator<RawRecord> GetVerticesAndEdgesViaEdges(JsonQuery edgeQuery);
@@ -76,7 +76,7 @@ namespace GraphView
             Connection = connection;
         }
 
-        public override IEnumerator<RawRecord> GetVerticesAndEdgesViaVertices(JsonQuery vertexQuery)
+        public override IEnumerator<Tuple<VertexField, RawRecord>> GetVerticesAndEdgesViaVertices(JsonQuery vertexQuery)
         {
             string queryScript = vertexQuery.ToString(DatabaseType.DocumentDB);
             IEnumerable<dynamic> items = this.Connection.ExecuteQuery(queryScript);
@@ -109,7 +109,7 @@ namespace GraphView
             //  - For "large" vertexes, just return the VertexField, the adjacency list decoder will
             //    construct spilled adjacency lists in batch mode and cross apply edges after that 
             //
-            Func<VertexField, string, RawRecord> makeCrossAppliedRecord = (vertexField, edgeId) => {
+            Func<VertexField, string, Tuple<VertexField, RawRecord>> makeCrossAppliedRecord = (vertexField, edgeId) => {
                 Debug.Assert(vertexField != null);
 
                 RawRecord nodeRecord = new RawRecord();
@@ -132,10 +132,10 @@ namespace GraphView
                 AdjacencyListDecoder.FillPropertyField(edgeRecord, edgeField, edgeProperties);
 
                 nodeRecord.Append(edgeRecord);
-                return nodeRecord;
+                return new Tuple<VertexField, RawRecord>(vertexField, nodeRecord);
             };
 
-            Func<VertexField, RawRecord> makeRawRecord = (vertexField) => {
+            Func<VertexField, Tuple<VertexField, RawRecord>> makeRawRecord = (vertexField) => {
                 Debug.Assert(vertexField != null);
 
                 RawRecord rawRecord = new RawRecord();
@@ -147,7 +147,7 @@ namespace GraphView
                     FieldObject propertyValue = vertexField[propertyName];
                     rawRecord.Append(propertyValue);
                 }
-                return rawRecord;
+                return new Tuple<VertexField, RawRecord>(vertexField, rawRecord);
             };
 
             HashSet<string> uniqueVertexIds = new HashSet<string>();

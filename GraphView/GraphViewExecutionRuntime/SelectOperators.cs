@@ -80,7 +80,7 @@ namespace GraphView
         //private JsonQuery vertexViaExternalAPIQuery;
         private GraphViewConnection connection;
 
-        private IEnumerator<RawRecord> verticesEnumerator;
+        private IEnumerator<Tuple<VertexField, RawRecord>> verticesEnumerator;
         //private IEnumerator<RawRecord> verticesViaExternalAPIEnumerator;
 
         public FetchNodeOperator2(GraphViewConnection connection, JsonQuery vertexQuery/*, JsonQuery vertexViaExternalAPIQuery*/)
@@ -96,7 +96,7 @@ namespace GraphView
         public override RawRecord Next()
         {
             if (/*this.connection.GraphType != GraphType.CompatibleOnly && */this.verticesEnumerator.MoveNext()) {
-                return this.verticesEnumerator.Current;
+                return this.verticesEnumerator.Current.Item2;
             }
 
             //if (this.connection.GraphType != GraphType.GraphAPIOnly && this.verticesViaExternalAPIEnumerator.MoveNext()) {
@@ -341,11 +341,11 @@ namespace GraphView
 
                     using (DbPortal databasePortal = this.connection.CreateDatabasePortal())
                     {
-                        IEnumerator<RawRecord> verticesEnumerator = databasePortal.GetVerticesAndEdgesViaVertices(toSendQuery);
+                        IEnumerator<Tuple<VertexField, RawRecord>> verticesEnumerator = databasePortal.GetVerticesAndEdgesViaVertices(toSendQuery);
 
                         // The following lines are added for debugging convenience
                         // It nearly does no harm to performance
-                        List<RawRecord> temp = new List<RawRecord>();
+                        List<Tuple<VertexField, RawRecord>> temp = new List<Tuple<VertexField, RawRecord>>();
                         while (verticesEnumerator.MoveNext()) {
                             temp.Add(verticesEnumerator.Current);
                         }
@@ -354,11 +354,13 @@ namespace GraphView
                         // Now no matter whether this graph is CompatibleOnly, we should construct the sink vertices
                         //
                         //if (this.connection.GraphType != GraphType.CompatibleOnly) {
-                        foreach (RawRecord rec in temp) {
-                            if (!sinkVertexCollection.ContainsKey(rec[0].ToValue)) {
-                                sinkVertexCollection.Add(rec[0].ToValue, new List<RawRecord>());
+                        foreach (Tuple<VertexField, RawRecord> tuple in temp)
+                        {
+                            VertexField vfield = tuple.Item1;
+                            if (!sinkVertexCollection.ContainsKey(vfield.VertexId)) {
+                                sinkVertexCollection.Add(vfield.VertexId, new List<RawRecord>());
                             }
-                            sinkVertexCollection[rec[0].ToValue].Add(rec);
+                            sinkVertexCollection[vfield.VertexId].Add(tuple.Item2);
                         }
                         //}
 
