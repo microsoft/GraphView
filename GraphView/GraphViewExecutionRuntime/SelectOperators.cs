@@ -3512,8 +3512,9 @@ namespace GraphView
 
             // Return all if sample amount > amount of inputs
             if (this._amountToSample >= this._inputRecords.Count) {
-                if (this._nextIndex == this._inputRecords.Count - 1) {
-                    Close();
+                if (this._nextIndex == this._inputRecords.Count) {
+                    this.Close();
+                    return null;
                 }
                 return this._inputRecords[this._nextIndex++];
             }
