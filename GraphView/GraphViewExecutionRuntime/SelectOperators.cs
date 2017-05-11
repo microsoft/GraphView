@@ -418,13 +418,8 @@ namespace GraphView
             }
 
             if (this.outputBuffer.Count == 0) {
-                if (!this.inputOp.State())
-                    this.Close();
-                return null;
-            }
-            else if (this.outputBuffer.Count == 1) {
                 this.Close();
-                return this.outputBuffer.Dequeue();
+                return null;
             }
             else {
                 return this.outputBuffer.Dequeue();
