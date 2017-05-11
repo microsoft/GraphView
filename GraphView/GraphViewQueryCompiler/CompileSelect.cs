@@ -868,12 +868,21 @@ namespace GraphView
 
                 if (tableReferences.IsSupersetOf(tableRefs))
                 {
+                    // Enable batch mode
                     childrenProcessor.Add(
-                        new FilterOperator(
-                            childrenProcessor.Count != 0 
-                            ? childrenProcessor.Last() 
+                        new FilterInBatchOperator(
+                            childrenProcessor.Count != 0
+                            ? childrenProcessor.Last()
                             : context.OuterContextOp,
-                            predicate.CompileToFunction(context, connection)));
+                            predicate.CompileToBatchFunction(context, connection)));
+
+                    //childrenProcessor.Add(
+                    //    new FilterOperator(
+                    //        childrenProcessor.Count != 0
+                    //        ? childrenProcessor.Last()
+                    //        : context.OuterContextOp,
+                    //        predicate.CompileToFunction(context, connection)));
+
                     toBeRemovedIndexes.Add(i);
                     context.CurrentExecutionOperator = childrenProcessor.Last();
                 }
@@ -1254,6 +1263,7 @@ namespace GraphView
                         ? operatorChain.Last()
                         : (context.OuterContextOp ?? new ConstantSourceOperator {ConstantSource = new RawRecord()}));
 
+
                 // When CarryOn is set, in addition to the SELECT elements in the SELECT clause,
                 // the query also projects fields from its parent context.
                 if (context.CarryOn)
@@ -1264,6 +1274,12 @@ namespace GraphView
                         projectOperator.AddSelectScalarElement(fieldSelectFunc);
                     }
                 }
+                else if (context.InBatchMode)
+                {
+                    FieldValue indexValue = new FieldValue(0);
+                    projectOperator.AddSelectScalarElement(indexValue);
+                }
+
 
                 foreach (var expr in selectScalarExprList)
                 {
@@ -1307,7 +1323,11 @@ namespace GraphView
             }
             else
             {
-                ProjectAggregation projectAggregationOp = new ProjectAggregation(operatorChain.Any()
+                ProjectAggregation projectAggregationOp = context.InBatchMode ?
+                    new ProjectAggregationInBatch(operatorChain.Any()
+                        ? operatorChain.Last()
+                        : context.OuterContextOp): 
+                    new ProjectAggregation(operatorChain.Any()
                         ? operatorChain.Last()
                         : context.OuterContextOp);
 
@@ -1567,6 +1587,7 @@ namespace GraphView
 
                     QueryCompilationContext subcontext = new QueryCompilationContext(context);
                     subcontext.CarryOn = true;
+                    subcontext.InBatchMode = context.InBatchMode;
                     GraphViewExecutionOperator traversalOp = scalarSubquery.SubQueryExpr.Compile(subcontext, dbConnection);
                     subcontext.OuterContextOp.SourceEnumerator = containerOp.GetEnumerator();
                     unionOp.AddTraversal(subcontext.OuterContextOp, traversalOp);
@@ -1715,6 +1736,7 @@ namespace GraphView
             if (this.HasAggregateFunctionAsChildren)
             {
                 isCarryOnMode = true;
+                subcontext.InBatchMode = context.InBatchMode;
                 containerOp = new ContainerOperator(context.CurrentExecutionOperator);
                 subcontext.CarryOn = true;
                 subcontext.OuterContextOp.SourceEnumerator = containerOp.GetEnumerator();
@@ -2284,9 +2306,11 @@ namespace GraphView
             Split(out contextSelect, out repeatSelect);
 
             QueryCompilationContext rTableContext = new QueryCompilationContext(context);
+            rTableContext.InBatchMode = context.InBatchMode;
             rTableContext.CarryOn = true;
 
             QueryCompilationContext initalContext = new QueryCompilationContext(context);
+            initalContext.InBatchMode = context.InBatchMode;
             initalContext.CarryOn = true;
             GraphViewExecutionOperator getInitialRecordOp = contextSelect.Compile(initalContext, dbConnection);
 
@@ -2697,12 +2721,19 @@ namespace GraphView
             WValueExpression groupParameter = Parameters[0] as WValueExpression;
             if (!groupParameter.SingleQuoted && groupParameter.Value.Equals("null", StringComparison.OrdinalIgnoreCase))
             {
-                GroupOperator groupOp = new GroupOperator(
-                    context.CurrentExecutionOperator, 
-                    groupKeyFunction,
-                    tempSourceOp, aggregatedSourceOp, aggregateOp, 
-                    this.IsProjectingACollection,
-                    context.RawRecordLayout.Count);
+                GroupOperator groupOp = context.InBatchMode
+                    ? new GroupInBatchOperator(
+                        context.CurrentExecutionOperator,
+                        groupKeyFunction,
+                        tempSourceOp, aggregatedSourceOp, aggregateOp,
+                        this.IsProjectingACollection,
+                        context.RawRecordLayout.Count)
+                    : new GroupOperator(
+                        context.CurrentExecutionOperator,
+                        groupKeyFunction,
+                        tempSourceOp, aggregatedSourceOp, aggregateOp,
+                        this.IsProjectingACollection,
+                        context.RawRecordLayout.Count);
 
                 context.CurrentExecutionOperator = groupOp;
 
@@ -2760,7 +2791,7 @@ namespace GraphView
             else
             {
                 derivedTableContext.CarryOn = true;
-
+                derivedTableContext.InBatchMode = context.InBatchMode;
                 // For Union and Optional's semantics, e.g. g.V().union(__.count())
                 if (context.CarryOn)
                 {
@@ -2913,7 +2944,9 @@ namespace GraphView
                 orderByElements.Add(new Tuple<ScalarFunction, IComparer>(byFunction, comparer));
             }
 
-            OrderOperator orderOp = new OrderOperator(context.CurrentExecutionOperator, orderByElements);
+            OrderOperator orderOp = context.InBatchMode
+                ? new OrderInBatchOperator(context.CurrentExecutionOperator, orderByElements) 
+                : new OrderOperator(context.CurrentExecutionOperator, orderByElements);
             context.CurrentExecutionOperator = orderOp;
 
             return orderOp;
@@ -3014,7 +3047,9 @@ namespace GraphView
                 }
                 else
                 {
-                    TailOperator tailOp = new TailOperator(context.CurrentExecutionOperator, lastN);
+                    TailOperator tailOp = context.InBatchMode
+                        ? new TailInBatchOperator(context.CurrentExecutionOperator, lastN)
+                        : new TailOperator(context.CurrentExecutionOperator, lastN);
                     context.CurrentExecutionOperator = tailOp;
 
                     return tailOp;
@@ -3052,7 +3087,9 @@ namespace GraphView
                 }
                 else
                 {
-                    RangeOperator rangeOp = new RangeOperator(context.CurrentExecutionOperator, startIndex, count);
+                    RangeOperator rangeOp = context.InBatchMode
+                        ? new RangeInBatchOperator(context.CurrentExecutionOperator, startIndex, count)
+                        : new RangeOperator(context.CurrentExecutionOperator, startIndex, count);
                     context.CurrentExecutionOperator = rangeOp;
 
                     return rangeOp;
@@ -3204,12 +3241,14 @@ namespace GraphView
 
             QueryCompilationContext trueBranchSubContext = new QueryCompilationContext(context);
             trueBranchSubContext.CarryOn = true;
+            trueBranchSubContext.InBatchMode = context.InBatchMode;
             ContainerOperator trueBranchSourceOp = new ContainerOperator(tempSourceOp);
             GraphViewExecutionOperator trueBranchTraversalOp = trueTraversalParameter.SubQueryExpr.Compile(trueBranchSubContext, dbConnection);
             trueBranchSubContext.OuterContextOp.SourceEnumerator = trueBranchSourceOp.GetEnumerator();
 
             QueryCompilationContext falseBranchSubContext = new QueryCompilationContext(context);
             falseBranchSubContext.CarryOn = true;
+            falseBranchSubContext.InBatchMode = context.InBatchMode;
             ContainerOperator falseBranchSourceOp = new ContainerOperator(tempSourceOp);
             GraphViewExecutionOperator falseBranchTraversalOp = falseTraversalParameter.SubQueryExpr.Compile(falseBranchSubContext, dbConnection);
             falseBranchSubContext.OuterContextOp.SourceEnumerator = falseBranchSourceOp.GetEnumerator();
@@ -3277,6 +3316,7 @@ namespace GraphView
 
                 QueryCompilationContext subcontext = new QueryCompilationContext(context);
                 subcontext.CarryOn = true;
+                subcontext.InBatchMode = context.InBatchMode;
                 GraphViewExecutionOperator optionTraversalOp = scalarSubquery.SubQueryExpr.Compile(subcontext, dbConnection);
                 subcontext.OuterContextOp.SourceEnumerator = optionSourceOp.GetEnumerator();
                 chooseWithOptionsOp.AddOptionTraversal(value?.CompileToFunction(context, dbConnection), optionTraversalOp);

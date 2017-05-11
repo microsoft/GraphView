@@ -491,18 +491,18 @@ namespace GraphView
 
     internal class GroupOperator : GraphViewExecutionOperator
     {
-        GraphViewExecutionOperator inputOp;
+        protected GraphViewExecutionOperator inputOp;
 
-        ScalarFunction groupByKeyFunction;
+        protected ScalarFunction groupByKeyFunction;
 
-        GraphViewExecutionOperator aggregateOp;
-        ConstantSourceOperator tempSourceOp;
-        ContainerOperator groupedSourceOp;
+        protected GraphViewExecutionOperator aggregateOp;
+        protected ConstantSourceOperator tempSourceOp;
+        protected ContainerOperator groupedSourceOp;
 
-        bool isProjectingACollection;
-        int carryOnCount;
+        protected bool isProjectingACollection;
+        protected int carryOnCount;
 
-        Dictionary<FieldObject, List<RawRecord>> groupedStates;
+        protected Dictionary<FieldObject, List<RawRecord>> groupedStates;
 
         public GroupOperator(
             GraphViewExecutionOperator inputOp,
@@ -624,6 +624,170 @@ namespace GraphView
             this.inputOp.ResetState();
             this.groupedStates.Clear();
             this.Open();
+        }
+    }
+
+    internal class GroupInBatchOperator : GroupOperator
+    {
+        private RawRecord firstRecordInGroup = null;
+        private int processedGroupIndex;
+
+        public GroupInBatchOperator(
+            GraphViewExecutionOperator inputOp,
+            ScalarFunction groupByKeyFunction,
+            ConstantSourceOperator tempSourceOp,
+            ContainerOperator groupedSourceOp,
+            GraphViewExecutionOperator aggregateOp,
+            bool isProjectingACollection,
+            int carryOnCount)
+            : base(inputOp, groupByKeyFunction, tempSourceOp, groupedSourceOp, aggregateOp,
+                isProjectingACollection, carryOnCount)
+        {
+            this.processedGroupIndex = 0;
+        }
+
+        public override RawRecord Next()
+        {
+            if (this.firstRecordInGroup == null && this.State())
+            {
+                this.firstRecordInGroup = this.inputOp.Next();
+            }
+
+            if (this.firstRecordInGroup == null)
+            {
+                this.Close();
+                return null;
+            }
+
+            while (this.processedGroupIndex < int.Parse(this.firstRecordInGroup[0].ToValue))
+            {
+                MapField emptyMap = new MapField(this.groupedStates.Count);
+                RawRecord noGroupRecord = new RawRecord();
+
+                for (int i = 0; i < this.carryOnCount; i++)
+                {
+                    noGroupRecord.Append((FieldObject)null);
+                }
+                noGroupRecord.Append(emptyMap);
+                noGroupRecord.fieldValues[0] = new StringField(this.processedGroupIndex.ToString(), JsonDataType.Int);
+                this.processedGroupIndex++;
+
+                return noGroupRecord;
+            }
+
+            FieldObject groupByKey = this.groupByKeyFunction.Evaluate(this.firstRecordInGroup);
+
+            if (groupByKey == null)
+            {
+                throw new GraphViewException("The provided property name or traversal does not map to a value for some elements.");
+            }
+
+            if (!this.groupedStates.ContainsKey(groupByKey))
+            {
+                this.groupedStates.Add(groupByKey, new List<RawRecord>());
+            }
+            this.groupedStates[groupByKey].Add(this.firstRecordInGroup);
+
+            RawRecord rec = null;
+            while (this.inputOp.State() && 
+                (rec = this.inputOp.Next()) != null && 
+                rec[0].ToValue == this.firstRecordInGroup[0].ToValue)
+            {
+                groupByKey = groupByKeyFunction.Evaluate(rec);
+
+                if (groupByKey == null)
+                {
+                    throw new GraphViewException("The provided property name or traversal does not map to a value for some elements.");
+                }
+
+                if (!this.groupedStates.ContainsKey(groupByKey))
+                {
+                    this.groupedStates.Add(groupByKey, new List<RawRecord>());
+                }
+                this.groupedStates[groupByKey].Add(rec);
+            }
+
+            MapField result = new MapField(this.groupedStates.Count);
+
+            if (this.isProjectingACollection)
+            {
+                foreach (FieldObject key in this.groupedStates.Keys)
+                {
+                    List<FieldObject> projectFields = new List<FieldObject>();
+                    foreach (RawRecord rawRecord in this.groupedStates[key])
+                    {
+                        this.groupedSourceOp.ResetState();
+                        this.aggregateOp.ResetState();
+                        this.tempSourceOp.ConstantSource = rawRecord;
+                        this.groupedSourceOp.Next();
+
+                        RawRecord aggregateTraversalRecord = this.aggregateOp.Next();
+                        FieldObject projectResult = aggregateTraversalRecord?.RetriveData(0);
+
+                        if (projectResult == null)
+                        {
+                            throw new GraphViewException("The property does not exist for some of the elements having been grouped.");
+                        }
+
+                        projectFields.Add(projectResult);
+                    }
+
+                    Dictionary<string, FieldObject> compositeFieldObjects = new Dictionary<string, FieldObject>();
+                    compositeFieldObjects.Add(GraphViewKeywords.KW_TABLE_DEFAULT_COLUMN_NAME, new CollectionField(projectFields));
+                    result[key] = new CompositeField(compositeFieldObjects, GraphViewKeywords.KW_TABLE_DEFAULT_COLUMN_NAME);
+                }
+            }
+            else
+            {
+                foreach (KeyValuePair<FieldObject, List<RawRecord>> pair in this.groupedStates)
+                {
+                    FieldObject key = pair.Key;
+                    List<RawRecord> aggregatedRecords = pair.Value;
+                    this.groupedSourceOp.ResetState();
+                    this.aggregateOp.ResetState();
+
+                    foreach (RawRecord record in aggregatedRecords)
+                    {
+                        this.tempSourceOp.ConstantSource = record;
+                        this.groupedSourceOp.Next();
+                    }
+
+                    RawRecord aggregateTraversalRecord = null;
+                    FieldObject aggregateResult = null;
+                    while (this.aggregateOp.State() && (aggregateTraversalRecord = this.aggregateOp.Next()) != null)
+                    {
+                        aggregateResult = aggregateTraversalRecord.RetriveData(0);
+                    }
+
+                    if (aggregateResult == null)
+                    {
+                        continue;
+                    }
+
+                    result[key] = aggregateResult;
+                }
+            }
+
+            RawRecord resultRecord = new RawRecord();
+
+            for (int i = 0; i < this.carryOnCount; i++)
+            {
+                resultRecord.Append((FieldObject)null);
+            }
+            resultRecord.Append(result);
+            resultRecord.fieldValues[0] = this.firstRecordInGroup[0];
+            
+            this.firstRecordInGroup = rec;
+            this.groupedStates.Clear();
+            this.processedGroupIndex++;
+
+            return resultRecord;
+        }
+
+        public override void ResetState()
+        {
+            this.processedGroupIndex = 0;
+            base.ResetState();
         }
     }
 }

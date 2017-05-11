@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using Microsoft.SqlServer.TransactSql.ScriptDom;
 
 namespace GraphView
@@ -7,13 +8,23 @@ namespace GraphView
 
     internal abstract class BooleanFunction
     {
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <param name="r"></param>
-        /// <returns></returns>
-        //internal List<string> header { get; set; }      // To be removed.
         public abstract bool Evaluate(RawRecord r);
+
+
+        public virtual HashSet<int> EvaluateInBatch(List<RawRecord> records)
+        {
+            HashSet<int> resultIndexes = new HashSet<int>();
+
+            foreach (RawRecord record in records)
+            {
+                if (this.Evaluate(record))
+                {
+                    resultIndexes.Add(int.Parse(record.RetriveData(0).ToValue));
+                }
+            }
+
+            return resultIndexes;
+        }
     }
 
     //internal abstract class ComparisonBooleanFunction : BooleanFunction
@@ -42,7 +53,6 @@ namespace GraphView
             secondScalarFunction = f2;
             this.comparisonType = comparisonType;
         }
-
 
         public override bool Evaluate(RawRecord record)
         {
@@ -429,6 +439,18 @@ namespace GraphView
             if (type == BooleanBinaryFunctionType.Or) return lhs.Evaluate(r) || rhs.Evaluate(r);
             return false;
         }
+
+        public override HashSet<int> EvaluateInBatch(List<RawRecord> records)
+        {
+            HashSet<int> lhsIndexes = this.lhs.EvaluateInBatch(records);
+            HashSet<int> rhsIndexes = this.rhs.EvaluateInBatch(records);
+
+            if (this.type == BooleanBinaryFunctionType.And)
+                return new HashSet<int>(lhsIndexes.Intersect(rhsIndexes));
+            if (this.type == BooleanBinaryFunctionType.Or)
+                return new HashSet<int>(lhsIndexes.Union(rhsIndexes));
+            return new HashSet<int>();
+        }
     }
 
     internal class ExistsFunction : BooleanFunction
@@ -439,10 +461,18 @@ namespace GraphView
         private GraphViewExecutionOperator subqueryOp;
         private ConstantSourceOperator constantSourceOp;
 
+        private ContainerEnumerator sourceEnumerator;
+
         public ExistsFunction(GraphViewExecutionOperator subqueryOp, ConstantSourceOperator constantSourceOp)
         {
             this.subqueryOp = subqueryOp;
             this.constantSourceOp = constantSourceOp;
+        }
+
+        public ExistsFunction(GraphViewExecutionOperator subqueryOp, ContainerEnumerator sourceEnumerator)
+        {
+            this.subqueryOp = subqueryOp;
+            this.sourceEnumerator = sourceEnumerator;
         }
 
         public override bool Evaluate(RawRecord r)
@@ -454,20 +484,43 @@ namespace GraphView
 
             return firstResult != null;
         }
+
+        public override HashSet<int> EvaluateInBatch(List<RawRecord> records)
+        {
+            this.subqueryOp.ResetState();
+            this.sourceEnumerator.ResetTableCache(records);
+
+            HashSet<int> returnIndexes = new HashSet<int>();
+            RawRecord rec = null;
+            while (this.subqueryOp.State() && (rec = this.subqueryOp.Next()) != null)
+            {
+                returnIndexes.Add(int.Parse(rec.RetriveData(0).ToValue));
+            }
+
+            return returnIndexes;
+        }
     }
 
     internal class BooleanNotFunction : BooleanFunction
     {
-        private BooleanFunction _booleanFunction;
+        private BooleanFunction booleanFunction;
 
         public BooleanNotFunction(BooleanFunction booleanFunction)
         {
-            _booleanFunction = booleanFunction;
+            this.booleanFunction = booleanFunction;
         }
 
         public override bool Evaluate(RawRecord r)
         {
-            return !_booleanFunction.Evaluate(r);
+            return !this.booleanFunction.Evaluate(r);
+        }
+
+        public override HashSet<int> EvaluateInBatch(List<RawRecord> records)
+        {
+            HashSet<int> inputIndexes = new HashSet<int>(records.Select(r => int.Parse(r.RetriveData(0).ToValue)));
+            HashSet<int> exceptIndexes = this.booleanFunction.EvaluateInBatch(records);
+
+            return new HashSet<int>(inputIndexes.Except(exceptIndexes));
         }
     }
 }

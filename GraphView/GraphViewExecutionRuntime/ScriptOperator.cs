@@ -6,24 +6,35 @@ namespace GraphView
 {
     internal class ContainerEnumerator
     {
-        List<RawRecord> tableCache;
-        ContainerOperator containerOp;
-        int offset;
+        private List<RawRecord> tableCache;
+        private ContainerOperator containerOp;
+        private int offset;
 
         public ContainerEnumerator(List<RawRecord> tableCache, ContainerOperator containerOp)
         {
-            offset = -1;
+            this.offset = -1;
             this.tableCache = tableCache;
             this.containerOp = containerOp;
+        }
+
+        public ContainerEnumerator()
+        {
+            this.offset = -1;
+        }
+
+        public void ResetTableCache(List<RawRecord> tableCache)
+        {
+            this.offset = -1;
+            this.tableCache = tableCache;
         }
 
         public RawRecord Current
         {
             get
             {
-                if (offset >= 0 && offset < tableCache.Count)
+                if (this.offset >= 0 && this.offset < this.tableCache.Count)
                 {
-                    return tableCache[offset];
+                    return this.tableCache[this.offset];
                 }
                 else
                 {
@@ -34,12 +45,12 @@ namespace GraphView
 
         public bool MoveNext()
         {
-            if (offset + 1 >= tableCache.Count)
+            if (this.offset + 1 >= this.tableCache.Count)
             {
-                containerOp.Next();
-                if (offset + 1 < tableCache.Count)
+                this.containerOp?.Next();
+                if (this.offset + 1 < this.tableCache.Count)
                 {
-                    offset++;
+                    this.offset++;
                     return true;
                 }
                 else
@@ -48,19 +59,19 @@ namespace GraphView
                 }
             }
 
-            offset++;
+            this.offset++;
             return true;
         }
 
         public void ResetState()
         {
-            offset = -1;
-            containerOp.ResetState();
+            this.offset = -1;
+            this.containerOp?.ResetState();
         }
 
         public void Reset()
         {
-            offset = -1;
+            this.offset = -1;
         }
     }
 
@@ -71,29 +82,28 @@ namespace GraphView
 
         public ContainerOperator(GraphViewExecutionOperator input)
         {
-            TableInput = input;
-            tableCache = new List<RawRecord>();
-            Open();
+            this.TableInput = input;
+            this.tableCache = new List<RawRecord>();
+            this.Open();
         }
 
         public override RawRecord Next()
         {
-            if (TableInput.State())
+            if (this.TableInput.State())
             {
-                RawRecord rec = TableInput.Next();
+                RawRecord rec = this.TableInput.Next();
                 if (rec != null)
                 {
-                    tableCache.Add(rec);
-                    return rec;
+                    this.tableCache.Add(rec);
                 }
                 else
                 {
-                    TableInput.Close();
+                    this.TableInput.Close();
                     return null;
                 }
             }
 
-            return tableCache.Count > 0 ? tableCache[tableCache.Count - 1] : null;
+            return this.tableCache.Count > 0 ? this.tableCache[this.tableCache.Count - 1] : null;
         }
 
         public ContainerEnumerator GetEnumerator()

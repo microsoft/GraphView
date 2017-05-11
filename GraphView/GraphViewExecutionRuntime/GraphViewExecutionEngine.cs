@@ -2350,6 +2350,11 @@ namespace GraphView
             }
         }
 
+        public RawRecord GetRange(int index, int count)
+        {
+            return new RawRecord() {fieldValues = this.fieldValues.GetRange(index, count)};
+        }
+
         internal FieldObject RetriveData(List<string> header,string FieldName)
         {
             if (header.IndexOf(FieldName) == -1) return null;

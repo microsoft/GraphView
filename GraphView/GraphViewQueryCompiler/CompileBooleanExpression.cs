@@ -13,16 +13,41 @@ namespace GraphView
         {
             return null;
         }
+
+        internal virtual BooleanFunction CompileToBatchFunction(QueryCompilationContext context,
+            GraphViewConnection dbConnection)
+        {
+            QueryCompilationContext subContext = new QueryCompilationContext(context);
+            subContext.AddField(GremlinKeyword.IndexTableName, GremlinKeyword.IndexColumnName, ColumnGraphType.Value, true);
+            subContext.InBatchMode = true;
+
+            return this.CompileToFunction(subContext, dbConnection);
+        }
     }
 
     public partial class WBooleanBinaryExpression
     {
         internal override BooleanFunction CompileToFunction(QueryCompilationContext context, GraphViewConnection dbConnection)
         {
-            BooleanFunction bf1 = FirstExpr.CompileToFunction(context, dbConnection);
-            BooleanFunction bf2 = SecondExpr.CompileToFunction(context, dbConnection);
+            BooleanFunction bf1 = this.FirstExpr.CompileToFunction(context, dbConnection);
+            BooleanFunction bf2 = this.SecondExpr.CompileToFunction(context, dbConnection);
 
-            if (BooleanExpressionType == BooleanBinaryExpressionType.And)
+            if (this.BooleanExpressionType == BooleanBinaryExpressionType.And)
+            {
+                return new BooleanBinaryFunction(bf1, bf2, BooleanBinaryFunctionType.And);
+            }
+            else
+            {
+                return new BooleanBinaryFunction(bf1, bf2, BooleanBinaryFunctionType.Or);
+            }
+        }
+
+        internal override BooleanFunction CompileToBatchFunction(QueryCompilationContext context, GraphViewConnection dbConnection)
+        {
+            BooleanFunction bf1 = this.FirstExpr.CompileToBatchFunction(context, dbConnection);
+            BooleanFunction bf2 = this.SecondExpr.CompileToBatchFunction(context, dbConnection);
+
+            if (this.BooleanExpressionType == BooleanBinaryExpressionType.And)
             {
                 return new BooleanBinaryFunction(bf1, bf2, BooleanBinaryFunctionType.And);
             }
@@ -71,13 +96,23 @@ namespace GraphView
         {
             return new BooleanNotFunction(Expression.CompileToFunction(context, dbConnection));
         }
+
+        internal override BooleanFunction CompileToBatchFunction(QueryCompilationContext context, GraphViewConnection dbConnection)
+        {
+            return new BooleanNotFunction(this.Expression.CompileToBatchFunction(context, dbConnection));
+        }
     }
 
     public partial class WBooleanParenthesisExpression
     {
         internal override BooleanFunction CompileToFunction(QueryCompilationContext context, GraphViewConnection dbConnection)
         {
-            return Expression.CompileToFunction(context, dbConnection);
+            return this.Expression.CompileToFunction(context, dbConnection);
+        }
+
+        internal override BooleanFunction CompileToBatchFunction(QueryCompilationContext context, GraphViewConnection dbConnection)
+        {
+            return this.Expression.CompileToBatchFunction(context, dbConnection);
         }
     }
 
@@ -88,6 +123,21 @@ namespace GraphView
             QueryCompilationContext subContext = new QueryCompilationContext(context);
             GraphViewExecutionOperator subQueryOp = Subquery.SubQueryExpr.Compile(subContext, dbConnection);
             ExistsFunction existsFunc = new ExistsFunction(subQueryOp, subContext.OuterContextOp);
+
+            return existsFunc;
+        }
+
+        internal override BooleanFunction CompileToBatchFunction(QueryCompilationContext context, GraphViewConnection dbConnection)
+        {
+            QueryCompilationContext subContext = new QueryCompilationContext(context);
+            subContext.AddField(GremlinKeyword.IndexTableName, GremlinKeyword.IndexColumnName, ColumnGraphType.Value, true);
+            subContext.InBatchMode = true;
+
+            ContainerEnumerator sourceEnumerator = new ContainerEnumerator();
+            GraphViewExecutionOperator subQueryOp = this.Subquery.SubQueryExpr.Compile(subContext, dbConnection);
+            subContext.OuterContextOp.SourceEnumerator = sourceEnumerator;
+
+            ExistsFunction existsFunc = new ExistsFunction(subQueryOp, sourceEnumerator);
 
             return existsFunc;
         }

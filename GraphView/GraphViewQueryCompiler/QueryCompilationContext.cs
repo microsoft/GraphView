@@ -116,6 +116,8 @@ namespace GraphView
 
         public Dictionary<string, TableGraphType> TableReferences { get; private set; }
 
+        public bool InBatchMode { get; set; }
+
         /// <summary>
         /// A collection of states of side effect functions. A function's state
         /// implements interfaces of aggregation functions, as each record passes through
@@ -166,12 +168,29 @@ namespace GraphView
         /// <param name="tableAlias"></param>
         /// <param name="columnName"></param>
         /// <param name="type"></param>
-        public void AddField(string tableAlias, string columnName, ColumnGraphType type)
+        /// <param name="insertAtFront"></param>
+        public void AddField(string tableAlias, string columnName, ColumnGraphType type, bool insertAtFront = false)
         {
-            int index = RawRecordLayout.Count;
             WColumnReferenceExpression colRef = new WColumnReferenceExpression(tableAlias, columnName);
             colRef.ColumnGraphType = type;
-            RawRecordLayout[colRef] = index;
+
+            if (insertAtFront)
+            {
+                foreach (WColumnReferenceExpression column in this.RawRecordLayout.Keys.ToList())
+                {
+                    ++this.RawRecordLayout[column];
+                    if (this.ParentContextRawRecordLayout != null && this.ParentContextRawRecordLayout.ContainsKey(column))
+                    {
+                        ++this.ParentContextRawRecordLayout[column];
+                    }
+                }
+                this.RawRecordLayout[colRef] = 0;
+            }
+            else
+            {
+                int index = this.RawRecordLayout.Count;
+                this.RawRecordLayout[colRef] = index;
+            }
         }
 
         public void ClearField()

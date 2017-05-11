@@ -449,6 +449,7 @@ namespace GraphView
         public override RawRecord Next()
         {
             RawRecord rec;
+
             while (Input.State() && (rec = Input.Next()) != null)
             {
                 if (Func.Evaluate(rec))
@@ -457,7 +458,8 @@ namespace GraphView
                 }
             }
 
-            Close();
+
+            this.Close();
             return null;
         }
 
@@ -465,6 +467,74 @@ namespace GraphView
         {
             Input.ResetState();
             Open();
+        }
+    }
+
+    internal class FilterInBatchOperator : GraphViewExecutionOperator
+    {
+        private readonly GraphViewExecutionOperator input;
+        private readonly BooleanFunction func;
+        private readonly int batchSize;
+
+        private int index;
+        private List<RawRecord> inputBatch;
+        private HashSet<int> returnIndexes;
+
+        public FilterInBatchOperator(GraphViewExecutionOperator input, BooleanFunction func, int batchSize = 1000)
+        {
+            this.input = input;
+            this.func = func;
+            this.batchSize = batchSize;
+            this.index = 0;
+            this.inputBatch = new List<RawRecord>();
+            this.returnIndexes = new HashSet<int>();
+
+            this.Open();
+        }
+
+        public override RawRecord Next()
+        {
+            while (this.State())
+            {
+                while (this.index < this.inputBatch.Count)
+                {
+                    RawRecord inputRecord = this.inputBatch[this.index];
+                    int inputIndex = this.index++;
+                    if (this.returnIndexes.Contains(inputIndex))
+                    {
+                        return inputRecord.GetRange(1, inputRecord.Length - 1);
+                    }
+                }
+
+                if (!this.input.State())
+                {
+                    this.Close();
+                    return null;
+                }
+
+                this.index = 0;
+                this.inputBatch.Clear();
+                RawRecord rec;
+                while (this.inputBatch.Count < this.batchSize && this.input.State() && (rec = this.input.Next()) != null)
+                {
+                    RawRecord inputRecord = new RawRecord();
+                    inputRecord.Append(new StringField(this.inputBatch.Count.ToString(), JsonDataType.Int));
+                    inputRecord.Append(rec);
+                    this.inputBatch.Add(inputRecord);
+                }
+
+                this.returnIndexes = this.func.EvaluateInBatch(this.inputBatch);
+            }
+
+            return null;
+        }
+
+        public override void ResetState()
+        {
+            this.input.ResetState();
+            this.inputBatch.Clear();
+            this.returnIndexes.Clear();
+            this.Open();
         }
     }
 
@@ -689,11 +759,11 @@ namespace GraphView
 
     internal class OrderOperator : GraphViewExecutionOperator
     {
-        private GraphViewExecutionOperator inputOp;
-        private List<RawRecord> inputBuffer;
-        private int returnIndex;
+        protected GraphViewExecutionOperator inputOp;
+        protected List<RawRecord> inputBuffer;
+        protected int returnIndex;
 
-        private List<Tuple<ScalarFunction, IComparer>> orderByElements;
+        protected List<Tuple<ScalarFunction, IComparer>> orderByElements;
 
         public OrderOperator(GraphViewExecutionOperator inputOp, List<Tuple<ScalarFunction, IComparer>> orderByElements)
         {
@@ -755,6 +825,92 @@ namespace GraphView
             this.returnIndex = 0;
 
             this.Open();
+        }
+    }
+
+    internal class OrderInBatchOperator : OrderOperator
+    {
+        private RawRecord firstRecordInGroup;
+
+        internal OrderInBatchOperator(
+            GraphViewExecutionOperator inputOp,
+            List<Tuple<ScalarFunction, IComparer>> orderByElements)
+            : base(inputOp, orderByElements)
+        {
+            this.inputBuffer = new List<RawRecord>();
+        }
+
+        public override RawRecord Next()
+        {
+            while (this.State())
+            {
+                while (this.returnIndex < this.inputBuffer.Count)
+                {
+                    return this.inputBuffer[this.returnIndex++];
+                }
+                this.returnIndex = 0;
+                this.inputBuffer.Clear();
+
+                if (this.firstRecordInGroup == null && this.inputOp.State())
+                {
+                    this.firstRecordInGroup = this.inputOp.Next();
+                }
+
+                if (this.firstRecordInGroup == null)
+                {
+                    this.Close();
+                    return null;
+                }
+
+                this.inputBuffer.Add(this.firstRecordInGroup);
+                // Collect one group into the buffer
+                RawRecord rec = null;
+                while (this.inputOp.State() &&
+                       (rec = this.inputOp.Next()) != null &&
+                       rec[0].ToValue == this.firstRecordInGroup[0].ToValue)
+                {
+                    this.inputBuffer.Add(rec);
+                }
+
+                this.firstRecordInGroup = rec;
+
+                this.inputBuffer.Sort((x, y) =>
+                {
+                    int ret = 0;
+                    foreach (Tuple<ScalarFunction, IComparer> orderByElement in this.orderByElements)
+                    {
+                        ScalarFunction byFunction = orderByElement.Item1;
+
+                        FieldObject xKey = byFunction.Evaluate(x);
+                        if (xKey == null)
+                        {
+                            throw new GraphViewException("The provided traversal or property name of Order does not map to a value.");
+                        }
+
+                        FieldObject yKey = byFunction.Evaluate(y);
+                        if (yKey == null)
+                        {
+                            throw new GraphViewException("The provided traversal or property name of Order does not map to a value.");
+                        }
+
+                        IComparer comparer = orderByElement.Item2;
+                        ret = comparer.Compare(xKey.ToObject(), yKey.ToObject());
+
+                        if (ret != 0) break;
+                    }
+                    return ret;
+                });
+
+                continue;
+            }
+
+            return null;
+        }
+
+        public override void ResetState()
+        {
+            base.ResetState();
+            this.inputBuffer = new List<RawRecord>();
         }
     }
 
@@ -949,8 +1105,8 @@ namespace GraphView
 
     internal class ProjectAggregation : GraphViewExecutionOperator
     {
-        List<Tuple<IAggregateFunction, List<ScalarFunction>>> aggregationSpecs;
-        GraphViewExecutionOperator inputOp;
+        protected List<Tuple<IAggregateFunction, List<ScalarFunction>>> aggregationSpecs;
+        protected GraphViewExecutionOperator inputOp;
 
         public ProjectAggregation(GraphViewExecutionOperator inputOp)
         {
@@ -1030,6 +1186,127 @@ namespace GraphView
             return outputRec;
         }
     }
+
+    internal class ProjectAggregationInBatch : ProjectAggregation
+    {
+        private RawRecord firstRecordInGroup = null;
+        private int processedGroupIndex;
+
+        internal ProjectAggregationInBatch(GraphViewExecutionOperator inputOp) : base(inputOp)
+        {
+            this.processedGroupIndex = 0;
+        }
+
+        public override RawRecord Next()
+        {
+            if (this.firstRecordInGroup == null && this.State())
+            {
+                this.firstRecordInGroup = this.inputOp.Next();
+            }
+
+            if (this.firstRecordInGroup == null)
+            {
+                this.Close();
+                return null;
+            }
+
+            while (this.processedGroupIndex < int.Parse(this.firstRecordInGroup[0].ToValue))
+            {
+                foreach (Tuple<IAggregateFunction, List<ScalarFunction>> aggr in this.aggregationSpecs)
+                {
+                    if (aggr.Item1 == null)
+                    {
+                       continue;
+                    }
+                    aggr.Item1.Init();
+                }
+
+                RawRecord noAccumulateRecord = new RawRecord();
+                foreach (Tuple<IAggregateFunction, List<ScalarFunction>> aggr in this.aggregationSpecs)
+                {
+                    if (aggr.Item1 != null)
+                    {
+                        noAccumulateRecord.Append(aggr.Item1.Terminate());
+                    }
+                    else
+                    {
+                        noAccumulateRecord.Append((FieldObject)null);
+                    }
+                }
+                noAccumulateRecord.fieldValues[0] = new StringField(this.processedGroupIndex.ToString(), JsonDataType.Int);
+                this.processedGroupIndex++;
+
+                return noAccumulateRecord;
+            }
+
+            foreach (Tuple<IAggregateFunction, List<ScalarFunction>> aggr in this.aggregationSpecs)
+            {
+                if (aggr.Item1 == null)
+                {
+                    continue;
+                }
+
+                aggr.Item1.Init();
+                FieldObject[] paraList = new FieldObject[aggr.Item2.Count];
+                for (int index = 0; index < aggr.Item2.Count; index++)
+                {
+                    paraList[index] = aggr.Item2[index].Evaluate(this.firstRecordInGroup);
+                }
+
+                aggr.Item1.Accumulate(paraList);
+            }
+
+            RawRecord rec = this.inputOp.Next();
+            while (rec != null && rec[0].ToValue == this.firstRecordInGroup[0].ToValue)
+            {
+                foreach (Tuple<IAggregateFunction, List<ScalarFunction>> aggr in this.aggregationSpecs)
+                {
+                    IAggregateFunction aggregate = aggr.Item1;
+
+                    if (aggregate == null)
+                    {
+                        continue;
+                    }
+
+                    FieldObject[] paraList = new FieldObject[aggr.Item2.Count];
+                    for (int index = 0; index < aggr.Item2.Count; index++)
+                    {
+                        paraList[index] = aggr.Item2[index].Evaluate(this.firstRecordInGroup);
+                    }
+
+                    aggr.Item1.Accumulate(paraList);
+                }
+
+                rec = this.inputOp.Next();
+            }
+
+            RawRecord outputRec = new RawRecord();
+            foreach (Tuple<IAggregateFunction, List<ScalarFunction>> aggr in this.aggregationSpecs)
+            {
+                if (aggr.Item1 != null)
+                {
+                    outputRec.Append(aggr.Item1.Terminate());
+                }
+                else
+                {
+                    outputRec.Append((FieldObject)null);
+                }
+            }
+            outputRec.fieldValues[0] = this.firstRecordInGroup[0];
+
+            this.firstRecordInGroup = rec;
+            this.processedGroupIndex++;
+
+            return outputRec;
+        }
+
+        public override void ResetState()
+        {
+            this.processedGroupIndex = 0;
+            base.ResetState();
+        }
+    }
+
 
     internal class MapOperator : GraphViewExecutionOperator
     {
@@ -1938,13 +2215,13 @@ namespace GraphView
 
     internal class RangeOperator : GraphViewExecutionOperator
     {
-        private GraphViewExecutionOperator inputOp;
-        private int startIndex;
+        protected GraphViewExecutionOperator inputOp;
+        protected int startIndex;
         //
         // if count is -1, return all the records starting from startIndex
         //
-        private int highEnd;
-        private int index;
+        protected int highEnd;
+        protected int index;
 
         internal RangeOperator(GraphViewExecutionOperator inputOp, int startIndex, int count)
         {
@@ -1983,6 +2260,71 @@ namespace GraphView
             this.inputOp.ResetState();
             this.index = 0;
             this.Open();
+        }
+    }
+
+    internal class RangeInBatchOperator : RangeOperator
+    {
+        private RawRecord firstRecordInGroup;
+
+        internal RangeInBatchOperator(
+            GraphViewExecutionOperator inputOp,
+            int startIndex,
+            int count)
+            : base(inputOp, startIndex, count) { }
+
+        public override RawRecord Next()
+        {
+            while (this.State())
+            {
+                if (this.firstRecordInGroup == null && this.inputOp.State())
+                {
+                    this.firstRecordInGroup = this.inputOp.Next();
+                }
+
+                if (this.firstRecordInGroup == null)
+                {
+                    this.Close();
+                    return null;
+                }
+
+                // First record in the group
+                if (this.index == 0)
+                {
+                    if (this.startIndex == 0)
+                    {
+                        this.index++;
+                        return this.firstRecordInGroup;
+                    }
+                    else
+                    {
+                        this.index++;
+                    }
+                }
+
+                RawRecord rec = null;
+                // Return a record within [startIndex, highEnd) in the group
+                while (this.inputOp.State() &&
+                    (rec = this.inputOp.Next()) != null &&
+                    rec[0].ToValue == this.firstRecordInGroup[0].ToValue)
+                {
+                    if (this.index < this.startIndex || (this.highEnd != -1 && this.index >= this.highEnd))
+                    {
+                        this.index++;
+                        continue;
+                    }
+
+                    this.index++;
+                    return rec;
+                }
+
+                // Passes the current group. Reaches a new group. Resets the index.
+                this.firstRecordInGroup = rec;
+                this.index = 0;
+                continue;
+            }
+
+            return null;
         }
     }
 
@@ -2116,10 +2458,10 @@ namespace GraphView
 
     internal class TailOperator : GraphViewExecutionOperator
     {
-        private GraphViewExecutionOperator inputOp;
-        private int lastN;
-        private int count;
-        private List<RawRecord> buffer; 
+        protected GraphViewExecutionOperator inputOp;
+        protected int lastN;
+        protected int count;
+        protected List<RawRecord> buffer; 
 
         internal TailOperator(GraphViewExecutionOperator inputOp, int lastN)
         {
@@ -2160,6 +2502,57 @@ namespace GraphView
             this.count = 0;
             this.buffer.Clear();
             this.Open();
+        }
+    }
+
+    internal class TailInBatchOperator : TailOperator
+    {
+        private RawRecord firstRecordInGroup;
+
+        internal TailInBatchOperator(
+            GraphViewExecutionOperator inputOp,
+            int lastN)
+            : base(inputOp, lastN) { }
+
+        public override RawRecord Next()
+        {
+            while (this.State())
+            {
+                int startIndex = this.buffer.Count < this.lastN ? 0 : this.buffer.Count - this.lastN;
+                int index = startIndex + this.count++;
+                while (index < this.buffer.Count)
+                {
+                    return this.buffer[index];
+                }
+                this.count = 0;
+                this.buffer.Clear();
+
+                if (this.firstRecordInGroup == null && this.inputOp.State())
+                {
+                    this.firstRecordInGroup = this.inputOp.Next();
+                }
+
+                if (this.firstRecordInGroup == null)
+                {
+                    this.Close();
+                    return null;
+                }
+
+                this.buffer.Add(this.firstRecordInGroup);
+                // Collect one group into the buffer
+                RawRecord rec = null;
+                while (this.inputOp.State() &&
+                       (rec = this.inputOp.Next()) != null &&
+                       rec[0].ToValue == this.firstRecordInGroup[0].ToValue)
+                {
+                    this.buffer.Add(rec);
+                }
+
+                this.firstRecordInGroup = rec;
+                continue;
+            }
+
+            return null;
         }
     }
 
@@ -3465,65 +3858,65 @@ namespace GraphView
 
     internal class SampleOperator : GraphViewExecutionOperator
     {
-        private readonly GraphViewExecutionOperator _inputOp;
-        private readonly long _amountToSample;
-        private readonly ScalarFunction _byFunction;  // Can be null if no "by" step
-        private readonly Random _random;
+        protected readonly GraphViewExecutionOperator inputOp;
+        protected readonly long amountToSample;
+        protected readonly ScalarFunction byFunction;  // Can be null if no "by" step
+        protected readonly Random random;
 
-        private readonly List<RawRecord> _inputRecords;
-        private readonly List<double> _inputProperties;
-        private int _nextIndex;
+        protected readonly List<RawRecord> inputRecords;
+        protected readonly List<double> inputProperties;
+        protected int nextIndex;
 
         public SampleOperator(
             GraphViewExecutionOperator inputOp,
             long amoutToSample,
             ScalarFunction byFunction)
         {
-            this._inputOp = inputOp;
-            this._amountToSample = amoutToSample;
-            this._byFunction = byFunction;  // Can be null if no "by" step
-            this._random = new Random();
+            this.inputOp = inputOp;
+            this.amountToSample = amoutToSample;
+            this.byFunction = byFunction;  // Can be null if no "by" step
+            this.random = new Random();
 
-            this._inputRecords = new List<RawRecord>();
-            this._inputProperties = new List<double>();
-            this._nextIndex = 0;
+            this.inputRecords = new List<RawRecord>();
+            this.inputProperties = new List<double>();
+            this.nextIndex = 0;
             Open();
         }
 
         public override RawRecord Next()
         {
-            if (this._nextIndex == 0) {
-                while (this._inputOp.State()) {
-                    RawRecord current = this._inputOp.Next();
+            if (this.nextIndex == 0) {
+                while (this.inputOp.State()) {
+                    RawRecord current = this.inputOp.Next();
                     if (current == null) break;
 
-                    this._inputRecords.Add(current);
-                    if (this._byFunction != null) {
-                        this._inputProperties.Add(double.Parse(this._byFunction.Evaluate(current).ToValue));
+                    this.inputRecords.Add(current);
+                    if (this.byFunction != null) {
+                        this.inputProperties.Add(double.Parse(this.byFunction.Evaluate(current).ToValue));
                     }
                 }
             }
 
             // Return nothing if sample amount <= 0
-            if (this._amountToSample <= 0) {
+            if (this.amountToSample <= 0) {
                 Close();
                 return null;
             }
 
             // Return all if sample amount > amount of inputs
-            if (this._amountToSample >= this._inputRecords.Count) {
-                if (this._nextIndex == this._inputRecords.Count) {
+            if (this.amountToSample >= this.inputRecords.Count) {
+                if (this.nextIndex == this.inputRecords.Count) {
                     this.Close();
                     return null;
                 }
-                return this._inputRecords[this._nextIndex++];
+                return this.inputRecords[this.nextIndex++];
             }
 
             // Sample!
-            if (this._nextIndex < this._amountToSample) {
+            if (this.nextIndex < this.amountToSample) {
                 
                 // TODO: Implement the sampling algorithm!
-                return this._inputRecords[this._nextIndex++];
+                return this.inputRecords[this.nextIndex++];
             }
 
             Close();
@@ -3532,12 +3925,93 @@ namespace GraphView
 
         public override void ResetState()
         {
-            this._inputOp.ResetState();
+            this.inputOp.ResetState();
 
-            this._inputRecords.Clear();
-            this._inputProperties.Clear();
-            this._nextIndex = 0;
+            this.inputRecords.Clear();
+            this.inputProperties.Clear();
+            this.nextIndex = 0;
             Open();
+        }
+    }
+
+    internal class SampleInBatchOperator : SampleOperator
+    {
+        private RawRecord firstRecordInGroup;
+
+        internal SampleInBatchOperator(
+            GraphViewExecutionOperator inputOp,
+            long amountToSample,
+            ScalarFunction byFunction)
+            : base(inputOp, amountToSample, byFunction) { }
+
+        public override RawRecord Next()
+        {
+            // Return nothing if sample amount <= 0
+            if (this.amountToSample <= 0)
+            {
+                this.Close();
+                return null;
+            }
+
+            while (this.State())
+            {
+                if (this.inputRecords.Any())
+                {
+                    // Return all if sample amount > amount of inputs
+                    if (this.amountToSample >= this.inputRecords.Count)
+                    {
+                        while (this.nextIndex < this.inputRecords.Count)
+                        {
+                            return this.inputRecords[this.nextIndex++];
+                        }
+                    }
+                    // Sample!
+                    else if (this.nextIndex < this.amountToSample)
+                    {
+                        // TODO: Implement the sampling algorithm!
+                        return this.inputRecords[this.nextIndex++];
+                    }
+                }
+
+                this.nextIndex = 0;
+                this.inputRecords.Clear();
+                this.inputProperties.Clear();
+
+                if (this.firstRecordInGroup == null && this.inputOp.State())
+                {
+                    this.firstRecordInGroup = this.inputOp.Next();
+                }
+
+                if (this.firstRecordInGroup == null)
+                {
+                    this.Close();
+                    return null;
+                }
+
+                this.inputRecords.Add(this.firstRecordInGroup);
+                if (this.byFunction != null)
+                {
+                    this.inputProperties.Add(double.Parse(this.byFunction.Evaluate(this.firstRecordInGroup).ToValue));
+                }
+
+                RawRecord rec = null;
+                while (this.inputOp.State() &&
+                    (rec = this.inputOp.Next()) != null &&
+                    rec[0].ToValue == this.firstRecordInGroup[0].ToValue)
+                {
+                    this.inputRecords.Add(this.firstRecordInGroup);
+                    if (this.byFunction != null)
+                    {
+                        this.inputProperties.Add(double.Parse(this.byFunction.Evaluate(this.firstRecordInGroup).ToValue));
+                    }
+                }
+
+                // Passes the current group. Reaches a new group. Resets the index.
+                this.firstRecordInGroup = rec;
+                continue;
+            }
+
+            return null;
         }
     }
 
