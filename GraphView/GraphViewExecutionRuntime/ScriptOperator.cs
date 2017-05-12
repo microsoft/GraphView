@@ -66,6 +66,7 @@ namespace GraphView
         public void ResetState()
         {
             this.offset = -1;
+            this.tableCache?.Clear();
             this.containerOp?.ResetState();
         }
 

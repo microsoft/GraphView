@@ -1331,19 +1331,6 @@ namespace GraphView
                         ? operatorChain.Last()
                         : context.OuterContextOp);
 
-                // When CarryOn is set, in addition to the SELECT elements in the SELECT clause,
-                // the query is supposed to project fields from its parent context. 
-                // But since this query contains aggregations, all the fields from the parent context
-                // are set to null in the output. 
-                if (context.CarryOn)
-                {
-                    foreach (var fieldPair in context.ParentContextRawRecordLayout.OrderBy(e => e.Value))
-                    {
-                        FieldValue fieldSelectFunc = new FieldValue(fieldPair.Value);
-                        projectAggregationOp.AddAggregateSpec(null, null);
-                    }
-                }
-
                 foreach (var selectScalar in selectScalarExprList)
                 {
                     WFunctionCall fcall = selectScalar.SelectExpr as WFunctionCall;
@@ -2784,30 +2771,25 @@ namespace GraphView
                 throw new SyntaxErrorException("The QueryExpr of a WQueryDerviedTable must be one select query block.");
 
             QueryCompilationContext derivedTableContext = new QueryCompilationContext(context);
-            ContainerOperator containerOp = null;
+            ContainerEnumerator sourceEnumerator = new ContainerEnumerator();
+
             // If QueryDerivedTable is the first table in the whole script
             if (context.CurrentExecutionOperator == null)
                 derivedTableContext.OuterContextOp = null;
             else
             {
-                derivedTableContext.CarryOn = true;
                 derivedTableContext.InBatchMode = context.InBatchMode;
-                // For Union and Optional's semantics, e.g. g.V().union(__.count())
-                if (context.CarryOn)
-                {
-                    containerOp = new ContainerOperator(context.CurrentExecutionOperator);
-                    derivedTableContext.OuterContextOp.SourceEnumerator = containerOp.GetEnumerator();
-                }
-                // e.g. g.V().coalesce(__.count())
-                else
-                {
-                    derivedTableContext.OuterContextOp = context.OuterContextOp;
-                }
+                derivedTableContext.OuterContextOp.SourceEnumerator = sourceEnumerator;
             }
-
+            
             GraphViewExecutionOperator subQueryOp = derivedSelectQueryBlock.Compile(derivedTableContext, dbConnection);
 
-            QueryDerivedTableOperator queryDerivedTableOp = new QueryDerivedTableOperator(subQueryOp, containerOp);
+            QueryDerivedTableOperator queryDerivedTableOp =
+                context.InBatchMode
+                    ? new QueryDerivedInBatchOperator(context.CurrentExecutionOperator, subQueryOp, sourceEnumerator,
+                        context.RawRecordLayout.Count)
+                    : new QueryDerivedTableOperator(context.CurrentExecutionOperator, subQueryOp, sourceEnumerator,
+                        context.RawRecordLayout.Count);
 
             foreach (var selectElement in derivedSelectQueryBlock.SelectElements)
             {

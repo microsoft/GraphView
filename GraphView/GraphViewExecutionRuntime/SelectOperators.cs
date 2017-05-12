@@ -1222,6 +1222,7 @@ namespace GraphView
                 }
 
                 RawRecord noAccumulateRecord = new RawRecord();
+                noAccumulateRecord.Append(new StringField(this.processedGroupIndex.ToString(), JsonDataType.Int));
                 foreach (Tuple<IAggregateFunction, List<ScalarFunction>> aggr in this.aggregationSpecs)
                 {
                     if (aggr.Item1 != null)
@@ -1233,7 +1234,6 @@ namespace GraphView
                         noAccumulateRecord.Append((FieldObject)null);
                     }
                 }
-                noAccumulateRecord.fieldValues[0] = new StringField(this.processedGroupIndex.ToString(), JsonDataType.Int);
                 this.processedGroupIndex++;
 
                 return noAccumulateRecord;
@@ -1281,6 +1281,7 @@ namespace GraphView
             }
 
             RawRecord outputRec = new RawRecord();
+            outputRec.Append(this.firstRecordInGroup[0]);
             foreach (Tuple<IAggregateFunction, List<ScalarFunction>> aggr in this.aggregationSpecs)
             {
                 if (aggr.Item1 != null)
@@ -1292,7 +1293,6 @@ namespace GraphView
                     outputRec.Append((FieldObject)null);
                 }
             }
-            outputRec.fieldValues[0] = this.firstRecordInGroup[0];
 
             this.firstRecordInGroup = rec;
             this.processedGroupIndex++;
@@ -3127,36 +3127,108 @@ namespace GraphView
 
     internal class QueryDerivedTableOperator : GraphViewExecutionOperator
     {
-        private GraphViewExecutionOperator _queryOp;
-        private ContainerOperator _rootContainerOp;
+        protected GraphViewExecutionOperator inputOp;
+        protected GraphViewExecutionOperator derivedQueryOp;
+        protected ContainerEnumerator sourceEnumerator;
+        protected List<RawRecord> inputRecords;
 
-        public QueryDerivedTableOperator(GraphViewExecutionOperator queryOp, ContainerOperator containerOp)
+        protected int carryOnCount;
+
+        public QueryDerivedTableOperator(
+            GraphViewExecutionOperator inputOp, 
+            GraphViewExecutionOperator derivedQueryOp,
+            ContainerEnumerator sourceEnumerator, 
+            int carryOnCount)
         {
-            _queryOp = queryOp;
-            _rootContainerOp = containerOp;
+            this.inputOp = inputOp;
+            this.derivedQueryOp = derivedQueryOp;
+            this.inputRecords = new List<RawRecord>();
+            this.sourceEnumerator = sourceEnumerator;
+            this.carryOnCount = carryOnCount;
 
-            Open();
+            this.Open();
         }
 
         public override RawRecord Next()
         {
-            RawRecord derivedRecord;
-
-            while (_queryOp.State() && (derivedRecord = _queryOp.Next()) != null)
+            if (this.inputOp != null && this.inputOp.State())
             {
-                return derivedRecord;
+                RawRecord inputRec;
+                while (this.inputOp.State() && (inputRec = this.inputOp.Next()) != null)
+                {
+                    this.inputRecords.Add(inputRec);
+                }
+
+                this.sourceEnumerator.ResetTableCache(this.inputRecords);
             }
 
-            Close();
+            RawRecord derivedRecord;
+            while (this.derivedQueryOp.State() && (derivedRecord = this.derivedQueryOp.Next()) != null)
+            {
+                RawRecord returnRecord = new RawRecord();
+                for (int i = 0; i < this.carryOnCount; i++)
+                {
+                    returnRecord.Append((FieldObject)null);
+                }
+
+                returnRecord.Append(derivedRecord);
+                return returnRecord;
+            }
+
+            this.Close();
             return null;
         }
 
         public override void ResetState()
         {
-            _queryOp.ResetState();
-            _rootContainerOp?.ResetState();
+            this.inputOp?.ResetState();
+            this.derivedQueryOp.ResetState();
+            this.inputRecords.Clear();
+            this.sourceEnumerator.ResetState();
 
-            Open();
+            this.Open();
+        }
+    }
+
+    internal class QueryDerivedInBatchOperator : QueryDerivedTableOperator
+    {
+        public QueryDerivedInBatchOperator(
+            GraphViewExecutionOperator inputOp,
+            GraphViewExecutionOperator derivedQueryOp,
+            ContainerEnumerator sourceEnumerator,
+            int carryOnCount)
+            : base(inputOp, derivedQueryOp, sourceEnumerator, carryOnCount)
+        { }
+
+        public override RawRecord Next()
+        {
+            if (this.inputOp != null && this.inputOp.State())
+            {
+                RawRecord inputRec;
+                while (this.inputOp.State() && (inputRec = this.inputOp.Next()) != null)
+                {
+                    this.inputRecords.Add(inputRec);
+                }
+
+                this.sourceEnumerator.ResetTableCache(this.inputRecords);
+            }
+
+            RawRecord derivedRecord;
+            while (this.derivedQueryOp.State() && (derivedRecord = this.derivedQueryOp.Next()) != null)
+            {
+                RawRecord returnRecord = new RawRecord();
+                returnRecord.Append(derivedRecord[0]);
+                for (int i = 1; i < this.carryOnCount; i++)
+                {
+                    returnRecord.Append((FieldObject)null);
+                }
+                returnRecord.Append(derivedRecord.GetRange(1, derivedRecord.Length - 1));
+
+                return returnRecord;
+            }
+
+            this.Close();
+            return null;
         }
     }
 
