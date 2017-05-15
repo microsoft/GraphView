@@ -14,6 +14,7 @@ namespace GraphView
 
         public GremlinMatchOp(params GraphTraversal2[] matchTraversals)
         {
+            throw new NotImplementedException();
         }
 
         internal override GremlinToSqlContext GetContext()

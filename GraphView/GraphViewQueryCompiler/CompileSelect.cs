@@ -1617,6 +1617,14 @@ namespace GraphView
         }
     }
 
+    partial class WMatchTableReference
+    {
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
+        {
+            throw new NotImplementedException();
+        }
+    }
+
     partial class WCoalesceTableReference
     {
         internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)

@@ -21,7 +21,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests
                 //var traversal = command.g().V().GroupCount().Unfold().Select(GremlinKeyword.Column.Keys).Values("name");
                 // var traversal = command.g().V().Group().By().By(GraphTraversal2.__().Count()).Select(GremlinKeyword.Column.Keys).Unfold().Values("name");
 
-                var traversal = command.g().V().OutE().Properties().Drop();
+                var traversal = command.g().V().Match(GraphTraversal2.__().Identity());
                 var result = traversal.Next();
             }
         }

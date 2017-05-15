@@ -529,6 +529,8 @@ namespace GraphView
 
     public partial class WUnionTableReference : WSchemaObjectFunctionTableReference {}
 
+    public partial class WMatchTableReference : WSchemaObjectFunctionTableReference {}
+
     public partial class WProjectTableReference : WSchemaObjectFunctionTableReference {}
 
     public partial class WGroupTableReference : WSchemaObjectFunctionTableReference
