@@ -1722,10 +1722,7 @@ namespace GraphView
                 {
                     break;
                 }
-                else
-                {
-                    activeTraversalIndex++;
-                }
+                activeTraversalIndex++;
             }
 
             if (traversalRecord == null)
@@ -1733,10 +1730,7 @@ namespace GraphView
                 Close();
                 return null;
             }
-            else
-            {
-                return traversalRecord;
-            }
+            return traversalRecord;
         }
 
         public override void ResetState()
@@ -1751,6 +1745,59 @@ namespace GraphView
 
             rootContainerOp.ResetState();
             activeTraversalIndex = 0;
+            Open();
+        }
+    }
+
+    internal class MatchOperator : GraphViewExecutionOperator
+    {
+        private GraphViewExecutionOperator traversal;
+        private ConstantSourceOperator ConstantSource;
+        private GraphViewExecutionOperator inputOp;
+
+        private RawRecord currentRecord;
+        // private Queue<RawRecord> traversalOutputBuffer;
+
+        public MatchOperator(GraphViewExecutionOperator inputOp, GraphViewExecutionOperator traversal, ConstantSourceOperator ConstantSource)
+        {
+            this.inputOp = inputOp;
+            this.traversal = traversal;
+            this.ConstantSource = ConstantSource;
+            // traversalOutputBuffer = new Queue<RawRecord>();
+            Open();
+        }
+
+        public override RawRecord Next()
+        {
+            // Match() has to have one sub-traversal at least.
+            if (traversal == null)
+            {
+                throw new QueryExecutionException("Match needs at least one sub-traversal");
+            }
+
+            RawRecord inputRecord = null;
+            if (inputOp.State() == false || (inputRecord = inputOp.Next()) == null || traversal.State() == false)
+            {
+                this.Close();
+                return null;
+            }
+
+            this.ConstantSource.ConstantSource = inputRecord;
+            RawRecord traversalRecord = traversal.Next();
+
+            if (traversalRecord == null)
+            {
+                Close();
+                return null;
+            }
+            return traversalRecord;
+        }
+
+        public override void ResetState()
+        {
+            currentRecord = null;
+            inputOp.ResetState();
+            // traversalOutputBuffer?.Clear();
             Open();
         }
     }
