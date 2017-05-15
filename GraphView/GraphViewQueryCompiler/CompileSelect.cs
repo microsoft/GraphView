@@ -1405,14 +1405,6 @@ namespace GraphView
                 // Rebuilds the output layout of the context
                 context.ClearField();
 
-                if (context.CarryOn)
-                {
-                    foreach (var parentFieldPair in context.ParentContextRawRecordLayout)
-                    {
-                        context.RawRecordLayout.Add(parentFieldPair.Key, parentFieldPair.Value);
-                    }
-                }
-
                 foreach (var expr in selectScalarExprList)
                 {
                     var alias = expr.ColumnName;
@@ -1673,67 +1665,172 @@ namespace GraphView
 
     partial class WOptionalTableReference
     {
+        //internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
+        //{
+        //    WSelectQueryBlock contextSelect, optionalSelect;
+        //    Split(out contextSelect, out optionalSelect);
+
+        //    List<int> inputIndexes = new List<int>();
+        //    List<Tuple<WColumnReferenceExpression, string>> columnList = new List<Tuple<WColumnReferenceExpression, string>>();
+
+        //    foreach (WSelectElement selectElement in contextSelect.SelectElements)
+        //    {
+        //        WSelectScalarExpression selectScalar = selectElement as WSelectScalarExpression;
+        //        if (selectScalar == null)
+        //        {
+        //            throw new SyntaxErrorException("The SELECT elements of the sub-queries in an optional table reference must be select scalar elements.");
+        //        }
+        //        WColumnReferenceExpression columnRef = selectScalar.SelectExpr as WColumnReferenceExpression;
+
+        //        if (columnRef != null)
+        //        {
+        //            int index;
+        //            if (!context.TryLocateColumnReference(columnRef, out index))
+        //                throw new SyntaxErrorException("Syntax Error!!!");
+        //            inputIndexes.Add(index);
+
+        //            columnList.Add(
+        //                new Tuple<WColumnReferenceExpression, string>(
+        //                    new WColumnReferenceExpression(Alias.Value, selectScalar.ColumnName ?? columnRef.ColumnName,
+        //                        columnRef.ColumnGraphType), selectScalar.ColumnName));
+        //        }
+        //        else
+        //        {
+        //            WValueExpression nullExpression = selectScalar.SelectExpr as WValueExpression;
+        //            if (nullExpression == null)
+        //                throw new SyntaxErrorException("The SELECT elements of the sub-queries in a optional table reference must be column references or WValueExpression.");
+        //            if (nullExpression.ToString().Equals("null", StringComparison.OrdinalIgnoreCase))
+        //                inputIndexes.Add(-1);
+
+        //            columnList.Add(
+        //                new Tuple<WColumnReferenceExpression, string>(
+        //                    new WColumnReferenceExpression(Alias.Value, selectScalar.ColumnName, ColumnGraphType.Value),
+        //                    selectScalar.ColumnName));
+        //        }
+        //    }
+
+        //    QueryCompilationContext subcontext = new QueryCompilationContext(context);
+        //    ContainerOperator containerOp = null;
+        //    bool isCarryOnMode = false;
+        //    if (this.HasAggregateFunctionAsChildren)
+        //    {
+        //        isCarryOnMode = true;
+        //        subcontext.InBatchMode = context.InBatchMode;
+        //        containerOp = new ContainerOperator(context.CurrentExecutionOperator);
+        //        subcontext.CarryOn = true;
+        //        subcontext.OuterContextOp.SourceEnumerator = containerOp.GetEnumerator();
+        //    }
+
+        //    GraphViewExecutionOperator optionalTraversalOp = optionalSelect.Compile(subcontext, dbConnection);
+
+        //    //OptionalOperator optionalOp = new OptionalOperator(context.CurrentExecutionOperator, inputIndexes, optionalTraversalOp, subcontext.OuterContextOp);
+        //    OptionalOperator optionalOp = new OptionalOperator(context.CurrentExecutionOperator, inputIndexes,
+        //        optionalTraversalOp, subcontext.OuterContextOp, containerOp, isCarryOnMode);
+        //    context.CurrentExecutionOperator = optionalOp;
+
+        //    // Updates the raw record layout. The columns of this table-valued function 
+        //    // are specified by the select elements of the input subqueries.
+        //    foreach (Tuple<WColumnReferenceExpression, string> tuple in columnList)
+        //    {
+        //        WColumnReferenceExpression columnRef = tuple.Item1;
+        //        string selectElementAlias = tuple.Item2;
+        //        context.AddField(Alias.Value, selectElementAlias ?? columnRef.ColumnName, columnRef.ColumnGraphType);
+        //    }
+
+        //    return optionalOp;
+        //}
+
         internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
         {
             WSelectQueryBlock contextSelect, optionalSelect;
-            Split(out contextSelect, out optionalSelect);
+            this.Split(out contextSelect, out optionalSelect);
 
             List<int> inputIndexes = new List<int>();
-            List<Tuple<WColumnReferenceExpression, string>> columnList = new List<Tuple<WColumnReferenceExpression, string>>();
+            List<Tuple<WColumnReferenceExpression, string>> columnList =
+                new List<Tuple<WColumnReferenceExpression, string>>();
 
             foreach (WSelectElement selectElement in contextSelect.SelectElements)
             {
                 WSelectScalarExpression selectScalar = selectElement as WSelectScalarExpression;
                 if (selectScalar == null)
                 {
-                    throw new SyntaxErrorException("The SELECT elements of the sub-queries in an optional table reference must be select scalar elements.");
+                    throw new SyntaxErrorException(
+                        "The SELECT elements of the sub-queries in an optional table reference must be select scalar elements.");
                 }
+
                 WColumnReferenceExpression columnRef = selectScalar.SelectExpr as WColumnReferenceExpression;
 
                 if (columnRef != null)
                 {
                     int index;
                     if (!context.TryLocateColumnReference(columnRef, out index))
+                    {
                         throw new SyntaxErrorException("Syntax Error!!!");
+                    }
+
                     inputIndexes.Add(index);
 
                     columnList.Add(
                         new Tuple<WColumnReferenceExpression, string>(
-                            new WColumnReferenceExpression(Alias.Value, selectScalar.ColumnName ?? columnRef.ColumnName,
-                                columnRef.ColumnGraphType), selectScalar.ColumnName));
+                            new WColumnReferenceExpression(
+                                this.Alias.Value,
+                                selectScalar.ColumnName ?? columnRef.ColumnName,
+                                columnRef.ColumnGraphType),
+                            selectScalar.ColumnName));
                 }
                 else
                 {
                     WValueExpression nullExpression = selectScalar.SelectExpr as WValueExpression;
                     if (nullExpression == null)
-                        throw new SyntaxErrorException("The SELECT elements of the sub-queries in a optional table reference must be column references or WValueExpression.");
+                    {
+                        throw new SyntaxErrorException(
+                            "The SELECT elements of the sub-queries in a optional table reference must be column references or WValueExpression.");
+                    }
+
                     if (nullExpression.ToString().Equals("null", StringComparison.OrdinalIgnoreCase))
+                    {
                         inputIndexes.Add(-1);
+                    }
 
                     columnList.Add(
                         new Tuple<WColumnReferenceExpression, string>(
-                            new WColumnReferenceExpression(Alias.Value, selectScalar.ColumnName, ColumnGraphType.Value),
+                            new WColumnReferenceExpression(
+                                this.Alias.Value,
+                                selectScalar.ColumnName,
+                                ColumnGraphType.Value),
                             selectScalar.ColumnName));
                 }
             }
 
             QueryCompilationContext subcontext = new QueryCompilationContext(context);
-            ContainerOperator containerOp = null;
-            bool isCarryOnMode = false;
-            if (this.HasAggregateFunctionAsChildren)
+            ContainerEnumerator sourceEnumerator = new ContainerEnumerator();
+            subcontext.OuterContextOp.SourceEnumerator = sourceEnumerator;
+            subcontext.InBatchMode = context.InBatchMode || !this.HasAggregateFunctionAsChildren;
+            if (!this.HasAggregateFunctionAsChildren)
             {
-                isCarryOnMode = true;
-                subcontext.InBatchMode = context.InBatchMode;
-                containerOp = new ContainerOperator(context.CurrentExecutionOperator);
-                subcontext.CarryOn = true;
-                subcontext.OuterContextOp.SourceEnumerator = containerOp.GetEnumerator();
+                subcontext.AddField(
+                    GremlinKeyword.IndexTableName, GremlinKeyword.IndexColumnName, ColumnGraphType.Value, true);
             }
 
             GraphViewExecutionOperator optionalTraversalOp = optionalSelect.Compile(subcontext, dbConnection);
 
-            //OptionalOperator optionalOp = new OptionalOperator(context.CurrentExecutionOperator, inputIndexes, optionalTraversalOp, subcontext.OuterContextOp);
-            OptionalOperator optionalOp = new OptionalOperator(context.CurrentExecutionOperator, inputIndexes,
-                optionalTraversalOp, subcontext.OuterContextOp, containerOp, isCarryOnMode);
+            //OptionalOperator optionalOp = new OptionalOperator(
+            //    context.CurrentExecutionOperator,
+            //    inputIndexes,
+            //    optionalTraversalOp,
+            //    subcontext.OuterContextOp,
+            //    containerOp,
+            //    isCarryOnMode);
+
+            OptionalInBatchOperator optionalOp = new OptionalInBatchOperator(
+                context.CurrentExecutionOperator,
+                inputIndexes,
+                optionalTraversalOp,
+                sourceEnumerator,
+                this.HasAggregateFunctionAsChildren,
+                context.InBatchMode,
+                context.RawRecordLayout.Count);
+
             context.CurrentExecutionOperator = optionalOp;
 
             // Updates the raw record layout. The columns of this table-valued function 
@@ -1742,11 +1839,12 @@ namespace GraphView
             {
                 WColumnReferenceExpression columnRef = tuple.Item1;
                 string selectElementAlias = tuple.Item2;
-                context.AddField(Alias.Value, selectElementAlias ?? columnRef.ColumnName, columnRef.ColumnGraphType);
+                context.AddField(this.Alias.Value, selectElementAlias ?? columnRef.ColumnName, columnRef.ColumnGraphType);
             }
 
             return optionalOp;
         }
+
     }
 
     partial class WLocalTableReference

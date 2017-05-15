@@ -1674,6 +1674,287 @@ namespace GraphView
         }
     }
 
+    internal class OptionalInBatchOperator : GraphViewExecutionOperator
+    {
+        private const int batchIdIndex = 0;
+
+        // A list of record fields (identified by field indexes) from the input 
+        // operator are to be returned when the optional traversal produces no results.
+        // When a field index is less than 0, it means that this field value is always null. 
+        private readonly List<int> inputIndexes;
+
+        private readonly GraphViewExecutionOperator inputOp;
+        ContainerEnumerator sourceEnumerator;
+
+        private readonly List<RawRecord> inputBuffer;
+        private const int inputBatchSize = 1000;
+        private readonly List<RawRecord> optionalResultBuffer;
+        private int inputOffset;
+        private bool newInput;
+        private int optionalOffset;
+
+        // The traversal inside the optional function. 
+        // The records returned by this operator should have the same number of fields
+        // as the records produced by the input operator, i.e., inputIndexes.Count 
+        private readonly GraphViewExecutionOperator optionalTraversal;
+
+        private readonly bool aggregateMode;
+        private readonly bool inputInBatch;
+        private readonly int inputRecordLength;
+
+        public OptionalInBatchOperator(
+            GraphViewExecutionOperator inputOp,
+            List<int> inputIndexes,
+            GraphViewExecutionOperator optionalTraversalOp,
+            ContainerEnumerator sourceEnumerator,
+            bool aggregateMode,
+            bool inputInBatch,
+            int inputRecordLength)
+        {
+            this.inputOp = inputOp;
+            this.inputIndexes = inputIndexes;
+            this.optionalTraversal = optionalTraversalOp;
+            this.sourceEnumerator = sourceEnumerator;
+            this.aggregateMode = aggregateMode;
+            this.inputInBatch = inputInBatch;
+
+            this.inputRecordLength = inputRecordLength;
+            this.inputBuffer = new List<RawRecord>();
+            this.optionalResultBuffer = new List<RawRecord>();
+            this.inputOffset = 0;
+            this.optionalOffset = 0;
+            this.newInput = true;
+
+            this.Open();
+        }
+
+        private RawRecord ConstructForwardingRecord(RawRecord inputRecord)
+        {
+            RawRecord rawRecord = new RawRecord(inputRecord);
+            foreach (int index in this.inputIndexes)
+            {
+                if (index < 0)
+                {
+                    rawRecord.Append((FieldObject)null);
+                }
+                else
+                {
+                    rawRecord.Append(inputRecord[index]);
+                }
+            }
+
+            return rawRecord;
+        }
+
+        public override RawRecord Next()
+        {
+            if (this.aggregateMode)
+            {
+                if (this.inputOp.State())
+                {
+                    RawRecord inputRec = null;
+                    while (this.inputOp.State() && (inputRec = this.inputOp.Next()) != null)
+                    {
+                        this.inputBuffer.Add(inputRec);
+                    }
+
+                    this.sourceEnumerator.ResetTableCache(this.inputBuffer);
+
+                    RawRecord optionalRecord = null;
+                    while (this.optionalTraversal.State() && (optionalRecord = this.optionalTraversal.Next()) != null)
+                    {
+                        this.optionalResultBuffer.Add(optionalRecord);
+                    }
+                }
+
+                if (this.inputInBatch && this.inputOffset < this.inputBuffer.Count)
+                {
+                    int outputBatchId = this.optionalOffset < this.optionalResultBuffer.Count
+                        ? int.Parse(this.optionalResultBuffer[this.optionalOffset][batchIdIndex].ToValue)
+                        : -1;
+
+                    if (outputBatchId < 0)
+                    {
+                        RawRecord result = this.ConstructForwardingRecord(this.inputBuffer[this.inputOffset]);
+                        this.inputOffset++;
+                        return result;
+                    }
+
+                    int inputBatchId = int.Parse(this.inputBuffer[this.inputOffset][batchIdIndex].ToValue);
+
+                    if (inputBatchId == outputBatchId)
+                    {
+                        RawRecord optionalRec = this.optionalResultBuffer[this.optionalOffset];
+
+                        RawRecord result = new RawRecord();
+                        result.Append(new StringField(inputBatchId.ToString(), JsonDataType.Int));
+                        for (int i = 1; i < this.inputRecordLength; i++)
+                        {
+                            result.Append((FieldObject)null);
+                        }
+                        result.Append(optionalRec.GetRange(1, optionalRec.Length - 1));
+
+                        this.optionalOffset++;
+
+                        // Fastforward to the next batch group
+                        while (++this.inputOffset < this.inputBuffer.Count)
+                        {
+                            inputBatchId = int.Parse(this.inputBuffer[this.inputOffset][batchIdIndex].ToValue);
+                            if (inputBatchId > outputBatchId)
+                            {
+                                break;
+                            }
+                        }
+
+                        return result;
+                    }
+                    else if (inputBatchId < outputBatchId)
+                    {
+                        RawRecord inputRec = this.inputBuffer[this.inputOffset];
+                        RawRecord result = this.ConstructForwardingRecord(inputRec);
+                        this.inputOffset++;
+                        return result;
+                    }
+                    else if (inputBatchId > outputBatchId)
+                    {
+                        RawRecord optionalRec = this.optionalResultBuffer[this.optionalOffset];
+                        RawRecord result = new RawRecord();
+                        result.Append(new StringField(outputBatchId.ToString(), JsonDataType.Int));
+                        for (int i = 1; i < this.inputRecordLength; i++)
+                        {
+                            result.Append((FieldObject)null);
+                        }
+                        result.Append(optionalRec.GetRange(1, optionalRec.Length - 1));
+                        this.optionalOffset++;
+                        return result;
+                    }
+                }
+                else
+                {
+                    if (this.optionalResultBuffer.Count > 0)
+                    {
+                        if (this.optionalOffset < this.optionalResultBuffer.Count)
+                        {
+                            RawRecord result = new RawRecord();
+                            for (int i = 0; i < this.inputRecordLength; i++)
+                            {
+                                result.Append((FieldObject)null);
+                            } 
+                            result.Append(this.optionalResultBuffer[this.optionalOffset]);
+                            this.optionalOffset++;
+                            return result;
+                        }
+                    }
+                    else
+                    {
+                        if (this.inputOffset < this.inputBuffer.Count)
+                        {
+                            RawRecord inputRec = this.inputBuffer[this.inputOffset];
+                            RawRecord result = this.ConstructForwardingRecord(inputRec);
+                            this.inputOffset++;
+                            return result;
+                        }
+                    }
+                }
+
+                this.Close();
+                return null;
+            }
+            else
+            {
+                while (this.State())
+                {
+                    if (this.inputOffset >= this.inputBuffer.Count)
+                    {
+                        this.inputBuffer.Clear();
+                        this.inputOffset = 0;
+                        this.newInput = true;
+                        this.optionalResultBuffer.Clear();
+                        this.optionalOffset = 0;
+
+                        RawRecord inputRec = null;
+                        while (this.inputOp.State() &&
+                            (inputRec = this.inputOp.Next()) != null &&
+                            this.inputBuffer.Count < inputBatchSize)
+                        {
+                            RawRecord batchedRecord = new RawRecord();
+                            batchedRecord.Append(new StringField(this.inputBuffer.Count.ToString(), JsonDataType.Int));
+                            batchedRecord.Append(inputRec);
+                            this.inputBuffer.Add(batchedRecord);
+                        }
+
+                        this.sourceEnumerator.ResetTableCache(this.inputBuffer);
+                        this.optionalTraversal.ResetState();
+
+                        RawRecord optionalRecord;
+                        while (this.optionalTraversal.State() && (optionalRecord = this.optionalTraversal.Next()) != null)
+                        {
+                            this.optionalResultBuffer.Add(optionalRecord);
+                        }
+                    }
+
+                    if (this.inputOffset >= this.inputBuffer.Count)
+                    {
+                        this.Close();
+                        return null;
+                    }
+
+                    int inputBatchId = int.Parse(this.inputBuffer[this.inputOffset][batchIdIndex].ToValue);
+                    int outputBatchId = this.optionalOffset < this.optionalResultBuffer.Count
+                            ? int.Parse(this.optionalResultBuffer[this.optionalOffset][batchIdIndex].ToValue)
+                            : -1;
+
+                    if (inputBatchId == outputBatchId)
+                    {
+                        RawRecord inputRec = this.inputBuffer[this.inputOffset];
+                        RawRecord optionalRec = this.optionalResultBuffer[this.optionalOffset];
+                        RawRecord resultRec = inputRec.GetRange(1, inputRec.Length - 1);
+                        resultRec.Append(optionalRec.GetRange(1, optionalRec.Length - 1));
+
+                        this.optionalOffset++;
+                        this.newInput = false;
+
+                        return resultRec;
+                    }
+                    else
+                    {
+                        if (this.newInput)
+                        {
+                            RawRecord inputRec = this.inputBuffer[this.inputOffset];
+                            RawRecord resultRec = this.ConstructForwardingRecord(inputRec.GetRange(1, inputRec.Length - 1));
+                            this.inputOffset++;
+                            this.newInput = true;
+
+                            return resultRec;
+                        }
+                        else
+                        {
+                            this.inputOffset++;
+                            this.newInput = true;
+                            continue;
+                        }
+                    }
+                }
+
+                return null;
+            }
+        }
+
+        public override void ResetState()
+        {
+            this.inputOp.ResetState();
+            this.sourceEnumerator.ResetState();
+            this.optionalTraversal.ResetState();
+            this.inputBuffer.Clear();
+            this.optionalResultBuffer.Clear();
+            this.inputOffset = 0;
+            this.optionalOffset = 0;
+            this.newInput = true;
+            this.Open();
+        }
+    }
+
+
     internal class UnionOperator : GraphViewExecutionOperator
     {
         private List<Tuple<ConstantSourceOperator, GraphViewExecutionOperator>> traversalList;
