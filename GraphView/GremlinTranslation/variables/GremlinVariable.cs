@@ -502,9 +502,28 @@ namespace GraphView
             currentContext.SetPivotVariable(localMapVariable);
         }
 
-        internal virtual void Match(GremlinToSqlContext currentContext, List<GremlinToSqlContext> matchContexts)
+        internal virtual void Match(GremlinToSqlContext currentContext, GremlinToSqlContext matchContext)
         {
-            throw new NotImplementedException();
+            GremlinMatchVariable newVariable = new GremlinMatchVariable(matchContext, matchContext.PivotVariable.GetVariableType());
+            currentContext.VariableList.Add(newVariable);
+            currentContext.TableReferences.Add(newVariable);
+            currentContext.SetPivotVariable(newVariable);
+        }
+
+        internal virtual void MatchStart(GremlinToSqlContext currentContext, string selectKey)
+        {
+            GremlinMatchStartVariable newVariable = new GremlinMatchStartVariable(selectKey);
+            currentContext.VariableList.Add(newVariable);
+            currentContext.TableReferences.Add(newVariable);
+            currentContext.SetPivotVariable(newVariable);
+        }
+
+        internal virtual void MatchEnd(GremlinToSqlContext currentContext, string matchKey)
+        {
+            GremlinMatchEndVariable newVariable = new GremlinMatchEndVariable(matchKey);
+            currentContext.VariableList.Add(newVariable);
+            currentContext.TableReferences.Add(newVariable);
+            currentContext.SetPivotVariable(newVariable);
         }
 
         internal virtual void Map(GremlinToSqlContext currentContext, GremlinToSqlContext mapContext)

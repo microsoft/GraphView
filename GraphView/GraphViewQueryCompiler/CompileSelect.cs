@@ -1638,8 +1638,30 @@ namespace GraphView
             context.AddField(Alias.Value, GremlinKeyword.TableDefaultColumnName, ColumnGraphType.Value);
             return matchOp;
         }
+
+        
     }
-    
+
+    partial class WMatchStartTableReference
+    {
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
+        {
+            throw new NotImplementedException();
+        }
+
+        
+    }
+
+    partial class WMatchEndTableReference
+    {
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
+        {
+            throw new NotImplementedException();
+        }
+
+        
+    }
+
     partial class WCoalesceTableReference
     {
         internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
@@ -2412,6 +2434,11 @@ namespace GraphView
             context.AddField(Alias.Value, GremlinKeyword.TableDefaultColumnName, ColumnGraphType.Value);
 
             return pathOp;
+        }
+
+        internal override bool OneLine()
+        {
+            return false;
         }
     }
 

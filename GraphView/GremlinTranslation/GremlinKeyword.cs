@@ -118,6 +118,10 @@ namespace GraphView
             public const string VertexToForwardEdge = "VertexToForwardEdge";
             public const string VertexToBackwardEdge = "VertexToBackwardEdge";
             public const string VertexToBothEdge = "VertexToBothEdge";
+
+            public const string Match = "Match";
+            public const string MatchStart = "MatchStart";
+            public const string MatchEnd = "MatchEnd";
         }
 
         public enum Pop

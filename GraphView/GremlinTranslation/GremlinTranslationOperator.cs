@@ -11,7 +11,7 @@ namespace GraphView
 
         internal virtual GremlinToSqlContext GetContext()
         {
-            return null;
+            throw new NotImplementedException();
         }
 
         internal virtual WSqlScript ToSqlScript() {

@@ -519,6 +519,15 @@ namespace GraphView
                 case GremlinKeyword.func.VertexToBothEdge:
                     funcTableRef = new WVertexToBothEdgeTableReference();
                     break;
+                case GremlinKeyword.func.Match:
+                    funcTableRef = new WMatchTableReference();
+                    break;
+                case GremlinKeyword.func.MatchStart:
+                    funcTableRef = new WMatchStartTableReference();
+                    break;
+                case GremlinKeyword.func.MatchEnd:
+                    funcTableRef = new WMatchEndTableReference();
+                    break;
                 default:
                     throw new NotImplementedException();
             }

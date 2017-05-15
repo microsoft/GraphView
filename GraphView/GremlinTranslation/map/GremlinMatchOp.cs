@@ -30,7 +30,8 @@ namespace GraphView
             this.JoinedMatchTraversal = joinMatchTraversals(this.MatchTraversals);
 
             // match(...) which include 'a', 'b', 'c' means it will select('a', 'b', 'c') and generate a map
-            this.JoinedMatchTraversal.AddGremlinOperator(new GremlinSelectOp(GremlinKeyword.Pop.All, this.Labels.ToArray()));
+            // this.JoinedMatchTraversal.AddGremlinOperator(new GremlinSelectOp(GremlinKeyword.Pop.All, this.Labels.ToArray()));
+            this.JoinedMatchTraversal.Select(this.Labels.ToArray());
         }
 
         internal void configureStartAndEndOperators(GraphTraversal2 traversal)
@@ -141,23 +142,19 @@ namespace GraphView
             /* Not Implemented... */
         }
 
-    internal override GremlinToSqlContext GetContext()
+        internal override GremlinToSqlContext GetContext()
         {
-            GremlinToSqlContext inputContext = GetInputContext();
+            GremlinToSqlContext inputContext = this.GetInputContext();
 
             if (inputContext.PivotVariable == null)
             {
                 throw new QueryCompilationException("The PivotVariable can't be null.");
             }
-            throw new NotImplementedException();
-            List<GremlinToSqlContext> matchContextList = new List<GremlinToSqlContext>();
-            foreach (var traversal in this.MatchTraversals)
-            {
-                traversal.GetFirstOp().InheritedVariableFromParent(inputContext);
-                matchContextList.Add(traversal.GetLastOp().GetContext());
-            }
 
-            inputContext.PivotVariable.Coalesce(inputContext, matchContextList);
+            this.JoinedMatchTraversal.GetFirstOp().InheritedVariableFromParent(inputContext);
+            GremlinToSqlContext matchContext = this.JoinedMatchTraversal.GetLastOp().GetContext();
+
+            inputContext.PivotVariable.Match(inputContext, matchContext);
 
             return inputContext;
         }
@@ -171,6 +168,19 @@ namespace GraphView
         {
             this.SelectKey = selectKey;
         }
+
+        internal override GremlinToSqlContext GetContext()
+        {
+            GremlinToSqlContext inputContext = this.GetInputContext();
+
+            if (inputContext.PivotVariable == null)
+            {
+                throw new QueryCompilationException("The PivotVariable can't be null.");
+            }
+
+            inputContext.PivotVariable.MatchStart(inputContext, this.SelectKey);
+            return inputContext;
+        }
     }
 
     internal class GremlinMatchEndOp : GremlinTranslationOperator
@@ -180,6 +190,19 @@ namespace GraphView
         public GremlinMatchEndOp(string matchKey)
         {
             this.MatchKey = matchKey;
+        }
+
+        internal override GremlinToSqlContext GetContext()
+        {
+            GremlinToSqlContext inputContext = this.GetInputContext();
+
+            if (inputContext.PivotVariable == null)
+            {
+                throw new QueryCompilationException("The PivotVariable can't be null.");
+            }
+
+            inputContext.PivotVariable.MatchEnd(inputContext, this.MatchKey);
+            return inputContext;
         }
     }
 }

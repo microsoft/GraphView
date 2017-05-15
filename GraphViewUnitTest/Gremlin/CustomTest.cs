@@ -20,8 +20,18 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests
                 // var traversal = command.g().Inject(0).Union(command.g().V().Group(), command.g().E().Group()).Select(GremlinKeyword.Column.Keys).Values("name");
                 //var traversal = command.g().V().GroupCount().Unfold().Select(GremlinKeyword.Column.Keys).Values("name");
                 // var traversal = command.g().V().Group().By().By(GraphTraversal2.__().Count()).Select(GremlinKeyword.Column.Keys).Unfold().Values("name");
+                var traversal = command.g()
+                    .V()
+                    .Match(
+                        GraphTraversal2.__().As("a").Out("created").As("b"),
+                        GraphTraversal2.__().As("b").Has("name", "lop"),
+                        GraphTraversal2.__().As("b").In("created").As("c"),
+                        GraphTraversal2.__().As("c").Has("age", 29)
+                    )
+                    .Select("a", "c")
+                    .By("name");
 
-                var traversal = command.g().V().Match(GraphTraversal2.__().As("a"));
+                // var traversal = command.g().V().Match(GraphTraversal2.__().As("a"));
                 var result = traversal.Next();
             }
         }

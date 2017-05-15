@@ -9,23 +9,18 @@ namespace GraphView
 {
     internal class GremlinMatchVariable : GremlinTableVariable
     {
-        public List<GremlinToSqlContext> MatchContextList { get; set; }
+        public GremlinToSqlContext MatchContext { get; set; }
 
-        public GremlinMatchVariable(List<GremlinToSqlContext> matchContextList, GremlinVariableType variableType)
+        public GremlinMatchVariable(GremlinToSqlContext matchContext, GremlinVariableType variableType)
             : base(variableType)
         {
-            MatchContextList = matchContextList;
+            MatchContext = matchContext;
         }
 
         internal override void Populate(string property)
         {
-            throw new NotImplementedException();
             base.Populate(property);
-
-            foreach (var context in MatchContextList)
-            {
-                context.Populate(property);
-            }
+            this.MatchContext.Populate(property);
         }
 
         internal override List<GremlinVariable> FetchAllVars()
@@ -33,10 +28,7 @@ namespace GraphView
             throw new NotImplementedException();
 
             List<GremlinVariable> variableList = new List<GremlinVariable>() { this };
-            foreach (var context in MatchContextList)
-            {
-                variableList.AddRange(context.FetchAllVars());
-            }
+            variableList.AddRange(MatchContext.FetchAllVars());
             return variableList;
         }
 
@@ -45,24 +37,63 @@ namespace GraphView
             throw new NotImplementedException();
 
             List<GremlinVariable> variableList = new List<GremlinVariable>() { this };
-            foreach (var context in MatchContextList)
-            {
-                variableList.AddRange(context.FetchAllTableVars());
-            }
+            variableList.AddRange(MatchContext.FetchAllTableVars());
             return variableList;
         }
 
         public override WTableReference ToTableReference()
         {
-            throw new NotImplementedException();
-
             List<WScalarExpression> parameters = new List<WScalarExpression>();
+            parameters.Add(SqlUtil.GetScalarSubquery(MatchContext.ToSelectQueryBlock()));
+            var tableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Match, parameters, GetVariableName());
 
-            foreach (var context in MatchContextList)
+            return SqlUtil.GetCrossApplyTableReference(tableRef);
+        }
+    }
+
+    internal class GremlinMatchStartVariable : GremlinTableVariable
+    {
+        public string SelectKey;
+
+        public GremlinMatchStartVariable(string selectKey)
+            : base(GremlinVariableType.Table)
+        {
+            this.SelectKey = selectKey;
+        }
+
+        public override WTableReference ToTableReference()
+        {
+            List<WScalarExpression> parameters = new List<WScalarExpression>();
+            parameters.Add(SqlUtil.GetValueExpr(this.SelectKey));
+            foreach (var property in this.ProjectedProperties)
             {
-                parameters.Add(SqlUtil.GetScalarSubquery(context.ToSelectQueryBlock()));
+                parameters.Add(SqlUtil.GetValueExpr(property));
             }
-            var tableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Coalesce, parameters, GetVariableName());
+            var tableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.MatchStart, parameters, GetVariableName());
+
+            return SqlUtil.GetCrossApplyTableReference(tableRef);
+        }
+    }
+
+    internal class GremlinMatchEndVariable : GremlinTableVariable
+    {
+        public string MatchKey;
+
+        public GremlinMatchEndVariable(string matchKey)
+            : base(GremlinVariableType.Table)
+        {
+            this.MatchKey = matchKey;
+        }
+
+        public override WTableReference ToTableReference()
+        {
+            List<WScalarExpression> parameters = new List<WScalarExpression>();
+            parameters.Add(SqlUtil.GetValueExpr(this.MatchKey));
+            foreach (var property in this.ProjectedProperties)
+            {
+                parameters.Add(SqlUtil.GetValueExpr(property));
+            }
+            var tableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.MatchEnd, parameters, GetVariableName());
 
             return SqlUtil.GetCrossApplyTableReference(tableRef);
         }
