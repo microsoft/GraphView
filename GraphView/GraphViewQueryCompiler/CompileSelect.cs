@@ -1621,10 +1621,25 @@ namespace GraphView
     {
         internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
         {
-            throw new NotImplementedException();
+            Debug.Assert(Parameters.Count == 1, "Parameters.Count == 1");
+            
+            WScalarSubquery scalarSubquery = Parameters[0] as WScalarSubquery;
+            if (scalarSubquery == null)
+            {
+                throw new SyntaxErrorException("The input of a coalesce table reference must be one or more scalar subqueries.");
+            }
+
+            QueryCompilationContext subContext = new QueryCompilationContext(context);
+            GraphViewExecutionOperator traversalOp = scalarSubquery.SubQueryExpr.Compile(subContext, dbConnection);
+
+            MatchOperator matchOp = new MatchOperator(context.CurrentExecutionOperator, traversalOp, subContext.OuterContextOp);
+
+            context.CurrentExecutionOperator = matchOp;
+            context.AddField(Alias.Value, GremlinKeyword.TableDefaultColumnName, ColumnGraphType.Value);
+            return matchOp;
         }
     }
-
+    
     partial class WCoalesceTableReference
     {
         internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
