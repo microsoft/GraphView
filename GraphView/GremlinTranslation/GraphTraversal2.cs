@@ -248,14 +248,58 @@ namespace GraphView
 
         internal void InsertGremlinOperator(int index, GremlinTranslationOperator newGremlinTranslationOp)
         {
-            if (index >= GremlinTranslationOpList.Count || index == 0) 
+            if (index > GremlinTranslationOpList.Count || index < 0) 
                 throw new QueryCompilationException();
             GremlinTranslationOpList.Insert(index, newGremlinTranslationOp);
-            newGremlinTranslationOp.InputOperator = GremlinTranslationOpList[index-1];
+            if (index > 0)
+            {
+                newGremlinTranslationOp.InputOperator = GremlinTranslationOpList[index - 1];
+            }
             if (index + 1 < GremlinTranslationOpList.Count())
             {
                 GremlinTranslationOpList[index + 1].InputOperator = newGremlinTranslationOp;
             }
+        }
+
+        internal GremlinTranslationOperator PopGremlinOperator()
+        {
+            return this.RemoveGremlinOperator(GremlinTranslationOpList.Count - 1);
+        }
+
+        internal List<GremlinTranslationOperator> GetGremlinTranslationOpList()
+        {
+            return this.GremlinTranslationOpList.Copy();
+        }
+
+        // will not deal with the LastGremlinTranslationOp
+        internal GremlinTranslationOperator RemoveGremlinOperator(int index)
+        {
+            if (index >= GremlinTranslationOpList.Count || index < 0)
+                throw new QueryCompilationException();
+
+            GremlinTranslationOperator removedOp = GremlinTranslationOpList[index].Copy();
+
+            GremlinTranslationOpList.RemoveAt(index);
+
+            if (index < GremlinTranslationOpList.Count && index >= 0)
+            {
+                if (index > 0)
+                {
+                    GremlinTranslationOpList[index].InputOperator = GremlinTranslationOpList[index - 1];
+                }
+                else
+                {
+                    GremlinTranslationOpList[index].InputOperator = null;
+                }
+            }
+
+            return removedOp;
+        }
+
+        internal void ReplaceGremlinOperator(int index, GremlinTranslationOperator newGremlinTranslationOp)
+        {
+            this.RemoveGremlinOperator(index);
+            this.InsertGremlinOperator(index, newGremlinTranslationOp);
         }
 
         internal void AddGremlinOperator(GremlinTranslationOperator newGremlinTranslationOp)
@@ -291,6 +335,24 @@ namespace GraphView
         internal GremlinTranslationOperator GetEndOp()
         {
             return LastGremlinTranslationOp;
+        }
+
+        // Just get the first element of operator list and do not check the exception 'out of range'
+        internal GremlinTranslationOperator GetFirstOp()
+        {
+            return GremlinTranslationOpList.First();
+        }
+
+        // Just get the last element of operator list and do not check the exception 'out of range'
+        internal GremlinTranslationOperator GetLastOp()
+        {
+            return GremlinTranslationOpList.Last();
+        }
+
+        // get operator by index, return null if out of range
+        internal GremlinTranslationOperator GetOp(int index)
+        {
+            return GremlinTranslationOpList.Count > index ? GremlinTranslationOpList[index] : null;
         }
 
         public GraphTraversal2 AddE()
