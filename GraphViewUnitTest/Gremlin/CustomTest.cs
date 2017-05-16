@@ -23,10 +23,16 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests
                 var traversal = command.g()
                     .V()
                     .Match(
-                        GraphTraversal2.__().As("a").Out("created").As("b"),
+                        GraphTraversal2.__().As("x").Out("dummy").As("z"),
+                        GraphTraversal2.__().As("y").Out("dummy").As("z"),
+                        GraphTraversal2.__().As("z").Out("dummy").As("a"),
+                        GraphTraversal2.__().As("f").Out("dummy").As("h"),
+                        GraphTraversal2.__().As("c").Has("age", 29),
                         GraphTraversal2.__().As("b").Has("name", "lop"),
+                        GraphTraversal2.__().As("a").Out("created").As("b"),
+                        GraphTraversal2.__().As("g").Out("dummy").As("f"),
                         GraphTraversal2.__().As("b").In("created").As("c"),
-                        GraphTraversal2.__().As("c").Has("age", 29)
+                        GraphTraversal2.__().As("c").Out("dummy").As("a")
                     )
                     .Select("a", "c")
                     .By("name");

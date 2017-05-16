@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -25,7 +26,7 @@ namespace GraphView
                 this.MatchTraversals.Add(traversal);
             }
 
-            this.sortMatchTraversals(this.MatchTraversals);
+            this.sortMatchTraversals();
 
             this.JoinedMatchTraversal = joinMatchTraversals(this.MatchTraversals);
 
@@ -121,10 +122,11 @@ namespace GraphView
             return traversal;
         }
 
-        // similar topological sorting
-        internal void sortMatchTraversals(List<GraphTraversal2> matchTraversals)
+        // similar topological sorting, MatchTraversals and StartAndEndLabelsPairList will be sorted synchronously
+        internal void sortMatchTraversals()
         {
             Dictionary<string, List<string>> edges = new Dictionary<string, List<string>>();
+            // find all the valid edges which have a source vertex and sink vertex
             foreach (Tuple<string, string> pair in this.StartAndEndLabelsPairList)
             {
                 if (pair.Item1 != null && pair.Item2 != null)
@@ -139,7 +141,96 @@ namespace GraphView
                     }
                 }
             }
-            /* Not Implemented... */
+
+            // We have a graph consisting of many edges storing in 'edges'.
+            // Each time, We will cut the graph to a subgraph and generate a list which is composed of the vertexs in the cut part meanwhile.
+            // And then put this list at the front of the final sorted list which will include all vertexs(labels) finally.
+            // We will not stop until the graph has no vertex.
+
+            HashSet<string> vertexs = this.Labels.Copy();
+
+            List<string> totalSortedList = new List<string>();
+
+            while (vertexs.Count > 0)
+            {
+                List<string> longestPartialSortedList = new List<string>();
+                foreach (string vertex in vertexs)
+                {
+                    List<string> partialSortedList = breadthFirstSearch(edges, vertex);
+                    if (partialSortedList.Count > longestPartialSortedList.Count)
+                    {
+                        longestPartialSortedList = partialSortedList;
+                    }
+                }
+                // cut it off from the graph
+                foreach (string vertex in longestPartialSortedList)
+                {
+                    vertexs.Remove(vertex);
+                    foreach (KeyValuePair<string, List<string>> pair in edges)
+                    {
+                        pair.Value.Remove(vertex);
+                    }
+                    edges.Remove(vertex);
+                }
+                totalSortedList.InsertRange(0, longestPartialSortedList);
+            }
+
+            Debug.Assert(this.MatchTraversals.Count == this.StartAndEndLabelsPairList.Count);
+
+            List<GraphTraversal2> sortedMatchTraversals = new List<GraphTraversal2>();
+            List<Tuple<string, string>> sortedStartAndEndLabelsPairList = new List<Tuple<string, string>>();
+
+            foreach (string label in totalSortedList)
+            {
+                for (int i = 0; i < this.MatchTraversals.Count; i++)
+                {
+                    string startLabel = this.StartAndEndLabelsPairList[i].Item1; ;
+                    if (startLabel == label)
+                    {
+                        sortedMatchTraversals.Add(this.MatchTraversals[i]);
+                        sortedStartAndEndLabelsPairList.Add(this.StartAndEndLabelsPairList[i]);
+                    }
+                }
+            }
+
+            // could be remove when stable
+            Debug.Assert(this.MatchTraversals.Count == sortedMatchTraversals.Count);
+            Debug.Assert(this.StartAndEndLabelsPairList.Count == sortedStartAndEndLabelsPairList.Count);
+            Debug.Assert(sortedMatchTraversals.TrueForAll(t => this.MatchTraversals.Contains(t)));
+            Debug.Assert(this.MatchTraversals.TrueForAll(t => sortedMatchTraversals.Contains(t)));
+            Debug.Assert(sortedStartAndEndLabelsPairList.TrueForAll(t => this.StartAndEndLabelsPairList.Contains(t)));
+            Debug.Assert(this.StartAndEndLabelsPairList.TrueForAll(t => sortedStartAndEndLabelsPairList.Contains(t)));
+
+            this.MatchTraversals = sortedMatchTraversals;
+            this.StartAndEndLabelsPairList = sortedStartAndEndLabelsPairList;
+        }
+
+        internal List<string> breadthFirstSearch(Dictionary<string, List<string>> edges, string start)
+        {
+            List<string> record = new List<string>();
+
+            Queue<string> queue = new Queue<string>();
+            queue.Enqueue(start);
+            while (queue.Count > 0)
+            {
+                string current = queue.Dequeue();
+                record.Add(current);
+                
+                if (!edges.ContainsKey(current))
+                {
+                    continue; // no next possible vertex
+                }
+                
+                foreach (string nextVertex in edges[current])
+                {
+                    if (!record.Contains(nextVertex))
+                    {
+                        queue.Enqueue(nextVertex);
+                    }
+                }
+            }
+
+            return record;
         }
 
         internal override GremlinToSqlContext GetContext()
