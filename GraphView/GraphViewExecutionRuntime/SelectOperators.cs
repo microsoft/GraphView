@@ -2367,9 +2367,9 @@ namespace GraphView
 
     internal class DeduplicateOperator : GraphViewExecutionOperator
     {
-        private GraphViewExecutionOperator inputOp;
-        private HashSet<CollectionField> compositeDedupKeySet;
-        private List<ScalarFunction> compositeDedupKeyFuncList;
+        protected GraphViewExecutionOperator inputOp;
+        protected HashSet<CollectionField> compositeDedupKeySet;
+        protected List<ScalarFunction> compositeDedupKeyFuncList;
 
         internal DeduplicateOperator(GraphViewExecutionOperator inputOperator, List<ScalarFunction> compositeDedupKeyFuncList)
         {
@@ -2417,6 +2417,92 @@ namespace GraphView
             this.compositeDedupKeySet.Clear();
 
             this.Open();
+        }
+    }
+
+    internal class DeduplicateInBatchOperator : DeduplicateOperator
+    {
+        private RawRecord firstRecordInGroup;
+        private bool newGroup;
+
+        internal DeduplicateInBatchOperator(
+            GraphViewExecutionOperator inputOperator,
+            List<ScalarFunction> compositeDedupKeyFuncList)
+            : base(inputOperator, compositeDedupKeyFuncList)
+        {
+            this.newGroup = false;
+        }
+
+        private bool IsUniqueRecord(RawRecord record)
+        {
+            List<FieldObject> keys = new List<FieldObject>();
+            foreach (ScalarFunction getDedupKeyFunc in this.compositeDedupKeyFuncList)
+            {
+                FieldObject key = getDedupKeyFunc.Evaluate(record);
+                if (key == null)
+                {
+                    throw new GraphViewException("The provided traversal or property name of Dedup does not map to a value.");
+                }
+
+                keys.Add(key);
+            }
+
+            CollectionField compositeDedupKey = new CollectionField(keys);
+
+            if (!this.compositeDedupKeySet.Contains(compositeDedupKey))
+            {
+                this.compositeDedupKeySet.Add(compositeDedupKey);
+                return true;
+            }
+
+            return false;
+        }
+
+        public override RawRecord Next()
+        {
+            while (this.State())
+            {
+                RawRecord rec = null;
+                while (this.newGroup &&
+                    this.inputOp.State() &&
+                    (rec = this.inputOp.Next()) != null &&
+                    rec[0].ToValue == this.firstRecordInGroup[0].ToValue)
+                {
+                    if (this.IsUniqueRecord(rec))
+                    {
+                        return rec;
+                    }
+                }
+
+                this.newGroup = false;
+                this.firstRecordInGroup = rec;
+                this.compositeDedupKeySet.Clear();
+
+                if (this.firstRecordInGroup == null && this.inputOp.State())
+                {
+                    this.firstRecordInGroup = this.inputOp.Next();
+                }
+
+                if (this.firstRecordInGroup == null)
+                {
+                    this.Close();
+                    return null;
+                }
+
+                this.newGroup = true;
+                if (this.IsUniqueRecord(this.firstRecordInGroup))
+                {
+                    return this.firstRecordInGroup;
+                }
+            }
+
+            return null;
+        }
+
+        public override void ResetState()
+        {
+            base.ResetState();
+            this.newGroup = false;
         }
     }
 

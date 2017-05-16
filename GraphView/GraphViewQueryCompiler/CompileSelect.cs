@@ -2308,9 +2308,11 @@ namespace GraphView
         internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
         {
             List<ScalarFunction> targetValueFunctionList =
-                Parameters.Select(expression => expression.CompileToFunction(context, dbConnection)).ToList();
+                this.Parameters.Select(expression => expression.CompileToFunction(context, dbConnection)).ToList();
 
-            DeduplicateOperator dedupOp = new DeduplicateOperator(context.CurrentExecutionOperator, targetValueFunctionList);
+            DeduplicateOperator dedupOp = context.InBatchMode
+                ? new DeduplicateInBatchOperator(context.CurrentExecutionOperator, targetValueFunctionList)
+                : new DeduplicateOperator(context.CurrentExecutionOperator, targetValueFunctionList);
             context.CurrentExecutionOperator = dedupOp;
 
             return dedupOp;
