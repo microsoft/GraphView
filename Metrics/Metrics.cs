@@ -110,12 +110,103 @@ namespace Metrics
         {
             throw new NotImplementedException();
         }
-        public static double ApproxTriangleCountingBySamplingD(GraphViewCommand g)
-        {
-            throw new NotImplementedException();
-        }
+		public static int RandToInt(double t)
+		{
+			Random rnd = new Random();
+			int f = (int)Math.Floor(t);
+			return f + (rnd.NextDouble() < t - f ? 1 : 0);
+		}
+		public static double ApproxTriangleCountingBySamplingD(GraphViewCommand g)
+		{
+			int nv = g.g().V().Next().Count;
+			int ne = g.g().E().Next().Count;
 
-        public static double ApproxGlobalClusteringCoefficientBySamplingA(GraphViewCommand g)
+			Random rnd = new Random();
+			int sq = (int)Math.Sqrt(nv);
+			int eTry = (int)1e6;
+
+			long Usize = 0;
+			int n_big = 0;
+
+			for (int v = 0; v < nv; v++)
+			{
+				List<string> adj = g.g().V().HasId(v).Both().Values("id").Next();
+
+				int d = adj.Count;
+				if (d <= sq)
+				{
+					long d2 = (long)d * (d - 1) / 2;
+					Usize += d2;
+				}
+				else
+				{
+					Usize += ne;
+					n_big++;
+				}
+			}
+
+			int n_blist = 0;
+			string[] blist = new string[n_big];
+
+			int hit = 0;
+			int shoot = 0;
+
+			foreach (var v in g.g().V())
+			{
+				List<string> adj = g.g().V().HasId(v).Both().Values("id").Next();
+				int d = adj.Count;
+				if (d <= sq)
+				{
+					if (d >= 2)
+					{
+						int tn = RandToInt((double)d * (d - 1) / 2 / Usize * eTry);
+
+						for (int i = 0; i < tn; i++)
+						{
+							int ui, vi;
+							do
+							{
+								ui = rnd.Next() % d;
+								vi = rnd.Next() % d;
+							} while (ui >= vi);
+
+							shoot++;
+							string uu = adj[ui];
+							string vv = adj[vi];
+							hit += g.g().V().HasId(uu).Both().HasId(vv).Next().Count;
+						}
+					}
+				}
+				else
+				{
+					blist[n_blist++] = v;
+				}
+			}
+
+			double p_big = (double)n_big * ne / Usize;
+
+			g.OutputFormat = OutputFormat.GraphSON;
+			foreach (var stre in g.g().E())
+			{
+				var e = JsonConvert.DeserializeObject<JArray>(stre);
+				string su = (string)e["inV"], sv = (string)e["outV"];
+				int tn = RandToInt(p_big / n_big * eTry);
+
+				for (int i = 0; i < tn; ++i)
+				{
+					string v = blist[rnd.Next() % n_blist];
+
+					shoot++;
+					if (g.g().V().HasId(su).Both().HasId(v).Next().Count == 1
+						&& g.g().V().HasId(sv).Both().HasId(v).Next().Count == 1)
+						hit++;
+				}
+			}
+
+			return ((double)hit / shoot) * Usize;
+		}
+
+		public static double ApproxGlobalClusteringCoefficientBySamplingA(GraphViewCommand g)
         {
             throw new NotImplementedException();
         }
