@@ -1434,6 +1434,87 @@ namespace GraphView
         }
     }
 
+
+    internal class FlatMapInBatchOperator : GraphViewExecutionOperator
+    {
+        private GraphViewExecutionOperator inputOp;
+
+        // The traversal inside the flatMap function.
+        private GraphViewExecutionOperator flatMapTraversal;
+        private ContainerEnumerator sourceEnumerator;
+        
+        private List<RawRecord> inputBatch;
+
+        private int batchSize;
+
+        public FlatMapInBatchOperator(
+            GraphViewExecutionOperator inputOp,
+            GraphViewExecutionOperator flatMapTraversal,
+            ContainerEnumerator sourceEnumerator,
+            int batchSize = KW_DEFAULT_BATCH_SIZE)
+        {
+            this.inputOp = inputOp;
+            this.flatMapTraversal = flatMapTraversal;
+            this.sourceEnumerator = sourceEnumerator;
+            this.batchSize = batchSize;
+
+            this.inputBatch = new List<RawRecord>();
+
+            this.Open();
+        }
+
+        public override RawRecord Next()
+        {
+            while (this.State())
+            {
+                if (this.inputBatch.Any())
+                {
+                    RawRecord subTraversalRecord;
+                    while (flatMapTraversal.State() && (subTraversalRecord = flatMapTraversal.Next()) != null)
+                    {
+                        int subTraversalRecordIndex = int.Parse(subTraversalRecord[0].ToValue);
+                        RawRecord resultRecord = inputBatch[subTraversalRecordIndex].GetRange(1);
+                        resultRecord.Append(subTraversalRecord.GetRange(1));
+                        return resultRecord;
+                    }
+                }
+                
+                this.inputBatch.Clear();
+                RawRecord inputRecord;
+                while (this.inputBatch.Count < this.batchSize && this.inputOp.State() && (inputRecord = inputOp.Next()) != null)
+                {
+                    RawRecord batchRawRecord = new RawRecord();
+                    batchRawRecord.Append(new StringField(this.inputBatch.Count.ToString(), JsonDataType.Int));
+                    batchRawRecord.Append(inputRecord);
+
+                    inputBatch.Add(batchRawRecord);
+                }
+
+                if (!inputBatch.Any())
+                {
+                    this.Close();
+                    return null;
+                }
+
+                sourceEnumerator.ResetTableCache(inputBatch);
+                flatMapTraversal.ResetState();
+            }
+
+            return null;
+        }
+
+        public override void ResetState()
+        {
+            this.sourceEnumerator.ResetState();
+            this.inputBatch.Clear();
+            this.inputOp.ResetState();
+            this.flatMapTraversal.ResetState();
+            this.Open();
+        }
+    }
+
+
+
     internal class LocalOperator : GraphViewExecutionOperator
     {
         private GraphViewExecutionOperator inputOp;

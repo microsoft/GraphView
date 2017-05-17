@@ -2355,6 +2355,11 @@ namespace GraphView
             return new RawRecord() {fieldValues = this.fieldValues.GetRange(index, count)};
         }
 
+        public RawRecord GetRange(int startIndex)
+        {
+            return new RawRecord() {fieldValues = this.fieldValues.GetRange(startIndex, this.Length - startIndex)};
+        }
+
         internal FieldObject RetriveData(List<string> header,string FieldName)
         {
             if (header.IndexOf(FieldName) == -1) return null;

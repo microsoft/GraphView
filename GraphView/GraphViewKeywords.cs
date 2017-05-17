@@ -66,6 +66,8 @@ namespace GraphView
         public const string KW_EDGEDOC_EDGE = KW_VERTEX_EDGE;
         public const string KW_EDGEDOC_IDENTIFIER = "_isEdgeDoc";
 
+        public const int KW_DEFAULT_BATCH_SIZE = 1000;
+
         public static string KW_TABLE_DEFAULT_COLUMN_NAME = GremlinKeyword.TableDefaultColumnName;
 
         internal enum Pop
