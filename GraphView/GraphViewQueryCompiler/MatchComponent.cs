@@ -63,9 +63,6 @@ namespace GraphView
         // and new edges point to this sink node. 
         public Dictionary<MatchNode, Statistics> SinkNodeStatisticsDict { get; set; }
 
-        // A collection of nodes and their edges which need to be pulled from the server
-        public Dictionary<string, List<Tuple<MatchEdge, MaterializedEdgeType>>> NodeToMaterializedEdgesDict { get; set; }
-
         // Estimated number of rows returned by this component
         public double Cardinality { get; set; }
 
@@ -79,7 +76,6 @@ namespace GraphView
             this.TraversalChain = new List<Tuple<MatchNode, MatchEdge, MatchNode, List<MatchEdge>, List<MatchEdge>>>();
             UnmaterializedNodeMapping = new Dictionary<MatchNode, List<MatchEdge>>();
             SinkNodeStatisticsDict = new Dictionary<MatchNode, Statistics>();
-            NodeToMaterializedEdgesDict = new Dictionary<string, List<Tuple<MatchEdge, MaterializedEdgeType>>>();
             Cardinality = 1.0;
             Cost = 0.0;
         }
@@ -89,7 +85,6 @@ namespace GraphView
             Nodes.Add(node.NodeAlias, node);
             MaterializedNodeSplitCount[node] = 0;
             //SinkNodeStatisticsDict[node] = new Statistics ();
-            NodeToMaterializedEdgesDict[node.NodeAlias] = new List<Tuple<MatchEdge, MaterializedEdgeType>>();
             Cardinality *= node.EstimatedRows;
 
             foreach (var edge in node.Neighbors)
@@ -120,12 +115,6 @@ namespace GraphView
             {
                 this.TraversalChain.Add(new Tuple<MatchNode, MatchEdge, MatchNode, List<MatchEdge>, List<MatchEdge>>(
                     chain.Item1, chain.Item2, chain.Item3, chain.Item4, chain.Item5));
-            }
-
-            NodeToMaterializedEdgesDict = new Dictionary<string, List<Tuple<MatchEdge, MaterializedEdgeType>>>();
-            foreach (var nodeMatEdges in component.NodeToMaterializedEdgesDict)
-            {
-                NodeToMaterializedEdgesDict[nodeMatEdges.Key] = new List<Tuple<MatchEdge, MaterializedEdgeType>>(nodeMatEdges.Value);
             }
 
             SinkNodeStatisticsDict = new Dictionary<MatchNode, Statistics>();

@@ -239,7 +239,7 @@ namespace GraphView
             List<MatchEdge> unmatEdges = candidateTree.UnmaterializedEdges;
             foreach (MatchEdge unmatEdge in unmatEdges)
             {
-                edgeMaterializedDict[unmatEdge] = false; ;
+                edgeMaterializedDict[unmatEdge] = false;
                 List<MatchEdge> unmatNodeInEdges = unmaterializedNodeMapping.GetOrCreate(unmatEdge.SinkNode);
                 unmatNodeInEdges.Add(unmatEdge);
             }
