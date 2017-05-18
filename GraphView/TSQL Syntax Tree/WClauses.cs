@@ -61,13 +61,16 @@ namespace GraphView
                 {
                     sb.Append(", ");
                 }
-
-                sb.Append("\r\n");
+                
                 if (TableReferences[i].OneLine())
                 {
-                    sb.Append(indent + "    ");
+                    sb.Append(TableReferences[i].ToString(""));
                 }
-                sb.Append(TableReferences[i].ToString(indent + "  "));
+                else
+                {
+                    sb.Append("\r\n");
+                    sb.Append(TableReferences[i].ToString(indent + "  "));
+                }
             }
 
             return sb.ToString();

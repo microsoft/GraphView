@@ -18,9 +18,9 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests
             using (GraphViewCommand command = new GraphViewCommand(graphConnection))
             {
                 // var traversal = command.g().Inject(0).Union(command.g().V().Group(), command.g().E().Group()).Select(GremlinKeyword.Column.Keys).Values("name");
-                //var traversal = command.g().V().GroupCount().Unfold().Select(GremlinKeyword.Column.Keys).Values("name");
+                // var traversal = command.g().V().GroupCount().Unfold().Select(GremlinKeyword.Column.Keys).Values("name");
                 // var traversal = command.g().V().Group().By().By(GraphTraversal2.__().Count()).Select(GremlinKeyword.Column.Keys).Unfold().Values("name");
-                var traversal = command.g()
+                /* var traversal = command.g()
                     .V()
                     .Match(
                         GraphTraversal2.__().As("x").Out("dummy").As("z"),
@@ -35,7 +35,14 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests
                         GraphTraversal2.__().As("c").Out("dummy").As("a")
                     )
                     .Select("a", "c")
-                    .By("name");
+                    .By("name"); */
+                var traversal = command.g()
+                    .V()
+                    .Repeat(GraphTraversal2.__().TimeLimit(2).Both().GroupCount("m"))
+                    .Times(15)
+                    .Cap("m")
+                    .Order(GremlinKeyword.Scope.Local)
+                    .By(GremlinKeyword.Column.Values, GremlinKeyword.Order.Decr);
 
                 // var traversal = command.g().V().Match(GraphTraversal2.__().As("a"));
                 var result = traversal.Next();
