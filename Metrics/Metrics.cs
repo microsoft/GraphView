@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using Newtonsoft.Json;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -188,7 +189,7 @@ namespace Metrics
 			g.OutputFormat = OutputFormat.GraphSON;
 			foreach (var stre in g.g().E())
 			{
-				var e = JsonConvert.DeserializeObject<JArray>(stre);
+				var e = JsonConvert.DeserializeObject<dynamic>(stre);
 				string su = (string)e["inV"], sv = (string)e["outV"];
 				int tn = RandToInt(p_big / n_big * eTry);
 
