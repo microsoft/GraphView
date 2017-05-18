@@ -21,8 +21,6 @@ namespace Metrics
 
             foreach (var v in g.g().V().Values("id"))
             {
-                Debug.Print("handling {0}", v);
-
                 int deg = int.Parse(g.g().V().HasId(v).Both().Count().Next()[0]);
                 var neighbors = g.g().V().HasId(v).Both().Where(
                     GraphTraversal2.__().Both().Count().Is(Predicate.gt(deg))
@@ -31,6 +29,8 @@ namespace Metrics
                 neighbors.AddRange(g.g().V().HasId(v).Both().Where(
                     GraphTraversal2.__().Both().Count().Is(Predicate.eq(deg))
                 ).Values("id").Next().Where(new Func<string, bool>(u => String.Compare(v, u) < 0)));
+
+                Debug.Print("handling {0}, with {1} neighbors", v, neighbors.Count);
 
                 for (int i = 0; i < neighbors.Count(); i++)
                     for (int j = 0; j < i; j++)
