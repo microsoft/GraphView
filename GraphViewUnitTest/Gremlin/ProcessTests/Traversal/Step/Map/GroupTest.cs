@@ -43,5 +43,23 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
                 }
             }
         }
+
+        [TestMethod]
+        [TestModernCompatible]
+        public void g_V_Group_by_select()
+        {
+            using (GraphViewCommand GraphViewCommand = new GraphViewCommand(graphConnection))
+            {
+                GraphViewCommand.OutputFormat = OutputFormat.Regular;
+                var traversal = GraphViewCommand.g().V().As("a").In().Select("a").GroupCount().Unfold().Select(GremlinKeyword.Column.Keys).Out().ValueMap();
+                var results = traversal.Next();
+
+                Console.WriteLine(traversal.SqlScript);
+                foreach (var result in results)
+                {
+                    Console.WriteLine(result);
+                }
+            }
+        }
     }
 }

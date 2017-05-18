@@ -493,7 +493,7 @@ namespace GraphView
 
             UnionFind unionFind = new UnionFind();
             Dictionary<string, MatchNode> vertexTableCollection = new Dictionary<string, MatchNode>(StringComparer.OrdinalIgnoreCase);
-            Dictionary<string, WNamedTableReference> vertexTableReferencesDict = new Dictionary<string, WNamedTableReference>();
+//            Dictionary<string, WNamedTableReference> vertexTableReferencesDict = new Dictionary<string, WNamedTableReference>();
             List<ConnectedComponent> connectedSubGraphs = new List<ConnectedComponent>();
             Dictionary<string, ConnectedComponent> subGraphMap = new Dictionary<string, ConnectedComponent>(StringComparer.OrdinalIgnoreCase);
             Dictionary<string, string> parent = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
@@ -510,7 +510,7 @@ namespace GraphView
                 foreach (WNamedTableReference vertexTableRef in vertexTableList)
                 {
                     vertexTableCollection.GetOrCreate(vertexTableRef.Alias.Value);
-                    vertexTableReferencesDict[vertexTableRef.Alias.Value] = vertexTableRef;
+//                    vertexTableReferencesDict[vertexTableRef.Alias.Value] = vertexTableRef;
                     if (!parent.ContainsKey(vertexTableRef.Alias.Value))
                         parent[vertexTableRef.Alias.Value] = vertexTableRef.Alias.Value;
                 }
