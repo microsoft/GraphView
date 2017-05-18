@@ -99,9 +99,10 @@ namespace Metrics
         // ===================================================================================
         // For all vertices: (by sampling)
 
-        public static double ApproxTriangleCountingBySamplingA(GraphViewCommand g)
+        public static double ApproxTriangleCountingBySamplingA(GraphViewCommand g, double p = 0.07)
         {
-            throw new NotImplementedException();
+            LocalGraph h = GraphOperation.EdgeSample(g, p);
+            return h.CountTriangles() / (p * p * p);
         }
         public static double ApproxTriangleCountingBySamplingB(GraphViewCommand g)
         {

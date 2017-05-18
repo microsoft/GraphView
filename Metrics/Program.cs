@@ -28,7 +28,11 @@ namespace Metrics
 
             GraphViewCommand g = new GraphViewCommand(connection);
 
-            Console.WriteLine("#triangles: {0}", Metrics.TriangleCounting(g));
+            Console.WriteLine("connection established");
+
+            //Console.WriteLine("#triangles: {0}", Metrics.TriangleCounting(g));
+
+            Console.WriteLine("approx. #triangles: {0}", Metrics.ApproxTriangleCountingBySamplingA(g));
 
             Console.WriteLine("Please press any key to exit");
             Console.ReadKey();
