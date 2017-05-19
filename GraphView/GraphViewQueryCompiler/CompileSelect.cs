@@ -1040,7 +1040,7 @@ namespace GraphView
                     new HashSet<string>(tableReferences.Keys), predicatesAccessedTableReferences,
                     operatorChain);
             }
-                
+            
             foreach (ConnectedComponent subGraph in graphPattern.ConnectedSubGraphs)
             {
                 List<Tuple<MatchNode, MatchEdge, List<MatchEdge>, List<MatchEdge>, List<MatchEdge>>> traversalOrder = 
@@ -1142,7 +1142,8 @@ namespace GraphView
                     //
                     // Cross apply dangling edges and update context info
                     //
-                    if (!processedNodes.Contains(currentNode.NodeAlias)) {
+                    if (!processedNodes.Contains(currentNode.NodeAlias))
+                    {
                         this.CrossApplyEdges(connection, context, operatorChain, currentNode.DanglingEdges,
                             predicatesAccessedTableReferences);
                     }
@@ -1210,22 +1211,13 @@ namespace GraphView
                 }
                 else
                 {
-
+                    throw new NotImplementedException("Not supported type of FROM clause.");
                 }
 
                 CheckRemainingPredicatesAndAppendFilterOp(context, connection,
                     new HashSet<string>(tableReferences.Keys), predicatesAccessedTableReferences,
                     operatorChain);
             }
-
-            // TODO: groupBy operator
-
-            if (OrderByClause != null && OrderByClause.OrderByElements != null)
-            {
-                var orderByOp = OrderByClause.Compile(context, connection);
-                operatorChain.Add(orderByOp);
-            }
-
 
             var selectScalarExprList = SelectElements.Select(e => e as WSelectScalarExpression).ToList();
 
@@ -1287,36 +1279,36 @@ namespace GraphView
                     projectOperator.AddSelectScalarElement(scalarFunction);
                 }
 
-                // Rebuilds the output layout of the context
-                context.ClearField();
-                int i = 0;
-                if (context.CarryOn)
-                {
-                    foreach (var parentFieldPair in context.ParentContextRawRecordLayout)
-                    {
-                        context.RawRecordLayout.Add(parentFieldPair.Key, parentFieldPair.Value);
-                    }
-                    i = context.ParentContextRawRecordLayout.Count;
-                }
+                //// Rebuilds the output layout of the context
+                //context.ClearField();
+                //int i = 0;
+                //if (context.CarryOn)
+                //{
+                //    foreach (var parentFieldPair in context.ParentContextRawRecordLayout)
+                //    {
+                //        context.RawRecordLayout.Add(parentFieldPair.Key, parentFieldPair.Value);
+                //    }
+                //    i = context.ParentContextRawRecordLayout.Count;
+                //}
 
-                foreach (var expr in selectScalarExprList)
-                {
-                    var alias = expr.ColumnName;
-                    WColumnReferenceExpression columnReference;
-                    if (alias == null)
-                    {
-                        columnReference = expr.SelectExpr as WColumnReferenceExpression;
-                        if (columnReference == null)
-                        {
-                            var value = expr.SelectExpr as WValueExpression;
-                            columnReference = new WColumnReferenceExpression("", value.Value);
-                        }
-                    }
-                    else
-                        columnReference = new WColumnReferenceExpression("", alias);
-                    // TODO: Change to Addfield with correct ColumnGraphType
-                    context.RawRecordLayout.Add(columnReference, i++);
-                }
+                //foreach (var expr in selectScalarExprList)
+                //{
+                //    var alias = expr.ColumnName;
+                //    WColumnReferenceExpression columnReference;
+                //    if (alias == null)
+                //    {
+                //        columnReference = expr.SelectExpr as WColumnReferenceExpression;
+                //        if (columnReference == null)
+                //        {
+                //            var value = expr.SelectExpr as WValueExpression;
+                //            columnReference = new WColumnReferenceExpression("", value.Value);
+                //        }
+                //    }
+                //    else
+                //        columnReference = new WColumnReferenceExpression("", alias);
+                //    // TODO: Change to Addfield with correct ColumnGraphType
+                //    context.RawRecordLayout.Add(columnReference, i++);
+                //}
 
                 operatorChain.Add(projectOperator);
                 context.CurrentExecutionOperator = projectOperator;
@@ -1402,15 +1394,15 @@ namespace GraphView
                     }
                 }
 
-                // Rebuilds the output layout of the context
-                context.ClearField();
+                //// Rebuilds the output layout of the context
+                //context.ClearField();
 
-                foreach (var expr in selectScalarExprList)
-                {
-                    var alias = expr.ColumnName;
-                    // TODO: Change to Addfield with correct ColumnGraphType
-                    context.AddField("", alias ?? GremlinKeyword.TableDefaultColumnName, ColumnGraphType.Value);
-                }
+                //foreach (var expr in selectScalarExprList)
+                //{
+                //    var alias = expr.ColumnName;
+                //    // TODO: Change to Addfield with correct ColumnGraphType
+                //    context.AddField("", alias ?? GremlinKeyword.TableDefaultColumnName, ColumnGraphType.Value);
+                //}
 
                 operatorChain.Add(projectAggregationOp);
                 context.CurrentExecutionOperator = projectAggregationOp;
@@ -1643,7 +1635,8 @@ namespace GraphView
             foreach (WSelectElement selectElement in firstSelectQuery.SelectElements)
             {
                 WSelectScalarExpression selectScalar = selectElement as WSelectScalarExpression;
-                if (selectScalar == null) {
+                if (selectScalar == null)
+                {
                     throw new SyntaxErrorException("The input subquery of a coalesce table reference can only select scalar elements.");
                 }
                 Debug.Assert(selectScalar.ColumnName != null, "selectScalar.ColumnName != null");
@@ -1652,7 +1645,8 @@ namespace GraphView
                 //
                 // TODO: Remove this case
                 //
-                if (columnRef != null && columnRef.ColumnType == ColumnType.Wildcard) {
+                if (columnRef != null && columnRef.ColumnType == ColumnType.Wildcard)
+                {
                     continue;
                 }
                 context.AddField(Alias.Value, selectScalar.ColumnName, columnRef?.ColumnGraphType ?? ColumnGraphType.Value);
