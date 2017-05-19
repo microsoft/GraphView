@@ -1605,8 +1605,9 @@ namespace GraphView
     {
         internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
         {
-            CoalesceOperator2 coalesceOp = new CoalesceOperator2(context.CurrentExecutionOperator);
-
+            ContainerEnumerator sourceEnumerator = new ContainerEnumerator();
+            CoalesceInBatchOperator coalesceOp = new CoalesceInBatchOperator(context.CurrentExecutionOperator, sourceEnumerator);
+               
             WSelectQueryBlock firstSelectQuery = null;
             foreach (WScalarExpression parameter in Parameters)
             {
@@ -1625,9 +1626,13 @@ namespace GraphView
                     }
                 }
 
+                // Set all sub-traversals' source to a same `sourceEnumerator`, and turn on InBatchMode
                 QueryCompilationContext subcontext = new QueryCompilationContext(context);
+                subcontext.OuterContextOp.SourceEnumerator = sourceEnumerator;
+                subcontext.AddField(GremlinKeyword.IndexTableName, GremlinKeyword.IndexColumnName, ColumnGraphType.Value, true);
+                subcontext.InBatchMode = true;
                 GraphViewExecutionOperator traversalOp = scalarSubquery.SubQueryExpr.Compile(subcontext, dbConnection);
-                coalesceOp.AddTraversal(subcontext.OuterContextOp, traversalOp);
+                coalesceOp.AddTraversal(traversalOp);
             }
 
             // Updates the raw record layout. The columns of this table-valued function 
