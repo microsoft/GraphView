@@ -219,3 +219,6 @@ TestConfiguration.cs
 /GraphViewUnitTest/TempTest.cs
 
 /GraphView/data/
+
+.DS_Store
+*/.DS_Store

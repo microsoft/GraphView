@@ -77,7 +77,13 @@ namespace Metrics
 
         public static double ClusteringCoefficientForOneVertex(GraphViewCommand g, string vertedId)
         {
-            throw new NotImplementedException();
+            double coefficient = 0;
+            int tri=int.Parse(g.g().V().HasId(vertedId).As("a").Both().Where(Predicate.neq("a")).As("b").Both()
+               .Where(Predicate.neq("a")).Where(Predicate.neq("b")).Both().Where(Predicate.eq("a")).Count().Next());
+            int deg = int.Parse(g.g().V().HasId(vertedId).Both().Count().Next()[0]);
+            coefficient = (double)tri / (deg * (deg - 1));
+
+            return coefficient;
         }
 
         // ===================================================================================
