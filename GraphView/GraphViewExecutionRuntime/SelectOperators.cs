@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
 using System.Text;
+using Microsoft.Azure.Documents.Partitioning;
 using static GraphView.GraphViewKeywords;
 
 namespace GraphView
@@ -2192,6 +2193,122 @@ namespace GraphView
             Open();
         }
     }
+
+
+    internal class CoalesceInBatchOperator : GraphViewExecutionOperator
+    {
+        private List<GraphViewExecutionOperator> traversalList;
+        private GraphViewExecutionOperator inputOp;
+        
+        // In batch mode, each RawRacord has an index,
+        // so in this buffer dict, the keys are the indexes,
+        // but in the Queue<RawRecord>, the indexes of RawRacords was already removed for output.
+        private Dictionary<int, Queue<RawRecord>> traversalOutputBuffer;
+
+        private ContainerEnumerator sourceEnumerator;
+        private int batchSize;
+
+        public CoalesceInBatchOperator(GraphViewExecutionOperator inputOp, ContainerEnumerator sourceEnumerator)
+        {
+            this.inputOp = inputOp;
+            this.traversalList = new List<GraphViewExecutionOperator>();
+            this.traversalOutputBuffer = new Dictionary<int, Queue<RawRecord>>();
+            this.sourceEnumerator = sourceEnumerator;
+            this.batchSize = KW_DEFAULT_BATCH_SIZE;
+            this.Open();
+        }
+
+        public void AddTraversal(GraphViewExecutionOperator traversal)
+        {
+            traversalList.Add(traversal);
+        }
+
+        public override RawRecord Next()
+        {
+            while (this.State())
+            {
+                if (this.traversalOutputBuffer.Any())
+                {
+                    // Output in order
+                    for (int i = 0; i < this.traversalOutputBuffer.Count; i++)
+                    {
+                        if (this.traversalOutputBuffer[i].Any())
+                        {
+                            return this.traversalOutputBuffer[i].Dequeue();
+                        }
+                    }
+
+                    // nothing in any queue
+                    this.traversalOutputBuffer.Clear();
+                }
+
+                List<RawRecord> inputBatch = new List<RawRecord>();
+                // add to input batch.
+                RawRecord inputRecord;
+
+                // Indexes of Racords that will be transfered to next sub-traversal.
+                // This set will be updated each time a sub-traversal finish.
+                // TODO: RENAME IT
+                HashSet<int> availableSrcSet = new HashSet<int>();
+                while (inputBatch.Count < this.batchSize && this.inputOp.State() && (inputRecord = inputOp.Next()) != null)
+                {
+                    RawRecord batchRawRecord = new RawRecord();
+                    batchRawRecord.Append(new StringField(inputBatch.Count.ToString(), JsonDataType.Int));
+                    batchRawRecord.Append(inputRecord);
+
+                    availableSrcSet.Add(inputBatch.Count);
+                    this.traversalOutputBuffer[inputBatch.Count] = new Queue<RawRecord>();
+
+                    inputBatch.Add(batchRawRecord);
+                }
+
+                if (!inputBatch.Any())
+                {
+                    this.Close();
+                    return null;
+                }
+
+                foreach (GraphViewExecutionOperator subTraversal in this.traversalList)
+                {
+                    HashSet<int> subOutputIndexSet = new HashSet<int>();
+                    List<RawRecord> subTraversalSrc = availableSrcSet.Select(i => inputBatch[i]).ToList();
+
+                    subTraversal.ResetState();
+                    this.sourceEnumerator.ResetTableCache(subTraversalSrc);
+
+                    RawRecord subTraversalRecord;
+                    while (subTraversal.State() && (subTraversalRecord = subTraversal.Next()) != null)
+                    {
+                        int subTraversalRecordIndex = int.Parse(subTraversalRecord[0].ToValue);
+                        RawRecord resultRecord = inputBatch[subTraversalRecordIndex].GetRange(1);
+                        resultRecord.Append(subTraversalRecord.GetRange(1));
+                        this.traversalOutputBuffer[subTraversalRecordIndex].Enqueue(resultRecord);
+                        subOutputIndexSet.Add(subTraversalRecordIndex);
+                    }
+
+                    // Remove the racords that have output already.
+                    availableSrcSet.ExceptWith(subOutputIndexSet);
+                    if (!availableSrcSet.Any())
+                    {
+                        break;
+                    }
+                }
+
+            }
+
+            return null;
+            
+        }
+
+        public override void ResetState()
+        {
+            this.inputOp.ResetState();
+            this.traversalOutputBuffer?.Clear();
+            this.Open();
+        }
+    }
+
+
 
     internal class RepeatOperator : GraphViewExecutionOperator
     {

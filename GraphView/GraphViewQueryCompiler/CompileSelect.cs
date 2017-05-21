@@ -493,7 +493,7 @@ namespace GraphView
 
             UnionFind unionFind = new UnionFind();
             Dictionary<string, MatchNode> vertexTableCollection = new Dictionary<string, MatchNode>(StringComparer.OrdinalIgnoreCase);
-            Dictionary<string, WNamedTableReference> vertexTableReferencesDict = new Dictionary<string, WNamedTableReference>();
+//            Dictionary<string, WNamedTableReference> vertexTableReferencesDict = new Dictionary<string, WNamedTableReference>();
             List<ConnectedComponent> connectedSubGraphs = new List<ConnectedComponent>();
             Dictionary<string, ConnectedComponent> subGraphMap = new Dictionary<string, ConnectedComponent>(StringComparer.OrdinalIgnoreCase);
             Dictionary<string, string> parent = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
@@ -510,7 +510,7 @@ namespace GraphView
                 foreach (WNamedTableReference vertexTableRef in vertexTableList)
                 {
                     vertexTableCollection.GetOrCreate(vertexTableRef.Alias.Value);
-                    vertexTableReferencesDict[vertexTableRef.Alias.Value] = vertexTableRef;
+//                    vertexTableReferencesDict[vertexTableRef.Alias.Value] = vertexTableRef;
                     if (!parent.ContainsKey(vertexTableRef.Alias.Value))
                         parent[vertexTableRef.Alias.Value] = vertexTableRef.Alias.Value;
                 }
@@ -1040,7 +1040,7 @@ namespace GraphView
                     new HashSet<string>(tableReferences.Keys), predicatesAccessedTableReferences,
                     operatorChain);
             }
-                
+            
             foreach (ConnectedComponent subGraph in graphPattern.ConnectedSubGraphs)
             {
                 List<Tuple<MatchNode, MatchEdge, List<MatchEdge>, List<MatchEdge>, List<MatchEdge>>> traversalOrder = 
@@ -1142,7 +1142,8 @@ namespace GraphView
                     //
                     // Cross apply dangling edges and update context info
                     //
-                    if (!processedNodes.Contains(currentNode.NodeAlias)) {
+                    if (!processedNodes.Contains(currentNode.NodeAlias))
+                    {
                         this.CrossApplyEdges(connection, context, operatorChain, currentNode.DanglingEdges,
                             predicatesAccessedTableReferences);
                     }
@@ -1210,22 +1211,13 @@ namespace GraphView
                 }
                 else
                 {
-
+                    throw new NotImplementedException("Not supported type of FROM clause.");
                 }
 
                 CheckRemainingPredicatesAndAppendFilterOp(context, connection,
                     new HashSet<string>(tableReferences.Keys), predicatesAccessedTableReferences,
                     operatorChain);
             }
-
-            // TODO: groupBy operator
-
-            if (OrderByClause != null && OrderByClause.OrderByElements != null)
-            {
-                var orderByOp = OrderByClause.Compile(context, connection);
-                operatorChain.Add(orderByOp);
-            }
-
 
             var selectScalarExprList = SelectElements.Select(e => e as WSelectScalarExpression).ToList();
 
@@ -1287,36 +1279,36 @@ namespace GraphView
                     projectOperator.AddSelectScalarElement(scalarFunction);
                 }
 
-                // Rebuilds the output layout of the context
-                context.ClearField();
-                int i = 0;
-                if (context.CarryOn)
-                {
-                    foreach (var parentFieldPair in context.ParentContextRawRecordLayout)
-                    {
-                        context.RawRecordLayout.Add(parentFieldPair.Key, parentFieldPair.Value);
-                    }
-                    i = context.ParentContextRawRecordLayout.Count;
-                }
+                //// Rebuilds the output layout of the context
+                //context.ClearField();
+                //int i = 0;
+                //if (context.CarryOn)
+                //{
+                //    foreach (var parentFieldPair in context.ParentContextRawRecordLayout)
+                //    {
+                //        context.RawRecordLayout.Add(parentFieldPair.Key, parentFieldPair.Value);
+                //    }
+                //    i = context.ParentContextRawRecordLayout.Count;
+                //}
 
-                foreach (var expr in selectScalarExprList)
-                {
-                    var alias = expr.ColumnName;
-                    WColumnReferenceExpression columnReference;
-                    if (alias == null)
-                    {
-                        columnReference = expr.SelectExpr as WColumnReferenceExpression;
-                        if (columnReference == null)
-                        {
-                            var value = expr.SelectExpr as WValueExpression;
-                            columnReference = new WColumnReferenceExpression("", value.Value);
-                        }
-                    }
-                    else
-                        columnReference = new WColumnReferenceExpression("", alias);
-                    // TODO: Change to Addfield with correct ColumnGraphType
-                    context.RawRecordLayout.Add(columnReference, i++);
-                }
+                //foreach (var expr in selectScalarExprList)
+                //{
+                //    var alias = expr.ColumnName;
+                //    WColumnReferenceExpression columnReference;
+                //    if (alias == null)
+                //    {
+                //        columnReference = expr.SelectExpr as WColumnReferenceExpression;
+                //        if (columnReference == null)
+                //        {
+                //            var value = expr.SelectExpr as WValueExpression;
+                //            columnReference = new WColumnReferenceExpression("", value.Value);
+                //        }
+                //    }
+                //    else
+                //        columnReference = new WColumnReferenceExpression("", alias);
+                //    // TODO: Change to Addfield with correct ColumnGraphType
+                //    context.RawRecordLayout.Add(columnReference, i++);
+                //}
 
                 operatorChain.Add(projectOperator);
                 context.CurrentExecutionOperator = projectOperator;
@@ -1402,15 +1394,15 @@ namespace GraphView
                     }
                 }
 
-                // Rebuilds the output layout of the context
-                context.ClearField();
+                //// Rebuilds the output layout of the context
+                //context.ClearField();
 
-                foreach (var expr in selectScalarExprList)
-                {
-                    var alias = expr.ColumnName;
-                    // TODO: Change to Addfield with correct ColumnGraphType
-                    context.AddField("", alias ?? GremlinKeyword.TableDefaultColumnName, ColumnGraphType.Value);
-                }
+                //foreach (var expr in selectScalarExprList)
+                //{
+                //    var alias = expr.ColumnName;
+                //    // TODO: Change to Addfield with correct ColumnGraphType
+                //    context.AddField("", alias ?? GremlinKeyword.TableDefaultColumnName, ColumnGraphType.Value);
+                //}
 
                 operatorChain.Add(projectAggregationOp);
                 context.CurrentExecutionOperator = projectAggregationOp;
@@ -1613,8 +1605,9 @@ namespace GraphView
     {
         internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
         {
-            CoalesceOperator2 coalesceOp = new CoalesceOperator2(context.CurrentExecutionOperator);
-
+            ContainerEnumerator sourceEnumerator = new ContainerEnumerator();
+            CoalesceInBatchOperator coalesceOp = new CoalesceInBatchOperator(context.CurrentExecutionOperator, sourceEnumerator);
+               
             WSelectQueryBlock firstSelectQuery = null;
             foreach (WScalarExpression parameter in Parameters)
             {
@@ -1633,9 +1626,13 @@ namespace GraphView
                     }
                 }
 
+                // Set all sub-traversals' source to a same `sourceEnumerator`, and turn on InBatchMode
                 QueryCompilationContext subcontext = new QueryCompilationContext(context);
+                subcontext.OuterContextOp.SourceEnumerator = sourceEnumerator;
+                subcontext.AddField(GremlinKeyword.IndexTableName, GremlinKeyword.IndexColumnName, ColumnGraphType.Value, true);
+                subcontext.InBatchMode = true;
                 GraphViewExecutionOperator traversalOp = scalarSubquery.SubQueryExpr.Compile(subcontext, dbConnection);
-                coalesceOp.AddTraversal(subcontext.OuterContextOp, traversalOp);
+                coalesceOp.AddTraversal(traversalOp);
             }
 
             // Updates the raw record layout. The columns of this table-valued function 
@@ -1643,7 +1640,8 @@ namespace GraphView
             foreach (WSelectElement selectElement in firstSelectQuery.SelectElements)
             {
                 WSelectScalarExpression selectScalar = selectElement as WSelectScalarExpression;
-                if (selectScalar == null) {
+                if (selectScalar == null)
+                {
                     throw new SyntaxErrorException("The input subquery of a coalesce table reference can only select scalar elements.");
                 }
                 Debug.Assert(selectScalar.ColumnName != null, "selectScalar.ColumnName != null");
@@ -1652,7 +1650,8 @@ namespace GraphView
                 //
                 // TODO: Remove this case
                 //
-                if (columnRef != null && columnRef.ColumnType == ColumnType.Wildcard) {
+                if (columnRef != null && columnRef.ColumnType == ColumnType.Wildcard)
+                {
                     continue;
                 }
                 context.AddField(Alias.Value, selectScalar.ColumnName, columnRef?.ColumnGraphType ?? ColumnGraphType.Value);
@@ -3008,7 +3007,9 @@ namespace GraphView
         {
             GraphViewExecutionOperator inputOp = context.CurrentExecutionOperator;
             long amountToSample = long.Parse(((WValueExpression)this.Parameters[0]).Value);
-            ScalarFunction byFunction = this.Parameters[1]?.CompileToFunction(context, dbConnection);  // Can be null if no "by" step
+            ScalarFunction byFunction = this.Parameters.Count > 1 
+                ? this.Parameters[1].CompileToFunction(context, dbConnection) 
+                : null;  // Can be null if no "by" step
 
             GraphViewExecutionOperator sampleOp = new SampleOperator(inputOp, amountToSample, byFunction);
             context.CurrentExecutionOperator = sampleOp;

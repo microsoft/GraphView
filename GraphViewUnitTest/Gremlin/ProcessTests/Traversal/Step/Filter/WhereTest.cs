@@ -124,12 +124,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         /// Port of the g_V_hasXageX_asXaX_out_in_hasXageX_asXbX_selectXa_bX_whereXb_hasXname_markoXX UT from org/apache/tinkerpop/gremlin/process/traversal/step/map/WhereTest.java.
         /// Equivalent gremlin: "g.V.has('age').as('a').out.in.has('age').as('b').select('a','b').where(__.as('b').has('name', 'marko'))"
         /// </summary>
-        /// <remarks>
-        /// This fails because Select for more than 1 key is not yet implemented.
-        /// WorkItem to track this: https://msdata.visualstudio.com/DocumentDB/_workitems/edit/37285
-        /// </remarks>
         [TestMethod]
-        [Ignore]
         public void VerticesHasAgeAsAOutInHasAgeAsBSelectABWhereAsBHasNameMarko()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -144,9 +139,25 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
                 var result = traversal.Next();
                 dynamic dynamicResult = JsonConvert.DeserializeObject<dynamic>(result.FirstOrDefault());
 
-                Assert.AreEqual(2, dynamicResult.Count);
+                Assert.AreEqual(5, dynamicResult.Count);
+                List<string> ans = new List<string>();
+                foreach (var temp in dynamicResult)
+                {
+                    ans.Add("a," + temp["a"]["id"].ToString() + ";b," + temp["b"]["id"].ToString());
+                }
+                var markoId = ConvertToVertexId(graphCommand, "marko");
+                var joshId = ConvertToVertexId(graphCommand, "josh");
+                var peterId = ConvertToVertexId(graphCommand, "peter");
 
-                // Skipping this validation until we can fix the multi-key select.
+                List<string> expected = new List<string>
+                {
+                    "a," + markoId + ";b," + markoId,
+                    "a," + markoId + ";b," + markoId,
+                    "a," + markoId + ";b," + markoId,
+                    "a," + joshId + ";b," + markoId,
+                    "a," + peterId + ";b," + markoId,
+                };
+                CheckUnOrderedResults(expected, ans);
             }
         }
 
@@ -154,12 +165,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         /// Port of the g_V_hasXageX_asXaX_out_in_hasXageX_asXbX_selectXa_bX_whereXa_outXknowsX_bX UT from org/apache/tinkerpop/gremlin/process/traversal/step/map/WhereTest.java.
         /// Equivalent gremlin: "g.V().has('age').as('a').out.in.has('age').as('b').select('a','b').where(__.as('a').out('knows').as('b'))"
         /// </summary>
-        /// <remarks>
-        /// This fails because Select for more than 1 key is not yet implemented.
-        /// WorkItem to track this: https://msdata.visualstudio.com/DocumentDB/_workitems/edit/37285
-        /// </remarks>
         [TestMethod]
-        [Ignore]
         public void VerticesHasAgeAsAOutInHasAgeAsBSelectABWhereAsAOutKnowsB()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -174,39 +180,39 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
                 var result = traversal.Next();
                 dynamic dynamicResult = JsonConvert.DeserializeObject<dynamic>(result.FirstOrDefault());
 
-                Assert.AreEqual(2, dynamicResult.Count);
+                Assert.AreEqual(1, dynamicResult.Count);
+                List<string> ans = new List<string>();
+                foreach (var temp in dynamicResult)
+                {
+                    ans.Add("a," + temp["a"]["id"].ToString() + ";b," + temp["b"]["id"].ToString());
+                }
+                var markoId = ConvertToVertexId(graphCommand, "marko");
+                var joshId = ConvertToVertexId(graphCommand, "josh");
 
-                // Skipping this validation until we can fix the multi-key select.
+                List<string> expected = new List<string>
+                {
+                    "a," + markoId + ";b," + joshId,
+                };
+                CheckUnOrderedResults(expected, ans);
             }
         }
 
         /// <summary>
         /// Port of the g_V_asXaX_outXcreatedX_whereXasXaX_name_isXjoshXX_inXcreatedX_name UT from org/apache/tinkerpop/gremlin/process/traversal/step/map/WhereTest.java.
-        /// Equivalent gremlin: "g.V.as('a').out('created').where(__.as('a').name.is('josh')).in('created').name"
+        /// Equivalent gremlin: "g.V().as('a').out('created').where(__.as('a').name.is('josh')).in('created').name"
         /// </summary>
-        /// <remarks>
-        /// This test's traversal yields no results.
-        /// WorkItem: https://msdata.visualstudio.com/DocumentDB/_workitems/edit/38570
-        /// </remarks>
         [TestMethod]
-        [Ignore]
         public void VerticesAsAOutCreatedWhereAsANameIsJoshInCreatedName()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
             {
-                graphCommand.OutputFormat = OutputFormat.GraphSON;
-
                 var traversal = graphCommand.g().V().As("a")
                                                     .Out("created")
                                                     .Where(GraphTraversal2.__().As("a").Values("name").Is("josh"))
                                                     .In("created").Values("name");
 
                 var result = traversal.Next();
-                dynamic dynamicResult = JsonConvert.DeserializeObject<dynamic>(result.FirstOrDefault());
-
-                // Skipping this validation until we can fix the bugs.
-
-                Assert.AreEqual(2, dynamicResult.Count);
+                CheckUnOrderedResults(new [] {"josh", "josh", "marko", "peter"}, result);
             }
         }
 
@@ -256,11 +262,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
                                                     .Where("a", Predicate.neq("b")).Values("name");
 
                 var result = traversal.Next();
-
-                // The order of result is not predictable
                 CheckUnOrderedResults(new List<string> { "josh", "peter" }, result);
-
-                // Skipping this validation until we can fix the bugs.
             }
         }
 
@@ -334,11 +336,6 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         /// Port of the g_VX1X_out_aggregateXxX_out_whereXwithout_xX UT from org/apache/tinkerpop/gremlin/process/traversal/step/map/WhereTest.java.
         /// Equivalent gremlin: "g.V(v1Id).out.aggregate('x').out.where(P.not(within('x')))", "v1Id", v1Id
         /// </summary>
-        /// <remarks>
-        /// This test seems to hit an interesting scenario. Because the predicate within the where is nested, we're getting confused about the correct
-        /// Where method within GremlinVariable.cs to use.
-        /// WorkItem: https://msdata.visualstudio.com/DocumentDB/_workitems/edit/38576
-        /// </remarks>
         [TestMethod]
         [TestModernCompatible]
         public void HasVertexIdOutAggregateXOutWhereNotWithinX()
@@ -353,8 +350,6 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
 
                 var result = traversal.Values("name").Next();
                 CheckOrderedResults(new List<string> { "ripple" }, result);
-
-                // Skipping this validation until we can fix the bugs.
             }
         }
 
@@ -392,11 +387,6 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         /// Port of the g_VX1X_repeatXbothEXcreatedX_whereXwithoutXeXX_aggregateXeX_otherVX_emit_path UT from org/apache/tinkerpop/gremlin/process/traversal/step/map/WhereTest.java.
         /// Equivalent gremlin: "g.V(v1Id).repeat(__.bothE('created').where(without('e')).aggregate('e').otherV).emit.path", "v1Id", v1Id
         /// </summary>
-        /// <remarks>
-        /// This test seems to fail because the Predicate cannot determine the second expression for the where step.
-        /// Where method within GremlinVariable.cs.
-        /// WorkItem: https://msdata.visualstudio.com/DocumentDB/_workitems/edit/38578
-        /// </remarks>
         [TestMethod]
         [Ignore]
         public void HasVertexIdRepeatBothECreatedWhereWithoutEAggregateEOtherVEmitPath()
@@ -409,9 +399,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
             {
                 string markoVertexId = this.ConvertToVertexId(graphCommand, "marko");
 
-                graphCommand.OutputFormat = OutputFormat.GraphSON;
-
-                // Skipping this validation until we can fix the bugs.
+                graphCommand.OutputFormat = OutputFormat.Regular;
 
                 var traversal = graphCommand.g().V().HasId(markoVertexId)
                                                     .Repeat(GraphTraversal2.__().BothE("created")
@@ -420,12 +408,11 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
                                                                                 .OtherV())
                                                     .Emit().Path();
 
-                // Skipping this validation until we can fix the bugs.
-
                 var result = traversal.Next();
-                //dynamic dynamicResult = JsonConvert.DeserializeObject<dynamic>(result.FirstOrDefault());
 
-                //Assert.AreEqual(2, dynamicResult.Count);
+                dynamic dynamicResult = JsonConvert.DeserializeObject<dynamic>(traversal.FirstOrDefault());
+                
+                //No idea how to evaluate the results.
             }
         }
 
@@ -452,23 +439,14 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
 
         /// <summary>
         /// Port of the g_V_asXaX_out_asXbX_whereXandXasXaX_outXknowsX_asXbX__orXasXbX_outXcreatedX_hasXname_rippleX__asXbX_inXknowsX_count_isXnotXeqX0XXXXX_selectXa_bX UT from org/apache/tinkerpop/gremlin/process/traversal/step/map/WhereTest.java.
-        /// Equivalent gremlin: "g.V.as('a').out.as('b').where(and(__.as('a').out('knows').as('b'),or(__.as('b').out('created').has('name','ripple'),__.as('b').in('knows').count.is(P.not(eq(0)))))).select('a','b')"
+        /// Equivalent gremlin: "g.V().as('a').out().as('b').where(and(__.as('a').out('knows').as('b'),or(__.as('b').out('created').has('name','ripple'),__.as('b').in('knows').count().is(P.not(eq(0)))))).select('a','b')"
         /// </summary>
-        /// /// <remarks>
-        /// This fails because Select for more than 1 key is not yet implemented.
-        /// WorkItem to track this: https://msdata.visualstudio.com/DocumentDB/_workitems/edit/37285
-        /// </remarks>
         [TestMethod]
-        [Ignore]
         public void VerticesAsAOutABWhereAndAsAOutKnowsAsBOrAsBOutCreatedHasNameRippleAsBInKnowsCountIsNotEq0SelectAB()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
             {
-                //string markoVertexId = this.ConvertToVertexId(graphCommand, "marko");
-
                 graphCommand.OutputFormat = OutputFormat.GraphSON;
-
-                // Skipping this validation until we can fix the bugs.
 
                 var traversal = graphCommand.g().V()
                     .As("a")
@@ -497,8 +475,21 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
                 dynamic dynamicResult = JsonConvert.DeserializeObject<dynamic>(result.FirstOrDefault());
 
                 Assert.AreEqual(2, dynamicResult.Count);
+                List<string> ans = new List<string>();
+                foreach (var temp in dynamicResult)
+                {
+                    ans.Add("a," + temp["a"]["id"].ToString() + ";b," + temp["b"]["id"].ToString());
+                }
+                var markoId = ConvertToVertexId(graphCommand, "marko");
+                var joshId = ConvertToVertexId(graphCommand, "josh");
+                var vadasId = ConvertToVertexId(graphCommand, "vadas");
 
-                // Skipping this validation until we can fix the multi-key select.
+                List<string> expected = new List<string>
+                {
+                    "a," + markoId + ";b," + joshId,
+                    "a," + markoId + ";b," + vadasId,
+                };
+                CheckUnOrderedResults(expected, ans);
             }
         }
 
@@ -506,10 +497,6 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         /// Port of the g_V_whereXoutXcreatedX_and_outXknowsX_or_inXknowsXX_selectXaX_byXnameX UT from org/apache/tinkerpop/gremlin/process/traversal/step/map/WhereTest.java.
         /// Equivalent gremlin: "gremlin-groovy", "g.V.where(out('created').and.out('knows').or.in('knows')).name"
         /// </summary>
-        /// <remarks>
-        /// This test fails because a traversal with a combination of AND and OR within a Where step seems to fail.
-        /// WorkItem: https://msdata.visualstudio.com/DocumentDB/_workitems/edit/38580
-        /// </remarks>
         [TestMethod]
         [TestModernCompatible]
         public void VerticesWhereOutCreatedAndOutKnowsORInKnowsValueName()
@@ -525,8 +512,6 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
 
                 var result = traversal.Next();
                 CheckUnOrderedResults(new List<string> { "marko", "vadas", "josh" }, result);
-
-                // Skipping this validation until we can fix the bugs.
             }
         }
 
@@ -534,12 +519,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         /// Port of the g_V_asXaX_outXcreatedX_asXbX_whereXandXasXbX_in__notXasXaX_outXcreatedX_hasXname_rippleXXX_selectXa_bX UT from org/apache/tinkerpop/gremlin/process/traversal/step/map/WhereTest.java.
         /// Equivalent gremlin: "g.V.as('a').out('created').as('b').where(and(__.as('b').in,__.not(__.as('a').out('created').has('name','ripple')))).select('a','b')"
         /// </summary>
-        /// <remarks>
-        /// This fails because Select for more than 1 key is not yet implemented.
-        /// WorkItem to track this: https://msdata.visualstudio.com/DocumentDB/_workitems/edit/37285
-        /// </remarks>
         [TestMethod]
-        [Ignore]
         public void VerticesAsAOutCreatedAsBWhereAndAsBInNotAsAOutCreatedHasNameRippleSelectAB()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -561,8 +541,22 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
                 dynamic dynamicResult = JsonConvert.DeserializeObject<dynamic>(result.FirstOrDefault());
 
                 Assert.AreEqual(2, dynamicResult.Count);
+                List<string> ans = new List<string>();
+                foreach (var temp in dynamicResult)
+                {
+                    ans.Add("a," + temp["a"]["id"].ToString() + ";b," + temp["b"]["id"].ToString());
+                }
+                var markoId = ConvertToVertexId(graphCommand, "marko");
+                var lopId = ConvertToVertexId(graphCommand, "lop");
+                var peterId = ConvertToVertexId(graphCommand, "peter");
 
-                // Skipping this validation until we can fix the multi-key select.
+                List<string> expected = new List<string>
+                {
+                    "a," + markoId + ";b," + lopId,
+                    "a," + peterId + ";b," + lopId,
+                };
+                CheckUnOrderedResults(expected, ans);
+
             }
         }
 
@@ -570,15 +564,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         /// Port of the g_V_asXaX_outXcreatedX_asXbX_inXcreatedX_asXcX_bothXknowsX_bothXknowsX_asXdX_whereXc__notXeqXaX_orXeqXdXXXX_selectXa_b_c_dX UT from org/apache/tinkerpop/gremlin/process/traversal/step/map/WhereTest.java.
         /// Equivalent gremlin: "g.V.as('a').out('created').as('b').in('created').as('c').both('knows').both('knows').as('d').where('c',P.not(eq('a').or(eq('d')))).select('a','b','c','d')"
         /// </summary>
-        /// <remarks>
-        /// In this test there is ORing of predicates, but since we don't support that yet, we're replacing the traversal
-        /// where(c not(eq a or eq d)) with, where(where(c not eq a) and where(c not eq d)). (NOTE: The And is within a Where since it's infix).
-        /// WorkItem: https://msdata.visualstudio.com/DocumentDB/_workitems/edit/38582
-        /// This fails also because Select for more than 1 key is not yet implemented.
-        /// WorkItem to track this: https://msdata.visualstudio.com/DocumentDB/_workitems/edit/37285
-        /// </remarks>
         [TestMethod]
-        [Ignore]
         public void VerticesAsAOutCreatedAsBInCreatedAsCBothKnowsBothKnowsAsDWhereCNotEqAOrEqDSelectABCD()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -598,9 +584,28 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
                 var result = traversal.Next();
                 dynamic dynamicResult = JsonConvert.DeserializeObject<dynamic>(result.FirstOrDefault());
 
-                Assert.AreEqual(4, dynamicResult.Count);
+                Assert.AreEqual(2, dynamicResult.Count);
+                List<string> ans = new List<string>();
+                foreach (var temp in dynamicResult)
+                {
+                    ans.Add("a," + temp["a"]["id"].ToString() 
+                         + ";b," + temp["b"]["id"].ToString()
+                         + ";c," + temp["c"]["id"].ToString()
+                         + ";d," + temp["d"]["id"].ToString());
+                }
+                var markoId = ConvertToVertexId(graphCommand, "marko");
+                var joshId = ConvertToVertexId(graphCommand, "josh");
+                var lopId = ConvertToVertexId(graphCommand, "lop");
+                var vadasId = ConvertToVertexId(graphCommand, "vadas");
+                var peterId = ConvertToVertexId(graphCommand, "peter");
 
-                // Skipping this validation until we can fix the multi-key select.
+                List<string> expected = new List<string>
+                {
+                    "a," + markoId + ";b," + lopId + ";c," + joshId + ";d," + vadasId,
+                    "a," + peterId + ";b," + lopId + ";c," + joshId + ";d," + vadasId
+                };
+
+                CheckUnOrderedResults(expected, ans);
             }
         }
 
@@ -608,12 +613,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         /// Port of the g_V_asXaX_out_asXbX_whereXin_count_isXeqX3XX_or_whereXoutXcreatedX_and_hasXlabel_personXXX_selectXa_bX UT from org/apache/tinkerpop/gremlin/process/traversal/step/map/WhereTest.java.
         /// Equivalent gremlin: "g.V.as('a').out.as('b').where(__.as('b').in.count.is(eq(3)).or.where(__.as('b').out('created').and.as('b').has(label,'person'))).select('a','b')"
         /// </summary>
-        /// <remarks>
-        /// This fails because Select for more than 1 key is not yet implemented.
-        /// WorkItem to track this: https://msdata.visualstudio.com/DocumentDB/_workitems/edit/37285
-        /// </remarks>
         [TestMethod]
-        [Ignore]
         public void VerticesAsAOutAsBWhereInCountIsEq3OrWhereOutCreatedAndHasLabelPersonSelectAB()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -637,40 +637,63 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
                 var result = traversal.Next();
                 dynamic dynamicResult = JsonConvert.DeserializeObject<dynamic>(result.FirstOrDefault());
 
-                Assert.AreEqual(2, dynamicResult.Count);
+                Assert.AreEqual(4, dynamicResult.Count);
+                List<string> ans = new List<string>();
+                foreach (var temp in dynamicResult)
+                {
+                    ans.Add("a," + temp["a"]["id"].ToString() + ";b," + temp["b"]["id"].ToString());
+                }
+                var markoId = ConvertToVertexId(graphCommand, "marko");
+                var joshId = ConvertToVertexId(graphCommand, "josh");
+                var lopId = ConvertToVertexId(graphCommand, "lop");
+                var peterId = ConvertToVertexId(graphCommand, "peter");
 
-                // Skipping this validation until we can fix the multi-key select.
+                List<string> expected = new List<string>
+                {
+                    "a," + markoId + ";b," + lopId,
+                    "a," + markoId + ";b," + joshId,
+                    "a," + joshId + ";b," + lopId,
+                    "a," + peterId + ";b," + lopId
+                };
+                CheckUnOrderedResults(expected, ans);
             }
         }
 
         /// <summary>
         /// Port of the g_V_asXaX_outXcreatedX_inXcreatedX_asXbX_whereXa_gtXbXX_byXageX_selectXa_bX_byXnameX UT from org/apache/tinkerpop/gremlin/process/traversal/step/map/WhereTest.java.
-        /// Equivalent gremlin: "g.V.as('a').out('created').in('created').as('b').where('a', gt('b')).by('age').select('a', 'b').by('name')"
+        /// Equivalent gremlin: "g.V().as('a').out('created').in('created').as('b').where('a', gt('b')).by('age').select('a', 'b').by('name')"
         /// </summary>
-        /// <remarks>
-        /// Commenting out the traversal as Where with a Predicate and Modulating By is currently not supported.
-        /// WorkItem: https://msdata.visualstudio.com/DocumentDB/_workitems/edit/38585
-        /// This fails because Select for more than 1 key is not yet implemented.
-        /// WorkItem to track this: https://msdata.visualstudio.com/DocumentDB/_workitems/edit/37285
-        /// </remarks>
         [TestMethod]
-        [Ignore]
         public void VerticesAsAOutCreatedInCreatedAsBWhereAGtBByAgeSelectABByName()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
             {
                 graphCommand.OutputFormat = OutputFormat.GraphSON;
 
-                ////var traversal = graphCommand.g().V().As("a")
-                ////                                    .Out("created").In("created").As("b")
-                ////                                    .Where("a", Predicate.gt("b"))
-                ////                                    .By("age")
-                ////                                    .Select("a", "b").By("name");
+                var traversal = graphCommand.g().V().As("a")
+                                                    .Out("created").In("created").As("b")
+                                                    .Where("a", Predicate.gt("b"))
+                                                    .By("age")
+                                                    .Select("a", "b").By("name");
 
-                //var result = traversal.Next();
-                //dynamic dynamicResult = JsonConvert.DeserializeObject<dynamic>(result.FirstOrDefault());
+                var result = traversal.Next();
+                dynamic dynamicResult = JsonConvert.DeserializeObject<dynamic>(result.FirstOrDefault());
 
-                //Assert.AreEqual(2, dynamicResult.Count);
+                Assert.AreEqual(3, dynamicResult.Count);
+                List<string> ans = new List<string>();
+                foreach (var temp in dynamicResult)
+                {
+                    ans.Add("a," + temp["a"].ToString() + ";b," + temp["b"].ToString());
+                }
+
+                List<string> expected = new List<string>
+                {
+                    "a,josh;b,marko",
+                    "a,peter;b,marko",
+                    "a,peter;b,josh",
+                };
+
+                CheckUnOrderedResults(expected, ans);
             }
         }
 
@@ -678,32 +701,34 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         /// Port of the g_V_asXaX_outEXcreatedX_asXbX_inV_asXcX_whereXa_gtXbX_orXeqXbXXX_byXageX_byXweightX_byXweightX_selectXa_cX_byXnameX UT from org/apache/tinkerpop/gremlin/process/traversal/step/map/WhereTest.java.
         /// Equivalent gremlin: "g.V.as('a').outE('created').as('b').inV().as('c').where('a', gt('b').or(eq('b'))).by('age').by('weight').by('weight').select('a', 'c').by('name')"
         /// </summary>
-        /// <remarks>
-        /// Commenting out the traversal as Where with a Predicate and Modulating By is currently not supported.
-        /// WorkItem: https://msdata.visualstudio.com/DocumentDB/_workitems/edit/38585
-        /// Aditionally, in this test there is ORing of predicates.
-        /// WorkItem: https://msdata.visualstudio.com/DocumentDB/_workitems/edit/38582
-        /// This fails also because Select for more than 1 key is not yet implemented.
-        /// WorkItem to track this: https://msdata.visualstudio.com/DocumentDB/_workitems/edit/37285
-        /// </remarks>
         [TestMethod]
-        [Ignore]
         public void VerticesAsAOutECreatedAsBInVAsCWhereAGtBOrEqBByAgeByWeightByWeightSelectACByName()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
             {
-                //string markoVertexId = this.ConvertToVertexId(graphCommand, "marko");
-
                 graphCommand.OutputFormat = OutputFormat.GraphSON;
 
-                // Skipping this validation until we can fix the bugs.
+                var traversal = graphCommand.g().V().As("a").OutE("created").As("b").InV().As("c").Where("a", Predicate.gt("b").Or(Predicate.eq("b"))).By("age").By("weight").By("weight").Select("a", "c").By("name");
 
-                //var traversal = graphCommand.g().V().as("a").outE("created").as("b").inV().as("c").where("a", gt("b").or(eq("b"))).by("age").by("weight").by("weight").<String>select("a", "c").by("name");
+                var result = traversal.Next();
+                dynamic dynamicResult = JsonConvert.DeserializeObject<dynamic>(result.FirstOrDefault());
 
-                //var result = traversal.Next();
-                //dynamic dynamicResult = JsonConvert.DeserializeObject<dynamic>(result.FirstOrDefault());
+                Assert.AreEqual(4, dynamicResult.Count);
+                List<string> ans = new List<string>();
+                foreach (var temp in dynamicResult)
+                {
+                    ans.Add("a," + temp["a"].ToString() + ";c," + temp["c"].ToString());
+                }
 
-                //Assert.AreEqual(2, dynamicResult.Count);
+                List<string> expected = new List<string>
+                {
+                    "a,marko;c,lop",
+                    "a,josh;c,ripple",
+                    "a,josh;c,lop",
+                    "a,peter;c,lop",
+                };
+
+                CheckUnOrderedResults(expected, ans);
             }
         }
 
@@ -711,61 +736,34 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         /// Port of the g_V_asXaX_outEXcreatedX_asXbX_inV_asXcX_inXcreatedX_asXdX_whereXa_ltXbX_orXgtXcXX_andXneqXdXXX_byXageX_byXweightX_byXinXcreatedX_valuesXageX_minX_selectXa_c_dX UT from org/apache/tinkerpop/gremlin/process/traversal/step/map/WhereTest.java.
         /// Equivalent gremlin: "g.V().as('a').outE('created').as('b').inV().as('c').in('created').as('d').where('a', lt('b').or(gt('c')).and(neq('d'))).by('age').by('weight').by(__.in('created').values('age').min()).select('a', 'c', 'd').by('name')"
         /// </summary>
-        /// <remarks>
-        /// Commenting out the traversal as Where with a Predicate and Modulating By is currently not supported.
-        /// WorkItem: https://msdata.visualstudio.com/DocumentDB/_workitems/edit/38585
-        /// Aditionally, in this test there is ORing of predicates.
-        /// WorkItem: https://msdata.visualstudio.com/DocumentDB/_workitems/edit/38582
-        /// This fails also because Select for more than 1 key is not yet implemented.
-        /// WorkItem to track this: https://msdata.visualstudio.com/DocumentDB/_workitems/edit/37285
-        /// </remarks>
         [TestMethod]
-        [Ignore]
         public void VerticesAsAOutECreatedAsBInVAsCInCreatedAsDWhereALtBOrGtCAndNeqDByAgeByWeightByInCreatedValuesAgeMinSelectACDByName()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
             {
-                //string markoVertexId = this.ConvertToVertexId(graphCommand, "marko");
-
                 graphCommand.OutputFormat = OutputFormat.GraphSON;
 
-                // Skipping this validation until we can fix the bugs.
+                var traversal = graphCommand.g().V().As("a").OutE("created").As("b").InV().As("c").In("created").As("d").Where("a", Predicate.lt("b").Or(Predicate.gt("c")).And(Predicate.neq("d"))).By("age").By("weight").By(GraphTraversal2.__().In("created").Values("age").Min()).Select("a", "c", "d").By("name");
 
-                //var traversal = graphCommand.g().V().as("a").outE("created").as("b").inV().as("c").in("created").as("d").where("a", lt("b").or(gt("c")).and(neq("d"))).by("age").by("weight").by(in("created").values("age").min()).<String>select("a", "c", "d").by("name");
+                var result = traversal.Next();
+                dynamic dynamicResult = JsonConvert.DeserializeObject<dynamic>(result.FirstOrDefault());
 
-                //var result = traversal.Next();
-                //dynamic dynamicResult = JsonConvert.DeserializeObject<dynamic>(result.FirstOrDefault());
+                Assert.AreEqual(4, dynamicResult.Count);
+                List<string> ans = new List<string>();
+                foreach (var temp in dynamicResult)
+                {
+                    ans.Add("a," + temp["a"].ToString() + ";c," + temp["c"].ToString() + ";d," + temp["d"].ToString());
+                }
+            
+                List<string> expected = new List<string>
+                {
+                    "a,josh;c,lop;d,marko",
+                    "a,josh;c,lop;d,peter",
+                    "a,peter;c,lop;d,marko",
+                    "a,peter;c,lop;d,josh",
+                };
 
-                //Assert.AreEqual(2, dynamicResult.Count);
-            }
-        }
-
-        /// <summary>
-        /// Port of the g_VX1X_asXaX_out_hasXageX_whereXgtXaXX_byXageX_name UT from org/apache/tinkerpop/gremlin/process/traversal/step/map/WhereTest.java.
-        /// Equivalent gremlin: "g.V(v1Id).as('a').out.has('age').where(gt('a')).by('age').name", "v1Id", v1Id
-        /// </summary>
-        /// <remarks>
-        /// Commenting out the traversal as Where with a Predicate and Modulating By is currently not supported.
-        /// WorkItem: https://msdata.visualstudio.com/DocumentDB/_workitems/edit/38585
-        /// </remarks>
-        [TestMethod]
-        [Ignore]
-        public void HasVertexIdAsAOutHasAgeWhereGtAByAgeName()
-        {
-            using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
-            {
-                string markoVertexId = this.ConvertToVertexId(graphCommand, "marko");
-
-                graphCommand.OutputFormat = OutputFormat.GraphSON;
-
-                // Skipping this validation until we can fix the bugs.
-
-                //var traversal = graphCommand.g().V().HasId(markoVertexId).As("a").Out().Has("age").Where(Predicate.gt("a")).By("age").Values("name");
-
-                //var result = traversal.Next();
-                //dynamic dynamicResult = JsonConvert.DeserializeObject<dynamic>(result.FirstOrDefault());
-
-                //Assert.AreEqual(2, dynamicResult.Count);
+                CheckUnOrderedResults(expected, ans);
             }
         }
     }
