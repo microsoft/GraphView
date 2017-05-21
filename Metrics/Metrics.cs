@@ -104,9 +104,26 @@ namespace Metrics
             LocalGraph h = GraphOperation.EdgeSample(g, p);
             return h.CountTriangles() / (p * p * p);
         }
-        public static double ApproxTriangleCountingBySamplingB(GraphViewCommand g)
+        public static double ApproxTriangleCountingBySamplingB(GraphViewCommand g, double p = 0.02)
         {
-            throw new NotImplementedException();
+            LocalGraph h = GraphOperation.EdgeSample(g, p);
+
+            int counter = 0;
+
+            for (int v = 0; v < h.NV; v++)
+            {
+                List<string> adj = new List<string>();
+                foreach (int u in h.Adj[v].Keys)
+                    adj.Add(h.Label[u]);
+
+                Console.WriteLine("start {0} {1}", v, adj.Count);
+
+                counter += int.Parse(g.g().V().HasId(adj.ToArray()).Out().HasId(adj.ToArray()).Count().FirstOrDefault());
+
+                Console.WriteLine("end {0}", v);
+            }
+
+            return counter / 3.0 / p / p;
         }
         public static double ApproxTriangleCountingBySamplingC(GraphViewCommand g)
         {
