@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using GraphView;
 using Newtonsoft.Json;
@@ -633,5 +633,4 @@ namespace GraphViewUnitTest
             return graph.ExecuteAndGetResults();
         }
     }
-
 }

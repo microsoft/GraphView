@@ -933,31 +933,49 @@ namespace GraphView
             currentContext.SetPivotVariable(newVariable);
         }
 
-        internal virtual void Where(GremlinToSqlContext currentContext, Predicate predicate)
+        internal virtual void Where(GremlinToSqlContext currentContext, Predicate predicate, TraversalRing traversalRing)
         {
-            if (predicate is AndPredicate || predicate is OrPredicate)
-                throw new NotImplementedException($"Can't supported {predicate.GetType()} in where()-step for now");
-            List<string> selectKeys = new List<string>() { predicate.Value as string };
-            var compareVar = GenerateSelectVariable(currentContext, GremlinKeyword.Pop.All, selectKeys);
-
-            var firstExpr = DefaultProjection().ToScalarExpression();
-            var secondExpr = compareVar.DefaultProjection().ToScalarExpression();
-            var booleanExpr = SqlUtil.GetBooleanComparisonExpr(firstExpr, secondExpr, predicate);
-            currentContext.AddPredicate(booleanExpr);
+            currentContext.AddPredicate(GetWherePredicate(currentContext, this, predicate, traversalRing));
         }
 
-        internal virtual void Where(GremlinToSqlContext currentContext, string startKey, Predicate predicate)
+        internal virtual void Where(GremlinToSqlContext currentContext, string startKey, Predicate predicate, TraversalRing traversalRing)
         {
-            if (predicate is AndPredicate || predicate is OrPredicate)
-                throw new NotImplementedException($"Can't supported {predicate.GetType()} in where()-step for now");
-            GremlinVariable firstVar = GenerateSelectVariable(currentContext, GremlinKeyword.Pop.All, new List<string> { startKey });
-            GremlinVariable secondVar = GenerateSelectVariable(currentContext, GremlinKeyword.Pop.All, new List<string> { predicate.Value as string});
+            var selectKey = new List<string> { startKey };
+            var selectTraversal = new List<GraphTraversal2> { traversalRing.Next() };
+            var firstVar = GenerateSelectVariable(currentContext, GremlinKeyword.Pop.Last, selectKey, selectTraversal);
+            currentContext.AddPredicate(GetWherePredicate(currentContext, firstVar, predicate, traversalRing));
+        }
 
+        internal WBooleanExpression GetWherePredicate(GremlinToSqlContext currentContext, GremlinVariable firstVar, Predicate predicate, TraversalRing traversalRing)
+        {
+            AndPredicate andPredicate = predicate as AndPredicate;
+            if (andPredicate != null)
+            {
+                List<WBooleanExpression> booleanList = new List<WBooleanExpression>();
+                foreach (var p in andPredicate.PredicateList)
+                {
+                    booleanList.Add(GetWherePredicate(currentContext, firstVar, p, traversalRing));
+                }
+                return SqlUtil.ConcatBooleanExprWithAnd(booleanList);
+            }
+
+            OrPredicate orPredicate = predicate as OrPredicate;
+            if (orPredicate != null)
+            {
+                List<WBooleanExpression> booleanList = new List<WBooleanExpression>();
+                foreach (var p in orPredicate.PredicateList)
+                {
+                    booleanList.Add(GetWherePredicate(currentContext, firstVar, p, traversalRing));
+                }
+                return SqlUtil.ConcatBooleanExprWithOr(booleanList);
+            }
+
+            var selectKeys = new List<string>() {predicate.Value as string};
+            var selectTraversal = new List<GraphTraversal2>() {traversalRing.Next()};
+            var selectVar = GenerateSelectVariable(currentContext, GremlinKeyword.Pop.Last, selectKeys, selectTraversal);
             var firstExpr = firstVar.DefaultProjection().ToScalarExpression();
-            var secondExpr = secondVar.DefaultProjection().ToScalarExpression();
-
-            var booleanExpr = SqlUtil.GetBooleanComparisonExpr(firstExpr, secondExpr, predicate);
-            currentContext.AddPredicate(booleanExpr);
+            var secondExpr = selectVar.DefaultProjection().ToScalarExpression();
+            return SqlUtil.GetBooleanComparisonExpr(firstExpr, secondExpr, predicate);
         }
 
         internal virtual void Where(GremlinToSqlContext currentContext, GremlinToSqlContext whereContext)

@@ -99,7 +99,8 @@
     <Compile Include="GremlinTranslation\filter\GremlinRangeOp.cs" />
     <Compile Include="GremlinTranslation\filter\GremlinSampleOp.cs" />
     <Compile Include="GremlinTranslation\filter\GremlinSimplePathOp.cs" />
-    <Compile Include="GremlinTranslation\filter\GremlinWhereOp.cs" />
+    <Compile Include="GremlinTranslation\filter\GremlinWherePredicate.cs" />
+    <Compile Include="GremlinTranslation\filter\GremlinWhereTraversal.cs" />
     <Compile Include="GremlinTranslation\GraphTraversal2.cs" />
     <Compile Include="GremlinTranslation\GremlinUtil.cs" />
     <Compile Include="GremlinTranslation\map\GremlinIdOp.cs" />
