@@ -77,7 +77,7 @@ namespace GraphView
         /// <summary>
         /// Spill if how many edges are in a edge-document?
         /// </summary>
-        public int EdgeSpillThreshold { get; private set; } = 0;
+        public int EdgeSpillThreshold { get; set; } = 1;
 
 
         internal VertexObjectCache VertexCache { get; }
@@ -86,7 +86,7 @@ namespace GraphView
 
 
         private readonly Uri _docDBDatabaseUri, _docDBCollectionUri;
-        private bool _disposed;        
+        private bool _disposed;
 
         private DocumentClient DocDBClient { get; }  // Don't expose DocDBClient to outside!
 
@@ -118,15 +118,19 @@ namespace GraphView
             string partitionByKey = null)
         {
             using (DocumentClient client = new DocumentClient(
-                new Uri(endpoint), authKey, new ConnectionPolicy {
+                new Uri(endpoint), authKey, new ConnectionPolicy
+                {
                     ConnectionMode = ConnectionMode.Direct,
                     ConnectionProtocol = Protocol.Tcp,
                 }
-            )) {
-                if (string.IsNullOrEmpty(partitionByKey)) {
+            ))
+            {
+                if (string.IsNullOrEmpty(partitionByKey))
+                {
                     ResetCollection(client, databaseId, collectionId, null);
                 }
-                else {
+                else
+                {
                     ResetCollection(client, databaseId, collectionId, $"/{KW_DOC_PARTITION}");
                 }
             }
@@ -143,15 +147,19 @@ namespace GraphView
             string partitionByKey = null)
         {
             using (DocumentClient client = new DocumentClient(
-                new Uri(endpoint), authKey, new ConnectionPolicy {
+                new Uri(endpoint), authKey, new ConnectionPolicy
+                {
                     ConnectionMode = ConnectionMode.Direct,
                     ConnectionProtocol = Protocol.Tcp,
                 }
-            )) {
-                if (string.IsNullOrEmpty(partitionByKey)) {
+            ))
+            {
+                if (string.IsNullOrEmpty(partitionByKey))
+                {
                     ResetCollection(client, databaseId, collectionId, null);
                 }
-                else {
+                else
+                {
                     ResetCollection(client, databaseId, collectionId, $"/{partitionByKey}");
                 }
             }
@@ -199,11 +207,13 @@ namespace GraphView
 
             this.GraphType = graphType;
 
-            ConnectionPolicy connectionPolicy = new ConnectionPolicy {
+            ConnectionPolicy connectionPolicy = new ConnectionPolicy
+            {
                 ConnectionMode = ConnectionMode.Direct,
                 ConnectionProtocol = Protocol.Tcp,
             };
-            if (!string.IsNullOrEmpty(preferredLocation)) {
+            if (!string.IsNullOrEmpty(preferredLocation))
+            {
                 connectionPolicy.PreferredLocations.Add(preferredLocation);
             }
 
@@ -217,20 +227,23 @@ namespace GraphView
             // Check whether it is a partitioned collection (if exists)
             //
             DocumentCollection docDBCollection;
-            try {
+            try
+            {
                 docDBCollection = this.DocDBClient.CreateDocumentCollectionQuery(this._docDBDatabaseUri)
                     .Where(c => c.Id == this.DocDBCollectionId)
                     .AsEnumerable()
                     .FirstOrDefault();
             }
-            catch (AggregateException aggex) 
-            when ((aggex.InnerException as DocumentClientException)?.Error.Code == "NotFound") {
+            catch (AggregateException aggex)
+            when ((aggex.InnerException as DocumentClientException)?.Error.Code == "NotFound")
+            {
                 // Now the database does not exist!
                 // NOTE: If the database exists, but the collection does not exist, it won't be an exception
                 docDBCollection = null;
             }
 
-            if (docDBCollection == null) {
+            if (docDBCollection == null)
+            {
                 throw new GraphViewException("This collection does not exist.");
             }
 
@@ -239,23 +252,27 @@ namespace GraphView
             // If not partitioned, set `PartitionPath` to null
             //
             Collection<string> partitionKey = docDBCollection.PartitionKey.Paths;
-            if (partitionKey.Count == 1) {
+            if (partitionKey.Count == 1)
+            {
                 this.CollectionType = CollectionType.PARTITIONED;
 
                 this.PartitionPath = partitionKey[0];
-                this.PartitionPathTopLevel = this.PartitionPath.Split(new[] {'/'}, StringSplitOptions.RemoveEmptyEntries)[0];
+                this.PartitionPathTopLevel = this.PartitionPath.Split(new[] { '/' }, StringSplitOptions.RemoveEmptyEntries)[0];
 
-                if (this.PartitionPath == $"/{KW_DOC_PARTITION}") {  // Partitioned, created via GraphAPI
+                if (this.PartitionPath == $"/{KW_DOC_PARTITION}")
+                {  // Partitioned, created via GraphAPI
                     Debug.Assert(partitionByKeyIfViaGraphAPI != null);
                     Debug.Assert(graphType == GraphType.GraphAPIOnly);
                     this.RealPartitionKey = partitionByKeyIfViaGraphAPI;
                 }
-                else {
+                else
+                {
                     Debug.Assert(partitionByKeyIfViaGraphAPI == null);
                     this.RealPartitionKey = this.PartitionPathTopLevel;
                 }
             }
-            else {
+            else
+            {
                 this.CollectionType = CollectionType.STANDARD;
 
                 Debug.Assert(partitionKey.Count == 0);
@@ -266,7 +283,8 @@ namespace GraphView
                 Debug.Assert(partitionByKeyIfViaGraphAPI == null);
             }
 
-            if (graphType != GraphType.GraphAPIOnly) {
+            if (graphType != GraphType.GraphAPIOnly)
+            {
                 Debug.Assert(edgeSpillThreshold == 1);
             }
 
@@ -304,8 +322,9 @@ namespace GraphView
                                            .FirstOrDefault();
 
             // If the database does not exist, create one
-            if (docDBDatabase == null) {
-                client.CreateDatabaseAsync(new Database {Id = databaseId}).Wait();
+            if (docDBDatabase == null)
+            {
+                client.CreateDatabaseAsync(new Database { Id = databaseId }).Wait();
             }
         }
 
@@ -320,7 +339,7 @@ namespace GraphView
         ///   - collectionType = PARTITIONED: the newly created collection is PARTITIONED
         ///   - collectionType = UNDEFINED: an exception is thrown!
         /// </summary>
-        private static void ResetCollection(
+        public static void ResetCollection(
             DocumentClient client, string databaseId, string collectionId,
             string partitionPath = null)
         {
@@ -332,12 +351,13 @@ namespace GraphView
                                                      .FirstOrDefault();
 
             // Delete the collection if it exists
-            if (docDBCollection != null) {
+            if (docDBCollection != null)
+            {
                 DeleteCollection(client, databaseId, collectionId);
             }
 
             CreateCollection(client, databaseId, collectionId, partitionPath);
-            
+
             Trace.WriteLine($"[ResetCollection] Database/Collection {databaseId}/{collectionId} has been reset.");
         }
 
@@ -345,17 +365,20 @@ namespace GraphView
 
         private static void CreateCollection(DocumentClient client, string databaseId, string collectionId, string partitionPath = null)
         {
-            DocumentCollection collection = new DocumentCollection {
+            DocumentCollection collection = new DocumentCollection
+            {
                 Id = collectionId,
             };
-            if (!string.IsNullOrEmpty(partitionPath)) {
+            if (!string.IsNullOrEmpty(partitionPath))
+            {
                 collection.PartitionKey.Paths.Add(partitionPath);
             }
 
             client.CreateDocumentCollectionAsync(
                 UriFactory.CreateDatabaseUri(databaseId),
                 collection,
-                new RequestOptions {
+                new RequestOptions
+                {
                     OfferThroughput = 10000
                 }
             ).Wait();
@@ -369,6 +392,86 @@ namespace GraphView
         }
 
 
+        public static int partitionNum { get; set; } = 3;
+        //public static Dictionary<String, int> partitionLoad = new Dictionary<string, int>();
+        public static int[] partitionLoad = new int[partitionNum];
+
+        /// <summary>
+        /// partition the document data
+        /// The <paramref name="docObject"/> will be updated (Add the "id" field)
+        /// </summary>
+        /// <param name="docObject"></param>
+        public JObject partitionDocumnetByGreedyEdgeCut(JObject docObject)
+        {
+            try
+            {
+                // (0) check vertex of edge
+                var isEdgeDoc = docObject["_isEdgeDoc"];
+                if (isEdgeDoc != null && Convert.ToBoolean(isEdgeDoc.ToString()))
+                {
+                    var edgePartition = "0";
+                    var srcId = docObject["_vertex_id"];
+                    var edge = docObject["_edge"][0];
+                    var desId = edge["_sinkV"];
+                    List<dynamic> srcPartitionList = ExecuteQuery("SELECT Node._partition FROM Node where Node.id =\"" + srcId + "\"").ToList();
+                    List<dynamic> desPartitionList = ExecuteQuery("SELECT Node._partition FROM Node where Node.id =\"" + desId + "\"").ToList();
+                    var srcPartition = ((JObject)srcPartitionList[0])["_partition"].ToString();
+                    var desPartition = ((JObject)desPartitionList[0])["_partition"].ToString();
+                    int a = 0;
+                    // (1) 
+                    if (srcPartition == desPartition)
+                    {
+                        edgePartition = srcPartition;
+                    }
+                    // (2)
+                    if (srcPartition != desPartition)
+                    {
+                        if(partitionLoad[Convert.ToInt32(srcPartition)] > partitionLoad[Convert.ToInt32(desPartition)])
+                        {
+                            edgePartition = desPartition;
+                        } else
+                        {
+                            edgePartition = srcPartition;
+                        }
+                    }
+                    if (Convert.ToInt32(edgePartition) > partitionLoad.Count() - 1)
+                    {
+                        Console.WriteLine();
+                    }
+
+                    docObject["_partition"] = edgePartition;
+                    partitionLoad[Convert.ToInt32(edgePartition)]++;
+                    // (3) NULL: is one of them has been assigned
+                    // (4) NULL: is none of them has been assigned
+                    return docObject;
+                }
+                else
+                {
+                    // (1) Rule1: if the vertex is first time to be insert
+                    var minValue = partitionLoad.Min();
+                    var minIndex = Array.IndexOf(partitionLoad, minValue);
+                    if (docObject["_partition"] == null)
+                    {
+                        docObject.Add("_partition", minIndex.ToString());
+                    }
+                    else
+                    {
+                        docObject["_partition"] = minIndex.ToString();
+                    }
+                    partitionLoad[minIndex]++;
+                    // (2) Rule2: If the vertex has been inserted
+
+                    return docObject;
+                }
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e.InnerException);
+                throw e;
+            }
+            // new yj
+        }
+
         /// <summary>
         /// Create a new document (return the new docId)
         /// The <paramref name="docObject"/> will be updated (Add the "id" field)
@@ -380,6 +483,9 @@ namespace GraphView
             Debug.Assert(docObject[KW_DOC_ID] != null, $"The newly created document should specify '{KW_DOC_ID}' field");
             //Debug.Assert(docObject[KW_DOC_PARTITION] != null, $"The newly created document should specify '{KW_DOC_PARTITION}' field");
 
+            // new yj
+            docObject = partitionDocumnetByGreedyEdgeCut(docObject);
+            // new yj
             Document createdDocument = await this.DocDBClient.CreateDocumentAsync(this._docDBCollectionUri, docObject);
             Debug.Assert((string)docObject[KW_DOC_ID] == createdDocument.Id);
 
@@ -401,7 +507,8 @@ namespace GraphView
         /// <returns></returns>
         internal async Task CreateDocumentsAsync(HashSet<JObject> docObjects)
         {
-            foreach (JObject docObject in docObjects) {
+            foreach (JObject docObject in docObjects)
+            {
                 Debug.Assert(docObject != null, "The newly created document should not be null");
                 Debug.Assert(docObject[KW_DOC_ID] != null, $"The newly created document should contain '{KW_DOC_ID}' field");
                 //Debug.Assert(docObject[KW_DOC_PARTITION] != null, $"The newly created document should contain '{KW_DOC_PARTITION}' field");
@@ -414,7 +521,8 @@ namespace GraphView
 
         internal async Task ReplaceOrDeleteDocumentAsync(string docId, JObject docObject, string partition)
         {
-            if (docObject != null) {
+            if (docObject != null)
+            {
                 Debug.Assert((string)docObject[KW_DOC_ID] == docId);
             }
 
@@ -431,13 +539,15 @@ namespace GraphView
             };
 
             Uri documentUri = UriFactory.CreateDocumentUri(this.DocDBDatabaseId, this.DocDBCollectionId, docId);
-            if (docObject == null) {
+            if (docObject == null)
+            {
                 this.DocDBClient.DeleteDocumentAsync(documentUri, option).Wait();
 
                 // Remove the document's etag from saved
                 this.VertexCache.RemoveEtag(docId);
             }
-            else {
+            else
+            {
                 Debug.Assert(docObject[KW_DOC_ID] is JValue);
                 Debug.Assert((string)docObject[KW_DOC_ID] == docId, "The replaced document should match ID in the parameter");
                 //Debug.Assert(partition != null && partition == (string)docObject[KW_DOC_PARTITION]);
@@ -458,11 +568,13 @@ namespace GraphView
             HashSet<Tuple<JObject, string>> docObjectSet = new HashSet<Tuple<JObject, string>>(docObjectList);
             Debug.Assert(docObjectList.Count == docObjectSet.Count, "Replacing documents with two docObject sharing the same reference");
 #endif
-            foreach (KeyValuePair<string, Tuple<JObject, string>> pair in documentsMap) {
+            foreach (KeyValuePair<string, Tuple<JObject, string>> pair in documentsMap)
+            {
                 string docId = pair.Key;
                 JObject docObject = pair.Value.Item1;  // Can be null (null means deletion)
                 string partition = pair.Value.Item2;  // Partition
-                if (docObject != null) {
+                if (docObject != null)
+                {
                     Debug.Assert(partition == this.GetDocumentPartition(docObject));
                 }
                 await this.ReplaceOrDeleteDocumentAsync(docId, docObject, partition);
@@ -476,7 +588,8 @@ namespace GraphView
         {
             Debug.Assert(!string.IsNullOrEmpty(docId), "'docId' should not be null or empty");
 
-            if (partition != null) {
+            if (partition != null)
+            {
                 Debug.Assert(this.PartitionPath != null);
             }
 
@@ -488,7 +601,8 @@ namespace GraphView
             // Save etag of the fetched document
             // No override!
             //
-            if (result != null) {
+            if (result != null)
+            {
                 this.VertexCache.SaveCurrentEtagNoOverride(result);
             }
 
@@ -498,23 +612,28 @@ namespace GraphView
 
         public string GetDocumentPartition(JObject document)
         {
-            if (this.PartitionPath == null) {
+            if (this.PartitionPath == null)
+            {
                 return null;
             }
 
             JToken token = document;
-            string[] paths = this.PartitionPath.Split(new []{'/'}, StringSplitOptions.RemoveEmptyEntries);
-            foreach (string part in paths) {
-                if (part.StartsWith("[")) {  // Like /[0]
+            string[] paths = this.PartitionPath.Split(new[] { '/' }, StringSplitOptions.RemoveEmptyEntries);
+            foreach (string part in paths)
+            {
+                if (part.StartsWith("["))
+                {  // Like /[0]
                     Debug.Assert(part.EndsWith("]"));
                     Debug.Assert((token is JArray));
                     token = ((JArray)token)[int.Parse(part.Substring(1, part.Length - 2))];
                 }
-                else if (part.StartsWith("\"")) {  // Like /"property with space"
+                else if (part.StartsWith("\""))
+                {  // Like /"property with space"
                     Debug.Assert(part.EndsWith("\""));
                     token = token[part.Substring(1, part.Length - 2)];
                 }
-                else {   // Like /normal_property
+                else
+                {   // Like /normal_property
                     token = token[part];
                 }
             }
@@ -526,22 +645,27 @@ namespace GraphView
 
         public string GetPartitionPathIndexer()
         {
-            if (this.PartitionPath == null) {
+            if (this.PartitionPath == null)
+            {
                 return "";
             }
 
             StringBuilder partitionIndexerBuilder = new StringBuilder();
             string[] paths = this.PartitionPath.Split(new[] { '/' }, StringSplitOptions.RemoveEmptyEntries);
-            foreach (string part in paths) {
-                if (part.StartsWith("[")) {  // Like /[0]
+            foreach (string part in paths)
+            {
+                if (part.StartsWith("["))
+                {  // Like /[0]
                     Debug.Assert(part.EndsWith("]"));
                     partitionIndexerBuilder.Append(part);
                 }
-                else if (part.StartsWith("\"")) {  // Like /"property with space"
+                else if (part.StartsWith("\""))
+                {  // Like /"property with space"
                     Debug.Assert(part.EndsWith("\""));
                     partitionIndexerBuilder.AppendFormat("[{0}]", part);
                 }
-                else {   // Like /normal_property
+                else
+                {   // Like /normal_property
                     partitionIndexerBuilder.AppendFormat("[\"{0}\"]", part);
                 }
             }
