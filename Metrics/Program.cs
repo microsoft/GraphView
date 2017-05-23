@@ -44,7 +44,7 @@ namespace Metrics
 
             Stopwatch st = new Stopwatch();
             st.Start();
-            Console.WriteLine("approx. #triangles: {0}", Metrics.ApproxTriangleCountingBySamplingA(g));
+            Console.WriteLine("approx. #triangles: {0}", Metrics.ApproxTriangleCountingBySamplingB(g));
             Console.WriteLine("{0} ms", st.ElapsedMilliseconds);
 
             Console.WriteLine("Please press any key to exit");

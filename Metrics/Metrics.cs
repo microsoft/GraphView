@@ -79,7 +79,7 @@ namespace Metrics
         {
             double coefficient = 0;
             int tri=int.Parse(g.g().V().HasId(vertedId).As("a").Both().Where(Predicate.neq("a")).As("b").Both()
-               .Where(Predicate.neq("a")).Where(Predicate.neq("b")).Both().Where(Predicate.eq("a")).Count().Next());
+               .Where(Predicate.neq("a")).Where(Predicate.neq("b")).Both().Where(Predicate.eq("a")).Count().FirstOrDefault());
             int deg = int.Parse(g.g().V().HasId(vertedId).Both().Count().Next()[0]);
             coefficient = (double)tri / (deg * (deg - 1));
 
@@ -122,11 +122,18 @@ namespace Metrics
                 foreach (int u in h.Adj[v].Keys)
                     adj.Add(h.Label[u]);
 
+                if (adj.Count < 2)
+                    continue;
+
                 Console.WriteLine("start {0} {1}", v, adj.Count);
 
-                counter += int.Parse(g.g().V().HasId(adj.ToArray()).Out().HasId(adj.ToArray()).Count().FirstOrDefault());
+                //int inc = int.Parse(g.g().V().HasId(adj.ToArray()).Out().HasId(adj.ToArray()).Count().FirstOrDefault());
+                foreach (var x in g.g().V().HasId(adj.ToArray()).Out().HasId(adj.ToArray()))
+                    Console.Write("{0} ", x);
+                Console.WriteLine();
+                //counter += inc;
 
-                Console.WriteLine("end {0}", v);
+                //Console.WriteLine("end {0} {1}", v, inc);
             }
 
             return counter / 3.0 / p / p;
