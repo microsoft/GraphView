@@ -12,7 +12,6 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests
     public class CustomTest : AbstractGremlinTest
     {
         [TestMethod]
-        [TestModernCompatible]
         public void AddVWithNestingProperties()
         {
             using (GraphViewCommand command = new GraphViewCommand(graphConnection))
@@ -23,28 +22,35 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests
                 /* var traversal = command.g()
                     .V()
                     .Match(
-                        GraphTraversal2.__().As("x").Out("dummy").As("z"),
-                        GraphTraversal2.__().As("y").Out("dummy").As("z"),
-                        GraphTraversal2.__().As("z").Out("dummy").As("a"),
-                        GraphTraversal2.__().As("f").Out("dummy").As("h"),
                         GraphTraversal2.__().As("c").Has("age", 29),
                         GraphTraversal2.__().As("b").Has("name", "lop"),
                         GraphTraversal2.__().As("a").Out("created").As("b"),
-                        GraphTraversal2.__().As("g").Out("dummy").As("f"),
-                        GraphTraversal2.__().As("b").In("created").As("c"),
-                        GraphTraversal2.__().As("c").Out("dummy").As("a")
+                        GraphTraversal2.__().As("b").In("created").As("c")
                     )
                     .Select("a", "c")
-                    .By("name"); */
-                var traversal = command.g()
+                    .By("name");*/
+                /* var traversal = command.g()
                     .V()
-                    .Repeat(GraphTraversal2.__().TimeLimit(2).Both().GroupCount("m"))
-                    .Times(15)
-                    .Cap("m")
-                    .Order(GremlinKeyword.Scope.Local)
-                    .By(GremlinKeyword.Column.Values, GremlinKeyword.Order.Decr);
+                    .Choose(GraphTraversal2.__().Select("a"), GraphTraversal2.__().Identity(),
+                        GraphTraversal2.__().As("a"))
+                    .Select(GremlinKeyword.Pop.Last, "a")
+                    .Out("created")
+                    .Choose(GraphTraversal2.__().Select("b"), GraphTraversal2.__().Where(Predicate.eq("b")).As("b"),
+                        GraphTraversal2.__().As("b"))
+                    .Select(GremlinKeyword.Pop.Last, "b")
+                    .Has("name", "lop")
+                    .Select(GremlinKeyword.Pop.Last, "b")
+                    .In("created")
+                    .Choose(GraphTraversal2.__().Select("c"), GraphTraversal2.__().Where(Predicate.eq("c")).As("c"),
+                        GraphTraversal2.__().As("c"))
+                    .Select(GremlinKeyword.Pop.Last, "c")
+                    .Has("age", 29)
+                    .Select("a", "b", "c")
+                    .Select("a", "c")
+                    .By("name"); */
 
-                // var traversal = command.g().V().Match(GraphTraversal2.__().As("a"));
+                var traversal = command.g().V().Select("a", "b").Select("a").By("name");
+
                 var result = traversal.Next();
             }
         }
