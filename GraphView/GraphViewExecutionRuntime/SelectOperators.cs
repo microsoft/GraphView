@@ -1191,11 +1191,36 @@ namespace GraphView
     internal class ProjectAggregationInBatch : ProjectAggregation
     {
         private RawRecord firstRecordInGroup = null;
-        private int processedGroupIndex;
 
         internal ProjectAggregationInBatch(GraphViewExecutionOperator inputOp) : base(inputOp)
+        { }
+
+        public RawRecord GetNoAccumulateRecord(int index)
         {
-            this.processedGroupIndex = 0;
+            foreach (Tuple<IAggregateFunction, List<ScalarFunction>> aggr in this.aggregationSpecs)
+            {
+                if (aggr.Item1 == null)
+                {
+                    continue;
+                }
+                aggr.Item1.Init();
+            }
+
+            RawRecord noAccumulateRecord = new RawRecord();
+            noAccumulateRecord.Append(new StringField(index.ToString(), JsonDataType.Int));
+            foreach (Tuple<IAggregateFunction, List<ScalarFunction>> aggr in this.aggregationSpecs)
+            {
+                if (aggr.Item1 != null)
+                {
+                    noAccumulateRecord.Append(aggr.Item1.Terminate());
+                }
+                else
+                {
+                    noAccumulateRecord.Append((FieldObject)null);
+                }
+            }
+
+            return noAccumulateRecord;
         }
 
         public override RawRecord Next()
@@ -1209,35 +1234,6 @@ namespace GraphView
             {
                 this.Close();
                 return null;
-            }
-
-            while (this.processedGroupIndex < int.Parse(this.firstRecordInGroup[0].ToValue))
-            {
-                foreach (Tuple<IAggregateFunction, List<ScalarFunction>> aggr in this.aggregationSpecs)
-                {
-                    if (aggr.Item1 == null)
-                    {
-                       continue;
-                    }
-                    aggr.Item1.Init();
-                }
-
-                RawRecord noAccumulateRecord = new RawRecord();
-                noAccumulateRecord.Append(new StringField(this.processedGroupIndex.ToString(), JsonDataType.Int));
-                foreach (Tuple<IAggregateFunction, List<ScalarFunction>> aggr in this.aggregationSpecs)
-                {
-                    if (aggr.Item1 != null)
-                    {
-                        noAccumulateRecord.Append(aggr.Item1.Terminate());
-                    }
-                    else
-                    {
-                        noAccumulateRecord.Append((FieldObject)null);
-                    }
-                }
-                this.processedGroupIndex++;
-
-                return noAccumulateRecord;
             }
 
             foreach (Tuple<IAggregateFunction, List<ScalarFunction>> aggr in this.aggregationSpecs)
@@ -1296,15 +1292,8 @@ namespace GraphView
             }
 
             this.firstRecordInGroup = rec;
-            this.processedGroupIndex++;
 
             return outputRec;
-        }
-
-        public override void ResetState()
-        {
-            this.processedGroupIndex = 0;
-            base.ResetState();
         }
     }
 
@@ -3757,13 +3746,20 @@ namespace GraphView
 
     internal class QueryDerivedInBatchOperator : QueryDerivedTableOperator
     {
+        private ProjectAggregationInBatch projectAggregationInBatchOp;
+        private SortedDictionary<int, RawRecord> outputBuffer;
+
         public QueryDerivedInBatchOperator(
             GraphViewExecutionOperator inputOp,
             GraphViewExecutionOperator derivedQueryOp,
             ContainerEnumerator sourceEnumerator,
+            ProjectAggregationInBatch projectAggregationInBatchOp,
             int carryOnCount)
             : base(inputOp, derivedQueryOp, sourceEnumerator, carryOnCount)
-        { }
+        {
+            this.projectAggregationInBatchOp = projectAggregationInBatchOp;
+            this.outputBuffer = new SortedDictionary<int, RawRecord>();
+        }
 
         public override RawRecord Next()
         {
@@ -3773,6 +3769,7 @@ namespace GraphView
                 while (this.inputOp.State() && (inputRec = this.inputOp.Next()) != null)
                 {
                     this.inputRecords.Add(inputRec);
+                    this.outputBuffer[int.Parse(inputRec[0].ToValue)] = null;
                 }
 
                 this.sourceEnumerator.ResetTableCache(this.inputRecords);
@@ -3787,13 +3784,41 @@ namespace GraphView
                 {
                     returnRecord.Append((FieldObject)null);
                 }
-                returnRecord.Append(derivedRecord.GetRange(1, derivedRecord.Length - 1));
+                returnRecord.Append(derivedRecord.GetRange(1));
+
+                this.outputBuffer[int.Parse(derivedRecord[0].ToValue)] = returnRecord;
+            }
+
+            foreach (KeyValuePair<int, RawRecord> kvPair in this.outputBuffer)
+            {
+                int batchId = kvPair.Key;
+                RawRecord returnRecord = kvPair.Value;
+                // batch index was lost during sub-traversal, but aggregateOp must have output.
+                if (returnRecord == null)
+                {
+                    RawRecord noAccumulateRec = this.projectAggregationInBatchOp.GetNoAccumulateRecord(batchId);
+                    returnRecord = new RawRecord();
+                    returnRecord.Append(noAccumulateRec[0]);
+                    for (int i = 1; i < this.carryOnCount; i++)
+                    {
+                        returnRecord.Append((FieldObject)null);
+                    }
+                    returnRecord.Append(noAccumulateRec.GetRange(1));
+                }
+
+                outputBuffer.Remove(batchId);
 
                 return returnRecord;
             }
 
             this.Close();
             return null;
+        }
+
+        public override void ResetState()
+        {
+            this.outputBuffer.Clear();
+            base.ResetState();
         }
     }
 

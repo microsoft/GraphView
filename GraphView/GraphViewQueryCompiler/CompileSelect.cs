@@ -2889,9 +2889,16 @@ namespace GraphView
             
             GraphViewExecutionOperator subQueryOp = derivedSelectQueryBlock.Compile(derivedTableContext, dbConnection);
 
+            ProjectAggregationInBatch projectAggregationInBatchOp = null;
+            if (context.InBatchMode)
+            {
+                Debug.Assert(subQueryOp is ProjectAggregationInBatch);
+                projectAggregationInBatchOp = subQueryOp as ProjectAggregationInBatch;
+            }
+
             QueryDerivedTableOperator queryDerivedTableOp =
                 context.InBatchMode
-                    ? new QueryDerivedInBatchOperator(context.CurrentExecutionOperator, subQueryOp, sourceEnumerator,
+                    ? new QueryDerivedInBatchOperator(context.CurrentExecutionOperator, subQueryOp, sourceEnumerator, projectAggregationInBatchOp,
                         context.RawRecordLayout.Count)
                     : new QueryDerivedTableOperator(context.CurrentExecutionOperator, subQueryOp, sourceEnumerator,
                         context.RawRecordLayout.Count);
