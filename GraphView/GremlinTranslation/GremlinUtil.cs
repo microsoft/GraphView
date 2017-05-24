@@ -150,6 +150,31 @@ namespace GraphView
         }
     }
 
+    internal class TraversalRing
+    {
+        public List<GraphTraversal2> Traversals { get; set; }
+        public int CurrentTravsersal { get; set; }
+
+        public TraversalRing(List<GraphTraversal2> traversals)
+        {
+            Traversals = new List<GraphTraversal2>(traversals);
+            CurrentTravsersal = -1;
+        }
+
+        public GraphTraversal2 Next()
+        {
+            if (Traversals.Count == 0)
+            {
+                return null;
+            }
+            else
+            {
+                this.CurrentTravsersal = (this.CurrentTravsersal + 1) % this.Traversals.Count;
+                return this.Traversals[this.CurrentTravsersal];
+            }
+        }
+    }
+
     public class IncrOrder : IComparer
     {
         public int Compare(object x, object y)

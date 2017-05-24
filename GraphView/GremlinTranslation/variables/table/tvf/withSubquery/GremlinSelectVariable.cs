@@ -68,7 +68,16 @@ namespace GraphView
             {
                 context.Populate(property);
             }
-            base.Populate(property);
+
+            if (SelectKeys.Count() > 1 && property != GremlinKeyword.TableDefaultColumnName)
+            {
+                //block the select multi label to populate column 
+                return;
+            }
+            else
+            {
+                base.Populate(property);
+            }
         }
 
         public override WTableReference ToTableReference()

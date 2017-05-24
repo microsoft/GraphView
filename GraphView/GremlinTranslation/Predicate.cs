@@ -11,8 +11,8 @@ namespace GraphView
         public bool IsTag { get; set; }
         public object Value { get; set; }
         public List<object> Values { get; set; }
-        public double Low { get; set; }
-        public double High { get; set; }
+        public object Low { get; set; }
+        public object High { get; set; }
         public PredicateType PredicateType { get; set; }
 
         public Predicate(PredicateType type, object value)
@@ -21,7 +21,7 @@ namespace GraphView
             PredicateType = type;
         }
 
-        public Predicate(PredicateType type, double low, double high)
+        public Predicate(PredicateType type, object low, object high)
         {
             Low = low;
             High = high;
@@ -51,14 +51,9 @@ namespace GraphView
             return new OrPredicate(this, predicate);
         }
 
-        public static Predicate eq(string value)
+        public static Predicate eq(object value)
         {
             return new Predicate(PredicateType.eq, value);
-        }
-
-        public static Predicate eq(double number)
-        {
-            return new Predicate(PredicateType.eq, number);
         }
 
         public static Predicate neq(object obj)
@@ -66,52 +61,37 @@ namespace GraphView
             return new Predicate(PredicateType.neq, obj);
         }
 
-        public static Predicate neq(string label)
-        {
-            return new Predicate(PredicateType.neq, label);
-        }
-
-        public static Predicate neq(double number)
-        {
-            return new Predicate(PredicateType.neq, number);
-        }
-
-        public static Predicate lt(double value)
+        public static Predicate lt(object value)
         {
             return new Predicate(PredicateType.lt, value);
         }
 
-        public static Predicate lte(double value)
+        public static Predicate lte(object value)
         {
             return new Predicate(PredicateType.lte, value);
         }
 
-        public static Predicate gt(double value)
-        {
-            return new Predicate(PredicateType.gt, value);
-        }
-        // To support case: __.where('c',gt('u'). c and u represent 2 columns.
-        public static Predicate gt(String value)
+        public static Predicate gt(object value)
         {
             return new Predicate(PredicateType.gt, value);
         }
 
-        public static Predicate gte(double value)
+        public static Predicate gte(object value)
         {
             return new Predicate(PredicateType.gte, value);
         }
 
-        public static Predicate inside(double low, double high)
+        public static Predicate inside(object low, object high)
         {
             return new Predicate(PredicateType.inside, low, high);
         }
 
-        public static Predicate outside(double low, double high)
+        public static Predicate outside(object low, object high)
         {
             return new Predicate(PredicateType.outside, low, high);
         }
 
-        public static Predicate between(double low, double high)
+        public static Predicate between(object low, object high)
         {
             return new Predicate(PredicateType.between, low, high);
         }
@@ -121,7 +101,7 @@ namespace GraphView
             return new Predicate(PredicateType.within, objects);
         }
 
-        public static Predicate within(string label)
+        public static Predicate within(object label)
         {
             return new Predicate(PredicateType.within, label);
         }
@@ -131,7 +111,7 @@ namespace GraphView
             return new Predicate(PredicateType.without, objects);
         }
 
-        public static Predicate without(string label)
+        public static Predicate without(object label)
         {
             return new Predicate(PredicateType.without, label);
         }

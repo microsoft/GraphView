@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
 using System.Text;
+using Microsoft.Azure.Documents.Partitioning;
 using static GraphView.GraphViewKeywords;
 
 namespace GraphView
@@ -1190,11 +1191,36 @@ namespace GraphView
     internal class ProjectAggregationInBatch : ProjectAggregation
     {
         private RawRecord firstRecordInGroup = null;
-        private int processedGroupIndex;
 
         internal ProjectAggregationInBatch(GraphViewExecutionOperator inputOp) : base(inputOp)
+        { }
+
+        public RawRecord GetNoAccumulateRecord(int index)
         {
-            this.processedGroupIndex = 0;
+            foreach (Tuple<IAggregateFunction, List<ScalarFunction>> aggr in this.aggregationSpecs)
+            {
+                if (aggr.Item1 == null)
+                {
+                    continue;
+                }
+                aggr.Item1.Init();
+            }
+
+            RawRecord noAccumulateRecord = new RawRecord();
+            noAccumulateRecord.Append(new StringField(index.ToString(), JsonDataType.Int));
+            foreach (Tuple<IAggregateFunction, List<ScalarFunction>> aggr in this.aggregationSpecs)
+            {
+                if (aggr.Item1 != null)
+                {
+                    noAccumulateRecord.Append(aggr.Item1.Terminate());
+                }
+                else
+                {
+                    noAccumulateRecord.Append((FieldObject)null);
+                }
+            }
+
+            return noAccumulateRecord;
         }
 
         public override RawRecord Next()
@@ -1208,35 +1234,6 @@ namespace GraphView
             {
                 this.Close();
                 return null;
-            }
-
-            while (this.processedGroupIndex < int.Parse(this.firstRecordInGroup[0].ToValue))
-            {
-                foreach (Tuple<IAggregateFunction, List<ScalarFunction>> aggr in this.aggregationSpecs)
-                {
-                    if (aggr.Item1 == null)
-                    {
-                       continue;
-                    }
-                    aggr.Item1.Init();
-                }
-
-                RawRecord noAccumulateRecord = new RawRecord();
-                noAccumulateRecord.Append(new StringField(this.processedGroupIndex.ToString(), JsonDataType.Int));
-                foreach (Tuple<IAggregateFunction, List<ScalarFunction>> aggr in this.aggregationSpecs)
-                {
-                    if (aggr.Item1 != null)
-                    {
-                        noAccumulateRecord.Append(aggr.Item1.Terminate());
-                    }
-                    else
-                    {
-                        noAccumulateRecord.Append((FieldObject)null);
-                    }
-                }
-                this.processedGroupIndex++;
-
-                return noAccumulateRecord;
             }
 
             foreach (Tuple<IAggregateFunction, List<ScalarFunction>> aggr in this.aggregationSpecs)
@@ -1295,18 +1292,10 @@ namespace GraphView
             }
 
             this.firstRecordInGroup = rec;
-            this.processedGroupIndex++;
 
             return outputRec;
         }
-
-        public override void ResetState()
-        {
-            this.processedGroupIndex = 0;
-            base.ResetState();
-        }
     }
-
 
     internal class MapOperator : GraphViewExecutionOperator
     {
@@ -1314,46 +1303,89 @@ namespace GraphView
 
         // The traversal inside the map function.
         private GraphViewExecutionOperator mapTraversal;
-        private ConstantSourceOperator contextOp;
+//        private ConstantSourceOperator contextOp;
+
+
+        private ContainerEnumerator sourceEnumerator;
+        private List<RawRecord> inputBatch;
+        private int batchSize;
+
+//        private List<RawRecord> outputBuffer;
+        private HashSet<int> inputRecordSet;
 
         public MapOperator(
             GraphViewExecutionOperator inputOp,
             GraphViewExecutionOperator mapTraversal,
-            ConstantSourceOperator contextOp)
+            ContainerEnumerator sourceEnumerator)
         {
             this.inputOp = inputOp;
             this.mapTraversal = mapTraversal;
-            this.contextOp = contextOp;
-            Open();
+//            this.contextOp = contextOp;
+
+            this.sourceEnumerator = sourceEnumerator;
+            this.inputBatch = new List<RawRecord>();
+            this.batchSize = KW_DEFAULT_BATCH_SIZE;
+
+//            this.outputBuffer = new List<RawRecord>();
+            this.inputRecordSet = new HashSet<int>();
+
+            this.Open();
         }
 
         public override RawRecord Next()
         {
-            RawRecord currentRecord;
-            while (inputOp.State() && (currentRecord = inputOp.Next()) != null)
+            while (this.State())
             {
-                contextOp.ConstantSource = currentRecord;
-                mapTraversal.ResetState();
-                RawRecord mapRec = mapTraversal.Next();
-                mapTraversal.Close();
+                if (this.inputBatch.Any())
+                {
+                    RawRecord subTraversalRecord;
+                    while (this.mapTraversal.State() && (subTraversalRecord = this.mapTraversal.Next()) != null)
+                    {
+                        int subTraversalRecordIndex = int.Parse(subTraversalRecord[0].ToValue);
+                        if (this.inputRecordSet.Remove(subTraversalRecordIndex))
+                        {
+                            RawRecord resultRecord = inputBatch[subTraversalRecordIndex].GetRange(1);
+                            resultRecord.Append(subTraversalRecord.GetRange(1));
+                            return resultRecord;
+                        }
+                    }
+                }
 
-                if (mapRec == null) continue;
-                RawRecord resultRecord = new RawRecord(currentRecord);
-                resultRecord.Append(mapRec);
+                this.inputBatch.Clear();
+                this.inputRecordSet.Clear();
+                RawRecord inputRecord;
+                while (this.inputBatch.Count < this.batchSize && this.inputOp.State() && (inputRecord = inputOp.Next()) != null)
+                {
+                    RawRecord batchRawRecord = new RawRecord();
+                    batchRawRecord.Append(new StringField(this.inputBatch.Count.ToString(), JsonDataType.Int));
+                    batchRawRecord.Append(inputRecord);
 
-                return resultRecord;
+                    this.inputRecordSet.Add(this.inputBatch.Count);
+
+                    inputBatch.Add(batchRawRecord);
+                }
+
+                if (!inputBatch.Any())
+                {
+                    this.Close();
+                    return null;
+                }
+
+                this.sourceEnumerator.ResetTableCache(inputBatch);
+                this.mapTraversal.ResetState();
             }
 
-            Close();
             return null;
         }
 
         public override void ResetState()
         {
-            inputOp.ResetState();
-            contextOp.ResetState();
-            mapTraversal.ResetState();
-            Open();
+            this.inputOp.ResetState();
+//            contextOp.ResetState();
+            this.mapTraversal.ResetState();
+            this.inputBatch.Clear();
+            this.inputRecordSet.Clear();
+            this.Open();
         }
     }
 
@@ -2239,6 +2271,122 @@ namespace GraphView
             Open();
         }
     }
+
+
+    internal class CoalesceInBatchOperator : GraphViewExecutionOperator
+    {
+        private List<GraphViewExecutionOperator> traversalList;
+        private GraphViewExecutionOperator inputOp;
+        
+        // In batch mode, each RawRacord has an index,
+        // so in this buffer dict, the keys are the indexes,
+        // but in the Queue<RawRecord>, the indexes of RawRacords was already removed for output.
+        private Dictionary<int, Queue<RawRecord>> traversalOutputBuffer;
+
+        private ContainerEnumerator sourceEnumerator;
+        private int batchSize;
+
+        public CoalesceInBatchOperator(GraphViewExecutionOperator inputOp, ContainerEnumerator sourceEnumerator)
+        {
+            this.inputOp = inputOp;
+            this.traversalList = new List<GraphViewExecutionOperator>();
+            this.traversalOutputBuffer = new Dictionary<int, Queue<RawRecord>>();
+            this.sourceEnumerator = sourceEnumerator;
+            this.batchSize = KW_DEFAULT_BATCH_SIZE;
+            this.Open();
+        }
+
+        public void AddTraversal(GraphViewExecutionOperator traversal)
+        {
+            traversalList.Add(traversal);
+        }
+
+        public override RawRecord Next()
+        {
+            while (this.State())
+            {
+                if (this.traversalOutputBuffer.Any())
+                {
+                    // Output in order
+                    for (int i = 0; i < this.traversalOutputBuffer.Count; i++)
+                    {
+                        if (this.traversalOutputBuffer[i].Any())
+                        {
+                            return this.traversalOutputBuffer[i].Dequeue();
+                        }
+                    }
+
+                    // nothing in any queue
+                    this.traversalOutputBuffer.Clear();
+                }
+
+                List<RawRecord> inputBatch = new List<RawRecord>();
+                // add to input batch.
+                RawRecord inputRecord;
+
+                // Indexes of Racords that will be transfered to next sub-traversal.
+                // This set will be updated each time a sub-traversal finish.
+                // TODO: RENAME IT
+                HashSet<int> availableSrcSet = new HashSet<int>();
+                while (inputBatch.Count < this.batchSize && this.inputOp.State() && (inputRecord = inputOp.Next()) != null)
+                {
+                    RawRecord batchRawRecord = new RawRecord();
+                    batchRawRecord.Append(new StringField(inputBatch.Count.ToString(), JsonDataType.Int));
+                    batchRawRecord.Append(inputRecord);
+
+                    availableSrcSet.Add(inputBatch.Count);
+                    this.traversalOutputBuffer[inputBatch.Count] = new Queue<RawRecord>();
+
+                    inputBatch.Add(batchRawRecord);
+                }
+
+                if (!inputBatch.Any())
+                {
+                    this.Close();
+                    return null;
+                }
+
+                foreach (GraphViewExecutionOperator subTraversal in this.traversalList)
+                {
+                    HashSet<int> subOutputIndexSet = new HashSet<int>();
+                    List<RawRecord> subTraversalSrc = availableSrcSet.Select(i => inputBatch[i]).ToList();
+
+                    subTraversal.ResetState();
+                    this.sourceEnumerator.ResetTableCache(subTraversalSrc);
+
+                    RawRecord subTraversalRecord;
+                    while (subTraversal.State() && (subTraversalRecord = subTraversal.Next()) != null)
+                    {
+                        int subTraversalRecordIndex = int.Parse(subTraversalRecord[0].ToValue);
+                        RawRecord resultRecord = inputBatch[subTraversalRecordIndex].GetRange(1);
+                        resultRecord.Append(subTraversalRecord.GetRange(1));
+                        this.traversalOutputBuffer[subTraversalRecordIndex].Enqueue(resultRecord);
+                        subOutputIndexSet.Add(subTraversalRecordIndex);
+                    }
+
+                    // Remove the racords that have output already.
+                    availableSrcSet.ExceptWith(subOutputIndexSet);
+                    if (!availableSrcSet.Any())
+                    {
+                        break;
+                    }
+                }
+
+            }
+
+            return null;
+            
+        }
+
+        public override void ResetState()
+        {
+            this.inputOp.ResetState();
+            this.traversalOutputBuffer?.Clear();
+            this.Open();
+        }
+    }
+
+
 
     internal class RepeatOperator : GraphViewExecutionOperator
     {
@@ -3687,13 +3835,20 @@ namespace GraphView
 
     internal class QueryDerivedInBatchOperator : QueryDerivedTableOperator
     {
+        private ProjectAggregationInBatch projectAggregationInBatchOp;
+        private SortedDictionary<int, RawRecord> outputBuffer;
+
         public QueryDerivedInBatchOperator(
             GraphViewExecutionOperator inputOp,
             GraphViewExecutionOperator derivedQueryOp,
             ContainerEnumerator sourceEnumerator,
+            ProjectAggregationInBatch projectAggregationInBatchOp,
             int carryOnCount)
             : base(inputOp, derivedQueryOp, sourceEnumerator, carryOnCount)
-        { }
+        {
+            this.projectAggregationInBatchOp = projectAggregationInBatchOp;
+            this.outputBuffer = new SortedDictionary<int, RawRecord>();
+        }
 
         public override RawRecord Next()
         {
@@ -3703,6 +3858,7 @@ namespace GraphView
                 while (this.inputOp.State() && (inputRec = this.inputOp.Next()) != null)
                 {
                     this.inputRecords.Add(inputRec);
+                    this.outputBuffer[int.Parse(inputRec[0].ToValue)] = null;
                 }
 
                 this.sourceEnumerator.ResetTableCache(this.inputRecords);
@@ -3717,13 +3873,41 @@ namespace GraphView
                 {
                     returnRecord.Append((FieldObject)null);
                 }
-                returnRecord.Append(derivedRecord.GetRange(1, derivedRecord.Length - 1));
+                returnRecord.Append(derivedRecord.GetRange(1));
+
+                this.outputBuffer[int.Parse(derivedRecord[0].ToValue)] = returnRecord;
+            }
+
+            foreach (KeyValuePair<int, RawRecord> kvPair in this.outputBuffer)
+            {
+                int batchId = kvPair.Key;
+                RawRecord returnRecord = kvPair.Value;
+                // batch index was lost during sub-traversal, but aggregateOp must have output.
+                if (returnRecord == null)
+                {
+                    RawRecord noAccumulateRec = this.projectAggregationInBatchOp.GetNoAccumulateRecord(batchId);
+                    returnRecord = new RawRecord();
+                    returnRecord.Append(noAccumulateRec[0]);
+                    for (int i = 1; i < this.carryOnCount; i++)
+                    {
+                        returnRecord.Append((FieldObject)null);
+                    }
+                    returnRecord.Append(noAccumulateRec.GetRange(1));
+                }
+
+                outputBuffer.Remove(batchId);
 
                 return returnRecord;
             }
 
             this.Close();
             return null;
+        }
+
+        public override void ResetState()
+        {
+            this.outputBuffer.Clear();
+            base.ResetState();
         }
     }
 

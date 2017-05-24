@@ -10,9 +10,7 @@ namespace GraphView
 {
     internal class FoldFunction : IAggregateFunction
     {
-        List<FieldObject> buffer;
-
-        public FoldFunction() { }
+        private List<FieldObject> buffer;
 
         public void Accumulate(params FieldObject[] values)
         {
@@ -32,7 +30,7 @@ namespace GraphView
 
     internal class CountFunction : IAggregateFunction
     {
-        long count;
+        private long count;
 
         public void Accumulate(params FieldObject[] values)
         {
@@ -52,7 +50,7 @@ namespace GraphView
 
     internal class SumFunction : IAggregateFunction
     {
-        double sum;
+        private double sum;
 
         public void Accumulate(params FieldObject[] values)
         {
@@ -76,7 +74,7 @@ namespace GraphView
 
     internal class MaxFunction : IAggregateFunction
     {
-        double max;
+        private double max;
 
         public void Accumulate(params FieldObject[] values)
         {
@@ -84,13 +82,13 @@ namespace GraphView
             if (!double.TryParse(values[0].ToValue, out current))
                 throw new GraphViewException("The input of Max cannot be cast to a number");
 
-            if (max < current)
+            if (max.Equals(double.NaN) || max < current)
                 max = current;
         }
 
         public void Init()
         {
-            max = double.MinValue;
+            max = double.NaN;
         }
 
         public FieldObject Terminate()
@@ -101,7 +99,7 @@ namespace GraphView
 
     internal class MinFunction : IAggregateFunction
     {
-        double min;
+        private double min;
 
         public void Accumulate(params FieldObject[] values)
         {
@@ -109,13 +107,13 @@ namespace GraphView
             if (!double.TryParse(values[0].ToValue, out current))
                 throw new GraphViewException("The input of Min cannot be cast to a number");
 
-            if (current < min)
+            if (min.Equals(double.NaN) || current < min)
                 min = current;
         }
 
         public void Init()
         {
-            min = double.MaxValue;
+            min = double.NaN;
         }
 
         public FieldObject Terminate()
@@ -126,8 +124,8 @@ namespace GraphView
 
     internal class MeanFunction : IAggregateFunction
     {
-        double sum;
-        long count;
+        private double sum;
+        private long count;
 
         public void Accumulate(params FieldObject[] values)
         {
@@ -335,7 +333,7 @@ namespace GraphView
 
     internal class CapAggregate : IAggregateFunction
     {
-        List<Tuple<string, IAggregateFunction>> sideEffectStates;
+        private List<Tuple<string, IAggregateFunction>> sideEffectStates;
 
         public CapAggregate()
         {
