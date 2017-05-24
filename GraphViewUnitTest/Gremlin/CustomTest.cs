@@ -19,37 +19,16 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests
                 // var traversal = command.g().Inject(0).Union(command.g().V().Group(), command.g().E().Group()).Select(GremlinKeyword.Column.Keys).Values("name");
                 // var traversal = command.g().V().GroupCount().Unfold().Select(GremlinKeyword.Column.Keys).Values("name");
                 // var traversal = command.g().V().Group().By().By(GraphTraversal2.__().Count()).Select(GremlinKeyword.Column.Keys).Unfold().Values("name");
-                /* var traversal = command.g()
+                var traversal = command.g()
                     .V()
                     .Match(
+                        GraphTraversal2.__().As("b").In("created").As("c"),
                         GraphTraversal2.__().As("c").Has("age", 29),
                         GraphTraversal2.__().As("b").Has("name", "lop"),
-                        GraphTraversal2.__().As("a").Out("created").As("b"),
-                        GraphTraversal2.__().As("b").In("created").As("c")
+                        GraphTraversal2.__().As("a").Out("created").As("b")
                     )
                     .Select("a", "c")
-                    .By("name");*/
-                /* var traversal = command.g()
-                    .V()
-                    .Choose(GraphTraversal2.__().Select("a"), GraphTraversal2.__().Identity(),
-                        GraphTraversal2.__().As("a"))
-                    .Select(GremlinKeyword.Pop.Last, "a")
-                    .Out("created")
-                    .Choose(GraphTraversal2.__().Select("b"), GraphTraversal2.__().Where(Predicate.eq("b")).As("b"),
-                        GraphTraversal2.__().As("b"))
-                    .Select(GremlinKeyword.Pop.Last, "b")
-                    .Has("name", "lop")
-                    .Select(GremlinKeyword.Pop.Last, "b")
-                    .In("created")
-                    .Choose(GraphTraversal2.__().Select("c"), GraphTraversal2.__().Where(Predicate.eq("c")).As("c"),
-                        GraphTraversal2.__().As("c"))
-                    .Select(GremlinKeyword.Pop.Last, "c")
-                    .Has("age", 29)
-                    .Select("a", "b", "c")
-                    .Select("a", "c")
-                    .By("name"); */
-
-                var traversal = command.g().V().Select("a", "b").Select("a").By("name");
+                    .By("name");
 
                 var result = traversal.Next();
             }
