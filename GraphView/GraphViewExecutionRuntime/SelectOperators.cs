@@ -1297,53 +1297,95 @@ namespace GraphView
         }
     }
 
-
     internal class MapOperator : GraphViewExecutionOperator
     {
         private GraphViewExecutionOperator inputOp;
 
         // The traversal inside the map function.
         private GraphViewExecutionOperator mapTraversal;
-        private ConstantSourceOperator contextOp;
+//        private ConstantSourceOperator contextOp;
+
+
+        private ContainerEnumerator sourceEnumerator;
+        private List<RawRecord> inputBatch;
+        private int batchSize;
+
+//        private List<RawRecord> outputBuffer;
+        private HashSet<int> inputRecordSet;
 
         public MapOperator(
             GraphViewExecutionOperator inputOp,
             GraphViewExecutionOperator mapTraversal,
-            ConstantSourceOperator contextOp)
+            ContainerEnumerator sourceEnumerator)
         {
             this.inputOp = inputOp;
             this.mapTraversal = mapTraversal;
-            this.contextOp = contextOp;
-            Open();
+//            this.contextOp = contextOp;
+
+            this.sourceEnumerator = sourceEnumerator;
+            this.inputBatch = new List<RawRecord>();
+            this.batchSize = KW_DEFAULT_BATCH_SIZE;
+
+//            this.outputBuffer = new List<RawRecord>();
+            this.inputRecordSet = new HashSet<int>();
+
+            this.Open();
         }
 
         public override RawRecord Next()
         {
-            RawRecord currentRecord;
-            while (inputOp.State() && (currentRecord = inputOp.Next()) != null)
+            while (this.State())
             {
-                contextOp.ConstantSource = currentRecord;
-                mapTraversal.ResetState();
-                RawRecord mapRec = mapTraversal.Next();
-                mapTraversal.Close();
+                if (this.inputBatch.Any())
+                {
+                    RawRecord subTraversalRecord;
+                    while (this.mapTraversal.State() && (subTraversalRecord = this.mapTraversal.Next()) != null)
+                    {
+                        int subTraversalRecordIndex = int.Parse(subTraversalRecord[0].ToValue);
+                        if (this.inputRecordSet.Remove(subTraversalRecordIndex))
+                        {
+                            RawRecord resultRecord = inputBatch[subTraversalRecordIndex].GetRange(1);
+                            resultRecord.Append(subTraversalRecord.GetRange(1));
+                            return resultRecord;
+                        }
+                    }
+                }
 
-                if (mapRec == null) continue;
-                RawRecord resultRecord = new RawRecord(currentRecord);
-                resultRecord.Append(mapRec);
+                this.inputBatch.Clear();
+                this.inputRecordSet.Clear();
+                RawRecord inputRecord;
+                while (this.inputBatch.Count < this.batchSize && this.inputOp.State() && (inputRecord = inputOp.Next()) != null)
+                {
+                    RawRecord batchRawRecord = new RawRecord();
+                    batchRawRecord.Append(new StringField(this.inputBatch.Count.ToString(), JsonDataType.Int));
+                    batchRawRecord.Append(inputRecord);
 
-                return resultRecord;
+                    this.inputRecordSet.Add(this.inputBatch.Count);
+
+                    inputBatch.Add(batchRawRecord);
+                }
+
+                if (!inputBatch.Any())
+                {
+                    this.Close();
+                    return null;
+                }
+
+                this.sourceEnumerator.ResetTableCache(inputBatch);
+                this.mapTraversal.ResetState();
             }
 
-            Close();
             return null;
         }
 
         public override void ResetState()
         {
-            inputOp.ResetState();
-            contextOp.ResetState();
-            mapTraversal.ResetState();
-            Open();
+            this.inputOp.ResetState();
+//            contextOp.ResetState();
+            this.mapTraversal.ResetState();
+            this.inputBatch.Clear();
+            this.inputRecordSet.Clear();
+            this.Open();
         }
     }
 

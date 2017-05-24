@@ -2676,10 +2676,13 @@ namespace GraphView
                 throw new SyntaxErrorException("The sub-query must be a select query block.");
             }
 
+            ContainerEnumerator sourceEnumerator = new ContainerEnumerator();
             QueryCompilationContext subcontext = new QueryCompilationContext(context);
+            subcontext.OuterContextOp.SourceEnumerator = sourceEnumerator;
+            subcontext.AddField(GremlinKeyword.IndexTableName, GremlinKeyword.IndexColumnName, ColumnGraphType.Value, true);
+            subcontext.InBatchMode = true;
             GraphViewExecutionOperator mapTraversalOp = mapSelect.Compile(subcontext, dbConnection);
-
-            MapOperator mapOp = new MapOperator(context.CurrentExecutionOperator, mapTraversalOp, subcontext.OuterContextOp);
+            MapOperator mapOp = new MapOperator(context.CurrentExecutionOperator, mapTraversalOp, sourceEnumerator);
             context.CurrentExecutionOperator = mapOp;
 
             foreach (WSelectElement selectElement in mapSelect.SelectElements)
