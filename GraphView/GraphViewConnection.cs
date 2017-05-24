@@ -404,8 +404,8 @@ namespace GraphView
         {
             try
             {
-                // (0) check vertex of edge
                 var isEdgeDoc = docObject["_isEdgeDoc"];
+                // (1) For edge doc 
                 if (isEdgeDoc != null && Convert.ToBoolean(isEdgeDoc.ToString()))
                 {
                     var edgePartition = "0";
@@ -417,30 +417,30 @@ namespace GraphView
                     var srcPartition = ((JObject)srcPartitionList[0])["_partition"].ToString();
                     var desPartition = ((JObject)desPartitionList[0])["_partition"].ToString();
                     int a = 0;
-                    // (1) 
+                    // (1) src and des are in the same partition
                     if (srcPartition == desPartition)
                     {
                         edgePartition = srcPartition;
                     }
-                    // (2)
+                    // (2) src and des are not in the same partition
                     if (srcPartition != desPartition)
                     {
-                        if(partitionLoad[Convert.ToInt32(srcPartition)] > partitionLoad[Convert.ToInt32(desPartition)])
-                        {
-                            edgePartition = desPartition;
-                        } else
-                        {
-                            edgePartition = srcPartition;
-                        }
+                        //if(partitionLoad[Convert.ToInt32(srcPartition)] > partitionLoad[Convert.ToInt32(desPartition)])
+                        //{
+                        //    edgePartition = desPartition;
+                        //} else
+                        //{
+                        //    edgePartition = srcPartition;
+                        //}
+                        edgePartition = srcPartition; // For future design: keep the safety of the transaction
                     }
                     docObject["_partition"] = edgePartition;
                     partitionLoad[Convert.ToInt32(edgePartition)]++;
-                    // (3) NULL: is one of them has been assigned
-                    // (4) NULL: is none of them has been assigned
                     return docObject;
                 }
                 else
                 {
+                    // For vertex doc, random load balance assign
                     // (1) Rule1: if the vertex is first time to be insert
                     var minValue = partitionLoad.Min();
                     var minIndex = Array.IndexOf(partitionLoad, minValue);
@@ -453,8 +453,6 @@ namespace GraphView
                         docObject["_partition"] = minIndex.ToString();
                     }
                     partitionLoad[minIndex]++;
-                    // (2) Rule2: If the vertex has been inserted
-
                     return docObject;
                 }
             }
@@ -547,14 +545,15 @@ namespace GraphView
                     else
                     {
                         // (4) src and des not int the same partition
-                        if (partitionLoad[Convert.ToInt32(srcPartition)] > partitionLoad[Convert.ToInt32(desPartition)])
-                        {
-                            edge["_partition"] = desPartition;
-                        }
-                        else
-                        {
-                            edge["_partition"] = srcPartition;
-                        }
+                        //if (partitionLoad[Convert.ToInt32(srcPartition)] > partitionLoad[Convert.ToInt32(desPartition)])
+                        //{
+                        //    edge["_partition"] = desPartition;
+                        //}
+                        //else
+                        //{
+                        //    edge["_partition"] = srcPartition;
+                        //}
+                        edge["_partition"] = srcPartition; // For design of the transaction
                         CreateDocumentAsync(edge);
                         partitionLoad[Convert.ToInt32(edge["_partition"])] += 1;
                     }

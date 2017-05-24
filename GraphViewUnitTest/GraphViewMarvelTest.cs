@@ -261,7 +261,6 @@ namespace GraphViewUnitTest
               "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
               "GroupMatch", "PartitionTest", AbstractGremlinTest.TEST_USE_REVERSE_EDGE, AbstractGremlinTest.TEST_SPILLED_EDGE_THRESHOLD_VIAGRAPHAPI, AbstractGremlinTest.TEST_PARTITION_BY_KEY);
             connection.EdgeSpillThreshold = 1;
-            
             GraphViewCommand cmd = new GraphViewCommand(connection);
 
             cmd.CommandText = "g.addV('character').property('name', 'VENUS II').property('weapon', 'shield').next()";
@@ -287,7 +286,6 @@ namespace GraphViewUnitTest
               "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
               "GroupMatch", "PartitionTest", AbstractGremlinTest.TEST_USE_REVERSE_EDGE, AbstractGremlinTest.TEST_SPILLED_EDGE_THRESHOLD_VIAGRAPHAPI, AbstractGremlinTest.TEST_PARTITION_BY_KEY);
             connection1.EdgeSpillThreshold = 1;
-
             GraphViewCommand cmd = new GraphViewCommand(connection1);
 
             cmd.CommandText = "g.addV('id', '1').property('name', '1').next()";
@@ -309,44 +307,43 @@ namespace GraphViewUnitTest
             cmd.CommandText = "g.V('5').addE('appeared').to(g.V('2')).next()";
             cmd.Execute();
 
+            cmd.CommandText = "g.addV('id', '11').property('name', '11').next()";
+            cmd.Execute();
+            cmd.CommandText = "g.addV('id', '12').property('name', '12').next()";
+            cmd.Execute();
+            cmd.CommandText = "g.V('11').addE('appeared').to(g.V('12')).next()";
+            cmd.Execute();
+            cmd.CommandText = "g.addV('id', '13').property('name', '13').next()";
+            cmd.Execute();
+            cmd.CommandText = "g.V('13').addE('appeared').to(g.V('12')).next()";
+            cmd.Execute();
+            cmd.CommandText = "g.addV('id', '14').property('name', '14').next()";
+            cmd.Execute();
+            cmd.CommandText = "g.V('14').addE('appeared').to(g.V('12')).next()";
+            cmd.Execute();
+            cmd.CommandText = "g.addV('id', '15').property('name', '15').next()";
+            cmd.Execute();
+            cmd.CommandText = "g.V('15').addE('appeared').to(g.V('12')).next()";
+            cmd.Execute();
 
-            //cmd.CommandText = "g.addV('id', '11').property('name', '11').next()";
-            //cmd.Execute();
-            //cmd.CommandText = "g.addV('id', '12').property('name', '12').next()";
-            //cmd.Execute();
-            //cmd.CommandText = "g.V('11').addE('appeared').to(g.V('12')).next()";
-            //cmd.Execute();
-            //cmd.CommandText = "g.addV('id', '13').property('name', '13').next()";
-            //cmd.Execute();
-            //cmd.CommandText = "g.V('13').addE('appeared').to(g.V('12')).next()";
-            //cmd.Execute();
-            //cmd.CommandText = "g.addV('id', '14').property('name', '14').next()";
-            //cmd.Execute();
-            //cmd.CommandText = "g.V('14').addE('appeared').to(g.V('12')).next()";
-            //cmd.Execute();
-            //cmd.CommandText = "g.addV('id', '15').property('name', '15').next()";
-            //cmd.Execute();
-            //cmd.CommandText = "g.V('15').addE('appeared').to(g.V('12')).next()";
-            //cmd.Execute();
-
-            //cmd.CommandText = "g.addV('id', '21').property('name', '21').next()";
-            //cmd.Execute();
-            //cmd.CommandText = "g.addV('id', '22').property('name', '22').next()";
-            //cmd.Execute();
-            //cmd.CommandText = "g.V('21').addE('appeared').to(g.V('22')).next()";
-            //cmd.Execute();
-            //cmd.CommandText = "g.addV('id', '23').property('name', '23').next()";
-            //cmd.Execute();
-            //cmd.CommandText = "g.V('23').addE('appeared').to(g.V('22')).next()";
-            //cmd.Execute();
-            //cmd.CommandText = "g.addV('id', '24').property('name', '24').next()";
-            //cmd.Execute();
-            //cmd.CommandText = "g.V('24').addE('appeared').to(g.V('22')).next()";
-            //cmd.Execute();
-            //cmd.CommandText = "g.addV('id', '25').property('name', '25').next()";
-            //cmd.Execute();
-            //cmd.CommandText = "g.V('25').addE('appeared').to(g.V('22')).next()";
-            //cmd.Execute();
+            cmd.CommandText = "g.addV('id', '21').property('name', '21').next()";
+            cmd.Execute();
+            cmd.CommandText = "g.addV('id', '22').property('name', '22').next()";
+            cmd.Execute();
+            cmd.CommandText = "g.V('21').addE('appeared').to(g.V('22')).next()";
+            cmd.Execute();
+            cmd.CommandText = "g.addV('id', '23').property('name', '23').next()";
+            cmd.Execute();
+            cmd.CommandText = "g.V('23').addE('appeared').to(g.V('22')).next()";
+            cmd.Execute();
+            cmd.CommandText = "g.addV('id', '24').property('name', '24').next()";
+            cmd.Execute();
+            cmd.CommandText = "g.V('24').addE('appeared').to(g.V('22')).next()";
+            cmd.Execute();
+            cmd.CommandText = "g.addV('id', '25').property('name', '25').next()";
+            cmd.Execute();
+            cmd.CommandText = "g.V('25').addE('appeared').to(g.V('22')).next()";
+            cmd.Execute();
 
             GraphViewConnection connection2 = GraphViewConnection.ResetGraphAPICollection("https://graphview.documents.azure.com:443/",
           "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
@@ -354,6 +351,7 @@ namespace GraphViewUnitTest
             connection2.EdgeSpillThreshold = 1;
             connection2.repartitionTheCollection(connection1);
         }
+
         [TestMethod]
         public void GraphViewFakePartitionDataInsertTest()
         {
