@@ -245,14 +245,58 @@ namespace GraphView
 
         internal void InsertGremlinOperator(int index, GremlinTranslationOperator newGremlinTranslationOp)
         {
-            if (index >= GremlinTranslationOpList.Count || index == 0) 
+            if (index > GremlinTranslationOpList.Count || index < 0) 
                 throw new QueryCompilationException();
             GremlinTranslationOpList.Insert(index, newGremlinTranslationOp);
-            newGremlinTranslationOp.InputOperator = GremlinTranslationOpList[index-1];
+            if (index > 0)
+            {
+                newGremlinTranslationOp.InputOperator = GremlinTranslationOpList[index - 1];
+            }
             if (index + 1 < GremlinTranslationOpList.Count())
             {
                 GremlinTranslationOpList[index + 1].InputOperator = newGremlinTranslationOp;
             }
+        }
+
+        internal GremlinTranslationOperator PopGremlinOperator()
+        {
+            return this.RemoveGremlinOperator(GremlinTranslationOpList.Count - 1);
+        }
+
+        internal List<GremlinTranslationOperator> GetGremlinTranslationOpList()
+        {
+            return this.GremlinTranslationOpList.Copy();
+        }
+
+        // will not deal with the LastGremlinTranslationOp
+        internal GremlinTranslationOperator RemoveGremlinOperator(int index)
+        {
+            if (index >= GremlinTranslationOpList.Count || index < 0)
+                throw new QueryCompilationException();
+
+            GremlinTranslationOperator removedOp = GremlinTranslationOpList[index].Copy();
+
+            GremlinTranslationOpList.RemoveAt(index);
+
+            if (index < GremlinTranslationOpList.Count && index >= 0)
+            {
+                if (index > 0)
+                {
+                    GremlinTranslationOpList[index].InputOperator = GremlinTranslationOpList[index - 1];
+                }
+                else
+                {
+                    GremlinTranslationOpList[index].InputOperator = null;
+                }
+            }
+
+            return removedOp;
+        }
+
+        internal void ReplaceGremlinOperator(int index, GremlinTranslationOperator newGremlinTranslationOp)
+        {
+            this.RemoveGremlinOperator(index);
+            this.InsertGremlinOperator(index, newGremlinTranslationOp);
         }
 
         internal void AddGremlinOperator(GremlinTranslationOperator newGremlinTranslationOp)
@@ -288,6 +332,24 @@ namespace GraphView
         internal GremlinTranslationOperator GetEndOp()
         {
             return LastGremlinTranslationOp;
+        }
+
+        // Just get the first element of operator list and do not check the exception 'out of range'
+        internal GremlinTranslationOperator GetFirstOp()
+        {
+            return GremlinTranslationOpList.First();
+        }
+
+        // Just get the last element of operator list and do not check the exception 'out of range'
+        internal GremlinTranslationOperator GetLastOp()
+        {
+            return GremlinTranslationOpList.Last();
+        }
+
+        // get operator by index, return null if out of range
+        internal GremlinTranslationOperator GetOp(int index)
+        {
+            return GremlinTranslationOpList.Count > index ? GremlinTranslationOpList[index] : null;
         }
 
         public GraphTraversal2 AddE()
@@ -859,20 +921,17 @@ namespace GraphView
             return this;
         }
 
-        //public GraphTraversal2 loops()
-
         public GraphTraversal2 Map(GraphTraversal2 mapTraversal)
         {
             AddGremlinOperator(new GremlinMapOp(mapTraversal));
             return this;   
         }
 
-        //public GraphTraversal2 mapKeys() //Deprecated
-        //public GraphTraversal2 mapvalues() //Deprecated
-
         public GraphTraversal2 Match(params GraphTraversal2[] matchTraversals)
         {
-            AddGremlinOperator(new GremlinMatchOp(matchTraversals));
+            // AddGremlinOperator(new GremlinMatchOp(matchTraversals));
+            // Polyfill-Match: Implement Match by `Choose`, `Where` and `Select`, but do not support the Infix-And and Infix-Or.
+            (new PolyfillHelper.GremlinMatchOp(matchTraversals)).Polyfill(this);
             return this;
         }
 
@@ -1474,6 +1533,247 @@ namespace GraphView
             connectionList.Add(Connection.EdgeSpillThreshold.ToString());
             connectionList.Add(Connection.RealPartitionKey != null ? addDoubleQuotes(Connection.RealPartitionKey) : "null");
             return string.Join(",", connectionList);
+        }
+
+        public class PolyfillHelper
+        {
+            public class GremlinMatchOp
+            {
+                public List<GraphTraversal2> MatchTraversals { get; set; }
+                public List<Tuple<string, string>> StartAndEndLabelsPairList;
+                public HashSet<string> Labels;
+
+                public GremlinMatchOp(params GraphTraversal2[] matchTraversals)
+                {
+                    this.MatchTraversals = new List<GraphTraversal2>();
+                    this.StartAndEndLabelsPairList = new List<Tuple<string, string>>();
+                    this.Labels = new HashSet<string>();
+                    foreach (var traversal in matchTraversals)
+                    {
+                        this.configureStartAndEndOperators(traversal);
+                        this.MatchTraversals.Add(traversal);
+                    }
+
+                    this.sortMatchTraversals();
+                }
+
+                public void Polyfill(GraphTraversal2 traversal)
+                {
+                    if (this.StartAndEndLabelsPairList.Count == 0)
+                    {
+                        throw new TranslationException("the number of match-traversal should not be zero.");
+                    }
+                    var startLabel = this.StartAndEndLabelsPairList[0].Item1;
+                    // tag the traverser by computedStartLabel
+                    traversal.Choose(__().Select(startLabel), __().Identity(), __().As(startLabel));
+                    joinMatchTraversals(traversal, this.MatchTraversals);
+
+                    // match(...) which include 'a', 'b', 'c' means it will select('a', 'b', 'c') and generate a map
+                    traversal.Select(this.Labels.ToArray());
+                }
+
+                internal void configureStartAndEndOperators(GraphTraversal2 traversal)
+                {
+                    string startLabel = null, endLabel = null;
+
+                    GremlinParentContextOp startOperator = traversal.GetFirstOp() as GremlinParentContextOp;
+                    if (startOperator != null)
+                    {
+                        traversal.RemoveGremlinOperator(0);
+                    }
+
+                    GremlinAsOp asOperator = traversal.GetFirstOp() as GremlinAsOp;
+
+                    if (asOperator == null)
+                    {
+                        throw new QueryCompilationException(
+                            "NOW, The first and second operator of each match()-traversal should be '__()' and 'As()'.");
+                    }
+
+                    List<string> startLabels = asOperator.Labels;
+
+                    if (startLabels.Count != 1)
+                    {
+                        throw new QueryCompilationException("All match()-traversals must have a single start label.");
+                    }
+
+                    startLabel = startLabels[0];
+
+                    traversal.ReplaceGremlinOperator(0, new GremlinSelectOp(GremlinKeyword.Pop.Last, startLabel));
+
+                    // ---
+
+                    GremlinAsOp endOperator = traversal.GetLastOp() as GremlinAsOp;
+                    if (endOperator != null)
+                    {
+                        // as('a')...as('b'): both the start and end of the traversal have a declared variable.
+                        List<string> endLabels = endOperator.Labels;
+                        if (endLabels.Count <= 1)
+                        {
+                            traversal.PopGremlinOperator();
+                            if (endLabels.Count == 1)
+                            {
+                                endLabel = endLabels[0];
+                            }
+                            traversal.Choose(
+                                __().Select(GremlinKeyword.Pop.Last, endLabel), 
+                                __().Where(Predicate.eq(endLabel)).As(endLabel), 
+                                __().As(endLabel)
+                            );
+                        }
+                        else
+                        {
+                            throw new QueryCompilationException(
+                                "The end operator of a match()-traversal can have at most one label.");
+                        }
+                    }
+
+                    traversal.LastGremlinTranslationOp = traversal.GetLastOp();
+
+                    this.StartAndEndLabelsPairList.Add(new Tuple<string, string>(startLabel, endLabel));
+
+                    if (startLabel != null)
+                    {
+                        this.Labels.Add(startLabel);
+                    }
+
+                    if (endLabel != null)
+                    {
+                        this.Labels.Add(endLabel);
+                    }
+                }
+
+                internal static GraphTraversal2 joinMatchTraversals(GraphTraversal2 headTraversal, List<GraphTraversal2> matchTraversals)
+                {
+                    foreach (GraphTraversal2 matchTraversal in matchTraversals)
+                    {
+                        List<GremlinTranslationOperator> opList = matchTraversal.GetGremlinTranslationOpList();
+                        if ((opList.First() as GremlinParentContextOp) != null)
+                        {
+                            opList.RemoveAt(0);
+                        }
+                        foreach (GremlinTranslationOperator op in opList)
+                        {
+                            headTraversal.AddGremlinOperator(op);
+                        }
+                    }
+                    return headTraversal;
+                }
+
+                // similar topological sorting, MatchTraversals and StartAndEndLabelsPairList will be sorted synchronously
+                internal void sortMatchTraversals()
+                {
+                    Dictionary<string, List<string>> edges = new Dictionary<string, List<string>>();
+                    // find all the valid edges which have a source vertex and sink vertex
+                    foreach (Tuple<string, string> pair in this.StartAndEndLabelsPairList)
+                    {
+                        if (pair.Item1 != null && pair.Item2 != null)
+                        {
+                            if (edges.ContainsKey(pair.Item1))
+                            {
+                                edges[pair.Item1].Add(pair.Item2);
+                            }
+                            else
+                            {
+                                edges.Add(pair.Item1, new List<string> {pair.Item2});
+                            }
+                        }
+                    }
+
+                    // We have a graph consisting of many edges storing in 'edges'.
+                    // Each time, We will cut the graph to a subgraph and generate a list which is composed of the vertexs in the cut part meanwhile.
+                    // And then put this list at the front of the final sorted list which will include all vertexs(labels) finally.
+                    // We will not stop until the graph has no vertex.
+
+                    HashSet<string> vertexs = this.Labels.Copy();
+
+                    List<string> totalSortedList = new List<string>();
+
+                    while (vertexs.Count > 0)
+                    {
+                        List<string> longestPartialSortedList = new List<string>();
+                        foreach (string vertex in vertexs)
+                        {
+                            List<string> partialSortedList = breadthFirstSearch(edges, vertex);
+                            if (partialSortedList.Count > longestPartialSortedList.Count)
+                            {
+                                longestPartialSortedList = partialSortedList;
+                            }
+                        }
+                        // cut it off from the graph
+                        foreach (string vertex in longestPartialSortedList)
+                        {
+                            vertexs.Remove(vertex);
+                            foreach (KeyValuePair<string, List<string>> pair in edges)
+                            {
+                                pair.Value.Remove(vertex);
+                            }
+                            edges.Remove(vertex);
+                        }
+                        totalSortedList.InsertRange(0, longestPartialSortedList);
+                    }
+
+                    Debug.Assert(this.MatchTraversals.Count == this.StartAndEndLabelsPairList.Count);
+
+                    List<GraphTraversal2> sortedMatchTraversals = new List<GraphTraversal2>();
+                    List<Tuple<string, string>> sortedStartAndEndLabelsPairList = new List<Tuple<string, string>>();
+
+                    foreach (string label in totalSortedList)
+                    {
+                        for (int i = 0; i < this.MatchTraversals.Count; i++)
+                        {
+                            string startLabel = this.StartAndEndLabelsPairList[i].Item1;
+                            ;
+                            if (startLabel == label)
+                            {
+                                sortedMatchTraversals.Add(this.MatchTraversals[i]);
+                                sortedStartAndEndLabelsPairList.Add(this.StartAndEndLabelsPairList[i]);
+                            }
+                        }
+                    }
+
+                    // could be remove when stable
+                    Debug.Assert(this.MatchTraversals.Count == sortedMatchTraversals.Count);
+                    Debug.Assert(this.StartAndEndLabelsPairList.Count == sortedStartAndEndLabelsPairList.Count);
+                    Debug.Assert(sortedMatchTraversals.TrueForAll(t => this.MatchTraversals.Contains(t)));
+                    Debug.Assert(this.MatchTraversals.TrueForAll(t => sortedMatchTraversals.Contains(t)));
+                    Debug.Assert(
+                        sortedStartAndEndLabelsPairList.TrueForAll(t => this.StartAndEndLabelsPairList.Contains(t)));
+                    Debug.Assert(
+                        this.StartAndEndLabelsPairList.TrueForAll(t => sortedStartAndEndLabelsPairList.Contains(t)));
+
+                    this.MatchTraversals = sortedMatchTraversals;
+                    this.StartAndEndLabelsPairList = sortedStartAndEndLabelsPairList;
+                }
+
+                internal List<string> breadthFirstSearch(Dictionary<string, List<string>> edges, string start)
+                {
+                    List<string> record = new List<string>();
+
+                    Queue<string> queue = new Queue<string>();
+                    queue.Enqueue(start);
+                    while (queue.Count > 0)
+                    {
+                        string current = queue.Dequeue();
+                        record.Add(current);
+
+                        if (!edges.ContainsKey(current))
+                        {
+                            continue; // no next possible vertex
+                        }
+
+                        foreach (string nextVertex in edges[current])
+                        {
+                            if (!record.Contains(nextVertex))
+                            {
+                                queue.Enqueue(nextVertex);
+                            }
+                        }
+                    }
+
+                    return record;
+                }
+            }
         }
     }
 }
