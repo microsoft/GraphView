@@ -131,7 +131,6 @@
     <Compile Include="GremlinTranslation\map\GremlinInOp.cs" />
     <Compile Include="GremlinTranslation\map\GremlinInVOP.cs" />
     <Compile Include="GremlinTranslation\map\GremlinKeyOp.cs" />
-    <Compile Include="GremlinTranslation\map\GremlinMatchOp.cs" />
     <Compile Include="GremlinTranslation\map\GremlinMaxOp.cs" />
     <Compile Include="GremlinTranslation\map\GremlinMeanOp.cs" />
     <Compile Include="GremlinTranslation\map\GremlinMinOp.cs" />
