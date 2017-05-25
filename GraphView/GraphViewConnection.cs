@@ -463,10 +463,68 @@ namespace GraphView
             }
             // new yj
         }
+
+        /// <summary>
+        /// Metrics
+        /// </summary>
+        public void getMetricsOfGraphPartition()
+        {
+            // (1) Get balance metrics, What we can do is just statistic the partition key balance. 
+            // We can't get the physical partition information
+            int[] partitionDocCount = new int[partitionNum];
+            for (int i = 0; i < partitionNum; i++)
+            {
+                List<dynamic> result = ExecuteQuery("SELECT * FROM Node where Node._partition = \"" + i + "\"").ToList();
+                partitionDocCount[i] = Convert.ToInt32(result.Count);
+                Console.WriteLine("Partititon: " + i + " Count:" + partitionDocCount[i]);
+            }
+
+            double average = partitionDocCount.Average();
+            double sumOfSquaresOfDifferences = partitionDocCount.Select(val => (val - average) * (val - average)).Sum();
+            double sd = Math.Sqrt(sumOfSquaresOfDifferences / partitionDocCount.Length);
+            Console.WriteLine("Partition Doc Count SDV is " + sd);
+
+            // (2) Get Graph Clustering metrics: VertexCut ratio
+            List<dynamic> edgeList = ExecuteQuery("SELECT * FROM Node where Node._isEdgeDoc=true").ToList();
+            int vertexCut = 0;
+            int edgeCount = 0;
+            foreach (var e in edgeList)
+            {
+                var edge = (JObject)e;
+                var srcId = edge["_vertex_id"];
+                var desId = edge["_edge"][0]["_sinkV"];
+                var srcDocFromSrcCol = (JObject)ExecuteQuery("SELECT * FROM Node where Node.id=\"" + srcId + "\"").ToList()[0];
+                var desDocFromSrcCol = (JObject)ExecuteQuery("SELECT * FROM Node where Node.id=\"" + desId + "\"").ToList()[0];
+                var srcPartition = srcDocFromSrcCol["_partition"].ToString();
+                var desPartition = desDocFromSrcCol["_partition"].ToString();
+                var edgePartition = edge["_partition"].ToString();
+                edgeCount++;
+
+                if (edgePartition != srcPartition)
+                {
+                    vertexCut ++;
+                }
+                 
+                if(edgePartition != desPartition)
+                {
+                    vertexCut ++;
+                }
+            }
+
+            Console.WriteLine("Vertex cut ratio" + ((double)vertexCut / (2 * (double)edgeCount)));
+        }
+
         /// <summary>
         /// partition the collection
         /// </summary>
-       
+        public Boolean AssignSeenDesNotSeenSrcToBalance { set; get; } = false;
+        public int getMinLoadPartitionIndex()
+        {
+            var minValue = partitionLoad.Min();
+            var minIndex = Array.IndexOf(partitionLoad, minValue);
+            return minIndex;
+        }
+
         public void repartitionTheCollection(GraphViewConnection srcConnection)
         {
             usePartitionWhenCreateDoc = false;
@@ -484,9 +542,9 @@ namespace GraphView
                 // (1) neither vertex is insert
                 if (srcDocFromDesCol.Count == 0 && desDocFromDesCol.Count == 0)
                 {
-                    var minValue = partitionLoad.Min();
-                    var minIndex = Array.IndexOf(partitionLoad, minValue);
-                    edgePartition = minIndex.ToString();
+                    //var minValue = partitionLoad.Min();
+                    //var minIndex = Array.IndexOf(partitionLoad, minValue);
+                    edgePartition = getMinLoadPartitionIndex().ToString();
                     edge["_partition"] = edgePartition;
                     srcDocFromSrcCol["_partition"] = edgePartition;
                     desDocFromSrcCol["_partition"] = edgePartition;
@@ -517,9 +575,17 @@ namespace GraphView
 
                 if (desDocFromDesCol.Count != 0 && srcDocFromDesCol.Count == 0)
                 {
-                    var desDocPartition = ((JObject)(desDocFromDesCol[0]))["_partition"];
-                    srcDocFromSrcCol["_partition"] = desDocPartition;
-                    edge["_partition"] = desDocPartition;
+                    var index = "";
+                    if(AssignSeenDesNotSeenSrcToBalance)
+                    {
+                        index = getMinLoadPartitionIndex().ToString();
+                    } else
+                    {
+                        index = ((JObject)(desDocFromDesCol[0]))["_partition"].ToString();
+                    }
+
+                    srcDocFromSrcCol["_partition"] = index;
+                    edge["_partition"] = index;
                     // insert src doc
                     CreateDocumentAsync(srcDocFromSrcCol);
                     // insert edge
