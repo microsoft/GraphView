@@ -1395,91 +1395,13 @@ namespace GraphView
 
         // The traversal inside the flatMap function.
         private GraphViewExecutionOperator flatMapTraversal;
-        private ConstantSourceOperator contextOp;
-
-        private RawRecord currentRecord = null;
-        private Queue<RawRecord> outputBuffer;
-
-        public FlatMapOperator(
-            GraphViewExecutionOperator inputOp,
-            GraphViewExecutionOperator flatMapTraversal,
-            ConstantSourceOperator contextOp)
-        {
-            this.inputOp = inputOp;
-            this.flatMapTraversal = flatMapTraversal;
-            this.contextOp = contextOp;
-            
-            outputBuffer = new Queue<RawRecord>();
-            Open();
-        }
-
-        public override RawRecord Next()
-        {
-            if (outputBuffer.Count > 0)
-            {
-                RawRecord r = new RawRecord(currentRecord);
-                RawRecord toAppend = outputBuffer.Dequeue();
-                r.Append(toAppend);
-
-                return r;
-            }
-
-            while (inputOp.State())
-            {
-                currentRecord = inputOp.Next();
-                if (currentRecord == null)
-                {
-                    Close();
-                    return null;
-                }
-
-                contextOp.ConstantSource = currentRecord;
-                flatMapTraversal.ResetState();
-                RawRecord flatMapRec = null;
-                while ((flatMapRec = flatMapTraversal.Next()) != null)
-                {
-                    outputBuffer.Enqueue(flatMapRec);
-                }
-
-                if (outputBuffer.Count > 0)
-                {
-                    RawRecord r = new RawRecord(currentRecord);
-                    RawRecord toAppend = outputBuffer.Dequeue();
-                    r.Append(toAppend);
-
-                    return r;
-                }
-            }
-
-            Close();
-            return null;
-        }
-
-        public override void ResetState()
-        {
-            currentRecord = null;
-            inputOp.ResetState();
-            contextOp.ResetState();
-            flatMapTraversal.ResetState();
-            outputBuffer?.Clear();
-            Open();
-        }
-    }
-
-
-    internal class FlatMapInBatchOperator : GraphViewExecutionOperator
-    {
-        private GraphViewExecutionOperator inputOp;
-
-        // The traversal inside the flatMap function.
-        private GraphViewExecutionOperator flatMapTraversal;
         private ContainerEnumerator sourceEnumerator;
         
         private List<RawRecord> inputBatch;
 
         private int batchSize;
 
-        public FlatMapInBatchOperator(
+        public FlatMapOperator(
             GraphViewExecutionOperator inputOp,
             GraphViewExecutionOperator flatMapTraversal,
             ContainerEnumerator sourceEnumerator,
@@ -1626,169 +1548,6 @@ namespace GraphView
 
     internal class OptionalOperator : GraphViewExecutionOperator
     {
-        private GraphViewExecutionOperator inputOp;
-        // A list of record fields (identified by field indexes) from the input 
-        // operator are to be returned when the optional traversal produces no results.
-        // When a field index is less than 0, it means that this field value is always null. 
-        private List<int> inputIndexes;
-
-        // The traversal inside the optional function. 
-        // The records returned by this operator should have the same number of fields
-        // as the records drawn from the input operator, i.e., inputIndexes.Count 
-        private GraphViewExecutionOperator optionalTraversal;
-        private ConstantSourceOperator contextOp;
-        private ContainerOperator rootContainerOp;
-
-        private RawRecord currentRecord = null;
-        private Queue<RawRecord> outputBuffer;
-
-        private bool isCarryOnMode;
-        private bool optionalTraversalHasResults;
-        private bool hasReset;
-
-        public OptionalOperator(
-            GraphViewExecutionOperator inputOp,
-            List<int> inputIndexes,
-            GraphViewExecutionOperator optionalTraversal,
-            ConstantSourceOperator contextOp,
-            ContainerOperator containerOp,
-            bool isCarryOnMode)
-        {
-            this.inputOp = inputOp;
-            this.inputIndexes = inputIndexes;
-            this.optionalTraversal = optionalTraversal;
-            this.contextOp = contextOp;
-            this.rootContainerOp = containerOp;
-
-            this.isCarryOnMode = isCarryOnMode;
-            this.optionalTraversalHasResults = false;
-            this.hasReset = false;
-
-            outputBuffer = new Queue<RawRecord>();
-            Open();
-        }
-
-        public override RawRecord Next()
-        {
-            if (isCarryOnMode)
-            {
-                RawRecord traversalRecord;
-                while (optionalTraversal.State() && (traversalRecord = optionalTraversal.Next()) != null)
-                {
-                    optionalTraversalHasResults = true;
-                    return traversalRecord;
-                }
-
-                if (optionalTraversalHasResults)
-                {
-                    Close();
-                    return null;
-                }
-                else
-                {
-                    if (!hasReset)
-                    {
-                        hasReset = true;
-                        contextOp.ResetState();
-                    }
-                        
-                    RawRecord inputRecord = null;
-                    while (contextOp.State() && (inputRecord = contextOp.Next()) != null)
-                    {
-                        RawRecord r = new RawRecord(inputRecord);
-                        foreach (int index in inputIndexes)
-                        {
-                            if (index < 0)
-                            {
-                                r.Append((FieldObject)null);
-                            }
-                            else
-                            {
-                                r.Append(inputRecord[index]);
-                            }
-                        }
-
-                        return r;
-                    }
-
-                    Close();
-                    return null;
-                }
-            }
-            else
-            {
-                if (outputBuffer.Count > 0)
-                {
-                    RawRecord r = new RawRecord(currentRecord);
-                    RawRecord toAppend = outputBuffer.Dequeue();
-                    r.Append(toAppend);
-
-                    return r;
-                }
-
-                while (inputOp.State())
-                {
-                    currentRecord = inputOp.Next();
-                    if (currentRecord == null)
-                    {
-                        Close();
-                        return null;
-                    }
-
-                    contextOp.ConstantSource = currentRecord;
-                    optionalTraversal.ResetState();
-                    RawRecord optionalRec = null;
-                    while ((optionalRec = optionalTraversal.Next()) != null)
-                    {
-                        outputBuffer.Enqueue(optionalRec);
-                    }
-
-                    if (outputBuffer.Count > 0)
-                    {
-                        RawRecord r = new RawRecord(currentRecord);
-                        RawRecord toAppend = outputBuffer.Dequeue();
-                        r.Append(toAppend);
-
-                        return r;
-                    }
-                    else
-                    {
-                        RawRecord r = new RawRecord(currentRecord);
-                        foreach (int index in inputIndexes)
-                        {
-                            if (index < 0)
-                            {
-                                r.Append((FieldObject)null);
-                            }
-                            else
-                            {
-                                r.Append(currentRecord[index]);
-                            }
-                        }
-
-                        return r;
-                    }
-                }
-
-                Close();
-                return null;
-            }
-        }
-
-        public override void ResetState()
-        {
-            currentRecord = null;
-            inputOp.ResetState();
-            contextOp.ResetState();
-            rootContainerOp?.ResetState();
-            optionalTraversal.ResetState();
-            outputBuffer?.Clear();
-            Open();
-        }
-    }
-
-    internal class OptionalInBatchOperator : GraphViewExecutionOperator
-    {
         private const int batchIdIndex = 0;
 
         // A list of record fields (identified by field indexes) from the input 
@@ -1815,7 +1574,7 @@ namespace GraphView
         private readonly bool inputInBatch;
         private readonly int inputRecordLength;
 
-        public OptionalInBatchOperator(
+        public OptionalOperator(
             GraphViewExecutionOperator inputOp,
             List<int> inputIndexes,
             GraphViewExecutionOperator optionalTraversalOp,
@@ -2149,84 +1908,8 @@ namespace GraphView
         }
     }
 
-    internal class CoalesceOperator2 : GraphViewExecutionOperator
-    {
-        private List<Tuple<ConstantSourceOperator, GraphViewExecutionOperator>> traversalList;
-        private GraphViewExecutionOperator inputOp;
 
-        private RawRecord currentRecord;
-        private Queue<RawRecord> traversalOutputBuffer;
-
-        public CoalesceOperator2(GraphViewExecutionOperator inputOp)
-        {
-            this.inputOp = inputOp;
-            traversalList = new List<Tuple<ConstantSourceOperator, GraphViewExecutionOperator>>();
-            traversalOutputBuffer = new Queue<RawRecord>();
-            Open();
-        }
-
-        public void AddTraversal(ConstantSourceOperator contextOp, GraphViewExecutionOperator traversal)
-        {
-            traversalList.Add(new Tuple<ConstantSourceOperator, GraphViewExecutionOperator>(contextOp, traversal));
-        }
-
-        public override RawRecord Next()
-        {
-            while (traversalOutputBuffer.Count == 0 && inputOp.State())
-            {
-                currentRecord = inputOp.Next();
-                if (currentRecord == null)
-                {
-                    Close();
-                    return null;
-                }
-
-                foreach (var traversalPair in traversalList)
-                {
-                    ConstantSourceOperator traversalContext = traversalPair.Item1;
-                    GraphViewExecutionOperator traversal = traversalPair.Item2;
-                    traversalContext.ConstantSource = currentRecord;
-                    traversal.ResetState();
-
-                    RawRecord traversalRec = null;
-                    while ((traversalRec = traversal.Next()) != null)
-                    {
-                        traversalOutputBuffer.Enqueue(traversalRec);
-                    }
-
-                    if (traversalOutputBuffer.Count > 0)
-                    {
-                        break;
-                    }
-                }
-            }
-
-            if (traversalOutputBuffer.Count > 0)
-            {
-                RawRecord r = new RawRecord(currentRecord);
-                RawRecord traversalRec = traversalOutputBuffer.Dequeue();
-                r.Append(traversalRec);
-
-                return r;
-            }
-            else
-            {
-                Close();
-                return null;
-            }
-        }
-
-        public override void ResetState()
-        {
-            currentRecord = null;
-            inputOp.ResetState();
-            traversalOutputBuffer?.Clear();
-            Open();
-        }
-    }
-
-
-    internal class CoalesceInBatchOperator : GraphViewExecutionOperator
+    internal class CoalesceOperator : GraphViewExecutionOperator
     {
         private List<GraphViewExecutionOperator> traversalList;
         private GraphViewExecutionOperator inputOp;
@@ -2239,7 +1922,7 @@ namespace GraphView
         private ContainerEnumerator sourceEnumerator;
         private int batchSize;
 
-        public CoalesceInBatchOperator(GraphViewExecutionOperator inputOp, ContainerEnumerator sourceEnumerator)
+        public CoalesceOperator(GraphViewExecutionOperator inputOp, ContainerEnumerator sourceEnumerator)
         {
             this.inputOp = inputOp;
             this.traversalList = new List<GraphViewExecutionOperator>();

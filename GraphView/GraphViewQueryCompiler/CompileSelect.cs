@@ -1606,7 +1606,7 @@ namespace GraphView
         internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
         {
             ContainerEnumerator sourceEnumerator = new ContainerEnumerator();
-            CoalesceInBatchOperator coalesceOp = new CoalesceInBatchOperator(context.CurrentExecutionOperator, sourceEnumerator);
+            CoalesceOperator coalesceOp = new CoalesceOperator(context.CurrentExecutionOperator, sourceEnumerator);
                
             WSelectQueryBlock firstSelectQuery = null;
             foreach (WScalarExpression parameter in Parameters)
@@ -1821,7 +1821,7 @@ namespace GraphView
             //    containerOp,
             //    isCarryOnMode);
 
-            OptionalInBatchOperator optionalOp = new OptionalInBatchOperator(
+            OptionalOperator optionalOp = new OptionalOperator(
                 context.CurrentExecutionOperator,
                 inputIndexes,
                 optionalTraversalOp,
@@ -1912,7 +1912,7 @@ namespace GraphView
             GraphViewExecutionOperator flatMapTraversalOp = flatMapSelect.Compile(subcontext, dbConnection);
 
             //FlatMapOperator flatMapOp = new FlatMapOperator(context.CurrentExecutionOperator, flatMapTraversalOp, subcontext.OuterContextOp);
-            FlatMapInBatchOperator flatMapOp = new FlatMapInBatchOperator(context.CurrentExecutionOperator, flatMapTraversalOp, sourceEnumerator);
+            FlatMapOperator flatMapOp = new FlatMapOperator(context.CurrentExecutionOperator, flatMapTraversalOp, sourceEnumerator);
             context.CurrentExecutionOperator = flatMapOp;
 
             foreach (WSelectElement selectElement in flatMapSelect.SelectElements)
