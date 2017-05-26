@@ -395,12 +395,13 @@ namespace GraphView
         public static int partitionNum { get; set; } = 3;
         public static int[] partitionLoad = new int[partitionNum];
         public static bool usePartitionWhenCreateDoc { get; set; } = true;
+        public static int repartitionBatchRandomIterSize { get; set} = 1;
         /// <summary>
         /// partition the document data
         /// The <paramref name="docObject"/> will be updated (Add the "id" field)
         /// </summary>
         /// <param name="docObject"></param>
-        public JObject partitionDocumnetByGreedyVertexCut(JObject docObject)
+        public JObject partitionDocumentByGreedyVertexCut(JObject docObject)
         {
             try
             {
@@ -527,102 +528,120 @@ namespace GraphView
 
         public void repartitionTheCollection(GraphViewConnection srcConnection)
         {
+            Random rnd = new Random();
             usePartitionWhenCreateDoc = false;
             List<dynamic> edgeList = srcConnection.ExecuteQuery("SELECT * FROM Node where Node._isEdgeDoc=true").ToList();
-            foreach(var e in edgeList)
+            List<JObject> edgeBatchList = new List<JObject>();
+            int tempColCount = 0;
+            foreach (var e1 in edgeList)
             {
-                var edge = (JObject)e;
-                var srcId = edge["_vertex_id"];
-                var desId = edge["_edge"][0]["_sinkV"];
-                var srcDocFromSrcCol = (JObject)srcConnection.ExecuteQuery("SELECT * FROM Node where Node.id=\"" + srcId + "\"").ToList()[0];
-                var desDocFromSrcCol = (JObject)srcConnection.ExecuteQuery("SELECT * FROM Node where Node.id=\"" + desId + "\"").ToList()[0];
-                var srcDocFromDesCol = ExecuteQuery("SELECT * FROM Node where Node.id=\"" + srcId + "\"").ToList();
-                var desDocFromDesCol = ExecuteQuery("SELECT * FROM Node where Node.id=\"" + desId + "\"").ToList();
-                var edgePartition = "";
-                // (1) neither vertex is insert
-                if (srcDocFromDesCol.Count == 0 && desDocFromDesCol.Count == 0)
+                if(tempColCount < repartitionBatchRandomIterSize)
                 {
-                    //var minValue = partitionLoad.Min();
-                    //var minIndex = Array.IndexOf(partitionLoad, minValue);
-                    edgePartition = getMinLoadPartitionIndex().ToString();
-                    edge["_partition"] = edgePartition;
-                    srcDocFromSrcCol["_partition"] = edgePartition;
-                    desDocFromSrcCol["_partition"] = edgePartition;
-                  
-                    var t = desDocFromSrcCol["_partition"];
-                    // insert src doc
-                    CreateDocumentAsync(srcDocFromSrcCol);
-                    // insert des doc
-                    CreateDocumentAsync(desDocFromSrcCol);
-                    // insert edge
-                    CreateDocumentAsync(edge);
-                    partitionLoad[Convert.ToInt32(edge["_partition"])] += 3;
-                    continue;
-                }
-                // (2) only one the vertex insert
-                if (srcDocFromDesCol.Count != 0 && desDocFromDesCol.Count == 0)
-                {
-                    var srcDocPartition = ((JObject)(srcDocFromDesCol[0]))["_partition"];
-                    desDocFromSrcCol["_partition"] = srcDocPartition;
-                    edge["_partition"] = srcDocPartition;
-                    // insert des doc
-                    CreateDocumentAsync(desDocFromSrcCol);
-                    // insert edge
-                    CreateDocumentAsync(edge);
-                    partitionLoad[Convert.ToInt32(edge["_partition"])] += 2;
+                    edgeBatchList.Add(e1);
+                    tempColCount++;
                     continue;
                 }
 
-                if (desDocFromDesCol.Count != 0 && srcDocFromDesCol.Count == 0)
+                var shuffleList = edgeBatchList.OrderBy(x => rnd.Next()).ToList();
+                foreach(var e in shuffleList)
                 {
-                    var index = "";
-                    if(AssignSeenDesNotSeenSrcToBalance)
+                    var edge = (JObject)e;
+                    var srcId = edge["_vertex_id"];
+                    var desId = edge["_edge"][0]["_sinkV"];
+                    var srcDocFromSrcCol = (JObject)srcConnection.ExecuteQuery("SELECT * FROM Node where Node.id=\"" + srcId + "\"").ToList()[0];
+                    var desDocFromSrcCol = (JObject)srcConnection.ExecuteQuery("SELECT * FROM Node where Node.id=\"" + desId + "\"").ToList()[0];
+                    var srcDocFromDesCol = ExecuteQuery("SELECT * FROM Node where Node.id=\"" + srcId + "\"").ToList();
+                    var desDocFromDesCol = ExecuteQuery("SELECT * FROM Node where Node.id=\"" + desId + "\"").ToList();
+                    var edgePartition = "";
+                    // (1) neither vertex is insert
+                    if (srcDocFromDesCol.Count == 0 && desDocFromDesCol.Count == 0)
                     {
-                        index = getMinLoadPartitionIndex().ToString();
-                    } else
-                    {
-                        index = ((JObject)(desDocFromDesCol[0]))["_partition"].ToString();
-                    }
+                        //var minValue = partitionLoad.Min();
+                        //var minIndex = Array.IndexOf(partitionLoad, minValue);
+                        edgePartition = getMinLoadPartitionIndex().ToString();
+                        edge["_partition"] = edgePartition;
+                        srcDocFromSrcCol["_partition"] = edgePartition;
+                        desDocFromSrcCol["_partition"] = edgePartition;
 
-                    srcDocFromSrcCol["_partition"] = index;
-                    edge["_partition"] = index;
-                    // insert src doc
-                    CreateDocumentAsync(srcDocFromSrcCol);
-                    // insert edge
-                    CreateDocumentAsync(edge);
-                    partitionLoad[Convert.ToInt32(edge["_partition"])] += 2;
-                    continue;
-                }
-
-                if (srcDocFromDesCol.Count != 0 && desDocFromDesCol.Count != 0)
-                {
-                    var srcDocFromDes = (JObject)srcDocFromDesCol[0];
-                    var desDocFromDes = (JObject)srcDocFromDesCol[0];
-                    var srcPartition = srcDocFromDes["_partition"];
-                    var desPartition = desDocFromDes["_partition"];
-                    if(srcPartition == desPartition)
-                    {
-                        // (3) src and des in the same partition
-                        var desDocPartition = desDocFromDesCol[0]["_partition"];
-                        edge["_partition"] = desDocPartition;
+                        var t = desDocFromSrcCol["_partition"];
+                        // insert src doc
+                        CreateDocumentAsync(srcDocFromSrcCol);
+                        // insert des doc
+                        CreateDocumentAsync(desDocFromSrcCol);
+                        // insert edge
                         CreateDocumentAsync(edge);
-                        partitionLoad[Convert.ToInt32(edge["_partition"])] += 1;
+                        partitionLoad[Convert.ToInt32(edge["_partition"])] += 3;
+                        continue;
                     }
-                    else
+                    // (2) only one the vertex insert
+                    if (srcDocFromDesCol.Count != 0 && desDocFromDesCol.Count == 0)
                     {
-                        // (4) src and des not int the same partition
-                        //if (partitionLoad[Convert.ToInt32(srcPartition)] > partitionLoad[Convert.ToInt32(desPartition)])
-                        //{
-                        //    edge["_partition"] = desPartition;
-                        //}
-                        //else
-                        //{
-                        //    edge["_partition"] = srcPartition;
-                        //}
-                        edge["_partition"] = srcPartition; // For design of the transaction
+                        var srcDocPartition = ((JObject)(srcDocFromDesCol[0]))["_partition"];
+                        desDocFromSrcCol["_partition"] = srcDocPartition;
+                        edge["_partition"] = srcDocPartition;
+                        // insert des doc
+                        CreateDocumentAsync(desDocFromSrcCol);
+                        // insert edge
                         CreateDocumentAsync(edge);
-                        partitionLoad[Convert.ToInt32(edge["_partition"])] += 1;
+                        partitionLoad[Convert.ToInt32(edge["_partition"])] += 2;
+                        continue;
                     }
+
+                    if (desDocFromDesCol.Count != 0 && srcDocFromDesCol.Count == 0)
+                    {
+                        var index = "";
+                        if (AssignSeenDesNotSeenSrcToBalance)
+                        {
+                            index = getMinLoadPartitionIndex().ToString();
+                        }
+                        else
+                        {
+                            index = ((JObject)(desDocFromDesCol[0]))["_partition"].ToString();
+                        }
+
+                        srcDocFromSrcCol["_partition"] = index;
+                        edge["_partition"] = index;
+                        // insert src doc
+                        CreateDocumentAsync(srcDocFromSrcCol);
+                        // insert edge
+                        CreateDocumentAsync(edge);
+                        partitionLoad[Convert.ToInt32(edge["_partition"])] += 2;
+                        continue;
+                    }
+
+                    if (srcDocFromDesCol.Count != 0 && desDocFromDesCol.Count != 0)
+                    {
+                        var srcDocFromDes = (JObject)srcDocFromDesCol[0];
+                        var desDocFromDes = (JObject)srcDocFromDesCol[0];
+                        var srcPartition = srcDocFromDes["_partition"];
+                        var desPartition = desDocFromDes["_partition"];
+                        if (srcPartition == desPartition)
+                        {
+                            // (3) src and des in the same partition
+                            var desDocPartition = desDocFromDesCol[0]["_partition"];
+                            edge["_partition"] = desDocPartition;
+                            CreateDocumentAsync(edge);
+                            partitionLoad[Convert.ToInt32(edge["_partition"])] += 1;
+                        }
+                        else
+                        {
+                            // (4) src and des not int the same partition
+                            //if (partitionLoad[Convert.ToInt32(srcPartition)] > partitionLoad[Convert.ToInt32(desPartition)])
+                            //{
+                            //    edge["_partition"] = desPartition;
+                            //}
+                            //else
+                            //{
+                            //    edge["_partition"] = srcPartition;
+                            //}
+                            edge["_partition"] = srcPartition; // For design of the transaction
+                            CreateDocumentAsync(edge);
+                            partitionLoad[Convert.ToInt32(edge["_partition"])] += 1;
+                        }
+                    }
+
+                    tempColCount = 0;
+                    edgeBatchList.Clear();
                 }
             }
         }
@@ -641,7 +660,7 @@ namespace GraphView
             // new yj
             if(usePartitionWhenCreateDoc)
             {
-                docObject = partitionDocumnetByGreedyVertexCut(docObject);
+                docObject = partitionDocumentByGreedyVertexCut(docObject);
             }
             // new yj
             Document createdDocument = await this.DocDBClient.CreateDocumentAsync(this._docDBCollectionUri, docObject);
