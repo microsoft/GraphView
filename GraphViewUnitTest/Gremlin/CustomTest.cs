@@ -16,9 +16,6 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests
         {
             using (GraphViewCommand command = new GraphViewCommand(graphConnection))
             {
-                // var traversal = command.g().Inject(0).Union(command.g().V().Group(), command.g().E().Group()).Select(GremlinKeyword.Column.Keys).Values("name");
-                // var traversal = command.g().V().GroupCount().Unfold().Select(GremlinKeyword.Column.Keys).Values("name");
-                // var traversal = command.g().V().Group().By().By(GraphTraversal2.__().Count()).Select(GremlinKeyword.Column.Keys).Unfold().Values("name");
                 var traversal = command.g()
                     .V()
                     .Match(
@@ -29,6 +26,45 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests
                     )
                     .Select("a", "c")
                     .By("name");
+
+                //var traversal = command.g()
+                //    .V()
+                //    .Match(
+                //        GraphTraversal2.__().As("a").Out().As("b"),
+                //        GraphTraversal2.__().Not(GraphTraversal2.__().As("b").In("knows").As("a"))
+                //    )
+                //    .Select("a", "b")
+                //    .By("name");
+
+                //var traversal = command.g()
+                //    .V()
+                //    .As("a")
+                //    .Out()
+                //    .As("b")
+                //    .Match(
+                //        GraphTraversal2.__().As("a").Out().Count().As("c"),
+                //        GraphTraversal2.__().Not(GraphTraversal2.__().As("a").In().As("b"))
+                //    )
+                //    .Select("a", "b", "c")
+                //    .By("name")
+                //    .By("name")
+                //    .By();
+
+                //var traversal = command.g()
+                //    .V()
+                //    .As("a")
+                //    .Out()
+                //    .As("b")
+                //    .Match(
+                //        GraphTraversal2.__().As("a").Out().Count().As("c")
+                //    );
+
+                //var traversal = command.g()
+                //    .V()
+                //    .Match(
+                //        GraphTraversal2.__().As("a").Out().As("b"),
+                //        GraphTraversal2.__().Not(GraphTraversal2.__().As("b").In("created").As("a"))
+                //    );
 
                 var result = traversal.Next();
             }
