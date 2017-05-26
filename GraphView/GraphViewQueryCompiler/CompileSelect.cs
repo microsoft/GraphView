@@ -2723,10 +2723,13 @@ namespace GraphView
                 throw new SyntaxErrorException("The sub-query must be a select query block.");
             }
 
+            ContainerEnumerator sourceEnumerator = new ContainerEnumerator();
             QueryCompilationContext subcontext = new QueryCompilationContext(context);
+            subcontext.OuterContextOp.SourceEnumerator = sourceEnumerator;
+            subcontext.AddField(GremlinKeyword.IndexTableName, GremlinKeyword.IndexColumnName, ColumnGraphType.Value, true);
+            subcontext.InBatchMode = true;
             GraphViewExecutionOperator sideEffectTraversalOp = sideEffectSelect.Compile(subcontext, dbConnection);
-
-            SideEffectOperator sideEffectOp = new SideEffectOperator(context.CurrentExecutionOperator, sideEffectTraversalOp, subcontext.OuterContextOp);
+            SideEffectOperator sideEffectOp = new SideEffectOperator(context.CurrentExecutionOperator, sideEffectTraversalOp, sourceEnumerator);
             context.CurrentExecutionOperator = sideEffectOp;
 
             return sideEffectOp;

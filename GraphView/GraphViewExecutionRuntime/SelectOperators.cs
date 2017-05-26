@@ -2958,55 +2958,79 @@ namespace GraphView
         private GraphViewExecutionOperator inputOp;
 
         private GraphViewExecutionOperator sideEffectTraversal;
-        private ConstantSourceOperator contextOp;
+        private ContainerEnumerator sourceEnumerator;
+
+        private List<RawRecord> inputBatch;
+        private Queue<RawRecord> outputBuffer;
+
+        private int batchSize;
 
         public SideEffectOperator(
             GraphViewExecutionOperator inputOp,
             GraphViewExecutionOperator sideEffectTraversal,
-            ConstantSourceOperator contextOp)
+            ContainerEnumerator sourceEnumerator,
+            int batchSize = KW_DEFAULT_BATCH_SIZE)
         {
             this.inputOp = inputOp;
             this.sideEffectTraversal = sideEffectTraversal;
-            this.contextOp = contextOp;
+            this.sourceEnumerator = sourceEnumerator;
 
-            Open();
+            this.inputBatch = new List<RawRecord>();
+            this.batchSize = batchSize;
+            this.outputBuffer = new Queue<RawRecord>();
+
+            this.Open();
         }
 
         public override RawRecord Next()
         {
-            while (inputOp.State())
+            while (this.State())
             {
-                RawRecord currentRecord = inputOp.Next();
-                if (currentRecord == null)
+                if (this.outputBuffer.Any())
                 {
-                    Close();
+                    return outputBuffer.Dequeue();
+                }
+
+                this.inputBatch.Clear();
+                RawRecord inputRecord;
+                while (this.inputBatch.Count < this.batchSize && this.inputOp.State() && (inputRecord = this.inputOp.Next()) != null)
+                {
+                    RawRecord batchRawRecord = new RawRecord();
+                    batchRawRecord.Append(new StringField(this.inputBatch.Count.ToString(), JsonDataType.Int));
+                    batchRawRecord.Append(inputRecord);
+
+                    this.inputBatch.Add(batchRawRecord);
+                    this.outputBuffer.Enqueue(inputRecord);
+                }
+
+                if (!inputBatch.Any())
+                {
+                    this.Close();
                     return null;
                 }
 
-                //RawRecord resultRecord = new RawRecord(currentRecord);
-                contextOp.ConstantSource = currentRecord;
-                sideEffectTraversal.ResetState();
-
-                while (sideEffectTraversal.State())
+                this.sourceEnumerator.ResetTableCache(this.inputBatch);
+                this.sideEffectTraversal.ResetState();
+                while (this.sideEffectTraversal.State())
                 {
-                    sideEffectTraversal.Next();
+                    this.sideEffectTraversal.Next();
                 }
-
-                return currentRecord;
             }
 
-            Close();
+            this.Close();
             return null;
         }
 
         public override void ResetState()
         {
-            inputOp.ResetState();
-            contextOp.ResetState();
-            sideEffectTraversal.ResetState();
-            Open();
+            this.sourceEnumerator.ResetState();
+            this.inputBatch.Clear();
+            this.inputOp.ResetState();
+            this.sideEffectTraversal.ResetState();
+            this.Open();
         }
     }
+
 
     internal class InjectOperator : GraphViewExecutionOperator
     {
