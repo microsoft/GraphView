@@ -304,6 +304,7 @@ namespace GraphViewUnitTest
           "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
           "GroupMatch", "PartitionTestCitRep2", AbstractGremlinTest.TEST_USE_REVERSE_EDGE, AbstractGremlinTest.TEST_SPILLED_EDGE_THRESHOLD_VIAGRAPHAPI, AbstractGremlinTest.TEST_PARTITION_BY_KEY);
             connection2.EdgeSpillThreshold = 1;
+            GraphViewConnection.partitionLoad = new int[GraphViewConnection.partitionNum];
             connection2.repartitionTheCollection(connection1);
             connection2.getMetricsOfGraphPartition();
         }
@@ -322,6 +323,7 @@ namespace GraphViewUnitTest
           "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
           "GroupMatch", "PartitionTestCitRep2", AbstractGremlinTest.TEST_USE_REVERSE_EDGE, AbstractGremlinTest.TEST_SPILLED_EDGE_THRESHOLD_VIAGRAPHAPI, AbstractGremlinTest.TEST_PARTITION_BY_KEY);
             connection2.EdgeSpillThreshold = 1;
+            GraphViewConnection.partitionLoad = new int[GraphViewConnection.partitionNum];
             connection2.repartitionTheCollection(connection1);
             connection2.getMetricsOfGraphPartition();
         }
@@ -334,7 +336,6 @@ namespace GraphViewUnitTest
             connection.EdgeSpillThreshold = 1;
             GraphViewCommand cmd = new GraphViewCommand(connection);
             HashSet<String> nodeIdSet = new HashSet<String>();
-            
             // Add edge
             int c = 1;
             var linesE = File.ReadLines("D:\\dataset\\thsinghua_dataset\\cit_network\\cit-HepTh.txt\\Cit-HepTh.txt");
@@ -441,6 +442,7 @@ namespace GraphViewUnitTest
           "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
           "GroupMatch", "PartitionTest2", AbstractGremlinTest.TEST_USE_REVERSE_EDGE, AbstractGremlinTest.TEST_SPILLED_EDGE_THRESHOLD_VIAGRAPHAPI, AbstractGremlinTest.TEST_PARTITION_BY_KEY);
             connection2.EdgeSpillThreshold = 1;
+            GraphViewConnection.partitionLoad = new int[GraphViewConnection.partitionNum];
             connection2.repartitionTheCollection(connection1);
             connection2.getMetricsOfGraphPartition();
         }

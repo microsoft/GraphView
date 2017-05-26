@@ -292,10 +292,10 @@ namespace GraphView
             this.VertexCache = new VertexObjectCache(this);
 
             this.EdgeSpillThreshold = edgeSpillThreshold ?? 0;
-        }
+    }
 
 
-        internal DbPortal CreateDatabasePortal()
+    internal DbPortal CreateDatabasePortal()
         {
             return new DocumentDbPortal(this);
         }
@@ -392,10 +392,10 @@ namespace GraphView
         }
 
 
-        public static int partitionNum { get; set; } = 3;
+        public static int partitionNum { get; set; } = 1000;
         public static int[] partitionLoad = new int[partitionNum];
-        public static bool usePartitionWhenCreateDoc { get; set; } = true;
-        public static int repartitionBatchRandomIterSize { get; set} = 1;
+        public bool usePartitionWhenCreateDoc { get; set; } = true;
+        public int repartitionBatchRandomIterSize { get; set; } = 1;
         /// <summary>
         /// partition the document data
         /// The <paramref name="docObject"/> will be updated (Add the "id" field)
@@ -537,7 +537,7 @@ namespace GraphView
             {
                 if(tempColCount < repartitionBatchRandomIterSize)
                 {
-                    edgeBatchList.Add(e1);
+                    edgeBatchList.Add((JObject)e1);
                     tempColCount++;
                     continue;
                 }
@@ -556,8 +556,6 @@ namespace GraphView
                     // (1) neither vertex is insert
                     if (srcDocFromDesCol.Count == 0 && desDocFromDesCol.Count == 0)
                     {
-                        //var minValue = partitionLoad.Min();
-                        //var minIndex = Array.IndexOf(partitionLoad, minValue);
                         edgePartition = getMinLoadPartitionIndex().ToString();
                         edge["_partition"] = edgePartition;
                         srcDocFromSrcCol["_partition"] = edgePartition;
