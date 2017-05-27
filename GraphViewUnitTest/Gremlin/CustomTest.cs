@@ -12,7 +12,6 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests
     public class CustomTest : AbstractGremlinTest
     {
         [TestMethod]
-        [TestModernCompatible]
         public void AddVWithNestingProperties()
         {
             using (GraphViewCommand command = new GraphViewCommand(graphConnection))
@@ -72,21 +71,31 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests
                 //    .As("a")
                 //    .Out()
                 //    .As("b")
-                //    .Select("a")
-                //    .Out("knows")
-                //    .Where(Predicate.eq("b"))
-                //    .As("b")
-                //    .Values("name");
+                //    .Match(
+                //        GraphTraversal2.__().As("a").Out().Count().As("c"),
+                //        GraphTraversal2.__().Not(GraphTraversal2.__().As("a").In().As("b")),
+                //        GraphTraversal2.__()
+                //            .Or(
+                //                GraphTraversal2.__().As("a").Out("knows").As("b"),
+                //                GraphTraversal2.__().As("b").In().Count().As("c")
+                //            )
+                //    )
+                //    .Select("a", "b", "c")
+                //    .By("name")
+                //    .By("name")
+                //    .By();
 
-                var traversal = command.g()
-                    .V()
-                    .As("a")
-                    .Out()
-                    .Where(Predicate.neq("a"))
-                    .As("a")
-                    .Values("name");
+                //var result = traversal.Next();
 
-                var result = traversal.Next();
+
+                command.CommandText = "g.V().as('a').out().as('b').match(__.as('a').out().count().as('c'),__.not(__.as('a').in().as('b')),__.or(__.as('a').out('knows').as('b'),__.and(__.as('b').in().count().as('c'),__.as('c').is(gt(2))))).select('a','b','c').by('name').by('name').by()";
+
+                var result = command.ExecuteAndGetResults();
+
+                foreach (string r in result)
+                {
+                    Console.WriteLine(r);
+                }
             }
         }
 

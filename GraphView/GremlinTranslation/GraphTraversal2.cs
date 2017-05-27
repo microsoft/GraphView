@@ -1547,20 +1547,20 @@ namespace GraphView
                     OR
                 };
 
-                public Connective matchConnective { get; set; }
+                public Connective MatchConnective { get; set; }
                 public List<GraphTraversal2> MatchTraversals { get; set; }
                 public List<Tuple<string, string>> StartAndEndLabelsPairList;
                 public HashSet<string> Labels;
 
                 public Match(Connective connective, params GraphTraversal2[] matchTraversals)
                 {
-                    this.matchConnective = connective;
+                    this.MatchConnective = connective;
                     this.MatchTraversals = new List<GraphTraversal2>();
                     this.StartAndEndLabelsPairList = new List<Tuple<string, string>>();
                     this.Labels = new HashSet<string>();
                     foreach (GraphTraversal2 traversal in matchTraversals)
                     {
-                        this.MatchTraversals.Add(this.configureStartAndEndOperators(traversal));
+                        this.MatchTraversals.Add(this.ConfigureStartAndEndOperators(traversal));
                     }
                 }
 
@@ -1571,22 +1571,33 @@ namespace GraphView
                         throw new TranslationException("the number of match-traversal should not be zero.");
                     }
 
-                    this.sortMatchTraversals();
-                    var startLabel = this.StartAndEndLabelsPairList[0].Item1;
+                    if (this.MatchConnective == Connective.AND)
+                    {
+                        this.SortMatchTraversals();
+                        var computedStartLabel = this.StartAndEndLabelsPairList[0].Item1;
 
-                    GraphTraversal2 flatMapTraversal = __();
+                        GraphTraversal2 flatMapTraversal = __();
 
-                    // tag the traverser by computedStartLabel
-                    flatMapTraversal.Choose(__().Select(startLabel), __().Identity(), __().As(startLabel));
-                    joinMatchTraversals(flatMapTraversal, this.MatchTraversals);
+                        // tag the traverser by computedStartLabel
+                        flatMapTraversal.Choose(__().Select(computedStartLabel), __().Identity(), __().As(computedStartLabel));
+                        JoinMatchTraversals(flatMapTraversal, this.MatchTraversals);
 
-                    // match(...) which include 'a', 'b', 'c' means it will select('a', 'b', 'c') and generate a map
-                    flatMapTraversal.Select(GremlinKeyword.Pop.Last, this.Labels.ToArray());
+                        // match(...) which include 'a', 'b', 'c' means it will select('a', 'b', 'c') and generate a map
+                        flatMapTraversal.Select(GremlinKeyword.Pop.Last, this.Labels.ToArray());
 
-                    traversal.FlatMap(flatMapTraversal);
+                        traversal.FlatMap(flatMapTraversal);
+                    }
+                    else if (this.MatchConnective == Connective.OR)
+                    {
+                        traversal.Or(this.MatchTraversals.ToArray());
+                    }
+                    else
+                    {
+                        throw new TranslationException("MatchConnective should be AND or OR.");
+                    }
                 }
 
-                internal GraphTraversal2 configureStartAndEndOperators(GraphTraversal2 traversal)
+                internal GraphTraversal2 ConfigureStartAndEndOperators(GraphTraversal2 traversal)
                 {
                     GraphTraversal2 configuredTraversal = __();
 
@@ -1600,14 +1611,35 @@ namespace GraphView
                     
                     if (orOperator != null)
                     {
-                        throw new NotImplementedException();
+                        (new PolyfillHelper.Match(Connective.OR, orOperator.OrTraversals.ToArray())).Polyfill(configuredTraversal);
+                        this.StartAndEndLabelsPairList.Add(new Tuple<string, string>(null, null));
+                        return configuredTraversal;
+                    }
+
+                    // -------- Match-AND-------
+                    GremlinAndOp andOperator = traversal.GetFirstOp() as GremlinAndOp;
+
+                    if (andOperator != null)
+                    {
+                        (new PolyfillHelper.Match(Connective.AND, andOperator.AndTraversals.ToArray())).Polyfill(configuredTraversal);
+                        this.StartAndEndLabelsPairList.Add(new Tuple<string, string>(null, null));
+                        return configuredTraversal;
                     }
 
 
                     // --------- Where()-Traversal ---------
+                    GremlinWherePredicateOp wherePredicateOperator = traversal.GetFirstOp() as GremlinWherePredicateOp;
+
+                    if (wherePredicateOperator != null)
+                    {
+                        configuredTraversal.AddGremlinOperator(wherePredicateOperator);
+                        this.StartAndEndLabelsPairList.Add(new Tuple<string, string>(null, null));
+                        return configuredTraversal;
+                    }
+
+
                     GremlinNotOp notOperator = traversal.GetFirstOp() as GremlinNotOp;
                     GremlinWhereTraversalOp whereTraversalOperator = traversal.GetFirstOp() as GremlinWhereTraversalOp;
-                    GremlinWherePredicateOp wherePredicateOperator = traversal.GetFirstOp() as GremlinWherePredicateOp;
 
                     if (notOperator != null)
                     {
@@ -1648,11 +1680,12 @@ namespace GraphView
                     }
                     else if (whereTraversalOperator != null)
                     {
-                        throw new NotImplementedException();
-                    }
-                    else if (wherePredicateOperator != null)
-                    {
-                        throw new NotImplementedException();
+                        GraphTraversal2 whereTraversal = whereTraversalOperator.WhereTraversal;
+                        if ((whereTraversal.GetFirstOp() as GremlinParentContextOp) != null)
+                        {
+                            whereTraversal.RemoveGremlinOperator(0);
+                        }
+                        traversal = whereTraversal;
                     }
 
                     // --------- Normal Match()-Traversal ---------
@@ -1680,11 +1713,22 @@ namespace GraphView
                             {
                                 endLabel = endLabels[0];
 
-                                configuredTraversal.Choose(
-                                    __().Select(GremlinKeyword.Pop.Last, endLabel),
-                                    __().Where(Predicate.eq(endLabel)).As(endLabel),
-                                    __().As(endLabel)
-                                );
+                                if (MatchConnective == Connective.AND)
+                                {
+                                    configuredTraversal.Choose(
+                                        __().Select(GremlinKeyword.Pop.Last, endLabel),
+                                        __().Where(Predicate.eq(endLabel)).As(endLabel),
+                                        __().As(endLabel)
+                                    );
+                                }
+                                else if (MatchConnective == Connective.OR)
+                                {
+                                    configuredTraversal.Where(Predicate.eq(endLabel));
+                                }
+                                else
+                                {
+                                    throw new TranslationException("MatchConnective should be AND or OR.");
+                                }
                             }
                         }
                         else
@@ -1693,8 +1737,6 @@ namespace GraphView
                                 "The end operator of a match()-traversal can have at most one label.");
                         }
                     }
-
-                    // traversal.LastGremlinTranslationOp = traversal.GetLastOp(); // update the LastGremlinTranslationOp
 
                     this.StartAndEndLabelsPairList.Add(new Tuple<string, string>(startLabel, endLabel));
 
@@ -1716,7 +1758,7 @@ namespace GraphView
                     return configuredTraversal;
                 }
 
-                internal static GraphTraversal2 joinMatchTraversals(GraphTraversal2 headTraversal, List<GraphTraversal2> matchTraversals)
+                internal static GraphTraversal2 JoinMatchTraversals(GraphTraversal2 headTraversal, List<GraphTraversal2> matchTraversals)
                 {
                     foreach (GraphTraversal2 matchTraversal in matchTraversals)
                     {
@@ -1734,7 +1776,7 @@ namespace GraphView
                 }
 
                 // similar topological sorting, MatchTraversals and StartAndEndLabelsPairList will be sorted synchronously
-                internal void sortMatchTraversals()
+                internal void SortMatchTraversals()
                 {
                     Dictionary<string, List<string>> edges = new Dictionary<string, List<string>>();
                     // find all the valid edges which have a source vertex and sink vertex
@@ -1767,7 +1809,7 @@ namespace GraphView
                         List<string> longestPartialSortedList = new List<string>();
                         foreach (string vertex in vertexs)
                         {
-                            List<string> partialSortedList = breadthFirstSearch(edges, vertex);
+                            List<string> partialSortedList = this.BreadthFirstSearch(edges, vertex);
                             if (partialSortedList.Count > longestPartialSortedList.Count)
                             {
                                 longestPartialSortedList = partialSortedList;
@@ -1805,6 +1847,16 @@ namespace GraphView
                         }
                     }
 
+                    for (int i = 0; i < this.MatchTraversals.Count; i++)
+                    {
+                        string startLabel = this.StartAndEndLabelsPairList[i].Item1;
+                        if (startLabel == null)
+                        {
+                            sortedMatchTraversals.Add(this.MatchTraversals[i]);
+                            sortedStartAndEndLabelsPairList.Add(this.StartAndEndLabelsPairList[i]);
+                        }
+                    }
+
                     // could be remove when stable
                     Debug.Assert(this.MatchTraversals.Count == sortedMatchTraversals.Count);
                     Debug.Assert(this.StartAndEndLabelsPairList.Count == sortedStartAndEndLabelsPairList.Count);
@@ -1819,7 +1871,7 @@ namespace GraphView
                     this.StartAndEndLabelsPairList = sortedStartAndEndLabelsPairList;
                 }
 
-                internal List<string> breadthFirstSearch(Dictionary<string, List<string>> edges, string start)
+                internal List<string> BreadthFirstSearch(Dictionary<string, List<string>> edges, string start)
                 {
                     List<string> record = new List<string>();
 
