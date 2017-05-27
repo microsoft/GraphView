@@ -85,10 +85,10 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests
                 //    .By("name")
                 //    .By();
 
-                //var result = traversal.Next();
+                // var result = traversal.Next();
 
 
-                command.CommandText = "g.V().as('a').out().as('b').match(__.as('a').out().count().as('c'),__.not(__.as('a').in().as('b')),__.or(__.as('a').out('knows').as('b'),__.and(__.as('b').in().count().as('c'),__.as('c').is(gt(2))))).select('a','b','c').by('name').by('name').by()";
+                command.CommandText = "g.V().as('a').out().as('b').match(__.as('a').out().count().as('c'),__.not(__.as('a').in().as('b')),__.or(__.as('a').out('knows').as('b'),__.as('b').in().count().as('c').and().as('c').is(gt(2)))).select('a','b','c').by('name').by('name').by()";
 
                 var result = command.ExecuteAndGetResults();
 

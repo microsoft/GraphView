@@ -399,12 +399,9 @@ namespace GraphView
                 GraphTraversal2 sencondTraversal = GraphTraversal2.__();
                 for (var i = 1; i < GremlinTranslationOpList.Count; i++)
                 {
-                    firstTraversal.AddGremlinOperator(GremlinTranslationOpList[i].Copy());
+                    firstTraversal.AddGremlinOperator(GremlinTranslationOpList[i]);
                 }
-                for (var i = 1; i < GremlinTranslationOpList.Count; i++)
-                {
-                    GremlinTranslationOpList.RemoveAt(i);
-                }
+                GremlinTranslationOpList.RemoveRange(1, GremlinTranslationOpList.Count - 1);
                 LastGremlinTranslationOp = GremlinTranslationOpList.First();
                 GremlinAndOp newAndOp = new GremlinAndOp(firstTraversal, sencondTraversal);
                 AddGremlinOperator(newAndOp);
@@ -1014,10 +1011,7 @@ namespace GraphView
                 {
                     firstTraversal.AddGremlinOperator(GremlinTranslationOpList[i].Copy());
                 }
-                for (var i = 1; i < GremlinTranslationOpList.Count; i++)
-                {
-                    GremlinTranslationOpList.RemoveAt(i);
-                }
+                GremlinTranslationOpList.RemoveRange(1, GremlinTranslationOpList.Count - 1);
                 LastGremlinTranslationOp = GremlinTranslationOpList.First();
                 GremlinOrOp newOrOp = new GremlinOrOp(firstTraversal, sencondTraversal);
                 AddGremlinOperator(newOrOp);
@@ -1558,13 +1552,14 @@ namespace GraphView
                     this.MatchTraversals = new List<GraphTraversal2>();
                     this.StartAndEndLabelsPairList = new List<Tuple<string, string>>();
                     this.Labels = new HashSet<string>();
+
                     foreach (GraphTraversal2 traversal in matchTraversals)
                     {
                         this.MatchTraversals.Add(this.ConfigureStartAndEndOperators(traversal));
                     }
                 }
 
-                public void Polyfill(GraphTraversal2 traversal)
+                internal void Polyfill(GraphTraversal2 traversal)
                 {
                     if (this.StartAndEndLabelsPairList.Count == 0)
                     {
@@ -1611,7 +1606,15 @@ namespace GraphView
                     
                     if (orOperator != null)
                     {
-                        (new PolyfillHelper.Match(Connective.OR, orOperator.OrTraversals.ToArray())).Polyfill(configuredTraversal);
+                        if (orOperator.IsInfix)
+                        {
+                            (new PolyfillHelper.Match(Connective.OR, orOperator.FirstTraversal,
+                                orOperator.SecondTraversal)).Polyfill(configuredTraversal);
+                        }
+                        else
+                        {
+                            (new PolyfillHelper.Match(Connective.OR, orOperator.OrTraversals.ToArray())).Polyfill(configuredTraversal);
+                        }
                         this.StartAndEndLabelsPairList.Add(new Tuple<string, string>(null, null));
                         return configuredTraversal;
                     }
@@ -1621,7 +1624,16 @@ namespace GraphView
 
                     if (andOperator != null)
                     {
-                        (new PolyfillHelper.Match(Connective.AND, andOperator.AndTraversals.ToArray())).Polyfill(configuredTraversal);
+                        if (andOperator.IsInfix)
+                        {
+                            (new PolyfillHelper.Match(Connective.AND, andOperator.FirstTraversal,
+                                andOperator.SecondTraversal)).Polyfill(configuredTraversal);
+                        }
+                        else
+                        {
+                            (new PolyfillHelper.Match(Connective.AND, andOperator.AndTraversals.ToArray())).Polyfill(configuredTraversal);
+                        }
+                        
                         this.StartAndEndLabelsPairList.Add(new Tuple<string, string>(null, null));
                         return configuredTraversal;
                     }
