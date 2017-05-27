@@ -1601,57 +1601,12 @@ namespace GraphView
         }
     }
 
-    partial class WMatchTableReference
-    {
-        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
-        {
-            Debug.Assert(Parameters.Count == 1, "Parameters.Count == 1");
-            
-            WScalarSubquery scalarSubquery = Parameters[0] as WScalarSubquery;
-            if (scalarSubquery == null)
-            {
-                throw new SyntaxErrorException("The input of a coalesce table reference must be one or more scalar subqueries.");
-            }
-
-            QueryCompilationContext subContext = new QueryCompilationContext(context);
-            GraphViewExecutionOperator traversalOp = scalarSubquery.SubQueryExpr.Compile(subContext, dbConnection);
-
-            MatchOperator matchOp = new MatchOperator(context.CurrentExecutionOperator, traversalOp, subContext.OuterContextOp);
-
-            context.CurrentExecutionOperator = matchOp;
-            context.AddField(Alias.Value, GremlinKeyword.TableDefaultColumnName, ColumnGraphType.Value);
-            return matchOp;
-        }
-
-        
-    }
-
-    partial class WMatchStartTableReference
-    {
-        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
-        {
-            throw new NotImplementedException();
-        }
-
-        
-    }
-
-    partial class WMatchEndTableReference
-    {
-        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
-        {
-            throw new NotImplementedException();
-        }
-
-        
-    }
-
     partial class WCoalesceTableReference
     {
         internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
         {
             ContainerEnumerator sourceEnumerator = new ContainerEnumerator();
-            CoalesceInBatchOperator coalesceOp = new CoalesceInBatchOperator(context.CurrentExecutionOperator, sourceEnumerator);
+            CoalesceOperator coalesceOp = new CoalesceOperator(context.CurrentExecutionOperator, sourceEnumerator);
                
             WSelectQueryBlock firstSelectQuery = null;
             foreach (WScalarExpression parameter in Parameters)
@@ -1866,7 +1821,7 @@ namespace GraphView
             //    containerOp,
             //    isCarryOnMode);
 
-            OptionalInBatchOperator optionalOp = new OptionalInBatchOperator(
+            OptionalOperator optionalOp = new OptionalOperator(
                 context.CurrentExecutionOperator,
                 inputIndexes,
                 optionalTraversalOp,
@@ -1957,7 +1912,7 @@ namespace GraphView
             GraphViewExecutionOperator flatMapTraversalOp = flatMapSelect.Compile(subcontext, dbConnection);
 
             //FlatMapOperator flatMapOp = new FlatMapOperator(context.CurrentExecutionOperator, flatMapTraversalOp, subcontext.OuterContextOp);
-            FlatMapInBatchOperator flatMapOp = new FlatMapInBatchOperator(context.CurrentExecutionOperator, flatMapTraversalOp, sourceEnumerator);
+            FlatMapOperator flatMapOp = new FlatMapOperator(context.CurrentExecutionOperator, flatMapTraversalOp, sourceEnumerator);
             context.CurrentExecutionOperator = flatMapOp;
 
             foreach (WSelectElement selectElement in flatMapSelect.SelectElements)
@@ -2773,10 +2728,13 @@ namespace GraphView
                 throw new SyntaxErrorException("The sub-query must be a select query block.");
             }
 
+            ContainerEnumerator sourceEnumerator = new ContainerEnumerator();
             QueryCompilationContext subcontext = new QueryCompilationContext(context);
+            subcontext.OuterContextOp.SourceEnumerator = sourceEnumerator;
+            subcontext.AddField(GremlinKeyword.IndexTableName, GremlinKeyword.IndexColumnName, ColumnGraphType.Value, true);
+            subcontext.InBatchMode = true;
             GraphViewExecutionOperator sideEffectTraversalOp = sideEffectSelect.Compile(subcontext, dbConnection);
-
-            SideEffectOperator sideEffectOp = new SideEffectOperator(context.CurrentExecutionOperator, sideEffectTraversalOp, subcontext.OuterContextOp);
+            SideEffectOperator sideEffectOp = new SideEffectOperator(context.CurrentExecutionOperator, sideEffectTraversalOp, sourceEnumerator);
             context.CurrentExecutionOperator = sideEffectOp;
 
             return sideEffectOp;

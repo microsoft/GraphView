@@ -12,20 +12,21 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests
     public class CustomTest : AbstractGremlinTest
     {
         [TestMethod]
+        [TestModernCompatible]
         public void AddVWithNestingProperties()
         {
             using (GraphViewCommand command = new GraphViewCommand(graphConnection))
             {
-                var traversal = command.g()
-                    .V()
-                    .Match(
-                        GraphTraversal2.__().As("b").In("created").As("c"),
-                        GraphTraversal2.__().As("c").Has("age", 29),
-                        GraphTraversal2.__().As("b").Has("name", "lop"),
-                        GraphTraversal2.__().As("a").Out("created").As("b")
-                    )
-                    .Select("a", "c")
-                    .By("name");
+                //var traversal = command.g()
+                //    .V()
+                //    .Match(
+                //        GraphTraversal2.__().As("b").In("created").As("c"),
+                //        GraphTraversal2.__().As("c").Has("age", 29),
+                //        GraphTraversal2.__().As("b").Has("name", "lop"),
+                //        GraphTraversal2.__().As("a").Out("created").As("b")
+                //    )
+                //    .Select("a", "c")
+                //    .By("name");
 
                 //var traversal = command.g()
                 //    .V()
@@ -65,6 +66,25 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests
                 //        GraphTraversal2.__().As("a").Out().As("b"),
                 //        GraphTraversal2.__().Not(GraphTraversal2.__().As("b").In("created").As("a"))
                 //    );
+
+                //var traversal = command.g()
+                //    .V()
+                //    .As("a")
+                //    .Out()
+                //    .As("b")
+                //    .Select("a")
+                //    .Out("knows")
+                //    .Where(Predicate.eq("b"))
+                //    .As("b")
+                //    .Values("name");
+
+                var traversal = command.g()
+                    .V()
+                    .As("a")
+                    .Out()
+                    .Where(Predicate.neq("a"))
+                    .As("a")
+                    .Values("name");
 
                 var result = traversal.Next();
             }

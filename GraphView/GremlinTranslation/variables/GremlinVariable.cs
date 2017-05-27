@@ -755,7 +755,7 @@ namespace GraphView
                         repeatContext.ContextLocalPath.Populate(property);
                     }
                     pathVariable.IsInRepeatContext = true;
-                    pathVariable.PathList.Insert(pathVariable.PathList.FindLastIndex(p => p.GetVariableName() == this.GetVariableName()), null);
+                    pathVariable.InsertStep(pathVariable.GetStepList().FindLastIndex(p => p.GetVariableName() == this.GetVariableName()), null);
                 }
             }
         }

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -8,31 +9,36 @@ namespace GraphView
 {
     internal class GremlinPathVariable : GremlinTableVariable
     {
-        public List<GremlinVariable> PathList { get; set; }
+        private List<GremlinVariable> StepList { get; set; }
+        private List<List<string>> StepLabelsAtThatMoment { get; set; }
         public bool IsInRepeatContext { get; set; }
         public List<GremlinToSqlContext> ByContexts { get; set; }
 
-        public GremlinPathVariable(List<GremlinVariable> pathList, List<GremlinToSqlContext> byContexts)
+        public GremlinPathVariable(List<GremlinVariable> stepList, List<GremlinToSqlContext> byContexts)
             :base(GremlinVariableType.Table)
         {
-            PathList = pathList;
-            IsInRepeatContext = false;
-            ByContexts = byContexts;
+            this.StepList = new List<GremlinVariable>();
+            this.StepLabelsAtThatMoment = new List<List<string>>();
+            stepList.ForEach(this.AddStep);
+            this.IsInRepeatContext = false;
+            this.ByContexts = byContexts;
         }
 
         //automatically generated path will use this constructor
-        public GremlinPathVariable(List<GremlinVariable> pathList)
+        public GremlinPathVariable(List<GremlinVariable> stepList)
             : base(GremlinVariableType.Table)
         {
-            PathList = pathList;
-            IsInRepeatContext = false;
-            ByContexts = new List<GremlinToSqlContext>();
+            this.StepList = new List<GremlinVariable>();
+            this.StepLabelsAtThatMoment = new List<List<string>>();
+            stepList.ForEach(this.AddStep);
+            this.IsInRepeatContext = false;
+            this.ByContexts = new List<GremlinToSqlContext>();
         }
 
         internal override List<GremlinVariable> FetchAllVars()
         {
             List<GremlinVariable> variableList = new List<GremlinVariable>() { this };
-            variableList.AddRange(PathList.FindAll(p=>p!=null && !(p is GremlinContextVariable)));
+            variableList.AddRange(this.StepList.FindAll(p=>p!=null && !(p is GremlinContextVariable)));
             foreach (var context in ByContexts)
             {
                 variableList.AddRange(context.FetchAllVars());
@@ -61,11 +67,28 @@ namespace GraphView
 
         internal override void PopulateStepProperty(string property)
         {
-            foreach (var step in PathList)
+            foreach (var step in this.StepList)
             {
                 if (step == this) continue;
                 step?.PopulateStepProperty(property);
             }
+        }
+
+        public List<GremlinVariable> GetStepList()
+        {
+            return this.StepList;
+        }
+
+        public void InsertStep(int index, GremlinVariable step)
+        {
+            this.StepList.Insert(index, step);
+            this.StepLabelsAtThatMoment.Insert(index, step?.Labels.Copy());
+        }
+
+        public void AddStep(GremlinVariable step)
+        {
+            this.StepList.Add(step);
+            this.StepLabelsAtThatMoment.Add(step?.Labels.Copy());
         }
 
         public override WTableReference ToTableReference()
@@ -79,9 +102,10 @@ namespace GraphView
                 queryBlocks.Add(byContext.ToSelectQueryBlock(true));
             }
 
-            foreach (var path in PathList)
+            for (int i = 0; i < this.StepList.Count; i++)
             {
-                if (path == null)
+                GremlinVariable step = this.StepList[i];
+                if (step == null)
                 {
                     if (IsInRepeatContext)
                     {
@@ -89,17 +113,17 @@ namespace GraphView
                             GremlinKeyword.Path));
                     }
                 }
-                else if (path is GremlinContextVariable)
+                else if (step is GremlinContextVariable)
                 {
-                    foreach (var label in path.Labels)
+                    foreach (var label in this.StepLabelsAtThatMoment[i])
                     {
                         parameters.Add(SqlUtil.GetValueExpr(label));
                     }
                 }
                 else
                 {
-                    parameters.Add(path.ToStepScalarExpr());
-                    foreach (var label in path.Labels)
+                    parameters.Add(step.ToStepScalarExpr());
+                    foreach (var label in this.StepLabelsAtThatMoment[i])
                     {
                         parameters.Add(SqlUtil.GetValueExpr(label));
                     }
@@ -118,13 +142,13 @@ namespace GraphView
 
     internal class GremlinLocalPathVariable : GremlinPathVariable
     {
-        public GremlinLocalPathVariable(List<GremlinVariable> pathList, List<GremlinToSqlContext> byContexts)
-            :base(pathList, byContexts)
+        public GremlinLocalPathVariable(List<GremlinVariable> stepList, List<GremlinToSqlContext> byContexts)
+            :base(stepList, byContexts)
         {
         }
 
-        public GremlinLocalPathVariable(List<GremlinVariable> pathList)
-            : base(pathList)
+        public GremlinLocalPathVariable(List<GremlinVariable> stepList)
+            : base(stepList)
         {
         }
 
@@ -132,13 +156,13 @@ namespace GraphView
 
     internal class GremlinGlobalPathVariable : GremlinPathVariable
     {
-        public GremlinGlobalPathVariable(List<GremlinVariable> pathList, List<GremlinToSqlContext> byContexts)
-            : base(pathList, byContexts)
+        public GremlinGlobalPathVariable(List<GremlinVariable> stepList, List<GremlinToSqlContext> byContexts)
+            : base(stepList, byContexts)
         {
         }
 
-        public GremlinGlobalPathVariable(List<GremlinVariable> pathList)
-            : base(pathList)
+        public GremlinGlobalPathVariable(List<GremlinVariable> stepList)
+            : base(stepList)
         {
         }
 
