@@ -392,10 +392,10 @@ namespace GraphView
         }
 
 
-        public static int partitionNum { get; set; } = 1000;
+        public static int partitionNum { get; set; } = 100;
         public static int[] partitionLoad = new int[partitionNum];
         public bool usePartitionWhenCreateDoc { get; set; } = true;
-        public int repartitionBatchRandomIterSize { get; set; } = 1;
+        public int repartitionBatchRandomIterSize { get; set; } = 996;
         /// <summary>
         /// partition the document data
         /// The <paramref name="docObject"/> will be updated (Add the "id" field)
@@ -473,10 +473,14 @@ namespace GraphView
             // (1) Get balance metrics, What we can do is just statistic the partition key balance. 
             // We can't get the physical partition information
             int[] partitionDocCount = new int[partitionNum];
+            int docCount = 0;
+            //int edgeCount = 0;
+            int vertexCount = 0;
             for (int i = 0; i < partitionNum; i++)
             {
                 List<dynamic> result = ExecuteQuery("SELECT * FROM Node where Node._partition = \"" + i + "\"").ToList();
                 partitionDocCount[i] = Convert.ToInt32(result.Count);
+                docCount += partitionDocCount[i];
                 Console.WriteLine("Partititon: " + i + " Count:" + partitionDocCount[i]);
             }
 
@@ -512,7 +516,11 @@ namespace GraphView
                 }
             }
 
+            vertexCount = docCount - edgeCount;
             Console.WriteLine("Vertex cut ratio" + ((double)vertexCut / (2 * (double)edgeCount)));
+            Console.WriteLine("Doc Count: " + docCount);
+            Console.WriteLine("Edge Count: " + edgeCount);
+            Console.WriteLine("Vertex Count: " + vertexCount);
         }
 
         /// <summary>
@@ -535,14 +543,14 @@ namespace GraphView
             int tempColCount = 0;
             foreach (var e1 in edgeList)
             {
-                if(tempColCount < repartitionBatchRandomIterSize)
+                tempColCount++;
+                edgeBatchList.Add((JObject)e1);
+                if (edgeBatchList.Count < repartitionBatchRandomIterSize && tempColCount < edgeList.Count)
                 {
-                    edgeBatchList.Add((JObject)e1);
-                    tempColCount++;
                     continue;
                 }
 
-                var shuffleList = edgeBatchList.OrderBy(x => rnd.Next()).ToList();
+                var shuffleList = edgeBatchList.OrderBy(x => (x.ToString().GetHashCode())).ToList();
                 foreach(var e in shuffleList)
                 {
                     var edge = (JObject)e;
@@ -616,10 +624,11 @@ namespace GraphView
                         if (srcPartition == desPartition)
                         {
                             // (3) src and des in the same partition
-                            var desDocPartition = desDocFromDesCol[0]["_partition"];
-                            edge["_partition"] = desDocPartition;
+                            var srcDocPartition = srcDocFromDesCol[0]["_partition"];
+                            edge["_partition"] = srcDocPartition;
                             CreateDocumentAsync(edge);
                             partitionLoad[Convert.ToInt32(edge["_partition"])] += 1;
+                            continue;
                         }
                         else
                         {
@@ -635,12 +644,12 @@ namespace GraphView
                             edge["_partition"] = srcPartition; // For design of the transaction
                             CreateDocumentAsync(edge);
                             partitionLoad[Convert.ToInt32(edge["_partition"])] += 1;
+                            continue;
                         }
                     }
-
-                    tempColCount = 0;
-                    edgeBatchList.Clear();
+                    int a = 0;
                 }
+                edgeBatchList.Clear();
             }
         }
 
