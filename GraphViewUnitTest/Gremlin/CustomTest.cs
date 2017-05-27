@@ -17,11 +17,75 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests
         {
             using (GraphViewCommand command = new GraphViewCommand(graphConnection))
             {
-                // var traversal = command.g().Inject(0).Union(command.g().V().Group(), command.g().E().Group()).Select(GremlinKeyword.Column.Keys).Values("name");
-                //var traversal = command.g().V().GroupCount().Unfold().Select(GremlinKeyword.Column.Keys).Values("name");
-                // var traversal = command.g().V().Group().By().By(GraphTraversal2.__().Count()).Select(GremlinKeyword.Column.Keys).Unfold().Values("name");
+                //var traversal = command.g()
+                //    .V()
+                //    .Match(
+                //        GraphTraversal2.__().As("b").In("created").As("c"),
+                //        GraphTraversal2.__().As("c").Has("age", 29),
+                //        GraphTraversal2.__().As("b").Has("name", "lop"),
+                //        GraphTraversal2.__().As("a").Out("created").As("b")
+                //    )
+                //    .Select("a", "c")
+                //    .By("name");
 
-                var traversal = command.g().V().OutE().Properties().Drop();
+                //var traversal = command.g()
+                //    .V()
+                //    .Match(
+                //        GraphTraversal2.__().As("a").Out().As("b"),
+                //        GraphTraversal2.__().Not(GraphTraversal2.__().As("b").In("knows").As("a"))
+                //    )
+                //    .Select("a", "b")
+                //    .By("name");
+
+                //var traversal = command.g()
+                //    .V()
+                //    .As("a")
+                //    .Out()
+                //    .As("b")
+                //    .Match(
+                //        GraphTraversal2.__().As("a").Out().Count().As("c"),
+                //        GraphTraversal2.__().Not(GraphTraversal2.__().As("a").In().As("b"))
+                //    )
+                //    .Select("a", "b", "c")
+                //    .By("name")
+                //    .By("name")
+                //    .By();
+
+                //var traversal = command.g()
+                //    .V()
+                //    .As("a")
+                //    .Out()
+                //    .As("b")
+                //    .Match(
+                //        GraphTraversal2.__().As("a").Out().Count().As("c")
+                //    );
+
+                //var traversal = command.g()
+                //    .V()
+                //    .Match(
+                //        GraphTraversal2.__().As("a").Out().As("b"),
+                //        GraphTraversal2.__().Not(GraphTraversal2.__().As("b").In("created").As("a"))
+                //    );
+
+                //var traversal = command.g()
+                //    .V()
+                //    .As("a")
+                //    .Out()
+                //    .As("b")
+                //    .Select("a")
+                //    .Out("knows")
+                //    .Where(Predicate.eq("b"))
+                //    .As("b")
+                //    .Values("name");
+
+                var traversal = command.g()
+                    .V()
+                    .As("a")
+                    .Out()
+                    .Where(Predicate.neq("a"))
+                    .As("a")
+                    .Values("name");
+
                 var result = traversal.Next();
             }
         }

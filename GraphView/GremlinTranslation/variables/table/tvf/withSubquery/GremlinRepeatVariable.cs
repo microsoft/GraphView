@@ -75,7 +75,7 @@ namespace GraphView
         {
             if (this.RepeatContext.ContextLocalPath != null)
             {
-                this.RepeatContext.ContextLocalPath.PathList.Insert(0, null);
+                this.RepeatContext.ContextLocalPath.InsertStep(0, null);
                 this.RepeatContext.ContextLocalPath.IsInRepeatContext = true;
             }
 

@@ -91,6 +91,7 @@ namespace GraphView
             TableReferences.Add(newVariable);
             ContextLocalPath = newVariable;
         }
+
         internal List<GremlinVariable> GetGlobalPathStepList()
         {
             List<GremlinVariable> steps = ParentContext?.GetGlobalPathStepList() ?? new List<GremlinVariable>();
