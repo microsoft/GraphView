@@ -85,17 +85,23 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests
                 //    .By("name")
                 //    .By();
 
-                // var result = traversal.Next();
+                //var traversal = command.g()
+                //    .V()
+                //    .As("a")
+                //    .Out()
+                //    .Where(Predicate.neq("a"))
+                //    .As("a")
+                //    .Values("name");
 
-
-                command.CommandText = "g.V().as('a').out().as('b').match(__.as('a').out().count().as('c'),__.not(__.as('a').in().as('b')),__.or(__.as('a').out('knows').as('b'),__.as('b').in().count().as('c').and().as('c').is(gt(2)))).select('a','b','c').by('name').by('name').by()";
-
-                var result = command.ExecuteAndGetResults();
-
-                foreach (string r in result)
-                {
-                    Console.WriteLine(r);
-                }
+                var traversal = command.g().V()
+                    .As("a")
+                    .Out("knows")
+                    .And()
+                    .Out("created")
+                    .In("created")
+                    .As("a")
+                    .Values("name");
+                List<string> tmp = traversal.Next();
             }
         }
 

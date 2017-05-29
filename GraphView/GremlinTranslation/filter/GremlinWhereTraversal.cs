@@ -89,12 +89,12 @@ namespace GraphView
                 }
             }
 
-            var lastOp = WhereTraversal.LastGremlinTranslationOp as GremlinAsOp;
+            var lastOp = WhereTraversal.GetEndOp() as GremlinAsOp;
             if (lastOp != null)
             {
                 string label = lastOp.Labels.First();
-                whereTraversal.GremlinTranslationOpList.Remove(whereTraversal.LastGremlinTranslationOp); //remove the last as-step
-                whereTraversal.LastGremlinTranslationOp = WhereTraversal.GremlinTranslationOpList.Last();
+
+                whereTraversal.GremlinTranslationOpList.RemoveAt(whereTraversal.GremlinTranslationOpList.Count - 1); //remove the last as-step
                 whereTraversal.AddGremlinOperator(new GremlinWherePredicateOp(Predicate.eq(label)));
             }
         }

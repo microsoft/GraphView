@@ -174,7 +174,7 @@ namespace GraphView
 
         public IEnumerator<string> GetEnumerator()
         {
-            var sqlScript = LastGremlinTranslationOp.ToSqlScript();
+            var sqlScript = GetEndOp().ToSqlScript();
             SqlScript = sqlScript.ToString();
             it = new GraphTraversalIterator(sqlScript.Batches[0].Compile(null, Connection), Connection, outputFormat);
             return it;
@@ -189,7 +189,6 @@ namespace GraphView
         private GraphTraversalIterator it;
         public GraphViewConnection Connection { get; set; }
         internal List<GremlinTranslationOperator> GremlinTranslationOpList { get; set; }
-        internal GremlinTranslationOperator LastGremlinTranslationOp { set; get; }
 
         OutputFormat outputFormat;
 
@@ -214,7 +213,7 @@ namespace GraphView
 
         public List<string> Next()
         {
-            WSqlScript sqlScript = LastGremlinTranslationOp.ToSqlScript();
+            WSqlScript sqlScript = GetEndOp().ToSqlScript();
             SqlScript = sqlScript.ToString();
 
             GraphViewExecutionOperator op = sqlScript.Batches[0].Compile(null, Connection);
@@ -256,10 +255,6 @@ namespace GraphView
             {
                 GremlinTranslationOpList[index + 1].InputOperator = newGremlinTranslationOp;
             }
-            if (index == GremlinTranslationOpList.Count - 1)
-            {
-                this.LastGremlinTranslationOp = this.GetLastOp();
-            }
         }
 
         internal GremlinTranslationOperator PopGremlinOperator()
@@ -276,11 +271,7 @@ namespace GraphView
 
             GremlinTranslationOpList.RemoveAt(index);
 
-            if (index == GremlinTranslationOpList.Count)
-            {
-                this.LastGremlinTranslationOp = this.GetLastOp();
-            }
-            else if (index >= 0)
+            if (index != GremlinTranslationOpList.Count && index >= 0)
             {
                 if (index > 0)
                 {
@@ -295,14 +286,9 @@ namespace GraphView
             return removedOp;
         }
 
-        internal void ReplaceGremlinOperator(int index, GremlinTranslationOperator newGremlinTranslationOp)
-        {
-            this.RemoveGremlinOperator(index);
-            this.InsertGremlinOperator(index, newGremlinTranslationOp);
-        }
-
         internal void AddGremlinOperator(GremlinTranslationOperator newGremlinTranslationOp)
         {
+            GremlinTranslationOperator LastGremlinTranslationOp = this.GetEndOp();
             if (LastGremlinTranslationOp is GremlinAndOp && (LastGremlinTranslationOp as GremlinAndOp).IsInfix)
             {
                 (LastGremlinTranslationOp as GremlinAndOp).SecondTraversal.AddGremlinOperator(newGremlinTranslationOp);
@@ -314,15 +300,7 @@ namespace GraphView
             else
             {
                 GremlinTranslationOpList.Add(newGremlinTranslationOp);
-                if (LastGremlinTranslationOp == null)
-                {
-                    LastGremlinTranslationOp = newGremlinTranslationOp;
-                }
-                else
-                {
-                    newGremlinTranslationOp.InputOperator = LastGremlinTranslationOp;
-                    LastGremlinTranslationOp = newGremlinTranslationOp;
-                }
+                newGremlinTranslationOp.InputOperator = LastGremlinTranslationOp;
             }
         }
 
@@ -333,25 +311,13 @@ namespace GraphView
 
         internal GremlinTranslationOperator GetEndOp()
         {
-            return LastGremlinTranslationOp;
-        }
-
-        // Just get the first element of operator list and do not check the exception 'out of range'
-        internal GremlinTranslationOperator GetFirstOp()
-        {
-            return GremlinTranslationOpList.First();
-        }
-
-        // Just get the last element of operator list and do not check the exception 'out of range'
-        internal GremlinTranslationOperator GetLastOp()
-        {
-            return GremlinTranslationOpList.Last();
+            return GremlinTranslationOpList.Count == 0 ? null : GremlinTranslationOpList.Last();
         }
 
         // get operator by index, return null if out of range
         internal GremlinTranslationOperator GetOp(int index)
         {
-            return GremlinTranslationOpList.Count > index ? GremlinTranslationOpList[index] : null;
+            return GremlinTranslationOpList.Count <= index ? null : GremlinTranslationOpList[index];
         }
 
         public GraphTraversal2 AddE()
@@ -402,7 +368,6 @@ namespace GraphView
                     firstTraversal.AddGremlinOperator(GremlinTranslationOpList[i]);
                 }
                 GremlinTranslationOpList.RemoveRange(1, GremlinTranslationOpList.Count - 1);
-                LastGremlinTranslationOp = GremlinTranslationOpList.First();
                 GremlinAndOp newAndOp = new GremlinAndOp(firstTraversal, sencondTraversal);
                 AddGremlinOperator(newAndOp);
             }
@@ -708,28 +673,28 @@ namespace GraphView
 
         public GraphTraversal2 From(string fromLabel)
         {
-            GremlinAddEOp addEOp = LastGremlinTranslationOp as GremlinAddEOp;
+            GremlinAddEOp addEOp = this.GetEndOp() as GremlinAddEOp;
             if (addEOp != null)
             {
                 addEOp.FromVertexTraversal = GraphTraversal2.__().Select(fromLabel);
             }
             else
             {
-                throw new SyntaxErrorException($"{LastGremlinTranslationOp} cannot be cast to GremlinAddEOp");
+                throw new SyntaxErrorException($"{this.GetEndOp()} cannot be cast to GremlinAddEOp");
             }
             return this;
         }
 
         public GraphTraversal2 From(GraphTraversal2 fromVertexTraversal)
         {
-            GremlinAddEOp addEOp = LastGremlinTranslationOp as GremlinAddEOp;
+            GremlinAddEOp addEOp = this.GetEndOp() as GremlinAddEOp;
             if (addEOp != null)
             {
                 addEOp.FromVertexTraversal = fromVertexTraversal;
             }
             else
             {
-                throw new SyntaxErrorException($"{LastGremlinTranslationOp} cannot be cast to GremlinAddEOp");
+                throw new SyntaxErrorException($"{this.GetEndOp()} cannot be cast to GremlinAddEOp");
             }
             return this;
         }
@@ -981,7 +946,7 @@ namespace GraphView
             {
                 throw new ArgumentException();
             }
-            var op = LastGremlinTranslationOp as GremlinChooseOp;
+            var op = this.GetEndOp() as GremlinChooseOp;
             if (op != null)
             {
                 if (op.Options.ContainsKey(pickToken))
@@ -1012,7 +977,6 @@ namespace GraphView
                     firstTraversal.AddGremlinOperator(GremlinTranslationOpList[i].Copy());
                 }
                 GremlinTranslationOpList.RemoveRange(1, GremlinTranslationOpList.Count - 1);
-                LastGremlinTranslationOp = GremlinTranslationOpList.First();
                 GremlinOrOp newOrOp = new GremlinOrOp(firstTraversal, sencondTraversal);
                 AddGremlinOperator(newOrOp);
             }
@@ -1087,7 +1051,7 @@ namespace GraphView
         {
             if (keyValues.Length % 2 != 0) throw new Exception("The parameter of property should be even");
 
-            var lastOp = LastGremlinTranslationOp as GremlinAddEOp;
+            var lastOp = this.GetEndOp() as GremlinAddEOp;
             if (lastOp != null)
             {
                 if (keyValues.Length > 0) throw new SyntaxErrorException("Only vertex can use PropertyCardinality.List and have meta properties");
@@ -1247,28 +1211,28 @@ namespace GraphView
 
         public GraphTraversal2 To(string toLabel)
         {
-            GremlinAddEOp addEOp = LastGremlinTranslationOp as GremlinAddEOp;
+            GremlinAddEOp addEOp = this.GetEndOp() as GremlinAddEOp;
             if (addEOp != null)
             {
                 addEOp.ToVertexTraversal = GraphTraversal2.__().Select(toLabel);
             }
             else
             {
-                throw new SyntaxErrorException($"{LastGremlinTranslationOp} cannot be cast to GremlinAddEOp");
+                throw new SyntaxErrorException($"{this.GetEndOp()} cannot be cast to GremlinAddEOp");
             }
             return this;
         }
 
         public GraphTraversal2 To(GraphTraversal2 toVertex)
         {
-            GremlinAddEOp addEOp = LastGremlinTranslationOp as GremlinAddEOp;
+            GremlinAddEOp addEOp = this.GetEndOp() as GremlinAddEOp;
             if (addEOp != null)
             {
                 addEOp.ToVertexTraversal = toVertex;
             }
             else
             {
-                throw new SyntaxErrorException($"{LastGremlinTranslationOp} cannot be cast to GremlinAddEOp");
+                throw new SyntaxErrorException($"{this.GetEndOp()} cannot be cast to GremlinAddEOp");
             }
             return this;
         }
@@ -1393,7 +1357,7 @@ namespace GraphView
         public List<object> ToList()
         {
             //TODO
-            var str = LastGremlinTranslationOp.ToSqlScript().ToString();
+            var str = this.GetEndOp().ToSqlScript().ToString();
             return new List<object>() {1};
         }
 
@@ -1596,13 +1560,13 @@ namespace GraphView
                 {
                     GraphTraversal2 configuredTraversal = __();
 
-                    if ((traversal.GetFirstOp() as GremlinParentContextOp) != null)
+                    if ((traversal.GetStartOp() as GremlinParentContextOp) != null)
                     {
                         traversal.RemoveGremlinOperator(0);
                     }
 
                     // -------- Match-OR --------
-                    GremlinOrOp orOperator = traversal.GetFirstOp() as GremlinOrOp;
+                    GremlinOrOp orOperator = traversal.GetStartOp() as GremlinOrOp;
                     
                     if (orOperator != null)
                     {
@@ -1620,7 +1584,7 @@ namespace GraphView
                     }
 
                     // -------- Match-AND-------
-                    GremlinAndOp andOperator = traversal.GetFirstOp() as GremlinAndOp;
+                    GremlinAndOp andOperator = traversal.GetStartOp() as GremlinAndOp;
 
                     if (andOperator != null)
                     {
@@ -1640,7 +1604,7 @@ namespace GraphView
 
 
                     // --------- Where()-Traversal ---------
-                    GremlinWherePredicateOp wherePredicateOperator = traversal.GetFirstOp() as GremlinWherePredicateOp;
+                    GremlinWherePredicateOp wherePredicateOperator = traversal.GetStartOp() as GremlinWherePredicateOp;
 
                     if (wherePredicateOperator != null)
                     {
@@ -1650,8 +1614,8 @@ namespace GraphView
                     }
 
 
-                    GremlinNotOp notOperator = traversal.GetFirstOp() as GremlinNotOp;
-                    GremlinWhereTraversalOp whereTraversalOperator = traversal.GetFirstOp() as GremlinWhereTraversalOp;
+                    GremlinNotOp notOperator = traversal.GetStartOp() as GremlinNotOp;
+                    GremlinWhereTraversalOp whereTraversalOperator = traversal.GetStartOp() as GremlinWhereTraversalOp;
 
                     if (notOperator != null)
                     {
@@ -1672,7 +1636,7 @@ namespace GraphView
                         traversal.InsertGremlinOperator(0, innerAsOperator);
                         notTraversal.RemoveGremlinOperator(1);
 
-                        GremlinAsOp innerEndOperator = notTraversal.GetLastOp() as GremlinAsOp;
+                        GremlinAsOp innerEndOperator = notTraversal.GetEndOp() as GremlinAsOp;
                         if (innerEndOperator != null)
                         {
                             List<string> innerEndLabels = innerEndOperator.Labels;
@@ -1693,7 +1657,7 @@ namespace GraphView
                     else if (whereTraversalOperator != null)
                     {
                         GraphTraversal2 whereTraversal = whereTraversalOperator.WhereTraversal;
-                        if ((whereTraversal.GetFirstOp() as GremlinParentContextOp) != null)
+                        if ((whereTraversal.GetStartOp() as GremlinParentContextOp) != null)
                         {
                             whereTraversal.RemoveGremlinOperator(0);
                         }
@@ -1701,7 +1665,7 @@ namespace GraphView
                     }
 
                     // --------- Normal Match()-Traversal ---------
-                    GremlinAsOp asOperator = traversal.GetFirstOp() as GremlinAsOp;
+                    GremlinAsOp asOperator = traversal.GetStartOp() as GremlinAsOp;
 
                     if (asOperator == null || asOperator.Labels.Count != 1)
                     {
@@ -1713,7 +1677,7 @@ namespace GraphView
                     traversal.RemoveGremlinOperator(0); // remove first 'as' operator
                     configuredTraversal.Select(GremlinKeyword.Pop.Last, startLabel);
 
-                    GremlinAsOp endOperator = traversal.GetLastOp() as GremlinAsOp;
+                    GremlinAsOp endOperator = traversal.GetEndOp() as GremlinAsOp;
                     if (endOperator != null)
                     {
                         // as('a')...as('b'): both the start and end of the traversal have a declared variable.

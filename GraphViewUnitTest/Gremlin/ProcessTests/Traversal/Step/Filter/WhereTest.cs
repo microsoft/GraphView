@@ -620,19 +620,26 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
             {
                 graphCommand.OutputFormat = OutputFormat.GraphSON;
 
-                var traversal = graphCommand.g().V().As("a")
-                                                    .Out().As("b")
-                                                    .Where(
-                                                        GraphTraversal2.__().As("b")
-                                                                            .In()
-                                                                            .Count().Is(Predicate.eq(3))
-                                                                                         .Or()
-                                                                                         .Where(
-                                                                                            GraphTraversal2.__().As("b")
-                                                                                                                .Out("created")
-                                                                                                                .And().As("b")
-                                                                                                                .HasLabel("person")))
-                                                    .Select("a", "b");
+                var traversal = graphCommand.g()
+                    .V()
+                    .As("a")
+                    .Out()
+                    .As("b")
+                    .Where(
+                        GraphTraversal2.__()
+                            .As("b")
+                            .In()
+                            .Count()
+                            .Is(Predicate.eq(3))
+                            .Or()
+                            .Where(
+                                GraphTraversal2.__()
+                                    .As("b")
+                                    .Out("created")
+                                    .And()
+                                    .As("b")
+                                    .HasLabel("person")))
+                    .Select("a", "b");
 
                 var result = traversal.Next();
                 dynamic dynamicResult = JsonConvert.DeserializeObject<dynamic>(result.FirstOrDefault());
