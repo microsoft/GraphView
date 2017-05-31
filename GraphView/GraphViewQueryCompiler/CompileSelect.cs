@@ -1861,11 +1861,13 @@ namespace GraphView
                 throw new SyntaxErrorException("The sub-query must be a select query block.");
             }
 
+            ContainerEnumerator sourceEnumerator = new ContainerEnumerator();
             QueryCompilationContext subcontext = new QueryCompilationContext(context);
+            subcontext.OuterContextOp.SourceEnumerator = sourceEnumerator;
+            subcontext.AddField(GremlinKeyword.IndexTableName, GremlinKeyword.IndexColumnName, ColumnGraphType.Value, true);
+            subcontext.InBatchMode = true;
             GraphViewExecutionOperator localTraversalOp = localSelect.Compile(subcontext, dbConnection);
-
-            LocalOperator localOp = new LocalOperator(context.CurrentExecutionOperator, localTraversalOp, subcontext.OuterContextOp);
-            context.CurrentExecutionOperator = localOp;
+            LocalOperator localOp = new LocalOperator(context.CurrentExecutionOperator, localTraversalOp, sourceEnumerator);
 
             foreach (WSelectElement selectElement in localSelect.SelectElements)
             {
