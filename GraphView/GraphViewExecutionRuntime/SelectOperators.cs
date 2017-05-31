@@ -1268,7 +1268,7 @@ namespace GraphView
                     FieldObject[] paraList = new FieldObject[aggr.Item2.Count];
                     for (int index = 0; index < aggr.Item2.Count; index++)
                     {
-                        paraList[index] = aggr.Item2[index].Evaluate(this.firstRecordInGroup);
+                        paraList[index] = aggr.Item2[index].Evaluate(rec);
                     }
 
                     aggr.Item1.Accumulate(paraList);
