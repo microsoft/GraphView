@@ -20,7 +20,10 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests
                 // var traversal = command.g().V().Properties().Has(GremlinKeyword.T.Key, "name");
                 // var traversal = command.g().V().Has(GremlinKeyword.T.Label, Predicate.neq("person")).Values("name");
                 // var result = traversal.Next();
-                command.CommandText = "g.V().properties().has(T.value, neq('marko'))";
+                // command.CommandText = "g.V(). values ('name').\nis\t(neq('marko'))";
+                // command.CommandText = "g.inject('I say:\"hello\".').inject(\"I'm Blackjack.\")";
+                // command.CommandText = "g.V().as('a').select(last, 'a').by('name')";
+                command.CommandText = "g.V().inject(1, -2.34, 'abc', \"def\", false, true, ['ghi', +0, -0.1])";
                 var result = command.ExecuteAndGetResults();
                 foreach (var r in result)
                 {

@@ -4,6 +4,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -1397,67 +1398,45 @@ namespace GraphView
 
         public string ConvertGremlinToGraphTraversalCode(string sCSCode)
         {
-            sCSCode = sCSCode.Replace("\'", "\"");
+            // transform all the quotes to escape quotes in string in gremlin(groovy)
+            //        i.e. : `g.inject('I say:"hello".').inject("I'm Blackjack.")` => 
+            //               `g.inject("I say:\"hello\".").inject("I\'m Blackjack.")`
+            Regex reForString = new Regex(@"'(([^\\']|\\[tbnrf\\'""])*)'|""(([^\\""]|\\[tbnrf\\'""])*)""");
+            sCSCode = reForString.Replace(sCSCode, match => "\"" + 
+                (new Regex(@"(?<!\\)['""]")).Replace(
+                    (match.Groups[1].Success ? match.Groups[1].Value : match.Groups[3].Value), 
+                    (m => m.Value == "\"" ? "\\\"" : "\\\'")) + "\"");
 
             //replace gremlin steps with uppercase
-            foreach (var item in GremlinKeyword.GremlinStepToGraphTraversalDict)
-            {
-                string originStr = "." + item.Key + "(";
-                string targetStr = "." + item.Value + "(";
-                sCSCode = sCSCode.Replace(originStr, targetStr);
-            }
-            //replace with GraphTraversal FunctionName
-            foreach (var item in GremlinKeyword.GremlinMainStepToGraphTraversalDict)
-            {
-                sCSCode = sCSCode.Replace(item.Key, item.Value);
-            }
-            //replace gremlin predicate with GraphTraversal predicate
-            foreach (var item in GremlinKeyword.GremlinPredicateToGraphTraversalDict)
-            {
-                Regex r1 = new Regex("\\((" + item.Key + ")\\(");
-                if (r1.IsMatch(sCSCode))
-                {
-                    var match = r1.Match(sCSCode);
-                    sCSCode = sCSCode.Replace(match.Groups[0].Value, match.Groups[0].Value[0] + item.Value + "(");
-                }
+            Regex reForStep = new Regex(@"\.\s*(\w+)\s*\(", RegexOptions.Compiled);
+            sCSCode = reForStep.Replace(sCSCode,
+                match => $".{ GremlinKeyword.GremlinStepToGraphTraversalDict[match.Groups[1].Value] }(");
 
-                Regex r2 = new Regex("[^a-zA-Z],(" + item.Key + ")\\(");
-                if (r2.IsMatch(sCSCode))
-                {
-                    var match = r2.Match(sCSCode);
-                    sCSCode = sCSCode.Replace(match.Groups[0].Value, "\"," + item.Value + "(");
-                }
-            }
+            //replace with GraphTraversal FunctionName
+            Regex reForFunction = new Regex(@"(\w+)\s*\.\s*(\w+)\s*\(", RegexOptions.Compiled);
+            sCSCode = reForFunction.Replace(sCSCode, match =>
+                $"{ GremlinKeyword.GremlinMainStepToGraphTraversalDict[match.Groups[1].Value] }.{ match.Groups[2].Value }(");
+            
+            //replace gremlin predicate with GraphTraversal predicate
+            Regex reForPredicate = new Regex(@"\s*(\w+)\s*\(", RegexOptions.Compiled);
+            sCSCode = reForPredicate.Replace(sCSCode, match => 
+                (GremlinKeyword.GremlinPredicateToGraphTraversalDict.ContainsKey(match.Groups[1].Value) ? 
+                    GremlinKeyword.GremlinPredicateToGraphTraversalDict[match.Groups[1].Value] : 
+                    match.Groups[1].Value) + "(");
 
             //replace gremlin keyword
-            foreach (var item in GremlinKeyword.GremlinKeywordToGraphTraversalDict)
-            {
-                RegexOptions ops = RegexOptions.Multiline;
-                Regex r = new Regex("[^\"](" + item.Key + ")[^\"]", ops);
-                if (r.IsMatch(sCSCode))
-                {
-                    var match = r.Match(sCSCode);
-                    sCSCode = sCSCode.Replace(match.Groups[1].Value, item.Value);
-                }
-            }
+            Regex reForKeyword = new Regex(@"(?<=[,\(])\s*(\w+)\s*(?=[,\)])", RegexOptions.Compiled);
+            sCSCode = reForKeyword.Replace(sCSCode, match => 
+                (GremlinKeyword.GremlinKeywordToGraphTraversalDict.ContainsKey(match.Groups[1].Value) ? 
+                    GremlinKeyword.GremlinKeywordToGraphTraversalDict[match.Groups[1].Value] :
+                    match.Groups[1].Value));
 
             //replace gremlin array with C# array
-            Regex arrayRegex = new Regex("[\\[]((\\s*?[\\\"|']\\S+?[\\\"|']\\s*?[,]*?\\s*?)*)[\\]]", RegexOptions.Multiline);
-            var matchtest = arrayRegex.Match(sCSCode);
-            if (arrayRegex.IsMatch(sCSCode))
-            {
-                var matchs = arrayRegex.Matches(sCSCode);
-                for (var i = 0; i < matchs.Count; i++)
-                {
-                    List<string> values = new List<string>();
-                    for (var j = 0; j < matchs[i].Groups.Count; j++)
-                    {
-                        values.Add(matchs[i].Groups[j].Value);
-                    }
-                    sCSCode = sCSCode.Replace(matchs[i].Groups[0].Value, "new List<string>() {"+ matchs[i].Groups[1].Value + "}");
-                    values.Clear();
-                }
-            }
+            Regex reForArray = new Regex(@"(\[\s*(([+-]?(0|[1-9][0-9]*)(\.[0-9]+)?|true|false|""(([^\\""]|\\[tbnrf\\'""])*)"")
+                                          (\s*,\s*([+-]?(0|[1-9][0-9]*)(\.[0-9]+)?|true|false|""(([^\\""]|\\[tbnrf\\'""])*)""))*)?\s*\])", 
+                                         RegexOptions.Compiled | RegexOptions.IgnorePatternWhitespace);
+            sCSCode = reForArray.Replace(sCSCode, match => $"new List<object> {{ { match.Groups[2].Value } }}");
+            
             return sCSCode;
         }
 
