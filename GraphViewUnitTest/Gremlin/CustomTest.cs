@@ -23,7 +23,9 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests
                 // command.CommandText = "g.V(). values ('name').\nis\t(neq('marko'))";
                 // command.CommandText = "g.inject('I say:\"hello\".').inject(\"I'm Blackjack.\")";
                 // command.CommandText = "g.V().as('a').select(last, 'a').by('name')";
-                command.CommandText = "g.V().inject(1, -2.34, 'abc', \"def\", false, true, ['ghi', +0, -0.1])";
+                // command.CommandText = "g.V().inject(1, -2.34, 'abc', \"def\", false, true, ['', +0, -0.1, 'ghi'])";
+                // command.CommandText = "g . V () . values ('name').\nis\t( neq( \"marko\" ))";
+                command.CommandText = "g.inject(\"g.V().values('name').is(eq('marko'))\")";
                 var result = command.ExecuteAndGetResults();
                 foreach (var r in result)
                 {

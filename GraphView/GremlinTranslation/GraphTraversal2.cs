@@ -1398,14 +1398,19 @@ namespace GraphView
 
         public string ConvertGremlinToGraphTraversalCode(string sCSCode)
         {
-            // transform all the quotes to escape quotes in string in gremlin(groovy)
+            // transform all the quotes to escape quotes in string in gremlin(groovy).
+            //     then take all the strings off, save in queue, and restore them in the end.
             //        i.e. : `g.inject('I say:"hello".').inject("I'm Blackjack.")` => 
-            //               `g.inject("I say:\"hello\".").inject("I\'m Blackjack.")`
+            //               `g.inject("").inject("")` + Queue<string> strings { "I say:\"hello\".", "I\'m Blackjack." }
+            Queue<string> strings = new Queue<string>();
             Regex reForString = new Regex(@"'(([^\\']|\\[tbnrf\\'""])*)'|""(([^\\""]|\\[tbnrf\\'""])*)""");
-            sCSCode = reForString.Replace(sCSCode, match => "\"" + 
-                (new Regex(@"(?<!\\)['""]")).Replace(
-                    (match.Groups[1].Success ? match.Groups[1].Value : match.Groups[3].Value), 
-                    (m => m.Value == "\"" ? "\\\"" : "\\\'")) + "\"");
+            sCSCode = reForString.Replace(sCSCode, match =>
+            {
+                strings.Enqueue((new Regex(@"(?<!\\)['""]")).Replace(
+                    (match.Groups[1].Success ? match.Groups[1].Value : match.Groups[3].Value),
+                    (m => m.Value == "\"" ? "\\\"" : "\\\'")));
+                return "\"\"";
+            });
 
             //replace gremlin steps with uppercase
             Regex reForStep = new Regex(@"\.\s*(\w+)\s*\(", RegexOptions.Compiled);
@@ -1431,12 +1436,15 @@ namespace GraphView
                     GremlinKeyword.GremlinKeywordToGraphTraversalDict[match.Groups[1].Value] :
                     match.Groups[1].Value));
 
-            //replace gremlin array with C# array
+            //replace gremlin array with C# array, nested array is not allowed
             Regex reForArray = new Regex(@"(\[\s*(([+-]?(0|[1-9][0-9]*)(\.[0-9]+)?|true|false|""(([^\\""]|\\[tbnrf\\'""])*)"")
                                           (\s*,\s*([+-]?(0|[1-9][0-9]*)(\.[0-9]+)?|true|false|""(([^\\""]|\\[tbnrf\\'""])*)""))*)?\s*\])", 
                                          RegexOptions.Compiled | RegexOptions.IgnorePatternWhitespace);
             sCSCode = reForArray.Replace(sCSCode, match => $"new List<object> {{ { match.Groups[2].Value } }}");
-            
+
+            // restore all the strings
+            sCSCode = (new Regex(@"""""")).Replace(sCSCode, match => $"\"{ strings.Dequeue() }\"");
+
             return sCSCode;
         }
 
