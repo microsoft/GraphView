@@ -165,6 +165,15 @@ namespace GraphView
             None
         }
 
+        public enum T
+        {
+            Id,         // representing Element.id()
+            Label,      // representing Element.label()
+            
+            Key,        // representing VertexProperty.key()
+            Value       // representing VertexProperty.value()
+        }
+
         public static readonly Dictionary<string, string> GremlinStepToGraphTraversalDict = new Dictionary
             <string, string>()
             {
@@ -284,7 +293,12 @@ namespace GraphView
 
             {"decr", "GremlinKeyword.Order.Decr"},
             {"incr", "GremlinKeyword.Order.Incr"},
-            {"shuffle", "GremlinKeyword.Order.Shuffle"}
+            {"shuffle", "GremlinKeyword.Order.Shuffle"},
+
+            {"T.id", "GremlinKeyword.T.Id"},
+            {"T.label", "GremlinKeyword.T.Label"},
+            {"T.key", "GremlinKeyword.T.Key"},
+            {"T.value", "GremlinKeyword.T.Value"},
         };
     }
 }

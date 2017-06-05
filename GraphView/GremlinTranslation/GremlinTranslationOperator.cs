@@ -112,6 +112,27 @@ namespace GraphView
         {
             ModulateBy(GraphTraversal2.__().Select(column), comparer);
         }
+
+        public virtual void ModulateBy(GremlinKeyword.T token)
+        {
+            switch (token)
+            {
+                case GremlinKeyword.T.Id:
+                    ModulateBy(GraphTraversal2.__().Id());
+                    break;
+                case GremlinKeyword.T.Label:
+                    ModulateBy(GraphTraversal2.__().Label());
+                    break;
+                case GremlinKeyword.T.Key:
+                    ModulateBy(GraphTraversal2.__().Key());
+                    break;
+                case GremlinKeyword.T.Value:
+                    ModulateBy(GraphTraversal2.__().Value());
+                    break;
+                default:
+                    throw new TranslationException("Unknow GremlinKeyword.T");
+            }
+        }
     }
     
     internal class GremlinParentContextOp : GremlinTranslationOperator

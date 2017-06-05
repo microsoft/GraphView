@@ -485,6 +485,12 @@ namespace GraphView
             return this;
         }
 
+        public GraphTraversal2 By(GremlinKeyword.T token)
+        {
+            GetEndOp().ModulateBy(token);
+            return this;
+        }
+
         public GraphTraversal2 Cap(params string[] sideEffectKeys)
         {
             AddGremlinOperator(new GremlinCapOp(sideEffectKeys));
@@ -758,6 +764,29 @@ namespace GraphView
         {
             GremlinUtil.CheckIsValueOrPredicate(predicateOrValue);
             AddGremlinOperator(new GremlinHasOp(label, propertyKey, predicateOrValue));
+            return this;
+        }
+
+        public GraphTraversal2 Has(GremlinKeyword.T token, object predicateOrValue)
+        {
+            GremlinUtil.CheckIsValueOrPredicate(predicateOrValue);
+            switch (token)
+            {
+                case GremlinKeyword.T.Id:
+                    AddGremlinOperator(new GremlinHasOp(GremlinHasType.HasId, predicateOrValue));
+                    break;
+                case GremlinKeyword.T.Label:
+                    AddGremlinOperator(new GremlinHasOp(GremlinHasType.HasLabel, predicateOrValue));
+                    break;
+                case GremlinKeyword.T.Key:
+                    AddGremlinOperator(new GremlinHasOp(GremlinHasType.HasKey, predicateOrValue));
+                    break;
+                case GremlinKeyword.T.Value:
+                    AddGremlinOperator(new GremlinHasOp(GremlinHasType.HasValue, predicateOrValue));
+                    break;
+                default:
+                    throw new TranslationException("Unknown GremlinKeyword.T");
+            }
             return this;
         }
 

@@ -16,92 +16,16 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests
         {
             using (GraphViewCommand command = new GraphViewCommand(graphConnection))
             {
-                //var traversal = command.g()
-                //    .V()
-                //    .Match(
-                //        GraphTraversal2.__().As("b").In("created").As("c"),
-                //        GraphTraversal2.__().As("c").Has("age", 29),
-                //        GraphTraversal2.__().As("b").Has("name", "lop"),
-                //        GraphTraversal2.__().As("a").Out("created").As("b")
-                //    )
-                //    .Select("a", "c")
-                //    .By("name");
-
-                //var traversal = command.g()
-                //    .V()
-                //    .Match(
-                //        GraphTraversal2.__().As("a").Out().As("b"),
-                //        GraphTraversal2.__().Not(GraphTraversal2.__().As("b").In("knows").As("a"))
-                //    )
-                //    .Select("a", "b")
-                //    .By("name");
-
-                //var traversal = command.g()
-                //    .V()
-                //    .As("a")
-                //    .Out()
-                //    .As("b")
-                //    .Match(
-                //        GraphTraversal2.__().As("a").Out().Count().As("c"),
-                //        GraphTraversal2.__().Not(GraphTraversal2.__().As("a").In().As("b"))
-                //    )
-                //    .Select("a", "b", "c")
-                //    .By("name")
-                //    .By("name")
-                //    .By();
-
-                //var traversal = command.g()
-                //    .V()
-                //    .As("a")
-                //    .Out()
-                //    .As("b")
-                //    .Match(
-                //        GraphTraversal2.__().As("a").Out().Count().As("c")
-                //    );
-
-                //var traversal = command.g()
-                //    .V()
-                //    .Match(
-                //        GraphTraversal2.__().As("a").Out().As("b"),
-                //        GraphTraversal2.__().Not(GraphTraversal2.__().As("b").In("created").As("a"))
-                //    );
-
-                //var traversal = command.g()
-                //    .V()
-                //    .As("a")
-                //    .Out()
-                //    .As("b")
-                //    .Match(
-                //        GraphTraversal2.__().As("a").Out().Count().As("c"),
-                //        GraphTraversal2.__().Not(GraphTraversal2.__().As("a").In().As("b")),
-                //        GraphTraversal2.__()
-                //            .Or(
-                //                GraphTraversal2.__().As("a").Out("knows").As("b"),
-                //                GraphTraversal2.__().As("b").In().Count().As("c")
-                //            )
-                //    )
-                //    .Select("a", "b", "c")
-                //    .By("name")
-                //    .By("name")
-                //    .By();
-
-                //var traversal = command.g()
-                //    .V()
-                //    .As("a")
-                //    .Out()
-                //    .Where(Predicate.neq("a"))
-                //    .As("a")
-                //    .Values("name");
-
-                var traversal = command.g().V()
-                    .As("a")
-                    .Out("knows")
-                    .And()
-                    .Out("created")
-                    .In("created")
-                    .As("a")
-                    .Values("name");
-                List<string> tmp = traversal.Next();
+                // var traversal = command.g().V().Has(GremlinKeyword.T.Label, "person").Values("name");
+                // var traversal = command.g().V().Properties().Has(GremlinKeyword.T.Key, "name");
+                // var traversal = command.g().V().Has(GremlinKeyword.T.Label, Predicate.neq("person")).Values("name");
+                // var result = traversal.Next();
+                command.CommandText = "g.V().properties().has(T.value, neq('marko'))";
+                var result = command.ExecuteAndGetResults();
+                foreach (var r in result)
+                {
+                    Console.WriteLine(r);
+                }
             }
         }
 
