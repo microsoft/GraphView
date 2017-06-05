@@ -4873,7 +4873,8 @@ namespace GraphView
         // RawRecord: the input record with the lazy adjacency list
         // string: the Id of the vertex of the adjacency list to be decoded
         private readonly Queue<Tuple<RawRecord, string>> lazyAdjacencyListBatch;
-        private bool isLazyBatchProcessed;
+
+        private readonly Queue<RawRecord> inputRecordsBuffer;
 
         /// <summary>
         /// The length of a record produced by this decoder operator.
@@ -4891,7 +4892,7 @@ namespace GraphView
             BooleanFunction edgePredicate, List<string> projectedFields,
             GraphViewConnection connection,
             int outputRecordLength,
-            int batchSize = 1000)
+            int batchSize = KW_DEFAULT_BATCH_SIZE)
         {
             this.inputOp = inputOp;
             this.outputBuffer = new Queue<RawRecord>();
@@ -4907,8 +4908,8 @@ namespace GraphView
             this.lazyAdjacencyListBatch = new Queue<Tuple<RawRecord, string>>();
 
             this.outputRecordLength = outputRecordLength;
-            this.isLazyBatchProcessed = false;
 
+            this.inputRecordsBuffer = new Queue<RawRecord>();
             this.Open();
         }
 
@@ -5082,104 +5083,81 @@ namespace GraphView
 
         public override RawRecord Next()
         {
-            if (this.outputBuffer.Count > 0) {
-                return this.outputBuffer.Dequeue();
-            }
-
-            while (this.lazyAdjacencyListBatch.Count >= this.batchSize
-                || this.isLazyBatchProcessed
-                || (this.lazyAdjacencyListBatch.Count != 0 && !this.inputOp.State()))
+            while (this.State())
             {
-                if (!this.isLazyBatchProcessed) {
+                // construct lazy list
+                if (this.lazyAdjacencyListBatch.Any())
+                {
                     this.ConstructLazyAdjacencyListInBatch();
                 }
 
-                Tuple<RawRecord, string> batchVertex = this.lazyAdjacencyListBatch.Dequeue();
-
-                this.isLazyBatchProcessed = this.lazyAdjacencyListBatch.Count > 0;
-
-                RawRecord currentRecord = batchVertex.Item1;
-
-                foreach (RawRecord record in this.CrossApply(currentRecord)) {
-                    this.outputBuffer.Enqueue(record);
-                }
-
-                if (this.outputBuffer.Count > 0) {
-                    return this.outputBuffer.Dequeue();
-                }
-            }
-
-            while (this.inputOp.State())
-            {
-                RawRecord currentRecord = this.inputOp.Next();
-
-                if (currentRecord == null) {
-                    break;
-                }
-
-                Debug.Assert(currentRecord.Length <= this.outputRecordLength, "currentRecord.Length <= this.outputRecordLength");
-                bool hasBeenCrossAppliedOnServer = currentRecord.Length == this.outputRecordLength;
-
-                if (hasBeenCrossAppliedOnServer) {
-                    return currentRecord;
-                }
-
-                VertexField startVertex = currentRecord[this.startVertexIndex] as VertexField;
-                if (startVertex == null) {
-                    throw new GraphViewException($"{currentRecord[this.startVertexIndex].ToString()} cannot be cast to a vertex.");
-                }
-                string startVertexId = startVertex.VertexId;
-
-                if (this.crossApplyForwardAdjacencyList) {
-                    AdjacencyListField adj = startVertex.AdjacencyList;
-                    Debug.Assert(adj != null, "adj != null");
-                    if (!adj.HasBeenFetched) {
-                        this.lazyAdjacencyListBatch.Enqueue(new Tuple<RawRecord, string>(currentRecord, startVertexId));
-                        continue;
-                    }
-                }
-                if (this.crossApplyBackwardAdjacencyList) {
-                    AdjacencyListField revAdj = startVertex.RevAdjacencyList;
-                    Debug.Assert(revAdj != null, "revAdj != null");
-                    if (!revAdj.HasBeenFetched) {
-                        this.lazyAdjacencyListBatch.Enqueue(new Tuple<RawRecord, string>(currentRecord, startVertexId));
-                        continue;
+                // cross apply and fill output buffer
+                while (this.inputRecordsBuffer.Any())
+                {
+                    RawRecord record = this.inputRecordsBuffer.Dequeue();
+                    foreach (RawRecord r in this.CrossApply(record))
+                    {
+                        this.outputBuffer.Enqueue(r);
                     }
                 }
 
-                foreach (RawRecord record in this.CrossApply(currentRecord)) {
-                    this.outputBuffer.Enqueue(record);
+                // check output buffer
+                if (this.outputBuffer.Any())
+                {
+                    return outputBuffer.Dequeue();
                 }
 
-                if (this.outputBuffer.Count > 0) {
-                    return this.outputBuffer.Dequeue();
+                // get input records
+                RawRecord inputRecord = null;
+                this.inputRecordsBuffer.Clear();
+                while (this.inputOp.State() && inputRecordsBuffer.Count < this.batchSize && (inputRecord = this.inputOp.Next()) != null)
+                {
+                    Debug.Assert(inputRecord.Length <= this.outputRecordLength, "inputRecord.Length <= this.outputRecordLength");
+
+                    inputRecordsBuffer.Enqueue(inputRecord);
+
+                    // has Been Cross Applied On Server
+                    if (inputRecord.Length == this.outputRecordLength)
+                    {
+                        continue;
+                    }
+
+                    VertexField startVertex = inputRecord[this.startVertexIndex] as VertexField;
+                    if (startVertex == null)
+                    {
+                        throw new GraphViewException($"{inputRecord[this.startVertexIndex]} cannot be cast to a vertex.");
+                    }
+                    string startVertexId = startVertex.VertexId;
+
+                    if (this.crossApplyForwardAdjacencyList)
+                    {
+                        AdjacencyListField adj = startVertex.AdjacencyList;
+                        Debug.Assert(adj != null, "adj != null");
+                        if (!adj.HasBeenFetched)
+                        {
+                            this.lazyAdjacencyListBatch.Enqueue(new Tuple<RawRecord, string>(inputRecord, startVertexId));
+                            continue;
+                        }
+                    }
+
+                    if (this.crossApplyBackwardAdjacencyList)
+                    {
+                        AdjacencyListField revAdj = startVertex.RevAdjacencyList;
+                        Debug.Assert(revAdj != null, "revAdj != null");
+                        if (!revAdj.HasBeenFetched)
+                        {
+                            this.lazyAdjacencyListBatch.Enqueue(new Tuple<RawRecord, string>(inputRecord, startVertexId));
+                            continue;
+                        }
+                    }
+                }
+
+                if (!inputRecordsBuffer.Any())
+                {
+                    this.Close();
+                    return null;
                 }
             }
-
-            while (this.lazyAdjacencyListBatch.Count >= batchSize
-                 || this.isLazyBatchProcessed
-                 || (this.lazyAdjacencyListBatch.Count != 0 && !this.inputOp.State()))
-            {
-                if (!this.isLazyBatchProcessed) {
-                    this.ConstructLazyAdjacencyListInBatch();
-                }
-
-                Tuple<RawRecord, string> batchVertex = this.lazyAdjacencyListBatch.Dequeue();
-
-                this.isLazyBatchProcessed = this.lazyAdjacencyListBatch.Count > 0;
-
-                RawRecord currentRecord = batchVertex.Item1;
-
-                foreach (RawRecord record in this.CrossApply(currentRecord)) {
-                    this.outputBuffer.Enqueue(record);
-                }
-
-                if (this.outputBuffer.Count > 0) {
-                    return this.outputBuffer.Dequeue();
-                }
-            }
-
-            this.Close();
             return null;
         }
 
@@ -5188,7 +5166,7 @@ namespace GraphView
             this.inputOp.ResetState();
             this.outputBuffer.Clear();
             this.lazyAdjacencyListBatch.Clear();
-            this.isLazyBatchProcessed = false;
+            this.inputRecordsBuffer.Clear();
             this.Open();
         }
     }
