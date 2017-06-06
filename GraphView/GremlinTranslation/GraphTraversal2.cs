@@ -1430,7 +1430,7 @@ namespace GraphView
                     match.Groups[1].Value) + "(");
 
             //replace gremlin keyword
-            Regex reForKeyword = new Regex(@"(?<=[,\(])\s*(\w+)\s*(?=[,\)])", RegexOptions.Compiled);
+            Regex reForKeyword = new Regex(@"(?<=[,\(])\s*(\w+(\s*\.\s*\w+)*)\s*(?=[,\)])", RegexOptions.Compiled);
             sCSCode = reForKeyword.Replace(sCSCode, match => 
                 (GremlinKeyword.GremlinKeywordToGraphTraversalDict.ContainsKey(match.Groups[1].Value) ? 
                     GremlinKeyword.GremlinKeywordToGraphTraversalDict[match.Groups[1].Value] :

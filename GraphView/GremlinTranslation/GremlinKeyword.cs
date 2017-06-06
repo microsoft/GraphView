@@ -197,6 +197,7 @@ namespace GraphView
                 {"drop", "Drop"},
                 {"dedup", "Dedup"},
                 {"emit", "Emit"},
+                {"E", "E"},
                 {"fold", "Fold"},
                 {"from", "From"},
                 {"flatMap", "FlatMap"},
