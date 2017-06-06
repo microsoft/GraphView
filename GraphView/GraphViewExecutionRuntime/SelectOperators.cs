@@ -5109,6 +5109,7 @@ namespace GraphView
 
                 // get input records
                 RawRecord inputRecord = null;
+                this.lazyAdjacencyListBatch.Clear();
                 this.inputRecordsBuffer.Clear();
                 while (this.inputOp.State() && inputRecordsBuffer.Count < this.batchSize && (inputRecord = this.inputOp.Next()) != null)
                 {
