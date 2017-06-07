@@ -396,8 +396,8 @@ namespace GraphView
         public static int[] partitionLoad = new int[partitionNum];
         public bool usePartitionWhenCreateDoc { get; set; } = true;
         public int repartitionBatchRandomIterSize { get; set; } = 996;
-        public bool useIncRepartitionDoc { get; set; } = false;
-        public int incRepartitionDocBatchSize = 100;
+        public static bool useIncRepartitionDoc { get; set; } = false;
+        public int incRepartitionDocBatchSize = 2;
         public static int tempInsertedDocumentBatchSize = 0;
         public List<JObject> batchEdgeList = new List<JObject>();
         /// <summary>
@@ -620,7 +620,8 @@ namespace GraphView
                         // If the situation is batch repartition the data
                         if (deleteTheDocBeforeInsert)
                         {
-                            ReplaceOrDeleteDocumentAsync(edge["id"].ToString(), edge, edge["_partition"].ToString());
+                            Console.WriteLine("Repartition the doc" + edge);
+                            ReplaceOrDeleteDocumentAsync(edge["id"] .ToString(), edge, edge["_partition"].ToString());
                         }
                         else
                         {
@@ -643,6 +644,7 @@ namespace GraphView
                         edge["_partition"] = srcPartition; // For design of the transaction
                         if (deleteTheDocBeforeInsert)
                         {
+                            Console.WriteLine("Repartition hte doc" + edge);
                             ReplaceOrDeleteDocumentAsync(edge["id"].ToString(), edge, edge["_partition"].ToString());
                         }
                         else
@@ -657,6 +659,7 @@ namespace GraphView
             }
             edgeBatchList.Clear();
         }
+        
         public void repartitionTheCollection(GraphViewConnection srcConnection)
         {
             Random rnd = new Random();
@@ -806,6 +809,7 @@ namespace GraphView
                 if (isEdgeDoc != null && Convert.ToBoolean(isEdgeDoc.ToString()))
                 {
                     batchEdgeList.Add(docObject);
+                    tempInsertedDocumentBatchSize++;
                 }
 
                 if (tempInsertedDocumentBatchSize > incRepartitionDocBatchSize)

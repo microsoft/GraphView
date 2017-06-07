@@ -289,37 +289,228 @@ namespace GraphViewUnitTest
                 AbstractGremlinTest.TEST_SPILLED_EDGE_THRESHOLD_VIAGRAPHAPI, AbstractGremlinTest.TEST_PARTITION_BY_KEY);
             connection.getMetricsOfGraphPartition();
             Console.WriteLine("Test2");
+
             GraphViewConnection connection1 = new GraphViewConnection("https://graphview.documents.azure.com:443/",
            "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
            "GroupMatch", "PartitionTestCitRep1", GraphType.GraphAPIOnly, AbstractGremlinTest.TEST_USE_REVERSE_EDGE,
            AbstractGremlinTest.TEST_SPILLED_EDGE_THRESHOLD_VIAGRAPHAPI, AbstractGremlinTest.TEST_PARTITION_BY_KEY);
             connection1.getMetricsOfGraphPartition();
             Console.WriteLine("Test3");
+
             GraphViewConnection connection2 = new GraphViewConnection("https://graphview.documents.azure.com:443/",
            "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
            "GroupMatch", "PartitionTestCitRep2", GraphType.GraphAPIOnly, AbstractGremlinTest.TEST_USE_REVERSE_EDGE,
            AbstractGremlinTest.TEST_SPILLED_EDGE_THRESHOLD_VIAGRAPHAPI, AbstractGremlinTest.TEST_PARTITION_BY_KEY);
             connection2.getMetricsOfGraphPartition();
+
+            GraphViewConnection connection3 = new GraphViewConnection("https://graphview.documents.azure.com:443/",
+  "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+  "GroupMatch", "PartitionTestCitRepInc", GraphType.GraphAPIOnly, AbstractGremlinTest.TEST_USE_REVERSE_EDGE,
+  AbstractGremlinTest.TEST_SPILLED_EDGE_THRESHOLD_VIAGRAPHAPI, AbstractGremlinTest.TEST_PARTITION_BY_KEY);
+            connection3.getMetricsOfGraphPartition();
+
+//            GraphViewConnection connection4 = new GraphViewConnection("https://graphview.documents.azure.com:443/",
+//"MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+//"GroupMatch", "PartitionTestCitRepIncComp", GraphType.GraphAPIOnly, AbstractGremlinTest.TEST_USE_REVERSE_EDGE,
+//AbstractGremlinTest.TEST_SPILLED_EDGE_THRESHOLD_VIAGRAPHAPI, AbstractGremlinTest.TEST_PARTITION_BY_KEY);
+//            connection4.getMetricsOfGraphPartition();
+        }
+
+        [TestMethod]
+        public void incRepartitionTest1000Items()
+        {
+            GraphViewConnection connection = GraphViewConnection.ResetGraphAPICollection("https://graphview.documents.azure.com:443/",
+        "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+        "GroupMatch", "PartitionTestCitRepInc", AbstractGremlinTest.TEST_USE_REVERSE_EDGE, AbstractGremlinTest.TEST_SPILLED_EDGE_THRESHOLD_VIAGRAPHAPI, AbstractGremlinTest.TEST_PARTITION_BY_KEY);
+            connection.EdgeSpillThreshold = 1;
+            GraphViewConnection.useIncRepartitionDoc = true;
+            GraphViewConnection.partitionNum = 100;
+            connection.incRepartitionDocBatchSize = 50;
+            GraphViewCommand cmd = new GraphViewCommand(connection);
+            HashSet<String> nodeIdSet = new HashSet<String>();
+            // Add edge
+            int edgeCount = 1000;
+
+            int c = 1;
+            var linesE = File.ReadLines("D:\\dataset\\thsinghua_dataset\\cit_network\\cit-HepTh.txt\\Cit-HepTh.txt");
+            foreach (var lineE in linesE)
+            {
+                edgeCount--;
+                if (edgeCount < 0)
+                {
+                    break;
+                }
+                if (c > 4)
+                {
+                    var split = lineE.Split('\t');
+                    var src = split[0];
+                    var des = split[1];
+
+                    if (!nodeIdSet.Contains(src))
+                    {
+                        cmd.CommandText = "g.addV('id', '" + src + "').property('name', '" + src + "').next()";
+                        cmd.Execute();
+                        nodeIdSet.Add(src);
+                    }
+
+                    if (!nodeIdSet.Contains(des))
+                    {
+                        cmd.CommandText = "g.addV('id', '" + des + "').property('name', '" + des + "').next()";
+                        cmd.Execute();
+                        nodeIdSet.Add(des);
+                    }
+
+                    cmd.CommandText = "g.V('" + src + "').addE('appear').to(g.V('" + des + "')).next()";
+                    cmd.Execute();
+                }
+                else
+                {
+                    c++;
+                }
+            }
+            connection.getMetricsOfGraphPartition();
         }
 
         [TestMethod]
         public void incRepartitionTest()
         {
-            GraphViewConnection connection1 = new GraphViewConnection("https://graphview.documents.azure.com:443/",
-              "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
-              "GroupMatch", "PartitionTest", GraphType.GraphAPIOnly, AbstractGremlinTest.TEST_USE_REVERSE_EDGE,
-              AbstractGremlinTest.TEST_SPILLED_EDGE_THRESHOLD_VIAGRAPHAPI, AbstractGremlinTest.TEST_PARTITION_BY_KEY);
-            connection1.EdgeSpillThreshold = 1;
-            GraphViewCommand cmd = new GraphViewCommand(connection1);
+            GraphViewConnection connection = GraphViewConnection.ResetGraphAPICollection("https://graphview.documents.azure.com:443/",
+         "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+         "GroupMatch", "PartitionTestCitRepInc", AbstractGremlinTest.TEST_USE_REVERSE_EDGE, AbstractGremlinTest.TEST_SPILLED_EDGE_THRESHOLD_VIAGRAPHAPI, AbstractGremlinTest.TEST_PARTITION_BY_KEY);
+            connection.EdgeSpillThreshold = 1;
+            GraphViewConnection.useIncRepartitionDoc = true;
+            GraphViewConnection.partitionNum = 3;
+            connection.incRepartitionDocBatchSize = 2;
+            GraphViewCommand cmd = new GraphViewCommand(connection);
 
-            GraphViewConnection connection2 = GraphViewConnection.ResetGraphAPICollection("https://graphview.documents.azure.com:443/",
-          "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
-          "GroupMatch", "PartitionTestCitRepInc", AbstractGremlinTest.TEST_USE_REVERSE_EDGE, AbstractGremlinTest.TEST_SPILLED_EDGE_THRESHOLD_VIAGRAPHAPI, AbstractGremlinTest.TEST_PARTITION_BY_KEY);
-            connection2.EdgeSpillThreshold = 1;
-            connection2.AssignSeenDesNotSeenSrcToBalance = true;
-            GraphViewConnection.partitionLoad = new int[GraphViewConnection.partitionNum];
-            connection2.repartitionTheCollection(connection1);
-            connection2.getMetricsOfGraphPartition();
+            cmd.CommandText = "g.addV('id', '1').property('name', '1').next()";
+            cmd.Execute();
+            cmd.CommandText = "g.addV('id', '2').property('name', '2').next()";
+            cmd.Execute();
+            cmd.CommandText = "g.V('1').addE('appeared').to(g.V('2')).next()";
+            cmd.Execute();
+            cmd.CommandText = "g.addV('id', '3').property('name', '3').next()";
+            cmd.Execute();
+            cmd.CommandText = "g.V('3').addE('appeared').to(g.V('2')).next()";
+            cmd.Execute();
+            cmd.CommandText = "g.addV('id', '4').property('name', '4').next()";
+            cmd.Execute();
+            cmd.CommandText = "g.V('4').addE('appeared').to(g.V('2')).next()";
+            cmd.Execute();
+            cmd.CommandText = "g.addV('id', '5').property('name', '5').next()";
+            cmd.Execute();
+            cmd.CommandText = "g.V('5').addE('appeared').to(g.V('2')).next()";
+            cmd.Execute();
+
+
+            cmd.CommandText = "g.addV('id', '11').property('name', '11').next()";
+            cmd.Execute();
+            cmd.CommandText = "g.addV('id', '12').property('name', '12').next()";
+            cmd.Execute();
+            cmd.CommandText = "g.V('11').addE('appeared').to(g.V('12')).next()";
+            cmd.Execute();
+            cmd.CommandText = "g.addV('id', '13').property('name', '13').next()";
+            cmd.Execute();
+            cmd.CommandText = "g.V('13').addE('appeared').to(g.V('12')).next()";
+            cmd.Execute();
+            cmd.CommandText = "g.addV('id', '14').property('name', '14').next()";
+            cmd.Execute();
+            cmd.CommandText = "g.V('14').addE('appeared').to(g.V('12')).next()";
+            cmd.Execute();
+            cmd.CommandText = "g.addV('id', '15').property('name', '15').next()";
+            cmd.Execute();
+            cmd.CommandText = "g.V('15').addE('appeared').to(g.V('12')).next()";
+            cmd.Execute();
+
+            cmd.CommandText = "g.addV('id', '21').property('name', '21').next()";
+            cmd.Execute();
+            cmd.CommandText = "g.addV('id', '22').property('name', '22').next()";
+            cmd.Execute();
+            cmd.CommandText = "g.V('21').addE('appeared').to(g.V('22')).next()";
+            cmd.Execute();
+            cmd.CommandText = "g.addV('id', '23').property('name', '23').next()";
+            cmd.Execute();
+            cmd.CommandText = "g.V('23').addE('appeared').to(g.V('22')).next()";
+            cmd.Execute();
+            cmd.CommandText = "g.addV('id', '24').property('name', '24').next()";
+            cmd.Execute();
+            cmd.CommandText = "g.V('24').addE('appeared').to(g.V('22')).next()";
+            cmd.Execute();
+            cmd.CommandText = "g.addV('id', '25').property('name', '25').next()";
+            cmd.Execute();
+            cmd.CommandText = "g.V('25').addE('appeared').to(g.V('22')).next()";
+            cmd.Execute();
+        }
+
+        [TestMethod]
+        public void incRepartitionTestComp()
+        {
+            GraphViewConnection connection = GraphViewConnection.ResetGraphAPICollection("https://graphview.documents.azure.com:443/",
+         "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+         "GroupMatch", "PartitionTestCitRepIncComp", AbstractGremlinTest.TEST_USE_REVERSE_EDGE, AbstractGremlinTest.TEST_SPILLED_EDGE_THRESHOLD_VIAGRAPHAPI, AbstractGremlinTest.TEST_PARTITION_BY_KEY);
+            connection.EdgeSpillThreshold = 1;
+            GraphViewConnection.useIncRepartitionDoc = false;
+            connection.incRepartitionDocBatchSize = 2;
+            GraphViewConnection.partitionNum = 3;
+            GraphViewCommand cmd = new GraphViewCommand(connection);
+
+            cmd.CommandText = "g.addV('id', '1').property('name', '1').next()";
+            cmd.Execute();
+            cmd.CommandText = "g.addV('id', '2').property('name', '2').next()";
+            cmd.Execute();
+            cmd.CommandText = "g.V('1').addE('appeared').to(g.V('2')).next()";
+            cmd.Execute();
+            cmd.CommandText = "g.addV('id', '3').property('name', '3').next()";
+            cmd.Execute();
+            cmd.CommandText = "g.V('3').addE('appeared').to(g.V('2')).next()";
+            cmd.Execute();
+            cmd.CommandText = "g.addV('id', '4').property('name', '4').next()";
+            cmd.Execute();
+            cmd.CommandText = "g.V('4').addE('appeared').to(g.V('2')).next()";
+            cmd.Execute();
+            cmd.CommandText = "g.addV('id', '5').property('name', '5').next()";
+            cmd.Execute();
+            cmd.CommandText = "g.V('5').addE('appeared').to(g.V('2')).next()";
+            cmd.Execute();
+
+
+            cmd.CommandText = "g.addV('id', '11').property('name', '11').next()";
+            cmd.Execute();
+            cmd.CommandText = "g.addV('id', '12').property('name', '12').next()";
+            cmd.Execute();
+            cmd.CommandText = "g.V('11').addE('appeared').to(g.V('12')).next()";
+            cmd.Execute();
+            cmd.CommandText = "g.addV('id', '13').property('name', '13').next()";
+            cmd.Execute();
+            cmd.CommandText = "g.V('13').addE('appeared').to(g.V('12')).next()";
+            cmd.Execute();
+            cmd.CommandText = "g.addV('id', '14').property('name', '14').next()";
+            cmd.Execute();
+            cmd.CommandText = "g.V('14').addE('appeared').to(g.V('12')).next()";
+            cmd.Execute();
+            cmd.CommandText = "g.addV('id', '15').property('name', '15').next()";
+            cmd.Execute();
+            cmd.CommandText = "g.V('15').addE('appeared').to(g.V('12')).next()";
+            cmd.Execute();
+
+            cmd.CommandText = "g.addV('id', '21').property('name', '21').next()";
+            cmd.Execute();
+            cmd.CommandText = "g.addV('id', '22').property('name', '22').next()";
+            cmd.Execute();
+            cmd.CommandText = "g.V('21').addE('appeared').to(g.V('22')).next()";
+            cmd.Execute();
+            cmd.CommandText = "g.addV('id', '23').property('name', '23').next()";
+            cmd.Execute();
+            cmd.CommandText = "g.V('23').addE('appeared').to(g.V('22')).next()";
+            cmd.Execute();
+            cmd.CommandText = "g.addV('id', '24').property('name', '24').next()";
+            cmd.Execute();
+            cmd.CommandText = "g.V('24').addE('appeared').to(g.V('22')).next()";
+            cmd.Execute();
+            cmd.CommandText = "g.addV('id', '25').property('name', '25').next()";
+            cmd.Execute();
+            cmd.CommandText = "g.V('25').addE('appeared').to(g.V('22')).next()";
+            cmd.Execute();
         }
 
         [TestMethod]
