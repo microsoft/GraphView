@@ -282,12 +282,84 @@ namespace GraphViewUnitTest
         [TestMethod]
         public void GraphStaticsticTest()
         {
+            Console.WriteLine("Test1");
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
                 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
-                "GroupMatch", "PartitionTest", GraphType.GraphAPIOnly, AbstractGremlinTest.TEST_USE_REVERSE_EDGE,
+                "GroupMatch", "PartitionTestCit", GraphType.GraphAPIOnly, AbstractGremlinTest.TEST_USE_REVERSE_EDGE,
                 AbstractGremlinTest.TEST_SPILLED_EDGE_THRESHOLD_VIAGRAPHAPI, AbstractGremlinTest.TEST_PARTITION_BY_KEY);
-            GraphViewCommand cmd = new GraphViewCommand(connection);
             connection.getMetricsOfGraphPartition();
+            Console.WriteLine("Test2");
+            GraphViewConnection connection1 = new GraphViewConnection("https://graphview.documents.azure.com:443/",
+           "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+           "GroupMatch", "PartitionTestCitRep1", GraphType.GraphAPIOnly, AbstractGremlinTest.TEST_USE_REVERSE_EDGE,
+           AbstractGremlinTest.TEST_SPILLED_EDGE_THRESHOLD_VIAGRAPHAPI, AbstractGremlinTest.TEST_PARTITION_BY_KEY);
+            connection1.getMetricsOfGraphPartition();
+            Console.WriteLine("Test3");
+            GraphViewConnection connection2 = new GraphViewConnection("https://graphview.documents.azure.com:443/",
+           "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+           "GroupMatch", "PartitionTestCitRep2", GraphType.GraphAPIOnly, AbstractGremlinTest.TEST_USE_REVERSE_EDGE,
+           AbstractGremlinTest.TEST_SPILLED_EDGE_THRESHOLD_VIAGRAPHAPI, AbstractGremlinTest.TEST_PARTITION_BY_KEY);
+            connection2.getMetricsOfGraphPartition();
+        }
+
+        [TestMethod]
+        public void incRepartitionTest()
+        {
+            GraphViewConnection connection1 = new GraphViewConnection("https://graphview.documents.azure.com:443/",
+              "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+              "GroupMatch", "PartitionTest", GraphType.GraphAPIOnly, AbstractGremlinTest.TEST_USE_REVERSE_EDGE,
+              AbstractGremlinTest.TEST_SPILLED_EDGE_THRESHOLD_VIAGRAPHAPI, AbstractGremlinTest.TEST_PARTITION_BY_KEY);
+            connection1.EdgeSpillThreshold = 1;
+            GraphViewCommand cmd = new GraphViewCommand(connection1);
+
+            GraphViewConnection connection2 = GraphViewConnection.ResetGraphAPICollection("https://graphview.documents.azure.com:443/",
+          "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+          "GroupMatch", "PartitionTestCitRepInc", AbstractGremlinTest.TEST_USE_REVERSE_EDGE, AbstractGremlinTest.TEST_SPILLED_EDGE_THRESHOLD_VIAGRAPHAPI, AbstractGremlinTest.TEST_PARTITION_BY_KEY);
+            connection2.EdgeSpillThreshold = 1;
+            connection2.AssignSeenDesNotSeenSrcToBalance = true;
+            GraphViewConnection.partitionLoad = new int[GraphViewConnection.partitionNum];
+            connection2.repartitionTheCollection(connection1);
+            connection2.getMetricsOfGraphPartition();
+        }
+
+        [TestMethod]
+        public void randomPeekEdge1()
+        {
+            GraphViewConnection connection1 = new GraphViewConnection("https://graphview.documents.azure.com:443/",
+              "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+              "GroupMatch", "PartitionTest", GraphType.GraphAPIOnly, AbstractGremlinTest.TEST_USE_REVERSE_EDGE,
+              AbstractGremlinTest.TEST_SPILLED_EDGE_THRESHOLD_VIAGRAPHAPI, AbstractGremlinTest.TEST_PARTITION_BY_KEY);
+            connection1.EdgeSpillThreshold = 1;
+            GraphViewCommand cmd = new GraphViewCommand(connection1);
+
+            GraphViewConnection connection2 = GraphViewConnection.ResetGraphAPICollection("https://graphview.documents.azure.com:443/",
+          "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+          "GroupMatch", "PartitionTestCitRep2", AbstractGremlinTest.TEST_USE_REVERSE_EDGE, AbstractGremlinTest.TEST_SPILLED_EDGE_THRESHOLD_VIAGRAPHAPI, AbstractGremlinTest.TEST_PARTITION_BY_KEY);
+            connection2.EdgeSpillThreshold = 1;
+            connection2.AssignSeenDesNotSeenSrcToBalance = true;
+            GraphViewConnection.partitionLoad = new int[GraphViewConnection.partitionNum];
+            connection2.repartitionTheCollection(connection1);
+            connection2.getMetricsOfGraphPartition();
+        }
+
+        [TestMethod]
+        public void randomPeekEdge2()
+        {
+            GraphViewConnection connection1 = new GraphViewConnection("https://graphview.documents.azure.com:443/",
+              "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+              "GroupMatch", "PartitionTest", GraphType.GraphAPIOnly, AbstractGremlinTest.TEST_USE_REVERSE_EDGE,
+              AbstractGremlinTest.TEST_SPILLED_EDGE_THRESHOLD_VIAGRAPHAPI, AbstractGremlinTest.TEST_PARTITION_BY_KEY);
+            connection1.EdgeSpillThreshold = 1;
+            GraphViewCommand cmd = new GraphViewCommand(connection1);
+
+            GraphViewConnection connection2 = GraphViewConnection.ResetGraphAPICollection("https://graphview.documents.azure.com:443/",
+          "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+          "GroupMatch", "PartitionTestCitRep2", AbstractGremlinTest.TEST_USE_REVERSE_EDGE, AbstractGremlinTest.TEST_SPILLED_EDGE_THRESHOLD_VIAGRAPHAPI, AbstractGremlinTest.TEST_PARTITION_BY_KEY);
+            connection2.EdgeSpillThreshold = 1;
+            connection2.AssignSeenDesNotSeenSrcToBalance = true;
+            GraphViewConnection.partitionLoad = new int[GraphViewConnection.partitionNum];
+            connection2.repartitionTheCollection(connection1);
+            connection2.getMetricsOfGraphPartition();
         }
 
         [TestMethod]
