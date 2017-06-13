@@ -1545,27 +1545,20 @@ namespace GraphView
         }
     }
 
-
     
 
     internal class OptionalOperator : GraphViewExecutionOperator
     {
-        private const int batchIdIndex = 0;
-
         // A list of record fields (identified by field indexes) from the input 
         // operator are to be returned when the optional traversal produces no results.
         // When a field index is less than 0, it means that this field value is always null. 
         private readonly List<int> inputIndexes;
 
         private readonly GraphViewExecutionOperator inputOp;
-        ContainerEnumerator sourceEnumerator;
+        private ContainerEnumerator sourceEnumerator;
 
-        private readonly List<RawRecord> inputBuffer;
-        private const int inputBatchSize = 1000;
-        private readonly List<RawRecord> optionalResultBuffer;
-        private int inputOffset;
-        private bool newInput;
-        private int optionalOffset;
+        private readonly Queue<RawRecord> inputBatch;
+        private readonly Queue<RawRecord> optionalResultBuffer;
 
         // The traversal inside the optional function. 
         // The records returned by this operator should have the same number of fields
@@ -1574,7 +1567,11 @@ namespace GraphView
 
         private readonly bool aggregateMode;
         private readonly bool inputInBatch;
-        private readonly int inputRecordLength;
+        private readonly int outputRecordNullLength;
+
+        // contain the records' batch ID that already have sub-traversal output,
+        // others will invoke this.ConstructForwardingRecord
+        private HashSet<int> haveOutput;
 
         public OptionalOperator(
             GraphViewExecutionOperator inputOp,
@@ -1592,12 +1589,11 @@ namespace GraphView
             this.aggregateMode = aggregateMode;
             this.inputInBatch = inputInBatch;
 
-            this.inputRecordLength = inputRecordLength;
-            this.inputBuffer = new List<RawRecord>();
-            this.optionalResultBuffer = new List<RawRecord>();
-            this.inputOffset = 0;
-            this.optionalOffset = 0;
-            this.newInput = true;
+            this.outputRecordNullLength = inputRecordLength - Convert.ToInt32(inputInBatch);
+            this.inputBatch = new Queue<RawRecord>();
+            this.optionalResultBuffer = new Queue<RawRecord>();
+
+            this.haveOutput = new HashSet<int>();
 
             this.Open();
         }
@@ -1622,196 +1618,123 @@ namespace GraphView
 
         public override RawRecord Next()
         {
-            if (this.aggregateMode)
+            while (this.State())
             {
-                if (this.inputOp.State())
+                if (this.optionalResultBuffer.Any())
                 {
-                    RawRecord inputRec = null;
-                    while (this.inputOp.State() && (inputRec = this.inputOp.Next()) != null)
-                    {
-                        this.inputBuffer.Add(inputRec);
-                    }
-
-                    this.sourceEnumerator.ResetTableCache(this.inputBuffer);
-
-                    RawRecord optionalRecord = null;
-                    while (this.optionalTraversal.State() && (optionalRecord = this.optionalTraversal.Next()) != null)
-                    {
-                        this.optionalResultBuffer.Add(optionalRecord);
-                    }
+                    return this.optionalResultBuffer.Dequeue();
                 }
 
-                if (this.inputInBatch && this.inputOffset < this.inputBuffer.Count)
+                this.inputBatch.Clear();
+                RawRecord inputRecord;
+
+                // Get inputs and add batch ID
+                // there is NO maximun input batch size, because input records with same batch ID may be separate by this
+                //   and lead to wrong result in aggregating cases.
+                while (this.inputOp.State() && (inputRecord = inputOp.Next()) != null)
                 {
-                    int outputBatchId = this.optionalOffset < this.optionalResultBuffer.Count
-                        ? int.Parse(this.optionalResultBuffer[this.optionalOffset][batchIdIndex].ToValue)
-                        : -1;
+                    RawRecord batchRawRecord = new RawRecord();
 
-                    if (outputBatchId < 0)
+                    // There are three different way to add batch ID
+                    if (!this.aggregateMode)
                     {
-                        RawRecord result = this.ConstructForwardingRecord(this.inputBuffer[this.inputOffset]);
-                        this.inputOffset++;
-                        return result;
+                        // CASE 1: no aggregate step in sub-traversal
+                        batchRawRecord.Append(new StringField(this.inputBatch.Count.ToString(), JsonDataType.Int));
                     }
-
-                    int inputBatchId = int.Parse(this.inputBuffer[this.inputOffset][batchIdIndex].ToValue);
-
-                    if (inputBatchId == outputBatchId)
+                    else if (!this.inputInBatch)
                     {
-                        RawRecord optionalRec = this.optionalResultBuffer[this.optionalOffset];
-
-                        RawRecord result = new RawRecord();
-                        result.Append(new StringField(inputBatchId.ToString(), JsonDataType.Int));
-                        for (int i = 1; i < this.inputRecordLength; i++)
-                        {
-                            result.Append((FieldObject)null);
-                        }
-                        result.Append(optionalRec.GetRange(1, optionalRec.Length - 1));
-
-                        this.optionalOffset++;
-
-                        // Fastforward to the next batch group
-                        while (++this.inputOffset < this.inputBuffer.Count)
-                        {
-                            inputBatchId = int.Parse(this.inputBuffer[this.inputOffset][batchIdIndex].ToValue);
-                            if (inputBatchId > outputBatchId)
-                            {
-                                break;
-                            }
-                        }
-
-                        return result;
-                    }
-                    else if (inputBatchId < outputBatchId)
-                    {
-                        RawRecord inputRec = this.inputBuffer[this.inputOffset];
-                        RawRecord result = this.ConstructForwardingRecord(inputRec);
-                        this.inputOffset++;
-                        return result;
-                    }
-                    else if (inputBatchId > outputBatchId)
-                    {
-                        RawRecord optionalRec = this.optionalResultBuffer[this.optionalOffset];
-                        RawRecord result = new RawRecord();
-                        result.Append(new StringField(outputBatchId.ToString(), JsonDataType.Int));
-                        for (int i = 1; i < this.inputRecordLength; i++)
-                        {
-                            result.Append((FieldObject)null);
-                        }
-                        result.Append(optionalRec.GetRange(1, optionalRec.Length - 1));
-                        this.optionalOffset++;
-                        return result;
-                    }
-                }
-                else
-                {
-                    if (this.optionalResultBuffer.Count > 0)
-                    {
-                        if (this.optionalOffset < this.optionalResultBuffer.Count)
-                        {
-                            RawRecord result = new RawRecord();
-                            for (int i = 0; i < this.inputRecordLength; i++)
-                            {
-                                result.Append((FieldObject)null);
-                            } 
-                            result.Append(this.optionalResultBuffer[this.optionalOffset]);
-                            this.optionalOffset++;
-                            return result;
-                        }
+                        // CASE 2: sub-traversal has aggregate step, and input op IS NOT in batch mode.
+                        batchRawRecord.Append(new StringField("0", JsonDataType.Int));
                     }
                     else
                     {
-                        if (this.inputOffset < this.inputBuffer.Count)
-                        {
-                            RawRecord inputRec = this.inputBuffer[this.inputOffset];
-                            RawRecord result = this.ConstructForwardingRecord(inputRec);
-                            this.inputOffset++;
-                            return result;
-                        }
+                        // CASE 3: sub-traversal has aggregate step, and input op IS in batch mode.
+                        // Add same batch id as inputs'.
+                        StringField sameBatchId = new StringField(inputRecord.RetriveData(0).ToValue, JsonDataType.Int);
+                        batchRawRecord.Append(sameBatchId);
                     }
+                    
+                    batchRawRecord.Append(inputRecord);
+                    inputBatch.Enqueue(batchRawRecord);
                 }
 
-                this.Close();
-                return null;
-            }
-            else
-            {
-                while (this.State())
+                if (!this.inputBatch.Any())
                 {
-                    if (this.inputOffset >= this.inputBuffer.Count)
-                    {
-                        this.inputBuffer.Clear();
-                        this.inputOffset = 0;
-                        this.newInput = true;
-                        this.optionalResultBuffer.Clear();
-                        this.optionalOffset = 0;
+                    this.Close();
+                    return null;
+                }
 
-                        RawRecord inputRec = null;
-                        while (this.inputOp.State() &&
-                            (inputRec = this.inputOp.Next()) != null &&
-                            this.inputBuffer.Count < inputBatchSize)
+                // Get outputs
+                this.sourceEnumerator.ResetTableCache(this.inputBatch.ToList());
+                this.optionalTraversal.ResetState();
+                RawRecord optionalRecord = null;
+                while (this.optionalTraversal.State() && (optionalRecord = this.optionalTraversal.Next()) != null)
+                {
+                    int inputBatchId = int.Parse(this.inputBatch.Peek().RetriveData(0).ToValue);
+                    int outputBatchId = int.Parse(optionalRecord.RetriveData(0).ToValue);
+                    while (inputBatchId < outputBatchId)
+                    {
+                        if (!this.haveOutput.Add(inputBatchId))
                         {
-                            RawRecord batchedRecord = new RawRecord();
-                            batchedRecord.Append(new StringField(this.inputBuffer.Count.ToString(), JsonDataType.Int));
-                            batchedRecord.Append(inputRec);
-                            this.inputBuffer.Add(batchedRecord);
-                        }
-
-                        this.sourceEnumerator.ResetTableCache(this.inputBuffer);
-                        this.optionalTraversal.ResetState();
-
-                        RawRecord optionalRecord;
-                        while (this.optionalTraversal.State() && (optionalRecord = this.optionalTraversal.Next()) != null)
-                        {
-                            this.optionalResultBuffer.Add(optionalRecord);
-                        }
-                    }
-
-                    if (this.inputOffset >= this.inputBuffer.Count)
-                    {
-                        this.Close();
-                        return null;
-                    }
-
-                    int inputBatchId = int.Parse(this.inputBuffer[this.inputOffset][batchIdIndex].ToValue);
-                    int outputBatchId = this.optionalOffset < this.optionalResultBuffer.Count
-                            ? int.Parse(this.optionalResultBuffer[this.optionalOffset][batchIdIndex].ToValue)
-                            : -1;
-
-                    if (inputBatchId == outputBatchId)
-                    {
-                        RawRecord inputRec = this.inputBuffer[this.inputOffset];
-                        RawRecord optionalRec = this.optionalResultBuffer[this.optionalOffset];
-                        RawRecord resultRec = inputRec.GetRange(1, inputRec.Length - 1);
-                        resultRec.Append(optionalRec.GetRange(1, optionalRec.Length - 1));
-
-                        this.optionalOffset++;
-                        this.newInput = false;
-
-                        return resultRec;
-                    }
-                    else
-                    {
-                        if (this.newInput)
-                        {
-                            RawRecord inputRec = this.inputBuffer[this.inputOffset];
-                            RawRecord resultRec = this.ConstructForwardingRecord(inputRec.GetRange(1, inputRec.Length - 1));
-                            this.inputOffset++;
-                            this.newInput = true;
-
-                            return resultRec;
+                            this.inputBatch.Dequeue();
                         }
                         else
                         {
-                            this.inputOffset++;
-                            this.newInput = true;
-                            continue;
+                            // get origin input record
+                            // and remove the batch id which was gave by this Op.
+                            RawRecord inputRec = this.inputBatch.Dequeue().GetRange(1);
+                            RawRecord result = this.ConstructForwardingRecord(inputRec);
+                            this.optionalResultBuffer.Enqueue(result);
                         }
+                        inputBatchId = int.Parse(this.inputBatch.Peek().RetriveData(0).ToValue);
+                    }
+                    if (inputBatchId == outputBatchId)
+                    {
+                        RawRecord result = new RawRecord();
+                        if (!this.aggregateMode)
+                        {
+                            result.Append(this.inputBatch.Peek().GetRange(1));
+                        }
+                        else if (!this.inputInBatch)
+                        {
+                            for (int i = 0; i < this.outputRecordNullLength; i++)
+                            {
+                                result.Append((FieldObject)null);
+                            }
+                        }
+                        else
+                        {
+                            // reserve input batch ID
+                            result.Append(new StringField(outputBatchId.ToString(), JsonDataType.Int));
+                            for (int i = 0; i < this.outputRecordNullLength; i++)
+                            {
+                                result.Append((FieldObject)null);
+                            }
+                        }
+                        
+                        result.Append(optionalRecord.GetRange(1));
+                        this.haveOutput.Add(inputBatchId);
+                        this.optionalResultBuffer.Enqueue(result);
+                    }
+
+                    if (inputBatchId > outputBatchId)
+                    {
+                        throw new QueryExecutionException("Outputs of sub-traversal are out-of-order!");
                     }
                 }
 
-                return null;
+                // remains some inputs that have no output to match
+                while (this.inputBatch.Any())
+                {
+                    RawRecord record = this.inputBatch.Dequeue();
+                    if (this.haveOutput.Add(int.Parse(record[0].ToValue)))
+                    {
+                        RawRecord result = this.ConstructForwardingRecord(record.GetRange(1));
+                        this.optionalResultBuffer.Enqueue(result);
+                    }
+                }
             }
+            return null;
         }
 
         public override void ResetState()
@@ -1819,11 +1742,9 @@ namespace GraphView
             this.inputOp.ResetState();
             this.sourceEnumerator.ResetState();
             this.optionalTraversal.ResetState();
-            this.inputBuffer.Clear();
+            this.inputBatch.Clear();
             this.optionalResultBuffer.Clear();
-            this.inputOffset = 0;
-            this.optionalOffset = 0;
-            this.newInput = true;
+            this.haveOutput.Clear();
             this.Open();
         }
     }
@@ -5089,6 +5010,7 @@ namespace GraphView
                 if (this.lazyAdjacencyListBatch.Any())
                 {
                     this.ConstructLazyAdjacencyListInBatch();
+                    this.lazyAdjacencyListBatch.Clear();
                 }
 
                 // cross apply and fill output buffer
@@ -5109,7 +5031,6 @@ namespace GraphView
 
                 // get input records
                 RawRecord inputRecord = null;
-                this.lazyAdjacencyListBatch.Clear();
                 this.inputRecordsBuffer.Clear();
                 while (this.inputOp.State() && inputRecordsBuffer.Count < this.batchSize && (inputRecord = this.inputOp.Next()) != null)
                 {

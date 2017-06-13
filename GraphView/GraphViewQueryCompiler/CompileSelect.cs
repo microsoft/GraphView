@@ -1804,22 +1804,12 @@ namespace GraphView
             QueryCompilationContext subcontext = new QueryCompilationContext(context);
             ContainerEnumerator sourceEnumerator = new ContainerEnumerator();
             subcontext.OuterContextOp.SourceEnumerator = sourceEnumerator;
-            subcontext.InBatchMode = context.InBatchMode || !this.HasAggregateFunctionAsChildren;
-            if (!this.HasAggregateFunctionAsChildren)
-            {
-                subcontext.AddField(
-                    GremlinKeyword.IndexTableName, GremlinKeyword.IndexColumnName, ColumnGraphType.Value, true);
-            }
+
+            subcontext.InBatchMode = true;
+            subcontext.AddField(
+                GremlinKeyword.IndexTableName, GremlinKeyword.IndexColumnName, ColumnGraphType.Value, true);
 
             GraphViewExecutionOperator optionalTraversalOp = optionalSelect.Compile(subcontext, dbConnection);
-
-            //OptionalOperator optionalOp = new OptionalOperator(
-            //    context.CurrentExecutionOperator,
-            //    inputIndexes,
-            //    optionalTraversalOp,
-            //    subcontext.OuterContextOp,
-            //    containerOp,
-            //    isCarryOnMode);
 
             OptionalOperator optionalOp = new OptionalOperator(
                 context.CurrentExecutionOperator,
