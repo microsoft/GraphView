@@ -527,7 +527,10 @@ namespace GraphView
 
     public partial class WUnfoldTableReference : WSchemaObjectFunctionTableReference {}
 
-    public partial class WUnionTableReference : WSchemaObjectFunctionTableReference {}
+    public partial class WUnionTableReference : WSchemaObjectFunctionTableReference
+    {
+        public Queue<bool> HasAggregateFunctionAsChildren { get; set; }
+    }
 
     public partial class WMatchTableReference : WSchemaObjectFunctionTableReference {}
 
