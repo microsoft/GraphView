@@ -30,13 +30,10 @@ namespace GraphView
 
         public Predicate(PredicateType type, params object[] values)
         {
-            Values = new List<object>();
             if (values != null)
             {
-                foreach (var value in values)
-                {
-                    Values.Add(value);
-                }
+                Value = values[0];
+                Values = values.ToList();
             }
             PredicateType = type;
         }
@@ -101,9 +98,9 @@ namespace GraphView
             return new Predicate(PredicateType.within, objects);
         }
 
-        public static Predicate within(object label)
+        public static Predicate within(List<object> objects)
         {
-            return new Predicate(PredicateType.within, label);
+            return Predicate.within(objects.ToArray());
         }
 
         public static Predicate without(params object[] objects)
