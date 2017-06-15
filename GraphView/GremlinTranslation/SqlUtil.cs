@@ -237,7 +237,7 @@ namespace GraphView
                     ? GetBooleanParenthesisExpr(booleanExpr)
                     : booleanExpr;
                 concatExpr = concatExpr == null ? booleanExpr
-                                                : GetBooleanBinaryExpr(newExpr, concatExpr, type);
+                                                : GetBooleanBinaryExpr(concatExpr, newExpr, type);
             }
             if (concatExpr == null)
                 return null;

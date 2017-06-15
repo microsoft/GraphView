@@ -443,12 +443,21 @@ namespace GraphView
         public override HashSet<int> EvaluateInBatch(List<RawRecord> records)
         {
             HashSet<int> lhsIndexes = this.lhs.EvaluateInBatch(records);
-            HashSet<int> rhsIndexes = this.rhs.EvaluateInBatch(records);
 
             if (this.type == BooleanBinaryFunctionType.And)
+            {
+                records = records.Where(i => lhsIndexes.Contains(int.Parse(i.RetriveData(0).ToValue))).ToList();
+                HashSet<int> rhsIndexes = this.rhs.EvaluateInBatch(records);
                 return new HashSet<int>(lhsIndexes.Intersect(rhsIndexes));
+            }
+
             if (this.type == BooleanBinaryFunctionType.Or)
+            {
+                records = records.Where(i => !lhsIndexes.Contains(int.Parse(i.RetriveData(0).ToValue))).ToList();
+                HashSet<int> rhsIndexes = this.rhs.EvaluateInBatch(records);
                 return new HashSet<int>(lhsIndexes.Union(rhsIndexes));
+            }
+            
             return new HashSet<int>();
         }
     }
