@@ -1530,10 +1530,8 @@ namespace GraphView
     {
         internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
         {
-            ContainerOperator containerOp = new ContainerOperator(context.CurrentExecutionOperator);
-
-            UnionOperator unionOp = new UnionOperator(context.CurrentExecutionOperator, containerOp);
-
+            ContainerEnumerator sourceEnumerator = new ContainerEnumerator();
+            UnionOperator unionOp = new UnionOperator(context.CurrentExecutionOperator, sourceEnumerator, context.InBatchMode, context.RawRecordLayout.Count);
             bool isUnionWithoutAnyBranch = Parameters.Count == 0 || Parameters[0] is WValueExpression;
 
             WSelectQueryBlock firstSelectQuery = null;
@@ -1557,11 +1555,11 @@ namespace GraphView
                     }
 
                     QueryCompilationContext subcontext = new QueryCompilationContext(context);
-                    subcontext.CarryOn = true;
-                    subcontext.InBatchMode = context.InBatchMode;
+                    subcontext.OuterContextOp.SourceEnumerator = sourceEnumerator;
+                    subcontext.AddField(GremlinKeyword.IndexTableName, GremlinKeyword.IndexColumnName, ColumnGraphType.Value, true);
+                    subcontext.InBatchMode = true;
                     GraphViewExecutionOperator traversalOp = scalarSubquery.SubQueryExpr.Compile(subcontext, dbConnection);
-                    subcontext.OuterContextOp.SourceEnumerator = containerOp.GetEnumerator();
-                    unionOp.AddTraversal(subcontext.OuterContextOp, traversalOp);
+                    unionOp.AddTraversal(traversalOp, this.HasAggregateFunctionAsChildren.Dequeue());
                 }
             }
 
