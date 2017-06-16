@@ -108,9 +108,9 @@ namespace GraphView
             return new Predicate(PredicateType.without, objects);
         }
 
-        public static Predicate without(object label)
+        public static Predicate without(List<object> objects)
         {
-            return new Predicate(PredicateType.without, label);
+            return Predicate.without(objects.ToArray());
         }
 
         public static Predicate not(Predicate predicate)
