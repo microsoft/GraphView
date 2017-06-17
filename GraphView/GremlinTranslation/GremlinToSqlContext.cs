@@ -16,6 +16,7 @@ namespace GraphView
         internal List<GremlinTableVariable> TableReferences { get; private set; } // Used for generating from clause
         internal List<GremlinMatchPath> MatchPathList { get; set; }  // Used for generating match clause
         internal WBooleanExpression Predicates { get; private set; } // Used for generating where clause
+        internal bool HasRepeatPathInPredicates { get; set; }
         internal List<GremlinVariable> StepList { get; set; }  // Used for generating Path
         internal GremlinLocalPathVariable ContextLocalPath { get; set; }
 
@@ -179,6 +180,9 @@ namespace GraphView
             {
                 return Predicates;
             }
+            this.HasRepeatPathInPredicates = this.FetchAllTableVars()
+                .Exists(var => (var is GremlinGlobalPathVariable) && ((var as GremlinGlobalPathVariable).GetStepList()
+                                   .Exists(step => step is GremlinRepeatContextVariable)));
             return SqlUtil.GetExistPredicate(ToSelectQueryBlock());
         }
 

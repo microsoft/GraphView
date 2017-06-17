@@ -166,6 +166,7 @@ namespace GraphView
             {
                 booleanExprList.Add(context.ToSqlBoolean());
             }
+            currentContext.HasRepeatPathInPredicates = andContexts.Any(context => context.HasRepeatPathInPredicates);
             currentContext.AddPredicate(SqlUtil.ConcatBooleanExprWithAnd(booleanExprList));
         }
 
@@ -742,6 +743,11 @@ namespace GraphView
             currentContext.TableReferences.Add(repeatVariable);
             currentContext.SetPivotVariable(repeatVariable);
 
+            if (repeatContext.HasRepeatPathInPredicates)
+            {
+                repeatVariable.PopulateLocalPath();
+            }
+
             //TODO: refactor
             List<GremlinVariable> allTableVars = repeatVariable.FetchAllTableVars();
             foreach (var variable in allTableVars)
@@ -750,12 +756,11 @@ namespace GraphView
                 if (pathVariable != null)
                 {
                     repeatVariable.PopulateLocalPath();
-                    foreach (var property in pathVariable.ProjectedProperties)
-                    {
-                        repeatContext.ContextLocalPath.Populate(property);
-                    }
+                    pathVariable.ProjectedProperties.ForEach(repeatContext.ContextLocalPath.Populate);
+
                     pathVariable.IsInRepeatContext = true;
-                    pathVariable.InsertStep(pathVariable.GetStepList().FindLastIndex(p => p.GetVariableName() == this.GetVariableName()), null);
+                    // pathVariable.InsertStep(pathVariable.GetStepList().FindLastIndex(p => p.GetVariableName() == this.GetVariableName()), null);
+                    pathVariable.InsertStep(pathVariable.GetStepList().FindLastIndex(p => p == this) + 1, null);
                 }
             }
         }

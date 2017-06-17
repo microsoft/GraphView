@@ -16,16 +16,14 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests
         {
             using (GraphViewCommand command = new GraphViewCommand(graphConnection))
             {
-                // var traversal = command.g().V().Has(GremlinKeyword.T.Label, "person").Values("name");
-                // var traversal = command.g().V().Properties().Has(GremlinKeyword.T.Key, "name");
-                // var traversal = command.g().V().Has(GremlinKeyword.T.Label, Predicate.neq("person")).Values("name");
-                // var result = traversal.Next();
-                // command.CommandText = "g.V(). values ('name').\nis\t(neq('marko'))";
-                // command.CommandText = "g.inject('I say:\"hello\".').inject(\"I'm Blackjack.\")";
-                // command.CommandText = "g.V().as('a').select(last, 'a').by('name')";
-                // command.CommandText = "g.V().inject(1, -2.34, 'abc', \"def\", false, true, ['', +0, -0.1, 'ghi'])";
-                // command.CommandText = "g . V () . values ('name').\nis\t( neq( \"marko\" ))";
-                command.CommandText = "g.inject(\"g.V().values('name').is(eq('marko'))\")";
+                // var traversal = command.g().V().Repeat(GraphTraversal2.__().As("a").Both().And(GraphTraversal2.__().Select("b"))).Times(2).Path();
+                //var traversal = command.g()
+                //    .V()
+                //    .Repeat(GraphTraversal2.__().As("a").FlatMap(GraphTraversal2.__().Select("a")).Out())
+                //    .Times(2);
+                //var result = traversal.Next();
+                command.CommandText =
+                    "g.V().repeat(__.as('a').flatMap(__.select(last, 'a')).out()).times(2)";
                 var result = command.ExecuteAndGetResults();
                 foreach (var r in result)
                 {

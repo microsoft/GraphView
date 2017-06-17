@@ -1,5 +1,6 @@
 ﻿using Microsoft.SqlServer.TransactSql.ScriptDom;
 using System;
+using System.Diagnostics;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -47,6 +48,12 @@ namespace GraphView
                 throw new QueryCompilationException("The PivotVariable can't be null.");
             }
 
+            // Convert GremlinParentContextOp to GremlinRepeatParentContextOp
+            // Because It is different for "__" in Repeat-traversal and in other operator-traversal such as FlatMap.
+            var oldStartOp = RepeatTraversal.GetStartOp() as GremlinParentContextOp;
+            Debug.Assert(oldStartOp != null);
+            RepeatTraversal.ReplaceGremlinOperator(0, new GremlinRepeatParentContextOp(oldStartOp));
+
             RepeatTraversal.GetStartOp().InheritedVariableFromParent(inputContext);
             GremlinToSqlContext repeatContext = RepeatTraversal.GetEndOp().GetContext();
 
@@ -90,6 +97,12 @@ namespace GraphView
             }
             if (TerminationTraversal != null)
             {
+                // Convert GremlinParentContextOp to GremlinUntilParentContextOp
+                // Because It is different for "__" in Until-traversal and in other operator-traversal such as FlatMap.
+                var old = TerminationTraversal.GetStartOp() as GremlinParentContextOp;
+                Debug.Assert(old != null);
+                TerminationTraversal.ReplaceGremlinOperator(0, new GremlinUntilParentContextOp(old));
+
                 this.TerminationTraversal.GetStartOp().InheritedVariableFromParent(inputContext);
                 repeatCondition.TerminationContext = this.TerminationTraversal.GetEndOp().GetContext();
             }
@@ -99,6 +112,12 @@ namespace GraphView
             }
             if (EmitTraversal != null)
             {
+                // Convert GremlinParentContextOp to GremlinEmitParentContextOp
+                // Because It is different for "__" in Emit-traversal and in other operator-traversal such as FlatMap.
+                var old = EmitTraversal.GetStartOp() as GremlinParentContextOp;
+                Debug.Assert(old != null);
+                EmitTraversal.ReplaceGremlinOperator(0, new GremlinEmitParentContextOp(old));
+
                 this.EmitTraversal.GetStartOp().InheritedVariableFromParent(inputContext);
                 repeatCondition.EmitContext = this.EmitTraversal.GetEndOp().GetContext();
             }

@@ -154,4 +154,76 @@ namespace GraphView
             return newContext;
         }
     }
+
+    // The "__" in Repeat(__.Out())
+    internal class GremlinRepeatParentContextOp : GremlinParentContextOp
+    {
+        public GremlinRepeatParentContextOp(GremlinParentContextOp pt)
+        {
+            this.InheritedPivotVariable = pt.InheritedPivotVariable;
+            this.InheritedContext = pt.InheritedContext;
+            this.ParentContext = pt.ParentContext;
+        }
+
+        internal override GremlinToSqlContext GetContext()
+        {
+            if (InheritedContext != null) return InheritedContext;
+            GremlinToSqlContext newContext = new GremlinToSqlContext { ParentContext = ParentContext };
+            if (InheritedPivotVariable != null)
+            {
+                GremlinRepeatContextVariable newVariable = new GremlinRepeatContextVariable(InheritedPivotVariable);
+                newContext.VariableList.Add(newVariable);
+                newContext.SetPivotVariable(newVariable);
+            }
+            return newContext;
+        }
+    }
+
+    // The "__" in Until(__.Out()), almost same as the one in Repeat
+    internal class GremlinUntilParentContextOp : GremlinParentContextOp
+    {
+        public GremlinUntilParentContextOp(GremlinParentContextOp pt)
+        {
+            this.InheritedPivotVariable = pt.InheritedPivotVariable;
+            this.InheritedContext = pt.InheritedContext;
+            this.ParentContext = pt.ParentContext;
+        }
+
+        internal override GremlinToSqlContext GetContext()
+        {
+            if (InheritedContext != null) return InheritedContext;
+            GremlinToSqlContext newContext = new GremlinToSqlContext { ParentContext = ParentContext };
+            if (InheritedPivotVariable != null)
+            {
+                GremlinUntilContextVariable newVariable = new GremlinUntilContextVariable(InheritedPivotVariable);
+                newContext.VariableList.Add(newVariable);
+                newContext.SetPivotVariable(newVariable);
+            }
+            return newContext;
+        }
+    }
+
+    // The "__" in Emit(__.Out()), almost same as the one in Repeat
+    internal class GremlinEmitParentContextOp : GremlinParentContextOp
+    {
+        public GremlinEmitParentContextOp(GremlinParentContextOp pt)
+        {
+            this.InheritedPivotVariable = pt.InheritedPivotVariable;
+            this.InheritedContext = pt.InheritedContext;
+            this.ParentContext = pt.ParentContext;
+        }
+
+        internal override GremlinToSqlContext GetContext()
+        {
+            if (InheritedContext != null) return InheritedContext;
+            GremlinToSqlContext newContext = new GremlinToSqlContext { ParentContext = ParentContext };
+            if (InheritedPivotVariable != null)
+            {
+                GremlinEmitContextVariable newVariable = new GremlinEmitContextVariable(InheritedPivotVariable);
+                newContext.VariableList.Add(newVariable);
+                newContext.SetPivotVariable(newVariable);
+            }
+            return newContext;
+        }
+    }
 }

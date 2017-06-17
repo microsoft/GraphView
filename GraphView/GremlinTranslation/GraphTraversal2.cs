@@ -287,6 +287,12 @@ namespace GraphView
             return removedOp;
         }
 
+        internal void ReplaceGremlinOperator(int index, GremlinTranslationOperator newGremlinTranslationOp)
+        {
+            this.RemoveGremlinOperator(index);
+            this.InsertGremlinOperator(index, newGremlinTranslationOp);
+        }
+
         internal void AddGremlinOperator(GremlinTranslationOperator newGremlinTranslationOp)
         {
             GremlinTranslationOperator LastGremlinTranslationOp = this.GetEndOp();

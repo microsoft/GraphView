@@ -38,7 +38,7 @@ namespace GraphView
         internal override List<GremlinVariable> FetchAllVars()
         {
             List<GremlinVariable> variableList = new List<GremlinVariable>() { this };
-            variableList.AddRange(this.StepList.FindAll(p=>p!=null && !(p is GremlinContextVariable)));
+            variableList.AddRange(this.GetStepList().FindAll(p=>p!=null && !(p is GremlinContextVariable)));
             foreach (var context in ByContexts)
             {
                 variableList.AddRange(context.FetchAllVars());
@@ -67,7 +67,7 @@ namespace GraphView
 
         internal override void PopulateStepProperty(string property)
         {
-            foreach (var step in this.StepList)
+            foreach (var step in this.GetStepList())
             {
                 if (step == this) continue;
                 step?.PopulateStepProperty(property);
@@ -107,14 +107,20 @@ namespace GraphView
                 GremlinVariable step = this.StepList[i];
                 if (step == null)
                 {
-                    if (IsInRepeatContext)
+                    // throw new TranslationException("The step should not be null.");
+                    //if (IsInRepeatContext)
+                    //{
+                    //    parameters.Add(SqlUtil.GetColumnReferenceExpr(GremlinKeyword.RepeatInitalTableName,
+                    //        GremlinKeyword.Path));
+                    //}
+                }
+                else if (step is GremlinContextVariable)
+                {
+                    if ((step is GremlinRepeatContextVariable) || (step is GremlinUntilContextVariable) || (step is GremlinEmitContextVariable))
                     {
                         parameters.Add(SqlUtil.GetColumnReferenceExpr(GremlinKeyword.RepeatInitalTableName,
                             GremlinKeyword.Path));
                     }
-                }
-                else if (step is GremlinContextVariable)
-                {
                     foreach (var label in this.StepLabelsAtThatMoment[i])
                     {
                         parameters.Add(SqlUtil.GetValueExpr(label));

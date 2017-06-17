@@ -60,4 +60,19 @@ namespace GraphView
             RealVariable.PopulateStepProperty(property);
         }
     }
+
+    internal class GremlinRepeatContextVariable : GremlinContextVariable
+    {
+        public GremlinRepeatContextVariable(GremlinVariable contextVariable) : base(contextVariable) {}
+    }
+
+    internal class GremlinUntilContextVariable : GremlinContextVariable
+    {
+        public GremlinUntilContextVariable(GremlinVariable contextVariable) : base(contextVariable) { }
+    }
+
+    internal class GremlinEmitContextVariable : GremlinContextVariable
+    {
+        public GremlinEmitContextVariable(GremlinVariable contextVariable) : base(contextVariable) { }
+    }
 }

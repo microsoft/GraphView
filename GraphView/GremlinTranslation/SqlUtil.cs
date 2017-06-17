@@ -121,7 +121,6 @@ namespace GraphView
                         }
                         return ConcatBooleanExprWithAnd(booleanExprList);
                     }
-
                 case PredicateType.inside:
                     lowExpr = GetValueExpr(predicate.Low);
                     highExpr = GetValueExpr(predicate.High);
