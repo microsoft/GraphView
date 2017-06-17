@@ -748,7 +748,7 @@ namespace GraphView
                 repeatVariable.PopulateLocalPath();
             }
 
-            //TODO: refactor
+            // TODO: refactor
             List<GremlinVariable> allTableVars = repeatVariable.FetchAllTableVars();
             foreach (var variable in allTableVars)
             {
@@ -757,10 +757,6 @@ namespace GraphView
                 {
                     repeatVariable.PopulateLocalPath();
                     pathVariable.ProjectedProperties.ForEach(repeatContext.ContextLocalPath.Populate);
-
-                    pathVariable.IsInRepeatContext = true;
-                    // pathVariable.InsertStep(pathVariable.GetStepList().FindLastIndex(p => p.GetVariableName() == this.GetVariableName()), null);
-                    pathVariable.InsertStep(pathVariable.GetStepList().FindLastIndex(p => p == this) + 1, null);
                 }
             }
         }

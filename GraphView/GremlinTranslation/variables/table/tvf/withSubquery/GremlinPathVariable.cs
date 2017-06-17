@@ -11,7 +11,6 @@ namespace GraphView
     {
         private List<GremlinVariable> StepList { get; set; }
         private List<List<string>> StepLabelsAtThatMoment { get; set; }
-        public bool IsInRepeatContext { get; set; }
         public List<GremlinToSqlContext> ByContexts { get; set; }
 
         public GremlinPathVariable(List<GremlinVariable> stepList, List<GremlinToSqlContext> byContexts)
@@ -20,7 +19,6 @@ namespace GraphView
             this.StepList = new List<GremlinVariable>();
             this.StepLabelsAtThatMoment = new List<List<string>>();
             stepList.ForEach(this.AddStep);
-            this.IsInRepeatContext = false;
             this.ByContexts = byContexts;
         }
 
@@ -31,7 +29,6 @@ namespace GraphView
             this.StepList = new List<GremlinVariable>();
             this.StepLabelsAtThatMoment = new List<List<string>>();
             stepList.ForEach(this.AddStep);
-            this.IsInRepeatContext = false;
             this.ByContexts = new List<GremlinToSqlContext>();
         }
 
@@ -107,12 +104,7 @@ namespace GraphView
                 GremlinVariable step = this.StepList[i];
                 if (step == null)
                 {
-                    // throw new TranslationException("The step should not be null.");
-                    //if (IsInRepeatContext)
-                    //{
-                    //    parameters.Add(SqlUtil.GetColumnReferenceExpr(GremlinKeyword.RepeatInitalTableName,
-                    //        GremlinKeyword.Path));
-                    //}
+                    throw new TranslationException("The step should not be null.");
                 }
                 else if (step is GremlinContextVariable)
                 {

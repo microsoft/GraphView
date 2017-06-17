@@ -73,12 +73,6 @@ namespace GraphView
 
         public override WTableReference ToTableReference()
         {
-            if (this.RepeatContext.ContextLocalPath != null)
-            {
-                this.RepeatContext.ContextLocalPath.InsertStep(0, null);
-                this.RepeatContext.ContextLocalPath.IsInRepeatContext = true;
-            }
-
             //The following two variables are used for manually creating SelectScalarExpression of repeat
             List<WSelectScalarExpression> firstSelectList = new List<WSelectScalarExpression>();
             List<WSelectScalarExpression> secondSelectList = new List<WSelectScalarExpression>();
