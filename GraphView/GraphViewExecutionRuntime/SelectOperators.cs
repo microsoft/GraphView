@@ -1744,130 +1744,65 @@ namespace GraphView
     }
 
 
+
     internal class UnionOperator : GraphViewExecutionOperator
     {
         // traversal Op and hasAggregate flag.
-        private List<Tuple<GraphViewExecutionOperator, bool>> traversalList;
-
-        private bool inputInBatch;
-        private int outputRecordNullLength;
-
-        private ContainerEnumerator sourceEnumerator;
-
-        private int batchSize;
+        private List<Tuple<GraphViewExecutionOperator, ContainerEnumerator>> traversalList;
+        
 
         private List<RawRecord> inputBuffer;
-        private Queue<RawRecord> outputBuffer;
         private GraphViewExecutionOperator inputOp;
 
+        private bool firstTime;
+
         public UnionOperator(
-            GraphViewExecutionOperator inputOp,
-            ContainerEnumerator sourceEnumerator,
-            bool inputInBatch,
-            int inputRecordLength,
-            int batchSize = KW_DEFAULT_BATCH_SIZE)
+            GraphViewExecutionOperator inputOp)
         {
             this.inputOp = inputOp;
-
-            this.sourceEnumerator = sourceEnumerator;
-            this.batchSize = batchSize;
-
-            this.inputInBatch = inputInBatch;
-            this.outputRecordNullLength = inputRecordLength - Convert.ToInt32(inputInBatch);
-
+            
             this.inputBuffer = new List<RawRecord>();
-            this.outputBuffer = new Queue<RawRecord>();
-            this.traversalList = new List<Tuple<GraphViewExecutionOperator, bool>>();
+            this.traversalList = new List<Tuple<GraphViewExecutionOperator, ContainerEnumerator>>();
+
+            this.firstTime = true;
             this.Open();
         }
 
-        public void AddTraversal(GraphViewExecutionOperator traversal, bool hasAggregateFunctionAsChildren)
+        public void AddTraversal(GraphViewExecutionOperator traversal, ContainerEnumerator sourceEnumerator)
         {
-            traversalList.Add(new Tuple<GraphViewExecutionOperator, bool>(traversal, hasAggregateFunctionAsChildren));
+            traversalList.Add(new Tuple<GraphViewExecutionOperator, ContainerEnumerator>(traversal, sourceEnumerator));
         }
 
         public override RawRecord Next()
         {
-            while (this.State())
+            if (this.firstTime)
             {
-                if (this.outputBuffer.Any())
-                {
-                    return this.outputBuffer.Dequeue();
-                }
-
-                // Read inputs
-                this.inputBuffer.Clear();
+                // read inputs
                 RawRecord inputRecord;
-                while (this.inputBuffer.Count < this.batchSize && this.inputOp.State() && (inputRecord = this.inputOp.Next()) != null)
+                while (this.inputOp.State() && (inputRecord = this.inputOp.Next()) != null)
                 {
-                    // Add no batch ID, only save in buffer now.
                     this.inputBuffer.Add(inputRecord);
                 }
 
-                if (!this.inputBuffer.Any())
+                foreach (Tuple<GraphViewExecutionOperator, ContainerEnumerator> tuple in this.traversalList)
                 {
-                    this.Close();
-                    return null;
+                    tuple.Item1.ResetState();
+                    tuple.Item2.ResetTableCache(inputBuffer);
                 }
 
-                foreach (Tuple<GraphViewExecutionOperator, bool> traversalTuple in this.traversalList)
+                this.firstTime = false;
+            }
+
+            foreach (Tuple<GraphViewExecutionOperator, ContainerEnumerator> tuple in this.traversalList)
+            {
+                RawRecord result;
+                if (tuple.Item1.State() && (result = tuple.Item1.Next()) != null)
                 {
-                    GraphViewExecutionOperator activeOp = traversalTuple.Item1;
-                    bool aggregateMode = traversalTuple.Item2;
-                    List<RawRecord> traversalInputs = new List<RawRecord>();
-                    // Add batch ID and save to traversalInputs list
-                    foreach (RawRecord record in this.inputBuffer)
-                    {
-                        RawRecord batchRawRecord = new RawRecord();
-                        // There are three different way to add batch ID
-                        if (!aggregateMode)
-                        {
-                            // CASE 1: no aggregate step in sub-traversal
-                            batchRawRecord.Append(new StringField(traversalInputs.Count.ToString(), JsonDataType.Int));
-                        }
-                        else if (!this.inputInBatch)
-                        {
-                            // CASE 2: sub-traversal has aggregate step, and input op IS NOT in batch mode.
-                            batchRawRecord.Append(new StringField("0", JsonDataType.Int));
-                        }
-                        else
-                        {
-                            // CASE 3: sub-traversal has aggregate step, and input op IS in batch mode.
-                            // Add same batch id as inputs'.
-                            StringField sameBatchId = new StringField(record.RetriveData(0).ToValue, JsonDataType.Int);
-                            batchRawRecord.Append(sameBatchId);
-                        }
-
-                        batchRawRecord.Append(record);
-                        traversalInputs.Add(batchRawRecord);
-                    }
-
-                    // Get sub-traversal outputs
-                    this.sourceEnumerator.ResetTableCache(traversalInputs);
-                    activeOp.ResetState();
-                    RawRecord traversalRecord = null;
-                    while (activeOp.State() && (traversalRecord = activeOp.Next()) != null)
-                    {
-                        int batchId = int.Parse(traversalRecord.RetriveData(0).ToValue);
-                        RawRecord result = new RawRecord();
-                        if (!aggregateMode)
-                        {
-                            result.Append(this.inputBuffer[batchId]);
-                        }
-                        else if (!this.inputInBatch)
-                        {
-                            result.Append(new RawRecord {fieldValues = Enumerable.Repeat((FieldObject)null, this.outputRecordNullLength).ToList()});
-                        }
-                        else
-                        {
-                            result.Append(traversalRecord.RetriveData(0));
-                            result.Append(new RawRecord { fieldValues = Enumerable.Repeat((FieldObject)null, this.outputRecordNullLength).ToList() });
-                        }
-                        result.Append(traversalRecord.GetRange(1));
-                        this.outputBuffer.Enqueue(result);
-                    }
+                    return result;
                 }
             }
+
+            Close();
             return null;
         }
 
@@ -1875,12 +1810,14 @@ namespace GraphView
         {
             this.inputOp.ResetState();
 
-            foreach (Tuple<GraphViewExecutionOperator, bool> tuple in this.traversalList)
+            foreach (Tuple<GraphViewExecutionOperator, ContainerEnumerator> tuple in this.traversalList)
             {
                 tuple.Item1.ResetState();
+                tuple.Item2.ResetState(); // or reset?
             }
 
-            this.outputBuffer.Clear();
+            this.firstTime = true;
+            
             this.Open();
         }
     }
@@ -4061,6 +3998,8 @@ namespace GraphView
             this.falseBranchSource.ResetState();
             this.trueBranchTraversalOp.ResetState();
             this.falseBranchTraversalOp.ResetState();
+
+            this.firstTime = true;
 
             this.Open();
         }

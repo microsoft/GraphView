@@ -1530,8 +1530,7 @@ namespace GraphView
     {
         internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
         {
-            ContainerEnumerator sourceEnumerator = new ContainerEnumerator();
-            UnionOperator unionOp = new UnionOperator(context.CurrentExecutionOperator, sourceEnumerator, context.InBatchMode, context.RawRecordLayout.Count);
+            UnionOperator unionOp = new UnionOperator(context.CurrentExecutionOperator);
             bool isUnionWithoutAnyBranch = Parameters.Count == 0 || Parameters[0] is WValueExpression;
 
             WSelectQueryBlock firstSelectQuery = null;
@@ -1554,12 +1553,13 @@ namespace GraphView
                         }
                     }
 
+                    ContainerEnumerator sourceEnumerator = new ContainerEnumerator();
                     QueryCompilationContext subcontext = new QueryCompilationContext(context);
                     subcontext.OuterContextOp.SourceEnumerator = sourceEnumerator;
-                    subcontext.AddField(GremlinKeyword.IndexTableName, GremlinKeyword.IndexColumnName, ColumnGraphType.Value, true);
-                    subcontext.InBatchMode = true;
+                    subcontext.InBatchMode = context.InBatchMode;
+                    subcontext.CarryOn = true;
                     GraphViewExecutionOperator traversalOp = scalarSubquery.SubQueryExpr.Compile(subcontext, dbConnection);
-                    unionOp.AddTraversal(traversalOp, this.HasAggregateFunctionAsChildren.Dequeue());
+                    unionOp.AddTraversal(traversalOp, sourceEnumerator);
                 }
             }
 
@@ -3337,7 +3337,7 @@ namespace GraphView
             ContainerEnumerator trueBranchSource = new ContainerEnumerator();
             QueryCompilationContext trueSubContext = new QueryCompilationContext(context);
             trueSubContext.CarryOn = true;
-//            trueSubContext.InBatchMode = context.InBatchMode;
+            trueSubContext.InBatchMode = context.InBatchMode;
             trueSubContext.OuterContextOp.SourceEnumerator = trueBranchSource;
             GraphViewExecutionOperator trueBranchTraversalOp =
                 trueTraversalParameter.SubQueryExpr.Compile(trueSubContext, dbConnection);
@@ -3346,6 +3346,7 @@ namespace GraphView
             ContainerEnumerator falseBranchSource = new ContainerEnumerator();
             QueryCompilationContext falseSubContext = new QueryCompilationContext(context);
             falseSubContext.CarryOn = true;
+            falseSubContext.InBatchMode = context.InBatchMode;
             falseSubContext.OuterContextOp.SourceEnumerator = falseBranchSource;
             GraphViewExecutionOperator falseBranchTraversalOp =
                 falseTraversalParameter.SubQueryExpr.Compile(falseSubContext, dbConnection);
