@@ -3333,29 +3333,28 @@ namespace GraphView
 
 
             ScalarFunction targetSubqueryFunc = targetSubquery.CompileToFunction(context, dbConnection);
+            
+            ContainerEnumerator trueBranchSource = new ContainerEnumerator();
+            QueryCompilationContext trueSubContext = new QueryCompilationContext(context);
+            trueSubContext.CarryOn = true;
+//            trueSubContext.InBatchMode = context.InBatchMode;
+            trueSubContext.OuterContextOp.SourceEnumerator = trueBranchSource;
+            GraphViewExecutionOperator trueBranchTraversalOp =
+                trueTraversalParameter.SubQueryExpr.Compile(trueSubContext, dbConnection);
 
-            ConstantSourceOperator tempSourceOp = new ConstantSourceOperator();
 
-            QueryCompilationContext trueBranchSubContext = new QueryCompilationContext(context);
-            trueBranchSubContext.CarryOn = true;
-            trueBranchSubContext.InBatchMode = context.InBatchMode;
-            ContainerOperator trueBranchSourceOp = new ContainerOperator(tempSourceOp);
-            GraphViewExecutionOperator trueBranchTraversalOp = trueTraversalParameter.SubQueryExpr.Compile(trueBranchSubContext, dbConnection);
-            trueBranchSubContext.OuterContextOp.SourceEnumerator = trueBranchSourceOp.GetEnumerator();
-
-            QueryCompilationContext falseBranchSubContext = new QueryCompilationContext(context);
-            falseBranchSubContext.CarryOn = true;
-            falseBranchSubContext.InBatchMode = context.InBatchMode;
-            ContainerOperator falseBranchSourceOp = new ContainerOperator(tempSourceOp);
-            GraphViewExecutionOperator falseBranchTraversalOp = falseTraversalParameter.SubQueryExpr.Compile(falseBranchSubContext, dbConnection);
-            falseBranchSubContext.OuterContextOp.SourceEnumerator = falseBranchSourceOp.GetEnumerator();
+            ContainerEnumerator falseBranchSource = new ContainerEnumerator();
+            QueryCompilationContext falseSubContext = new QueryCompilationContext(context);
+            falseSubContext.CarryOn = true;
+            falseSubContext.OuterContextOp.SourceEnumerator = falseBranchSource;
+            GraphViewExecutionOperator falseBranchTraversalOp =
+                falseTraversalParameter.SubQueryExpr.Compile(falseSubContext, dbConnection);
 
             ChooseOperator chooseOp = new ChooseOperator(
                 context.CurrentExecutionOperator,
                 targetSubqueryFunc,
-                tempSourceOp, 
-                trueBranchSourceOp, trueBranchTraversalOp, 
-                falseBranchSourceOp, falseBranchTraversalOp);
+                trueBranchSource, trueBranchTraversalOp, 
+                falseBranchSource, falseBranchTraversalOp);
             context.CurrentExecutionOperator = chooseOp;
 
             foreach (WSelectElement selectElement in selectQueryBlock.SelectElements)

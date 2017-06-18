@@ -3974,74 +3974,77 @@ namespace GraphView
 
     internal class ChooseOperator : GraphViewExecutionOperator
     {
-        GraphViewExecutionOperator inputOp;
+        private GraphViewExecutionOperator inputOp;
 
-        ScalarFunction targetSubQueryFunc;
+        private ScalarFunction targetSubQueryFunc;
+        
+        private ContainerEnumerator trueBranchSource;
+        private ContainerEnumerator falseBranchSource;
 
-        ConstantSourceOperator tempSourceOp;
-        ContainerOperator trueBranchSourceOp;
-        ContainerOperator falseBranchSourceOp;
+        private List<RawRecord> evaluatedTrueRecords;
+        private List<RawRecord> evaluatedFalseRecords;
 
-        Queue<RawRecord> evaluatedTrueRecords;
-        Queue<RawRecord> evaluatedFalseRecords;
+        private GraphViewExecutionOperator trueBranchTraversalOp;
+        private GraphViewExecutionOperator falseBranchTraversalOp;
 
-        GraphViewExecutionOperator trueBranchTraversalOp;
-        GraphViewExecutionOperator falseBranchTraversalOp;
+        private bool firstTime;
 
         public ChooseOperator(
             GraphViewExecutionOperator inputOp,
             ScalarFunction targetSubQueryFunc,
-            ConstantSourceOperator tempSourceOp,
-            ContainerOperator trueBranchSourceOp,
+            ContainerEnumerator trueBranchSource,
             GraphViewExecutionOperator trueBranchTraversalOp,
-            ContainerOperator falseBranchSourceOp,
+            ContainerEnumerator falseBranchSource,
             GraphViewExecutionOperator falseBranchTraversalOp
-            )
+        )
         {
             this.inputOp = inputOp;
             this.targetSubQueryFunc = targetSubQueryFunc;
-            this.tempSourceOp = tempSourceOp;
-            this.trueBranchSourceOp = trueBranchSourceOp;
+
+            this.trueBranchSource = trueBranchSource;
             this.trueBranchTraversalOp = trueBranchTraversalOp;
-            this.falseBranchSourceOp = falseBranchSourceOp;
+            this.falseBranchSource = falseBranchSource;
             this.falseBranchTraversalOp = falseBranchTraversalOp;
 
-            this.evaluatedTrueRecords = new Queue<RawRecord>();
-            this.evaluatedFalseRecords = new Queue<RawRecord>();
+            this.evaluatedTrueRecords = new List<RawRecord>();
+            this.evaluatedFalseRecords = new List<RawRecord>();
 
-            Open();
+            this.firstTime = true;
+            this.Open();
         }
 
         public override RawRecord Next()
         {
-            RawRecord currentRecord = null;
-            while (this.inputOp.State() && (currentRecord = this.inputOp.Next()) != null)
+            if (this.firstTime)
             {
-                if (this.targetSubQueryFunc.Evaluate(currentRecord) != null)
-                    this.evaluatedTrueRecords.Enqueue(currentRecord);
-                else
-                    this.evaluatedFalseRecords.Enqueue(currentRecord);
-            }
+                // read inputs and set sub-traversal sources
+                RawRecord currentRecord = null;
+                while (this.inputOp.State() && (currentRecord = this.inputOp.Next()) != null)
+                {
+                    if (this.targetSubQueryFunc.Evaluate(currentRecord) != null)
+                        this.evaluatedTrueRecords.Add(currentRecord);
+                    else
+                        this.evaluatedFalseRecords.Add(currentRecord);
+                }
+                
+                this.trueBranchSource.ResetTableCache(this.evaluatedTrueRecords);
+                this.trueBranchTraversalOp.ResetState();
+                
+                this.falseBranchSource.ResetTableCache(this.evaluatedFalseRecords);
+                this.falseBranchTraversalOp.ResetState();
 
-            while (this.evaluatedTrueRecords.Any())
-            {
-                this.tempSourceOp.ConstantSource = this.evaluatedTrueRecords.Dequeue();
-                this.trueBranchSourceOp.Next();
+                this.firstTime = false;
             }
 
             RawRecord trueBranchTraversalRecord;
-            while (this.trueBranchTraversalOp.State() && (trueBranchTraversalRecord = this.trueBranchTraversalOp.Next()) != null) {
+            if (this.trueBranchTraversalOp.State() && (trueBranchTraversalRecord = this.trueBranchTraversalOp.Next()) != null)
+            {
                 return trueBranchTraversalRecord;
             }
 
-            while (this.evaluatedFalseRecords.Any())
-            {
-                this.tempSourceOp.ConstantSource = this.evaluatedFalseRecords.Dequeue();
-                this.falseBranchSourceOp.Next();
-            }
-
             RawRecord falseBranchTraversalRecord;
-            while (this.falseBranchTraversalOp.State() && (falseBranchTraversalRecord = this.falseBranchTraversalOp.Next()) != null) {
+            if (this.falseBranchTraversalOp.State() && (falseBranchTraversalRecord = this.falseBranchTraversalOp.Next()) != null)
+            {
                 return falseBranchTraversalRecord;
             }
 
@@ -4054,14 +4057,15 @@ namespace GraphView
             this.inputOp.ResetState();
             this.evaluatedTrueRecords.Clear();
             this.evaluatedFalseRecords.Clear();
-            this.trueBranchSourceOp.ResetState();
-            this.falseBranchSourceOp.ResetState();
+            this.trueBranchSource.ResetState();
+            this.falseBranchSource.ResetState();
             this.trueBranchTraversalOp.ResetState();
             this.falseBranchTraversalOp.ResetState();
 
             this.Open();
         }
     }
+    
 
     internal class ChooseWithOptionsOperator : GraphViewExecutionOperator
     {
