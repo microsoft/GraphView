@@ -3913,7 +3913,8 @@ namespace GraphView
     {
         private GraphViewExecutionOperator inputOp;
 
-        private ScalarFunction targetSubQueryFunc;
+        private ContainerEnumerator targetSource;
+        private GraphViewExecutionOperator targetSubQueryOp;
         
         private ContainerEnumerator trueBranchSource;
         private ContainerEnumerator falseBranchSource;
@@ -3928,7 +3929,8 @@ namespace GraphView
 
         public ChooseOperator(
             GraphViewExecutionOperator inputOp,
-            ScalarFunction targetSubQueryFunc,
+            ContainerEnumerator targetSource,
+            GraphViewExecutionOperator targetSubQueryOp,
             ContainerEnumerator trueBranchSource,
             GraphViewExecutionOperator trueBranchTraversalOp,
             ContainerEnumerator falseBranchSource,
@@ -3936,7 +3938,8 @@ namespace GraphView
         )
         {
             this.inputOp = inputOp;
-            this.targetSubQueryFunc = targetSubQueryFunc;
+            this.targetSource = targetSource;
+            this.targetSubQueryOp = targetSubQueryOp;
 
             this.trueBranchSource = trueBranchSource;
             this.trueBranchTraversalOp = trueBranchTraversalOp;
@@ -3955,14 +3958,46 @@ namespace GraphView
             if (this.firstTime)
             {
                 // read inputs and set sub-traversal sources
+                List<RawRecord> inputBuffer = new List<RawRecord>();
                 RawRecord currentRecord = null;
                 while (this.inputOp.State() && (currentRecord = this.inputOp.Next()) != null)
                 {
-                    if (this.targetSubQueryFunc.Evaluate(currentRecord) != null)
-                        this.evaluatedTrueRecords.Add(currentRecord);
-                    else
-                        this.evaluatedFalseRecords.Add(currentRecord);
+                    RawRecord batchRawRecord = new RawRecord();
+                    batchRawRecord.Append(new StringField(inputBuffer.Count.ToString(), JsonDataType.Int));
+                    batchRawRecord.Append(currentRecord);
+                    inputBuffer.Add(batchRawRecord);
                 }
+
+                if (!inputBuffer.Any())
+                {
+                    this.Close();
+                    this.firstTime = false;
+                    return null;
+                }
+
+                // only send one query
+                this.targetSource.ResetTableCache(inputBuffer);
+                this.targetSubQueryOp.ResetState();
+                HashSet<int> haveOutput = new HashSet<int>();
+                RawRecord targetOutput;
+                while (this.targetSubQueryOp.State() && (targetOutput = this.targetSubQueryOp.Next()) != null)
+                {
+                    haveOutput.Add(int.Parse(targetOutput.RetriveData(0).ToValue));
+                }
+
+                // determine which branch should the records apply
+                foreach (RawRecord record in inputBuffer)
+                {
+                    if (haveOutput.Contains(int.Parse(record.RetriveData(0).ToValue)))
+                    {
+                        this.evaluatedTrueRecords.Add(record.GetRange(1));
+                    }
+                    else
+                    {
+                        this.evaluatedFalseRecords.Add(record.GetRange(1));
+                    }
+                }
+                
                 
                 this.trueBranchSource.ResetTableCache(this.evaluatedTrueRecords);
                 this.trueBranchTraversalOp.ResetState();
@@ -3992,6 +4027,10 @@ namespace GraphView
         public override void ResetState()
         {
             this.inputOp.ResetState();
+
+            this.targetSource.Reset();
+            this.targetSubQueryOp.ResetState();
+
             this.evaluatedTrueRecords.Clear();
             this.evaluatedFalseRecords.Clear();
             this.trueBranchSource.ResetState();

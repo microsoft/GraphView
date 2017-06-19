@@ -3330,10 +3330,16 @@ namespace GraphView
 
             WScalarSubquery falseTraversalParameter = this.Parameters[2] as WScalarSubquery;
             Debug.Assert(falseTraversalParameter != null, "falseTraversalParameter != null");
-
-
-            ScalarFunction targetSubqueryFunc = targetSubquery.CompileToFunction(context, dbConnection);
             
+
+            ContainerEnumerator targetSourceEnumerator = new ContainerEnumerator();
+            QueryCompilationContext targetSubContext = new QueryCompilationContext(context);
+            targetSubContext.OuterContextOp.SourceEnumerator = targetSourceEnumerator;
+            targetSubContext.AddField(GremlinKeyword.IndexTableName, GremlinKeyword.IndexColumnName, ColumnGraphType.Value, true);
+            targetSubContext.InBatchMode = true;
+            GraphViewExecutionOperator targetSubqueryOp = targetSubquery.SubQueryExpr.Compile(targetSubContext, dbConnection);
+            
+
             ContainerEnumerator trueBranchSource = new ContainerEnumerator();
             QueryCompilationContext trueSubContext = new QueryCompilationContext(context);
             trueSubContext.CarryOn = true;
@@ -3353,7 +3359,8 @@ namespace GraphView
 
             ChooseOperator chooseOp = new ChooseOperator(
                 context.CurrentExecutionOperator,
-                targetSubqueryFunc,
+                targetSourceEnumerator,
+                targetSubqueryOp,
                 trueBranchSource, trueBranchTraversalOp, 
                 falseBranchSource, falseBranchTraversalOp);
             context.CurrentExecutionOperator = chooseOp;
