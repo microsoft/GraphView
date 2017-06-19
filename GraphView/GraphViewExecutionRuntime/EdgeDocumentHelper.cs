@@ -497,14 +497,19 @@ namespace GraphView
 
                 const string EDGE_SELECT_TAG = "edge";
                 string partition = connection.GetDocumentPartition(vertexObject);
-                string query = $"SELECT doc.{KW_DOC_ID}, {EDGE_SELECT_TAG}\n" +
-                               $"FROM doc\n" +
-                               $"JOIN {EDGE_SELECT_TAG} IN doc.{KW_EDGEDOC_EDGE}\n" +
-                               $"WHERE (doc.{KW_EDGEDOC_ISREVERSE} = {isReverseEdge.ToString().ToLowerInvariant()})\n" +
-                               $"  AND ({EDGE_SELECT_TAG}.{KW_EDGE_ID} = '{edgeId}')\n" + 
-                               (partition != null ? $" AND (doc{connection.GetPartitionPathIndexer()} = '{partition}')" : "");
-
-                JObject result = connection.ExecuteQueryUnique(query);
+                JsonQuery query = new JsonQuery
+                {
+                    SelectClause = $"doc.{KW_DOC_ID}, {EDGE_SELECT_TAG}",
+                    Alias = "doc",
+                    JoinClause = $"JOIN {EDGE_SELECT_TAG} IN doc.{KW_EDGEDOC_EDGE}",
+                    EdgeProperties = new List<string>(),
+                    NodeProperties = new List<string>(),
+                    WhereSearchCondition = $"(doc.{KW_EDGEDOC_ISREVERSE} = {isReverseEdge.ToString().ToLowerInvariant()})\n" +
+                                           $"  AND ({EDGE_SELECT_TAG}.{KW_EDGE_ID} = '{edgeId}')\n" +
+                                           (partition != null ? $" AND (doc{connection.GetPartitionPathIndexer()} = '{partition}')" : "")
+                };
+                
+                JObject result = connection.CreateDatabasePortal().GetEdgeDocument(query);
                 edgeDocId = (string) result?[KW_DOC_ID];
                 edgeObject = (JObject) result?[EDGE_SELECT_TAG];
             }
@@ -680,7 +685,7 @@ namespace GraphView
         /// <param name="edgeDict"></param>
         /// <param name="edgeDocuments"></param>
         internal static void FillEdgeDict(Dictionary<string, Dictionary<string, JObject>> edgeDict,
-            List<dynamic> edgeDocuments)
+            List<JObject> edgeDocuments)
         {
             foreach (JObject edgeDocument in edgeDocuments) {
 
@@ -702,7 +707,7 @@ namespace GraphView
         /// </summary>
         /// <param name="virtualReverseEdges"></param>
         /// <returns></returns>
-        private static List<JObject> ConstructVirtualReverseEdgeDocuments(List<dynamic> virtualReverseEdges)
+        private static List<JObject> ConstructVirtualReverseEdgeDocuments(List<JObject> virtualReverseEdges)
         {
             Dictionary<string, JObject> virtualReverseEdgeDocumentsDict = new Dictionary<string, JObject>();
             foreach (JObject virtualReverseEdge in virtualReverseEdges)
@@ -773,19 +778,29 @@ namespace GraphView
 
             string inClause = string.Join(", ", vertexIdSet.Select(vertexId => $"'{vertexId}'"));
             string partitionInClause = string.Join(", ", vertexPartitionKeySet.Select(partitionKey => $"'{partitionKey}'"));
-            string edgeDocumentsQuery =
-                $"SELECT * " +
-                $"FROM edgeDoc " +
-                $"WHERE edgeDoc.{KW_EDGEDOC_VERTEXID} IN ({inClause}) " +
-                (string.IsNullOrEmpty(partitionInClause)
-                     ? ""
-                     : $"AND edgeDoc{connection.GetPartitionPathIndexer()} IN ({partitionInClause}) ") +
-                (edgeType == EdgeType.Outgoing
-                     ? $"AND edgeDoc.{KW_EDGEDOC_ISREVERSE} = false "
-                     : edgeType == EdgeType.Incoming
-                         ? $"AND edgeDoc.{KW_EDGEDOC_ISREVERSE} = true "
-                         : "");
-            List<dynamic> edgeDocuments = connection.ExecuteQuery(edgeDocumentsQuery).ToList();
+            string selectClause = "*";
+            string alias = "edgeDoc";
+            string joinClause = "";
+            string whereSearchCondition = $"edgeDoc.{KW_EDGEDOC_VERTEXID} IN ({inClause}) " +
+                                          (string.IsNullOrEmpty(partitionInClause)
+                                              ? ""
+                                              : $"AND edgeDoc{connection.GetPartitionPathIndexer()} IN ({partitionInClause}) ") +
+                                          (edgeType == EdgeType.Outgoing
+                                              ? $"AND edgeDoc.{KW_EDGEDOC_ISREVERSE} = false "
+                                              : edgeType == EdgeType.Incoming
+                                                  ? $"AND edgeDoc.{KW_EDGEDOC_ISREVERSE} = true "
+                                                  : "");
+            JsonQuery query = new JsonQuery
+            {
+                SelectClause = selectClause,
+                Alias = alias,
+                EdgeProperties = new List<string>(),
+                JoinClause = joinClause,
+                NodeProperties = new List<string>(),
+                WhereSearchCondition = whereSearchCondition
+            };
+
+            List<JObject> edgeDocuments = connection.CreateDatabasePortal().GetEdgeDocuments(query);
 
             // Dictionary<vertexId, Dictionary<edgeDocumentId, edgeDocument>>
             Dictionary<string, Dictionary<string, JObject>> edgeDict =
@@ -803,26 +818,35 @@ namespace GraphView
             //
             if (!connection.UseReverseEdges && edgeType.HasFlag(EdgeType.Incoming))
             {
-                edgeDocumentsQuery =
-                    $"SELECT {{" +
-                    $"  \"{EdgeDocumentHelper.VirtualReverseEdgeObject}\": edge, " +
-                    $"  \"{KW_EDGE_SRCV}\": doc.{KW_DOC_ID}, " +
-                    $"  \"{KW_EDGE_SRCV_LABEL}\": doc.{KW_VERTEX_LABEL}," +
-                    (connection.PartitionPath != null 
-                        ? $"  \"{KW_EDGE_SRCV_PARTITION}\": doc{connection.GetPartitionPathIndexer()}," 
-                        : "") + 
-                    $"  \"{KW_EDGEDOC_VERTEXID}\": doc.{KW_EDGEDOC_VERTEXID}," +
-                    $"  \"{KW_EDGEDOC_VERTEX_LABEL}\": doc.{KW_EDGEDOC_VERTEX_LABEL}" +
-                    $"}} AS {EdgeDocumentHelper.VirtualReverseEdge}\n" +
-                    $"FROM doc\n" +
-                    $"JOIN edge IN doc.{GraphViewKeywords.KW_VERTEX_EDGE}\n" +
-                    $"WHERE edge.{KW_EDGE_SINKV} IN ({inClause})";
+                selectClause = $"{{" +
+                               $"  \"{EdgeDocumentHelper.VirtualReverseEdgeObject}\": edge, " +
+                               $"  \"{KW_EDGE_SRCV}\": doc.{KW_DOC_ID}, " +
+                               $"  \"{KW_EDGE_SRCV_LABEL}\": doc.{KW_VERTEX_LABEL}," +
+                               (connection.PartitionPath != null
+                                   ? $"  \"{KW_EDGE_SRCV_PARTITION}\": doc{connection.GetPartitionPathIndexer()},"
+                                   : "") +
+                               $"  \"{KW_EDGEDOC_VERTEXID}\": doc.{KW_EDGEDOC_VERTEXID}," +
+                               $"  \"{KW_EDGEDOC_VERTEX_LABEL}\": doc.{KW_EDGEDOC_VERTEX_LABEL}" +
+                               $"}} AS {EdgeDocumentHelper.VirtualReverseEdge}";
+                alias = "doc";
+                joinClause = $"JOIN edge IN doc.{GraphViewKeywords.KW_VERTEX_EDGE}";
+                whereSearchCondition = $"edge.{KW_EDGE_SINKV} IN ({inClause})";
 
-                edgeDocuments = connection.ExecuteQuery(edgeDocumentsQuery).ToList();
+                query = new JsonQuery
+                {
+                    SelectClause = selectClause,
+                    Alias = alias,
+                    EdgeProperties = new List<string>(),
+                    JoinClause = joinClause,
+                    NodeProperties = new List<string>(),
+                    WhereSearchCondition = whereSearchCondition
+                };
+
+                edgeDocuments = connection.CreateDatabasePortal().GetEdgeDocuments(query);
 
                 List<JObject> virtualReverseEdgeDocuments = EdgeDocumentHelper.ConstructVirtualReverseEdgeDocuments(edgeDocuments);
 
-                EdgeDocumentHelper.FillEdgeDict(edgeDict, virtualReverseEdgeDocuments.Cast<dynamic>().ToList());
+                EdgeDocumentHelper.FillEdgeDict(edgeDict, virtualReverseEdgeDocuments);
             }
 
             foreach (KeyValuePair<string, Dictionary<string, JObject>> pair in edgeDict)
