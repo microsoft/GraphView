@@ -44,7 +44,7 @@ namespace GraphView
             switch (dbType) {
             case DatabaseType.DocumentDB:
                 return $"SELECT {this.SelectClause} " +
-                       $"FROM Node {this.Alias} " +
+                       $"FROM {this.Alias} " +
                        $"{this.JoinClause} " +
                        $"{(string.IsNullOrEmpty(this.WhereSearchCondition) ? "" : $"WHERE {this.WhereSearchCondition}")}";
             case DatabaseType.JsonServer:
@@ -64,9 +64,12 @@ namespace GraphView
         public void Dispose() { }
 
         public abstract IEnumerator<Tuple<VertexField, RawRecord>> GetVerticesAndEdgesViaVertices(JsonQuery vertexQuery);
-        //public abstract IEnumerator<RawRecord> GetVerticesViaExternalAPI(JsonQuery vertexQuery);
 
         public abstract IEnumerator<RawRecord> GetVerticesAndEdgesViaEdges(JsonQuery edgeQuery);
+
+        public abstract List<JObject> GetEdgeDocuments(JsonQuery query);
+
+        public abstract JObject GetEdgeDocument(JsonQuery query);
     }
 
     internal class DocumentDbPortal : DbPortal
@@ -316,111 +319,22 @@ namespace GraphView
             }
         }
 
-        /*
-        /// <summary>
-        /// Retrieve vertices in conventional JSON documents. The JSON query to send
-        /// returns both vertex documents and edge documents, from which 
-        /// vertex fields are constructed and returned. 
-        /// </summary>
-        /// <param name="vertexQuery"></param>
-        /// <returns></returns>
-        public override IEnumerator<RawRecord> GetVerticesViaExternalAPI(JsonQuery vertexQuery)
+        public override List<JObject> GetEdgeDocuments(JsonQuery query)
         {
-            string queryScript = vertexQuery.ToString(DatabaseType.DocumentDB);
+            string queryScript = query.ToString(DatabaseType.DocumentDB);
             IEnumerable<dynamic> items = this.Connection.ExecuteQuery(queryScript);
-            List<string> nodeProperties = new List<string>(vertexQuery.NodeProperties);
-
-            string nodeAlias = nodeProperties[0];
-            // Skip i = 0, which is the (node.* as nodeAlias) field
-            nodeProperties.RemoveAt(0);
-
-            Func<VertexField, RawRecord> makeRawRecord = (vertexField) => {
-                Debug.Assert(vertexField != null);
-
-                RawRecord rawRecord = new RawRecord();
-                //
-                // Fill node property field
-                //
-                foreach (string propertyName in nodeProperties) {
-                    FieldObject propertyValue = vertexField[propertyName];
-                    rawRecord.Append(propertyValue);
-                }
-                return rawRecord;
-            };
-
-            List<RawRecord> results = new List<RawRecord>();
-            List<dynamic> edgeDocuments = new List<dynamic>();
-            HashSet<string> gotVertexIds = new HashSet<string>();
-
-            foreach (dynamic dynamicItem in items) {
-                JObject tmpObject = (JObject)((JObject)dynamicItem)[nodeAlias];
-                //
-                // This is a spilled edge document
-                //
-                if (tmpObject[GraphViewKeywords.KW_EDGEDOC_VERTEXID] != null) {
-                    edgeDocuments.Add(tmpObject);
-                }
-                else {
-                    string vertexId = (string)tmpObject[KW_DOC_ID];
-                    gotVertexIds.Add(vertexId);
-                    VertexField vertexField = this.Connection.VertexCache.AddOrUpdateVertexField(vertexId, tmpObject);
-                    results.Add(makeRawRecord(vertexField));
-                }
-            }
-
-            //
-            // Construct vertice's forward/backward adjacency lists
-            //
-            if (edgeDocuments.Count > 0)
+            List<JObject> edgeDocuments = new List<JObject>();
+            foreach (JObject item in items)
             {
-                // Dictionary<vertexId, Dictionary<edgeDocumentId, edgeDocument>>
-                Dictionary<string, Dictionary<string, JObject>> edgeDict =
-                    new Dictionary<string, Dictionary<string, JObject>>();
-
-                foreach (JObject edgeDocument in edgeDocuments) {
-                    // Save edgeDocument's etag if necessary
-                    this.Connection.VertexCache.SaveCurrentEtagNoOverride(edgeDocument);
-                }
-
-                EdgeDocumentHelper.FillEdgeDict(edgeDict, edgeDocuments);
-
-                foreach (KeyValuePair<string, Dictionary<string, JObject>> pair in edgeDict) {
-                    string vertexId = pair.Key;
-                    Dictionary<string, JObject> edgeDocDict = pair.Value; // contains both in & out edges
-                    VertexField vertexField;
-                    vertexField = this.Connection.VertexCache.GetVertexField(vertexId);
-
-                    if (this.Connection.UseReverseEdges) {
-                        vertexField.ConstructSpilledOrVirtualAdjacencyListField(edgeDocDict);
-                    }
-                    else {
-                        string vertexLabel = vertexField[GraphViewKeywords.KW_VERTEX_LABEL].ToValue;
-                        if (!vertexField.AdjacencyList.HasBeenFetched) {
-                            vertexField.ConstructSpilledOrVirtualAdjacencyListField(vertexId, vertexLabel, vertexField.Partition, false, edgeDocDict);
-                        }
-                    }
-                    gotVertexIds.Remove(vertexId);
-                }
-
-                foreach (string vertexId in gotVertexIds) {
-                    VertexField vertexField;
-                    this.Connection.VertexCache.TryGetVertexField(vertexId, out vertexField);
-                    if (this.Connection.UseReverseEdges) {
-                        vertexField.ConstructSpilledOrVirtualAdjacencyListField(new Dictionary<string, JObject>());
-                    }
-                    else {
-                        string vertexLabel = vertexField[GraphViewKeywords.KW_VERTEX_LABEL].ToValue;
-                        if (!vertexField.AdjacencyList.HasBeenFetched) {
-                            vertexField.ConstructSpilledOrVirtualAdjacencyListField(vertexId, vertexLabel, vertexField.Partition, false, new Dictionary<string, JObject>());
-                        }
-                    }
-                }
+                edgeDocuments.Add(item);
             }
-
-            foreach (RawRecord record in results) {
-                yield return record;
-            }
+            return edgeDocuments;
         }
-        */
+
+        public override JObject GetEdgeDocument(JsonQuery query)
+        {
+            string queryScript = query.ToString(DatabaseType.DocumentDB);
+            return this.Connection.ExecuteQueryUnique(queryScript);
+        }
     }
 }
