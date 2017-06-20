@@ -289,12 +289,12 @@ namespace GraphView
             currentContext.TableReferences.Add(newVariable);
         }
 
-        internal virtual void Dedup(GremlinToSqlContext currentContext, List<string> dedupLabels, GraphTraversal2 dedupTraversal, GremlinKeyword.Scope scope)
+        internal virtual void Dedup(GremlinToSqlContext currentContext, List<string> dedupLabels, GraphTraversal dedupTraversal, GremlinKeyword.Scope scope)
         {
             List<GremlinVariable> dedupVariables = new List<GremlinVariable>();
             foreach (var dedupLabel in dedupLabels)
             {
-                dedupVariables.Add(GenerateSelectVariable(currentContext, GremlinKeyword.Pop.Last, new List<string> { dedupLabel}, new List<GraphTraversal2>() {dedupTraversal.Copy()}));
+                dedupVariables.Add(GenerateSelectVariable(currentContext, GremlinKeyword.Pop.Last, new List<string> { dedupLabel}, new List<GraphTraversal>() {dedupTraversal.Copy()}));
             }
 
             dedupTraversal.GetStartOp().InheritedVariableFromParent(currentContext);
@@ -349,16 +349,16 @@ namespace GraphView
 
         internal virtual void Has(GremlinToSqlContext currentContext, string propertyKey)
         {
-            GraphTraversal2 traversal2 = GraphTraversal2.__().Properties(propertyKey);
-            traversal2.GetStartOp().InheritedVariableFromParent(currentContext);
-            currentContext.AddPredicate(SqlUtil.GetExistPredicate(traversal2.GetEndOp().GetContext().ToSelectQueryBlock()));
+            GraphTraversal traversal = GraphTraversal.__().Properties(propertyKey);
+            traversal.GetStartOp().InheritedVariableFromParent(currentContext);
+            currentContext.AddPredicate(SqlUtil.GetExistPredicate(traversal.GetEndOp().GetContext().ToSelectQueryBlock()));
         }
 
         internal virtual void HasNot(GremlinToSqlContext currentContext, string propertyKey)
         {
-            GraphTraversal2 traversal2 = GraphTraversal2.__().Properties(propertyKey);
-            traversal2.GetStartOp().InheritedVariableFromParent(currentContext);
-            currentContext.AddPredicate(SqlUtil.GetNotExistPredicate(traversal2.GetEndOp().GetContext().ToSelectQueryBlock()));
+            GraphTraversal traversal = GraphTraversal.__().Properties(propertyKey);
+            traversal.GetStartOp().InheritedVariableFromParent(currentContext);
+            currentContext.AddPredicate(SqlUtil.GetNotExistPredicate(traversal.GetEndOp().GetContext().ToSelectQueryBlock()));
         }
 
         private WBooleanExpression CreateBooleanExpression(GremlinVariableProperty variableProperty, object valuesOrPredicate)
@@ -401,9 +401,9 @@ namespace GraphView
         /// </summary>
         internal virtual void HasKeyOrValue(GremlinToSqlContext currentContext, GremlinHasType hasType, List<object> valuesOrPredicates)
         {
-            GraphTraversal2 traversal2 = hasType == GremlinHasType.HasKey ? GraphTraversal2.__().Key() : GraphTraversal2.__().Value();
-            traversal2.GetStartOp().InheritedVariableFromParent(currentContext);
-            GremlinToSqlContext existContext = traversal2.GetEndOp().GetContext();
+            GraphTraversal traversal = hasType == GremlinHasType.HasKey ? GraphTraversal.__().Key() : GraphTraversal.__().Value();
+            traversal.GetStartOp().InheritedVariableFromParent(currentContext);
+            GremlinToSqlContext existContext = traversal.GetEndOp().GetContext();
 
             List<WBooleanExpression> booleanExprList = new List<WBooleanExpression>();
             GremlinVariableProperty defaultVariableProperty = existContext.PivotVariable.DefaultProjection();
@@ -641,14 +641,14 @@ namespace GraphView
             currentContext.SetPivotVariable(outVertex);
         }
 
-        private GremlinPathVariable GeneratePath(GremlinToSqlContext currentContext, List<GraphTraversal2> byList = null)
+        private GremlinPathVariable GeneratePath(GremlinToSqlContext currentContext, List<GraphTraversal> byList = null)
         {
             //TODO: refactor
             List<GremlinToSqlContext> byContexts = new List<GremlinToSqlContext>();
             List<GremlinVariable> steps = currentContext.GetGlobalPathStepList();
             if (byList == null)
             {
-                byList = new List<GraphTraversal2> {GraphTraversal2.__()};
+                byList = new List<GraphTraversal> {GraphTraversal.__()};
             }
 
 
@@ -672,7 +672,7 @@ namespace GraphView
             return newVariable;
         }
 
-        internal virtual void Path(GremlinToSqlContext currentContext, List<GraphTraversal2> byList)
+        internal virtual void Path(GremlinToSqlContext currentContext, List<GraphTraversal> byList)
         {
             currentContext.SetPivotVariable(GeneratePath(currentContext, byList));
         }
@@ -777,12 +777,12 @@ namespace GraphView
             currentContext.SetPivotVariable(newVariable);
         }
 
-        internal virtual GremlinSelectVariable GenerateSelectVariable(GremlinToSqlContext currentContext, GremlinKeyword.Pop pop, List<string> selectKeys, List<GraphTraversal2> byList=null)
+        internal virtual GremlinSelectVariable GenerateSelectVariable(GremlinToSqlContext currentContext, GremlinKeyword.Pop pop, List<string> selectKeys, List<GraphTraversal> byList=null)
         {
             //TODO: refactor
             if (byList == null)
             {
-                byList = new List<GraphTraversal2>() {GraphTraversal2.__()};
+                byList = new List<GraphTraversal>() {GraphTraversal.__()};
             }
             List<GremlinToSqlContext> byContexts = new List<GremlinToSqlContext>();
             List<GremlinVariable> steps = currentContext.GetGlobalPathStepList();
@@ -811,7 +811,7 @@ namespace GraphView
             return newVariable;
         }
 
-        internal virtual void Select(GremlinToSqlContext currentContext, GremlinKeyword.Pop pop, List<string> selectKeys, List<GraphTraversal2> byList)
+        internal virtual void Select(GremlinToSqlContext currentContext, GremlinKeyword.Pop pop, List<string> selectKeys, List<GraphTraversal> byList)
         {
             GremlinSelectVariable newVariable = GenerateSelectVariable(currentContext, pop, selectKeys, byList);
             currentContext.SetPivotVariable(newVariable);
@@ -860,7 +860,7 @@ namespace GraphView
             throw new NotImplementedException();
         }
 
-        internal virtual void Tree(GremlinToSqlContext currentContext, List<GraphTraversal2> byList)
+        internal virtual void Tree(GremlinToSqlContext currentContext, List<GraphTraversal> byList)
         {
             GremlinPathVariable pathVariable = GeneratePath(currentContext, byList);
             GremlinTreeVariable newVariable = new GremlinTreeVariable(currentContext.Duplicate(), pathVariable);
@@ -870,7 +870,7 @@ namespace GraphView
             currentContext.SetPivotVariable(newVariable);
         }
 
-        internal virtual void Tree(GremlinToSqlContext currentContext, string sideEffectKey, List<GraphTraversal2> byList)
+        internal virtual void Tree(GremlinToSqlContext currentContext, string sideEffectKey, List<GraphTraversal> byList)
         {
             GremlinPathVariable pathVariable = GeneratePath(currentContext, byList);
             GremlinTreeSideEffectVariable newVariable = new GremlinTreeSideEffectVariable(sideEffectKey, pathVariable);
@@ -937,7 +937,7 @@ namespace GraphView
         internal virtual void Where(GremlinToSqlContext currentContext, string startKey, Predicate predicate, TraversalRing traversalRing)
         {
             var selectKey = new List<string> { startKey };
-            var selectTraversal = new List<GraphTraversal2> { traversalRing.Next() };
+            var selectTraversal = new List<GraphTraversal> { traversalRing.Next() };
             var firstVar = GenerateSelectVariable(currentContext, GremlinKeyword.Pop.Last, selectKey, selectTraversal);
             currentContext.AddPredicate(GetWherePredicate(currentContext, firstVar, predicate, traversalRing));
         }
@@ -967,7 +967,7 @@ namespace GraphView
             }
 
             var selectKeys = new List<string>() {predicate.Value as string};
-            var selectTraversal = new List<GraphTraversal2>() {traversalRing.Next()};
+            var selectTraversal = new List<GraphTraversal>() {traversalRing.Next()};
             var selectVar = GenerateSelectVariable(currentContext, GremlinKeyword.Pop.Last, selectKeys, selectTraversal);
             var firstExpr = firstVar.DefaultProjection().ToScalarExpression();
             var secondExpr = selectVar.DefaultProjection().ToScalarExpression();

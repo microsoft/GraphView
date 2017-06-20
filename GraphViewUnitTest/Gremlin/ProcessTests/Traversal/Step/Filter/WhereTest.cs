@@ -134,7 +134,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
                 var traversal = graphCommand.g().V().Has("age").As("a")
                                                     .Out().In().Has("age").As("b")
                                                     .Select("a", "b")
-                                                    .Where(GraphTraversal2.__().As("b").Has("name", "marko"));
+                                                    .Where(GraphTraversal.__().As("b").Has("name", "marko"));
 
                 var result = traversal.Next();
                 dynamic dynamicResult = JsonConvert.DeserializeObject<dynamic>(result.FirstOrDefault());
@@ -175,7 +175,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
                 var traversal = graphCommand.g().V().Has("age").As("a")
                                                     .Out().In().Has("age").As("b")
                                                     .Select("a", "b")
-                                                    .Where(GraphTraversal2.__().As("a").Out("knows").As("b"));
+                                                    .Where(GraphTraversal.__().As("a").Out("knows").As("b"));
 
                 var result = traversal.Next();
                 dynamic dynamicResult = JsonConvert.DeserializeObject<dynamic>(result.FirstOrDefault());
@@ -208,7 +208,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
             {
                 var traversal = graphCommand.g().V().As("a")
                                                     .Out("created")
-                                                    .Where(GraphTraversal2.__().As("a").Values("name").Is("josh"))
+                                                    .Where(GraphTraversal.__().As("a").Values("name").Is("josh"))
                                                     .In("created").Values("name");
 
                 var result = traversal.Next();
@@ -282,7 +282,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
 
                 var traversal = graphCommand.g().V().HasId(markoVertexId).As("a")
                                                     .Out("created").In("created").As("b")
-                                                    .Where(GraphTraversal2.__().As("b").Out("created").Has("name", "ripple"))
+                                                    .Where(GraphTraversal.__().As("b").Out("created").Has("name", "ripple"))
                                                     .Values("age", "name");
 
                 var result = traversal.Next();
@@ -402,7 +402,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
                 graphCommand.OutputFormat = OutputFormat.Regular;
 
                 var traversal = graphCommand.g().V().HasId(markoVertexId)
-                                                    .Repeat(GraphTraversal2.__().BothE("created")
+                                                    .Repeat(GraphTraversal.__().BothE("created")
                                                                                 .Where(Predicate.without("e"))
                                                                                 .Aggregate("e")
                                                                                 .OtherV())
@@ -426,8 +426,8 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
             {
-                var traversal = graphCommand.g().V().Where(GraphTraversal2.__().Not(
-                                                                GraphTraversal2.__().Out("created")))
+                var traversal = graphCommand.g().V().Where(GraphTraversal.__().Not(
+                                                                GraphTraversal.__().Out("created")))
                                                     .Values("name");
 
                 var result = traversal.Next();
@@ -453,19 +453,19 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
                     .Out()
                     .As("b")
                     .Where(
-                        GraphTraversal2.__()
+                        GraphTraversal.__()
                             .And(
-                                GraphTraversal2.__()
+                                GraphTraversal.__()
                                     .As("a")
                                     .Out("knows")
                                     .As("b"),
-                                GraphTraversal2.__()
+                                GraphTraversal.__()
                                     .Or(
-                                        GraphTraversal2.__()
+                                        GraphTraversal.__()
                                             .As("b")
                                             .Out("created")
                                             .Has("name", "ripple"),
-                                        GraphTraversal2.__().As("b")
+                                        GraphTraversal.__().As("b")
                                             .In("knows")
                                             .Count()
                                             .Is(Predicate.not(Predicate.eq(0))))))
@@ -503,7 +503,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
             {
-                var traversal = graphCommand.g().V().Where(GraphTraversal2.__().Out("created")
+                var traversal = graphCommand.g().V().Where(GraphTraversal.__().Out("created")
                                                                                .And()
                                                                                .Out("knows")
                                                                                .Or()
@@ -528,11 +528,11 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
 
                 var traversal = graphCommand.g().V().As("a")
                                                     .Out("created").As("b")
-                                                    .Where(GraphTraversal2.__().And(
-                                                                                    GraphTraversal2.__().As("b")
+                                                    .Where(GraphTraversal.__().And(
+                                                                                    GraphTraversal.__().As("b")
                                                                                                         .In(),
-                                                                                    GraphTraversal2.__().Not(
-                                                                                                        GraphTraversal2.__().As("a")
+                                                                                    GraphTraversal.__().Not(
+                                                                                                        GraphTraversal.__().As("a")
                                                                                                                             .Out("created")
                                                                                                                             .Has("name", "ripple"))))
                                                     .Select("a", "b");
@@ -576,7 +576,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
                                                     .In("created").As("c")
                                                     .Both("knows").Both("knows").As("d")
                                                     .Where(
-                                                        GraphTraversal2.__().Where("c", Predicate.not(Predicate.eq("a")))
+                                                        GraphTraversal.__().Where("c", Predicate.not(Predicate.eq("a")))
                                                                             .And()
                                                                             .Where("c", Predicate.not(Predicate.eq("d"))))
                                                     .Select("a", "b", "c", "d");
@@ -626,14 +626,14 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
                     .Out()
                     .As("b")
                     .Where(
-                        GraphTraversal2.__()
+                        GraphTraversal.__()
                             .As("b")
                             .In()
                             .Count()
                             .Is(Predicate.eq(3))
                             .Or()
                             .Where(
-                                GraphTraversal2.__()
+                                GraphTraversal.__()
                                     .As("b")
                                     .Out("created")
                                     .And()
@@ -750,7 +750,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
             {
                 graphCommand.OutputFormat = OutputFormat.GraphSON;
 
-                var traversal = graphCommand.g().V().As("a").OutE("created").As("b").InV().As("c").In("created").As("d").Where("a", Predicate.lt("b").Or(Predicate.gt("c")).And(Predicate.neq("d"))).By("age").By("weight").By(GraphTraversal2.__().In("created").Values("age").Min()).Select("a", "c", "d").By("name");
+                var traversal = graphCommand.g().V().As("a").OutE("created").As("b").InV().As("c").In("created").As("d").Where("a", Predicate.lt("b").Or(Predicate.gt("c")).And(Predicate.neq("d"))).By("age").By("weight").By(GraphTraversal.__().In("created").Values("age").Min()).Select("a", "c", "d").By("name");
 
                 var result = traversal.Next();
                 dynamic dynamicResult = JsonConvert.DeserializeObject<dynamic>(result.FirstOrDefault());

@@ -164,7 +164,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         {
             using (GraphViewCommand GraphViewCommand = new GraphViewCommand(graphConnection))
             {
-                var traversal = GraphViewCommand.g().V().Has("age", GraphTraversal2.__().Is(Predicate.gt(30)));
+                var traversal = GraphViewCommand.g().V().Has("age", GraphTraversal.__().Is(Predicate.gt(30)));
 
                 var result = traversal.Values("age").Next();
                 Assert.AreEqual(2, result.Count);
@@ -220,7 +220,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
                 string vertexId2 = this.ConvertToVertexId(GraphViewCommand, "josh");
 
                 //var traversal = GraphViewCommand.g().V()
-                //    .Has("id", GraphTraversal2.__().V().HasId(vertexId1))
+                //    .Has("id", GraphTraversal.__().V().HasId(vertexId1))
                 //    .Has("age", Predicate.gt(30));
                 var traversal = GraphViewCommand.g().V(vertexId1)
                     .Has("age", Predicate.gt(30));
@@ -229,7 +229,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
                 Assert.AreEqual(0, result.Count);
 
                 //var traversal2 = GraphViewCommand.g().V()
-                //    .Has("id", GraphTraversal2.__().V().HasId(vertexId2))
+                //    .Has("id", GraphTraversal.__().V().HasId(vertexId2))
                 //    .Has("age", Predicate.gt(30));
 
                 var traversal2 = GraphViewCommand.g().V(vertexId2)
@@ -480,13 +480,13 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
             }
         }
 
-        private void Assert_g_VX1X_out_hasXid_2_3X(string id2, string id3, GraphTraversal2 traversal)
+        private void Assert_g_VX1X_out_hasXid_2_3X(string id2, string id3, GraphTraversal traversal)
         {
             var result = traversal.Id().Next();
             Assert.IsTrue(result.Contains(id2) || result.Contains(id3));
         }
 
-        private void AssertVadasAsOnlyValueReturned(GraphViewCommand GraphViewCommand, GraphTraversal2 traversal)
+        private void AssertVadasAsOnlyValueReturned(GraphViewCommand GraphViewCommand, GraphTraversal traversal)
         {
             var results = traversal.Id().Next();
             Assert.AreEqual(1, results.Count);

@@ -11,7 +11,7 @@ namespace GraphView
     {
         public GremlinKeyword.Scope Scope { get; set; }
         public int AmountToSample { get; set; }
-        public GraphTraversal2 ProbabilityTraversal { get; set; }
+        public GraphTraversal ProbabilityTraversal { get; set; }
 
         public GremlinSampleOp(GremlinKeyword.Scope scope, int amountToSample)
         {
@@ -39,7 +39,7 @@ namespace GraphView
             return inputContext;
         }
 
-        public override void ModulateBy(GraphTraversal2 traversal)
+        public override void ModulateBy(GraphTraversal traversal)
         {
             if (Scope == GremlinKeyword.Scope.Local) throw new SyntaxErrorException("Sample(Local) can't be modulated by by()");
             ProbabilityTraversal = traversal;

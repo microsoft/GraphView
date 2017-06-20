@@ -24,7 +24,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
                 string vertexId1 = this.ConvertToVertexId(graphCommand, "marko");
 
                 graphCommand.OutputFormat = OutputFormat.GraphSON;
-                GraphTraversal2 traversal = graphCommand.g().V(vertexId1).Values("name").Path();
+                GraphTraversal traversal = graphCommand.g().V(vertexId1).Values("name").Path();
                 dynamic result = JsonConvert.DeserializeObject<dynamic>(traversal.Next().FirstOrDefault())[0];
 
                 Assert.AreEqual(vertexId1, (string)result["objects"][0].id);
@@ -46,7 +46,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
                 string vertexId1 = this.ConvertToVertexId(graphCommand, "marko");
 
                 graphCommand.OutputFormat = OutputFormat.GraphSON;
-                GraphTraversal2 traversal = graphCommand.g().V(vertexId1).Out().Path().By("age").By("name");
+                GraphTraversal traversal = graphCommand.g().V(vertexId1).Out().Path().By("age").By("name");
                 dynamic results = JsonConvert.DeserializeObject<dynamic>(traversal.Next().FirstOrDefault());
 
                 Assert.AreEqual(3, results.Count);
@@ -72,8 +72,8 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
                 graphCommand.OutputFormat = OutputFormat.GraphSON;
                 var vertex = this.getVertexString(graphCommand, "marko");
                 
-                GraphTraversal2 traversal =
-                    graphCommand.g().V().Repeat(GraphTraversal2.__().Out()).Times(2).Path().By().By("name").By("lang");
+                GraphTraversal traversal =
+                    graphCommand.g().V().Repeat(GraphTraversal.__().Out()).Times(2).Path().By().By("name").By("lang");
                 dynamic results = JsonConvert.DeserializeObject<dynamic>(traversal.Next().FirstOrDefault());
 
                 Assert.AreEqual(2, results.Count);
@@ -105,7 +105,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
             {
                 graphCommand.OutputFormat = OutputFormat.GraphSON;
 
-                GraphTraversal2 traversal =
+                GraphTraversal traversal =
                     graphCommand.g().V().Out().Out().Path().By("name").By("age");
 
                 dynamic results = JsonConvert.DeserializeObject<dynamic>(traversal.Next().FirstOrDefault());
@@ -147,7 +147,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
                 graphCommand.OutputFormat = OutputFormat.GraphSON;
                 var vertex = this.getVertexString(graphCommand, "marko");
 
-                GraphTraversal2 traversal =
+                GraphTraversal traversal =
                     graphCommand.g().V().As("a").Has("name", "marko").As("b").Has("age", 29).As("c").Path();
 
                 dynamic results = JsonConvert.DeserializeObject<dynamic>(traversal.Next().FirstOrDefault());
@@ -168,7 +168,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         //    {
         //        string vertexId1 = this.ConvertToVertexId(graphCommand, "marko");
 
-        //        GraphTraversal2 traversal = graphCommand.g().V(vertexId1).OutE("created").InV().InE().OutV().Path();
+        //        GraphTraversal traversal = graphCommand.g().V(vertexId1).OutE("created").InV().InE().OutV().Path();
 
         //        List<string> temp = graphCommand.g().V(vertexId1).OutE("created").InV().InE().OutV().Path().Next();
 

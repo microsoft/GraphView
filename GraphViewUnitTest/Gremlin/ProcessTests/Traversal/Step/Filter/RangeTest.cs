@@ -48,7 +48,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
             {
-                var traversal = graphCommand.g().V().Local(GraphTraversal2.__().OutE().Limit(1)).InV().Limit(3);
+                var traversal = graphCommand.g().V().Local(GraphTraversal.__().OutE().Limit(1)).InV().Limit(3);
 
                 var result = traversal.Next();
                 Assert.AreEqual(3, result.Count);
@@ -146,7 +146,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
             {
-                var traversal = graphCommand.g().V().Repeat(GraphTraversal2.__().Both()).Times(3).Range(5, 11);
+                var traversal = graphCommand.g().V().Repeat(GraphTraversal.__().Both()).Times(3).Range(5, 11);
 
                 var results = traversal.Next();
                 Assert.AreEqual(6, results.Count);
@@ -165,7 +165,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
             {
                 graphCommand.OutputFormat = OutputFormat.GraphSON;
-                var traversal = graphCommand.g().V().As("a").In().As("a").In().As("a").Select("a").By(GraphTraversal2.__().Unfold().Values("name").Fold()).Limit(GremlinKeyword.Scope.Local, 2);
+                var traversal = graphCommand.g().V().As("a").In().As("a").In().As("a").Select("a").By(GraphTraversal.__().Unfold().Values("name").Fold()).Limit(GremlinKeyword.Scope.Local, 2);
                 dynamic results = JsonConvert.DeserializeObject<dynamic>(traversal.Next().FirstOrDefault());
                 CheckUnOrderedResults(new [] {"lop,josh", "ripple,josh"}, ((JArray)results).Select(p=> $"{p[0]},{p[1]}").ToList());
             }
@@ -182,7 +182,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
             {
-                var traversal = graphCommand.g().V().As("a").In().As("a").In().As("a").Select("a").By(GraphTraversal2.__().Unfold().Values("name").Fold()).Limit(GremlinKeyword.Scope.Local, 1);
+                var traversal = graphCommand.g().V().As("a").In().As("a").In().As("a").Select("a").By(GraphTraversal.__().Unfold().Values("name").Fold()).Limit(GremlinKeyword.Scope.Local, 1);
                 var results = traversal.Next();
 
                 CheckUnOrderedResults(new [] {"lop", "ripple"}, results);
@@ -200,7 +200,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
             {
                 graphCommand.OutputFormat = OutputFormat.GraphSON;
-                var traversal = graphCommand.g().V().As("a").Out().As("a").Out().As("a").Select("a").By(GraphTraversal2.__().Unfold().Values("name").Fold()).Range(GremlinKeyword.Scope.Local, 1, 3);
+                var traversal = graphCommand.g().V().As("a").Out().As("a").Out().As("a").Select("a").By(GraphTraversal.__().Unfold().Values("name").Fold()).Range(GremlinKeyword.Scope.Local, 1, 3);
                 dynamic results = JsonConvert.DeserializeObject<dynamic>(traversal.Next().FirstOrDefault());
                 CheckUnOrderedResults(new [] {"josh,ripple", "josh,lop"}, ((JArray)results).Select(p=> $"{p[0]},{p[1]}").ToList());
             }
@@ -217,7 +217,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
             {
-                var traversal = graphCommand.g().V().As("a").Out().As("a").Out().As("a").Select("a").By(GraphTraversal2.__().Unfold().Values("name").Fold()).Range(GremlinKeyword.Scope.Local, 1, 2);
+                var traversal = graphCommand.g().V().As("a").Out().As("a").Out().As("a").Select("a").By(GraphTraversal.__().Unfold().Values("name").Fold()).Range(GremlinKeyword.Scope.Local, 1, 2);
                 CheckUnOrderedResults(new [] {"josh", "josh"}, traversal.Next());
             }
         }
@@ -233,7 +233,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
             {
-                var traversal = graphCommand.g().V().As("a").Out().As("a").Out().As("a").Select("a").By(GraphTraversal2.__().Unfold().Values("name").Fold()).Range(GremlinKeyword.Scope.Local, 4, 5);
+                var traversal = graphCommand.g().V().As("a").Out().As("a").Out().As("a").Select("a").By(GraphTraversal.__().Unfold().Values("name").Fold()).Range(GremlinKeyword.Scope.Local, 4, 5);
                 Assert.IsTrue(traversal.Next().Count == 0);
             }
         }

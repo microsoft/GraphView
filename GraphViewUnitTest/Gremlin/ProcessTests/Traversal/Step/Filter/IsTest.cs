@@ -81,7 +81,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         {
             using (GraphViewCommand GraphViewCommand = new GraphViewCommand(graphConnection))
             {
-                var traversal = GraphViewCommand.g().V().Where(GraphTraversal2.__().In("created").Count().Is(1)).Values("name");
+                var traversal = GraphViewCommand.g().V().Where(GraphTraversal.__().In("created").Count().Is(1)).Values("name");
 
                 var result = traversal.Next();
                 Assert.AreEqual(1, result.Count);
@@ -99,7 +99,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         {
             using (GraphViewCommand GraphViewCommand = new GraphViewCommand(graphConnection))
             {
-                var traversal = GraphViewCommand.g().V().Where(GraphTraversal2.__().In("created").Count().Is(Predicate.gte(2L))).Values("name");
+                var traversal = GraphViewCommand.g().V().Where(GraphTraversal.__().In("created").Count().Is(Predicate.gte(2L))).Values("name");
 
                 var result = traversal.Next();
                 Assert.AreEqual(1, result.Count);

@@ -28,7 +28,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Branch
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
             {
                 graphCommand.OutputFormat = OutputFormat.GraphSON;
-                var traversal = graphCommand.g().V().Repeat(GraphTraversal2.__().Out()).Times(2).Emit().Path();
+                var traversal = graphCommand.g().V().Repeat(GraphTraversal.__().Out()).Times(2).Emit().Path();
 
                 dynamic results = JsonConvert.DeserializeObject<dynamic>(traversal.Next()[0]);
                 Dictionary<int, long> pathLengths = new Dictionary<int, long>();
@@ -50,7 +50,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Branch
         /// Equivalent gremlin: "g.V().repeat(out()).times(2).repeat(__.in()).times(2).values("name")"
         /// </summary>
         /// <remarks>
-        /// graphCommand.g().V().Repeat(GraphTraversal2.__().Out()).Times(2) should return two vertices, but return nothing
+        /// graphCommand.g().V().Repeat(GraphTraversal.__().Out()).Times(2) should return two vertices, but return nothing
         /// Bug item: https://msdata.visualstudio.com/DocumentDB/_workitems/edit/37917
         /// </remarks>
         [TestMethod]
@@ -63,9 +63,9 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Branch
                 var traversal =
                     graphCommand.g()
                         .V()
-                        .Repeat(GraphTraversal2.__().Out())
+                        .Repeat(GraphTraversal.__().Out())
                         .Times(2)
-                        .Repeat(GraphTraversal2.__().In())
+                        .Repeat(GraphTraversal.__().In())
                         .Times(2)
                         .Values("name");
 
@@ -79,7 +79,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Branch
         /// Equivalent gremlin: "g.V().repeat(out()).times(2)"
         /// </summary>
         /// <remarks>
-        /// graphCommand.g().V().Repeat(GraphTraversal2.__().Out()).Times(2) should return two vertices, but return nothing
+        /// graphCommand.g().V().Repeat(GraphTraversal.__().Out()).Times(2) should return two vertices, but return nothing
         /// Bug item: https://msdata.visualstudio.com/DocumentDB/_workitems/edit/37917
         /// </remarks>
         [TestMethod]
@@ -89,7 +89,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Branch
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
             {
-                var traversal = graphCommand.g().V().Repeat(GraphTraversal2.__().Out()).Times(2);
+                var traversal = graphCommand.g().V().Repeat(GraphTraversal.__().Out()).Times(2);
 
                 var results = traversal.Values("name").Next();
                 foreach (string name in results)
@@ -105,7 +105,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Branch
         /// Equivalent gremlin: "g.V().repeat(out()).times(2).emit()"
         /// </summary>
         /// <remarks>
-        /// graphCommand.g().V().Repeat(GraphTraversal2.__().Out()).Times(2) should return two vertices, but return nothing
+        /// graphCommand.g().V().Repeat(GraphTraversal.__().Out()).Times(2) should return two vertices, but return nothing
         /// Bug item: https://msdata.visualstudio.com/DocumentDB/_workitems/edit/37917
         /// </remarks>
         [TestMethod]
@@ -115,7 +115,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Branch
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
             {
-                var traversal = graphCommand.g().V().Repeat(GraphTraversal2.__().Out()).Times(2).Emit();
+                var traversal = graphCommand.g().V().Repeat(GraphTraversal.__().Out()).Times(2).Emit();
 
                 var results = traversal.Values("name").Next();
                 Dictionary<string, long> map = new Dictionary<string, long>();
@@ -143,7 +143,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Branch
         /// Equivalent gremlin: "g.V(v1Id).times(2).repeat(out()).values("name")"
         /// </summary>
         /// <remarks>
-        /// graphCommand.g().V().HasId(vertexId).Times(2).Repeat(GraphTraversal2.__().Out()) should return two vertices, but return nothing
+        /// graphCommand.g().V().HasId(vertexId).Times(2).Repeat(GraphTraversal.__().Out()) should return two vertices, but return nothing
         /// Bug item: https://msdata.visualstudio.com/DocumentDB/_workitems/edit/37917
         /// </remarks>
         [TestMethod]
@@ -154,14 +154,14 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Branch
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
             {
                 string vertexId = this.ConvertToVertexId(graphCommand, "marko");
-                var traversal = graphCommand.g().V().HasId(vertexId).Times(2).Repeat(GraphTraversal2.__().Out()).Values("name");
+                var traversal = graphCommand.g().V().HasId(vertexId).Times(2).Repeat(GraphTraversal.__().Out()).Values("name");
 
                 var results = traversal.Next();
                 CheckUnOrderedResults(new string[] { "lop", "ripple" }, results);
             }
         }
 
-        private void AssertPath(GraphTraversal2 traversal)
+        private void AssertPath(GraphTraversal traversal)
         {
             dynamic results = JsonConvert.DeserializeObject<dynamic>(traversal.Next()[0]);
             int path1 = 0, path2 = 0, path3 = 0;
@@ -200,7 +200,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Branch
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
             {
                 graphCommand.OutputFormat = OutputFormat.GraphSON;
-                var traversal = graphCommand.g().V().Emit().Times(2).Repeat(GraphTraversal2.__().Out()).Path();
+                var traversal = graphCommand.g().V().Emit().Times(2).Repeat(GraphTraversal.__().Out()).Path();
 
                 AssertPath(traversal);
             }
@@ -218,7 +218,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Branch
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
             {
                 graphCommand.OutputFormat = OutputFormat.GraphSON;
-                var traversal = graphCommand.g().V().Emit().Repeat(GraphTraversal2.__().Out()).Times(2).Path();
+                var traversal = graphCommand.g().V().Emit().Repeat(GraphTraversal.__().Out()).Times(2).Path();
 
                 AssertPath(traversal);
             }
@@ -229,7 +229,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Branch
         /// Equivalent gremlin: "g.V(v1Id).emit(has(T.label, "person")).repeat(out()).values("name")"
         /// </summary>
         /// <remarks>
-        /// graphCommand.g().V().HasId(vertexId).Emit(GraphTraversal2.__().HasLabel("person")).Repeat(GraphTraversal2.__().Out()).Values("name") should 
+        /// graphCommand.g().V().HasId(vertexId).Emit(GraphTraversal.__().HasLabel("person")).Repeat(GraphTraversal.__().Out()).Values("name") should 
         /// return three vertices ("marko", "josh", "vadas"), but test only returns two ("josh", "vadas"). The source "marko" is missing. 
         /// Bug item: https://msdata.visualstudio.com/DocumentDB/_workitems/edit/37917
         /// </remarks>
@@ -245,8 +245,8 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Branch
                     graphCommand.g()
                         .V()
                         .HasId(vertexId)
-                        .Emit(GraphTraversal2.__().HasLabel("person"))
-                        .Repeat(GraphTraversal2.__().Out())
+                        .Emit(GraphTraversal.__().HasLabel("person"))
+                        .Repeat(GraphTraversal.__().Out())
                         .Values("name");
 
                 var results = traversal.Next();
@@ -266,7 +266,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Branch
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
             {
                 graphCommand.OutputFormat = OutputFormat.GraphSON;
-                var traversal = graphCommand.g().V().Repeat(GraphTraversal2.__().GroupCount("m").By("name").Out()).Times(2).Cap("m");
+                var traversal = graphCommand.g().V().Repeat(GraphTraversal.__().GroupCount("m").By("name").Out()).Times(2).Cap("m");
                 dynamic results = JsonConvert.DeserializeObject<dynamic>(traversal.Next()[0]);
                 Assert.AreEqual(1, results.Count);
                 var result = results[0];
@@ -291,7 +291,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Branch
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
             {
                 graphCommand.OutputFormat = OutputFormat.GraphSON;
-                var traversal = graphCommand.g().V().Repeat(GraphTraversal2.__().Both()).Times(10).As("a").Out().As("b").Select("a", "b");
+                var traversal = graphCommand.g().V().Repeat(GraphTraversal.__().Both()).Times(10).As("a").Out().As("b").Select("a", "b");
 
                 int counter = 0;
                 dynamic results = JsonConvert.DeserializeObject<dynamic>(traversal.Next()[0]);
@@ -325,8 +325,8 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Branch
                     graphCommand.g()
                         .V()
                         .HasId(vertexId)
-                        .Repeat(GraphTraversal2.__().Out())
-                        .Until(GraphTraversal2.__().OutE().Count().Is(0))
+                        .Repeat(GraphTraversal.__().Out())
+                        .Until(GraphTraversal.__().OutE().Count().Is(0))
                         .Values("name");
 
                 var results = traversal.Next();
@@ -343,9 +343,9 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Branch
                 var traversal =
                     graphCommand.g()
                         .V()
-                        .Repeat(GraphTraversal2.__().Out())
+                        .Repeat(GraphTraversal.__().Out())
                         .Times(2)
-                        .Repeat(GraphTraversal2.__().In())
+                        .Repeat(GraphTraversal.__().In())
                         .Values("name");
 
                 var results = traversal.Next();
@@ -362,7 +362,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Branch
                 var traversal =
                     graphCommand.g()
                         .V()
-                        .Repeat(GraphTraversal2.__().Out())
+                        .Repeat(GraphTraversal.__().Out())
                         .Times(-1)
                         .Values("name");
 

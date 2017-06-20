@@ -58,10 +58,10 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         {
             using (GraphViewCommand command = new GraphViewCommand(graphConnection))
             {
-                //GraphTraversal2 traversal = command.g().E().Drop();
+                //GraphTraversal traversal = command.g().E().Drop();
 
 
-                //GraphTraversal2 traversal = command.g().V().Has("name", "marko").Property("name", "twet");
+                //GraphTraversal traversal = command.g().V().Has("name", "marko").Property("name", "twet");
 
                 //command.OutputFormat = OutputFormat.GraphSON;
                 try
@@ -91,7 +91,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         {
             using (GraphViewCommand command = new GraphViewCommand(graphConnection))
             {
-                GraphTraversal2 traversal = command.g().V().Drop();
+                GraphTraversal traversal = command.g().V().Drop();
                 List<string> result = traversal.Next();
                 Assert.AreEqual(0, GetEdgeCount(command));
                 Assert.AreEqual(0, GetVertexCount(command));
@@ -139,7 +139,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         {
             using (GraphViewCommand command = new GraphViewCommand(graphConnection))
             {
-                GraphTraversal2 traversal = command.g().V().Coin(1.0).Values("name");
+                GraphTraversal traversal = command.g().V().Coin(1.0).Values("name");
                 List<string> result = traversal.Next();
                 CheckUnOrderedResults(new[] { "marko", "vadas", "lop", "josh", "ripple", "peter" }, result);
             }

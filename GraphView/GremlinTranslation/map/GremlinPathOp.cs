@@ -8,11 +8,11 @@ namespace GraphView
 {
     internal class GremlinPathOp : GremlinTranslationOperator
     {
-        public List<GraphTraversal2> ByList { get; set; }
+        public List<GraphTraversal> ByList { get; set; }
 
         public GremlinPathOp()
         {
-            ByList = new List<GraphTraversal2>();
+            ByList = new List<GraphTraversal>();
         }
 
         internal override GremlinToSqlContext GetContext()
@@ -25,7 +25,7 @@ namespace GraphView
 
             if (ByList.Count == 0)
             {
-                ByList.Add(GraphTraversal2.__());
+                ByList.Add(GraphTraversal.__());
             }
 
             inputContext.PivotVariable.Path(inputContext, ByList);
@@ -33,7 +33,7 @@ namespace GraphView
             return inputContext;
         }
 
-        public override void ModulateBy(GraphTraversal2 traversal)
+        public override void ModulateBy(GraphTraversal traversal)
         {
             ByList.Add(traversal);
         }

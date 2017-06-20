@@ -12,9 +12,9 @@ namespace GraphView
     {
         public Predicate TerminationPredicate { get; set; }
         public Predicate EmitPredicate { get; set; }
-        public GraphTraversal2 TerminationTraversal { get; set; }
-        public GraphTraversal2 EmitTraversal { get; set; }
-        public GraphTraversal2 RepeatTraversal { get; set; }
+        public GraphTraversal TerminationTraversal { get; set; }
+        public GraphTraversal EmitTraversal { get; set; }
+        public GraphTraversal RepeatTraversal { get; set; }
         public int RepeatTimes { get; set; }
         public bool StartFromContext { get; set; }
         public bool EmitContext { get; set; }
@@ -22,7 +22,7 @@ namespace GraphView
         // i.e. times().repeat()   or   until().repeat()   or   emit().repeat()
         public bool IsFake { get; set; }
 
-        public GremlinRepeatOp(GraphTraversal2 repeatTraversal)
+        public GremlinRepeatOp(GraphTraversal repeatTraversal)
         {
             RepeatTraversal = repeatTraversal;
             IsFake = false;

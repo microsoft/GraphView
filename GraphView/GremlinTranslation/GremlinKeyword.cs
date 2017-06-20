@@ -266,7 +266,7 @@ namespace GraphView
         public static readonly Dictionary<string, string> GremlinMainStepToGraphTraversalDict = new Dictionary
             <string, string>()
             {
-                {"__", "GraphTraversal2.__()"},
+                {"__", "GraphTraversal.__()"},
                 {"g", "graph.g()"}
 
             };

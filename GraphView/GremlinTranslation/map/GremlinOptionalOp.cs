@@ -9,9 +9,9 @@ namespace GraphView
 {
     internal class GremlinOptionalOp: GremlinTranslationOperator
     {
-        public GraphTraversal2 TraversalOption { get; set; }
+        public GraphTraversal TraversalOption { get; set; }
 
-        public GremlinOptionalOp(GraphTraversal2 traversalOption)
+        public GremlinOptionalOp(GraphTraversal traversalOption)
         {
             TraversalOption = traversalOption;
         }

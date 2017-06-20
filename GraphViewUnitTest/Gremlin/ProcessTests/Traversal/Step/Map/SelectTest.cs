@@ -251,7 +251,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
             {
                 graphCommand.OutputFormat = OutputFormat.GraphSON;
                 var traversal = graphCommand.g().V()
-                    .Has("name", GraphTraversal2.__().Is("marko"))
+                    .Has("name", GraphTraversal.__().Is("marko"))
                     .As("a").Select("a");
 
                 var result = traversal.Next();
@@ -297,7 +297,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
                 graphCommand.OutputFormat = OutputFormat.GraphSON;
                 var traversal = graphCommand.g().V()
                     .HasLabel("person").As("p")
-                    .Map(GraphTraversal2.__().BothE().Label().GroupCount()).As("r").Select("p", "r");
+                    .Map(GraphTraversal.__().BothE().Label().GroupCount()).As("r").Select("p", "r");
 
                 var results = traversal.Next();
                 dynamic dynamicResult = JsonConvert.DeserializeObject<dynamic>(results.FirstOrDefault());
@@ -343,13 +343,13 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
             {
                 graphCommand.OutputFormat = OutputFormat.GraphSON;
                 var traversal = graphCommand.g().V().Choose(
-                                                        GraphTraversal2.__().OutE().Count().Is(0L),
-                                                        GraphTraversal2.__().As("a"),
-                                                        GraphTraversal2.__().As("b"))
+                                                        GraphTraversal.__().OutE().Count().Is(0L),
+                                                        GraphTraversal.__().As("a"),
+                                                        GraphTraversal.__().As("b"))
                                                     .Choose(
-                                                        GraphTraversal2.__().Select("a"),
-                                                        GraphTraversal2.__().Select("a"),
-                                                        GraphTraversal2.__().Select("b"));
+                                                        GraphTraversal.__().Select("a"),
+                                                        GraphTraversal.__().Select("a"),
+                                                        GraphTraversal.__().Select("b"));
 
                 var results = traversal.Next();
                 dynamic dynamicResult = JsonConvert.DeserializeObject<dynamic>(results.FirstOrDefault());
@@ -554,8 +554,8 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
             //using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
             //{
             //    var traversal = graphCommand.g().V().Out("created")
-            //        .Union(GraphTraversal2.__().As("project").In("created").Has("name", "marko").Select("project"),
-            //               GraphTraversal2.__().As("project").In("created").In("knows").Has("name", "marko").Select("project")).GroupCount().By("name");
+            //        .Union(GraphTraversal.__().As("project").In("created").Has("name", "marko").Select("project"),
+            //               GraphTraversal.__().As("project").In("created").In("knows").Has("name", "marko").Select("project")).GroupCount().By("name");
 
             //    var result = traversal.Next();
             //    var groupCountMap = GetGroupCountMap(result);
@@ -605,7 +605,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
             {
                 graphCommand.OutputFormat = OutputFormat.GraphSON;
                 var traversal = graphCommand.g().V().HasLabel("software").As("name").As("language").As("creators").Select("name", "language", "creators").By("name").By("lang").
-                    By(GraphTraversal2.__().In("created").Values("name").Fold().Order(GremlinKeyword.Scope.Local));
+                    By(GraphTraversal.__().In("created").Values("name").Fold().Order(GremlinKeyword.Scope.Local));
 
                 var results = traversal.Next();
                 dynamic dynamicResult = JsonConvert.DeserializeObject<dynamic>(results.FirstOrDefault());
@@ -668,7 +668,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
             {
-                var traversal = graphCommand.g().V().Until(GraphTraversal2.__().Out().Out()).Repeat(GraphTraversal2.__().In().As("a")).Select("a").By(GraphTraversal2.__().Tail(GremlinKeyword.Scope.Local).Values("name"));
+                var traversal = graphCommand.g().V().Until(GraphTraversal.__().Out().Out()).Repeat(GraphTraversal.__().In().As("a")).Select("a").By(GraphTraversal.__().Tail(GremlinKeyword.Scope.Local).Values("name"));
 
                 var results = traversal.Next();
                 Assert.AreEqual(5, results.Count);
@@ -690,7 +690,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
             {
                 graphCommand.OutputFormat = OutputFormat.GraphSON;
-                var traversal = graphCommand.g().V().Until(GraphTraversal2.__().Out().Out()).Repeat(GraphTraversal2.__().In().As("a").In().As("b")).Select("a", "b").By("name");
+                var traversal = graphCommand.g().V().Until(GraphTraversal.__().Out().Out()).Repeat(GraphTraversal.__().In().As("a").In().As("b")).Select("a", "b").By("name");
 
                 var result = traversal.Next();
                 dynamic dynamicResult = JsonConvert.DeserializeObject<dynamic>(result.FirstOrDefault());
@@ -715,7 +715,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
             {
                 graphCommand.OutputFormat = OutputFormat.GraphSON;
-                var traversal = graphCommand.g().V().As("a").Where(GraphTraversal2.__().Out("knows")).Select("a");
+                var traversal = graphCommand.g().V().As("a").Where(GraphTraversal.__().Out("knows")).Select("a");
 
                 var result = traversal.Next();
                 dynamic dynamicResult = JsonConvert.DeserializeObject<dynamic>(result.FirstOrDefault());
@@ -776,7 +776,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
             {
                 graphCommand.OutputFormat = OutputFormat.GraphSON;
-                var traversal = graphCommand.g().V().As("a").Out("knows").As("b").Local(GraphTraversal2.__().Select("a", "b").By("name"));
+                var traversal = graphCommand.g().V().As("a").Out("knows").As("b").Local(GraphTraversal.__().Select("a", "b").By("name"));
 
                 var result = traversal.Next();
                 dynamic dynamicResult = JsonConvert.DeserializeObject<dynamic>(result.FirstOrDefault());

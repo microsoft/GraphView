@@ -33,7 +33,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
             using (GraphViewCommand GraphViewCommand = new GraphViewCommand(graphConnection))
             {
                 GraphViewCommand.OutputFormat = OutputFormat.Regular;
-                var traversal = GraphViewCommand.g().V().Group().By(GraphTraversal2.__().Values("name")).By();
+                var traversal = GraphViewCommand.g().V().Group().By(GraphTraversal.__().Values("name")).By();
                 var results = traversal.Next();
 
                 Console.WriteLine(traversal.SqlScript);

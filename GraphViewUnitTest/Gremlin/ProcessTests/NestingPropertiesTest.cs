@@ -56,7 +56,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests
                 string id = ConvertToVertexId(command, "marko");
 
                 command.OutputFormat = OutputFormat.GraphSON;
-                var traversal = command.g().V(id).Union(GraphTraversal2.__().Out(), GraphTraversal2.__().OutE()).Properties();
+                var traversal = command.g().V(id).Union(GraphTraversal.__().Out(), GraphTraversal.__().OutE()).Properties();
                 var result = JsonConvert.DeserializeObject<dynamic>(traversal.Next().FirstOrDefault());
 
                 if (graphConnection.GraphType != GraphType.GraphAPIOnly) {
@@ -68,9 +68,9 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests
 
                 if (graphConnection.GraphType == GraphType.GraphAPIOnly)
                 {
-                    command.g().V(id).Union(GraphTraversal2.__().Out(), GraphTraversal2.__().OutE()).Properties().Drop().Next();
+                    command.g().V(id).Union(GraphTraversal.__().Out(), GraphTraversal.__().OutE()).Properties().Drop().Next();
 
-                    traversal = command.g().V(id).Union(GraphTraversal2.__().Out(), GraphTraversal2.__().OutE()).Properties();
+                    traversal = command.g().V(id).Union(GraphTraversal.__().Out(), GraphTraversal.__().OutE()).Properties();
                     result = JsonConvert.DeserializeObject<dynamic>(traversal.Next().FirstOrDefault());
 
                     Assert.AreEqual(0, (int)result.Count);

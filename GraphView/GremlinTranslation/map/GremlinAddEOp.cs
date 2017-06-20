@@ -9,8 +9,8 @@ namespace GraphView
     internal class GremlinAddEOp: GremlinTranslationOperator
     {
         internal string EdgeLabel { get; set; }
-        public GraphTraversal2 FromVertexTraversal { get; set; }
-        public GraphTraversal2 ToVertexTraversal { get; set; }
+        public GraphTraversal FromVertexTraversal { get; set; }
+        public GraphTraversal ToVertexTraversal { get; set; }
         public List<GremlinProperty> EdgeProperties { get; set; }
 
         public GremlinAddEOp(string label)

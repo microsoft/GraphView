@@ -11,7 +11,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
     [TestClass]
     public class TreeTest : AbstractGremlinTest
     {
-        private void AssertCommonA(GraphTraversal2 traversal)
+        private void AssertCommonA(GraphTraversal traversal)
         {
             dynamic results = JsonConvert.DeserializeObject<dynamic>(traversal.Next()[0]);
 
@@ -63,7 +63,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
             {
                 graphCommand.OutputFormat = OutputFormat.GraphSON;
-                var traversal = graphCommand.g().V().Out().Out().Tree().By(GraphTraversal2.__().Id());
+                var traversal = graphCommand.g().V().Out().Out().Tree().By(GraphTraversal.__().Id());
 
                 this.AssertCommonC(traversal, graphCommand);
             }
@@ -103,7 +103,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
             }
         }
 
-        private void AssertCommonC(GraphTraversal2 traversal, GraphViewCommand graphCommand)
+        private void AssertCommonC(GraphTraversal traversal, GraphViewCommand graphCommand)
         {
             string vertexId = this.ConvertToVertexId(graphCommand, "marko");
             dynamic results = JsonConvert.DeserializeObject<dynamic>(traversal.Next()[0]);

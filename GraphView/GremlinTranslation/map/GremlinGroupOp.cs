@@ -10,8 +10,8 @@ namespace GraphView
     internal class GremlinGroupOp: GremlinTranslationOperator
     {
         public string SideEffect { get; set; }
-        public GraphTraversal2 GroupBy { get; set; }
-        public GraphTraversal2 ProjectBy { get; set; }
+        public GraphTraversal GroupBy { get; set; }
+        public GraphTraversal ProjectBy { get; set; }
         public bool IsProjectingACollection { get; set; }
 
         public GremlinGroupOp()
@@ -34,9 +34,9 @@ namespace GraphView
             }
 
             if (GroupBy == null)
-                GroupBy = GraphTraversal2.__();
+                GroupBy = GraphTraversal.__();
             if (ProjectBy == null)
-                ProjectBy = GraphTraversal2.__();
+                ProjectBy = GraphTraversal.__();
 
             GroupBy.GetStartOp().InheritedVariableFromParent(inputContext);
             ProjectBy.GetStartOp().InheritedVariableFromParent(inputContext);
@@ -52,11 +52,11 @@ namespace GraphView
         {
             if (GroupBy == null)
             {
-                GroupBy = GraphTraversal2.__();
+                GroupBy = GraphTraversal.__();
             }
             else if (ProjectBy == null)
             {
-                ProjectBy = GraphTraversal2.__();
+                ProjectBy = GraphTraversal.__();
             }
             else
             {
@@ -64,7 +64,7 @@ namespace GraphView
             }
         }
 
-        public override void ModulateBy(GraphTraversal2 traversal)
+        public override void ModulateBy(GraphTraversal traversal)
         {
             if (GroupBy == null)
             {
@@ -85,11 +85,11 @@ namespace GraphView
         {
             if (GroupBy == null)
             {
-                GroupBy = GraphTraversal2.__().Values(key);
+                GroupBy = GraphTraversal.__().Values(key);
             }
             else if (ProjectBy == null)
             {
-                ProjectBy = GraphTraversal2.__().Values(key);
+                ProjectBy = GraphTraversal.__().Values(key);
             }
             else
             {
@@ -101,11 +101,11 @@ namespace GraphView
         {
             if (GroupBy == null)
             {
-                GroupBy = GraphTraversal2.__().Select(column);
+                GroupBy = GraphTraversal.__().Select(column);
             }
             else if (ProjectBy == null)
             {
-                ProjectBy = GraphTraversal2.__().Select(column);
+                ProjectBy = GraphTraversal.__().Select(column);
             }
             else
             {

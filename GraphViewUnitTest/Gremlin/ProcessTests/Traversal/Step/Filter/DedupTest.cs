@@ -237,7 +237,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
                 var traversal = GraphViewCommand.g().V()
                     .Group()
                     .By("label")
-                    .By(GraphTraversal2.__().BothE()
+                    .By(GraphTraversal.__().BothE()
                         .Values("weight")
                         .Dedup()
                         .Fold());
@@ -379,7 +379,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
                     .Both()
                     .Both()
                     .Dedup()
-                    .By(GraphTraversal2.__()
+                    .By(GraphTraversal.__()
                         .OutE()
                         .Count())
                     .Values("name");
@@ -430,14 +430,14 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
                 GraphViewCommand.OutputFormat = OutputFormat.GraphSON;
                 var traversal = GraphViewCommand.g().V()
                     .As("a")
-                    .Repeat(GraphTraversal2.__().Both())
+                    .Repeat(GraphTraversal.__().Both())
                     .Times(3)
                     .Emit()
                     .Values("name")
                     .As("b")
                     .Group()
-                    .By(GraphTraversal2.__().Select("a"))
-                    .By(GraphTraversal2.__().Select("b")
+                    .By(GraphTraversal.__().Select("a"))
+                    .By(GraphTraversal.__().Select("b")
                         .Dedup()
                         .Order()
                         .Fold())
@@ -463,7 +463,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
                 // TODO: Repeat(Dedup()) does not work
 
                 var traversal = GraphViewCommand.g().V()
-                    .Repeat(GraphTraversal2.__().Dedup())
+                    .Repeat(GraphTraversal.__().Dedup())
                     .Times(2)
                     .Values("name");
 

@@ -26,7 +26,7 @@ namespace GraphView
         public string Label { get; set; }
         public object ValueOrPredicate { get; set; }
         public List<object> ValuesOrPredicates { get; set; }
-        public GraphTraversal2 Traversal { get; set; }
+        public GraphTraversal Traversal { get; set; }
         public GremlinHasType Type { get; set; }
 
         public GremlinHasOp(GremlinHasType type, string propertyKey)
@@ -42,7 +42,7 @@ namespace GraphView
             Type = GremlinHasType.HasPropertyValueOrPredicate;
         }
 
-        public GremlinHasOp(string propertyKey, GraphTraversal2 traversal)
+        public GremlinHasOp(string propertyKey, GraphTraversal traversal)
         {
             PropertyKey = propertyKey;
             Traversal = traversal;

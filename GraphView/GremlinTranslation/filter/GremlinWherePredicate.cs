@@ -10,13 +10,13 @@ namespace GraphView
     {
         public Predicate Predicate { get; set; }
         public string StartKey { get; set; }
-        public List<GraphTraversal2> ByTraversals { get; set; }
+        public List<GraphTraversal> ByTraversals { get; set; }
 
         public GremlinWherePredicateOp(Predicate predicate)
         {
             Predicate = predicate;
             Predicate.IsTag = true;
-            ByTraversals = new List<GraphTraversal2>();
+            ByTraversals = new List<GraphTraversal>();
         }
 
         public GremlinWherePredicateOp(string startKey, Predicate predicate)
@@ -24,7 +24,7 @@ namespace GraphView
             StartKey = startKey;
             Predicate = predicate;
             Predicate.IsTag = true;
-            ByTraversals = new List<GraphTraversal2>();
+            ByTraversals = new List<GraphTraversal>();
         }
 
         internal override GremlinToSqlContext GetContext()
@@ -37,7 +37,7 @@ namespace GraphView
 
             if (ByTraversals.Count == 0)
             {
-                ByTraversals.Add(GraphTraversal2.__());
+                ByTraversals.Add(GraphTraversal.__());
             }
 
             if (StartKey == null)
@@ -55,7 +55,7 @@ namespace GraphView
             return inputContext;
         }
 
-        public override void ModulateBy(GraphTraversal2 traversal)
+        public override void ModulateBy(GraphTraversal traversal)
         {
             ByTraversals.Add(traversal);
         }

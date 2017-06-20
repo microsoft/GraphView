@@ -65,7 +65,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
             {
-                var traversal = graphCommand.g().V().Store("a").By(GraphTraversal2.__().OutE("created").Count()).Out().Out().Store("a").By(GraphTraversal2.__().InE("created").Values("weight").Sum()).Cap("a");
+                var traversal = graphCommand.g().V().Store("a").By(GraphTraversal.__().OutE("created").Count()).Out().Out().Store("a").By(GraphTraversal.__().InE("created").Values("weight").Sum()).Cap("a");
 
                 var result = traversal.Next().First().Trim('[', ']').Split(',').Select(r => r.Trim(' '));
                 var expectedResult = new List<string> { "2", "1", "1", "1", "1", "0", "0", "0" };

@@ -122,9 +122,9 @@ namespace GraphView
         {
         }
 
-        public GraphTraversal2 g()
+        public GraphTraversal g()
         {
-            return new GraphTraversal2(GraphViewConnection, OutputFormat);
+            return new GraphTraversal(GraphViewConnection, OutputFormat);
         }
     }
 }

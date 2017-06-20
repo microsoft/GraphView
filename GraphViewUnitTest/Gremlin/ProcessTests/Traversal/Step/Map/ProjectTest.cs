@@ -32,7 +32,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
 
                 var traversal = graphCommand.g().V().HasLabel("person")
                                                     .Project("a", "b")
-                                                    .By(GraphTraversal2.__().OutE().Count())
+                                                    .By(GraphTraversal.__().OutE().Count())
                                                     .By("age");
 
                 dynamic results = JsonConvert.DeserializeObject<dynamic>(traversal.FirstOrDefault());
@@ -71,9 +71,9 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
                 var traversal = graphCommand.g().V().Out("created")
                                                      .Project("a", "b")
                                                      .By("name")
-                                                     .By(GraphTraversal2.__().In("created").Count())
+                                                     .By(GraphTraversal.__().In("created").Count())
                                                      .Order().By(
-                                                               GraphTraversal2.__().Select("b"),
+                                                               GraphTraversal.__().Select("b"),
                                                                GremlinKeyword.Order.Decr)
                                                      .Select("a");
 

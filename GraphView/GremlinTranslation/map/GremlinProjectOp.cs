@@ -9,12 +9,12 @@ namespace GraphView
     internal class GremlinProjectOp: GremlinTranslationOperator
     {
         public List<string> ProjectKeys { get; set; }
-        public List<GraphTraversal2> ByGraphTraversal { get; set; }
+        public List<GraphTraversal> ByGraphTraversal { get; set; }
 
         public GremlinProjectOp(params string[] projectKeys)
         {
             ProjectKeys = new List<string>(projectKeys);
-            ByGraphTraversal = new List<GraphTraversal2>();
+            ByGraphTraversal = new List<GraphTraversal>();
         }
 
         internal override GremlinToSqlContext GetContext()
@@ -27,7 +27,7 @@ namespace GraphView
 
             if (ByGraphTraversal.Count == 0)
             {
-                ByGraphTraversal.Add(GraphTraversal2.__());
+                ByGraphTraversal.Add(GraphTraversal.__());
             }
 
             if (ByGraphTraversal.Count > ProjectKeys.Count)
@@ -47,7 +47,7 @@ namespace GraphView
             return inputContext;
         }
 
-        public override void ModulateBy(GraphTraversal2 traversal)
+        public override void ModulateBy(GraphTraversal traversal)
         {
             ByGraphTraversal.Add(traversal);
         }

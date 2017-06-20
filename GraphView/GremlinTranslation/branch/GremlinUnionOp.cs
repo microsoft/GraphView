@@ -9,11 +9,11 @@ namespace GraphView
 {
     internal class GremlinUnionOp: GremlinTranslationOperator
     {
-        public List<GraphTraversal2> UnionTraversals { get; set; }
+        public List<GraphTraversal> UnionTraversals { get; set; }
 
-        public GremlinUnionOp(params GraphTraversal2[] unionTraversals)
+        public GremlinUnionOp(params GraphTraversal[] unionTraversals)
         {
-            UnionTraversals = new List<GraphTraversal2>();
+            UnionTraversals = new List<GraphTraversal>();
             foreach (var unionTraversal in unionTraversals)
             {
                 UnionTraversals.Add(unionTraversal);

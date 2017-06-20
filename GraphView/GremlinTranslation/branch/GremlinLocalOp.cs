@@ -8,9 +8,9 @@ namespace GraphView
 {
     internal class GremlinLocalOp: GremlinTranslationOperator
     {
-        public GraphTraversal2 LocalTraversal { get; set; }
+        public GraphTraversal LocalTraversal { get; set; }
 
-        public GremlinLocalOp(GraphTraversal2 localTraversal)
+        public GremlinLocalOp(GraphTraversal localTraversal)
         {
             LocalTraversal = localTraversal;
         }

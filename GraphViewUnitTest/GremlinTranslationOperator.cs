@@ -23,7 +23,7 @@ namespace GremlinTranslationOperator.Tests
                 "GroupMatch", "Modern", GraphType.GraphAPIOnly, AbstractGremlinTest.TEST_USE_REVERSE_EDGE, 1, AbstractGremlinTest.TEST_PARTITION_BY_KEY);
 
             
-            GraphTraversal2 graph = new GraphTraversal2(connection);
+            GraphTraversal graph = new GraphTraversal(connection);
             string traversalStr = "graph.g().V().In().Out()";
 
             var result = graph.EvalGraphTraversal(traversalStr);
@@ -106,34 +106,34 @@ namespace GremlinTranslationOperator.Tests
             //test = null;
             
             
-            //result = graph.g().V().Repeat(GraphTraversal2.__().In().InE()).Next();
-            //var results = graph.g().V().Project("Vertex").By(GraphTraversal2.__().Emit().Repeat(GraphTraversal2.__().OutE("_val").As
+            //result = graph.g().V().Repeat(GraphTraversal.__().In().InE()).Next();
+            //var results = graph.g().V().Project("Vertex").By(GraphTraversal.__().Emit().Repeat(GraphTraversal.__().OutE("_val").As
             //    ("_").InV())).Next();
 
-            //var results = graph.g().V().Has("type", "University").Project("info", "edge_label").By(GraphTraversal2.__().Properties("label", "type")).By(GraphTraversal2.__().Optional(GraphTraversal2.__().InE().Properties("label"))).Next();
-            //var results = graph.g().V().Out().Union(GraphTraversal2.__().Out().As("a").In()).Select("a").Out().Next();
-            //var results = graph.g().V().Out().As("b").Union(GraphTraversal2.__().Out().As("a")).In().Union(GraphTraversal2.__().Out().Select("a").Out()).Next();
+            //var results = graph.g().V().Has("type", "University").Project("info", "edge_label").By(GraphTraversal.__().Properties("label", "type")).By(GraphTraversal.__().Optional(GraphTraversal.__().InE().Properties("label"))).Next();
+            //var results = graph.g().V().Out().Union(GraphTraversal.__().Out().As("a").In()).Select("a").Out().Next();
+            //var results = graph.g().V().Out().As("b").Union(GraphTraversal.__().Out().As("a")).In().Union(GraphTraversal.__().Out().Select("a").Out()).Next();
 
             //var results = graph.g()
             //    .V()
             //    .As("node")
-            //    .Union(GraphTraversal2.__().Constant(new List<object> { "HAWK", "AVF 4" }))
+            //    .Union(GraphTraversal.__().Constant(new List<object> { "HAWK", "AVF 4" }))
             //    .As("list")
             //    .Values("name")
             //    .Where(Predicate.within("list"));
             //var result = graph.g().V().As("a").Out().In().Select("a").Next();
-            //var result = graph.g().V().And(GraphTraversal2.__().Values("age").Is(Predicate.lt(30))).Values("name").Next();
+            //var result = graph.g().V().And(GraphTraversal.__().Values("age").Is(Predicate.lt(30))).Values("name").Next();
             //var result = graph.g().V().As("a").Constant(new List<object>() {"name", "properties"}).As("p").Select("a").Values("name").Where(Predicate.within("p")).Next();
 
             //connection.ResetCollection();
             //graph.g().V().Has("comicbook", "AVF 4").InE().OutV().Property("test", "123").Next();
             //graph.g().V().OutE().Property("test", "name").Next();
-            //var results = graph.g().V().HasLabel("Stanford").Union(GraphTraversal2.__().Out()).path().Next();
-            //var results = graph.g().V().Has("type", "University").Project("info", "edge_label").By(GraphTraversal2.__().Properties("label", "type")).By(GraphTraversal2.__().Optional(GraphTraversal2.__().InE().Properties("label"))).Next();
+            //var results = graph.g().V().HasLabel("Stanford").Union(GraphTraversal.__().Out()).path().Next();
+            //var results = graph.g().V().Has("type", "University").Project("info", "edge_label").By(GraphTraversal.__().Properties("label", "type")).By(GraphTraversal.__().Optional(GraphTraversal.__().InE().Properties("label"))).Next();
 
             //var result = graph.g().V().Out().Inject(1).Next();
-            //var result = graph.g().V().Out().Union(GraphTraversal2.__().In().Out(), GraphTraversal2.__().In()).Out().path().Tree().Next();
-            //var result = graph.g().V().Out().Union(GraphTraversal2.__().In().Out(), GraphTraversal2.__().In()).Out().Tree().Next();
+            //var result = graph.g().V().Out().Union(GraphTraversal.__().In().Out(), GraphTraversal.__().In()).Out().path().Tree().Next();
+            //var result = graph.g().V().Out().Union(GraphTraversal.__().In().Out(), GraphTraversal.__().In()).Out().Tree().Next();
 
             //graph.g().AddV().Property("name", "a").Property("type", "start").Next();
             //graph.g().AddV().Property("name", "b").Next();
@@ -153,13 +153,13 @@ namespace GremlinTranslationOperator.Tests
             //graph.g().V().Has("name", "g").AddE("val").To(graph.g().V().Has("name", "h")).Next();
             //graph.g().V().Has("name", "g").AddE("fail").To(graph.g().V().Has("name", "i")).Next();
 
-            //var results = graph.g().V().Has("type", "start").Emit().Repeat(GraphTraversal2.__().OutE("val").InV()).Next();
+            //var results = graph.g().V().Has("type", "start").Emit().Repeat(GraphTraversal.__().OutE("val").InV()).Next();
 
             //a, g, b, d, e, h
 
 
             //graph.g().V().In().Out().Next();
-            //graph.g().V().OutE().As("a").FlatMap(GraphTraversal2.__().InV()).Select("a").InV().Next();
+            //graph.g().V().OutE().As("a").FlatMap(GraphTraversal.__().InV()).Select("a").InV().Next();
             //graph.g().V().Out().In().Next();
             //graph.g().V().InE().InV().Next();
             //graph.g().V().InE().OutV().Next();
@@ -172,128 +172,128 @@ namespace GremlinTranslationOperator.Tests
             //graph.g().V().OutE().BothV().Next();
             //graph.g().V().InE().BothV().Next();
             //graph.g().V().BothE().BothV().Next();
-            //graph.g().V().InE().FlatMap(GraphTraversal2.__().BothV().InE()).Next();
-            //graph.g().V().InE().FlatMap(GraphTraversal2.__().BothV().OutE()).Next();
-            //graph.g().V().InE().FlatMap(GraphTraversal2.__().OutV().OutE()).Next();
-            //graph.g().V().InE().FlatMap(GraphTraversal2.__().InV().OutE()).Next();
-            //graph.g().V().FlatMap(GraphTraversal2.__().InE().OutV()).Next();
-            //graph.g().V().FlatMap(GraphTraversal2.__().InE().InV()).Next();
-            //graph.g().V().FlatMap(GraphTraversal2.__().InE().BothV()).Next();
-            //graph.g().V().FlatMap(GraphTraversal2.__().InE().OtherV()).Next();
-            //graph.g().V().FlatMap(GraphTraversal2.__().OutE().InV()).Next();
-            //graph.g().V().FlatMap(GraphTraversal2.__().OutE().OutV()).Next();
-            //graph.g().V().FlatMap(GraphTraversal2.__().OutE().BothV()).Next();
-            //graph.g().V().FlatMap(GraphTraversal2.__().OutE().OtherV()).Next();
-            //graph.g().V().FlatMap(GraphTraversal2.__().In().OutE()).Next();
-            //graph.g().V().FlatMap(GraphTraversal2.__().OutE().OutE()).Next();
-            //graph.g().V().FlatMap(GraphTraversal2.__().Both().OutE()).Next();
+            //graph.g().V().InE().FlatMap(GraphTraversal.__().BothV().InE()).Next();
+            //graph.g().V().InE().FlatMap(GraphTraversal.__().BothV().OutE()).Next();
+            //graph.g().V().InE().FlatMap(GraphTraversal.__().OutV().OutE()).Next();
+            //graph.g().V().InE().FlatMap(GraphTraversal.__().InV().OutE()).Next();
+            //graph.g().V().FlatMap(GraphTraversal.__().InE().OutV()).Next();
+            //graph.g().V().FlatMap(GraphTraversal.__().InE().InV()).Next();
+            //graph.g().V().FlatMap(GraphTraversal.__().InE().BothV()).Next();
+            //graph.g().V().FlatMap(GraphTraversal.__().InE().OtherV()).Next();
+            //graph.g().V().FlatMap(GraphTraversal.__().OutE().InV()).Next();
+            //graph.g().V().FlatMap(GraphTraversal.__().OutE().OutV()).Next();
+            //graph.g().V().FlatMap(GraphTraversal.__().OutE().BothV()).Next();
+            //graph.g().V().FlatMap(GraphTraversal.__().OutE().OtherV()).Next();
+            //graph.g().V().FlatMap(GraphTraversal.__().In().OutE()).Next();
+            //graph.g().V().FlatMap(GraphTraversal.__().OutE().OutE()).Next();
+            //graph.g().V().FlatMap(GraphTraversal.__().Both().OutE()).Next();
 
-            //graph.g().V().OutE().FlatMap(GraphTraversal2.__().InV().InE().Drop()).Next();
-            //graph.g().V().BothE().FlatMap(GraphTraversal2.__().InV().InE().OutV()).Next();
-            //graph.g().V().BothE().FlatMap(GraphTraversal2.__().InV().InE().InV()).Next();
+            //graph.g().V().OutE().FlatMap(GraphTraversal.__().InV().InE().Drop()).Next();
+            //graph.g().V().BothE().FlatMap(GraphTraversal.__().InV().InE().OutV()).Next();
+            //graph.g().V().BothE().FlatMap(GraphTraversal.__().InV().InE().InV()).Next();
             ////graph.g().V().BothE().Drop().Next();
-            //graph.g().V().FlatMap(GraphTraversal2.__().Both().In()).Next();
+            //graph.g().V().FlatMap(GraphTraversal.__().Both().In()).Next();
 
-            //graph.g().V().HasLabel("person").Optional(GraphTraversal2.__().Out()).Next();
-            //graph.g().V().OutE().FlatMap(GraphTraversal2.__().InV().InE().OutV()).Next();
+            //graph.g().V().HasLabel("person").Optional(GraphTraversal.__().Out()).Next();
+            //graph.g().V().OutE().FlatMap(GraphTraversal.__().InV().InE().OutV()).Next();
             //graph.g().V().HasLabel("test").OutE().InV().HasLabel("test1").Next();
             //var results = graph.g().V().Out().Has("type", "University").InE("between").Drop().Next();
-            //graph.g().V().Out().Optional(GraphTraversal2.__().Out().In()).Values("name").Next();
-            //graph.g().V().OutE().FlatMap(GraphTraversal2.__().InV().Out()).Next();
+            //graph.g().V().Out().Optional(GraphTraversal.__().Out().In()).Values("name").Next();
+            //graph.g().V().OutE().FlatMap(GraphTraversal.__().InV().Out()).Next();
 
             //graph.g().V().Dedup().Next();
 
             //var results = graph.g().V().Has("type", "University")
             //    .Project("info", "edge_label")
-            //    .By(GraphTraversal2.__().Properties("label", "type"))
-            //    .By(GraphTraversal2.__().OutE().Properties("label")).Next();
+            //    .By(GraphTraversal.__().Properties("label", "type"))
+            //    .By(GraphTraversal.__().OutE().Properties("label")).Next();
 
             //var results =
             //    graph.g()
             //        .V()
             //        .HasLabel("Stanford")
-            //        .Union(graph.g().V().OutE(), GraphTraversal2.__().V().In())
+            //        .Union(graph.g().V().OutE(), GraphTraversal.__().V().In())
             //        .Next();
 
             //graph.g().V().AddE().From(graph.g().V()).Next();
             //graph.g().V().AddE().To(graph.g().V()).From(graph.g().V()).Next();
 
             //graph.g().V().As("@v")
-            //    .FlatMap(GraphTraversal2.__().Out("mdl").OutE("ref"))
-            //    .Repeat(GraphTraversal2.__().As("@e")
-            //        .FlatMap(GraphTraversal2.__().InV()
+            //    .FlatMap(GraphTraversal.__().Out("mdl").OutE("ref"))
+            //    .Repeat(GraphTraversal.__().As("@e")
+            //        .FlatMap(GraphTraversal.__().InV()
             //            .As("mdl")
             //            .Select(GremlinKeyword.Pop.last, "@v")
             //            .Both()
-            //            .Where(GraphTraversal2.__().Out("mdl")
+            //            .Where(GraphTraversal.__().Out("mdl")
             //                .Where(Predicate.eq("mdl"))))
             //        .As("@v")
-            //        .Optional(GraphTraversal2.__().FlatMap(
-            //            GraphTraversal2.__().Select(GremlinKeyword.Pop.last, "@e")
+            //        .Optional(GraphTraversal.__().FlatMap(
+            //            GraphTraversal.__().Select(GremlinKeyword.Pop.last, "@e")
             //                .Values("_ref")
             //                .As("key")
             //                .Select(GremlinKeyword.Pop.last, "@v")
             //                .Out("mdl")
             //                .OutE("ref")
-            //                .Where(GraphTraversal2.__().Values("_key")
+            //                .Where(GraphTraversal.__().Values("_key")
             //                    .Where(Predicate.eq("key")))))
             //                    )
-            //    .Until(GraphTraversal2.__().FlatMap(
-            //        GraphTraversal2.__().As("res").Select(GremlinKeyword.Pop.last, "@v").Where(Predicate.eq("res"))))
+            //    .Until(GraphTraversal.__().FlatMap(
+            //        GraphTraversal.__().As("res").Select(GremlinKeyword.Pop.last, "@v").Where(Predicate.eq("res"))))
             //    .Next();
 
             //graph.g().V()
             //    .Project("vertex", "parents", "references", "model")
-            //    .By(GraphTraversal2.__().Emit().Repeat(GraphTraversal2.__().OutE("_val").As("_").InV()).Tree())
-            //    .By(GraphTraversal2.__().OutE().Label().Dedup().Fold())
-            //    .By(GraphTraversal2.__().As("@v")
-            //        .FlatMap(GraphTraversal2.__().Out("mdl").OutE("ref"))
-            //        .Repeat(GraphTraversal2.__().As("@e")
-            //            .FlatMap(GraphTraversal2.__().InV()
+            //    .By(GraphTraversal.__().Emit().Repeat(GraphTraversal.__().OutE("_val").As("_").InV()).Tree())
+            //    .By(GraphTraversal.__().OutE().Label().Dedup().Fold())
+            //    .By(GraphTraversal.__().As("@v")
+            //        .FlatMap(GraphTraversal.__().Out("mdl").OutE("ref"))
+            //        .Repeat(GraphTraversal.__().As("@e")
+            //            .FlatMap(GraphTraversal.__().InV()
             //                .As("mdl")
             //                .Select(GremlinKeyword.Pop.last, "@v")
             //                .Both()
-            //                .Where(GraphTraversal2.__().Out("mdl")
+            //                .Where(GraphTraversal.__().Out("mdl")
             //                    .Where(Predicate.eq("mdl"))))
             //            .As("@v")
-            //            .Optional(GraphTraversal2.__().FlatMap(
-            //                GraphTraversal2.__().Select(GremlinKeyword.Pop.last, "@e")
+            //            .Optional(GraphTraversal.__().FlatMap(
+            //                GraphTraversal.__().Select(GremlinKeyword.Pop.last, "@e")
             //                    .Values("_ref")
             //                    .As("key")
             //                    .Select(GremlinKeyword.Pop.last, "@v")
             //                    .Out("mdl")
             //                    .OutE("ref")
-            //                    .Where(GraphTraversal2.__().Values("_key")
+            //                    .Where(GraphTraversal.__().Values("_key")
             //                        .Where(Predicate.eq("key"))))))
-            //        .Until(GraphTraversal2.__().FlatMap(
-            //            GraphTraversal2.__().As("res").Select(GremlinKeyword.Pop.last, "@v").Where(Predicate.eq("res"))))
-            //        .Union(GraphTraversal2.__().Dedup()
+            //        .Until(GraphTraversal.__().FlatMap(
+            //            GraphTraversal.__().As("res").Select(GremlinKeyword.Pop.last, "@v").Where(Predicate.eq("res"))))
+            //        .Union(GraphTraversal.__().Dedup()
             //                .Emit()
-            //                .Repeat(GraphTraversal2.__().OutE("_val").As("_").InV())
+            //                .Repeat(GraphTraversal.__().OutE("_val").As("_").InV())
             //                .Tree(),
-            //            GraphTraversal2.__().Project("id", "key", "ref")
-            //                .By(GraphTraversal2.__().Id())
-            //                .By(GraphTraversal2.__().Select(GremlinKeyword.Pop.first, "@e").Values("_key"))
-            //                .By(GraphTraversal2.__().Select(GremlinKeyword.Pop.last, "@e").Values("_ref"))
+            //            GraphTraversal.__().Project("id", "key", "ref")
+            //                .By(GraphTraversal.__().Id())
+            //                .By(GraphTraversal.__().Select(GremlinKeyword.Pop.first, "@e").Values("_key"))
+            //                .By(GraphTraversal.__().Select(GremlinKeyword.Pop.last, "@e").Values("_ref"))
             //                .Fold())
             //        .Fold())
-            //    .By(GraphTraversal2.__().Out("mdl").Project("vertex").By(GraphTraversal2.__().Tree())).Next();
+            //    .By(GraphTraversal.__().Out("mdl").Project("vertex").By(GraphTraversal.__().Tree())).Next();
 
 
             //graph.g().V()
             //    .has("_app", "test-app")
             //    .has("_id", "product:soda-machine:shop-2")
             //    .hasLabel("product")
-            //    .flatMap(GraphTraversal2.__().As("src")
+            //    .flatMap(GraphTraversal.__().As("src")
             //        .flatMap(graph.g().V()
             //            .has("_app", "test-app")
             //            .has("_id", "device:soda-mixer:shop-1")
             //            .hasLabel("device"))
             //        .As("tgt")
             //        .select("src")
-            //        .coalesce(GraphTraversal2.__().inE("device-product"),
-            //                     GraphTraversal2.__().inE("device-product")
-            //            //GraphTraversal2.__().addE("device-product").from("tgt")
+            //        .coalesce(GraphTraversal.__().inE("device-product"),
+            //                     GraphTraversal.__().inE("device-product")
+            //            //GraphTraversal.__().addE("device-product").from("tgt")
             //            )
             //    )
             //    .count()
@@ -316,7 +316,7 @@ namespace GremlinTranslationOperator.Tests
                 Console.WriteLine(result);
             }
 
-            //var results = graph.g().V().Has("type", "University").Union(GraphTraversal2.__().Properties("label", "type"), GraphTraversal2.__().OutE().Properties("label")).next();
+            //var results = graph.g().V().Has("type", "University").Union(GraphTraversal.__().Properties("label", "type"), GraphTraversal.__().OutE().Properties("label")).next();
 
             //Insert character
             //string[] characterLines = File.ReadAllLines(@"C:\Users\v-jinjl\Desktop\GraphView-Development\GraphView\data\character.txt");

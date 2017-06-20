@@ -10,17 +10,17 @@ namespace GraphView
     {
         public string SideEffectKey { get; set; }
 
-        public List<GraphTraversal2> ByList { get; set; }
+        public List<GraphTraversal> ByList { get; set; }
 
         public GremlinTreeOp(string sideEffectKey)
         {
             SideEffectKey = sideEffectKey;
-            ByList = new List<GraphTraversal2>();
+            ByList = new List<GraphTraversal>();
         }
 
         public GremlinTreeOp()
         {
-            ByList = new List<GraphTraversal2>();
+            ByList = new List<GraphTraversal>();
         }
 
         internal override GremlinToSqlContext GetContext()
@@ -38,7 +38,7 @@ namespace GraphView
             return inputContext;
         }
 
-        public override void ModulateBy(GraphTraversal2 traversal)
+        public override void ModulateBy(GraphTraversal traversal)
         {
             ByList.Add(traversal);
         }

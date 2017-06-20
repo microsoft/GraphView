@@ -9,25 +9,25 @@ namespace GraphView
 {
     internal class GremlinChooseOp: GremlinTranslationOperator
     {
-        public GraphTraversal2 PredicateTraversal { get; set; }
-        public GraphTraversal2 TrueChoiceTraversal { get; set; }
-        public GraphTraversal2 FalseChocieTraversal { get; set; }
-        public GraphTraversal2 ChoiceTraversal { get; set; }
-        public Dictionary<object, GraphTraversal2> Options { get; set; }
+        public GraphTraversal PredicateTraversal { get; set; }
+        public GraphTraversal TrueChoiceTraversal { get; set; }
+        public GraphTraversal FalseChocieTraversal { get; set; }
+        public GraphTraversal ChoiceTraversal { get; set; }
+        public Dictionary<object, GraphTraversal> Options { get; set; }
 
-        public GremlinChooseOp(GraphTraversal2 traversalPredicate, GraphTraversal2 trueChoice,
-            GraphTraversal2 falseChoice)
+        public GremlinChooseOp(GraphTraversal traversalPredicate, GraphTraversal trueChoice,
+            GraphTraversal falseChoice)
         {
             PredicateTraversal = traversalPredicate;
             TrueChoiceTraversal = trueChoice;
             FalseChocieTraversal = falseChoice;
-            Options = new Dictionary<object, GraphTraversal2>();
+            Options = new Dictionary<object, GraphTraversal>();
         }
 
-        public GremlinChooseOp(GraphTraversal2 choiceTraversal)
+        public GremlinChooseOp(GraphTraversal choiceTraversal)
         {
             ChoiceTraversal = choiceTraversal;
-            Options = new Dictionary<object, GraphTraversal2>();
+            Options = new Dictionary<object, GraphTraversal>();
         }
 
         internal override GremlinToSqlContext GetContext()

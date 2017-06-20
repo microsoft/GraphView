@@ -24,7 +24,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
             {
                 var traversal = graphCommand.g().V()
                     .As("a")
-                    .FlatMap(GraphTraversal2.__().Select("a"));
+                    .FlatMap(GraphTraversal.__().Select("a"));
                 var result = traversal.Next();
                 Assert.AreEqual(6, result.Count);
             }

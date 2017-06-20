@@ -10,14 +10,14 @@ namespace GraphView
     internal class GremlinDedupOp: GremlinTranslationOperator
     {
         public List<string> DedupLabels { get; set; }
-        public GraphTraversal2 ByTraversal { get; set; }
+        public GraphTraversal ByTraversal { get; set; }
         public GremlinKeyword.Scope Scope { get; set; }
 
         public GremlinDedupOp(GremlinKeyword.Scope scope, params string[] dedupLabels)
         {
             DedupLabels = new List<string>(dedupLabels);
             Scope = scope;
-            ByTraversal = GraphTraversal2.__();
+            ByTraversal = GraphTraversal.__();
         }
 
         internal override GremlinToSqlContext GetContext()
@@ -36,7 +36,7 @@ namespace GraphView
             return inputContext;
         }
 
-        public override void ModulateBy(GraphTraversal2 traversal)
+        public override void ModulateBy(GraphTraversal traversal)
         {
             if (Scope == GremlinKeyword.Scope.Local) throw new SyntaxErrorException("Dedup(Local) can't be modulated by by()");
             ByTraversal = traversal;

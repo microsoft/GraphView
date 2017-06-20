@@ -25,8 +25,8 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
             {
                 var traversal = GraphViewCommand.g().V()
                     .And(
-                        GraphTraversal2.__().Has("age", Predicate.gt(27)),
-                        GraphTraversal2.__().OutE().Count().Is(Predicate.gte(2)))
+                        GraphTraversal.__().Has("age", Predicate.gt(27)),
+                        GraphTraversal.__().OutE().Count().Is(Predicate.gte(2)))
                     .Values("name");
                 var result = traversal.Next();
 
@@ -40,7 +40,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         /// Gremlin: g.V().and(outE(), has(T.label, "person").and().has("age", P.gte(32))).values("name");
         /// </summary>
         /// <remarks>
-        /// Bug 36109: Calling GraphTraversal2.And() with no parameter throws exception.
+        /// Bug 36109: Calling GraphTraversal.And() with no parameter throws exception.
         /// https://msdata.visualstudio.com/DocumentDB/_workitems/edit/36511
         /// </remarks>
         [TestMethod]
@@ -51,8 +51,8 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
             {
                 var traversal = GraphViewCommand.g().V()
                     .And(
-                        GraphTraversal2.__().OutE(),
-                        GraphTraversal2.__().HasLabel("person").And().Has("age", Predicate.gte(32)))
+                        GraphTraversal.__().OutE(),
+                        GraphTraversal.__().HasLabel("person").And().Has("age", Predicate.gte(32)))
                     .Values("name");
                 var result = traversal.Next();
 
@@ -66,7 +66,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         /// Gremlin: g.V().as("a").out("knows").and().out("created").in("created").as("a").values("name");
         /// </summary>
         /// <remarks>
-        /// Bug 36109: Calling GraphTraversal2.And() with no parameter throws exception.
+        /// Bug 36109: Calling GraphTraversal.And() with no parameter throws exception.
         /// https://msdata.visualstudio.com/DocumentDB/_workitems/edit/36511
         /// </remarks>
         [TestMethod]
@@ -110,8 +110,8 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
                 var traversal = GraphViewCommand.g().V()
                     .As("a")
                     .And(
-                        GraphTraversal2.__().Select("a"),
-                        GraphTraversal2.__().Select("a"));
+                        GraphTraversal.__().Select("a"),
+                        GraphTraversal.__().Select("a"));
                 var result = traversal.Next();
 
                 Assert.AreEqual(6, result.Count());

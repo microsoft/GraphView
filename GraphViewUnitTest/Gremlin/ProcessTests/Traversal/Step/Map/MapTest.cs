@@ -23,7 +23,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
             {
-                var traversal = graphCommand.g().V().Local(GraphTraversal2.__().OutE().Count());
+                var traversal = graphCommand.g().V().Local(GraphTraversal.__().OutE().Count());
                 var result = traversal.Next().Select(r => long.Parse(r));
 
                 var expectedResult = new List<long> { 3, 0, 0, 0, 1, 2 };
@@ -44,7 +44,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
                 string joshVertexId = this.ConvertToVertexId(graphCommand, "josh");
 
                 graphCommand.OutputFormat = OutputFormat.GraphSON;
-                var traversal = graphCommand.g().V(joshVertexId).Local(GraphTraversal2.__().BothE("knows", "created").Limit(1));
+                var traversal = graphCommand.g().V(joshVertexId).Local(GraphTraversal.__().BothE("knows", "created").Limit(1));
 
                 var result = traversal.Next();
                 dynamic dynamicResult = JsonConvert.DeserializeObject<dynamic>(result.FirstOrDefault());
@@ -71,7 +71,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
             {
                 string joshVertexId = this.ConvertToVertexId(graphCommand, "josh");
-                var traversal = graphCommand.g().V(joshVertexId).Local(GraphTraversal2.__().BothE().Limit(1)).OtherV().Values("name");
+                var traversal = graphCommand.g().V(joshVertexId).Local(GraphTraversal.__().BothE().Limit(1)).OtherV().Values("name");
 
                 var result = traversal.Next();
 
@@ -91,7 +91,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
             {
                 string joshVertexId = this.ConvertToVertexId(graphCommand, "josh");
-                var traversal = graphCommand.g().V(joshVertexId).Local(GraphTraversal2.__().BothE().Limit(2)).OtherV().Values("name");
+                var traversal = graphCommand.g().V(joshVertexId).Local(GraphTraversal.__().BothE().Limit(2)).OtherV().Values("name");
 
                 var result = traversal.Next();
 
@@ -114,7 +114,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
             {
                 string markoVertexId = this.ConvertToVertexId(graphCommand, "marko");
-                var traversal = graphCommand.g().V().Local(GraphTraversal2.__().InE("knows").Limit(2)).OutV().Values("name");
+                var traversal = graphCommand.g().V().Local(GraphTraversal.__().InE("knows").Limit(2)).OutV().Values("name");
 
                 var result = traversal.Next();
 
@@ -139,7 +139,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
                 string joshVertexId = this.ConvertToVertexId(graphCommand, "josh");
 
                 graphCommand.OutputFormat = OutputFormat.GraphSON;
-                var traversal = graphCommand.g().V(joshVertexId).Local(GraphTraversal2.__().BothE("created").Limit(1));
+                var traversal = graphCommand.g().V(joshVertexId).Local(GraphTraversal.__().BothE("created").Limit(1));
 
                 var result = traversal.Next();
                 dynamic dynamicResult = JsonConvert.DeserializeObject<dynamic>(result.FirstOrDefault());
@@ -164,7 +164,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
             {
                 string markoVertexId = this.ConvertToVertexId(graphCommand, "marko");
-                var traversal = graphCommand.g().V(markoVertexId).Local(GraphTraversal2.__().OutE("knows").Limit(1)).InV().Values("name");
+                var traversal = graphCommand.g().V(markoVertexId).Local(GraphTraversal.__().OutE("knows").Limit(1)).InV().Values("name");
 
                 var result = traversal.Next();
 
@@ -183,7 +183,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
             {
-                var traversal = graphCommand.g().V().Local(GraphTraversal2.__().BothE("created").Limit(1)).OtherV().Values("name");
+                var traversal = graphCommand.g().V().Local(GraphTraversal.__().BothE("created").Limit(1)).OtherV().Values("name");
 
                 var result = traversal.Next();
 

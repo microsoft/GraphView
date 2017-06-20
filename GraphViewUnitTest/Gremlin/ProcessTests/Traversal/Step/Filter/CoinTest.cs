@@ -16,7 +16,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         public void CoinWithProbabilityEq1()
         {
             using (GraphViewCommand command = new GraphViewCommand(graphConnection)) {
-                GraphTraversal2 traversal = command.g().V().Coin(1.0).Values("name");
+                GraphTraversal traversal = command.g().V().Coin(1.0).Values("name");
                 List<string> result = traversal.Next();
                 CheckUnOrderedResults(new[] { "marko", "vadas", "lop", "josh", "ripple", "peter" }, result);
             }
@@ -27,7 +27,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         public void CoinWithProbabilityEq0()
         {
             using (GraphViewCommand command = new GraphViewCommand(graphConnection)) {
-                GraphTraversal2 traversal = command.g().V().Coin(0.0).Values("name");
+                GraphTraversal traversal = command.g().V().Coin(0.0).Values("name");
                 List<string> result = traversal.Next();
 
                 Assert.AreEqual(result.Count, 0);
@@ -39,7 +39,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         public void CoinWithProbabilityEqHalf()
         {
             using (GraphViewCommand command = new GraphViewCommand(graphConnection)) {
-                GraphTraversal2 traversal = command.g().V().Coin(0.5).Values("name");
+                GraphTraversal traversal = command.g().V().Coin(0.5).Values("name");
                 List<string> result = traversal.Next();
 
                 HashSet<string> allNames = new HashSet<string> {"marko", "vadas", "lop", "josh", "ripple", "peter"};

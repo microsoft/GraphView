@@ -152,16 +152,16 @@ namespace GraphView
 
     internal class TraversalRing
     {
-        public List<GraphTraversal2> Traversals { get; set; }
+        public List<GraphTraversal> Traversals { get; set; }
         public int CurrentTravsersal { get; set; }
 
-        public TraversalRing(List<GraphTraversal2> traversals)
+        public TraversalRing(List<GraphTraversal> traversals)
         {
-            Traversals = new List<GraphTraversal2>(traversals);
+            Traversals = new List<GraphTraversal>(traversals);
             CurrentTravsersal = -1;
         }
 
-        public GraphTraversal2 Next()
+        public GraphTraversal Next()
         {
             if (Traversals.Count == 0)
             {

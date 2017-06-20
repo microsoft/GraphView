@@ -26,7 +26,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
             {
                 graphCommand.OutputFormat = OutputFormat.GraphSON;
 
-                var traversal = graphCommand.g().V().Local(GraphTraversal2.__().OutE().Fold()).Unfold();
+                var traversal = graphCommand.g().V().Local(GraphTraversal.__().OutE().Fold()).Unfold();
 
                 var result = traversal.Next();
                 dynamic dynamicResult = JsonConvert.DeserializeObject<dynamic>(result.FirstOrDefault());
@@ -82,7 +82,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
                 string vertexId1 = this.ConvertToVertexId(graphCommand, "marko");
                 string vertexId2 = this.ConvertToVertexId(graphCommand, "peter");
 
-                var traversal = graphCommand.g().V().HasId(vertexId1).Repeat(GraphTraversal2.__().Both().SimplePath()).Until(GraphTraversal2.__().HasId(vertexId2)).Path().By("name").Unfold();
+                var traversal = graphCommand.g().V().HasId(vertexId1).Repeat(GraphTraversal.__().Both().SimplePath()).Until(GraphTraversal.__().HasId(vertexId2)).Path().By("name").Unfold();
 
 
                 var result = traversal.Next();

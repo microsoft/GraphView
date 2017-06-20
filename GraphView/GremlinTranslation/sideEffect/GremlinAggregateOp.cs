@@ -9,12 +9,12 @@ namespace GraphView
     internal class GremlinAggregateOp: GremlinTranslationOperator
     {
         public string SideEffectKey { get; set; }
-        public GraphTraversal2 ByTraversal { get; set; }
+        public GraphTraversal ByTraversal { get; set; }
 
         public GremlinAggregateOp(string sideEffectKey)
         {
             SideEffectKey = sideEffectKey;
-            ByTraversal = GraphTraversal2.__();
+            ByTraversal = GraphTraversal.__();
         }
 
         internal override GremlinToSqlContext GetContext()
@@ -31,7 +31,7 @@ namespace GraphView
             return inputContext;
         }
 
-        public override void ModulateBy(GraphTraversal2 traversal)
+        public override void ModulateBy(GraphTraversal traversal)
         {
             ByTraversal = traversal;
         }

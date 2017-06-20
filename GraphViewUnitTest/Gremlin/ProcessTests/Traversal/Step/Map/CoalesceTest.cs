@@ -25,8 +25,8 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
             {
                 var traversal = GraphViewCommand.g().V()
                     .Coalesce(
-                        GraphTraversal2.__().Out("foo"),
-                        GraphTraversal2.__().Out("bar"));
+                        GraphTraversal.__().Out("foo"),
+                        GraphTraversal.__().Out("bar"));
                 var result = traversal.Next();
 
                 Assert.IsFalse(result.Any());
@@ -47,8 +47,8 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
                 var traversal = GraphViewCommand.g().V()
                     .HasId(this.ConvertToVertexId(GraphViewCommand, "marko"))
                     .Coalesce(
-                        GraphTraversal2.__().Out("knows"),
-                        GraphTraversal2.__().Out("created"))
+                        GraphTraversal.__().Out("knows"),
+                        GraphTraversal.__().Out("created"))
                     .Values("name");
                 var result = traversal.Next();
 
@@ -70,8 +70,8 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
                 var traversal = GraphViewCommand.g().V()
                     .HasId(this.ConvertToVertexId(GraphViewCommand, "marko"))
                     .Coalesce(
-                        GraphTraversal2.__().Out("created"),
-                        GraphTraversal2.__().Out("knows"))
+                        GraphTraversal.__().Out("created"),
+                        GraphTraversal.__().Out("knows"))
                     .Values("name");
                 var result = traversal.Next();
 
@@ -93,9 +93,9 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
                 GraphViewCommand.OutputFormat = OutputFormat.GraphSON;
                 var traversal = GraphViewCommand.g().V()
                     .Coalesce(
-                        GraphTraversal2.__().Out("likes"),
-                        GraphTraversal2.__().Out("knows"),
-                        GraphTraversal2.__().Out("created"))
+                        GraphTraversal.__().Out("likes"),
+                        GraphTraversal.__().Out("knows"),
+                        GraphTraversal.__().Out("created"))
                     .GroupCount()
                     .By("name");
 
@@ -122,8 +122,8 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
                 GraphViewCommand.OutputFormat = OutputFormat.GraphSON;
                 var traversal = GraphViewCommand.g().V()
                     .Coalesce(
-                        GraphTraversal2.__().OutE("knows"),
-                        GraphTraversal2.__().OutE("created"))
+                        GraphTraversal.__().OutE("knows"),
+                        GraphTraversal.__().OutE("created"))
                     .OtherV()
                     .Path()
                     .By("name")

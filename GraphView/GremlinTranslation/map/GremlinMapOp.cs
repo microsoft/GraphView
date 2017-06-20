@@ -8,11 +8,11 @@ namespace GraphView
 {
     internal class GremlinMapOp: GremlinTranslationOperator
     {
-        public GraphTraversal2 MapTraversal { get; set; }
+        public GraphTraversal MapTraversal { get; set; }
 
-        public GremlinMapOp(GraphTraversal2 mapTraversal2)
+        public GremlinMapOp(GraphTraversal mapTraversal)
         {
-            MapTraversal = mapTraversal2;
+            MapTraversal = mapTraversal;
         }
 
         internal override GremlinToSqlContext GetContext()

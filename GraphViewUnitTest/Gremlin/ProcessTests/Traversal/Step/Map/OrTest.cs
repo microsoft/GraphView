@@ -18,8 +18,8 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
             {
                 var traversal = graphCommand.g().V().Or(
-                                                        GraphTraversal2.__().Has("age", Predicate.gt(27)),
-                                                        GraphTraversal2.__().OutE()
+                                                        GraphTraversal.__().Has("age", Predicate.gt(27)),
+                                                        GraphTraversal.__().OutE()
                                                                             .Count()
                                                                             .Is(Predicate.gte(2L)))
                                                     .Values("name");
@@ -41,15 +41,15 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
             {
                 var traversal = graphCommand.g().V()
                     .Or(
-                        GraphTraversal2.__()
+                        GraphTraversal.__()
                             .OutE("knows"),
-                        GraphTraversal2.__()
+                        GraphTraversal.__()
                             .Where(
-                                GraphTraversal2.__()
+                                GraphTraversal.__()
                                     .Or(
-                                        GraphTraversal2.__()
+                                        GraphTraversal.__()
                                             .Has("label", "software"),
-                                        GraphTraversal2.__()
+                                        GraphTraversal.__()
                                         .Has("age", Predicate.gte(35)))))
                     .Values("name");
 
@@ -69,8 +69,8 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
             {
                 var traversal = graphCommand.g().V().As("a").Or(
-                                                                GraphTraversal2.__().Select("a"),
-                                                                GraphTraversal2.__().Select("a"));
+                                                                GraphTraversal.__().Select("a"),
+                                                                GraphTraversal.__().Select("a"));
 
                 var result = traversal.Next();
                 Assert.AreEqual(6, result.Count);

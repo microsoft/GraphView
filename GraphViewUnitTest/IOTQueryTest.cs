@@ -189,7 +189,7 @@ namespace GraphViewUnitTest
             // (1) first step, ref the origin 
             var results = graph.g().V().Id().Store("store");
             // (2) second step, ref the new alias
-            // var results = graph.g().V().Project("c").By("name").Where(GraphTraversal2.__().Values("c").Is("josh"));
+            // var results = graph.g().V().Project("c").By("name").Where(GraphTraversal.__().Values("c").Is("josh"));
 
             foreach (var result in results)
             {
@@ -211,7 +211,7 @@ namespace GraphViewUnitTest
             GraphViewCommand graph = new GraphViewCommand(connection);
             //graph.CommandText = "g.V().has('weapon', 'lasso').as('character').out('appeared').as('comicbook').select('comicbook').next()";
             //graph.CommandText = "g.V().project('c', 'u').by('|provisioning').by('|provisioning').where('c', gt('u'))";
-            //graph.CommandText = "g.V().Where(GraphTraversal2.__().As('a').Values('name').Is('josh'))";
+            //graph.CommandText = "g.V().Where(GraphTraversal.__().As('a').Values('name').Is('josh'))";
             graph.CommandText = "g.V().where('c')";
             graph.OutputFormat = OutputFormat.GraphSON;
             var results = graph.Execute();
@@ -239,9 +239,9 @@ namespace GraphViewUnitTest
             // (0) check the has 
             //var results = graph.g().V().Has("name", Predicate.eq("josh")).Values("name");
             // (1) first step, ref the origin 
-            var results = graph.g().V().Project("c").By("name").Where(GraphTraversal2.__().V().Has("c", Predicate.eq("josh")));
+            var results = graph.g().V().Project("c").By("name").Where(GraphTraversal.__().V().Has("c", Predicate.eq("josh")));
             // (2) second step, ref the new alias
-            // var results = graph.g().V().Project("c").By("name").Where(GraphTraversal2.__().Values("c").Is("josh"));
+            // var results = graph.g().V().Project("c").By("name").Where(GraphTraversal.__().Values("c").Is("josh"));
 
             foreach (var result in results)
             {
@@ -265,9 +265,9 @@ namespace GraphViewUnitTest
             // (0) check the has 
             //var results = graph.g().V().Has("name", Predicate.eq("josh")).Values("name");
             // (1) first step, ref the origin 
-            //var results = graph.g().V().Where(GraphTraversal2.__().V().Has("name", Predicate.eq("josh")));
+            //var results = graph.g().V().Where(GraphTraversal.__().V().Has("name", Predicate.eq("josh")));
             // (2) second step, ref the new alias
-            // var results = graph.g().V().Where(GraphTraversal2.__().Values("c").Is("josh"));
+            // var results = graph.g().V().Where(GraphTraversal.__().Values("c").Is("josh"));
 
             foreach (var result in results)
             {

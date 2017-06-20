@@ -7,12 +7,12 @@ namespace GraphView
 {
     internal class GremlinOrderOp: GremlinTranslationOperator
     {
-        public List<Tuple<GraphTraversal2, IComparer>> ByModulatingList { get; set; }
+        public List<Tuple<GraphTraversal, IComparer>> ByModulatingList { get; set; }
         public GremlinKeyword.Scope Scope { get; set; }
 
         public GremlinOrderOp(GremlinKeyword.Scope scope)
         {
-            ByModulatingList = new List<Tuple<GraphTraversal2, IComparer>>();
+            ByModulatingList = new List<Tuple<GraphTraversal, IComparer>>();
             Scope = scope;
         }
 
@@ -26,13 +26,13 @@ namespace GraphView
 
             if (ByModulatingList.Count == 0)
             {
-                 ByModulatingList.Add(new Tuple<GraphTraversal2, IComparer>(GraphTraversal2.__(), new IncrOrder()));
+                 ByModulatingList.Add(new Tuple<GraphTraversal, IComparer>(GraphTraversal.__(), new IncrOrder()));
             }
 
             var newByModulatingList = new List<Tuple<GremlinToSqlContext, IComparer>>();
             foreach (var pair in ByModulatingList)
             {
-                GraphTraversal2 traversal = pair.Item1;
+                GraphTraversal traversal = pair.Item1;
                 GremlinToSqlContext context = null;
 
                 if (Scope == GremlinKeyword.Scope.Global)
@@ -77,14 +77,14 @@ namespace GraphView
             return inputContext;
         }
 
-        public override void ModulateBy(GraphTraversal2 traversal)
+        public override void ModulateBy(GraphTraversal traversal)
         {
-            ByModulatingList.Add(new Tuple<GraphTraversal2, IComparer>(traversal, new IncrOrder()));
+            ByModulatingList.Add(new Tuple<GraphTraversal, IComparer>(traversal, new IncrOrder()));
         }
 
-        public override void ModulateBy(GraphTraversal2 traversal, IComparer comparer)
+        public override void ModulateBy(GraphTraversal traversal, IComparer comparer)
         {
-            ByModulatingList.Add(new Tuple<GraphTraversal2, IComparer>(traversal, comparer));
+            ByModulatingList.Add(new Tuple<GraphTraversal, IComparer>(traversal, comparer));
         }
     }
 }

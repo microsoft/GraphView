@@ -8,9 +8,9 @@ namespace GraphView
 {
     internal class GremlinWhereTraversalOp : GremlinTranslationOperator
     {
-        public GraphTraversal2 WhereTraversal { get; set; }
+        public GraphTraversal WhereTraversal { get; set; }
 
-        public GremlinWhereTraversalOp(GraphTraversal2 whereTraversal)
+        public GremlinWhereTraversalOp(GraphTraversal whereTraversal)
         {
             WhereTraversal = whereTraversal;
         }
@@ -33,7 +33,7 @@ namespace GraphView
             return inputContext;
         }
 
-        internal void ConfigureStartAndEndSteps(GraphTraversal2 whereTraversal)
+        internal void ConfigureStartAndEndSteps(GraphTraversal whereTraversal)
         {
             if (whereTraversal.GremlinTranslationOpList.Count >= 2)
             {

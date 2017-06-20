@@ -44,9 +44,9 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
             using (GraphViewCommand GraphViewCommand = new GraphViewCommand(graphConnection))
             {
                 var traversal = GraphViewCommand.g().V().Choose(
-                    GraphTraversal2.__().HasLabel("person"),
-                    GraphTraversal2.__().Values("name"),
-                    GraphTraversal2.__().Constant("inhuman"));
+                    GraphTraversal.__().HasLabel("person"),
+                    GraphTraversal.__().Values("name"),
+                    GraphTraversal.__().Constant("inhuman"));
                 var result = traversal.Next();
 
                 AbstractGremlinTest.CheckUnOrderedResults(new string[] { "marko", "vadas", "inhuman", "josh", "inhuman", "peter" }, result);

@@ -9,17 +9,17 @@ namespace GraphView
 {
     internal class GremlinAndOp : GremlinTranslationOperator
     {
-        public List<GraphTraversal2> AndTraversals { get; set; }
-        public GraphTraversal2 FirstTraversal { get; set; }
-        public GraphTraversal2 SecondTraversal { get; set; }
+        public List<GraphTraversal> AndTraversals { get; set; }
+        public GraphTraversal FirstTraversal { get; set; }
+        public GraphTraversal SecondTraversal { get; set; }
         public bool IsInfix { get; set; }
 
-        public GremlinAndOp(params GraphTraversal2[] andTraversals)
+        public GremlinAndOp(params GraphTraversal[] andTraversals)
         {
-            AndTraversals = new List<GraphTraversal2>(andTraversals);
+            AndTraversals = new List<GraphTraversal>(andTraversals);
         }
 
-        public GremlinAndOp(GraphTraversal2 firsTraversal, GraphTraversal2 secondTraversal)
+        public GremlinAndOp(GraphTraversal firsTraversal, GraphTraversal secondTraversal)
         {
             FirstTraversal = firsTraversal;
             SecondTraversal = secondTraversal;

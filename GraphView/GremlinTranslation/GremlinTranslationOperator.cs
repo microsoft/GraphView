@@ -42,27 +42,27 @@ namespace GraphView
             return InputOperator != null ? InputOperator.GetContext() : new GremlinToSqlContext();
         }
 
-        public virtual void ModulateBy(GraphTraversal2 traversal)
+        public virtual void ModulateBy(GraphTraversal traversal)
         {
             throw new NotImplementedException();
         }
 
-        public virtual void ModulateBy(GraphTraversal2 traversal, IComparer order)
+        public virtual void ModulateBy(GraphTraversal traversal, IComparer order)
         {
             throw new NotImplementedException();
         }
 
         public virtual void ModulateBy(GremlinKeyword.Order order)
         {
-            ModulateBy(GraphTraversal2.__(), order);
+            ModulateBy(GraphTraversal.__(), order);
         }
 
         public virtual void ModulateBy(IComparer comparer)
         {
-            ModulateBy(GraphTraversal2.__(), comparer);
+            ModulateBy(GraphTraversal.__(), comparer);
         }
 
-        public virtual void ModulateBy(GraphTraversal2 traversal, GremlinKeyword.Order order)
+        public virtual void ModulateBy(GraphTraversal traversal, GremlinKeyword.Order order)
         {
             switch (order)
             {
@@ -80,37 +80,37 @@ namespace GraphView
 
         public virtual void ModulateBy()
         {
-            ModulateBy(GraphTraversal2.__());
+            ModulateBy(GraphTraversal.__());
         }
 
         public virtual void ModulateBy(string key)
         {
-            ModulateBy(GraphTraversal2.__().Values(key));
+            ModulateBy(GraphTraversal.__().Values(key));
         }
 
         public virtual void ModulateBy(string key, GremlinKeyword.Order order)
         {
-            ModulateBy(GraphTraversal2.__().Values(key), order);
+            ModulateBy(GraphTraversal.__().Values(key), order);
         }
 
         public virtual void ModulateBy(string key, IComparer comparer)
         {
-            ModulateBy(GraphTraversal2.__().Values(key), comparer);
+            ModulateBy(GraphTraversal.__().Values(key), comparer);
         }
 
         public virtual void ModulateBy(GremlinKeyword.Column column)
         {
-            ModulateBy(GraphTraversal2.__().Select(column));
+            ModulateBy(GraphTraversal.__().Select(column));
         }
 
         public virtual void ModulateBy(GremlinKeyword.Column column, GremlinKeyword.Order order)
         {
-            ModulateBy(GraphTraversal2.__().Select(column), order);
+            ModulateBy(GraphTraversal.__().Select(column), order);
         }
 
         public virtual void ModulateBy(GremlinKeyword.Column column, IComparer comparer)
         {
-            ModulateBy(GraphTraversal2.__().Select(column), comparer);
+            ModulateBy(GraphTraversal.__().Select(column), comparer);
         }
 
         public virtual void ModulateBy(GremlinKeyword.T token)
@@ -118,16 +118,16 @@ namespace GraphView
             switch (token)
             {
                 case GremlinKeyword.T.Id:
-                    ModulateBy(GraphTraversal2.__().Id());
+                    ModulateBy(GraphTraversal.__().Id());
                     break;
                 case GremlinKeyword.T.Label:
-                    ModulateBy(GraphTraversal2.__().Label());
+                    ModulateBy(GraphTraversal.__().Label());
                     break;
                 case GremlinKeyword.T.Key:
-                    ModulateBy(GraphTraversal2.__().Key());
+                    ModulateBy(GraphTraversal.__().Key());
                     break;
                 case GremlinKeyword.T.Value:
-                    ModulateBy(GraphTraversal2.__().Value());
+                    ModulateBy(GraphTraversal.__().Value());
                     break;
                 default:
                     throw new TranslationException("Unknow GremlinKeyword.T");

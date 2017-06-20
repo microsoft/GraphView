@@ -25,8 +25,8 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Branch
             using (GraphViewCommand GraphViewCommand = new GraphViewCommand(graphConnection))
             {
                 var traversal = GraphViewCommand.g().V().Union(
-                    GraphTraversal2.__().Out(),
-                    GraphTraversal2.__().In()).Values("name");
+                    GraphTraversal.__().Out(),
+                    GraphTraversal.__().In()).Values("name");
 
                 var result = traversal.Next();
                 var expectedResult = new List<string>() { "marko", "marko", "marko", "lop", "lop", "lop", "peter", "ripple", "josh", "josh", "josh", "vadas" };
@@ -52,8 +52,8 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Branch
 
                 var traversal = GraphViewCommand.g().V().HasId(vertexId)
                     .Union(
-                        GraphTraversal2.__().Repeat(GraphTraversal2.__().Out()).Times(2),
-                        GraphTraversal2.__().Out())
+                        GraphTraversal.__().Repeat(GraphTraversal.__().Out()).Times(2),
+                        GraphTraversal.__().Out())
                     .Values("name");
 
                 var result = traversal.Next();
@@ -78,11 +78,11 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Branch
             using (GraphViewCommand GraphViewCommand = new GraphViewCommand(graphConnection))
             {
                 var traversal = GraphViewCommand.g().V().Choose(
-                    GraphTraversal2.__().Label().Is("person"),
-                    GraphTraversal2.__().Union(
-                            GraphTraversal2.__().Out().Values("lang"),
-                            GraphTraversal2.__().Out().Values("name")),
-                    GraphTraversal2.__().In().Label());
+                    GraphTraversal.__().Label().Is("person"),
+                    GraphTraversal.__().Union(
+                            GraphTraversal.__().Out().Values("lang"),
+                            GraphTraversal.__().Out().Values("name")),
+                    GraphTraversal.__().In().Label());
 
                 var result = traversal.Next();
                 var expectedResult = new List<string>() { "lop", "lop", "lop", "ripple", "java", "java", "java", "java", "josh", "vadas", "person", "person", "person", "person" };
@@ -104,11 +104,11 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Branch
             {
                 GraphViewCommand.OutputFormat = OutputFormat.GraphSON;
                 var traversal = GraphViewCommand.g().V().Choose(
-                    GraphTraversal2.__().Label().Is("person"),
-                    GraphTraversal2.__().Union(
-                        GraphTraversal2.__().Out().Values("lang"),
-                        GraphTraversal2.__().Out().Values("name")),
-                    GraphTraversal2.__().In().Label())
+                    GraphTraversal.__().Label().Is("person"),
+                    GraphTraversal.__().Union(
+                        GraphTraversal.__().Out().Values("lang"),
+                        GraphTraversal.__().Out().Values("name")),
+                    GraphTraversal.__().In().Label())
                     .GroupCount();
 
                 dynamic result = JsonConvert.DeserializeObject<dynamic>(traversal.Next().FirstOrDefault());
@@ -135,14 +135,14 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Branch
             {
                 GraphViewCommand.OutputFormat = OutputFormat.GraphSON;
                 var traversal = GraphViewCommand.g().V().Union(
-                    GraphTraversal2.__().Repeat(
-                        GraphTraversal2.__().Union(
-                            GraphTraversal2.__().Out("created"),
-                            GraphTraversal2.__().In("created"))).Times(2),
-                    GraphTraversal2.__().Repeat(
-                        GraphTraversal2.__().Union(
-                            GraphTraversal2.__().In("created"),
-                            GraphTraversal2.__().Out("created"))).Times(2))
+                    GraphTraversal.__().Repeat(
+                        GraphTraversal.__().Union(
+                            GraphTraversal.__().Out("created"),
+                            GraphTraversal.__().In("created"))).Times(2),
+                    GraphTraversal.__().Repeat(
+                        GraphTraversal.__().Union(
+                            GraphTraversal.__().In("created"),
+                            GraphTraversal.__().Out("created"))).Times(2))
                     .Label().GroupCount();
 
                 dynamic result = JsonConvert.DeserializeObject<dynamic>(traversal.Next().FirstOrDefault());
@@ -172,10 +172,10 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Branch
 
                 var traversal = GraphViewCommand.g().V(vertexId1, vertexId2)
                     .Local(
-                        GraphTraversal2.__().Union(
-                            GraphTraversal2.__().OutE().Count(),
-                            GraphTraversal2.__().InE().Count(),
-                            GraphTraversal2.__().OutE().Values("weight").Sum()));
+                        GraphTraversal.__().Union(
+                            GraphTraversal.__().OutE().Count(),
+                            GraphTraversal.__().InE().Count(),
+                            GraphTraversal.__().OutE().Values("weight").Sum()));
                 dynamic result = JsonConvert.DeserializeObject<dynamic>(traversal.FirstOrDefault());
 
                 // Assertions missing, revisit this once we actually get the above traversal to work.
@@ -199,9 +199,9 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Branch
 
                 var traversal = GraphViewCommand.g().V(vertexId1, vertexId2)
                     .Union(
-                        GraphTraversal2.__().OutE().Count(),
-                        GraphTraversal2.__().InE().Count(),
-                        GraphTraversal2.__().OutE().Values("weight").Sum());
+                        GraphTraversal.__().OutE().Count(),
+                        GraphTraversal.__().InE().Count(),
+                        GraphTraversal.__().OutE().Values("weight").Sum());
 
                 dynamic result = JsonConvert.DeserializeObject<dynamic>(traversal.FirstOrDefault());
 

@@ -8,10 +8,10 @@ namespace GraphView
 {
     internal class GremlinCoalesceOp: GremlinTranslationOperator
     {
-        public List<GraphTraversal2> CoalesceTraversals { get; set; }
-        public GremlinCoalesceOp(params GraphTraversal2[] coalesceTraversals)
+        public List<GraphTraversal> CoalesceTraversals { get; set; }
+        public GremlinCoalesceOp(params GraphTraversal[] coalesceTraversals)
         {
-            CoalesceTraversals = new List<GraphTraversal2>();
+            CoalesceTraversals = new List<GraphTraversal>();
             foreach (var coalesceTraversal in coalesceTraversals)
             {
                 CoalesceTraversals.Add(coalesceTraversal);

@@ -8,9 +8,9 @@ namespace GraphView
 {
     internal class GremlinSideEffectOp: GremlinTranslationOperator
     {
-        public GraphTraversal2 SideEffectTraversal { get; set; }
+        public GraphTraversal SideEffectTraversal { get; set; }
 
-        public GremlinSideEffectOp(GraphTraversal2 sideEffectTraversal)
+        public GremlinSideEffectOp(GraphTraversal sideEffectTraversal)
         {
             SideEffectTraversal = sideEffectTraversal;
         }

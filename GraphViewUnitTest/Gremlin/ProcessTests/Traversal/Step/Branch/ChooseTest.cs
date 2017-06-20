@@ -22,9 +22,9 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
             using (GraphViewCommand GraphViewCommand = new GraphViewCommand(graphConnection))
             {
                 var traversal = GraphViewCommand.g().V()
-                    .Choose(GraphTraversal2.__().Out().Count())
-                    .Option(2, GraphTraversal2.__().Values("name"))
-                    .Option(3, GraphTraversal2.__().ValueMap());
+                    .Choose(GraphTraversal.__().Out().Count())
+                    .Option(2, GraphTraversal.__().Values("name"))
+                    .Option(3, GraphTraversal.__().ValueMap());
                 var result = traversal.Next();
 
                 Assert.AreEqual(2, result.Count);
@@ -45,8 +45,8 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
             using (GraphViewCommand GraphViewCommand = new GraphViewCommand(graphConnection))
             {
                 var traversal = GraphViewCommand.g().V()
-                    .Choose(GraphTraversal2.__().HasLabel("person").And().Out("created"),
-                        GraphTraversal2.__().Out("knows"), GraphTraversal2.__().Identity()).Values("name");
+                    .Choose(GraphTraversal.__().HasLabel("person").And().Out("created"),
+                        GraphTraversal.__().Out("knows"), GraphTraversal.__().Identity()).Values("name");
                 var result = traversal.Next();
 
                 CheckUnOrderedResults(new [] { "lop", "ripple", "josh", "vadas", "vadas" }, result);
@@ -65,10 +65,10 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
             using (GraphViewCommand GraphViewCommand = new GraphViewCommand(graphConnection))
             {
                 var traversal = GraphViewCommand.g().V()
-                    .Choose(GraphTraversal2.__().Label())
-                    .Option("blah", GraphTraversal2.__().Out("knows"))
-                    .Option("bleep", GraphTraversal2.__().Out("created"))
-                    .Option(GremlinKeyword.Pick.None, GraphTraversal2.__().Identity())
+                    .Choose(GraphTraversal.__().Label())
+                    .Option("blah", GraphTraversal.__().Out("knows"))
+                    .Option("bleep", GraphTraversal.__().Out("created"))
+                    .Option(GremlinKeyword.Pick.None, GraphTraversal.__().Identity())
                     .Values("name");
                 var result = traversal.Next();
 
@@ -88,7 +88,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
             using (GraphViewCommand GraphViewCommand = new GraphViewCommand(graphConnection))
             {
                 var traversal = GraphViewCommand.g().V()
-                    .Choose(GraphTraversal2.__().Out("knows").Count().Is(Predicate.gt(0)), GraphTraversal2.__().Out("knows"))
+                    .Choose(GraphTraversal.__().Out("knows").Count().Is(Predicate.gt(0)), GraphTraversal.__().Out("knows"))
                     .Values("name");
                 var result = traversal.Next();
 
