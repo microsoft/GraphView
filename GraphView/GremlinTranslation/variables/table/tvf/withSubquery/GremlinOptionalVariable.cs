@@ -53,9 +53,9 @@ namespace GraphView
             return variableList;
         }
 
-        internal override List<GremlinVariable> FetchAllTableVars()
+        internal override List<GremlinTableVariable> FetchAllTableVars()
         {
-            List<GremlinVariable> variableList = new List<GremlinVariable>() { this };
+            List<GremlinTableVariable> variableList = new List<GremlinTableVariable> { this };
             variableList.AddRange(OptionalContext.FetchAllTableVars());
             return variableList;
         }
@@ -86,7 +86,7 @@ namespace GraphView
 
             WSelectQueryBlock secondQueryExpr = OptionalContext.ToSelectQueryBlock();
             bool HasAggregateFunctionAsChildren = false;
-            foreach (var variable in OptionalContext.TableReferences)
+            foreach (var variable in OptionalContext.TableReferencesInFromClause)
             {
                 if (variable is GremlinFoldVariable
                     || variable is GremlinCountVariable

@@ -482,8 +482,8 @@ namespace GraphView
     //    //internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
     //    //{
     //    //    var SelectQueryBlock = SelectInsertSource.Select as WSelectQueryBlock;
-    //    //    var srcTableVariable = SelectQueryBlock.FromClause.TableReferences[0] as WVariableTableReference;
-    //    //    var sinkTableVariable = SelectQueryBlock.FromClause.TableReferences[1] as WVariableTableReference;
+    //    //    var srcTableVariable = SelectQueryBlock.FromClause.TableReferencesInFromClause[0] as WVariableTableReference;
+    //    //    var sinkTableVariable = SelectQueryBlock.FromClause.TableReferencesInFromClause[1] as WVariableTableReference;
 
     //    //    if (srcTableVariable == null || sinkTableVariable == null)
     //    //        throw new SyntaxErrorException("Both table references in the InsertEdgeSpecification can only be a table variable");

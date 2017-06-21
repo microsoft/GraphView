@@ -24,7 +24,7 @@ namespace GraphView
             {
                 GremlinInjectVariable injectVar = new GremlinInjectVariable(null, Injection);
                 inputContext.VariableList.Add(injectVar);
-                inputContext.TableReferences.Add(injectVar);
+                inputContext.TableReferencesInFromClause.Add(injectVar);
                 inputContext.SetPivotVariable(injectVar);
             }
             else

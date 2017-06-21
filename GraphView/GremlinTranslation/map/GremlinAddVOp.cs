@@ -44,7 +44,7 @@ namespace GraphView
             {
                 GremlinAddVVariable newVariable = new GremlinAddVVariable(VertexLabel, PropertyKeyValues, true);
                 inputContext.VariableList.Add(newVariable);
-                inputContext.TableReferences.Add(newVariable);
+                inputContext.TableReferencesInFromClause.Add(newVariable);
                 inputContext.SetPivotVariable(newVariable);
             }
             else

@@ -38,7 +38,7 @@ namespace GraphView
 
             // In this case, the both-edgeTable variable is not added to the table-reference list. 
             // Instead, we populate a path this_variable-[bothEdge]->bothVertex in the context
-            currentContext.TableReferences.Add(bothVertex);
+            currentContext.TableReferencesInFromClause.Add(bothVertex);
             currentContext.MatchPathList.Add(new GremlinMatchPath(this, bothEdge, bothVertex));
             currentContext.SetPivotVariable(bothVertex);
         }
@@ -56,7 +56,7 @@ namespace GraphView
 
             GremlinFreeVertexVariable outVertex = new GremlinFreeVertexVariable();
             currentContext.VariableList.Add(outVertex);
-            currentContext.TableReferences.Add(outVertex);
+            currentContext.TableReferencesInFromClause.Add(outVertex);
             currentContext.MatchPathList.Add(new GremlinMatchPath(outVertex, inEdge, this));
             currentContext.SetPivotVariable(outVertex);
         }
@@ -88,7 +88,7 @@ namespace GraphView
 
             GremlinFreeVertexVariable inVertex = new GremlinFreeVertexVariable();
             currentContext.VariableList.Add(inVertex);
-            currentContext.TableReferences.Add(inVertex);
+            currentContext.TableReferencesInFromClause.Add(inVertex);
             currentContext.MatchPathList.Add(new GremlinMatchPath(this, outEdge, inVertex));
             currentContext.SetPivotVariable(inVertex);
         }

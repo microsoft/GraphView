@@ -60,13 +60,10 @@ namespace GraphView
             return variableList;
         }
 
-        internal override List<GremlinVariable> FetchAllTableVars()
+        internal override List<GremlinTableVariable> FetchAllTableVars()
         {
-            List<GremlinVariable> variableList = new List<GremlinVariable>() { this };
-            foreach (var context in UnionContextList)
-            {
-                variableList.AddRange(context.FetchAllTableVars());
-            }
+            List<GremlinTableVariable> variableList = new List<GremlinTableVariable> { this };
+            UnionContextList.ForEach(x => variableList.AddRange(x.FetchAllTableVars()));
             return variableList;
         }
 
@@ -76,7 +73,7 @@ namespace GraphView
             foreach (GremlinToSqlContext context in UnionContextList)
             {
                 bool hasAggregateFunction = false;
-                foreach (var variable in context.TableReferences)
+                foreach (var variable in context.TableReferencesInFromClause)
                 {
                     if (variable is GremlinFoldVariable
                         || variable is GremlinCountVariable
