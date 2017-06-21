@@ -45,6 +45,11 @@ namespace GraphView
         {
             return VariableType;
         }
+
+        internal virtual List<GremlinTableVariable> FetchAllTableVars()
+        {
+            return new List<GremlinTableVariable> { this };
+        }
     }
 
     internal abstract class GremlinScalarTableVariable : GremlinTableVariable

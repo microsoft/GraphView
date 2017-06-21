@@ -30,7 +30,7 @@ namespace GraphView
             GremlinFreeVertexVariable newVariable = new GremlinFreeVertexVariable();
 
             inputContext.VariableList.Add(newVariable);
-            inputContext.TableReferences.Add(newVariable);
+            inputContext.TableReferencesInFromClause.Add(newVariable);
 
             newVariable.OutE(inputContext, new List<string>());
 

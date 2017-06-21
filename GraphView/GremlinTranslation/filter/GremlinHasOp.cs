@@ -103,6 +103,7 @@ namespace GraphView
                         }
                     }
                     GremlinToSqlContext hasContext = Traversal.GetEndOp().GetContext();
+                    inputContext.AllTableVariablesInWhereClause.AddRange(hasContext.FetchAllTableVars());
                     inputContext.AddPredicate(hasContext.ToSqlBoolean());
                     break;
 

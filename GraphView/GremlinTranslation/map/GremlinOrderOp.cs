@@ -61,7 +61,7 @@ namespace GraphView
                         GremlinToSqlContext newContext = new GremlinToSqlContext();
                         GremlinDecompose1Variable decompose1 = new GremlinDecompose1Variable(inputContext.PivotVariable);
                         newContext.VariableList.Add(decompose1);
-                        newContext.TableReferences.Add(decompose1);
+                        newContext.TableReferencesInFromClause.Add(decompose1);
                         newContext.SetPivotVariable(decompose1);
 
                         traversal.GetStartOp().InheritedContextFromParent(newContext);

@@ -391,7 +391,7 @@ namespace GraphView
             SelectDeleteExpr = deleteSpec;
             //FromClause = new WFromClause
             //{
-            //    TableReferences = new List<WTableReference>
+            //    TableReferencesInFromClause = new List<WTableReference>
             //    {
             //        new WQueryDerivedTable
             //        {

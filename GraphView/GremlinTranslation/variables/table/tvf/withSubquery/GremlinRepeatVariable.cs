@@ -60,9 +60,9 @@ namespace GraphView
             return variableList;
         }
 
-        internal override List<GremlinVariable> FetchAllTableVars()
+        internal override List<GremlinTableVariable> FetchAllTableVars()
         {
-            List<GremlinVariable> variableList = new List<GremlinVariable>() { this };
+            List<GremlinTableVariable> variableList = new List<GremlinTableVariable> { this };
             variableList.AddRange(this.RepeatContext.FetchAllTableVars());
             if (this.RepeatCondition.EmitContext != null)
                 variableList.AddRange(this.RepeatCondition.EmitContext.FetchAllTableVars());
@@ -227,7 +227,7 @@ namespace GraphView
             if (context == null) return outerVariables;
 
             List<GremlinVariable> allVariables = context.FetchAllVars().Distinct().ToList();
-            List<GremlinVariable> allTableVariables = context.FetchAllTableVars();
+            List<GremlinTableVariable> allTableVariables = context.FetchAllTableVars();
             for (int i = 1; i < allVariables.Count; i++)
             {
                 if (!allTableVariables.Select(var => var.GetVariableName()).ToList().Contains(allVariables[i].GetVariableName()))

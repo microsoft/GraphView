@@ -13,16 +13,17 @@ namespace GraphView
         internal GremlinVariable PivotVariable { get; set; }
         internal List<GremlinVariable> VariableList { get; private set; }
         internal List<string> ProjectedProperties { get; set; }  // Used for generating select clause
-        internal List<GremlinTableVariable> TableReferences { get; private set; } // Used for generating from clause
+        internal List<GremlinTableVariable> TableReferencesInFromClause { get; private set; } // Used for generating from clause
         internal List<GremlinMatchPath> MatchPathList { get; set; }  // Used for generating match clause
         internal WBooleanExpression Predicates { get; private set; } // Used for generating where clause
-        internal bool HasRepeatPathInPredicates { get; set; }
+        internal List<GremlinTableVariable> AllTableVariablesInWhereClause { get; private set; } // Store all tableVariables in where clause (Predicates)
         internal List<GremlinVariable> StepList { get; set; }  // Used for generating Path
         internal GremlinLocalPathVariable ContextLocalPath { get; set; }
 
         internal GremlinToSqlContext()
         {
-            TableReferences = new List<GremlinTableVariable>();
+            this.TableReferencesInFromClause = new List<GremlinTableVariable>();
+            this.AllTableVariablesInWhereClause = new List<GremlinTableVariable>();
             VariableList = new List<GremlinVariable>();
             MatchPathList = new List<GremlinMatchPath>();
             StepList = new List<GremlinVariable>();
@@ -37,7 +38,8 @@ namespace GraphView
                 PivotVariable = this.PivotVariable,
                 VariableList = new List<GremlinVariable>(this.VariableList),
                 ProjectedProperties = new List<string>(this.ProjectedProperties),
-                TableReferences = new List<GremlinTableVariable>(this.TableReferences),
+                TableReferencesInFromClause = new List<GremlinTableVariable>(this.TableReferencesInFromClause),
+                AllTableVariablesInWhereClause = new List<GremlinTableVariable>(this.AllTableVariablesInWhereClause),
                 MatchPathList = new List<GremlinMatchPath>(this.MatchPathList),
                 Predicates = this.Predicates,
                 StepList = new List<GremlinVariable>(this.StepList),
@@ -57,7 +59,8 @@ namespace GraphView
             PivotVariable = null;
             VariableList.Clear();
             ProjectedProperties.Clear();
-            TableReferences.Clear();
+            this.TableReferencesInFromClause.Clear();
+            this.AllTableVariablesInWhereClause.Clear();
             MatchPathList.Clear();
             Predicates = null;
             StepList.Clear();
@@ -89,7 +92,7 @@ namespace GraphView
 
             GremlinLocalPathVariable newVariable = new GremlinLocalPathVariable(StepList);
             VariableList.Add(newVariable);
-            TableReferences.Add(newVariable);
+            TableReferencesInFromClause.Add(newVariable);
             ContextLocalPath = newVariable;
         }
 
@@ -129,23 +132,18 @@ namespace GraphView
             return sideEffectVariables;
         }
 
-        internal List<GremlinVariable> FetchAllTableVars()
+        internal List<GremlinTableVariable> FetchAllTableVars()
         {
-            List<GremlinVariable> variableList = new List<GremlinVariable>();
-            for (var i = 0; i < TableReferences.Count; i++)
-            {
-                variableList.AddRange(TableReferences[i].FetchAllTableVars());
-            }
+            List<GremlinTableVariable> variableList = new List<GremlinTableVariable>();
+            this.TableReferencesInFromClause.ForEach(x => variableList.AddRange(x.FetchAllTableVars()));
+            variableList.AddRange(this.AllTableVariablesInWhereClause);
             return variableList;
         }
 
         internal List<GremlinVariable> FetchAllVars()
         {
             List<GremlinVariable> variableList = new List<GremlinVariable>();
-            for (var i = 0; i < VariableList.Count; i++)
-            {
-                variableList.AddRange(VariableList[i].FetchAllVars());
-            }
+            this.VariableList.ForEach(x => variableList.AddRange(x.FetchAllVars()));
             return variableList;
         }
 
@@ -176,13 +174,10 @@ namespace GraphView
 
         internal WBooleanExpression ToSqlBoolean()
         {
-            if (TableReferences.Count == 0)
+            if (this.TableReferencesInFromClause.Count == 0)
             {
                 return Predicates;
             }
-            this.HasRepeatPathInPredicates = this.FetchAllTableVars()
-                .Exists(var => (var is GremlinGlobalPathVariable) && ((var as GremlinGlobalPathVariable).GetStepList()
-                                   .Exists(step => step is GremlinRepeatContextVariable)));
             return SqlUtil.GetExistPredicate(ToSelectQueryBlock());
         }
 
@@ -269,14 +264,14 @@ namespace GraphView
 
         internal WFromClause GetFromClause()
         {
-            if (TableReferences.Count == 0) return null;
+            if (this.TableReferencesInFromClause.Count == 0) return null;
 
             var newFromClause = new WFromClause();
             //generate tableReference in a reverse way, because the later tableReference may use the column of previous tableReference
             List<WTableReference> reversedTableReference = new List<WTableReference>();
-            for (var i = TableReferences.Count - 1; i >= 0; i--)
+            for (var i = this.TableReferencesInFromClause.Count - 1; i >= 0; i--)
             {
-                reversedTableReference.Add(TableReferences[i].ToTableReference());
+                reversedTableReference.Add(this.TableReferencesInFromClause[i].ToTableReference());
             }
             for (var i = reversedTableReference.Count - 1; i >= 0; i--)
             {

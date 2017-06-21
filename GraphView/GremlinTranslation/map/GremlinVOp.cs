@@ -57,7 +57,7 @@ namespace GraphView
             }
 
             inputContext.VariableList.Add(newVariable);
-            inputContext.TableReferences.Add(newVariable);
+            inputContext.TableReferencesInFromClause.Add(newVariable);
             inputContext.SetPivotVariable(newVariable);
 
             return inputContext;

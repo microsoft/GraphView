@@ -57,7 +57,7 @@ namespace GraphView
             RepeatTraversal.GetStartOp().InheritedVariableFromParent(inputContext);
             GremlinToSqlContext repeatContext = RepeatTraversal.GetEndOp().GetContext();
 
-            foreach (var variable in repeatContext.TableReferences)
+            foreach (var variable in repeatContext.TableReferencesInFromClause)
             {
                 if (variable is GremlinFoldVariable
                     || variable is GremlinCountVariable

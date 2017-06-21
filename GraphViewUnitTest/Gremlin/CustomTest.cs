@@ -23,7 +23,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests
                 //    .Times(2);
                 //var result = traversal.Next();
                 command.CommandText =
-                    "g.V().repeat(__.as('a').flatMap(__.select(last, 'a')).out()).times(2)";
+                    "g.V().repeat(__.out().and(__.outE().path())).times(2)";
                 var result = command.ExecuteAndGetResults();
                 foreach (var r in result)
                 {

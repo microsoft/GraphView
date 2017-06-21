@@ -44,9 +44,9 @@ namespace GraphView
             return variableList;
         }
 
-        internal override List<GremlinVariable> FetchAllTableVars()
+        internal override List<GremlinTableVariable> FetchAllTableVars()
         {
-            List<GremlinVariable> variableList = new List<GremlinVariable>() { this };
+            List<GremlinTableVariable> variableList = new List<GremlinTableVariable> { this };
             if (DedupContext != null)
                 variableList.AddRange(DedupContext.FetchAllTableVars());
             return variableList;
