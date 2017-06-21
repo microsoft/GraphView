@@ -1891,10 +1891,11 @@ namespace GraphView
         }
     }
 
-
-
+    
     internal class RepeatOperator : GraphViewExecutionOperator
     {
+        private readonly GraphViewExecutionOperator inputOp;
+
         // Number of times the inner operator repeats itself.
         // If this number is less than 0, the termination condition 
         // is specified by a boolean function. 
@@ -1902,249 +1903,250 @@ namespace GraphView
         private int currentRepeatTimes;
 
         // The termination condition of iterations
-        private readonly BooleanFunction terminationCondition;
+        private readonly BooleanFunction untilCondition;
         // If this variable is true, the iteration starts with the context record. 
         // This corresponds to the while-do loop semantics. 
         // Otherwise, the iteration starts with the the output of the first execution of the inner operator,
         // which corresponds to the do-while loop semantics.
-        private readonly bool startFromContext;
+        // i.e. .until().repeat()
+        private readonly bool isUntilFront;
+
         // The condition determining whether or not an intermediate state is emitted
         private readonly BooleanFunction emitCondition;
         // This variable specifies whether or not the context record is considered 
         // to be emitted when the iteration does not start with the context record,
-        // i.e., startFromContext is false 
-        private readonly bool emitContext;
+        // i.e., .emit().repeat()
+        private readonly bool isEmitFront;
 
-        private readonly GraphViewExecutionOperator inputOp;
         // initialOp recieves records from the input operator
         // and extracts needed columns to generate records that are fed as the initial input into the inner operator.
-        private readonly ConstantSourceOperator initialSourceOp;
+        private readonly ContainerEnumerator initialSource;
         private readonly GraphViewExecutionOperator initialOp;
+        
+        // loop body
+        private readonly ContainerEnumerator repeatTraversalSource;
+        private readonly GraphViewExecutionOperator repeatTraversalOp;
 
-        private readonly ConstantSourceOperator tempSourceOp;
-        private readonly ContainerOperator innerSourceOp;
-        private readonly GraphViewExecutionOperator innerOp;
+        // After initialization, input records will become repeat rocords,
+        // For each loop, this records will be the inputs of repeatTraversalOp(the loop body),
+        // and the output of the loop body will replace this, to be new repeat records.
+        private List<RawRecord> repeatRecords;
 
-        private Queue<RawRecord> priorStates;
-        private Queue<RawRecord> newStates;
         private readonly Queue<RawRecord> repeatResultBuffer;
+
+        private bool needInitialize;
 
         public RepeatOperator(
             GraphViewExecutionOperator inputOp,
-            ConstantSourceOperator initialSourceOp,
+            ContainerEnumerator initialSource,
             GraphViewExecutionOperator initialOp,
-            ConstantSourceOperator tempSourceOp,
-            ContainerOperator innerSourceOp,
-            GraphViewExecutionOperator innerOp,
-            int repeatTimes,
+            ContainerEnumerator repeatTraversalSource,
+            GraphViewExecutionOperator repeatTraversalOp,
             BooleanFunction emitCondition,
-            bool emitContext)
+            bool isEmitFront,
+            BooleanFunction untilCondition = null,
+            bool isUntilFront = false,
+            int repeatTimes = -1)
         {
             this.inputOp = inputOp;
-            this.initialSourceOp = initialSourceOp;
+            this.initialSource = initialSource;
             this.initialOp = initialOp;
-
-            this.tempSourceOp = tempSourceOp;
-            this.innerSourceOp = innerSourceOp;
-            this.innerOp = innerOp;
+            
+            this.repeatTraversalSource = repeatTraversalSource;
+            this.repeatTraversalOp = repeatTraversalOp;
+            
+            this.emitCondition = emitCondition;
+            this.isEmitFront = isEmitFront;
+            
+            this.untilCondition = untilCondition;
+            this.isUntilFront = isUntilFront;
 
             // By current implementation of Gremlin, when repeat time is set to 0,
             // it is reset to 1.
             this.repeatTimes = repeatTimes == 0 ? 1 : repeatTimes;
             this.currentRepeatTimes = 0;
-            this.emitCondition = emitCondition;
-            this.emitContext = emitContext;
-
-            this.startFromContext = false;
-
-            this.priorStates = new Queue<RawRecord>();
-            this.newStates = new Queue<RawRecord>();
+            
+            this.repeatRecords = new List<RawRecord>();
             this.repeatResultBuffer = new Queue<RawRecord>();
+            this.needInitialize = true;
+
             this.Open();
         }
 
-        public RepeatOperator(
-            GraphViewExecutionOperator inputOp,
-            ConstantSourceOperator initialSourceOp,
-            GraphViewExecutionOperator initialOp,
-            ConstantSourceOperator tempSourceOp,
-            ContainerOperator innerSourceOp,
-            GraphViewExecutionOperator innerOp,
-            BooleanFunction terminationCondition,
-            bool startFromContext,
-            BooleanFunction emitCondition,
-            bool emitContext)
+        // Emit to repeatResultBuffer if need;
+        private void Emit(List<RawRecord> records)
         {
-            this.inputOp = inputOp;
-            this.initialSourceOp = initialSourceOp;
-            this.initialOp = initialOp;
-
-            this.tempSourceOp = tempSourceOp;
-            this.innerSourceOp = innerSourceOp;
-            this.innerOp = innerOp;
-
-            this.terminationCondition = terminationCondition;
-            this.startFromContext = startFromContext;
-            this.emitCondition = emitCondition;
-            this.emitContext = emitContext;
-            this.repeatTimes = -1;
-
-            this.priorStates = new Queue<RawRecord>();
-            this.newStates = new Queue<RawRecord>();
-            this.repeatResultBuffer = new Queue<RawRecord>();
-            this.Open();
-        }
-
-        private void PrepareInnerOpSource(Queue<RawRecord> innerSourceRecords)
-        {
-            this.innerSourceOp.ResetState();
-            this.tempSourceOp.ConstantSource = null;
-            while (innerSourceRecords.Any()) {
-                this.tempSourceOp.ConstantSource = innerSourceRecords.Dequeue();
-                this.innerSourceOp.Next();
+            if (this.emitCondition == null || (this.repeatTimes != -1 && this.currentRepeatTimes >= this.repeatTimes))
+            {
+                return;
             }
+
+            List<RawRecord> batchRecords = new List<RawRecord>();
+            foreach (RawRecord record in records)
+            {
+                RawRecord batchRecord = new RawRecord();
+                batchRecord.Append(new StringField(batchRecords.Count.ToString(), JsonDataType.Int));
+                batchRecord.Append(record);
+                batchRecords.Add(batchRecord);
+            }
+            
+            HashSet<int> haveOutput = this.emitCondition.EvaluateInBatch(batchRecords);
+            haveOutput.Select(x => records[x]).ToList().ForEach(this.repeatResultBuffer.Enqueue);
         }
+
+        // for each of the input records, 
+        //  if it satisfy the until condition
+        //  then enqueue it to repeatResultBuffer
+        //  else keep it for next loop
+        private List<RawRecord> Until(List<RawRecord> records)
+        {
+            // when query has no .until() (neither .times())
+            if (this.untilCondition == null)
+            {
+                return records;
+            }
+
+            List<RawRecord> batchRecords = new List<RawRecord>();
+            foreach (RawRecord record in records)
+            {
+                RawRecord batchRecord = new RawRecord();
+                batchRecord.Append(new StringField(batchRecords.Count.ToString(), JsonDataType.Int));
+                batchRecord.Append(record);
+                batchRecords.Add(batchRecord);
+            }
+            
+            HashSet<int> haveOutput = this.untilCondition.EvaluateInBatch(batchRecords);
+            haveOutput.Select(x => records[x]).ToList().ForEach(this.repeatResultBuffer.Enqueue);
+
+            List<RawRecord> result = new List<RawRecord>();
+            batchRecords.ForEach(x => {
+                if (!haveOutput.Contains(int.Parse(x.RetriveData(0).ToValue)))
+                {
+                    result.Add(x.GetRange(1));
+                }
+            });
+            return result;
+        }
+
+
+        // apply inputs records to repeatTraversal, and return the results of it
+        private List<RawRecord> RepeatOnce(List<RawRecord> records)
+        {
+            this.repeatTraversalSource.ResetTableCache(records);
+            this.repeatTraversalOp.ResetState();
+
+            List<RawRecord> result = new List<RawRecord>();
+            RawRecord innerOutput;
+            while (this.repeatTraversalOp.State() && (innerOutput = this.repeatTraversalOp.Next()) != null)
+            {
+                result.Add(innerOutput);
+            }
+            return result;
+        }
+
+
+        private bool ShouldClose()
+        {
+            if (this.repeatResultBuffer.Any() || (this.repeatTimes == -1 && this.repeatRecords.Any()) || this.currentRepeatTimes < this.repeatTimes)
+            {
+                return false;
+            }
+            return true;
+        }
+
 
         public override RawRecord Next()
         {
-            if (this.repeatResultBuffer.Count > 0) {
-                return this.repeatResultBuffer.Dequeue();
+            if (this.needInitialize)
+            {
+                RawRecord inputRecord;
+                List<RawRecord> inputs = new List<RawRecord>();
+                while (this.inputOp.State() && (inputRecord = this.inputOp.Next()) != null)
+                {
+                    inputs.Add(inputRecord);
+                }
+
+                // Project to same length
+                this.initialSource.ResetTableCache(inputs);
+                while (this.initialOp.State() && (inputRecord = this.initialOp.Next()) != null)
+                {
+                    this.repeatRecords.Add(inputRecord);
+                }
+
+                // invoke Until if needs
+                if (this.isUntilFront)
+                {
+                    // until step will update repeatRecords
+                    this.repeatRecords = this.Until(this.repeatRecords);
+                }
+
+                // invoke Emit after Until, if there is a emit()
+                if (this.isEmitFront)
+                {
+                    this.Emit(this.repeatRecords);
+                }
+
+                this.needInitialize = false;
             }
 
-            if (this.repeatTimes > 0)
+            while (this.State())
             {
-                if (this.currentRepeatTimes > this.repeatTimes) {
+                // only return records from here
+                if (this.repeatResultBuffer.Any())
+                {
+                    return repeatResultBuffer.Dequeue();
+                }
+
+                // using .times()
+                if (this.repeatTimes > 0)
+                {
+                    if (this.currentRepeatTimes < this.repeatTimes)
+                    {
+                        this.repeatRecords = this.RepeatOnce(this.repeatRecords);
+                        this.currentRepeatTimes++;
+                    }
+
+                    if (this.currentRepeatTimes == this.repeatTimes)
+                    {
+                        this.repeatRecords.ForEach(this.repeatResultBuffer.Enqueue);
+                        this.repeatRecords.Clear();
+                        this.currentRepeatTimes++;
+                        continue;
+                    }
+                }
+                // using .until()
+                else
+                {
+                    this.repeatRecords = this.RepeatOnce(this.repeatRecords);
+                    this.repeatRecords = this.Until(this.repeatRecords);
+                }
+                
+                this.Emit(this.repeatRecords);
+                if (this.ShouldClose())
+                {
                     this.Close();
-                    return null;
+                    break;
                 }
 
-                if (this.currentRepeatTimes == 0)
-                {
-                    RawRecord outerRecord;
-                    while (this.inputOp.State() && (outerRecord = this.inputOp.Next()) != null)
-                    {
-                        this.initialSourceOp.ConstantSource = outerRecord;
-                        this.initialOp.ResetState();
-                        RawRecord initialRec = this.initialOp.Next();
-
-                        if (this.emitCondition != null && this.emitContext) {
-                            if (this.emitCondition.Evaluate(initialRec)) {
-                                this.repeatResultBuffer.Enqueue(initialRec);
-                            }
-                        }
-
-                        this.newStates.Enqueue(initialRec);
-                    }
-                    this.currentRepeatTimes++;
-                    if (this.repeatResultBuffer.Count > 0) {
-                        return this.repeatResultBuffer.Dequeue();
-                    }
-                }
-                //
-                // Evaluates the inner traversal for the [currentRepeatTimes] times iteration
-                //
-                while (this.currentRepeatTimes <= this.repeatTimes)
-                {
-                    Queue<RawRecord> tmpQueue = this.priorStates;
-                    this.priorStates = this.newStates;
-                    this.newStates = tmpQueue;
-
-                    this.PrepareInnerOpSource(this.priorStates);
-                    this.innerOp.ResetState();
-
-                    RawRecord newRec;
-                    while ((newRec = this.innerOp.Next()) != null)
-                    {
-                        this.newStates.Enqueue(newRec);
-                        //
-                        // In the last round, the emit condition needn't to be considered
-                        //
-                        if (this.currentRepeatTimes == this.repeatTimes ||
-                            (this.emitCondition != null && this.emitCondition.Evaluate(newRec)))
-                        {
-                            this.repeatResultBuffer.Enqueue(newRec);
-                        }
-                    }
-
-                    this.currentRepeatTimes++;
-                    if (this.repeatResultBuffer.Count > 0) {
-                        return this.repeatResultBuffer.Dequeue();
-                    }
-                }
             }
-            else
-            {
-                RawRecord outerRecord;
-                while (this.inputOp.State() && (outerRecord = this.inputOp.Next()) != null)
-                {
-                    this.initialSourceOp.ConstantSource = outerRecord;
-                    this.initialOp.ResetState();
-                    RawRecord initialRec = this.initialOp.Next();
-
-                    if (this.startFromContext) {
-                        if (this.terminationCondition != null && this.terminationCondition.Evaluate(initialRec)) {
-                            this.repeatResultBuffer.Enqueue(initialRec);
-                        }
-                        else if (this.emitContext) {
-                            if (this.emitCondition == null || this.emitCondition.Evaluate(initialRec)) {
-                                this.repeatResultBuffer.Enqueue(initialRec);
-                            }
-                        }
-                    }
-                    else {
-                        if (this.emitContext && this.emitCondition != null) {
-                            if (this.emitCondition.Evaluate(initialRec)) {
-                                this.repeatResultBuffer.Enqueue(initialRec);
-                            }
-                        }
-                    }
-
-                    this.priorStates.Enqueue(initialRec);
-                }
-
-                if (this.repeatResultBuffer.Count > 0) {
-                    return this.repeatResultBuffer.Dequeue();
-                }
-
-                while (this.priorStates.Count > 0)
-                {
-                    this.PrepareInnerOpSource(this.priorStates);
-                    this.innerOp.ResetState();
-
-                    RawRecord newRec;
-                    while ((newRec = innerOp.Next()) != null) {
-                        if (this.terminationCondition != null && this.terminationCondition.Evaluate(newRec)) {
-                            this.repeatResultBuffer.Enqueue(newRec);
-                        }
-                        else {
-                            if (this.emitCondition != null && this.emitCondition.Evaluate(newRec)) {
-                                this.repeatResultBuffer.Enqueue(newRec);
-                            }
-                            this.priorStates.Enqueue(newRec);
-                        }
-                    }
-
-                    if (this.repeatResultBuffer.Count > 0) {
-                        return this.repeatResultBuffer.Dequeue();
-                    }
-                }
-            }
-
-            this.Close();
             return null;
         }
 
         public override void ResetState()
         {
-            this.currentRepeatTimes = 0;
             this.inputOp.ResetState();
-            this.innerOp.ResetState();
-            this.priorStates.Clear();
-            this.newStates.Clear();
+            this.currentRepeatTimes = 0;
+            this.initialSource.Reset();
+            this.initialOp.ResetState();
+            this.repeatTraversalSource.Reset();
+            this.repeatTraversalOp.ResetState();
+            this.repeatRecords.Clear();
             this.repeatResultBuffer.Clear();
+            this.needInitialize = true;
             this.Open();
         }
     }
+    
 
     internal class DeduplicateOperator : GraphViewExecutionOperator
     {

@@ -2316,14 +2316,14 @@ namespace GraphView
             WSelectQueryBlock contextSelect, repeatSelect;
             Split(out contextSelect, out repeatSelect);
 
+            ContainerEnumerator initialSource = new ContainerEnumerator();
+            QueryCompilationContext initialContext = new QueryCompilationContext(context);
+            initialContext.OuterContextOp.SourceEnumerator = initialSource;
+            initialContext.InBatchMode = context.InBatchMode;
+            initialContext.CarryOn = true;
+            GraphViewExecutionOperator getInitialRecordOp = contextSelect.Compile(initialContext, dbConnection);
+            
             QueryCompilationContext rTableContext = new QueryCompilationContext(context);
-            rTableContext.InBatchMode = context.InBatchMode;
-            rTableContext.CarryOn = true;
-
-            QueryCompilationContext initalContext = new QueryCompilationContext(context);
-            initalContext.InBatchMode = context.InBatchMode;
-            initalContext.CarryOn = true;
-            GraphViewExecutionOperator getInitialRecordOp = contextSelect.Compile(initalContext, dbConnection);
 
             foreach (WSelectElement selectElement in contextSelect.SelectElements)
             {
@@ -2340,23 +2340,34 @@ namespace GraphView
                 throw new SyntaxErrorException("The second parameter of a repeat table reference must be WRepeatConditionExpression");
 
             int repeatTimes = repeatCondition.RepeatTimes;
-            BooleanFunction terminationCondition = repeatCondition.TerminationCondition?.CompileToFunction(rTableContext, dbConnection);
-            bool startFromContext = repeatCondition.StartFromContext;
-            BooleanFunction emitCondition = repeatCondition.EmitCondition?.CompileToFunction(rTableContext, dbConnection);
-            bool emitContext = repeatCondition.EmitContext;
+            bool untilFront = repeatCondition.StartFromContext;
+            bool emitFront = repeatCondition.EmitContext;
 
-            ConstantSourceOperator tempSourceOp = new ConstantSourceOperator();
-            ContainerOperator innerSourceOp = new ContainerOperator(tempSourceOp);
+            // compile until
+            BooleanFunction terminationCondition = repeatCondition.TerminationCondition?.CompileToBatchFunction(rTableContext, dbConnection);
+
+            // compile emit
+            BooleanFunction emitCondition = repeatCondition.EmitCondition?.CompileToBatchFunction(rTableContext, dbConnection);
+            
+            // compile sub-traversal
+            ContainerEnumerator innerSource = new ContainerEnumerator();
+            rTableContext.OuterContextOp.SourceEnumerator = innerSource;
+            rTableContext.InBatchMode = context.InBatchMode;
+            rTableContext.CarryOn = true;
             GraphViewExecutionOperator innerOp = repeatSelect.Compile(rTableContext, dbConnection);
-            rTableContext.OuterContextOp.SourceEnumerator = innerSourceOp.GetEnumerator();
+            rTableContext.OuterContextOp.SourceEnumerator = innerSource;
 
-            RepeatOperator repeatOp;
-            if (repeatTimes == -1)
-                repeatOp = new RepeatOperator(context.CurrentExecutionOperator, initalContext.OuterContextOp, getInitialRecordOp, 
-                    tempSourceOp, innerSourceOp, innerOp, terminationCondition, startFromContext, emitCondition, emitContext);
-            else
-                repeatOp = new RepeatOperator(context.CurrentExecutionOperator, initalContext.OuterContextOp, getInitialRecordOp, 
-                    tempSourceOp, innerSourceOp, innerOp, repeatTimes, emitCondition, emitContext);
+            RepeatOperator repeatOp = new RepeatOperator(
+                context.CurrentExecutionOperator,
+                initialSource,
+                getInitialRecordOp,
+                innerSource,
+                innerOp,
+                emitCondition,
+                emitFront,
+                terminationCondition,
+                untilFront,
+                repeatTimes);
 
             context.CurrentExecutionOperator = repeatOp;
 
