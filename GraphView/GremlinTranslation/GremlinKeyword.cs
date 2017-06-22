@@ -296,6 +296,9 @@ namespace GraphView
             {"incr", "GremlinKeyword.Order.Incr"},
             {"shuffle", "GremlinKeyword.Order.Shuffle"},
 
+            {"keys", "GremlinKeyword.Column.Keys"},
+            {"values", "GremlinKeyword.Column.Values"},
+
             {"T.id", "GremlinKeyword.T.Id"},
             {"T.label", "GremlinKeyword.T.Label"},
             {"T.key", "GremlinKeyword.T.Key"},
