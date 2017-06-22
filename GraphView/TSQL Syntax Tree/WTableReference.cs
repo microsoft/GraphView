@@ -367,8 +367,6 @@ namespace GraphView
 
     public partial class WOptionalTableReference : WSchemaObjectFunctionTableReference
     {
-        public bool HasAggregateFunctionAsChildren { get; set; }
-
         internal void Split(out WSelectQueryBlock contextSelect, out WSelectQueryBlock optionalSelectQuery)
         {
             WScalarSubquery optionalInput = Parameters[0] as WScalarSubquery;
@@ -508,13 +506,6 @@ namespace GraphView
                 throw new SyntaxErrorException("The input of a repeat table reference must be a UNION ALL binary query and the two sub-queries must be a select query block.");
             }
         }
-
-        internal bool HasAggregateFunctionInTheRepeatSelectQuery(WSelectQueryBlock repeatSelectQuery)
-        {
-            AggregateFunctionCountVisitor aggregateCountVisitor = new AggregateFunctionCountVisitor();
-
-            return aggregateCountVisitor.Invoke(repeatSelectQuery) > 0;
-        }
     }
 
     public partial class WSampleGlobalTableReference : WSchemaObjectFunctionTableReference {}
@@ -527,10 +518,7 @@ namespace GraphView
 
     public partial class WUnfoldTableReference : WSchemaObjectFunctionTableReference {}
 
-    public partial class WUnionTableReference : WSchemaObjectFunctionTableReference
-    {
-        public Queue<bool> HasAggregateFunctionAsChildren { get; set; }
-    }
+    public partial class WUnionTableReference : WSchemaObjectFunctionTableReference {}
 
     public partial class WMatchTableReference : WSchemaObjectFunctionTableReference {}
 

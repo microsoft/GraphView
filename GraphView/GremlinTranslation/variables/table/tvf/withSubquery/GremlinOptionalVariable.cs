@@ -85,32 +85,12 @@ namespace GraphView
             }
 
             WSelectQueryBlock secondQueryExpr = OptionalContext.ToSelectQueryBlock();
-            bool HasAggregateFunctionAsChildren = false;
-            foreach (var variable in OptionalContext.TableReferencesInFromClause)
-            {
-                if (variable is GremlinFoldVariable
-                    || variable is GremlinCountVariable
-                    || variable is GremlinMinVariable
-                    || variable is GremlinMaxVariable
-                    || variable is GremlinSumVariable
-                    || variable is GremlinMeanVariable
-                    || variable is GremlinTreeVariable)
-                {
-                    HasAggregateFunctionAsChildren = true;
-                }
-                var group = variable as GremlinGroupVariable;
-                if (group != null && group.SideEffectKey == null)
-                {
-                    HasAggregateFunctionAsChildren = true;
-                }
-            }
 
             var WBinaryQueryExpression = SqlUtil.GetBinaryQueryExpr(firstQueryExpr, secondQueryExpr);
 
             List<WScalarExpression> parameters = new List<WScalarExpression>();
             parameters.Add(SqlUtil.GetScalarSubquery(WBinaryQueryExpression));
             var tableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Optional, parameters, GetVariableName());
-            ((WOptionalTableReference) tableRef).HasAggregateFunctionAsChildren = HasAggregateFunctionAsChildren;
 
             return SqlUtil.GetCrossApplyTableReference(tableRef);
         }

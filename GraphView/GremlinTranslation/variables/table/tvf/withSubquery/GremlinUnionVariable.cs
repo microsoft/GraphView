@@ -69,31 +69,6 @@ namespace GraphView
 
         public override WTableReference ToTableReference()
         {
-            Queue<bool> hasAggregateFunctionAsChildren = new Queue<bool>();
-            foreach (GremlinToSqlContext context in UnionContextList)
-            {
-                bool hasAggregateFunction = false;
-                foreach (var variable in context.TableReferencesInFromClause)
-                {
-                    if (variable is GremlinFoldVariable
-                        || variable is GremlinCountVariable
-                        || variable is GremlinMinVariable
-                        || variable is GremlinMaxVariable
-                        || variable is GremlinSumVariable
-                        || variable is GremlinMeanVariable
-                        || variable is GremlinTreeVariable)
-                    {
-                        hasAggregateFunction = true;
-                    }
-                    var group = variable as GremlinGroupVariable;
-                    if (group != null && group.SideEffectKey == null)
-                    {
-                        hasAggregateFunction = true;
-                    }
-                }
-                hasAggregateFunctionAsChildren.Enqueue(hasAggregateFunction);
-            }
-
             List<WScalarExpression> parameters = new List<WScalarExpression>();
             if (UnionContextList.Count == 0)
             {
@@ -107,8 +82,6 @@ namespace GraphView
                 parameters.Add(SqlUtil.GetScalarSubquery(context.ToSelectQueryBlock()));
             }
             var tableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Union, parameters, GetVariableName());
-
-            ((WUnionTableReference) tableRef).HasAggregateFunctionAsChildren = hasAggregateFunctionAsChildren;
 
             return SqlUtil.GetCrossApplyTableReference(tableRef);
         }
