@@ -447,8 +447,7 @@ namespace GraphView
             if (this.type == BooleanBinaryFunctionType.And)
             {
                 records = records.Where(i => lhsIndexes.Contains(int.Parse(i.RetriveData(0).ToValue))).ToList();
-                HashSet<int> rhsIndexes = this.rhs.EvaluateInBatch(records);
-                return new HashSet<int>(lhsIndexes.Intersect(rhsIndexes));
+                return this.rhs.EvaluateInBatch(records);
             }
 
             if (this.type == BooleanBinaryFunctionType.Or)

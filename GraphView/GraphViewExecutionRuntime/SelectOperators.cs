@@ -1570,7 +1570,7 @@ namespace GraphView
         private List<RawRecord> evaluatedTrueRecords;
         private Queue<RawRecord> evaluatedFalseRecords;
 
-        private bool firstTime;
+        private bool needInitialize;
 
         public OptionalOperator(
             GraphViewExecutionOperator inputOp,
@@ -1592,7 +1592,7 @@ namespace GraphView
             this.evaluatedTrueRecords = new List<RawRecord>();
             this.evaluatedFalseRecords = new Queue<RawRecord>();
 
-            this.firstTime = true;
+            this.needInitialize = true;
 
             this.Open();
         }
@@ -1617,7 +1617,7 @@ namespace GraphView
 
         public override RawRecord Next()
         {
-            if (this.firstTime)
+            if (this.needInitialize)
             {
                 // read inputs and set sub-traversal sources
                 List<RawRecord> inputBuffer = new List<RawRecord>();
@@ -1633,7 +1633,7 @@ namespace GraphView
                 if (!inputBuffer.Any())
                 {
                     this.Close();
-                    this.firstTime = false;
+                    this.needInitialize = false;
                     return null;
                 }
 
@@ -1663,7 +1663,7 @@ namespace GraphView
                 this.sourceEnumerator.ResetTableCache(this.evaluatedTrueRecords);
                 this.optionalTraversal.ResetState();
 
-                this.firstTime = false;
+                this.needInitialize = false;
             }
 
             RawRecord subOutput;
@@ -1693,7 +1693,7 @@ namespace GraphView
             this.evaluatedTrueRecords.Clear();
             this.evaluatedFalseRecords.Clear();
 
-            this.firstTime = true;
+            this.needInitialize = true;
             this.Open();
         }
     }
@@ -1709,7 +1709,7 @@ namespace GraphView
         private List<RawRecord> inputBuffer;
         private GraphViewExecutionOperator inputOp;
 
-        private bool firstTime;
+        private bool needInitialize;
 
         public UnionOperator(
             GraphViewExecutionOperator inputOp)
@@ -1719,7 +1719,7 @@ namespace GraphView
             this.inputBuffer = new List<RawRecord>();
             this.traversalList = new List<Tuple<GraphViewExecutionOperator, ContainerEnumerator>>();
 
-            this.firstTime = true;
+            this.needInitialize = true;
             this.Open();
         }
 
@@ -1730,7 +1730,7 @@ namespace GraphView
 
         public override RawRecord Next()
         {
-            if (this.firstTime)
+            if (this.needInitialize)
             {
                 // read inputs
                 RawRecord inputRecord;
@@ -1745,7 +1745,7 @@ namespace GraphView
                     tuple.Item2.ResetTableCache(inputBuffer);
                 }
 
-                this.firstTime = false;
+                this.needInitialize = false;
             }
 
             foreach (Tuple<GraphViewExecutionOperator, ContainerEnumerator> tuple in this.traversalList)
@@ -1771,7 +1771,7 @@ namespace GraphView
                 tuple.Item2.ResetState(); // or reset?
             }
 
-            this.firstTime = true;
+            this.needInitialize = true;
             
             this.Open();
         }
@@ -3882,7 +3882,7 @@ namespace GraphView
         private GraphViewExecutionOperator trueBranchTraversalOp;
         private GraphViewExecutionOperator falseBranchTraversalOp;
 
-        private bool firstTime;
+        private bool needInitialize;
 
         public ChooseOperator(
             GraphViewExecutionOperator inputOp,
@@ -3906,13 +3906,13 @@ namespace GraphView
             this.evaluatedTrueRecords = new List<RawRecord>();
             this.evaluatedFalseRecords = new List<RawRecord>();
 
-            this.firstTime = true;
+            this.needInitialize = true;
             this.Open();
         }
 
         public override RawRecord Next()
         {
-            if (this.firstTime)
+            if (this.needInitialize)
             {
                 // read inputs and set sub-traversal sources
                 List<RawRecord> inputBuffer = new List<RawRecord>();
@@ -3928,7 +3928,7 @@ namespace GraphView
                 if (!inputBuffer.Any())
                 {
                     this.Close();
-                    this.firstTime = false;
+                    this.needInitialize = false;
                     return null;
                 }
 
@@ -3962,7 +3962,7 @@ namespace GraphView
                 this.falseBranchSource.ResetTableCache(this.evaluatedFalseRecords);
                 this.falseBranchTraversalOp.ResetState();
 
-                this.firstTime = false;
+                this.needInitialize = false;
             }
 
             RawRecord trueBranchTraversalRecord;
@@ -3995,7 +3995,7 @@ namespace GraphView
             this.trueBranchTraversalOp.ResetState();
             this.falseBranchTraversalOp.ResetState();
 
-            this.firstTime = true;
+            this.needInitialize = true;
 
             this.Open();
         }
