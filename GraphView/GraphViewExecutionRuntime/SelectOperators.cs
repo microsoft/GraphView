@@ -4004,142 +4004,168 @@ namespace GraphView
 
     internal class ChooseWithOptionsOperator : GraphViewExecutionOperator
     {
-        GraphViewExecutionOperator inputOp;
+        private readonly GraphViewExecutionOperator inputOp;
 
-        ScalarFunction targetSubQueryFunc;
+        private readonly ContainerEnumerator targetSource;
+        private readonly GraphViewExecutionOperator targetSubOp;
 
-        ConstantSourceOperator tempSourceOp;
-        ContainerOperator optionSourceOp;
+        private readonly ContainerEnumerator optionSource;
 
-        int activeOptionTraversalIndex;
-        bool needsOptionSourceInit;
-        List<Tuple<ScalarFunction, Queue<RawRecord>, GraphViewExecutionOperator>> traversalList;
+        private int currentOptionTraversalIndex;
+        private readonly List<Tuple<FieldObject, List<RawRecord>, GraphViewExecutionOperator>> traversalList;
 
-        Queue<RawRecord> noneRawRecords;
-        GraphViewExecutionOperator optionNoneTraversalOp;
-        const int noneBranchIndex = -1;
+        private readonly List<RawRecord> noneRawRecords;
+        private GraphViewExecutionOperator optionNoneTraversalOp;
+
+        private readonly Queue<RawRecord> outputBuffer; 
+        private bool needInitialize;
 
         public ChooseWithOptionsOperator(
             GraphViewExecutionOperator inputOp,
-            ScalarFunction targetSubQueryFunc,
-            ConstantSourceOperator tempSourceOp,
-            ContainerOperator optionSourceOp
-            )
+            ContainerEnumerator targetSource,
+            GraphViewExecutionOperator targetSubOp,
+            ContainerEnumerator optionSource
+        )
         {
             this.inputOp = inputOp;
-            this.targetSubQueryFunc = targetSubQueryFunc;
-            this.tempSourceOp = tempSourceOp;
-            this.optionSourceOp = optionSourceOp;
-            this.activeOptionTraversalIndex = 0;
-            this.noneRawRecords = new Queue<RawRecord>();
+            this.targetSource = targetSource;
+            this.targetSubOp = targetSubOp;
+            this.optionSource = optionSource;
+
+            this.noneRawRecords = new List<RawRecord>();
             this.optionNoneTraversalOp = null;
-            this.needsOptionSourceInit = true;
-            this.traversalList = new List<Tuple<ScalarFunction, Queue<RawRecord>, GraphViewExecutionOperator>>();
+
+            this.traversalList = new List<Tuple<FieldObject, List<RawRecord>, GraphViewExecutionOperator>>();
+            this.outputBuffer = new Queue<RawRecord>();
+
+            this.currentOptionTraversalIndex = 0;
+            this.needInitialize = true;
 
             this.Open();
         }
 
         public void AddOptionTraversal(ScalarFunction value, GraphViewExecutionOperator optionTraversalOp)
         {
-            if (value == null) {
+            if (value == null)
+            {
                 this.optionNoneTraversalOp = optionTraversalOp;
                 return;
             }
-                
-            this.traversalList.Add(new Tuple<ScalarFunction, Queue<RawRecord>, GraphViewExecutionOperator>(value,
-                new Queue<RawRecord>(), optionTraversalOp));
+
+            this.traversalList.Add(new Tuple<FieldObject, List<RawRecord>, GraphViewExecutionOperator>(
+                value.Evaluate(null),
+                new List<RawRecord>(),
+                optionTraversalOp));
         }
 
-        private void PrepareOptionTraversalSource(int index)
+
+        private void ChooseOptionBranch(RawRecord input, FieldObject value)
         {
-            this.optionSourceOp.ResetState();
-            Queue<RawRecord> chosenRecords = index != ChooseWithOptionsOperator.noneBranchIndex 
-                                             ? this.traversalList[index].Item2 
-                                             : this.noneRawRecords;
-            while (chosenRecords.Any())
+            foreach (Tuple<FieldObject, List<RawRecord>, GraphViewExecutionOperator> tuple in this.traversalList)
             {
-                this.tempSourceOp.ConstantSource = chosenRecords.Dequeue();
-                this.optionSourceOp.Next();
-            }
-        }
-
-        public override RawRecord Next()
-        {
-            RawRecord currentRecord = null;
-            while (this.inputOp.State() && (currentRecord = this.inputOp.Next()) != null)
-            {
-                FieldObject evaluatedValue = this.targetSubQueryFunc.Evaluate(currentRecord);
-                if (evaluatedValue == null) {
-                    throw new GraphViewException("The provided traversal of choose() does not map to a value.");
-                }
-
-                bool hasBeenChosen = false;
-                foreach (Tuple<ScalarFunction, Queue<RawRecord>, GraphViewExecutionOperator> tuple in this.traversalList)
+                if (tuple.Item1.Equals(value))
                 {
-                    FieldObject rhs = tuple.Item1.Evaluate(null);
-                    if (evaluatedValue.Equals(rhs))
-                    {
-                        tuple.Item2.Enqueue(currentRecord);
-                        hasBeenChosen = true;
-                        break;
-                    }
+                    tuple.Item2.Add(input);
+                    return;
                 }
-
-                if (!hasBeenChosen && this.optionNoneTraversalOp != null) {
-                    this.noneRawRecords.Enqueue(currentRecord);
-                }
-            }
-
-            RawRecord traversalRecord = null;
-            while (this.activeOptionTraversalIndex < this.traversalList.Count)
-            {
-                if (this.needsOptionSourceInit)
-                {
-                    this.PrepareOptionTraversalSource(this.activeOptionTraversalIndex);
-                    this.needsOptionSourceInit = false;
-                }
-
-                GraphViewExecutionOperator optionTraversalOp = this.traversalList[this.activeOptionTraversalIndex].Item3;
-                
-                while (optionTraversalOp.State() && (traversalRecord = optionTraversalOp.Next()) != null) {
-                    return traversalRecord;
-                }
-
-                this.activeOptionTraversalIndex++;
-                this.needsOptionSourceInit = true;
             }
 
             if (this.optionNoneTraversalOp != null)
             {
-                if (this.needsOptionSourceInit)
+                this.noneRawRecords.Add(input);
+            }
+        }
+        
+
+        public override RawRecord Next()
+        {
+            if (this.needInitialize)
+            {
+                Queue<RawRecord> inputs = new Queue<RawRecord>();
+                RawRecord inputRecord;
+                while (this.inputOp.State() && (inputRecord = this.inputOp.Next()) != null)
                 {
-                    this.PrepareOptionTraversalSource(ChooseWithOptionsOperator.noneBranchIndex);
-                    this.needsOptionSourceInit = false;
+                    RawRecord batchRawRecord = new RawRecord();
+                    batchRawRecord.Append(new StringField(inputs.Count.ToString(), JsonDataType.Int));
+                    batchRawRecord.Append(inputRecord);
+                    inputs.Enqueue(batchRawRecord);
+                }
+                
+                this.targetSource.ResetTableCache(inputs.ToList());
+                this.targetSubOp.ResetState();
+
+                RawRecord targetRecord;
+                while (this.targetSubOp.State() && (targetRecord = this.targetSubOp.Next()) != null)
+                {
+                    Debug.Assert(inputs.Peek().RetriveData(0).ToValue == targetRecord.RetriveData(0).ToValue,
+                        "The provided traversal of choose() does not map to a value.");
+                    this.ChooseOptionBranch(inputs.Dequeue().GetRange(1), targetRecord[1]);
                 }
 
-                while (this.optionNoneTraversalOp.State() && (traversalRecord = this.optionNoneTraversalOp.Next()) != null) {
-                    return traversalRecord;
+                Debug.Assert(!inputs.Any(), "The provided traversal of choose() does not map to a value.");
+
+                // put none option branch to the last of traversal list
+                if (this.optionNoneTraversalOp != null)
+                {
+                    this.traversalList.Add(new Tuple<FieldObject, List<RawRecord>, GraphViewExecutionOperator>(
+                        null,
+                        this.noneRawRecords,
+                        this.optionNoneTraversalOp));
                 }
+
+                this.needInitialize = false;
             }
 
-            this.Close();
+            while (this.State())
+            {
+                if (this.outputBuffer.Any())
+                {
+                    return this.outputBuffer.Dequeue();
+                }
+
+                if (this.currentOptionTraversalIndex < this.traversalList.Count)
+                {
+                    this.optionSource.ResetTableCache(this.traversalList[this.currentOptionTraversalIndex].Item2);
+                    GraphViewExecutionOperator op = this.traversalList[this.currentOptionTraversalIndex].Item3;
+                    RawRecord record;
+                    while (op.State() && (record = op.Next()) != null)
+                    {
+                        this.outputBuffer.Enqueue(record);
+                    }
+                    this.currentOptionTraversalIndex++;
+                }
+                else if (!this.outputBuffer.Any())
+                {
+                    this.Close();
+                    return null;
+                }
+            }
             return null;
         }
 
         public override void ResetState()
         {
             this.inputOp.ResetState();
-            this.optionSourceOp.ResetState();
-            this.needsOptionSourceInit = true;
-            this.activeOptionTraversalIndex = 0;
+            this.targetSource.ResetState();
+
+            this.currentOptionTraversalIndex = 0;
+
             this.noneRawRecords.Clear();
             this.optionNoneTraversalOp?.ResetState();
 
-            foreach (Tuple<ScalarFunction, Queue<RawRecord>, GraphViewExecutionOperator> tuple in this.traversalList)
+            this.optionSource.ResetState();
+            foreach (Tuple<FieldObject, List<RawRecord>, GraphViewExecutionOperator> tuple in this.traversalList)
             {
                 tuple.Item2.Clear();
                 tuple.Item3.ResetState();
             }
+            if (this.optionNoneTraversalOp != null)
+            {
+                this.traversalList.RemoveAt(-1);
+            }
+
+            this.outputBuffer.Clear();
+            this.needInitialize = true;
 
             this.Open();
         }

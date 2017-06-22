@@ -3332,13 +3332,21 @@ namespace GraphView
             WScalarSubquery targetSubquery = this.Parameters[0] as WScalarSubquery;
             Debug.Assert(targetSubquery != null, "targetSubquery != null");
 
-            ScalarFunction targetSubqueryFunc = targetSubquery.CompileToFunction(context, dbConnection);
-            ConstantSourceOperator tempSourceOp = new ConstantSourceOperator();
-            ContainerOperator optionSourceOp = new ContainerOperator(tempSourceOp);
+            ContainerEnumerator targetSource = new ContainerEnumerator();
+            QueryCompilationContext targetContext = new QueryCompilationContext(context);
+            targetContext.InBatchMode = true;
+            targetContext.OuterContextOp.SourceEnumerator = targetSource;
+            targetContext.AddField(GremlinKeyword.IndexTableName, GremlinKeyword.IndexColumnName, ColumnGraphType.Value, true);
+            GraphViewExecutionOperator targetSubqueryOp = targetSubquery.SubQueryExpr.Compile(targetContext, dbConnection);
 
+
+            ContainerEnumerator optionSource = new ContainerEnumerator();
             ChooseWithOptionsOperator chooseWithOptionsOp =
-                new ChooseWithOptionsOperator(context.CurrentExecutionOperator, targetSubqueryFunc, tempSourceOp,
-                    optionSourceOp);
+                new ChooseWithOptionsOperator(
+                    context.CurrentExecutionOperator,
+                    targetSource,
+                    targetSubqueryOp,
+                    optionSource);
 
             WSelectQueryBlock firstSelectQuery = null;
             for (int i = 1; i < this.Parameters.Count; i += 2)
@@ -3361,8 +3369,8 @@ namespace GraphView
                 QueryCompilationContext subcontext = new QueryCompilationContext(context);
                 subcontext.CarryOn = true;
                 subcontext.InBatchMode = context.InBatchMode;
+                subcontext.OuterContextOp.SourceEnumerator = optionSource;
                 GraphViewExecutionOperator optionTraversalOp = scalarSubquery.SubQueryExpr.Compile(subcontext, dbConnection);
-                subcontext.OuterContextOp.SourceEnumerator = optionSourceOp.GetEnumerator();
                 chooseWithOptionsOp.AddOptionTraversal(value?.CompileToFunction(context, dbConnection), optionTraversalOp);
             }
 
