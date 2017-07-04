@@ -243,8 +243,8 @@ namespace GraphView
                 while (doc != null)
                 {
                     var lineE = doc;
-                    //cmd.CommandText = lineE;
-                    //cmd.Execute();
+                    cmd.CommandText = lineE;
+                    cmd.Execute();
                     doc = insertNodeBuffer.Retrieve();
                     if (insertNodeBuffer.boundedBuffer.Count() == 0)
                     {

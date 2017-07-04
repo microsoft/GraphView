@@ -418,6 +418,8 @@ namespace GraphView
         public static int[] partitionLoad = new int[partitionNum];
         public static bool useGreedyPartitionWhenCreateDoc { get; set; } = false;
         public static bool useHashPartitionWhenCreateDoc { get; set; } = false;
+        public static bool useFakePartitionWhenCreateDoc { get; set; } = false;
+
         public int repartitionBatchRandomIterSize { get; set; } = 996;
         public static bool useIncRepartitionDoc { get; set; } = false;
         public int incRepartitionDocBatchSize = 2;
@@ -425,6 +427,21 @@ namespace GraphView
         public List<JObject> batchEdgeList = new List<JObject>();
         public static BulkInsertUtils bulkInsertUtil;
         public static Boolean useBulkInsert = false;
+
+        public JObject partitionFakeDataIn3Partitions(JObject docObject)
+        {
+            var id = docObject["id"].ToString();
+            var partitionNum = id.Split('-')[0];
+            docObject["_partition"] = partitionNum;
+            return docObject;
+        }
+
+        public JObject partitionFakeDataIn1Partition(JObject docObject)
+        {
+            docObject["_partition"] = 0;
+            return docObject;
+        }
+
         /// <summary>
         /// partition the document data
         /// The <paramref name="docObject"/> will be updated (Add the "id" field)
@@ -843,6 +860,11 @@ namespace GraphView
                 if (useHashPartitionWhenCreateDoc)
                 {
                     docObject = partitionDoucumentByHashPartition(docObject);
+                }
+
+                if(useFakePartitionWhenCreateDoc)
+                {
+                    docObject = partitionFakeDataIn3Partitions(docObject);
                 }
 
                 if (useIncRepartitionDoc)

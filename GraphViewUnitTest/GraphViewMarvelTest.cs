@@ -285,29 +285,29 @@ namespace GraphViewUnitTest
             Console.WriteLine("Test1");
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
                 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
-                "GroupMatch", "PartitionTestCit", GraphType.GraphAPIOnly, AbstractGremlinTest.TEST_USE_REVERSE_EDGE,
+                "GroupMatch", "CitHashPartition1000item", GraphType.GraphAPIOnly, AbstractGremlinTest.TEST_USE_REVERSE_EDGE,
                 AbstractGremlinTest.TEST_SPILLED_EDGE_THRESHOLD_VIAGRAPHAPI, AbstractGremlinTest.TEST_PARTITION_BY_KEY);
             connection.getMetricsOfGraphPartition();
             Console.WriteLine("Test2");
 
             GraphViewConnection connection1 = new GraphViewConnection("https://graphview.documents.azure.com:443/",
            "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
-           "GroupMatch", "PartitionTestCitRep1", GraphType.GraphAPIOnly, AbstractGremlinTest.TEST_USE_REVERSE_EDGE,
+           "GroupMatch", "CitGreedyPartition1000item", GraphType.GraphAPIOnly, AbstractGremlinTest.TEST_USE_REVERSE_EDGE,
            AbstractGremlinTest.TEST_SPILLED_EDGE_THRESHOLD_VIAGRAPHAPI, AbstractGremlinTest.TEST_PARTITION_BY_KEY);
             connection1.getMetricsOfGraphPartition();
             Console.WriteLine("Test3");
 
-            GraphViewConnection connection2 = new GraphViewConnection("https://graphview.documents.azure.com:443/",
-           "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
-           "GroupMatch", "PartitionTestCitRep2", GraphType.GraphAPIOnly, AbstractGremlinTest.TEST_USE_REVERSE_EDGE,
-           AbstractGremlinTest.TEST_SPILLED_EDGE_THRESHOLD_VIAGRAPHAPI, AbstractGremlinTest.TEST_PARTITION_BY_KEY);
-            connection2.getMetricsOfGraphPartition();
+  //          GraphViewConnection connection2 = new GraphViewConnection("https://graphview.documents.azure.com:443/",
+  //         "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+  //         "GroupMatch", "PartitionTestCitRep2", GraphType.GraphAPIOnly, AbstractGremlinTest.TEST_USE_REVERSE_EDGE,
+  //         AbstractGremlinTest.TEST_SPILLED_EDGE_THRESHOLD_VIAGRAPHAPI, AbstractGremlinTest.TEST_PARTITION_BY_KEY);
+  //          connection2.getMetricsOfGraphPartition();
 
-            GraphViewConnection connection3 = new GraphViewConnection("https://graphview.documents.azure.com:443/",
-  "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
-  "GroupMatch", "PartitionTestCitRepInc", GraphType.GraphAPIOnly, AbstractGremlinTest.TEST_USE_REVERSE_EDGE,
-  AbstractGremlinTest.TEST_SPILLED_EDGE_THRESHOLD_VIAGRAPHAPI, AbstractGremlinTest.TEST_PARTITION_BY_KEY);
-            connection3.getMetricsOfGraphPartition();
+  //          GraphViewConnection connection3 = new GraphViewConnection("https://graphview.documents.azure.com:443/",
+  //"MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+  //"GroupMatch", "PartitionTestCitRepInc", GraphType.GraphAPIOnly, AbstractGremlinTest.TEST_USE_REVERSE_EDGE,
+  //AbstractGremlinTest.TEST_SPILLED_EDGE_THRESHOLD_VIAGRAPHAPI, AbstractGremlinTest.TEST_PARTITION_BY_KEY);
+  //          connection3.getMetricsOfGraphPartition();
 
 //            GraphViewConnection connection4 = new GraphViewConnection("https://graphview.documents.azure.com:443/",
 //"MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
@@ -1115,13 +1115,13 @@ namespace GraphViewUnitTest
         [TestMethod]
         public void partitionPerformanceTestForHashPartition()
         {
-            partitionQueryTestCommon("PartitionTestCit");
+            partitionQueryTestCommon("CitHashPartition1000item");
         }
 
         [TestMethod]
         public void partitionPerformanceTestForGreedyPartition()
         {
-            partitionQueryTestCommon("PartitionTestCitRep2");
+            partitionQueryTestCommon("CitGreedyPartition1000item");
         }
 
         [TestMethod]
@@ -1210,6 +1210,142 @@ namespace GraphViewUnitTest
                 //    break;
                 //}
                 if (c > 4)
+                {
+                    var split = lineE.Split('\t');
+                    var src = split[0];
+                    var des = split[1];
+
+                    if (!nodeIdSet.Contains(src))
+                    {
+                        cmd.CommandText = "g.addV('id', '" + src + "').property('name', '" + src + "').next()";
+                        cmd.Execute();
+                        nodeIdSet.Add(src);
+                    }
+
+                    if (!nodeIdSet.Contains(des))
+                    {
+                        cmd.CommandText = "g.addV('id', '" + des + "').property('name', '" + des + "').next()";
+                        cmd.Execute();
+                        nodeIdSet.Add(des);
+                    }
+
+                    cmd.CommandText = "g.V('" + src + "').addE('appear').to(g.V('" + des + "')).next()";
+                    cmd.Execute();
+                }
+                else
+                {
+                    c++;
+                }
+            }
+            connection.getMetricsOfGraphPartition();
+        }
+        [TestMethod]
+        public void insertFakeDiffPartitionWorkload()
+        {
+            var edgeList = new List<String>();
+            // partitionData in 3 partitions
+            for(int i = 0; i < 5; i++)
+            {
+                // p1
+                for(int j = 0; j < 5; j++)
+                {
+                    edgeList.Add(0 + "-" + i + "\t" + 1 + "-" + j);
+                    // p2
+                    for(int k = 0; k < 5; k++)
+                    {
+                        // p3
+                        edgeList.Add(0 + "-" + i + "\t" + 1 + "-" + k);
+                        edgeList.Add(1 + "-" + j + "\t" + 2 + "-" + k);
+                        edgeList.Add(2 + "-" + k + "\t" + 0 + "-" + i);
+                    }
+                }
+            }
+
+            GraphViewConnection connection = GraphViewConnection.ResetGraphAPICollection("https://graphview.documents.azure.com:443/",
+     "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+     "GroupMatch", "CitFakeDiffPartition", AbstractGremlinTest.TEST_USE_REVERSE_EDGE, AbstractGremlinTest.TEST_SPILLED_EDGE_THRESHOLD_VIAGRAPHAPI, AbstractGremlinTest.TEST_PARTITION_BY_KEY);
+            connection.EdgeSpillThreshold = 1;
+            GraphViewConnection.useHashPartitionWhenCreateDoc = false;
+            GraphViewConnection.useFakePartitionWhenCreateDoc = true;
+            GraphViewConnection.useBulkInsert = true;
+            GraphViewCommand cmd = new GraphViewCommand(connection);
+            HashSet<String> nodeIdSet = new HashSet<String>();
+            // Add edge
+
+            int c = 1;
+            var linesE = edgeList;
+            foreach (var lineE in linesE)
+            {
+                if (c > 0)
+                {
+                    var split = lineE.Split('\t');
+                    var src = split[0];
+                    var des = split[1];
+
+                    if (!nodeIdSet.Contains(src))
+                    {
+                        cmd.CommandText = "g.addV('id', '" + src + "').property('name', '" + src + "').next()";
+                        cmd.Execute();
+                        nodeIdSet.Add(src);
+                    }
+
+                    if (!nodeIdSet.Contains(des))
+                    {
+                        cmd.CommandText = "g.addV('id', '" + des + "').property('name', '" + des + "').next()";
+                        cmd.Execute();
+                        nodeIdSet.Add(des);
+                    }
+
+                    cmd.CommandText = "g.V('" + src + "').addE('appear').to(g.V('" + des + "')).next()";
+                    cmd.Execute();
+                }
+                else
+                {
+                    c++;
+                }
+            }
+            connection.getMetricsOfGraphPartition();
+        }
+        [TestMethod]
+        public void insertFakeSamePartitionWorkload()
+        {
+            // partition data in 3 partitions
+
+            var edgeList = new List<String>();
+            // partitionData in 3 partitions
+            for (int i = 0; i < 5; i++)
+            {
+                // p1
+                for (int j = 0; j < 5; j++)
+                {
+                    edgeList.Add(0 + "-" + i + "    " + 0 + "-" + j);
+                    // p2
+                    for (int k = 0; k < 5; k++)
+                    {
+                        // p3
+                        edgeList.Add(0 + "-" + i + "    " + 0 + "-" + k);
+                        edgeList.Add(0 + "-" + j + "    " + 0 + "-" + k);
+                        edgeList.Add(0 + "-" + k + "    " + 0 + "-" + i);
+                    }
+                }
+            }
+
+            GraphViewConnection connection = GraphViewConnection.ResetGraphAPICollection("https://graphview.documents.azure.com:443/",
+  "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+  "GroupMatch", "CitFakeSamePartition", AbstractGremlinTest.TEST_USE_REVERSE_EDGE, AbstractGremlinTest.TEST_SPILLED_EDGE_THRESHOLD_VIAGRAPHAPI, AbstractGremlinTest.TEST_PARTITION_BY_KEY);
+            connection.EdgeSpillThreshold = 1;
+            GraphViewConnection.useHashPartitionWhenCreateDoc = false;
+            GraphViewConnection.useFakePartitionWhenCreateDoc = true;
+            GraphViewConnection.useBulkInsert = true;
+            GraphViewCommand cmd = new GraphViewCommand(connection);
+            HashSet<String> nodeIdSet = new HashSet<String>();
+            // Add edge
+            int c = 1;
+            var linesE = edgeList;
+            foreach (var lineE in linesE)
+            {
+
+                if (c > 0)
                 {
                     var split = lineE.Split('\t');
                     var src = split[0];

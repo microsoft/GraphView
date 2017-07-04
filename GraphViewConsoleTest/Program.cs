@@ -26,7 +26,10 @@ namespace GraphViewConsoleTest
 
             //Console.WriteLine("#######start PartitionTestCitRep2 test");
             //partitionQueryTestCommon("PartitionTestCitRep2");
-            insertCitDataBulkInsert();
+            //insertCitDataBulkInsert();
+            //insertCitHashPartitionByBulkInsert();
+            //insertCitGreedyPartitionByBulkInsert();
+            getStatistic();
             Console.ReadLine();
         }
 
@@ -147,6 +150,116 @@ namespace GraphViewConsoleTest
             connection.getMetricsOfGraphPartition();
         }
 
+        public static void insertCitHashPartitionByBulkInsert()
+        {
+            GraphViewConnection connection =
+            new GraphViewConnection("https://graphview.documents.azure.com:443/",
+               "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+               "GroupMatch", "CitHashPartition1000item", GraphType.GraphAPIOnly, false,
+               1, null);
+
+            //GraphViewConnection connection =
+            //new GraphViewConnection("https://graphview.documents.azure.com:443/",
+            //   "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+            //   "GroupMatch", "MarvelTest", GraphType.GraphAPIOnly, false,
+            //   1, null);
+            connection.EdgeSpillThreshold = 1;
+            GraphViewConnection.useHashPartitionWhenCreateDoc = true;
+            GraphViewConnection.useBulkInsert = true;
+            GraphViewCommand cmd = new GraphViewCommand(connection);
+            HashSet<String> nodeIdSet = new HashSet<String>();
+
+            int c = 1;
+            var linesE = File.ReadLines("D:\\dataset\\thsinghua_dataset\\cit_network\\cit-HepTh.txt\\Cit-HepTh.txt");
+            BulkInsertUtils blk = new BulkInsertUtils();
+            blk.threadNum = 10;
+            blk.initBulkInsertUtilsForParseData(GraphViewConnection.partitionNum, linesE.Count(), connection);
+            int i = 0;
+            foreach (var lineE in linesE)
+            {
+                if (i > 1000)
+                {
+                    break;
+                }
+                else
+                {
+                    i++;
+                }
+                if (c > 4)
+                {
+                    blk.stringBufferList.Add(lineE);
+                    Console.WriteLine(c);
+                    c++;
+                }
+                else
+                {
+                    c++;
+                }
+            }
+            blk.startParseThread();
+            blk.parseDataCountDownLatch.Await();
+            blk.initAndStartInsertNodeStringCMD();
+            blk.insertNodeCountDownLatch.Await();
+            blk.initAndStartInsertEdgeStringCMD();
+            GraphViewConnection.bulkInsertUtil.startParseThread();
+            connection.getMetricsOfGraphPartition();
+        }
+
+        public static void insertCitGreedyPartitionByBulkInsert()
+        {
+            GraphViewConnection connection =
+            new GraphViewConnection("https://graphview.documents.azure.com:443/",
+               "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+               "GroupMatch", "CitGreedyPartition1000item", GraphType.GraphAPIOnly, false,
+               1, null);
+
+            //GraphViewConnection connection =
+            //new GraphViewConnection("https://graphview.documents.azure.com:443/",
+            //   "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+            //   "GroupMatch", "MarvelTest", GraphType.GraphAPIOnly, false,
+            //   1, null);
+            connection.EdgeSpillThreshold = 1;
+            GraphViewConnection.useHashPartitionWhenCreateDoc = false;
+            GraphViewConnection.useGreedyPartitionWhenCreateDoc = true;
+            GraphViewConnection.useBulkInsert = true;
+            GraphViewCommand cmd = new GraphViewCommand(connection);
+            HashSet<String> nodeIdSet = new HashSet<String>();
+
+            int c = 1;
+            var linesE = File.ReadLines("D:\\dataset\\thsinghua_dataset\\cit_network\\cit-HepTh.txt\\Cit-HepTh.txt");
+            BulkInsertUtils blk = new BulkInsertUtils();
+            blk.threadNum = 10;
+            blk.initBulkInsertUtilsForParseData(GraphViewConnection.partitionNum, linesE.Count(), connection);
+            int i = 0;
+            foreach (var lineE in linesE)
+            {
+                if (i > 1000)
+                {
+                    break;
+                }
+                else
+                {
+                    i++;
+                }
+                if (c > 4)
+                {
+                    blk.stringBufferList.Add(lineE);
+                    Console.WriteLine(c);
+                    c++;
+                }
+                else
+                {
+                    c++;
+                }
+            }
+            blk.startParseThread();
+            blk.parseDataCountDownLatch.Await();
+            blk.initAndStartInsertNodeStringCMD();
+            blk.insertNodeCountDownLatch.Await();
+            blk.initAndStartInsertEdgeStringCMD();
+            GraphViewConnection.bulkInsertUtil.startParseThread();
+            connection.getMetricsOfGraphPartition();
+        }
         public static void insertCitDataBulkInsert()
         {
             //          GraphViewConnection connection = GraphViewConnection.ResetGraphAPICollection("https://graphview.documents.azure.com:443/",
@@ -188,26 +301,6 @@ namespace GraphViewConsoleTest
                 if (c > 4)
                 {
                     blk.stringBufferList.Add(lineE);
-                    //var split = lineE.Split('\t');
-                    //var src = split[0];
-                    //var des = split[1];
-
-                    //if (!nodeIdSet.Contains(src))
-                    //{
-                    //    cmd.CommandText = "g.addV('id', '" + src + "').property('name', '" + src + "').next()";
-                    //    cmd.Execute();
-                    //    nodeIdSet.Add(src);
-                    //}
-
-                    //if (!nodeIdSet.Contains(des))
-                    //{
-                    //    cmd.CommandText = "g.addV('id', '" + des + "').property('name', '" + des + "').next()";
-                    //    cmd.Execute();
-                    //    nodeIdSet.Add(des);
-                    //}
-
-                    //cmd.CommandText = "g.V('" + src + "').addE('appear').to(g.V('" + des + "')).next()";
-                    //cmd.Execute();
                     Console.WriteLine(c);
                     c++;
                 }
@@ -223,6 +316,27 @@ namespace GraphViewConsoleTest
             blk.initAndStartInsertEdgeStringCMD();
             GraphViewConnection.bulkInsertUtil.startParseThread();
             connection.getMetricsOfGraphPartition();
+        }
+
+        public static void getStatistic()
+        {
+            Console.WriteLine("start statistic 1");
+            GraphViewConnection connection1 =
+        new GraphViewConnection("https://graphview.documents.azure.com:443/",
+           "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+           "GroupMatch", "CitHashPartition1000item", GraphType.GraphAPIOnly, false,
+           1, null);
+            connection1.getMetricsOfGraphPartition();
+
+            Console.WriteLine("end statistic 1");
+            Console.WriteLine("start statistic 2");
+            GraphViewConnection connection2 =
+        new GraphViewConnection("https://graphview.documents.azure.com:443/",
+           "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+           "GroupMatch", "CitGreedyPartition1000item", GraphType.GraphAPIOnly, false,
+           1, null);
+            connection2.getMetricsOfGraphPartition();
+            Console.WriteLine("end statistic 2");
         }
     }
 }
