@@ -43,7 +43,8 @@ namespace GraphView
             string docId = (string)docObject[KW_DOC_ID];
             string etag = (string)docObject[KW_DOC_ETAG];
             Debug.Assert(docId != null);
-            Debug.Assert(etag != null);
+            // old
+            //Debug.Assert(etag != null);
 
             if (!this._currentEtags.ContainsKey(docId))
             {

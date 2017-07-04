@@ -1736,7 +1736,7 @@ namespace GraphView
                 this.Partition = null;
             }
             else {
-                Debug.Assert(connection.CollectionType == CollectionType.PARTITIONED);
+                //Debug.Assert(connection.CollectionType == CollectionType.PARTITIONED);
                 this.Partition = connection.GetDocumentPartition(vertexObject);
             }
 

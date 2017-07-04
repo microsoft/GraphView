@@ -591,6 +591,7 @@ namespace GraphViewUnitTest
             connection2.repartitionTheCollection(connection1);
             connection2.getMetricsOfGraphPartition();
         }
+
         [TestMethod]
         public void randomCitPartitionTest()
         {
@@ -608,7 +609,7 @@ namespace GraphViewUnitTest
             foreach (var lineE in linesE)
             {
                 edgeCount--;
-                if(edgeCount < 0)
+                if (edgeCount < 0)
                 {
                     break;
                 }
@@ -617,15 +618,15 @@ namespace GraphViewUnitTest
                     var split = lineE.Split('\t');
                     var src = split[0];
                     var des = split[1];
-                    
-                    if(!nodeIdSet.Contains(src))
+
+                    if (!nodeIdSet.Contains(src))
                     {
                         cmd.CommandText = "g.addV('id', '" + src + "').property('name', '" + src + "').next()";
                         cmd.Execute();
                         nodeIdSet.Add(src);
                     }
 
-                    if(!nodeIdSet.Contains(des))
+                    if (!nodeIdSet.Contains(des))
                     {
                         cmd.CommandText = "g.addV('id', '" + des + "').property('name', '" + des + "').next()";
                         cmd.Execute();
@@ -792,7 +793,7 @@ namespace GraphViewUnitTest
             connection2.repartitionTheCollection(connection1);
             connection2.getMetricsOfGraphPartition();
         }
-
+        
         [TestMethod]
         public void GraphViewFakePartitionDataInsertTest()
         {
@@ -1055,5 +1056,188 @@ namespace GraphViewUnitTest
             }
         }
 
+        public void partitionQueryTestCommon(String collectionName)
+        {
+            // (1) FindNeighbours (FN): finds the neighbours of all nodes.
+            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
+               "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+               "GroupMatch", collectionName, GraphType.GraphAPIOnly, AbstractGremlinTest.TEST_USE_REVERSE_EDGE,
+               AbstractGremlinTest.TEST_SPILLED_EDGE_THRESHOLD_VIAGRAPHAPI, null);
+            GraphViewCommand graph = new GraphViewCommand(connection);
+            //graph.OutputFormat = OutputFormat.GraphSON;
+            DateTime start1 = DateTime.Now;
+            var results = graph.g().V("ID_3").Out().Out().Next();
+
+            foreach (var result in results)
+            {
+                Console.WriteLine(result);
+            }
+            DateTime end1 = DateTime.Now;
+            Console.WriteLine("(1)" + (end1.Millisecond - start1.Millisecond) + "ms");
+
+            //// (2) FindAdjacentNodes (FA): finds the 3-hop adjacent
+            //DateTime start2 = DateTime.Now;
+            //var results = graph.g().V("9304045").Out().Out().Next();
+
+            //foreach (var result in results)
+            //{
+            //    Console.WriteLine(result);
+            //}
+            //DateTime end2 = DateTime.Now;
+            //Console.WriteLine("(2)" + (end2.Millisecond - start2.Millisecond) + "ms");
+            // (3) Shortest Path: FindShortestPath (FS): finds the shortest path between the first node and 100 randomly picked nodes.
+
+            //results = graph.g().V().Next(); // change the the result format or just hack a test suite
+            //HashSet<int> index = new HashSet<int> { 1, 15 };
+            //List<String> nodes = new List<string>();
+            //int i = 0;
+            //foreach (var result in results)
+            //{
+            //    i++;
+            //    if (index.Contains(i))
+            //    {
+            //        nodes.Add(result);
+            //    }
+            //}
+
+            //DateTime start3 = DateTime.Now;
+            //String src = nodes[0];
+            //nodes.RemoveAt(0);
+            //foreach (var node in nodes)
+            //{
+            //    String des = node;
+            //    ShortestPathTest.GetShortestPath(src, des, graph);
+            //}
+            //DateTime end3 = DateTime.Now;
+            //Console.WriteLine("(3)" + (end3.Millisecond - start3.Millisecond) + "ms");
+        }
+
+        [TestMethod]
+        public void partitionPerformanceTestForHashPartition()
+        {
+            partitionQueryTestCommon("PartitionTestCit");
+        }
+
+        [TestMethod]
+        public void partitionPerformanceTestForGreedyPartition()
+        {
+            partitionQueryTestCommon("PartitionTestCitRep2");
+        }
+
+        [TestMethod]
+        public void partitionPerformanceMarvel()
+        {
+            partitionQueryTestCommon("MarvelTest");
+        }
+
+
+
+        [TestMethod]
+        public void citDataHashPartitionTestAllData()
+        {
+            GraphViewConnection connection = GraphViewConnection.ResetGraphAPICollection("https://graphview.documents.azure.com:443/",
+     "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+     "GroupMatch", "CitAllDataHashPartition", AbstractGremlinTest.TEST_USE_REVERSE_EDGE, AbstractGremlinTest.TEST_SPILLED_EDGE_THRESHOLD_VIAGRAPHAPI, AbstractGremlinTest.TEST_PARTITION_BY_KEY);
+            connection.EdgeSpillThreshold = 1;
+            GraphViewConnection.useHashPartitionWhenCreateDoc = true;
+            GraphViewConnection.useBulkInsert = true;
+            GraphViewCommand cmd = new GraphViewCommand(connection);
+            HashSet<String> nodeIdSet = new HashSet<String>();
+            // Add edge
+            //int edgeCount = 1000;
+
+            int c = 1;
+            var linesE = File.ReadLines("D:\\dataset\\thsinghua_dataset\\cit_network\\cit-HepTh.txt\\Cit-HepTh.txt");
+            foreach (var lineE in linesE)
+            {
+                //edgeCount--;
+                //if (edgeCount < 0)
+                //{
+                //    break;
+                //}
+                if (c > 4)
+                {
+                    var split = lineE.Split('\t');
+                    var src = split[0];
+                    var des = split[1];
+
+                    if (!nodeIdSet.Contains(src))
+                    {
+                        cmd.CommandText = "g.addV('id', '" + src + "').property('name', '" + src + "').next()";
+                        cmd.Execute();
+                        nodeIdSet.Add(src);
+                    }
+
+                    if (!nodeIdSet.Contains(des))
+                    {
+                        cmd.CommandText = "g.addV('id', '" + des + "').property('name', '" + des + "').next()";
+                        cmd.Execute();
+                        nodeIdSet.Add(des);
+                    }
+
+                    cmd.CommandText = "g.V('" + src + "').addE('appear').to(g.V('" + des + "')).next()";
+                    cmd.Execute();
+                }
+                else
+                {
+                    c++;
+                }
+            }
+            connection.getMetricsOfGraphPartition();
+        }
+
+        [TestMethod]
+        public void citDataGreedyPartitionTestAllData()
+        {
+            GraphViewConnection connection = GraphViewConnection.ResetGraphAPICollection("https://graphview.documents.azure.com:443/",
+     "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+     "GroupMatch", "CitAllDataGreedyPartition", AbstractGremlinTest.TEST_USE_REVERSE_EDGE, AbstractGremlinTest.TEST_SPILLED_EDGE_THRESHOLD_VIAGRAPHAPI, AbstractGremlinTest.TEST_PARTITION_BY_KEY);
+            connection.EdgeSpillThreshold = 1;
+            GraphViewConnection.useGreedyPartitionWhenCreateDoc = true;
+            GraphViewConnection.useBulkInsert = true;
+            GraphViewCommand cmd = new GraphViewCommand(connection);
+            HashSet<String> nodeIdSet = new HashSet<String>();
+            // Add edge
+            //int edgeCount = 1000;
+
+            int c = 1;
+            var linesE = File.ReadLines("D:\\dataset\\thsinghua_dataset\\cit_network\\cit-HepTh.txt\\Cit-HepTh.txt");
+            foreach (var lineE in linesE)
+            {
+                //edgeCount--;
+                //if (edgeCount < 0)
+                //{
+                //    break;
+                //}
+                if (c > 4)
+                {
+                    var split = lineE.Split('\t');
+                    var src = split[0];
+                    var des = split[1];
+
+                    if (!nodeIdSet.Contains(src))
+                    {
+                        cmd.CommandText = "g.addV('id', '" + src + "').property('name', '" + src + "').next()";
+                        cmd.Execute();
+                        nodeIdSet.Add(src);
+                    }
+
+                    if (!nodeIdSet.Contains(des))
+                    {
+                        cmd.CommandText = "g.addV('id', '" + des + "').property('name', '" + des + "').next()";
+                        cmd.Execute();
+                        nodeIdSet.Add(des);
+                    }
+
+                    cmd.CommandText = "g.V('" + src + "').addE('appear').to(g.V('" + des + "')).next()";
+                    cmd.Execute();
+                }
+                else
+                {
+                    c++;
+                }
+            }
+            connection.getMetricsOfGraphPartition();
+        }
     }
 }

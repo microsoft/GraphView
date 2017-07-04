@@ -79,7 +79,11 @@ namespace GraphView
         public override IEnumerator<Tuple<VertexField, RawRecord>> GetVerticesAndEdgesViaVertices(JsonQuery vertexQuery)
         {
             string queryScript = vertexQuery.ToString(DatabaseType.DocumentDB);
-            IEnumerable<dynamic> items = this.Connection.ExecuteQuery(queryScript);
+            // old
+            //IEnumerable<dynamic> items = this.Connection.ExecuteQuery(queryScript);
+            // new yj
+            var items = this.Connection.ExecuteQuery(queryScript).ToList<dynamic>();
+            // new
             List<string> nodeProperties = new List<string>(vertexQuery.NodeProperties);
             List<string> edgeProperties = new List<string>(vertexQuery.EdgeProperties);
 

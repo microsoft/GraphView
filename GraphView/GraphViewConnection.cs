@@ -72,7 +72,7 @@ namespace GraphView
         /// <summary>
         /// Whether to generate "id" for edgeObject
         /// </summary>
-        public bool GenerateEdgeId { get; } = true;
+        public bool GenerateEdgeId { get; } = false;
 
         /// <summary>
         /// Spill if how many edges are in a edge-document?
@@ -81,15 +81,31 @@ namespace GraphView
 
 
         internal VertexObjectCache VertexCache { get; }
+        //internal VertexObjectCache VertexCache { get; }
 
+        // new yj
+        private Object vertexCacheLock = new Object();
+        // make the method as async, not block at this method!
+        public async void updateVertexCacheEtag(Document doc)
+        {   // keep the cache consist
+            lock (vertexCacheLock)
+            {
+                VertexCache.UpdateCurrentEtag(doc);
+            }
+        }
+        // new
         internal string Identifier { get; }
 
 
         private readonly Uri _docDBDatabaseUri, _docDBCollectionUri;
         private bool _disposed;
-
-        private DocumentClient DocDBClient { get; }  // Don't expose DocDBClient to outside!
-
+        private DocumentClient DocDBClient { get; }  // Don't expose DocDBClient to outside!                                            // new yj
+        // new yj
+        public DocumentClient getDocDBClient()
+        {
+            return DocDBClient;
+        }
+        // new
         internal CollectionType CollectionType { get; private set; }
 
         /// <summary>
@@ -261,8 +277,8 @@ namespace GraphView
 
                 if (this.PartitionPath == $"/{KW_DOC_PARTITION}")
                 {  // Partitioned, created via GraphAPI
-                    Debug.Assert(partitionByKeyIfViaGraphAPI != null);
-                    Debug.Assert(graphType == GraphType.GraphAPIOnly);
+                    //Debug.Assert(partitionByKeyIfViaGraphAPI != null);
+                    //Debug.Assert(graphType == GraphType.GraphAPIOnly);
                     this.RealPartitionKey = partitionByKeyIfViaGraphAPI;
                 }
                 else
@@ -292,7 +308,13 @@ namespace GraphView
             this.VertexCache = new VertexObjectCache(this);
 
             this.EdgeSpillThreshold = edgeSpillThreshold ?? 0;
-    }
+            // new yj
+            if (bulkInsertUtil == null)
+            {
+                bulkInsertUtil = new BulkInsertUtils();
+                bulkInsertUtil.initBulkInsertUtilsForCreateDoc(partitionNum, 10000, this);
+            }
+        }
 
 
     internal DbPortal CreateDatabasePortal()
@@ -392,19 +414,30 @@ namespace GraphView
         }
 
 
-        public static int partitionNum { get; set; } = 100;
+        public static int partitionNum { get; set; } = 10;
         public static int[] partitionLoad = new int[partitionNum];
-        public bool usePartitionWhenCreateDoc { get; set; } = true;
+        public static bool useGreedyPartitionWhenCreateDoc { get; set; } = false;
+        public static bool useHashPartitionWhenCreateDoc { get; set; } = false;
         public int repartitionBatchRandomIterSize { get; set; } = 996;
         public static bool useIncRepartitionDoc { get; set; } = false;
         public int incRepartitionDocBatchSize = 2;
         public static int tempInsertedDocumentBatchSize = 0;
         public List<JObject> batchEdgeList = new List<JObject>();
+        public static BulkInsertUtils bulkInsertUtil;
+        public static Boolean useBulkInsert = false;
         /// <summary>
         /// partition the document data
         /// The <paramref name="docObject"/> will be updated (Add the "id" field)
         /// </summary>
         /// <param name="docObject"></param>
+        public JObject partitionDoucumentByHashPartition(JObject docObject)
+        {
+            Random rnd = new Random();
+            var edgePartition = rnd.Next() % partitionNum;
+            docObject["_partition"] = edgePartition;
+            partitionLoad[Convert.ToInt32(edgePartition)]++;
+            return docObject;
+        }
         public JObject partitionDocumentByGreedyVertexCut(JObject docObject)
         {
             try
@@ -480,7 +513,7 @@ namespace GraphView
             int docCount = 0;
             //int edgeCount = 0;
             int vertexCount = 0;
-            Console.WriteLine("Partititon: Count:");
+            Console.WriteLine(this.DocDBCollectionId + " Partititon: Count:");
             for (int i = 0; i < partitionNum; i++)
             {
                 List<dynamic> result = ExecuteQuery("SELECT * FROM Node where Node._partition = \"" + i + "\"").ToList();
@@ -492,7 +525,7 @@ namespace GraphView
             double average = partitionDocCount.Average();
             double sumOfSquaresOfDifferences = partitionDocCount.Select(val => (val - average) * (val - average)).Sum();
             double sd = Math.Sqrt(sumOfSquaresOfDifferences / partitionDocCount.Length);
-            Console.WriteLine("Partition Doc Count STDV is " + sd);
+            Console.WriteLine(this.DocDBCollectionId + " Partition Doc Count STDV is " + sd);
 
             // (2) Get Graph Clustering metrics: VertexCut ratio
             List<dynamic> edgeList = ExecuteQuery("SELECT * FROM Node where Node._isEdgeDoc=true").ToList();
@@ -522,10 +555,10 @@ namespace GraphView
             }
 
             vertexCount = docCount - edgeCount;
-            Console.WriteLine("Vertex cut ratio" + ((double)vertexCut / (2 * (double)edgeCount)));
-            Console.WriteLine("Doc Count: " + docCount);
-            Console.WriteLine("Edge Count: " + edgeCount);
-            Console.WriteLine("Vertex Count: " + vertexCount);
+            Console.WriteLine(this.DocDBCollectionId + " Vertex cut ratio" + ((double)vertexCut / (2 * (double)edgeCount)));
+            Console.WriteLine(this.DocDBCollectionId + " Doc Count: " + docCount);
+            Console.WriteLine(this.DocDBCollectionId + " Edge Count: " + edgeCount);
+            Console.WriteLine(this.DocDBCollectionId + " Vertex Count: " + vertexCount);
         }
 
         /// <summary>
@@ -663,7 +696,8 @@ namespace GraphView
         public void repartitionTheCollection(GraphViewConnection srcConnection)
         {
             Random rnd = new Random();
-            usePartitionWhenCreateDoc = false;
+            useGreedyPartitionWhenCreateDoc = false;
+            useHashPartitionWhenCreateDoc = false;
             List<dynamic> edgeList = srcConnection.ExecuteQuery("SELECT * FROM Node where Node._isEdgeDoc=true").ToList();
             List<JObject> edgeBatchList = new List<JObject>();
             int tempColCount = 0;
@@ -781,6 +815,7 @@ namespace GraphView
             }
         }
 
+
         public void repartitionTheCollectionInsideTheCollection(List<JObject> edgeList)
         {
             partitionTheEdgeList(edgeList, this, this, true);
@@ -792,46 +827,159 @@ namespace GraphView
         /// <param name="docObject"></param>
         internal async Task<string> CreateDocumentAsync(JObject docObject)
         {
-            Debug.Assert(docObject != null, "The newly created document should not be null");
-            Debug.Assert(docObject[KW_DOC_ID] != null, $"The newly created document should specify '{KW_DOC_ID}' field");
-            //Debug.Assert(docObject[KW_DOC_PARTITION] != null, $"The newly created document should specify '{KW_DOC_PARTITION}' field");
-
-            // new yj
-            if(usePartitionWhenCreateDoc)
+            try
             {
-                docObject = partitionDocumentByGreedyVertexCut(docObject);
-            }
 
-            if(useIncRepartitionDoc)
-            {
-                var isEdgeDoc = docObject["_isEdgeDoc"];
-                // For edge doc 
-                if (isEdgeDoc != null && Convert.ToBoolean(isEdgeDoc.ToString()))
+                Debug.Assert(docObject != null, "The newly created document should not be null");
+                Debug.Assert(docObject[KW_DOC_ID] != null, $"The newly created document should specify '{KW_DOC_ID}' field");
+                //Debug.Assert(docObject[KW_DOC_PARTITION] != null, $"The newly created document should specify '{KW_DOC_PARTITION}' field");
+
+                // new yj
+                if (useGreedyPartitionWhenCreateDoc)
                 {
-                    batchEdgeList.Add(docObject);
-                    tempInsertedDocumentBatchSize++;
+                    docObject = partitionDocumentByGreedyVertexCut(docObject);
                 }
 
-                if (tempInsertedDocumentBatchSize > incRepartitionDocBatchSize)
+                if (useHashPartitionWhenCreateDoc)
                 {
-                    repartitionTheCollectionInsideTheCollection(batchEdgeList);
-                    batchEdgeList.Clear();
-                    tempInsertedDocumentBatchSize = 0;
+                    docObject = partitionDoucumentByHashPartition(docObject);
                 }
+
+                if (useIncRepartitionDoc)
+                {
+                    var isEdgeDoc = docObject["_isEdgeDoc"];
+                    // For edge doc 
+                    if (isEdgeDoc != null && Convert.ToBoolean(isEdgeDoc.ToString()))
+                    {
+                        batchEdgeList.Add(docObject);
+                        tempInsertedDocumentBatchSize++;
+                    }
+
+                    if (tempInsertedDocumentBatchSize > incRepartitionDocBatchSize)
+                    {
+                        repartitionTheCollectionInsideTheCollection(batchEdgeList);
+                        batchEdgeList.Clear();
+                        tempInsertedDocumentBatchSize = 0;
+                    }
+                }
+
+                // new yj
+                //if (useBulkInsert)
+                //{
+                //    bulkInsertUtil.processDoc(this._docDBCollectionUri, docObject, this);
+                //}
+                //else
+                //{
+                // new yj
+
+                var docTemp = ExecuteQuery("SELECT * FROM Node where Node.id=\"" + docObject["id"] + "\"").ToList();
+                if (docTemp.Count == 0)
+                {
+                // new yj
+                //Document createdDocument = await this.DocDBClient.CreateDocumentAsync(this._docDBCollectionUri, docObject);
+                Document response = await ExecuteWithRetriesAsync(this.DocDBClient, () => this.DocDBClient.CreateDocumentAsync(this._docDBCollectionUri, docObject));
+                var createdDocument = response;
+                Debug.Assert((string)docObject[KW_DOC_ID] == createdDocument.Id);
+                docObject[KW_DOC_ETAG] = createdDocument.ETag;
+                this.VertexCache.UpdateCurrentEtag(createdDocument);
+                // new
+                Console.WriteLine(createdDocument.Id);
+                }
+                //}
+                //
+                // Save the created document's etag
+                //
+                //docObject[KW_DOC_ETAG] = createdDocument.ETag;
+                //this.VertexCache.UpdateCurrentEtag(createdDocument);
+                //return createdDocument.Id;
             }
-            // new yj
-            Document createdDocument = await this.DocDBClient.CreateDocumentAsync(this._docDBCollectionUri, docObject);
-            Debug.Assert((string)docObject[KW_DOC_ID] == createdDocument.Id);
-
-            //
-            // Save the created document's etag
-            //
-            docObject[KW_DOC_ETAG] = createdDocument.ETag;
-            this.VertexCache.UpdateCurrentEtag(createdDocument);
-
-            return createdDocument.Id;
+            catch (Exception ae)
+            {
+                Console.WriteLine(ae.StackTrace);
+            }
+            return docObject[KW_DOC_ID].ToString();
         }
 
+        /// <summary>
+        /// Execute the function with retries on throttle
+        /// </summary>
+        /// <typeparam name="V"></typeparam>
+        /// <param name="client"></param>
+        /// <param name="function"></param>
+        /// <returns></returns>
+        private static async Task<V> ExecuteWithRetriesAsync<V>(DocumentClient client, Func<Task<V>> function)
+        {
+            TimeSpan sleepTime = TimeSpan.Zero;
+
+            while (true)
+            {
+                try
+                {
+                    return await function();
+                }
+                catch (DocumentClientException de)
+                {
+                    if ((int)de.StatusCode != 429)
+                    {
+                        throw;
+                    }
+                    sleepTime = de.RetryAfter;
+                }
+                catch (AggregateException ae)
+                {
+                    if (!(ae.InnerException is DocumentClientException))
+                    {
+                        throw;
+                    }
+
+                    DocumentClientException de = (DocumentClientException)ae.InnerException;
+                    if ((int)de.StatusCode != 429)
+                    {
+                        throw;
+                    }
+                    sleepTime = de.RetryAfter;
+                }
+
+                await Task.Delay(sleepTime);
+            }
+        }
+
+        private static V ExecuteWithRetriesSync<V>(DocumentClient client, Func<V> function)
+        {
+            TimeSpan sleepTime = TimeSpan.Zero;
+
+            while (true)
+            {
+                try
+                {
+                    return function();
+                }
+                catch (DocumentClientException de)
+                {
+                    if ((int)de.StatusCode != 429)
+                    {
+                        //throw;
+                    }
+                    sleepTime = de.RetryAfter;
+                }
+                catch (AggregateException ae)
+                {
+                    if (!(ae.InnerException is DocumentClientException))
+                    {
+                        //throw;
+                    }
+
+                    DocumentClientException de = (DocumentClientException)ae.InnerException;
+                    if ((int)de.StatusCode != 429)
+                    {
+                        //throw;
+                    }
+                    sleepTime = de.RetryAfter;
+                }
+
+                Task.Delay(sleepTime);
+            }
+        }
         /// <summary>
         /// Use HashSet but not IEnumerable here to ensure that there are no two
         /// docObject sharing the same reference, which causes adding "id" field to
@@ -973,7 +1121,7 @@ namespace GraphView
             }
 
             Debug.Assert(token is JValue);
-            Debug.Assert(((JValue)token).Type == JTokenType.String);
+            //Debug.Assert(((JValue)token).Type == JTokenType.String);
             return (string)token;
         }
 
@@ -1010,23 +1158,33 @@ namespace GraphView
 
         internal IEnumerable<dynamic> ExecuteQuery(string queryScript, FeedOptions queryOptions = null)
         {
-            if (queryOptions == null)
+            try
             {
-                queryOptions = new FeedOptions
+                if (queryOptions == null)
                 {
-                    MaxItemCount = -1,
-                    EnableScanInQuery = true,
-                };
-                if (this.CollectionType == CollectionType.PARTITIONED)
-                {
-                    queryOptions.EnableCrossPartitionQuery = true;
+                    queryOptions = new FeedOptions
+                    {
+                        MaxItemCount = -1,
+                        EnableScanInQuery = true,
+                    };
+                    if (this.CollectionType == CollectionType.PARTITIONED)
+                    {
+                        queryOptions.EnableCrossPartitionQuery = true;
+                    }
                 }
+                Console.WriteLine(queryScript);
+                //return this.DocDBClient.CreateDocumentQuery(
+                //    this._docDBCollectionUri,
+                //    queryScript,
+                //    queryOptions);
+                // new
+                var result = ExecuteWithRetriesSync(this.DocDBClient, () => this.DocDBClient.CreateDocumentQuery(this._docDBCollectionUri, queryScript, queryOptions));
+                return result;
+            } catch (Exception e)
+            {
+                Console.WriteLine(e);
+                throw e;
             }
-
-            return this.DocDBClient.CreateDocumentQuery(
-                this._docDBCollectionUri,
-                queryScript,
-                queryOptions);
         }
 
         internal JObject ExecuteQueryUnique(string queryScript, FeedOptions queryOptions = null)

@@ -24,6 +24,7 @@
     <WarningLevel>4</WarningLevel>
     <RunCodeAnalysis>false</RunCodeAnalysis>
     <NoWarn>3008,0162,0169,0219,0414,0649</NoWarn>
+    <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
@@ -63,6 +64,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="BulkInsertUtils.cs" />
     <Compile Include="CollectionType.cs" />
     <Compile Include="GraphViewDebugHelper.cs" />
     <Compile Include="GraphViewExecutionRuntime\CollectionOperator.cs" />

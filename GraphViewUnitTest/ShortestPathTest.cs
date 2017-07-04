@@ -62,7 +62,7 @@ namespace GraphViewUnitTest
             var result3 = GetShortestPath(src3, des3, graph);
             Assert.AreEqual(result3, 1);
         }
-        public int GetShortestPath(String src, String des, GraphViewCommand graph)
+        public static int GetShortestPath(String src, String des, GraphViewCommand graph)
         {
             Queue<String> vertexIdQ1 = new Queue<String>();
             Queue<String> vertexIdQ2 = new Queue<String>();
