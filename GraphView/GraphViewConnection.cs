@@ -419,6 +419,7 @@ namespace GraphView
         public static bool useGreedyPartitionWhenCreateDoc { get; set; } = false;
         public static bool useHashPartitionWhenCreateDoc { get; set; } = false;
         public static bool useFakePartitionWhenCreateDoc { get; set; } = false;
+        public static bool useFakePartitionWhenCreateDocIn1Partition { get; set; } = false;
 
         public int repartitionBatchRandomIterSize { get; set; } = 996;
         public static bool useIncRepartitionDoc { get; set; } = false;
@@ -428,18 +429,35 @@ namespace GraphView
         public static BulkInsertUtils bulkInsertUtil;
         public static Boolean useBulkInsert = false;
 
-        public JObject partitionFakeDataIn3Partitions(JObject docObject)
+        public JObject partitionFakeDataInPartitions(JObject docObject)
         {
-            var id = docObject["id"].ToString();
-            var partitionNum = id.Split('-')[0];
-            docObject["_partition"] = partitionNum;
-            return docObject;
-        }
-
-        public JObject partitionFakeDataIn1Partition(JObject docObject)
-        {
-            docObject["_partition"] = 0;
-            return docObject;
+            if (useFakePartitionWhenCreateDocIn1Partition)
+            {
+                docObject["_partition"] = "0";
+                return docObject;
+            }
+            else
+            {
+                var isEdgeDoc = docObject["_isEdgeDoc"];
+                // (1) For edge doc 
+                if (isEdgeDoc != null && Convert.ToBoolean(isEdgeDoc.ToString()))
+                {
+                    // is edge
+                    var srcId = docObject["_vertex_id"].ToString();
+                    //var edge = docObject["_edge"][0];
+                    //var desId = edge["_sinkV"];
+                    var partitionNum = srcId.Split('-')[0];
+                    docObject["_partition"] = partitionNum;
+                    return docObject;
+                }
+                else
+                {   // is vertex
+                    var id = docObject["id"].ToString();
+                    var partitionNum = id.Split('-')[0];
+                    docObject["_partition"] = partitionNum;
+                    return docObject;
+                }
+            }
         }
 
         /// <summary>
@@ -451,7 +469,7 @@ namespace GraphView
         {
             Random rnd = new Random();
             var edgePartition = rnd.Next() % partitionNum;
-            docObject["_partition"] = edgePartition;
+            docObject["_partition"] = edgePartition.ToString();
             partitionLoad[Convert.ToInt32(edgePartition)]++;
             return docObject;
         }
@@ -517,6 +535,76 @@ namespace GraphView
                 throw e;
             }
             // new yj
+        }
+
+        public void getMetricsOfGraphPartitionInCache(int _partitionNum)
+        {
+            // (1) Get balance metrics, What we can do is just statistic the partition key balance. 
+            // We can't get the physical partition information
+            if(_partitionNum == 1)
+            {
+                int a = 0;
+            }
+            int[] partitionDocCount = new int[_partitionNum];
+            int docCount = 0;
+            //int edgeCount = 0;
+            int vertexCount = 0;
+            Console.WriteLine(this.DocDBCollectionId + " Partititon: Count:");
+            for (int i = 0; i < _partitionNum; i++)
+            {
+                List<dynamic> result = ExecuteQuery("SELECT * FROM Node where Node._partition = \"" + i + "\"").ToList();
+                partitionDocCount[i] = Convert.ToInt32(result.Count);
+                docCount += partitionDocCount[i];
+                Console.WriteLine("" + i + "," + partitionDocCount[i]);
+            }
+
+            double average = partitionDocCount.Average();
+            double sumOfSquaresOfDifferences = partitionDocCount.Select(val => (val - average) * (val - average)).Sum();
+            double sd = Math.Sqrt(sumOfSquaresOfDifferences / partitionDocCount.Length);
+            Console.WriteLine(this.DocDBCollectionId + " Partition Doc Count STDV is " + sd);
+
+            // (2) Get Graph Clustering metrics: VertexCut ratio
+            List<dynamic> edgeList = ExecuteQuery("SELECT * FROM Node where Node._isEdgeDoc=true").ToList();
+            List<dynamic> vertexList = ExecuteQuery("SELECT * FROM Node where Node.label='vertex'").ToList();
+            Dictionary<String, JObject> vertexDic = new Dictionary<string, JObject>();
+            foreach(var v in vertexList)
+            {
+                vertexDic.Add(((JObject)v)["id"].ToString(), (JObject)v);
+            }
+
+            int vertexCut = 0;
+            int edgeCount = 0;
+            foreach (var e in edgeList)
+            {
+                var edge = (JObject)e;
+                var srcId = edge["_vertex_id"].ToString();
+                var desId = edge["_edge"][0]["_sinkV"].ToString();
+                //var srcDocFromSrcCol = (JObject)ExecuteQuery("SELECT * FROM Node where Node.id=\"" + srcId + "\"").ToList()[0];
+                //var desDocFromSrcCol = (JObject)ExecuteQuery("SELECT * FROM Node where Node.id=\"" + desId + "\"").ToList()[0];
+                var srcDocFromSrcCol = vertexDic[srcId];
+                var desDocFromSrcCol = vertexDic[desId];
+
+                var srcPartition = srcDocFromSrcCol["_partition"].ToString();
+                var desPartition = desDocFromSrcCol["_partition"].ToString();
+                var edgePartition = edge["_partition"].ToString();
+                edgeCount++;
+
+                if (edgePartition != srcPartition)
+                {
+                    vertexCut++;
+                }
+
+                if (edgePartition != desPartition)
+                {
+                    vertexCut++;
+                }
+            }
+
+            vertexCount = docCount - edgeCount;
+            Console.WriteLine(this.DocDBCollectionId + " Vertex cut ratio" + ((double)vertexCut / (2 * (double)edgeCount)));
+            Console.WriteLine(this.DocDBCollectionId + " Doc Count: " + docCount);
+            Console.WriteLine(this.DocDBCollectionId + " Edge Count: " + edgeCount);
+            Console.WriteLine(this.DocDBCollectionId + " Vertex Count: " + vertexCount);
         }
 
         /// <summary>
@@ -864,7 +952,7 @@ namespace GraphView
 
                 if(useFakePartitionWhenCreateDoc)
                 {
-                    docObject = partitionFakeDataIn3Partitions(docObject);
+                    docObject = partitionFakeDataInPartitions(docObject);
                 }
 
                 if (useIncRepartitionDoc)
@@ -1194,13 +1282,17 @@ namespace GraphView
                         queryOptions.EnableCrossPartitionQuery = true;
                     }
                 }
-                Console.WriteLine(queryScript);
-                //return this.DocDBClient.CreateDocumentQuery(
-                //    this._docDBCollectionUri,
-                //    queryScript,
-                //    queryOptions);
+                var start2 = Stopwatch.StartNew();
+
+                var result = this.DocDBClient.CreateDocumentQuery(
+                    this._docDBCollectionUri,
+                    queryScript,
+                    queryOptions);
                 // new
-                var result = ExecuteWithRetriesSync(this.DocDBClient, () => this.DocDBClient.CreateDocumentQuery(this._docDBCollectionUri, queryScript, queryOptions));
+                //var result = ExecuteWithRetriesSync(this.DocDBClient, () => this.DocDBClient.CreateDocumentQuery(this._docDBCollectionUri, queryScript, queryOptions));
+                start2.Stop();
+                Console.WriteLine(start2.ElapsedMilliseconds + "    :" + queryScript);
+
                 return result;
             } catch (Exception e)
             {
