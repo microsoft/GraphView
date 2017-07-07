@@ -1079,7 +1079,7 @@ namespace GraphView
                 {
                     if ((int)de.StatusCode != 429)
                     {
-                        //throw;
+                        throw;
                     }
                     sleepTime = de.RetryAfter;
                 }
@@ -1088,14 +1088,24 @@ namespace GraphView
                     if (!(ae.InnerException is DocumentClientException))
                     {
                         //throw;
+                        Console.WriteLine(ae);
                     }
 
-                    DocumentClientException de = (DocumentClientException)ae.InnerException;
-                    if ((int)de.StatusCode != 429)
+                    if ((ae.InnerException is DocumentClientException))
                     {
-                        //throw;
+                        DocumentClientException de = (DocumentClientException)ae.InnerException;
+                        if ((int)de.StatusCode != 429)
+                        {
+                            //throw;
+                            Console.WriteLine(de);
+                        }
+                        sleepTime = de.RetryAfter;
                     }
-                    sleepTime = de.RetryAfter;
+                    //sleepTime = de.RetryAfter;
+                    //if(ae.InnerException is TaskCanceledException)
+                    //{
+                    //}
+                    
                 }
 
                 Task.Delay(sleepTime);
