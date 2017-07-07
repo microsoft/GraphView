@@ -33,6 +33,10 @@ namespace GraphView
         List<GraphViewConnection> connList;
         public List<DocumentClient> clientList = new List<DocumentClient>();
         public int threadNum;
+        public BulkInsertUtils(int _threadNum)
+        {
+            threadNum = _threadNum;
+        }
         public void initBulkInsertUtilsForCreateDoc(int _threadNum, int bufferSize, GraphViewConnection conn)
         {
             threadNum = _threadNum;

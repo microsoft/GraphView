@@ -311,7 +311,7 @@ namespace GraphView
             // new yj
             if (bulkInsertUtil == null)
             {
-                bulkInsertUtil = new BulkInsertUtils();
+                bulkInsertUtil = new BulkInsertUtils(GraphViewConnection.partitionNum);
                 bulkInsertUtil.initBulkInsertUtilsForCreateDoc(partitionNum, 10000, this);
             }
         }
@@ -414,8 +414,8 @@ namespace GraphView
         }
 
 
-        public static int partitionNum { get; set; } = 10;
-        public static int[] partitionLoad = new int[partitionNum];
+        public static int partitionNum { get; set; } = 0;
+        public static int[] partitionLoad = null;
         public static bool useGreedyPartitionWhenCreateDoc { get; set; } = false;
         public static bool useHashPartitionWhenCreateDoc { get; set; } = false;
         public static bool useFakePartitionWhenCreateDoc { get; set; } = false;
@@ -429,6 +429,11 @@ namespace GraphView
         public static BulkInsertUtils bulkInsertUtil;
         public static Boolean useBulkInsert = false;
 
+        public void initPartitionConfig(int _partitionNum)
+        {
+            partitionNum = _partitionNum;
+            partitionLoad = new int[_partitionNum];
+        }
         public JObject partitionFakeDataInPartitions(JObject docObject)
         {
             if (useFakePartitionWhenCreateDocIn1Partition)
@@ -467,11 +472,17 @@ namespace GraphView
         /// <param name="docObject"></param>
         public JObject partitionDoucumentByHashPartition(JObject docObject)
         {
-            Random rnd = new Random();
-            var edgePartition = rnd.Next() % partitionNum;
-            docObject["_partition"] = edgePartition.ToString();
-            partitionLoad[Convert.ToInt32(edgePartition)]++;
-            return docObject;
+            try
+            {
+                Random rnd = new Random();
+                var edgePartition = rnd.Next() % partitionNum;
+                docObject["_partition"] = edgePartition.ToString();
+                partitionLoad[Convert.ToInt32(edgePartition)]++;
+                return docObject;
+            } catch (Exception e)
+            {
+                throw e;
+            }
         }
         public JObject partitionDocumentByGreedyVertexCut(JObject docObject)
         {
@@ -1274,6 +1285,10 @@ namespace GraphView
                 {
                     queryOptions = new FeedOptions
                     {
+                        // new https://msdn.microsoft.com/en-us/library/microsoft.azure.documents.client.feedoptions.aspx
+                        // Try to use new SDK, Disable RUPerMinuteUsage.
+                        EnableCrossPartitionQuery = true,
+                        // new
                         MaxItemCount = -1,
                         EnableScanInQuery = true,
                     };
@@ -1284,15 +1299,19 @@ namespace GraphView
                 }
                 var start2 = Stopwatch.StartNew();
 
-                var result = this.DocDBClient.CreateDocumentQuery(
-                    this._docDBCollectionUri,
-                    queryScript,
-                    queryOptions);
+                //var result = this.DocDBClient.CreateDocumentQuery(
+                //    this._docDBCollectionUri,
+                //    queryScript,
+                //    queryOptions);
+                //var result = this.DocDBClient.CreateDocumentQuery(
+                //  this._docDBCollectionUri,
+                //  queryScript,
+                //  queryOptions);
                 // new
-                //var result = ExecuteWithRetriesSync(this.DocDBClient, () => this.DocDBClient.CreateDocumentQuery(this._docDBCollectionUri, queryScript, queryOptions));
+                var result = ExecuteWithRetriesSync(this.DocDBClient, () => this.DocDBClient.CreateDocumentQuery(this._docDBCollectionUri, queryScript, queryOptions).ToList());
                 start2.Stop();
                 Console.WriteLine(start2.ElapsedMilliseconds + "    :" + queryScript);
-
+                 
                 return result;
             } catch (Exception e)
             {

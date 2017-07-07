@@ -1374,7 +1374,7 @@ namespace GraphViewUnitTest
             //    }
             //}
             //connection.getMetricsOfGraphPartition();
-            BulkInsertUtils blk = new BulkInsertUtils();
+            BulkInsertUtils blk = new BulkInsertUtils(GraphViewConnection.partitionNum);
             blk.threadNum = 3;
             blk.initBulkInsertUtilsForParseData(GraphViewConnection.partitionNum, edgeList.Count, connection);
             //int j = 0;
@@ -1468,7 +1468,7 @@ namespace GraphViewUnitTest
             //    }
             //}
             //connection.getMetricsOfGraphPartition();
-            BulkInsertUtils blk = new BulkInsertUtils();
+            BulkInsertUtils blk = new BulkInsertUtils(GraphViewConnection.partitionNum);
             blk.threadNum = 3;
             blk.initBulkInsertUtilsForParseData(GraphViewConnection.partitionNum, edgeList.Count, connection);
             //int j = 0;

@@ -82,7 +82,15 @@ namespace GraphView
             // old
             //IEnumerable<dynamic> items = this.Connection.ExecuteQuery(queryScript);
             // new yj
-            var items = this.Connection.ExecuteQuery(queryScript).ToList<dynamic>();
+            //var items = this.Connection.ExecuteQuery(queryScript).ToList<dynamic>();
+            var queryOptions = new FeedOptions
+            {
+                EnableCrossPartitionQuery = true,
+                MaxItemCount = 100000,
+                EnableScanInQuery = true,
+            };
+            var items = this.Connection.ExecuteQuery(queryScript, queryOptions);
+
             // new
             List<string> nodeProperties = new List<string>(vertexQuery.NodeProperties);
             List<string> edgeProperties = new List<string>(vertexQuery.EdgeProperties);
