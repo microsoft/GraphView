@@ -1287,7 +1287,8 @@ namespace GraphView
         }
 
 
-        internal IEnumerable<dynamic> ExecuteQuery(string queryScript, FeedOptions queryOptions = null)
+        //internal IEnumerable<dynamic> ExecuteQuery(string queryScript, FeedOptions queryOptions = null)
+        public IEnumerable<dynamic> ExecuteQuery(string queryScript, FeedOptions queryOptions = null)
         {
             try
             {

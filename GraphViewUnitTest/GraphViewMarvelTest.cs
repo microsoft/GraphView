@@ -1485,5 +1485,97 @@ namespace GraphViewUnitTest
             GraphViewConnection.bulkInsertUtil.startParseThread();
             connection.getMetricsOfGraphPartition();
         }
+
+        [TestMethod]
+        public void insertFake100PartitionDataHashPartition()
+        {
+            var partitionNum = 100;
+            var collectionName = "PartitionQueryCheck100Hash";
+            var edgeList = new List<String>();
+            // partitionData in 3 partitions
+            // partitionData in 3 partitions
+            int partitionNodesPerPartition = 100;
+            var rnd = new Random();
+            HashSet<String> vertex = new HashSet<string>();
+            for (int t = 0; t < partitionNum; t++)
+            {
+                // p1
+                for (int j = 0; j < partitionNodesPerPartition / 3; j++)
+                {
+                    for (int k = 0; k < partitionNodesPerPartition / 3; k++)
+                    {
+                        var src = t + "-" + j;
+                        var des = t + "-" + k;
+                        var r = rnd.Next();
+                        var d = r % 10;
+                        if (src == des)
+                        {
+                            continue;
+                        }
+                        if (vertex.Contains(src) && vertex.Contains(des) && (d > 2))
+                        {
+                            continue;
+                        }
+                        else
+                        {
+                            edgeList.Add(t + "-" + j + "\t" + t + "-" + k);
+                            vertex.Add(src);
+                            vertex.Add(des);
+                        }
+                    }
+                }
+            }
+
+            //     GraphViewConnection connection = GraphViewConnection.ResetGraphAPICollection("https://graphview.documents.azure.com:443/",
+            //"MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+            //"GroupMatch", collectionName,
+            //false, 1, "id");
+            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
+                    "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+                    "GroupMatch", collectionName, GraphType.GraphAPIOnly, false, 1, "name");
+            connection.initPartitionConfig(partitionNum);
+            connection.EdgeSpillThreshold = 1;
+            GraphViewConnection.useHashPartitionWhenCreateDoc = false;
+            GraphViewConnection.useFakePartitionWhenCreateDoc = true;
+            GraphViewConnection.useBulkInsert = true;
+            GraphViewCommand cmd = new GraphViewCommand(connection);
+            HashSet<String> nodeIdSet = new HashSet<String>();
+
+            int c = 1;
+            //var linesE = File.ReadLines("D:\\dataset\\thsinghua_dataset\\cit_network\\cit-HepTh.txt\\Cit-HepTh.txt");
+            var linesE = edgeList;
+            BulkInsertUtils blk = new BulkInsertUtils(GraphViewConnection.partitionNum);
+            blk.initBulkInsertUtilsForParseData(GraphViewConnection.partitionNum, linesE.Count, connection);
+            int i = 0;
+
+            foreach (var lineE in linesE)
+            {
+                //if (i > 1000)
+                //{
+                //    break;
+                //}
+                //else
+                //{
+                //    i++;
+                //}
+                //if (c > 4)
+                //{
+                blk.stringBufferList.Add(lineE);
+                Console.WriteLine(c);
+                //    c++;
+                //}
+                //else
+                //{
+                //    c++;
+                //}
+            }
+            blk.startParseThread();
+            blk.parseDataCountDownLatch.Await();
+            blk.initAndStartInsertNodeStringCMD();
+            blk.insertNodeCountDownLatch.Await();
+            blk.initAndStartInsertEdgeStringCMD();
+            GraphViewConnection.bulkInsertUtil.startParseThread();
+            ////connection.getMetricsOfGraphPartition();
+        }
     }
 }
