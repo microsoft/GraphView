@@ -96,12 +96,12 @@ namespace GraphView
                     }
                     else
                     {
-                        foreach (var value in predicate.Values)
+                        return new WInPredicate
                         {
-                            secondExpr = GetValueExpr(value);
-                            booleanExprList.Add(GetBooleanComparisonExpr(firstExpr, secondExpr, GetComparisonType(PredicateType.eq)));
-                        }
-                        return ConcatBooleanExprWithOr(booleanExprList);
+                            Expression = firstExpr,
+                            NotDefined = false,
+                            Values = predicate.Values.Select(v => GetValueExpr(v) as WScalarExpression).ToList(),
+                        };
                     }
                 case PredicateType.without:
                     if (predicate.IsTag)
@@ -113,13 +113,12 @@ namespace GraphView
                     }
                     else
                     {
-                        foreach (var value in predicate.Values)
+                        return new WInPredicate
                         {
-                            secondExpr = GetValueExpr(value);
-                            booleanExprList.Add(GetBooleanComparisonExpr(firstExpr, secondExpr,
-                                GetComparisonType(PredicateType.neq)));
-                        }
-                        return ConcatBooleanExprWithAnd(booleanExprList);
+                            Expression = firstExpr,
+                            NotDefined = true,
+                            Values = predicate.Values.Select(v => GetValueExpr(v) as WScalarExpression).ToList(),
+                        };
                     }
                 case PredicateType.inside:
                     lowExpr = GetValueExpr(predicate.Low);
