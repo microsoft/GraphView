@@ -48,11 +48,169 @@ namespace GraphViewConsoleTest
             //insertControlPartitionkeyBulkInsert("PartitionQueryCheck_100", 100);
             //partitionQueryDiffPartitionTest("PartitionQueryCheck_100");
             //querySpecificIDsList("PartitionQueryCheck_100");
-            querySpecificIDsListUseSystemCall("PartitionQueryCheck_100");
+            querySpecificIDsListUseSystemCall_SameVertexCount_DiffPartitionNum("PartitionQueryCheck_100");
             Console.ReadLine();
         }
 
-        public static void querySpecificIDsListUseSystemCall(String collectionName)
+        public static void querySpecificIDsListUseSystemCall_SamePartitionCount_DiffVertexCount(String collectionName)
+        {
+            var queryOptions = new FeedOptions
+            {
+                EnableCrossPartitionQuery = true,
+                MaxItemCount = 100000,
+                EnableScanInQuery = true,
+            };
+
+            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
+               "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+               "GroupMatch", collectionName, GraphType.GraphAPIOnly, false,
+               1, null);
+            GraphViewCommand graph = new GraphViewCommand(connection);
+            //graph.OutputFormat = OutputFormat.GraphSON;
+            // (0) warm query
+            var vertexIds = new StringBuilder();
+            var partitionIds = new HashSet<String>();
+            var partitionIdStr = new StringBuilder();
+
+            for (int p = 1; p < 2; p--)
+            {
+                for (int i = 0; i < 1; i++)
+                {
+                    //vertexIds.Add(p + "-" + i);
+                    var id = p + "-" + i;
+                    vertexIds.Append("'" + id + "',");
+                    if (!partitionIds.Contains(p.ToString()))
+                    {
+                        partitionIds.Add(p.ToString());
+                        partitionIdStr.Append("'" + p + "',");
+                    }
+                }
+            }
+            vertexIds.Remove(vertexIds.Length - 1, 1);
+            partitionIdStr.Remove(partitionIdStr.Length - 1, 1);
+
+            var start0 = Stopwatch.StartNew();
+            //var results = graph.g().V(vertexIds).Next();
+            var results0 = connection.ExecuteQuery("SELECT N_3 FROM Node N_3  WHERE IS_DEFINED(N_3._isEdgeDoc) = false AND(N_3.id in (" + vertexIds + ")) AND (N_3._partition in (" + partitionIdStr + "))", queryOptions);
+
+            foreach (var result in results0)
+            {
+                //Console.WriteLine(result);
+                var t = result;
+            }
+
+            start0.Stop();
+            Console.WriteLine("warm query" + (start0.ElapsedMilliseconds) + "ms");
+
+            // (1) query 1 partition
+            //List<Object> vertexIds = new List<object>();
+            //var vertexIds = new StringBuilder();
+            //var partitionIds = new HashSet<String>();
+            //var partitionIdStr = new StringBuilder();
+            vertexIds.Clear();
+            partitionIdStr.Clear();
+            partitionIds.Clear();
+
+            for (int p = 1; p < 2; p++)
+            {
+                for (int i = 0; i < 30; i++)
+                {
+                    //vertexIds.Add(p + "-" + i);
+                    var id = p + "-" + i;
+                    vertexIds.Append("'" + id + "',");
+                    if (!partitionIds.Contains(p.ToString()))
+                    {
+                        partitionIds.Add(p.ToString());
+                        partitionIdStr.Append("'" + p + "',");
+                    }
+                }
+            }
+            vertexIds.Remove(vertexIds.Length - 1, 1);
+            partitionIdStr.Remove(partitionIdStr.Length - 1, 1);
+
+            var start1 = Stopwatch.StartNew();
+            //var results = graph.g().V(vertexIds).Next();
+            var results = connection.ExecuteQuery("SELECT N_3 FROM Node N_3  WHERE IS_DEFINED(N_3._isEdgeDoc) = false AND(N_3.id in (" + vertexIds + ")) AND (N_3._partition in (" + partitionIdStr + "))", queryOptions);
+
+            foreach (var result in results)
+            {
+                //Console.WriteLine(result);
+                var t = result;
+            }
+
+            start1.Stop();
+            Console.WriteLine("partition count" + 1 + "  " + collectionName + "(0)" + (start1.ElapsedMilliseconds) + "ms");
+
+            // (2) 2 p
+            vertexIds.Clear();
+            partitionIdStr.Clear();
+            partitionIds.Clear();
+            for (int p = 1; p < 2; p++)
+            {
+                for (int i = 0; i < 50; i++)
+                {
+                    //vertexIds.Add(p + "-" + i);
+                    var id = p + "-" + i;
+                    vertexIds.Append("'" + id + "',");
+                    if (!partitionIds.Contains(p.ToString()))
+                    {
+                        partitionIds.Add(p.ToString());
+                        partitionIdStr.Append("'" + p + "',");
+                    }
+                }
+            }
+            vertexIds.Remove(vertexIds.Length - 1, 1);
+            partitionIdStr.Remove(partitionIdStr.Length - 1, 1);
+
+            var start2 = Stopwatch.StartNew();
+            //var results = graph.g().V(vertexIds).Next();
+            results = connection.ExecuteQuery("SELECT N_3 FROM Node N_3  WHERE IS_DEFINED(N_3._isEdgeDoc) = false AND(N_3.id in (" + vertexIds + ")) AND (N_3._partition in (" + partitionIdStr + "))", queryOptions);
+
+            foreach (var result in results)
+            {
+                //Console.WriteLine(result);
+                var t = result;
+            }
+
+            start2.Stop();
+            Console.WriteLine("partition count" + 2 + "  " + collectionName + "(1)" + (start2.ElapsedMilliseconds) + "ms");
+
+            // (3) 10 partition
+            vertexIds.Clear();
+            partitionIdStr.Clear();
+            partitionIds.Clear();
+            for (int p = 1; p < 2; p++)
+            {
+                for (int i = 0; i < 100; i++)
+                {
+                    //vertexIds.Add(p + "-" + i);
+                    var id = p + "-" + i;
+                    vertexIds.Append("'" + id + "',");
+                    if (!partitionIds.Contains(p.ToString()))
+                    {
+                        partitionIds.Add(p.ToString());
+                        partitionIdStr.Append("'" + p + "',");
+                    }
+                }
+            }
+            vertexIds.Remove(vertexIds.Length - 1, 1);
+            partitionIdStr.Remove(partitionIdStr.Length - 1, 1);
+
+            var start3 = Stopwatch.StartNew();
+            //var results = graph.g().V(vertexIds).Next();
+            results = connection.ExecuteQuery("SELECT N_3 FROM Node N_3  WHERE IS_DEFINED(N_3._isEdgeDoc) = false AND(N_3.id in (" + vertexIds + ")) AND (N_3._partition in (" + partitionIdStr + "))", queryOptions);
+
+            foreach (var result in results)
+            {
+                //Console.WriteLine(result);
+                var t = result;
+            }
+
+            start3.Stop();
+            Console.WriteLine("partition count" + 10 + "  " + collectionName + "(2)" + (start3.ElapsedMilliseconds) + "ms");   
+        }
+
+        public static void querySpecificIDsListUseSystemCall_SameVertexCount_DiffPartitionNum(String collectionName)
         {
             var queryOptions = new FeedOptions
             {
