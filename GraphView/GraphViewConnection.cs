@@ -1286,6 +1286,51 @@ namespace GraphView
             return partitionIndexerBuilder.ToString();
         }
 
+        // new
+        public IEnumerable<dynamic> ExecuteQueryWithoutToList(string queryScript, FeedOptions queryOptions = null)
+        {
+            try
+            {
+                if (queryOptions == null)
+                {
+                    queryOptions = new FeedOptions
+                    {
+                        // new https://msdn.microsoft.com/en-us/library/microsoft.azure.documents.client.feedoptions.aspx
+                        // Try to use new SDK, Disable RUPerMinuteUsage.
+                        EnableCrossPartitionQuery = true,
+                        // new
+                        MaxItemCount = -1,
+                        EnableScanInQuery = true,
+                    };
+                    if (this.CollectionType == CollectionType.PARTITIONED)
+                    {
+                        queryOptions.EnableCrossPartitionQuery = true;
+                    }
+                }
+                var start2 = Stopwatch.StartNew();
+
+                var result = this.DocDBClient.CreateDocumentQuery(
+                    this._docDBCollectionUri,
+                    queryScript,
+                    queryOptions);
+                //var result = this.DocDBClient.CreateDocumentQuery(
+                //  this._docDBCollectionUri,
+                //  queryScript,
+                //  queryOptions);
+                // new
+                //var result = ExecuteWithRetriesSync(this.DocDBClient, () => this.DocDBClient.CreateDocumentQuery(this._docDBCollectionUri, queryScript, queryOptions).ToList());
+                start2.Stop();
+                Console.WriteLine(start2.ElapsedMilliseconds + "    :" + queryScript);
+
+                return result;
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+                throw e;
+            }
+        }
+        // new
 
         //internal IEnumerable<dynamic> ExecuteQuery(string queryScript, FeedOptions queryOptions = null)
         public IEnumerable<dynamic> ExecuteQuery(string queryScript, FeedOptions queryOptions = null)

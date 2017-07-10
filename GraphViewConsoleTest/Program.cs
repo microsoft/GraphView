@@ -52,6 +52,132 @@ namespace GraphViewConsoleTest
             Console.ReadLine();
         }
 
+        public static void queryComparePartitionInCondition(String collectionName)
+        {
+            var queryOptions = new FeedOptions
+            {
+                EnableCrossPartitionQuery = true,
+                MaxItemCount = 100000,
+                EnableScanInQuery = true,
+            };
+
+            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
+               "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+               "GroupMatch", collectionName, GraphType.GraphAPIOnly, false,
+               1, null);
+            GraphViewCommand graph = new GraphViewCommand(connection);
+            //graph.OutputFormat = OutputFormat.GraphSON;
+            // (0) warm query
+            var vertexIds = new StringBuilder();
+            var partitionIds = new HashSet<String>();
+            var partitionIdStr = new StringBuilder();
+
+            for (int p = 100; p > 99; p--)
+            {
+                for (int i = 0; i < 100; i++)
+                {
+                    //vertexIds.Add(p + "-" + i);
+                    var id = p + "-" + i;
+                    vertexIds.Append("'" + id + "',");
+                    if (!partitionIds.Contains(p.ToString()))
+                    {
+                        partitionIds.Add(p.ToString());
+                        partitionIdStr.Append("'" + p + "',");
+                    }
+                }
+            }
+            vertexIds.Remove(vertexIds.Length - 1, 1);
+            partitionIdStr.Remove(partitionIdStr.Length - 1, 1);
+
+            var start0 = Stopwatch.StartNew();
+            //var results = graph.g().V(vertexIds).Next();
+            var results0 = connection.ExecuteQuery("SELECT N_3 FROM Node N_3  WHERE IS_DEFINED(N_3._isEdgeDoc) = false AND(N_3.id in (" + vertexIds + ")) AND (N_3._partition in (" + partitionIdStr + "))", queryOptions);
+
+            foreach (var result in results0)
+            {
+                //Console.WriteLine(result);
+                var t = result;
+            }
+
+            start0.Stop();
+            Console.WriteLine("warm query" + (start0.ElapsedMilliseconds) + "ms");
+
+            // (1) query 1 partition
+            //List<Object> vertexIds = new List<object>();
+            //var vertexIds = new StringBuilder();
+            //var partitionIds = new HashSet<String>();
+            //var partitionIdStr = new StringBuilder();
+            vertexIds.Clear();
+            partitionIdStr.Clear();
+            partitionIds.Clear();
+
+            for (int p = 1; p < 100; p++)
+            {
+                for (int i = 0; i < 1; i++)
+                {
+                    //vertexIds.Add(p + "-" + i);
+                    var id = p + "-" + i;
+                    vertexIds.Append("'" + id + "',");
+                    if (!partitionIds.Contains(p.ToString()))
+                    {
+                        partitionIds.Add(p.ToString());
+                        partitionIdStr.Append("'" + p + "',");
+                    }
+                }
+            }
+            vertexIds.Remove(vertexIds.Length - 1, 1);
+            partitionIdStr.Remove(partitionIdStr.Length - 1, 1);
+
+            var script1 = "SELECT N_3 FROM Node N_3  WHERE IS_DEFINED(N_3._isEdgeDoc) = false AND(N_3.id in (" + vertexIds + ")) AND (N_3._partition in (" + partitionIdStr + "))";
+            var start1 = Stopwatch.StartNew();
+            //var results = graph.g().V(vertexIds).Next();
+            var results = connection.ExecuteQuery(script1, queryOptions);
+
+            foreach (var result in results)
+            {
+                //Console.WriteLine(result);
+                var t = result;
+            }
+
+            start1.Stop();
+            Console.WriteLine("have partition condition partition count" + 100 + "  " + collectionName + "(0)" + (start1.ElapsedMilliseconds) + "ms");
+            // (2)
+            vertexIds.Clear();
+            partitionIdStr.Clear();
+            partitionIds.Clear();
+
+            for (int p = 1; p < 100; p++)
+            {
+                for (int i = 0; i < 1; i++)
+                {
+                    //vertexIds.Add(p + "-" + i);
+                    var id = p + "-" + i;
+                    vertexIds.Append("'" + id + "',");
+                    if (!partitionIds.Contains(p.ToString()))
+                    {
+                        partitionIds.Add(p.ToString());
+                        partitionIdStr.Append("'" + p + "',");
+                    }
+                }
+            }
+            vertexIds.Remove(vertexIds.Length - 1, 1);
+            partitionIdStr.Remove(partitionIdStr.Length - 1, 1);
+
+            var script2 = "SELECT N_3 FROM Node N_3  WHERE IS_DEFINED(N_3._isEdgeDoc) = false AND(N_3.id in (" + vertexIds + "))";
+            var start2 = Stopwatch.StartNew();
+            //var results = graph.g().V(vertexIds).Next();
+            results = connection.ExecuteQuery(script1, queryOptions);
+
+            foreach (var result in results)
+            {
+                //Console.WriteLine(result);
+                var t = result;
+            }
+
+            start2.Stop();
+            Console.WriteLine("no partition condition partition count" + 100 + "  " + collectionName + "(0)" + (start2.ElapsedMilliseconds) + "ms");
+        }
+
         public static void querySpecificIDsListUseSystemCall_SamePartitionCount_DiffVertexCount(String collectionName)
         {
             var queryOptions = new FeedOptions
@@ -247,9 +373,10 @@ namespace GraphViewConsoleTest
             vertexIds.Remove(vertexIds.Length - 1, 1);
             partitionIdStr.Remove(partitionIdStr.Length - 1, 1);
 
+            var script0 = "SELECT N_3 FROM Node N_3  WHERE IS_DEFINED(N_3._isEdgeDoc) = false AND(N_3.id in (" + vertexIds + ")) AND (N_3._partition in (" + partitionIdStr + "))";
             var start0 = Stopwatch.StartNew();
             //var results = graph.g().V(vertexIds).Next();
-            var results0 = connection.ExecuteQuery("SELECT N_3 FROM Node N_3  WHERE IS_DEFINED(N_3._isEdgeDoc) = false AND(N_3.id in (" + vertexIds + ")) AND (N_3._partition in (" + partitionIdStr + "))", queryOptions);
+            var results0 = connection.ExecuteQueryWithoutToList(script0, queryOptions);
 
             foreach (var result in results0)
             {
@@ -276,7 +403,7 @@ namespace GraphViewConsoleTest
                     //vertexIds.Add(p + "-" + i);
                     var id = p + "-" + i;
                     vertexIds.Append("'" + id + "',");
-                    if(!partitionIds.Contains(p.ToString()))
+                    if (!partitionIds.Contains(p.ToString()))
                     {
                         partitionIds.Add(p.ToString());
                         partitionIdStr.Append("'" + p + "',");
@@ -285,10 +412,11 @@ namespace GraphViewConsoleTest
             }
             vertexIds.Remove(vertexIds.Length - 1, 1);
             partitionIdStr.Remove(partitionIdStr.Length - 1, 1);
+            var script1 = "SELECT N_3 FROM Node N_3  WHERE IS_DEFINED(N_3._isEdgeDoc) = false AND(N_3.id in (" + vertexIds + ")) AND (N_3._partition in (" + partitionIdStr + "))";
 
             var start1 = Stopwatch.StartNew();
             //var results = graph.g().V(vertexIds).Next();
-            var results = connection.ExecuteQuery("SELECT N_3 FROM Node N_3  WHERE IS_DEFINED(N_3._isEdgeDoc) = false AND(N_3.id in (" + vertexIds + ")) AND (N_3._partition in (" + partitionIdStr + "))", queryOptions);
+            var results = connection.ExecuteQueryWithoutToList(script1, queryOptions);
 
             foreach (var result in results)
             {
@@ -319,10 +447,11 @@ namespace GraphViewConsoleTest
             }
             vertexIds.Remove(vertexIds.Length - 1, 1);
             partitionIdStr.Remove(partitionIdStr.Length - 1, 1);
+            var script2 = script0 = "SELECT N_3 FROM Node N_3  WHERE IS_DEFINED(N_3._isEdgeDoc) = false AND(N_3.id in (" + vertexIds + ")) AND (N_3._partition in (" + partitionIdStr + "))";
 
             var start2 = Stopwatch.StartNew();
             //var results = graph.g().V(vertexIds).Next();
-            results = connection.ExecuteQuery("SELECT N_3 FROM Node N_3  WHERE IS_DEFINED(N_3._isEdgeDoc) = false AND(N_3.id in (" + vertexIds + ")) AND (N_3._partition in (" + partitionIdStr + "))", queryOptions);
+            results = connection.ExecuteQueryWithoutToList(script2, queryOptions);
 
             foreach (var result in results)
             {
@@ -353,10 +482,11 @@ namespace GraphViewConsoleTest
             }
             vertexIds.Remove(vertexIds.Length - 1, 1);
             partitionIdStr.Remove(partitionIdStr.Length - 1, 1);
+            var script3 = "SELECT N_3 FROM Node N_3  WHERE IS_DEFINED(N_3._isEdgeDoc) = false AND(N_3.id in (" + vertexIds + ")) AND (N_3._partition in (" + partitionIdStr + "))";
 
             var start3 = Stopwatch.StartNew();
             //var results = graph.g().V(vertexIds).Next();
-            results = connection.ExecuteQuery("SELECT N_3 FROM Node N_3  WHERE IS_DEFINED(N_3._isEdgeDoc) = false AND(N_3.id in (" + vertexIds + ")) AND (N_3._partition in (" + partitionIdStr + "))", queryOptions);
+            results = connection.ExecuteQueryWithoutToList(script3, queryOptions);
 
             foreach (var result in results)
             {
@@ -387,10 +517,11 @@ namespace GraphViewConsoleTest
             }
             vertexIds.Remove(vertexIds.Length - 1, 1);
             partitionIdStr.Remove(partitionIdStr.Length - 1, 1);
+            var script4 = "SELECT N_3 FROM Node N_3  WHERE IS_DEFINED(N_3._isEdgeDoc) = false AND(N_3.id in (" + vertexIds + ")) AND (N_3._partition in (" + partitionIdStr + "))";
 
             var start4 = Stopwatch.StartNew();
             //var results = graph.g().V(vertexIds).Next();
-            results = connection.ExecuteQuery("SELECT N_3 FROM Node N_3  WHERE IS_DEFINED(N_3._isEdgeDoc) = false AND(N_3.id in (" + vertexIds + ")) AND (N_3._partition in (" + partitionIdStr + "))", queryOptions);
+            results = connection.ExecuteQueryWithoutToList(script4, queryOptions);
 
             foreach (var result in results)
             {
