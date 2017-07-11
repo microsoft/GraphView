@@ -245,10 +245,17 @@ namespace GraphView
             DocumentCollection docDBCollection;
             try
             {
-                docDBCollection = this.DocDBClient.CreateDocumentCollectionQuery(this._docDBDatabaseUri)
-                    .Where(c => c.Id == this.DocDBCollectionId)
-                    .AsEnumerable()
-                    .FirstOrDefault();
+                // old
+                //docDBCollection = this.DocDBClient.CreateDocumentCollectionQuery(this._docDBDatabaseUri)
+                //    .Where(c => c.Id == this.DocDBCollectionId)
+                //    .AsEnumerable()
+                //    .FirstOrDefault();
+                // new
+                docDBCollection = ExecuteWithRetriesSync(this.DocDBClient, () => this.DocDBClient.CreateDocumentCollectionQuery(this._docDBDatabaseUri)
+                   .Where(c => c.Id == this.DocDBCollectionId)
+                   .AsEnumerable()
+                   .FirstOrDefault());
+                // new
             }
             catch (AggregateException aggex)
             when ((aggex.InnerException as DocumentClientException)?.Error.Code == "NotFound")

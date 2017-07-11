@@ -48,9 +48,13 @@ namespace GraphViewConsoleTest
             //insertControlPartitionkeyBulkInsert("PartitionQueryCheck_100", 100);
             //partitionQueryDiffPartitionTest("PartitionQueryCheck_100");
             //querySpecificIDsList("PartitionQueryCheck_100");
-            querySpecificIDsListUseSystemCall_SameVertexCount_DiffPartitionNum("PartitionQueryCheck_100");
+            //querySpecificIDsListUseSystemCall_SameVertexCount_DiffPartitionNum("PartitionQueryCheck_100");
+            //insertClusterNodeFakeBulkInsert("FakeCrossPartition", 30, true);
+            //insertClusterNodeFakeBulkInsert("FakeNotCrossPartition", 30, false);
             //querySpecificIDsListUseSystemCall_SamePartitionCount_DiffVertexCount("PartitionQueryCheck_100");
             //queryComparePartitionInCondition("PartitionQueryCheck_100");
+            queryCrossOrFakePartitionCross("FakeCrossPartition");
+            //queryCrossOrFakePartitionNotCross("FakeNotCrossPartition");
             Console.ReadLine();
         }
 
@@ -1261,24 +1265,8 @@ namespace GraphViewConsoleTest
 
             foreach (var lineE in linesE)
             {
-                //if (i > 1000)
-                //{
-                //    break;
-                //}
-                //else
-                //{
-                //    i++;
-                //}
-                //if (c > 4)
-                //{
-                    blk.stringBufferList.Add(lineE);
-                    Console.WriteLine(c);
-                //    c++;
-                //}
-                //else
-                //{
-                //    c++;
-                //}
+               blk.stringBufferList.Add(lineE);
+               Console.WriteLine(c);
             }
             blk.startParseThread();
             blk.parseDataCountDownLatch.Await();
@@ -1367,6 +1355,185 @@ namespace GraphViewConsoleTest
             }
             start3.Stop();
             Console.WriteLine("partition:" + ids3.Count() + " Result Count" + rc3 + "(3)" + (start3.ElapsedMilliseconds) + "ms");
-        } 
+        }
+
+        public static void insertClusterNodeFakeBulkInsert(String collectionName, int partitionNum, bool crossConnection)
+        {
+            // 30 * 30 fake partition cluster and random
+            var edgeList = new List<String>();
+            int partitionNodesPerPartition = 100;
+            var rnd = new Random();
+            HashSet<String> vertex = new HashSet<String>();
+
+            // (1) cross partition
+            if (crossConnection)
+            {
+                for (int k = 0; k < 30; k++)
+                {
+                    for (int v = 0; v < 30; v++)
+                    {
+                        var src = k + "-" + v;
+                        var des = (k + 1) % 30 + "-" + v;
+
+                        if (vertex.Contains(src) && vertex.Contains(des))
+                        {
+                            continue;
+                        }
+                        else
+                        {
+                            edgeList.Add(src + "\t" + des);
+                            vertex.Add(src);
+                            vertex.Add(des);
+                        }
+                    }
+                }
+            } else
+            {
+                for (int k = 0; k < 30; k++)
+                {
+                    for (int v = 0; v < 30; v++)
+                    {
+                        var src = k + "-" + v;
+                        var des = (k) + "-" + (v + 1) % 30;
+                        if (vertex.Contains(src) && vertex.Contains(des))
+                        {
+                            continue;
+                        }
+                        else
+                        {
+                            edgeList.Add(src + "\t" + des);
+                            vertex.Add(src);
+                            vertex.Add(des);
+                        }
+                    }
+                }
+            }
+
+            //     GraphViewConnection connection = GraphViewConnection.ResetGraphAPICollection("https://graphview.documents.azure.com:443/",
+            //"MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+            //"GroupMatch", collectionName,
+            //false, 1, "id");
+            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
+                    "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+                    "GroupMatch", collectionName, GraphType.GraphAPIOnly, false, 1, "name");
+            connection.initPartitionConfig(partitionNum);
+            connection.EdgeSpillThreshold = 1;
+            GraphViewConnection.useHashPartitionWhenCreateDoc = false;
+            GraphViewConnection.useFakePartitionWhenCreateDoc = true;
+            GraphViewConnection.useBulkInsert = true;
+            GraphViewCommand cmd = new GraphViewCommand(connection);
+            HashSet<String> nodeIdSet = new HashSet<String>();
+
+            int c = 1;
+            //var linesE = File.ReadLines("D:\\dataset\\thsinghua_dataset\\cit_network\\cit-HepTh.txt\\Cit-HepTh.txt");
+            var linesE = edgeList.ToList();
+            BulkInsertUtils blk = new BulkInsertUtils(GraphViewConnection.partitionNum);
+            blk.initBulkInsertUtilsForParseData(GraphViewConnection.partitionNum, linesE.Count(), connection);
+            int i = 0;
+
+            foreach (var lineE in linesE)
+            {
+                blk.stringBufferList.Add(lineE);
+                Console.WriteLine(c);
+            }
+            blk.startParseThread();
+            blk.parseDataCountDownLatch.Await();
+            blk.initAndStartInsertNodeStringCMD();
+            blk.insertNodeCountDownLatch.Await();
+            blk.initAndStartInsertEdgeStringCMD();
+            //GraphViewConnection.bulkInsertUtil.startParseThread();
+        }
+
+        public static void queryCrossOrFakePartitionCross (String collectionName)
+        {
+            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
+              "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+              "GroupMatch", collectionName, GraphType.GraphAPIOnly, false,
+              1, null);
+            GraphViewCommand graph = new GraphViewCommand(connection);
+            //graph.OutputFormat = OutputFormat.GraphSON;
+            List<Object> vertexIds0 = new List<object>();
+            for (int p = 0; p < 1; p++)
+            {
+                for (int i = 0; i < 30; i++)
+                {
+                    vertexIds0.Add(p + "-" + i);
+                }
+            }
+            var start10 = Stopwatch.StartNew();
+            var results0 = graph.g().V(vertexIds0).Next();
+
+            foreach (var result in results0)
+            {
+                Console.WriteLine(result);
+            }
+            start10.Stop();
+            Console.WriteLine("warm query " + 1 + "  " + collectionName + "(0)" + (start10.ElapsedMilliseconds) + "ms");
+
+            // (1) query 1 partition
+            List<Object> vertexIds = new List<object>();
+            for (int p = 0; p < 30; p++)
+            {
+                for (int i = 0; i < 1; i++)
+                {
+                    vertexIds.Add(p + "-" + i);
+                }
+            }
+            var start1 = Stopwatch.StartNew();
+            var results = graph.g().V(vertexIds).Out("appear").Out("appear").Next();
+
+            foreach (var result in results)
+            {
+                Console.WriteLine(result);
+            }
+            start1.Stop();
+            Console.WriteLine("partition count" + 1 + "  " + collectionName + "(0)" + (start1.ElapsedMilliseconds) + "ms");
+        }
+
+        public static void queryCrossOrFakePartitionNotCross(String collectionName)
+        {
+            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
+              "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+              "GroupMatch", collectionName, GraphType.GraphAPIOnly, false,
+              1, null);
+            GraphViewCommand graph = new GraphViewCommand(connection);
+            //graph.OutputFormat = OutputFormat.GraphSON;
+            List<Object> vertexIds0 = new List<object>();
+            for (int p = 1; p < 2; p++)
+            {
+                for (int i = 0; i < 30; i++)
+                {
+                    vertexIds0.Add(p + "-" + i);
+                }
+            }
+            var start10 = Stopwatch.StartNew();
+            var results0 = graph.g().V(vertexIds0).Next();
+
+            foreach (var result in results0)
+            {
+                Console.WriteLine(result);
+            }
+            start10.Stop();
+            Console.WriteLine("warm query " + 1 + "  " + collectionName + "(0)" + (start10.ElapsedMilliseconds) + "ms");
+
+            // (1) query 1 partition
+            List<Object> vertexIds = new List<object>();
+            for (int p = 0; p < 1; p++)
+            {
+                for (int i = 0; i < 30; i++)
+                {
+                    vertexIds.Add(p + "-" + i);
+                }
+            }
+            var start1 = Stopwatch.StartNew();
+            var results = graph.g().V(vertexIds).Out("appear").Out("appear").Next();
+
+            foreach (var result in results)
+            {
+                Console.WriteLine(result);
+            }
+            start1.Stop();
+            Console.WriteLine("partition count" + 30 + "  " + collectionName + "(0)" + (start1.ElapsedMilliseconds) + "ms");
+        }
     }
 }
