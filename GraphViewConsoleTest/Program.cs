@@ -49,6 +49,8 @@ namespace GraphViewConsoleTest
             //partitionQueryDiffPartitionTest("PartitionQueryCheck_100");
             //querySpecificIDsList("PartitionQueryCheck_100");
             querySpecificIDsListUseSystemCall_SameVertexCount_DiffPartitionNum("PartitionQueryCheck_100");
+            //querySpecificIDsListUseSystemCall_SamePartitionCount_DiffVertexCount("PartitionQueryCheck_100");
+            //queryComparePartitionInCondition("PartitionQueryCheck_100");
             Console.ReadLine();
         }
 
@@ -198,7 +200,7 @@ namespace GraphViewConsoleTest
             var partitionIds = new HashSet<String>();
             var partitionIdStr = new StringBuilder();
 
-            for (int p = 1; p < 2; p--)
+            for (int p = 1; p < 2; p++)
             {
                 for (int i = 0; i < 1; i++)
                 {
@@ -227,7 +229,40 @@ namespace GraphViewConsoleTest
 
             start0.Stop();
             Console.WriteLine("warm query" + (start0.ElapsedMilliseconds) + "ms");
+            // (0) query 1
+            vertexIds.Clear();
+            partitionIdStr.Clear();
+            partitionIds.Clear();
 
+            for (int p = 1; p < 2; p++)
+            {
+                for (int i = 0; i < 1; i++)
+                {
+                    //vertexIds.Add(p + "-" + i);
+                    var id = p + "-" + i;
+                    vertexIds.Append("'" + id + "',");
+                    if (!partitionIds.Contains(p.ToString()))
+                    {
+                        partitionIds.Add(p.ToString());
+                        partitionIdStr.Append("'" + p + "',");
+                    }
+                }
+            }
+            vertexIds.Remove(vertexIds.Length - 1, 1);
+            partitionIdStr.Remove(partitionIdStr.Length - 1, 1);
+
+            var start10 = Stopwatch.StartNew();
+            //var results = graph.g().V(vertexIds).Next();
+            var results = connection.ExecuteQuery("SELECT N_3 FROM Node N_3  WHERE IS_DEFINED(N_3._isEdgeDoc) = false AND(N_3.id in (" + vertexIds + ")) AND (N_3._partition in (" + partitionIdStr + "))", queryOptions);
+
+            foreach (var result in results)
+            {
+                //Console.WriteLine(result);
+                var t = result;
+            }
+
+            start10.Stop();
+            Console.WriteLine("node count" + 1 + "  " + collectionName + "(0)" + (start10.ElapsedMilliseconds) + "ms");
             // (1) query 1 partition
             //List<Object> vertexIds = new List<object>();
             //var vertexIds = new StringBuilder();
@@ -256,7 +291,7 @@ namespace GraphViewConsoleTest
 
             var start1 = Stopwatch.StartNew();
             //var results = graph.g().V(vertexIds).Next();
-            var results = connection.ExecuteQuery("SELECT N_3 FROM Node N_3  WHERE IS_DEFINED(N_3._isEdgeDoc) = false AND(N_3.id in (" + vertexIds + ")) AND (N_3._partition in (" + partitionIdStr + "))", queryOptions);
+            results = connection.ExecuteQuery("SELECT N_3 FROM Node N_3  WHERE IS_DEFINED(N_3._isEdgeDoc) = false AND(N_3.id in (" + vertexIds + ")) AND (N_3._partition in (" + partitionIdStr + "))", queryOptions);
 
             foreach (var result in results)
             {
@@ -265,7 +300,7 @@ namespace GraphViewConsoleTest
             }
 
             start1.Stop();
-            Console.WriteLine("partition count" + 1 + "  " + collectionName + "(0)" + (start1.ElapsedMilliseconds) + "ms");
+            Console.WriteLine("node count" + 30 + "  " + collectionName + "(0)" + (start1.ElapsedMilliseconds) + "ms");
 
             // (2) 2 p
             vertexIds.Clear();
@@ -299,7 +334,7 @@ namespace GraphViewConsoleTest
             }
 
             start2.Stop();
-            Console.WriteLine("partition count" + 2 + "  " + collectionName + "(1)" + (start2.ElapsedMilliseconds) + "ms");
+            Console.WriteLine("node count" + 50 + "  " + collectionName + "(1)" + (start2.ElapsedMilliseconds) + "ms");
 
             // (3) 10 partition
             vertexIds.Clear();
@@ -333,7 +368,7 @@ namespace GraphViewConsoleTest
             }
 
             start3.Stop();
-            Console.WriteLine("partition count" + 10 + "  " + collectionName + "(2)" + (start3.ElapsedMilliseconds) + "ms");   
+            Console.WriteLine("node count" + 100 + "  " + collectionName + "(2)" + (start3.ElapsedMilliseconds) + "ms");   
         }
 
         public static void querySpecificIDsListUseSystemCall_SameVertexCount_DiffPartitionNum(String collectionName)
@@ -541,6 +576,24 @@ namespace GraphViewConsoleTest
                1, null);
             GraphViewCommand graph = new GraphViewCommand(connection);
             //graph.OutputFormat = OutputFormat.GraphSON;
+            List<Object> vertexIds0 = new List<object>();
+            for (int p = 1; p < 2; p++)
+            {
+                for (int i = 0; i < 30; i++)
+                {
+                    vertexIds0.Add(p + "-" + i);
+                }
+            }
+            var start10 = Stopwatch.StartNew();
+            var results0 = graph.g().V(vertexIds0).Next();
+
+            foreach (var result in results0)
+            {
+                Console.WriteLine(result);
+            }
+            start10.Stop();
+            Console.WriteLine("warm query " + 1 + "  " + collectionName + "(0)" + (start10.ElapsedMilliseconds) + "ms");
+
             // (1) query 1 partition
             List<Object> vertexIds = new List<object>();
             for (int p = 1; p < 2; p++) { 
