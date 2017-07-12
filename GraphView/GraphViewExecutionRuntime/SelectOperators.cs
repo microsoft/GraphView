@@ -3114,7 +3114,58 @@ namespace GraphView
 
         public override void ResetState()
         {
-            //storeState.Init();
+            inputOp.ResetState();
+            Open();
+        }
+    }
+
+    internal class SubgraphOperator : GraphViewExecutionOperator
+    {
+        CollectionFunction subgraphState;
+        ScalarFunction getSubgraphObjectFunction;
+        GraphViewExecutionOperator inputOp;
+
+        public SubgraphOperator(GraphViewExecutionOperator inputOp, ScalarFunction getTargetFieldFunction, CollectionFunction subgraphState)
+        {
+            this.subgraphState = subgraphState;
+            this.getSubgraphObjectFunction = getTargetFieldFunction;
+            this.inputOp = inputOp;
+            Open();
+        }
+
+        public override RawRecord Next()
+        {
+            //throw new NotImplementedException();
+            if (inputOp.State())
+            {
+                RawRecord result = inputOp.Next();
+                if (result == null)
+                {
+                    Close();
+                    return null;
+                }
+
+                FieldObject subgraphObject = this.getSubgraphObjectFunction.Evaluate(result);
+
+                if (subgraphObject == null)
+                    throw new GraphViewException("The provided traversal or property name in Store does not map to a value.");
+
+                this.subgraphState.Accumulate(subgraphObject);
+
+                result.Append(this.subgraphState.CollectionField);
+
+                if (!inputOp.State())
+                {
+                    Close();
+                }
+                return result;
+            }
+
+            return null;
+        }
+
+        public override void ResetState()
+        {
             inputOp.ResetState();
             Open();
         }

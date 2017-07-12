@@ -829,6 +829,13 @@ namespace GraphView
             currentContext.TableReferencesInFromClause.Add(newVariable);
         }
 
+        internal virtual void Subgraph(GremlinToSqlContext currentContext, string sideEffectKey, GremlinToSqlContext dummyContext)
+        {
+            GremlinSubgraphVariable newVariable = new GremlinSubgraphVariable(dummyContext, sideEffectKey);
+            currentContext.VariableList.Add(newVariable);
+            currentContext.TableReferencesInFromClause.Add(newVariable);
+        }
+
         internal virtual void Sum(GremlinToSqlContext currentContext)
         {
             GremlinSumVariable newVariable = new GremlinSumVariable(currentContext.Duplicate());

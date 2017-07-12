@@ -694,6 +694,8 @@ namespace GraphView
 
     public partial class WStoreTableReference : WSchemaObjectFunctionTableReference {}
 
+    public partial class WSubgraphTableReference : WSchemaObjectFunctionTableReference {}
+
     public partial class WAggregateTableReference : WSchemaObjectFunctionTableReference {}
 
     public partial class WBarrierTableReference : WSchemaObjectFunctionTableReference {}

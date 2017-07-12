@@ -412,6 +412,9 @@ namespace GraphView
                 case GremlinKeyword.func.Store:
                     funcTableRef = new WStoreTableReference();
                     break;
+                case GremlinKeyword.func.Subgraph:
+                    funcTableRef = new WSubgraphTableReference();
+                    break;
                 case GremlinKeyword.func.Aggregate:
                     funcTableRef = new WAggregateTableReference();
                     break;

@@ -80,6 +80,7 @@ namespace GraphView
             public const string Group = "Group";
             public const string Cap = "Cap";
             public const string Store = "Store";
+            public const string Subgraph = "Subgraph";
             public const string Aggregate = "Aggregate";
             public const string Coin = "Coin";
             public const string CountLocal = "CountLocal";

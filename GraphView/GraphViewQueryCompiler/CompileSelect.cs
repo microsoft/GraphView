@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Data;
 using System.Diagnostics;
 using System.Linq;
 using System.Text;
@@ -2582,6 +2583,53 @@ namespace GraphView
 
 
             return storeOp;
+        }
+    }
+
+    partial class WSubgraphTableReference
+    {
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
+        {
+            WScalarSubquery getSubgraphObjectSubqueryParameter = Parameters[0] as WScalarSubquery;
+            if (getSubgraphObjectSubqueryParameter == null)
+                throw new SyntaxErrorException("The first parameter of a Store function must be a WScalarSubquery.");
+            ScalarFunction getSubgraphObjectFunction = getSubgraphObjectSubqueryParameter.CompileToFunction(context, dbConnection);
+            
+            string sideEffectKey = (Parameters[1] as WValueExpression).Value;
+
+            IAggregateFunction sideEffectState;
+            if (!context.SideEffectStates.TryGetValue(sideEffectKey, out sideEffectState))
+            {
+                sideEffectState = new CollectionFunction();
+                context.SideEffectStates.Add(sideEffectKey, sideEffectState);
+            }
+            else if (!(sideEffectState is SubgraphFunction))
+            {
+                if (sideEffectState is GroupFunction)
+                {
+                    throw new QueryCompilationException("It's illegal to use the same sideEffect key of a group(string) step and an subgraph(string) step!");
+                }
+                else if (sideEffectState is TreeFunction)
+                {
+                    throw new QueryCompilationException("It's illegal to use the same sideEffect key of a tree(string) step and an subgraph(string) step!");
+                }
+                else if (sideEffectState is CollectionFunction)
+                {
+                    throw new QueryCompilationException("It's illegal to use the same sideEffect key of a aggregate(string) step and an subgraph(string) step!");
+                }
+                else
+                {
+                    throw new QueryCompilationException("Unkonw SideEffect");
+                }
+            }
+
+            SubgraphOperator subgraphOp = new SubgraphOperator(context.CurrentExecutionOperator, getSubgraphObjectFunction, (CollectionFunction)sideEffectState);
+            context.CurrentExecutionOperator = subgraphOp;
+            // TODO: Change to correct ColumnGraphType
+            context.AddField(Alias.Value, GremlinKeyword.TableDefaultColumnName, ColumnGraphType.Value);
+
+
+            return subgraphOp;
         }
     }
 

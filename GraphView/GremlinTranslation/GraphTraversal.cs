@@ -1194,6 +1194,12 @@ namespace GraphView
             return this;
         }
 
+        public GraphTraversal Subgraph(string sideEffectKey)
+        {
+            AddGremlinOperator(new GremlinSubgraphOp(sideEffectKey));
+            return this;
+        }
+
         public GraphTraversal Sum(GremlinKeyword.Scope scope)
         {
             AddGremlinOperator(new GremlinSumOp(scope));

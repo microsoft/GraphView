@@ -331,6 +331,43 @@ namespace GraphView
         }
     }
 
+    internal class SubgraphFunction : IAggregateFunction
+    {
+        //Dictionary<FieldObject, List<RawRecord>> groupedStates;
+        //GraphViewExecutionOperator aggregateOp;
+        //ConstantSourceOperator tempSourceOp;
+        //ContainerOperator groupedSourceOp;
+        //bool isProjectingACollection;
+
+        public SubgraphFunction(ConstantSourceOperator tempSourceOp,
+            ContainerOperator groupedSourceOp,
+            GraphViewExecutionOperator aggregateOp,
+            bool isProjectingACollection)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void Init()
+        {
+            throw new NotImplementedException();
+        }
+
+        public void Accumulate(params FieldObject[] values)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void Accumulate(params Object[] values)
+        {
+            throw new NotImplementedException();
+        }
+
+        public FieldObject Terminate()
+        {
+            throw new NotImplementedException();
+        }
+    }
+
     internal class CapAggregate : IAggregateFunction
     {
         private List<Tuple<string, IAggregateFunction>> sideEffectStates;
