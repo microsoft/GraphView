@@ -1371,6 +1371,12 @@ namespace GraphView
                 //  queryScript,
                 //  queryOptions);
                 // new
+                // new yj
+                if(queryScript.Contains(".id IN ("))
+                {
+                    int a = 0;
+                }
+                // new yj
                 var result = ExecuteWithRetriesSync(this.DocDBClient, () => this.DocDBClient.CreateDocumentQuery(this._docDBCollectionUri, queryScript, queryOptions).ToList());
                 start2.Stop();
                 Console.WriteLine(start2.ElapsedMilliseconds + "    :" + queryScript);

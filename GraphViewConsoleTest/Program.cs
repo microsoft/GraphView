@@ -54,7 +54,7 @@ namespace GraphViewConsoleTest
             //querySpecificIDsListUseSystemCall_SamePartitionCount_DiffVertexCount("PartitionQueryCheck_100");
             //queryComparePartitionInCondition("PartitionQueryCheck_100");
             queryCrossOrFakePartitionCross("FakeCrossPartition");
-            //queryCrossOrFakePartitionNotCross("FakeNotCrossPartition");
+            queryCrossOrFakePartitionNotCross("FakeNotCrossPartition");
             Console.ReadLine();
         }
 

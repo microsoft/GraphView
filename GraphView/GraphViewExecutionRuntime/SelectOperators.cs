@@ -310,7 +310,7 @@ namespace GraphView
                     sinkPartitionList.Append(string.Join(", ", sinkPartitionSet.Select(partition => $"'{partition}'")));
 
                     string inClause = $"{this.sinkVertexQuery.Alias}.id IN ({sinkReferenceList.ToString()})";
-
+                    
                     JsonQuery toSendQuery = new JsonQuery(this.sinkVertexQuery);
                     if (string.IsNullOrEmpty(toSendQuery.WhereSearchCondition)) {
                         toSendQuery.WhereSearchCondition = inClause;
@@ -319,6 +319,17 @@ namespace GraphView
                         toSendQuery.WhereSearchCondition = $"({this.sinkVertexQuery.WhereSearchCondition}) AND {inClause}";
                     }
 
+                    // new yj add partition key clause
+                    string inPartitionClause = $"{this.sinkVertexQuery.Alias}[\"{ "_partition"}\"] IN ({sinkPartitionList.ToString()})";
+                    if (string.IsNullOrEmpty(toSendQuery.WhereSearchCondition) && sinkPartitionList.Length > 0)
+                    {
+                        toSendQuery.WhereSearchCondition = inPartitionClause;
+                    }
+                    else
+                    {
+                        toSendQuery.WhereSearchCondition = $"({toSendQuery.WhereSearchCondition}) AND {inPartitionClause}";
+                    }
+                    // new yj
                     //string spilledEdgeDocumentsInClause =
                     //    $"{this.sinkVertexViaExternalAPIQuery.Alias}.{GraphViewKeywords.KW_EDGEDOC_VERTEXID} IN ({sinkReferenceList.ToString()})";
 
