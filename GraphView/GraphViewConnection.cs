@@ -798,6 +798,7 @@ namespace GraphView
                         //    edge["_partition"] = srcPartition;
                         //}
                         edge["_partition"] = srcPartition; // For design of the transaction
+                        // also repartition the des
                         if (deleteTheDocBeforeInsert)
                         {
                             Console.WriteLine("Repartition hte doc" + edge);
@@ -938,7 +939,74 @@ namespace GraphView
             }
         }
 
+        public void insertForTheSamePartition(GraphViewConnection srcConnection, List<Object> ids)
+        {
+            StringBuilder str = new StringBuilder();
+            foreach(var i in ids)
+            {
+                str.Append(",'" + i + "'");
+            }
+            str.Remove(0, 1);
+            // (1) query the docs
+            var docs = srcConnection.ExecuteQuery("SELECT * FROM Node where Node.id in (" + str.ToString() + ")").ToList();
+            var partition = getMinLoadPartitionIndex();
+            foreach(var d in docs)
+            {
+                ((JObject)d)["_partition"] = partition;
+                // (1.1) des contains this doc, do nothing
+                var test = this.ExecuteQuery("SELECT * FROM Node where Node.id =\"" + ((JObject)d)["id"] + ")=\"").ToList();
 
+                // (1.2) des does not contains the doc, insert
+                if(test.Count() == 0)
+                {
+                    this.CreateDocumentAsync(((JObject)d));
+                } else
+                {
+                    this.ReplaceOrDeleteDocumentAsync(((JObject)d)["id"].ToString(), ((JObject)d), ((JObject)d)["_partition"].ToString());
+                }
+            }
+        }
+
+        public void repartitionByBFS(GraphViewConnection srcConnection)
+        {
+            // (1) iterate all vertex
+            GraphViewCommand srcCMD = new GraphViewCommand(srcConnection);
+            var processedIDSet = new HashSet<String>();
+            var tempIDList = new List<Object>();
+            var swapTempIDList = new List<String>();
+            var allV = srcCMD.g().V().Next();
+            foreach (var vertex in allV)
+            {
+                tempIDList.Clear();
+                
+                if(processedIDSet.Contains(vertex))
+                {
+                    continue;
+                } else
+                {
+                    tempIDList.Add(vertex.Replace("v", "").Replace("[", "").Replace("]", ""));
+                    insertForTheSamePartition(srcConnection, tempIDList);
+                    //tempIDList.Clear();
+                    processedIDSet.Add(vertex);
+                }
+                
+                while(tempIDList.Count() != 0)
+                {
+                    insertForTheSamePartition(srcConnection,tempIDList);
+                    var temp = srcCMD.g().V(tempIDList).Out("appear").Select("id").Next().ToList<String>();
+                    tempIDList.Clear();
+                    foreach (var v in temp)
+                    {
+                        if (!processedIDSet.Contains(v))
+                        {
+                            tempIDList.Add(v.Replace("v", "").Replace("[", "").Replace("]", ""));
+                            processedIDSet.Add(v);
+                        }
+                    }
+                }
+            }
+            
+        }
         public void repartitionTheCollectionInsideTheCollection(List<JObject> edgeList)
         {
             partitionTheEdgeList(edgeList, this, this, true);

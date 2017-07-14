@@ -97,7 +97,6 @@ namespace GraphView
                 //inputContext.AddPredicate(booleanExpr);
                 // new yj
             }
-
             inputContext.VariableList.Add(newVariable);
             inputContext.TableReferences.Add(newVariable);
             inputContext.SetPivotVariable(newVariable);

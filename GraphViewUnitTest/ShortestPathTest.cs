@@ -74,7 +74,7 @@ namespace GraphViewUnitTest
             while(!reachDes && vertexIdQ1.Count != 0)
             {
                 var id = vertexIdQ1.Dequeue();
-                var tempVertexIds = graph.g().V().HasId(id).Out().Values("id").Next();
+                var tempVertexIds = graph.g().V().HasId(id).Out("appear").Values("id").Next();
 
                 foreach (var vertexId in tempVertexIds)
                 {
