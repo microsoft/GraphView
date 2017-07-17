@@ -5170,7 +5170,7 @@ namespace GraphView
         public override void ResetState()
         {
             this.outputBuffer.Clear();
-            this.aggregateState.Init();
+//            this.aggregateState.Init();
             this.inputOp.ResetState();
             this.Open();
         }

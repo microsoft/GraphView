@@ -844,7 +844,8 @@ namespace GraphView
 
             if (this.vertexIds.Any())
             {
-                List<VertexField> vertices = this.connection.CreateDatabasePortal().GetVerticesByIds(this.vertexIds);
+                // this API would modify the parameter, so deep copy it first.
+                List<VertexField> vertices = this.connection.CreateDatabasePortal().GetVerticesByIds(new HashSet<string>(this.vertexIds));
 
                 List<string> vertexGraphSON = new List<string>();
 
