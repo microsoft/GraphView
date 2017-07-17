@@ -74,8 +74,22 @@ namespace GraphViewUnitTest.Gremlin
                 var subGraphSON = command.ExecuteAndGetResults()[0];
                 var subGraph = JArray.Parse(subGraphSON);
 
-                Assert.Equals(subGraph.Count, 4);
+                Assert.AreEqual(subGraph.Count, 4);
             }
         }
+
+        [TestMethod]
+        public void SubgraphWithDifferentKeys()
+        {
+            using (GraphViewCommand command = new GraphViewCommand(graphConnection))
+            {
+                command.CommandText =
+                    "g.V().outE('knows').subgraph('knowsG').inV().outE('created').subgraph('createdG').inV().inE('created').subgraph('createdG')";
+                var result = command.ExecuteAndGetResults();
+
+                Assert.AreEqual(result.Count, 4);
+            }
+        }
+        
     }
 }
