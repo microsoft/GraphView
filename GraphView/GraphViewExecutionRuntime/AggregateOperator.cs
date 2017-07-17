@@ -920,7 +920,11 @@ namespace GraphView
                             }
                         }
                     }
-                    vertex.Add(new JProperty("inE", inE));
+                    if (inE.Count != 0)
+                    {
+                        vertex.Add(new JProperty("inE", inE));
+                    }
+                    
 
 
                     // Add out Edges
@@ -981,7 +985,11 @@ namespace GraphView
                             }
                         }
                     }
-                    vertex.Add(new JProperty("outE", outE));
+                    if (outE.Count != 0)
+                    {
+                        vertex.Add(new JProperty("outE", outE));
+                    }
+                    
 
                     // Add vertex properties
                     JObject vertexProperties = new JObject();
