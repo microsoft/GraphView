@@ -247,6 +247,7 @@ namespace GraphView
                 {"simplePath", "SimplePath"},
                 {"store", "Store"},
                 {"sum", "Sum"},
+                {"subgraph", "Subgraph"},
                 {"until", "Until"},
                 {"to", "To"},
                 {"tree", "Tree"},
