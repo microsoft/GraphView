@@ -7,7 +7,12 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using GraphView;
 using GraphViewUnitTest.Gremlin;
 using Microsoft.SqlServer.TransactSql.ScriptDom;
-
+using Newtonsoft.Json;
+using Newtonsoft.Json;
+using System.Threading;
+using Newtonsoft.Json.Converters;
+using Newtonsoft.Json.Linq;
+using Newtonsoft.Json.Serialization;
 namespace GraphViewUnitTest
 {
     [TestClass]
@@ -64,38 +69,54 @@ namespace GraphViewUnitTest
         }
         public static int GetShortestPath(String src, String des, GraphViewCommand graph)
         {
-            Queue<String> vertexIdQ1 = new Queue<String>();
-            Queue<String> vertexIdQ2 = new Queue<String>();
+            List<Object> vertexIdQ1 = new List<Object>();
+            List<Object> vertexIdQ2 = new List<Object>();
             HashSet<String> historyVertex = new HashSet<string>();
             Boolean reachDes = false;
             int depth = 1;
-            vertexIdQ1.Enqueue(src);
-
+            vertexIdQ1.Add(src);
+            if(des == "9309097")
+            {
+                var a = 0;
+            }
             while(!reachDes && vertexIdQ1.Count != 0)
             {
-                var id = vertexIdQ1.Dequeue();
-                var tempVertexIds = graph.g().V().HasId(id).Out("appear").Values("id").Next();
-
-                foreach (var vertexId in tempVertexIds)
+                //var id = vertexIdQ1.Dequeue();
+                var vs = vertexIdQ1;
+                //List<String> tempVertexIds = null;
+                //var test = tempVertexIds = graph.g().V(vs).Out("appear").Next();
+                var builder = new StringBuilder();
+                foreach(var t  in vs)
                 {
+                    builder.Append("," + "'"+t+"'");
+                }
+                builder.Remove(0, 1);
+                //var temp = graph.GraphViewConnection.ExecuteQuery("SELECT c._edge[0]._sinkV FROM c where c._vertex_id in (" + builder.ToString() + ")");
+                    var temp = graph.g().V(vs).Out("appear").Values("id").Next();
+
+                foreach (var vertex in temp)
+                {
+                    //var vertexId = ((JObject)vertex)["_sinkV"].ToString();
+                    var vertexId = vertex;
                     if(historyVertex.Contains(vertexId))
                     {
-                        continue;
+                        //continue;
                     } else
                     {
                         historyVertex.Add(vertexId);
                     }
-                    if(vertexId == des)
+                    if(vertexId.ToString() == des)
                     {
                         reachDes = true;
                         break;
-                    } else if(vertexId != src)
+                    } else if(vertexId.ToString() != src)
                     {
-                        vertexIdQ2.Enqueue(vertexId);
+                        vertexIdQ2.Add(vertexId.ToString());
                     }
                 }
+                vertexIdQ1.Clear();
                 // the uppper level queue become empty, move to next level of graph
-                if(vertexIdQ1.Count == 0 && !reachDes)
+                if(!reachDes)
                 {
                     var swap = vertexIdQ1;
                     vertexIdQ1 = vertexIdQ2;

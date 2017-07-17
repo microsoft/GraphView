@@ -26,15 +26,15 @@ namespace GraphViewConsoleTest
             //Console.WriteLine("#######start PartitionTestCitRep2 test");
             //partitionQueryTestCommon("PartitionTestCitRep2");
             //insertCitDataBulkInsert();
-            //insertCitHashPartitionByBulkInsert();
-            insertCitGreedyPartitionByBulkInsert();
+           // insertCitHashPartitionByBulkInsert();
+            //insertCitGreedyPartitionByBulkInsert("CitGreedyPartition1000item");
            // getStatistic();
             //insertInSamePartition();
             //insertCitHashPartitionByBulkInsert();
             //partitionQueryTestCommon("CitFakeDiffPartition", "CitFakeDiffPartition");
             //partitionQueryTestCommon("CitFakeDiffPartition", "CitFakeSamePartition");
-            //partitionQueryTestCommon("CitHashPartition1000item", "CitHashPartition1000item");
-            //partitionQueryTestCommon("CitHashPartition1000item", "CitGreedyRePartition1000item");
+            partitionQueryTestCommon("CitHashPartition1000item", "CitHashPartition1000item");
+            //partitionQueryTestCommon("CitHashPartition1000item", "CitGreedyPartition1000item");
             //insertDiffKeyPartitionBulkInsert("PartitionTest_100Key", 100);
             //insertDiffKeyPartitionBulkInsert("PartitionTest_50Key",50);
             //insertDiffKeyPartitionBulkInsert("PartitionTest_10Key", 10);
@@ -55,7 +55,7 @@ namespace GraphViewConsoleTest
             //queryComparePartitionInCondition("PartitionQueryCheck_100");
             //queryCrossOrFakePartitionCross("FakeCrossPartition");
             //queryCrossOrFakePartitionNotCross("FakeNotCrossPartition");
-            //repartition("CitGreedyRePartition1000item", "CitGreedyRePartition1000item");
+            //repartition("CitGreedyPartition1000item", "CitGreedyPartition1000item");
             Console.ReadLine();
             // CitGreedyRePartition1000Item
         }
@@ -729,6 +729,7 @@ namespace GraphViewConsoleTest
 
         public static void partitionQueryTestCommon(String sampleCollection, String collectionName)
         {
+            Console.WriteLine("[##################################################start warm query]");
             Console.WriteLine(collectionName + "start test");
             GraphViewConnection connection0 = new GraphViewConnection("https://graphview.documents.azure.com:443/",
              "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
@@ -737,13 +738,13 @@ namespace GraphViewConsoleTest
 
             GraphViewCommand graph0 = new GraphViewCommand(connection0);
             var sample = new List<Object>();
-            var resultsS = graph0.g().V().Sample(10).Next();
+            var resultsS = graph0.g().V().Sample(100).Next();
 
             foreach (var result in resultsS)
             {
                 sample.Add(result.Replace("v", "").Replace("[", "").Replace("]", ""));
             }
-            Console.WriteLine("[finish warm query]");
+            Console.WriteLine("[##################################################finish warm query]");
            // (1) FindNeighbours(FN): finds the neighbours of all nodes.
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
                "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
@@ -779,32 +780,44 @@ namespace GraphViewConsoleTest
             //Console.WriteLine(collectionName + "(1)" + (start1.ElapsedMilliseconds) + "ms");
 
             // (2) FindAdjacentNodes (FA): finds the 3-hop adjacent
-            var start2 = Stopwatch.StartNew();
-            var results = graph.g().V(sample[0]).Out("appear").Out("appear").Next();
-            //results = graph.g().V().Sample(10).Out().Out().Next();
+            //var start2 = Stopwatch.StartNew();
+            //var results = graph.g().V(sample).Out("appear").Out("appear").Next();
+            ////results = graph.g().V().Sample(10).Out().Out().Next();
 
-            foreach (var result in results)
-            {
-                //var a = result;
-                //Console.WriteLine(result);
-            }
-            start2.Stop();
-            var t = start2.ElapsedMilliseconds;
-            Console.WriteLine(collectionName + "(2)" + (t) + "ms");
+            //foreach (var result in results)
+            //{
+            //    //var a = result;
+            //    //Console.WriteLine(result);
+            //}
+            //start2.Stop();
+            //var t = start2.ElapsedMilliseconds;
+            //Console.WriteLine(collectionName + "(2)" + (t) + "ms");
             // (3) Shortest Path: FindShortestPath (FS): finds the shortest path between the first node and 100 randomly picked nodes.
 
-            //var start3 = Stopwatch.StartNew();
-            //String src = sample[0].ToString();
-            //sample.RemoveAt(0);
-            //foreach (var node in sample)
-            //{
-            //    String des = node.ToString();
-            //    ShortestPathTest.GetShortestPath(src, des, graph);
-            //    //src = des;
-            //}
-            //start3.Stop();
-            //Console.WriteLine(collectionName + "(3)" + (start3.ElapsedMilliseconds) + "ms");
-            //Console.WriteLine(collectionName + "end test");
+            var linesE = File.ReadLines("E:\\dataset\\thsinghua_dataset\\cit_network\\cit-HepTh.txt\\Cit-HepTh.txt");
+
+            var start3 = Stopwatch.StartNew();
+            String src = sample[0].ToString();
+            sample.RemoveAt(0);
+            int i = 1000;
+            foreach (var node in linesE)
+            {
+                var edge = node.Split('\t');
+                src = edge[0].ToString();
+                String des = edge[1].ToString();
+                //ShortestPathTest.GetShortestPath(edge[0], edge[1], graph);
+                ShortestPathTest.GetShortestPath(src, des, graph);
+
+               // src = des;
+                i--;
+                if (i < 0)
+                {
+                    break;
+                }
+            }
+            start3.Stop();
+            Console.WriteLine(collectionName + "(3)" + (start3.ElapsedMilliseconds) + "ms");
+            Console.WriteLine(collectionName + "end test");
         }
 
         //   public static void insertCitData()
@@ -865,23 +878,25 @@ namespace GraphViewConsoleTest
             GraphViewConnection connection = GraphViewConnection.ResetGraphAPICollection("https://graphview.documents.azure.com:443/",
        "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
        "GroupMatch", "CitHashPartition1000item",
-       false, 1, "id");
+       false, 1, "name");
 
-       //GraphViewConnection connection =
-       //new GraphViewConnection("https://graphview.documents.azure.com:443/",
-       //   "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
-       //   "GroupMatch", "MarvelTest", GraphType.GraphAPIOnly, false,
-       //   1, null);
+            //GraphViewConnection connection =
+            //new GraphViewConnection("https://graphview.documents.azure.com:443/",
+            //   "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+            //   "GroupMatch", "MarvelTest", GraphType.GraphAPIOnly, false,
+            //   1, null);
             connection.EdgeSpillThreshold = 1;
+            GraphViewConnection.partitionNum = 100;
+            GraphViewConnection.partitionLoad = new int[100];
             GraphViewConnection.useHashPartitionWhenCreateDoc = true;
             GraphViewConnection.useBulkInsert = true;
             GraphViewCommand cmd = new GraphViewCommand(connection);
             HashSet<String> nodeIdSet = new HashSet<String>();
 
             int c = 1;
-            var linesE = File.ReadLines("D:\\dataset\\thsinghua_dataset\\cit_network\\cit-HepTh.txt\\Cit-HepTh.txt");
+            var linesE = File.ReadLines("E:\\dataset\\thsinghua_dataset\\cit_network\\cit-HepTh.txt\\Cit-HepTh.txt");
             BulkInsertUtils blk = new BulkInsertUtils(GraphViewConnection.partitionNum);
-            blk.threadNum = 10;
+            blk.threadNum = 100;
             blk.initBulkInsertUtilsForParseData(GraphViewConnection.partitionNum, linesE.Count(), connection);
             int i = 0;
             foreach (var lineE in linesE)
@@ -914,13 +929,18 @@ namespace GraphViewConsoleTest
             connection.getMetricsOfGraphPartition();
         }
 
-        public static void insertCitGreedyPartitionByBulkInsert()
+        public static void insertCitGreedyPartitionByBulkInsert(String colName)
         {
-            GraphViewConnection connection =
-            new GraphViewConnection("https://graphview.documents.azure.com:443/",
-               "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
-               "GroupMatch", "CitGreedyPartition1000item", GraphType.GraphAPIOnly, false,
-               1, null);
+            //GraphViewConnection connection =
+            //new GraphViewConnection("https://graphview.documents.azure.com:443/",
+            //   "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+            //   "GroupMatch", "CitGreedyPartition1000item", GraphType.GraphAPIOnly, false,
+            //   1, null);
+
+            GraphViewConnection connection = GraphViewConnection.ResetGraphAPICollection("https://graphview.documents.azure.com:443/",
+            "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+            "GroupMatch", colName,
+            false, 1, "name");
 
             //GraphViewConnection connection =
             //new GraphViewConnection("https://graphview.documents.azure.com:443/",
@@ -930,8 +950,8 @@ namespace GraphViewConsoleTest
             connection.EdgeSpillThreshold = 1;
             GraphViewConnection.partitionNum = 100;
             GraphViewConnection.partitionLoad = new int[100];
-            GraphViewConnection.useHashPartitionWhenCreateDoc = false;
-            GraphViewConnection.useGreedyPartitionWhenCreateDoc = true;
+            GraphViewConnection.useHashPartitionWhenCreateDoc = true;
+            GraphViewConnection.useGreedyPartitionWhenCreateDoc = false;
             GraphViewConnection.useBulkInsert = true;
             GraphViewCommand cmd = new GraphViewCommand(connection);
             HashSet<String> nodeIdSet = new HashSet<String>();

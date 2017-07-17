@@ -939,7 +939,7 @@ namespace GraphView
             }
         }
 
-        public void insertForTheSamePartition(GraphViewConnection srcConnection, List<Object> ids)
+        public async void insertForTheSamePartition(GraphViewConnection srcConnection, List<Object> ids, HashSet<String> processedSet, int partition)
         {
             StringBuilder str = new StringBuilder();
             foreach(var i in ids)
@@ -949,25 +949,35 @@ namespace GraphView
             str.Remove(0, 1);
             // (1) query the docs
             var docs = srcConnection.ExecuteQuery("SELECT * FROM Node where Node.id in (" + str.ToString() + ")").ToList();
-            var partition = getMinLoadPartitionIndex();
+            //var partition = getMinLoadPartitionIndex();
             foreach(var d in docs)
             {
-                ((JObject)d)["_partition"] = partition;
+                var doc = ((JObject)d);
+                doc["_partition"] = partition.ToString();
+                //((JObject)d)["_partition"] = partition.ToString();
                 // (1.1) des contains this doc, do nothing
-                var test = this.ExecuteQuery("SELECT * FROM Node where Node.id =\"" + ((JObject)d)["id"] + ")=\"").ToList();
-
+                //var script = "SELECT * FROM Node where Node.id ='" + ((JObject)d)["id"] + "'";
+                //var test = this.ExecuteQuery(script).ToList();
+               
                 // (1.2) des does not contains the doc, insert
-                if(test.Count() == 0)
-                {
-                    this.CreateDocumentAsync(((JObject)d));
-                } else
-                {
-                    this.ReplaceOrDeleteDocumentAsync(((JObject)d)["id"].ToString(), ((JObject)d), ((JObject)d)["_partition"].ToString());
-                }
+                //if (test.Count() == 0)
+                //{
+                //    this.CreateDocumentAsync(((JObject)d));
+                //}
+                //else
+                //{
+                    if (!processedSet.Contains(((JObject)d)["id"].ToString())) {
+                        var p = ((JObject)d)["_partition"].ToString();
+                        await this.ReplaceOrDeleteDocumentAsync(((JObject)d)["id"].ToString(), null, p);
+                        await this.CreateDocumentAsync(doc);
+                        //await this.CreateDocumentAsync(((JObject)d));
+                        partitionLoad[partition]++;
+                    }
+               // }
             }
         }
 
-        public void repartitionByBFS(GraphViewConnection srcConnection)
+        public async void repartitionByBFS(GraphViewConnection srcConnection)
         {
             // (1) iterate all vertex
             GraphViewCommand srcCMD = new GraphViewCommand(srcConnection);
@@ -985,15 +995,20 @@ namespace GraphView
                 } else
                 {
                     tempIDList.Add(vertex.Replace("v", "").Replace("[", "").Replace("]", ""));
-                    insertForTheSamePartition(srcConnection, tempIDList);
+                    //insertForTheSamePartition(srcConnection, tempIDList, processedIDSet, 0);
                     //tempIDList.Clear();
                     processedIDSet.Add(vertex);
                 }
-                
+
+                var partition = srcConnection.getMinLoadPartitionIndex();
                 while(tempIDList.Count() != 0)
                 {
-                    insertForTheSamePartition(srcConnection,tempIDList);
-                    var temp = srcCMD.g().V(tempIDList).Out("appear").Select("id").Next().ToList<String>();
+                    insertForTheSamePartition(srcConnection,tempIDList, processedIDSet, partition);
+                    var temp = srcCMD.g().V(tempIDList).Out("appear").Next().ToList<String>();
+                    if(temp.Count != 0)
+                    {
+                        int a = 0;
+                    }
                     tempIDList.Clear();
                     foreach (var v in temp)
                     {
@@ -1447,7 +1462,7 @@ namespace GraphView
                 // new yj
                 var result = ExecuteWithRetriesSync(this.DocDBClient, () => this.DocDBClient.CreateDocumentQuery(this._docDBCollectionUri, queryScript, queryOptions).ToList());
                 start2.Stop();
-                Console.WriteLine(start2.ElapsedMilliseconds + "    :" + queryScript);
+                Console.WriteLine("\n\n" + start2.ElapsedMilliseconds + "    :" + queryScript);
                  
                 return result;
             } catch (Exception e)

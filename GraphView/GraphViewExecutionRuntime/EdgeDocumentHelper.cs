@@ -773,20 +773,35 @@ namespace GraphView
 
             string inClause = string.Join(", ", vertexIdSet.Select(vertexId => $"'{vertexId}'"));
             string partitionInClause = string.Join(", ", vertexPartitionKeySet.Select(partitionKey => $"'{partitionKey}'"));
+            // old
+            //string edgeDocumentsQuery =
+            //    $"SELECT * " +
+            //    $"FROM edgeDoc " +
+            //    $"WHERE edgeDoc.{KW_EDGEDOC_VERTEXID} IN ({inClause}) " +
+            //    (string.IsNullOrEmpty(partitionInClause)
+            //         ? ""
+            //         : $"AND edgeDoc{connection.GetPartitionPathIndexer()} IN ({partitionInClause}) ") +
+            //    (edgeType == EdgeType.Outgoing
+            //         ? $"AND edgeDoc.{KW_EDGEDOC_ISREVERSE} = false "
+            //         : edgeType == EdgeType.Incoming
+            //             ? $"AND edgeDoc.{KW_EDGEDOC_ISREVERSE} = true "
+            //             : "");
+            // old
+            // new yj, the edge maybe spill to diff partition, does not need to limit the partition as the vertex partition Id
             string edgeDocumentsQuery =
-                $"SELECT * " +
-                $"FROM edgeDoc " +
-                $"WHERE edgeDoc.{KW_EDGEDOC_VERTEXID} IN ({inClause}) " +
-                (string.IsNullOrEmpty(partitionInClause)
-                     ? ""
-                     : $"AND edgeDoc{connection.GetPartitionPathIndexer()} IN ({partitionInClause}) ") +
-                (edgeType == EdgeType.Outgoing
-                     ? $"AND edgeDoc.{KW_EDGEDOC_ISREVERSE} = false "
-                     : edgeType == EdgeType.Incoming
-                         ? $"AND edgeDoc.{KW_EDGEDOC_ISREVERSE} = true "
-                         : "");
+               $"SELECT * " +
+               $"FROM edgeDoc " +
+               $"WHERE edgeDoc.{KW_EDGEDOC_VERTEXID} IN ({inClause}) " +
+               //(string.IsNullOrEmpty(partitionInClause)
+               //     ? ""
+               //     : $"AND edgeDoc{connection.GetPartitionPathIndexer()} IN ({partitionInClause}) ") +
+               (edgeType == EdgeType.Outgoing
+                    ? $"AND edgeDoc.{KW_EDGEDOC_ISREVERSE} = false "
+                    : edgeType == EdgeType.Incoming
+                        ? $"AND edgeDoc.{KW_EDGEDOC_ISREVERSE} = true "
+                        : "");
+            // new yj
             List<dynamic> edgeDocuments = connection.ExecuteQuery(edgeDocumentsQuery).ToList();
-
             // Dictionary<vertexId, Dictionary<edgeDocumentId, edgeDocument>>
             Dictionary<string, Dictionary<string, JObject>> edgeDict =
                 new Dictionary<string, Dictionary<string, JObject>>();
