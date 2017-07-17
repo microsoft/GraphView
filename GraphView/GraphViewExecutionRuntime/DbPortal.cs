@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Azure.Documents.Client;
+using Microsoft.SqlServer.TransactSql.ScriptDom;
 using Newtonsoft.Json.Linq;
 using static GraphView.GraphViewKeywords;
 
@@ -70,6 +71,8 @@ namespace GraphView
         public abstract List<JObject> GetEdgeDocuments(JsonQuery query);
 
         public abstract JObject GetEdgeDocument(JsonQuery query);
+
+        public abstract List<VertexField> GetVerticesByIds(HashSet<string> vertexId);
     }
 
     internal class DocumentDbPortal : DbPortal
@@ -335,6 +338,32 @@ namespace GraphView
         {
             string queryScript = query.ToString(DatabaseType.DocumentDB);
             return this.Connection.ExecuteQueryUnique(queryScript);
+        }
+
+
+        public override List<VertexField> GetVerticesByIds(HashSet<string> vertexId)
+        {
+            string inClause = string.Join(", ", vertexId.Select(x => $"'{x}'"));
+            JsonQuery query = new JsonQuery
+            {
+                SelectClause = "node",
+                WhereSearchCondition = "(IS_DEFINED(node._isEdgeDoc) = false AND node.id IN (" + inClause + "))",
+                Alias = "node",
+                NodeProperties = new List<string> {"node", "*"},
+                EdgeProperties = new List<string>()
+            };
+            IEnumerator<Tuple<VertexField, RawRecord>> queryResult = this.GetVerticesAndEdgesViaVertices(query);
+
+            List<VertexField> result = new List<VertexField>();
+            while (queryResult.MoveNext())
+            {
+                VertexField vertex = queryResult.Current.Item1;
+                result.Add(vertex);
+            }
+
+            EdgeDocumentHelper.ConstructLazyAdjacencyList(this.Connection, EdgeType.Both, vertexId, new HashSet<string>());
+
+            return result;
         }
     }
 }

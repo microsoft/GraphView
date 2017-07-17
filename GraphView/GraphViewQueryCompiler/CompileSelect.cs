@@ -2600,7 +2600,7 @@ namespace GraphView
             IAggregateFunction sideEffectState;
             if (!context.SideEffectStates.TryGetValue(sideEffectKey, out sideEffectState))
             {
-                sideEffectState = new CollectionFunction();
+                sideEffectState = new SubgraphFunction(dbConnection);
                 context.SideEffectStates.Add(sideEffectKey, sideEffectState);
             }
             else if (!(sideEffectState is SubgraphFunction))
@@ -2623,7 +2623,7 @@ namespace GraphView
                 }
             }
 
-            SubgraphOperator subgraphOp = new SubgraphOperator(context.CurrentExecutionOperator, getSubgraphObjectFunction, (CollectionFunction)sideEffectState);
+            SubgraphOperator subgraphOp = new SubgraphOperator(context.CurrentExecutionOperator, getSubgraphObjectFunction, (SubgraphFunction)sideEffectState);
             context.CurrentExecutionOperator = subgraphOp;
             // TODO: Change to correct ColumnGraphType
             context.AddField(Alias.Value, GremlinKeyword.TableDefaultColumnName, ColumnGraphType.Value);

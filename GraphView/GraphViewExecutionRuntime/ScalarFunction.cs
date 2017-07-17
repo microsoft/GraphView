@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Runtime.InteropServices.WindowsRuntime;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.SqlServer.TransactSql.ScriptDom;
@@ -55,6 +56,33 @@ namespace GraphView
                     return JsonDataType.Array;
                 default:
                     return JsonDataType.String;
+            }
+        }
+
+        internal static JValue GetStringFieldData(string value, JsonDataType type)
+        {
+            switch (type)
+            {
+                case JsonDataType.Bytes:
+                    return new JValue(byte.Parse(value));
+                case JsonDataType.String:
+                    return new JValue(value);
+                case JsonDataType.Boolean:
+                    return new JValue(bool.Parse(value));
+                case JsonDataType.Int:
+                    return new JValue(int.Parse(value));
+                case JsonDataType.Float:
+                    return new JValue(float.Parse(value));
+                case JsonDataType.Date:
+                    throw new NotImplementedException();
+                case JsonDataType.Null:
+                    return null;
+                case JsonDataType.Object:
+                    throw new NotImplementedException();
+                case JsonDataType.Array:
+                    throw new NotImplementedException();
+                default:
+                    throw new QueryCompilationException("Unsupported data type.");
             }
         }
     }

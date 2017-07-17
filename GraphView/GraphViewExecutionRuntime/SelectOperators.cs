@@ -3119,58 +3119,6 @@ namespace GraphView
         }
     }
 
-    internal class SubgraphOperator : GraphViewExecutionOperator
-    {
-        CollectionFunction subgraphState;
-        ScalarFunction getSubgraphObjectFunction;
-        GraphViewExecutionOperator inputOp;
-
-        public SubgraphOperator(GraphViewExecutionOperator inputOp, ScalarFunction getTargetFieldFunction, CollectionFunction subgraphState)
-        {
-            this.subgraphState = subgraphState;
-            this.getSubgraphObjectFunction = getTargetFieldFunction;
-            this.inputOp = inputOp;
-            Open();
-        }
-
-        public override RawRecord Next()
-        {
-            //throw new NotImplementedException();
-            if (inputOp.State())
-            {
-                RawRecord result = inputOp.Next();
-                if (result == null)
-                {
-                    Close();
-                    return null;
-                }
-
-                FieldObject subgraphObject = this.getSubgraphObjectFunction.Evaluate(result);
-
-                if (subgraphObject == null)
-                    throw new GraphViewException("The provided traversal or property name in Store does not map to a value.");
-
-                this.subgraphState.Accumulate(subgraphObject);
-
-                result.Append(this.subgraphState.CollectionField);
-
-                if (!inputOp.State())
-                {
-                    Close();
-                }
-                return result;
-            }
-
-            return null;
-        }
-
-        public override void ResetState()
-        {
-            inputOp.ResetState();
-            Open();
-        }
-    }
-
 
     //
     // Note: our BarrierOperator's semantics is not the same the one's in Gremlin
@@ -5159,6 +5107,71 @@ namespace GraphView
             this.outputBuffer.Clear();
             this.lazyAdjacencyListBatch.Clear();
             this.inputRecordsBuffer.Clear();
+            this.Open();
+        }
+    }
+
+    internal class SubgraphOperator : GraphViewExecutionOperator
+    {
+        private readonly GraphViewExecutionOperator inputOp;
+        private readonly SubgraphFunction aggregateState;
+        private readonly ScalarFunction getSubgraphEdgeFunction;
+        private readonly Queue<RawRecord> outputBuffer;
+
+        public SubgraphOperator(GraphViewExecutionOperator inputOp, ScalarFunction getTargetFieldFunction, SubgraphFunction aggregateState)
+        {
+            this.inputOp = inputOp;
+            this.aggregateState = aggregateState;
+            this.getSubgraphEdgeFunction = getTargetFieldFunction;
+            this.outputBuffer = new Queue<RawRecord>();
+
+            this.Open();
+        }
+
+        public override RawRecord Next()
+        {
+            while (this.State())
+            {
+                if (this.outputBuffer.Any())
+                {
+                    FieldObject graph = this.aggregateState.Terminate();
+
+                    RawRecord result = this.outputBuffer.Dequeue();
+                    result.Append(graph);
+                    return result;
+                }
+
+                // read all input records
+                RawRecord r = null;
+                while (inputOp.State() && (r = inputOp.Next()) != null)
+                {
+                    RawRecord result = new RawRecord(r);
+
+                    FieldObject aggregateObject = getSubgraphEdgeFunction.Evaluate(r);
+
+                    if (aggregateObject == null)
+                        throw new GraphViewException("The provided traversal or property name in Subgraph does not map to a value.");
+
+                    aggregateState.Accumulate(aggregateObject);
+
+                    outputBuffer.Enqueue(result);
+                }
+
+                if (!this.outputBuffer.Any())
+                {
+                    this.Close();
+                    return null;
+                }
+            }
+            
+            return null;
+        }
+
+        public override void ResetState()
+        {
+            this.outputBuffer.Clear();
+            this.aggregateState.Init();
+            this.inputOp.ResetState();
             this.Open();
         }
     }

@@ -21,7 +21,7 @@ namespace GraphView
         public override WTableReference ToTableReference()
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();
-            WSelectQueryBlock selectQueryBlock = DummyContext.ToSelectQueryBlock(true);
+            WSelectQueryBlock selectQueryBlock = DummyContext.ToSelectQueryBlock(false);
             parameters.Add(SqlUtil.GetScalarSubquery(selectQueryBlock));
             parameters.Add(SqlUtil.GetValueExpr(SideEffectKey));
             var tableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Subgraph, parameters, GetVariableName());
