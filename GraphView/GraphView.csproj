@@ -63,9 +63,10 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="CollectionType.cs" />
+    <Compile Include="GraphViewConnection\GraphViewConnection.cs" />
+    <Compile Include="GraphViewDBPortal\CollectionType.cs" />
     <Compile Include="GraphViewExecutionRuntime\CollectionOperator.cs" />
-    <Compile Include="GraphViewExecutionRuntime\DbPortal.cs" />
+    <Compile Include="GraphViewDBPortal\DbPortal.cs" />
     <Compile Include="GraphViewExecutionRuntime\AggregateOperator.cs" />
     <Compile Include="GraphViewExecutionRuntime\EdgeDocumentHelper.cs" />
     <Compile Include="GraphViewExecutionRuntime\ModificationOperators.cs" />
@@ -73,7 +74,7 @@
     <Compile Include="GraphViewExecutionRuntime\SelectOperators.cs" />
     <Compile Include="GraphViewQueryCompiler\AttachWhereClauseVisitor.cs" />
     <Compile Include="GraphViewExecutionRuntime\BooleanFunction.cs" />
-    <Compile Include="DictionaryExtensions.cs" />
+    <Compile Include="GraphViewUtils\DictionaryExtensions.cs" />
     <Compile Include="GraphViewQueryCompiler\CompileBooleanExpression.cs" />
     <Compile Include="GraphViewQueryCompiler\CompileModification.cs" />
     <Compile Include="GraphViewQueryCompiler\CompileScalarExpression.cs" />
@@ -218,21 +219,16 @@
     <Compile Include="GraphViewExecutionRuntime\GraphViewExecutionEngine.cs" />
     <Compile Include="GraphViewJsonCommand.cs" />
     <Compile Include="GraphViewQueryCompiler\MatchComponent.cs" />
-    <Compile Include="ObjectExtensions.cs" />
+    <Compile Include="GraphViewUtils\ObjectExtensions.cs" />
     <Compile Include="GraphViewQueryCompiler\CompileSelect.cs" />
     <Compile Include="GraphViewQueryCompiler\Statistics.cs" />
-    <Compile Include="ConvertGraphModificationStatementVisitor.cs" />
     <Compile Include="GraphViewCommand.cs" />
     <Compile Include="GraphViewKeywords.cs" />
     <Compile Include="TSQL Syntax Tree\WControlFlow.cs" />
     <Compile Include="TSQL Syntax Tree\WCreateViewStatement.cs" />
     <Compile Include="TSQL Syntax Tree\WDeclareVariableStatement.cs" />
-    <Compile Include="TranslateDataModificationVisitor.cs" />
-    <Compile Include="GraphDataModificationAnnotation.cs" />
-    <Compile Include="DocumentDBConnection.cs" />
+    <Compile Include="GraphViewConnection\DocumentDBConnection.cs" />
     <Compile Include="GraphViewException.cs" />
-    <Compile Include="MatchClauseVisitor.cs" />
-    <Compile Include="GraphViewParser.cs" />
     <Compile Include="GraphViewQueryCompiler\MatchGraph.cs" />
     <Compile Include="TSQL Syntax Tree\WCallTarget.cs" />
     <Compile Include="TSQL Syntax Tree\WColumnDefinition.cs" />
@@ -243,8 +239,8 @@
     <Compile Include="TSQL Syntax Tree\WIdentifierOrValueExpression.cs" />
     <Compile Include="TSQL Syntax Tree\WTableHint.cs" />
     <Compile Include="TSQL Syntax Tree\WTransactionStatement.cs" />
-    <Compile Include="VertexObjectCache.cs" />
-    <Compile Include="WSqlFragmentVisitor.cs" />
+    <Compile Include="GraphViewConnection\VertexObjectCache.cs" />
+    <Compile Include="TSQL Syntax Tree\WSqlFragmentVisitor.cs" />
     <Compile Include="TSQL Syntax Tree\WGraphTableColumn.cs" />
     <Compile Include="TSQL Syntax Tree\WDataTypeReference.cs" />
     <Compile Include="TSQL Syntax Tree\WIdentityOptions.cs" />

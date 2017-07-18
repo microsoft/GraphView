@@ -69,12 +69,5 @@ namespace GraphView
         public const int KW_DEFAULT_BATCH_SIZE = 1000;
 
         public static string KW_TABLE_DEFAULT_COLUMN_NAME = GremlinKeyword.TableDefaultColumnName;
-
-        internal enum Pop
-        {
-            All,
-            First,
-            Last
-        }
     }
 }

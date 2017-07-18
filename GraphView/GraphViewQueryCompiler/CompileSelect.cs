@@ -3496,7 +3496,7 @@ namespace GraphView
 
             WValueExpression popParameter = this.Parameters[2] as WValueExpression;
             Debug.Assert(popParameter != null, "popParameter != null");
-            GraphViewKeywords.Pop popType;
+            GremlinKeyword.Pop popType;
             if (!Enum.TryParse(popParameter.Value, true, out popType))
                 throw new QueryCompilationException("Unsupported pop type.");
 
@@ -3569,7 +3569,7 @@ namespace GraphView
 
             WValueExpression popParameter = this.Parameters[2] as WValueExpression;
             Debug.Assert(popParameter != null, "popParameter != null");
-            GraphViewKeywords.Pop popType;
+            GremlinKeyword.Pop popType;
             if (!Enum.TryParse(popParameter.Value, true, out popType))
                 throw new QueryCompilationException("Unsupported pop type.");
 

@@ -4550,7 +4550,7 @@ namespace GraphView
         protected readonly int inputObjectIndex;
         protected readonly int pathIndex;
 
-        protected readonly GraphViewKeywords.Pop pop;
+        protected readonly GremlinKeyword.Pop pop;
         protected readonly string tableDefaultColumnName;
 
         protected SelectBaseOperator(
@@ -4558,7 +4558,7 @@ namespace GraphView
             Dictionary<string, IAggregateFunction> sideEffectStates,
             int inputObjectIndex,
             int pathIndex,
-            GraphViewKeywords.Pop pop,
+            GremlinKeyword.Pop pop,
             string tableDefaultColumnName)
         {
             this.inputOp = inputOp;
@@ -4594,7 +4594,7 @@ namespace GraphView
                 Debug.Assert(path != null);
                 List<FieldObject> selectObjects = new List<FieldObject>();
 
-                if (this.pop == Pop.First) {
+                if (this.pop == GremlinKeyword.Pop.First) {
                     foreach (PathStepField step in path.Path.Cast<PathStepField>()) {
                         if (step.Labels.Contains(label)) {
                             selectObjects.Add(step.StepFieldObject);
@@ -4602,7 +4602,7 @@ namespace GraphView
                         }
                     }
                 }
-                else if (this.pop == Pop.Last) {
+                else if (this.pop == GremlinKeyword.Pop.Last) {
                     for (int reverseIndex = path.Path.Count - 1; reverseIndex >= 0; reverseIndex--) {
                         PathStepField step = (PathStepField)path.Path[reverseIndex];
                         if (step.Labels.Contains(label)) {
@@ -4654,7 +4654,7 @@ namespace GraphView
             Dictionary<string, IAggregateFunction> sideEffectStates,
             int inputObjectIndex,
             int pathIndex,
-            GraphViewKeywords.Pop pop,
+            GremlinKeyword.Pop pop,
             List<string> selectLabels,
             List<ScalarFunction> byFuncList,
             string tableDefaultColumnName)
@@ -4736,7 +4736,7 @@ namespace GraphView
             Dictionary<string, IAggregateFunction> sideEffectStates,
             int inputObjectIndex,
             int pathIndex,
-            GraphViewKeywords.Pop pop,
+            GremlinKeyword.Pop pop,
             string selectLabel,
             ScalarFunction byFunc,
             List<string> populateColumns,
