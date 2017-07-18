@@ -1466,7 +1466,7 @@ namespace GraphView
     internal class AdjacencyListField : FieldObject
     {
         private readonly Dictionary<string, EdgeField> _edges = new Dictionary<string, EdgeField>();
-        private readonly GraphViewConnection _connection;
+        private readonly DocumentDBConnection _connection;
         private readonly string _vertexId;
         private readonly string _vertexPartitionKey;
         private readonly bool _isReverseAdjList;
@@ -1492,7 +1492,7 @@ namespace GraphView
         public bool HasBeenFetched { get; set; }
 
         public AdjacencyListField(
-            GraphViewConnection connection, 
+            DocumentDBConnection connection, 
             string vertexId, 
             string vertexLabel,
             string vertexPartition,
@@ -1725,7 +1725,7 @@ namespace GraphView
         //}
 
         
-        public VertexField(GraphViewConnection connection, JObject vertexObject)
+        public VertexField(DocumentDBConnection connection, JObject vertexObject)
         {
             Debug.Assert(vertexObject != null);
             this.VertexJObject = vertexObject;

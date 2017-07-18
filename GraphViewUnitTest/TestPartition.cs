@@ -31,7 +31,7 @@ namespace GraphViewUnitTest
 #endif
 
         [MethodImpl(MethodImplOptions.NoInlining)]
-        private static GraphViewConnection CreateConnection(string tips = null)
+        private static DocumentDBConnection CreateConnection(string tips = null)
         {
             StackFrame frame = new StackFrame(1);
             if (!string.IsNullOrEmpty(tips)) {
@@ -39,7 +39,7 @@ namespace GraphViewUnitTest
             }
             string collectionName = $"[{frame.GetMethod().Name}]{tips}";
 
-            GraphViewConnection connection = GraphViewConnection.ResetGraphAPICollection(DOCDB_URL, DOCDB_AUTHKEY, DOCDB_DATABASE, collectionName, AbstractGremlinTest.TEST_USE_REVERSE_EDGE, AbstractGremlinTest.TEST_SPILLED_EDGE_THRESHOLD_VIAGRAPHAPI);
+            DocumentDBConnection connection = DocumentDBConnection.ResetGraphAPICollection(DOCDB_URL, DOCDB_AUTHKEY, DOCDB_DATABASE, collectionName, AbstractGremlinTest.TEST_USE_REVERSE_EDGE, AbstractGremlinTest.TEST_SPILLED_EDGE_THRESHOLD_VIAGRAPHAPI);
 
             return connection;
         }

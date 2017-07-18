@@ -30,59 +30,8 @@ using Microsoft.SqlServer.TransactSql.ScriptDom;
 
 namespace GraphView
 {
-    internal class TranslateDataModificationVisitor : WSqlFragmentVisitor
-    {
-        public SqlTransaction Tx { get; private set; }
-
-        public TranslateDataModificationVisitor(SqlTransaction tx)
-        {
-            this.Tx = tx;
-        }
-        public void Invoke(WSqlFragment fragment)
-        {
-            fragment.Accept(this);
-        }
-        
-        
-    }
-
-
     class InsertEdgeSelectVisitor : WSqlFragmentVisitor
     {
-        private WCommonTableExpression _result;
-        private WTableReference _sinkTable;
-        private List<WScalarExpression> _edgeProperties;
-        private string _tempTableName;
-        private string _sourceTableName;
-
-        public WCommonTableExpression Invoke(WSqlFragment node, string tempTableName, string sourceTableName,
-            out WTableReference sinkTable, out List<WScalarExpression> edgeProperties)
-        {
-            _edgeProperties = new List<WScalarExpression>();
-            _tempTableName = tempTableName;
-            _sourceTableName = sourceTableName;
-            node.Accept(this);
-            sinkTable = _sinkTable;
-            _edgeProperties.Insert(0,
-                new WColumnReferenceExpression
-                {
-                    MultiPartIdentifier = new WMultiPartIdentifier(new Identifier {Value = "sink"})
-                }
-                );
-            edgeProperties = _edgeProperties;
-            return _result;
-        }
-
-        //public override void Visit(WQueryParenthesisExpression node)
-        //{
-        //    node.QueryExpr.Accept(this);
-        //    _result = new WQueryParenthesisExpression
-        //    {
-        //        OrderByClause = node.OrderByClause,
-        //        QueryExpr = _result
-        //    };
-        //}
-
         public override void Visit(WBinaryQueryExpression node)
         {
             throw new GraphViewException("Binary query expression is not allowed in INSERT EDGE statement.");

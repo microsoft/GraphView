@@ -799,11 +799,11 @@ namespace GraphView
         private HashSet<string> edgeIds;
         private HashSet<string> vertexIds;
 
-        private readonly GraphViewConnection connection;
+        private readonly DocumentDBConnection connection;
 
         public FieldObject Graph;
 
-        public SubgraphFunction(GraphViewConnection connection)
+        public SubgraphFunction(DocumentDBConnection connection)
         {
             this.edgeIds = new HashSet<string>();
             this.vertexIds = new HashSet<string>();

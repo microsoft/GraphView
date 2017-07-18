@@ -21,7 +21,7 @@ namespace GraphView
 
     public class GraphSONProjector
     {
-        internal static string ToGraphSON(List<RawRecord> results, GraphViewConnection connection)
+        internal static string ToGraphSON(List<RawRecord> results, DocumentDBConnection connection)
         {
             StringBuilder finalGraphSonResult = new StringBuilder("[");
             HashSet<string> batchIdSet = new HashSet<string>();
@@ -97,14 +97,14 @@ namespace GraphView
     {
         public class GraphTraversalIterator : IEnumerator<string>
         {
-            private GraphViewConnection connection;
+            private DocumentDBConnection connection;
             private string currentRecord;
             private GraphViewExecutionOperator currentOperator;
             OutputFormat outputFormat;
             bool firstCall;
 
             internal GraphTraversalIterator(GraphViewExecutionOperator pCurrentOperator, 
-                GraphViewConnection connection, OutputFormat outputFormat)
+                DocumentDBConnection connection, OutputFormat outputFormat)
             {
                 this.connection = connection;
                 this.currentOperator = pCurrentOperator;
@@ -188,7 +188,7 @@ namespace GraphView
 
         public string SqlScript { get; set; }
         private GraphTraversalIterator it;
-        public GraphViewConnection Connection { get; set; }
+        public DocumentDBConnection Connection { get; set; }
         internal List<GremlinTranslationOperator> GremlinTranslationOpList { get; set; }
 
         OutputFormat outputFormat;
@@ -198,14 +198,14 @@ namespace GraphView
             GremlinTranslationOpList = new List<GremlinTranslationOperator>();
         }
 
-        public GraphTraversal(GraphViewConnection pConnection)
+        public GraphTraversal(DocumentDBConnection pConnection)
         {
             GremlinTranslationOpList = new List<GremlinTranslationOperator>();
             Connection = pConnection;
             outputFormat = OutputFormat.Regular;
         }
 
-        public GraphTraversal(GraphViewConnection connection, OutputFormat outputFormat)
+        public GraphTraversal(DocumentDBConnection connection, OutputFormat outputFormat)
         {
             GremlinTranslationOpList = new List<GremlinTranslationOperator>();
             Connection = connection;
@@ -1475,7 +1475,7 @@ namespace GraphView
             sb.Append("namespace GraphView { \n");
             sb.Append("public class Program { \n");
             sb.Append("public object Main() {\n");
-            sb.Append("GraphViewConnection connection = new GraphViewConnection("+ getConnectionInfo() +");");
+            sb.Append("DocumentDBConnection connection = new DocumentDBConnection("+ getConnectionInfo() +");");
             sb.Append("GraphViewCommand graph = new GraphViewCommand(connection);\n");
             switch(outputFormat)
             {

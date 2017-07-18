@@ -8,7 +8,7 @@ namespace GraphView
 {
     public partial class WScalarExpression
     {
-        internal virtual ScalarFunction CompileToFunction(QueryCompilationContext context, GraphViewConnection dbConnection)
+        internal virtual ScalarFunction CompileToFunction(QueryCompilationContext context, DocumentDBConnection dbConnection)
         {
             throw new NotImplementedException();
         }
@@ -16,7 +16,7 @@ namespace GraphView
 
     public partial class WScalarSubquery
     {
-        internal override ScalarFunction CompileToFunction(QueryCompilationContext context, GraphViewConnection dbConnection)
+        internal override ScalarFunction CompileToFunction(QueryCompilationContext context, DocumentDBConnection dbConnection)
         {
             QueryCompilationContext subContext = new QueryCompilationContext(context);
             GraphViewExecutionOperator subQueryOp = SubQueryExpr.Compile(subContext, dbConnection);
@@ -26,7 +26,7 @@ namespace GraphView
 
     public partial class WBinaryExpression
     {
-        internal override ScalarFunction CompileToFunction(QueryCompilationContext context, GraphViewConnection dbConnection)
+        internal override ScalarFunction CompileToFunction(QueryCompilationContext context, DocumentDBConnection dbConnection)
         {
             ScalarFunction f1 = FirstExpr.CompileToFunction(context, dbConnection);
             ScalarFunction f2 = SecondExpr.CompileToFunction(context, dbConnection);
@@ -37,7 +37,7 @@ namespace GraphView
 
     public partial class WColumnReferenceExpression
     {
-        internal override ScalarFunction CompileToFunction(QueryCompilationContext context, GraphViewConnection dbConnection)
+        internal override ScalarFunction CompileToFunction(QueryCompilationContext context, DocumentDBConnection dbConnection)
         {
             if (ColumnType == ColumnType.Wildcard)
                 return null;
@@ -48,7 +48,7 @@ namespace GraphView
 
     public partial class WValueExpression
     {
-        internal override ScalarFunction CompileToFunction(QueryCompilationContext context, GraphViewConnection dbConnection)
+        internal override ScalarFunction CompileToFunction(QueryCompilationContext context, DocumentDBConnection dbConnection)
         {
             DateTime date_value;
             double double_value;
@@ -109,7 +109,7 @@ namespace GraphView
 
     public partial class WFunctionCall
     {
-        internal override ScalarFunction CompileToFunction(QueryCompilationContext context, GraphViewConnection dbConnection)
+        internal override ScalarFunction CompileToFunction(QueryCompilationContext context, DocumentDBConnection dbConnection)
         {
             string funcName = FunctionName.ToString().ToLowerInvariant();
 

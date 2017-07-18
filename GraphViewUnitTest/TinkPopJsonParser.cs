@@ -17,7 +17,7 @@
 //        [TestMethod]
 //        public void SpecialDataProcessingTest1()
 //        {
-//            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
+//            DocumentDBConnection connection = new DocumentDBConnection("https://graphview.documents.azure.com:443/",
 //              "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
 //              "GroupMatch", "MarvelTest");
 //            GraphViewGremlinParser parser = new GraphViewGremlinParser();
@@ -117,7 +117,7 @@
 //                }
 //            }
 
-//            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
+//            DocumentDBConnection connection = new DocumentDBConnection("https://graphview.documents.azure.com:443/",
 //                "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
 //                "GroupMatch", "MarvelTest");
 //            GraphViewGremlinParser parser = new GraphViewGremlinParser();
@@ -191,7 +191,7 @@
 //            tempSQL.Append("\'" + node.Value["label"] + "\'");
 //            tempSQL.Append(")");
 //            Console.WriteLine(tempSQL);
-//            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
+//            DocumentDBConnection connection = new DocumentDBConnection("https://graphview.documents.azure.com:443/",
 //      "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
 //      "GroupMatch", "MarvelTest");
 //            GraphViewGremlinParser parser = new GraphViewGremlinParser();
@@ -330,7 +330,7 @@
 //                }
 //            }
 
-//            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
+//            DocumentDBConnection connection = new DocumentDBConnection("https://graphview.documents.azure.com:443/",
 //                "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
 //                "GroupMatch", "MarvelTest");
 //            GraphViewGremlinParser parser = new GraphViewGremlinParser();
@@ -470,7 +470,7 @@
 //        public void parseAndDumpDataTest()
 //        {
 //            string path = @"D:\dataset\AzureIOT\graphson-dataset.json";
-//            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
+//            DocumentDBConnection connection = new DocumentDBConnection("https://graphview.documents.azure.com:443/",
 //                "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
 //                "GroupMatch", "MarvelTest");
 //            string collectionName = "MarvelTest";
@@ -484,7 +484,7 @@
 //        public void InsertJsonMultiThreadByBoundedBufferByCommand()
 //        {
 //            string path = @"D:\dataset\AzureIOT\graphson-dataset.json";
-//            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
+//            DocumentDBConnection connection = new DocumentDBConnection("https://graphview.documents.azure.com:443/",
 //                "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
 //                "GroupMatch", "MarvelTest");
 //            string collectionName = "MarvelTest";
@@ -695,7 +695,7 @@
 //                }
 //            }
 
-//            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
+//            DocumentDBConnection connection = new DocumentDBConnection("https://graphview.documents.azure.com:443/",
 //                "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
 //                "GroupMatch", "IOTTest1");
 //            GraphViewGremlinParser parser = new GraphViewGremlinParser();
@@ -741,7 +741,7 @@
 //    {
 //        public string tempSQL;
 //        public GraphViewGremlinParser parser;
-//        public GraphViewConnection connection;
+//        public DocumentDBConnection connection;
 //        public CountdownEvent cde = null;
 //        public KeyValuePair<string, Dictionary<string, string>> node;
 //    }

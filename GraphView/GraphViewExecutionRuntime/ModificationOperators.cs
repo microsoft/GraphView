@@ -14,10 +14,10 @@ namespace GraphView
 {
     internal abstract class ModificationBaseOpertaor2 : GraphViewExecutionOperator
     {
-        protected GraphViewConnection Connection;
+        protected DocumentDBConnection Connection;
         protected GraphViewExecutionOperator InputOperator;
 
-        protected ModificationBaseOpertaor2(GraphViewExecutionOperator inputOp, GraphViewConnection connection)
+        protected ModificationBaseOpertaor2(GraphViewExecutionOperator inputOp, DocumentDBConnection connection)
         {
             InputOperator = inputOp;
             Connection = connection;
@@ -77,7 +77,7 @@ namespace GraphView
         private readonly JObject _vertexDocument;
         private readonly List<string> _projectedFieldList; 
 
-        public AddVOperator(GraphViewExecutionOperator inputOp, GraphViewConnection connection, JObject vertexDocument, List<string> projectedFieldList)
+        public AddVOperator(GraphViewExecutionOperator inputOp, DocumentDBConnection connection, JObject vertexDocument, List<string> projectedFieldList)
             : base(inputOp, connection)
         {
             this._vertexDocument = vertexDocument;
@@ -90,7 +90,7 @@ namespace GraphView
 
             string vertexId;
             if (vertexObject[KW_DOC_ID] == null) {
-                vertexId = GraphViewConnection.GenerateDocumentId();
+                vertexId = DocumentDBConnection.GenerateDocumentId();
                 vertexObject[KW_DOC_ID] = vertexId;
             }
             else {
@@ -159,7 +159,7 @@ namespace GraphView
         private readonly int dropTargetIndex;
         private readonly GraphViewExecutionOperator dummyInputOp;
 
-        public DropOperator(GraphViewExecutionOperator dummyInputOp, GraphViewConnection connection, int dropTargetIndex)
+        public DropOperator(GraphViewExecutionOperator dummyInputOp, DocumentDBConnection connection, int dropTargetIndex)
             : base(dummyInputOp, connection)
         {
             this.dropTargetIndex = dropTargetIndex;
@@ -378,7 +378,7 @@ namespace GraphView
 
         public UpdatePropertiesOperator(
             GraphViewExecutionOperator dummyInputOp,
-            GraphViewConnection connection,
+            DocumentDBConnection connection,
             int updateTargetIndex,
             List<WPropertyExpression> updateProperties)
             : base(dummyInputOp, connection)
@@ -412,7 +412,7 @@ namespace GraphView
                 }
                 JObject singleProperty = new JObject {
                     [KW_PROPERTY_VALUE] = property.Value.ToJValue(),
-                    [KW_PROPERTY_ID] = GraphViewConnection.GenerateDocumentId(),
+                    [KW_PROPERTY_ID] = DocumentDBConnection.GenerateDocumentId(),
                 };
                 if (meta.Count > 0) {
                     singleProperty[KW_PROPERTY_META] = meta;
@@ -572,7 +572,7 @@ namespace GraphView
     {
         private int _nodeIdIndex;
 
-        public DropNodeOperator(GraphViewExecutionOperator dummyInputOp, GraphViewConnection connection, int pNodeIdIndex)
+        public DropNodeOperator(GraphViewExecutionOperator dummyInputOp, DocumentDBConnection connection, int pNodeIdIndex)
             : base(dummyInputOp, connection)
         {
             _nodeIdIndex = pNodeIdIndex;
@@ -664,7 +664,7 @@ namespace GraphView
         private JObject edgeJsonObject;
         private List<string> edgeProperties;
 
-        public AddEOperator(GraphViewExecutionOperator inputOp, GraphViewConnection connection,
+        public AddEOperator(GraphViewExecutionOperator inputOp, DocumentDBConnection connection,
             ConstantSourceOperator srcSubQuerySourceOp, GraphViewExecutionOperator srcSubQueryOp,
             ConstantSourceOperator sinkSubQuerySouceOp, GraphViewExecutionOperator sinkSubQueryOp,
             int otherVTag, JObject edgeJsonObject, List<string> projectedFieldList)
@@ -761,7 +761,7 @@ namespace GraphView
     {
         private readonly int edgeFieldIndex;
 
-        public DropEdgeOperator(GraphViewExecutionOperator inputOp, GraphViewConnection connection, int edgeFieldIndex)
+        public DropEdgeOperator(GraphViewExecutionOperator inputOp, DocumentDBConnection connection, int edgeFieldIndex)
             : base(inputOp, connection)
         {
             this.edgeFieldIndex = edgeFieldIndex;
@@ -859,7 +859,7 @@ namespace GraphView
         // TODO: Now the item3 is useless
         protected List<Tuple<WValueExpression, WValueExpression, int>> PropertiesToBeUpdated;
 
-        protected UpdatePropertiesBaseOperator(GraphViewExecutionOperator inputOp, GraphViewConnection connection,
+        protected UpdatePropertiesBaseOperator(GraphViewExecutionOperator inputOp, DocumentDBConnection connection,
             List<Tuple<WValueExpression, WValueExpression, int>> pPropertiesToBeUpdated, UpdatePropertyMode pMode = UpdatePropertyMode.Set)
             : base(inputOp, connection)
         {
@@ -897,7 +897,7 @@ namespace GraphView
     //{
     //    private int _nodeIdIndex;
 
-    //    public UpdateNodePropertiesOperator(GraphViewExecutionOperator inputOp, GraphViewConnection connection,
+    //    public UpdateNodePropertiesOperator(GraphViewExecutionOperator inputOp, DocumentDBConnection connection,
     //                                        int pNodeIndex, List<Tuple<WValueExpression, WValueExpression, int>> pPropertiesList, UpdatePropertyMode pMode = UpdatePropertyMode.Set)
     //        : base(inputOp, connection, pPropertiesList, pMode)
     //    {
@@ -960,7 +960,7 @@ namespace GraphView
     //                            propertyId = vertexField.VertexProperties[name].Multiples.Values.First().PropertyId;
     //                        }
     //                        else {
-    //                            propertyId = GraphViewConnection.GenerateDocumentId();
+    //                            propertyId = DocumentDBConnection.GenerateDocumentId();
     //                        }
 
     //                        JProperty multiProperty = new JProperty(name) {
@@ -989,7 +989,7 @@ namespace GraphView
         private readonly int edgeFieldIndex;
 
         public UpdateEdgePropertiesOperator(
-            GraphViewExecutionOperator inputOp, GraphViewConnection connection,
+            GraphViewExecutionOperator inputOp, DocumentDBConnection connection,
             int edgeFieldIndex,
             List<Tuple<WValueExpression, WValueExpression, int>> propertiesList,
             UpdatePropertyMode pMode = UpdatePropertyMode.Set)

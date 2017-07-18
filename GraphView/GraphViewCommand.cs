@@ -39,15 +39,15 @@ namespace GraphView
 {
     public partial class GraphViewCommand : IDisposable
     {
-        public GraphViewConnection GraphViewConnection { get; set; }
+        public DocumentDBConnection DocumentDbConnection { get; set; }
         
         public string CommandText { get; set; }
 
         public OutputFormat OutputFormat { get; set; }
 
-        public GraphViewCommand(GraphViewConnection connecion)
+        public GraphViewCommand(DocumentDBConnection connecion)
         {
-            GraphViewConnection = connecion;
+            this.DocumentDbConnection = connecion;
         }
 
         public GraphViewCommand(string commandText)
@@ -55,10 +55,10 @@ namespace GraphView
             CommandText = commandText;
         }
 
-        public GraphViewCommand(string commandText, GraphViewConnection connection)
+        public GraphViewCommand(string commandText, DocumentDBConnection connection)
         {
             CommandText = commandText;
-            GraphViewConnection = connection;
+            this.DocumentDbConnection = connection;
         }
 
         public IEnumerable<string> Execute()
@@ -80,51 +80,13 @@ namespace GraphView
             return results;
         }
 
-        //public async Task<StoredProcedure> TryCreatedStoredProcedureAsync(string collectionLink, StoredProcedure sproc)
-        //{
-        //    StoredProcedure check =
-        //        GraphViewConnection.DocDBClient.CreateStoredProcedureQuery(collectionLink)
-        //            .Where(s => s.Id == sproc.Id)
-        //            .AsEnumerable()
-        //            .FirstOrDefault();
-
-        //    if (check != null) return check;
-
-        //    Console.WriteLine("BulkInsert proc doesn't exist, try to create a new one.");
-        //    sproc = await GraphViewConnection.DocDBClient.CreateStoredProcedureAsync(collectionLink, sproc);
-        //    return sproc;
-        //}
-
-        //public async Task<int> BulkInsertAsync(string sprocLink, dynamic[] objs)
-        //{
-        //    StoredProcedureResponse<int> scriptResult =
-        //        await
-        //            GraphViewConnection.DocDBClient.ExecuteStoredProcedureAsync<int>(sprocLink, objs);
-        //    return scriptResult.Response;
-        //}
-
-        //public static string GenerateNodesJsonString(List<string> nodes, int currentIndex, int maxJsonSize)
-        //{
-        //    var jsonDocArr = new StringBuilder();
-        //    jsonDocArr.Append("[");
-
-        //    jsonDocArr.Append(GraphViewJsonCommand.ConstructNodeJsonString(nodes[currentIndex]));
-
-        //    while (jsonDocArr.Length < maxJsonSize && ++currentIndex < nodes.Count)
-        //        jsonDocArr.Append(", " + GraphViewJsonCommand.ConstructNodeJsonString(nodes[currentIndex]));
-
-        //    jsonDocArr.Append("]");
-
-        //    return jsonDocArr.ToString();
-        //}
-
         public void Dispose()
         {
         }
 
         public GraphTraversal g()
         {
-            return new GraphTraversal(GraphViewConnection, OutputFormat);
+            return new GraphTraversal(this.DocumentDbConnection, OutputFormat);
         }
     }
 }

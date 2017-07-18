@@ -64,7 +64,6 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="CollectionType.cs" />
-    <Compile Include="GraphViewDebugHelper.cs" />
     <Compile Include="GraphViewExecutionRuntime\CollectionOperator.cs" />
     <Compile Include="GraphViewExecutionRuntime\DbPortal.cs" />
     <Compile Include="GraphViewExecutionRuntime\AggregateOperator.cs" />
@@ -217,9 +216,7 @@
     <Compile Include="GraphViewExecutionRuntime\TVFOperator.cs" />
     <Compile Include="GraphViewQueryCompiler\GraphOptimizer.cs" />
     <Compile Include="GraphViewExecutionRuntime\GraphViewExecutionEngine.cs" />
-    <Compile Include="GraphLoaderFactory.cs" />
     <Compile Include="GraphViewJsonCommand.cs" />
-    <Compile Include="JsonAuxiliaryFunction.cs" />
     <Compile Include="GraphViewQueryCompiler\MatchComponent.cs" />
     <Compile Include="ObjectExtensions.cs" />
     <Compile Include="GraphViewQueryCompiler\CompileSelect.cs" />
@@ -227,7 +224,6 @@
     <Compile Include="ConvertGraphModificationStatementVisitor.cs" />
     <Compile Include="GraphViewCommand.cs" />
     <Compile Include="GraphViewKeywords.cs" />
-    <Compile Include="TranslateMatchClauseVisitor.cs" />
     <Compile Include="TSQL Syntax Tree\WControlFlow.cs" />
     <Compile Include="TSQL Syntax Tree\WCreateViewStatement.cs" />
     <Compile Include="TSQL Syntax Tree\WDeclareVariableStatement.cs" />

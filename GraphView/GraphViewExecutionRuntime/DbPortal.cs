@@ -60,7 +60,7 @@ namespace GraphView
 
     internal abstract class DbPortal : IDisposable
     {
-        public GraphViewConnection Connection { get; protected set; }
+        public DocumentDBConnection Connection { get; protected set; }
 
         public void Dispose() { }
 
@@ -77,7 +77,7 @@ namespace GraphView
 
     internal class DocumentDbPortal : DbPortal
     {
-        public DocumentDbPortal(GraphViewConnection connection)
+        public DocumentDbPortal(DocumentDBConnection connection)
         {
             Connection = connection;
         }

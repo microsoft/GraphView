@@ -416,7 +416,7 @@ namespace GraphView
     public partial class WPathTableReference : WSchemaObjectFunctionTableReference
     {
         internal static void GetPathStepListAndByFuncList(
-            QueryCompilationContext context, GraphViewConnection dbConnection,
+            QueryCompilationContext context, DocumentDBConnection dbConnection,
             IList<WScalarExpression> parameters,
             out List<Tuple<ScalarFunction, bool, HashSet<string>>> pathStepList,
             out List<ScalarFunction> byFuncList)

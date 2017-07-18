@@ -20,7 +20,7 @@ namespace GraphView
     /// </summary>
     internal sealed class VertexObjectCache
     {
-        public GraphViewConnection Connection { get; }
+        public DocumentDBConnection Connection { get; }
 
         private readonly Dictionary<string, string> _currentEtags = new Dictionary<string, string>();
 
@@ -69,7 +69,7 @@ namespace GraphView
         //
         private readonly Dictionary<string, VertexField> _cachedVertexField = new Dictionary<string, VertexField>();
 
-        public VertexObjectCache(GraphViewConnection dbConnection)
+        public VertexObjectCache(DocumentDBConnection dbConnection)
         {
             this.Connection = dbConnection;
         }
@@ -129,13 +129,13 @@ namespace GraphView
 
     //internal sealed class VertexObjectCache
     //{
-    //    public GraphViewConnection Connection { get; }
+    //    public DocumentDBConnection Connection { get; }
 
     //    /// <summary>
     //    /// NOTE: VertexCache is per-connection! (cross-connection may lead to unpredictable errors)
     //    /// </summary>
     //    /// <param name="dbConnection"></param>
-    //    public VertexObjectCache(GraphViewConnection dbConnection)
+    //    public VertexObjectCache(DocumentDBConnection dbConnection)
     //    {
     //        this.Connection = dbConnection;
     //    }

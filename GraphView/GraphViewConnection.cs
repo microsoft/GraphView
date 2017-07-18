@@ -56,7 +56,7 @@ namespace GraphView
     /// Connector to a graph database. The class inherits most functions of SqlConnection,
     /// and provides a number of GraphView-specific functions.
     /// </summary>
-    public partial class GraphViewConnection : IDisposable
+    public partial class DocumentDBConnection : IDisposable
     {
         internal static int InClauseLimit { get; } = 1000;
 
@@ -108,7 +108,7 @@ namespace GraphView
 
 
 
-        public static GraphViewConnection ResetGraphAPICollection(
+        public static DocumentDBConnection ResetGraphAPICollection(
             string endpoint,
             string authKey,
             string databaseId,
@@ -131,11 +131,11 @@ namespace GraphView
                 }
             }
 
-            return new GraphViewConnection(endpoint, authKey, databaseId, collectionId, GraphType.GraphAPIOnly,
+            return new DocumentDBConnection(endpoint, authKey, databaseId, collectionId, GraphType.GraphAPIOnly,
                 useReverseEdge, spilledEdgeThreshold, partitionByKey);
         }
 
-        public static GraphViewConnection ResetFlatCollection(
+        public static DocumentDBConnection ResetFlatCollection(
             string endpoint,
             string authKey,
             string databaseId,
@@ -156,7 +156,7 @@ namespace GraphView
                 }
             }
 
-            return new GraphViewConnection(endpoint, authKey, databaseId, collectionId, GraphType.CompatibleOnly, false, 1, null);
+            return new DocumentDBConnection(endpoint, authKey, databaseId, collectionId, GraphType.CompatibleOnly, false, 1, null);
         }
 
 
@@ -173,7 +173,7 @@ namespace GraphView
         /// <param name="edgeSpillThreshold">For compatible and hybrid graph, it must be 1.</param>
         /// <param name="partitionByKeyIfViaGraphAPI">This parameter takes effect only when creating a partitioned collection using graph api.</param>
         /// <param name="preferredLocation"></param>
-        public GraphViewConnection(
+        public DocumentDBConnection(
             string docDBEndpointUrl,
             string docDBAuthorizationKey,
             string docDBDatabaseID,
@@ -284,7 +284,7 @@ namespace GraphView
 
 
         /// <summary>
-        /// Releases all resources used by GraphViewConnection.
+        /// Releases all resources used by DocumentDBConnection.
         /// This function is NOT thread-safe!
         /// </summary>
         public void Dispose()

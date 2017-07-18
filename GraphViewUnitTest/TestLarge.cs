@@ -24,7 +24,7 @@ namespace GraphViewUnitTest
 #endif
 
         [MethodImpl(MethodImplOptions.NoInlining)]
-        private static GraphViewConnection CreateConnection(string tips = null, int? edgeSpillThreshold = null)
+        private static DocumentDBConnection CreateConnection(string tips = null, int? edgeSpillThreshold = null)
         {
             StackFrame frame = new StackFrame(1);
             if (!string.IsNullOrEmpty(tips)) {
@@ -32,7 +32,7 @@ namespace GraphViewUnitTest
             }
             string collectionName = $"[{frame.GetMethod().Name}]{tips}";
 
-            GraphViewConnection connection = GraphViewConnection.ResetGraphAPICollection(DOCDB_URL, DOCDB_AUTHKEY, DOCDB_DATABASE, collectionName, AbstractGremlinTest.TEST_USE_REVERSE_EDGE, AbstractGremlinTest.TEST_SPILLED_EDGE_THRESHOLD_VIAGRAPHAPI);
+            DocumentDBConnection connection = DocumentDBConnection.ResetGraphAPICollection(DOCDB_URL, DOCDB_AUTHKEY, DOCDB_DATABASE, collectionName, AbstractGremlinTest.TEST_USE_REVERSE_EDGE, AbstractGremlinTest.TEST_SPILLED_EDGE_THRESHOLD_VIAGRAPHAPI);
 
             return connection;
         }
@@ -40,7 +40,7 @@ namespace GraphViewUnitTest
         [TestMethod]
         public void TestModernGraph_Dummy()
         {
-            GraphViewConnection connection = CreateConnection();
+            DocumentDBConnection connection = CreateConnection();
             GraphViewCommand graph = new GraphViewCommand(connection);
 
             graph.g().AddV("person").Property("age", "27").Property("name", "vadas").Next();
@@ -61,7 +61,7 @@ namespace GraphViewUnitTest
         [TestMethod]
         public void TestDocDBLimit()
         {
-            GraphViewConnection connection = CreateConnection();
+            DocumentDBConnection connection = CreateConnection();
             GraphViewCommand graph = new GraphViewCommand(connection);
 
             string largeProperty = new string('_', 1024 * 1024 * 2 - 1024);  // Size = 2MB
@@ -75,7 +75,7 @@ namespace GraphViewUnitTest
         {
             const int EDGE_COUNT = 100;
 
-            GraphViewConnection connection = CreateConnection($"E={EDGE_COUNT}");
+            DocumentDBConnection connection = CreateConnection($"E={EDGE_COUNT}");
             GraphViewCommand graph = new GraphViewCommand(connection);
 
             graph.g().AddV("SourceV").Next();
@@ -91,7 +91,7 @@ namespace GraphViewUnitTest
         public void TestAddHeavyEdges_MidiumQuantity()
         {
             const int EDGE_COUNT = 10;
-            GraphViewConnection connection = CreateConnection($"E={EDGE_COUNT}");
+            DocumentDBConnection connection = CreateConnection($"E={EDGE_COUNT}");
             GraphViewCommand graph = new GraphViewCommand(connection);
 
             graph.g().AddV("SourceV").Next();
@@ -106,7 +106,7 @@ namespace GraphViewUnitTest
         public void TestAddHeavyEdges_SmallQuantity()
         {
             const int EDGE_COUNT = 3;
-            GraphViewConnection connection = CreateConnection($"E={EDGE_COUNT}");
+            DocumentDBConnection connection = CreateConnection($"E={EDGE_COUNT}");
             GraphViewCommand graph = new GraphViewCommand(connection);
 
             graph.g().AddV("SourceV").Next();
@@ -122,7 +122,7 @@ namespace GraphViewUnitTest
         public void TestAddAndDropEdges_Small()
         {
             const int EDGE_COUNT = 10;
-            GraphViewConnection connection = CreateConnection($"E={EDGE_COUNT}");
+            DocumentDBConnection connection = CreateConnection($"E={EDGE_COUNT}");
             GraphViewCommand graph = new GraphViewCommand(connection);
 
             graph.g().AddV("SourceV").Next();
@@ -138,7 +138,7 @@ namespace GraphViewUnitTest
         public void TestAddAndDropEdges_DropAll_Small()
         {
             const int EDGE_COUNT = 10;
-            GraphViewConnection connection = CreateConnection($"E={EDGE_COUNT}");
+            DocumentDBConnection connection = CreateConnection($"E={EDGE_COUNT}");
             GraphViewCommand graph = new GraphViewCommand(connection);
 
             graph.g().AddV("SourceV").Next();
@@ -153,7 +153,7 @@ namespace GraphViewUnitTest
         public void TestAddAndDropEdges_DropSome_Small()
         {
             const int EDGE_COUNT = 20;
-            GraphViewConnection connection = CreateConnection($"E={EDGE_COUNT}");
+            DocumentDBConnection connection = CreateConnection($"E={EDGE_COUNT}");
             GraphViewCommand graph = new GraphViewCommand(connection);
 
             graph.g().AddV("SourceV").Next();
@@ -168,7 +168,7 @@ namespace GraphViewUnitTest
         public void TestAddDropEdges_DropAll_Large()
         {
             const int EDGE_COUNT = 10;
-            GraphViewConnection connection = CreateConnection($"E={EDGE_COUNT}");
+            DocumentDBConnection connection = CreateConnection($"E={EDGE_COUNT}");
             GraphViewCommand graph = new GraphViewCommand(connection);
 
             graph.g().AddV("SourceV").Next();
@@ -184,7 +184,7 @@ namespace GraphViewUnitTest
         public void TestAddDropEdges_DropSome_Large()
         {
             const int EDGE_COUNT = 30;
-            GraphViewConnection connection = CreateConnection($"E={EDGE_COUNT}", 4);
+            DocumentDBConnection connection = CreateConnection($"E={EDGE_COUNT}", 4);
             GraphViewCommand graph = new GraphViewCommand(connection);
             string suffix = new string('_', 10);
 
@@ -200,7 +200,7 @@ namespace GraphViewUnitTest
         public void TestDropNodes_Small()
         {
             const int EDGE_COUNT = 5;
-            GraphViewConnection connection = CreateConnection($"(A->B->C, A->C) E={EDGE_COUNT}");
+            DocumentDBConnection connection = CreateConnection($"(A->B->C, A->C) E={EDGE_COUNT}");
             GraphViewCommand graph = new GraphViewCommand(connection);
             string suffix = string.Empty;
 
@@ -220,7 +220,7 @@ namespace GraphViewUnitTest
         public void TestDropNodes_Large()
         {
             const int EDGE_COUNT = 10;
-            GraphViewConnection connection = CreateConnection($"(A->B->C, A->C) E={EDGE_COUNT}");
+            DocumentDBConnection connection = CreateConnection($"(A->B->C, A->C) E={EDGE_COUNT}");
             GraphViewCommand graph = new GraphViewCommand(connection);
             string suffix = new string('_', 1024);
 
@@ -239,7 +239,7 @@ namespace GraphViewUnitTest
         public void TestChangeEdgeProperties_Small()
         {
             const int EDGE_COUNT = 4;
-            GraphViewConnection connection = CreateConnection($"{MethodBase.GetCurrentMethod().Name} E={EDGE_COUNT}");
+            DocumentDBConnection connection = CreateConnection($"{MethodBase.GetCurrentMethod().Name} E={EDGE_COUNT}");
             GraphViewCommand graph = new GraphViewCommand(connection);
             string suffix = string.Empty;
 
@@ -261,7 +261,7 @@ namespace GraphViewUnitTest
         public void TestChangeEdgeProperties_Large()
         {
             const int EDGE_COUNT = 10;
-            GraphViewConnection connection = CreateConnection($"{MethodBase.GetCurrentMethod().Name} E={EDGE_COUNT}", 1);
+            DocumentDBConnection connection = CreateConnection($"{MethodBase.GetCurrentMethod().Name} E={EDGE_COUNT}", 1);
             GraphViewCommand graph = new GraphViewCommand(connection);
             string suffix = new string('_', 1024);
 
@@ -284,7 +284,7 @@ namespace GraphViewUnitTest
         public void TestChangeEdgeProperties_Large2Larger()
         {
             const int EDGE_COUNT = 20;
-            GraphViewConnection connection = CreateConnection($"E={EDGE_COUNT}", 5);
+            DocumentDBConnection connection = CreateConnection($"E={EDGE_COUNT}", 5);
             GraphViewCommand graph = new GraphViewCommand(connection);
             string suffix = new string('_', 1024);  // 1 KB
             string suffix2 = new string('_', 10240);  // 10KB
@@ -311,7 +311,7 @@ namespace GraphViewUnitTest
         [TestMethod]
         public void TestSelfLoop_Small()
         {
-            GraphViewConnection connection = CreateConnection($"");
+            DocumentDBConnection connection = CreateConnection($"");
             GraphViewCommand graph = new GraphViewCommand(connection);
 
             graph.g().AddV("Self").AddE("SelfLoop1").To(graph.g().V().HasLabel("Self")).Next();
@@ -324,7 +324,7 @@ namespace GraphViewUnitTest
         {
             const int EDGE_COUNT = 20;
             const int THRESHOLD = 6;
-            GraphViewConnection connection = CreateConnection($"Threshold={THRESHOLD},E={EDGE_COUNT}", THRESHOLD);
+            DocumentDBConnection connection = CreateConnection($"Threshold={THRESHOLD},E={EDGE_COUNT}", THRESHOLD);
             GraphViewCommand graph = new GraphViewCommand(connection);
 
             Console.WriteLine($"EdgeSpillThreashold: {connection.EdgeSpillThreshold}");
@@ -342,7 +342,7 @@ namespace GraphViewUnitTest
             const int EDGE_COUNT = 7;
             const int THRESHOLD = 2;
             string prefix = new string('_', 1024 * 600);
-            GraphViewConnection connection = CreateConnection($"Threshold={THRESHOLD},E={EDGE_COUNT}", THRESHOLD);
+            DocumentDBConnection connection = CreateConnection($"Threshold={THRESHOLD},E={EDGE_COUNT}", THRESHOLD);
             GraphViewCommand graph = new GraphViewCommand(connection);
             Console.WriteLine($"EdgeSpillThreashold: {connection.EdgeSpillThreshold}");
 

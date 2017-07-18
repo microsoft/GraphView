@@ -98,7 +98,7 @@ namespace GraphView
         /// <param name="docId"></param>
         /// <param name="docObject"></param>
         /// <param name="tooLarge"></param>
-        private static void UploadOne(GraphViewConnection connection, string docId, JObject docObject, bool isCreate, out bool tooLarge)
+        private static void UploadOne(DocumentDBConnection connection, string docId, JObject docObject, bool isCreate, out bool tooLarge)
         {
             tooLarge = false;
             try {
@@ -136,7 +136,7 @@ namespace GraphView
         /// <param name="inEdgeObject"></param>
         /// <param name="inEdgeDocID"></param>
         public static void InsertEdgeAndUpload(
-            GraphViewConnection connection,
+            DocumentDBConnection connection,
             string srcId, string sinkId,
             VertexField srcVertexField, VertexField sinkVertexField,
             JObject edgeJsonObject,
@@ -151,7 +151,7 @@ namespace GraphView
             inEdgeObject = (JObject)edgeJsonObject.DeepClone();
 
             // Add "id" property to edgeObject
-            string edgeId = GraphViewConnection.GenerateDocumentId();
+            string edgeId = DocumentDBConnection.GenerateDocumentId();
 
             string srcLabel = srcVertexObject[KW_VERTEX_LABEL]?.ToString();
             string sinkLabel = sinkVertexObject[KW_VERTEX_LABEL]?.ToString();
@@ -185,7 +185,7 @@ namespace GraphView
         /// <param name="isReverse"></param>
         /// <param name="newEdgeDocId"></param>
         private static void InsertEdgeObjectInternal(
-            GraphViewConnection connection,
+            DocumentDBConnection connection,
             JObject vertexObject,
             VertexField vertexField,
             JObject edgeObject,
@@ -204,7 +204,7 @@ namespace GraphView
 
                 // Create a new edge-document to store the edge.
                 JObject edgeDocObject = new JObject {
-                    [KW_DOC_ID] = GraphViewConnection.GenerateDocumentId(),
+                    [KW_DOC_ID] = DocumentDBConnection.GenerateDocumentId(),
                     [KW_EDGEDOC_ISREVERSE] = isReverse,
                     [KW_EDGEDOC_VERTEXID] = (string)vertexObject[KW_DOC_ID],
                     [KW_EDGEDOC_VERTEX_LABEL] = (string)vertexObject[KW_VERTEX_LABEL],
@@ -272,7 +272,7 @@ namespace GraphView
                     // or the threashold is reached:
                     // Create a new edge-document to store the edge.
                     JObject edgeDocObject = new JObject {
-                        [KW_DOC_ID] = GraphViewConnection.GenerateDocumentId(),
+                        [KW_DOC_ID] = DocumentDBConnection.GenerateDocumentId(),
                         [KW_EDGEDOC_ISREVERSE] = isReverse,
                         [KW_EDGEDOC_VERTEXID] = (string)vertexObject[KW_DOC_ID],
                         [KW_EDGEDOC_VERTEX_LABEL] = (string)vertexObject[KW_VERTEX_LABEL],
@@ -361,7 +361,7 @@ namespace GraphView
         /// </param>
         /// <param name="existEdgeDocId">This is the first edge-document (to store the existing edges)</param>
         /// <param name="newEdgeDocId">This is the second edge-document (to store the currently creating edge)</param>
-        private static void SpillVertexEdgesToDocument(GraphViewConnection connection, JObject vertexObject, ref bool? spillReverse, out string existEdgeDocId, out string newEdgeDocId)
+        private static void SpillVertexEdgesToDocument(DocumentDBConnection connection, JObject vertexObject, ref bool? spillReverse, out string existEdgeDocId, out string newEdgeDocId)
         {
             //Debug.Assert(vertexObject[KW_DOC_PARTITION] != null);
             //Debug.Assert((string)vertexObject[KW_DOC_ID] == (string)vertexObject[KW_DOC_PARTITION]);
@@ -398,7 +398,7 @@ namespace GraphView
 
             // Create a new edge-document to store the currently creating edge
             JObject newEdgeDocObject = new JObject {
-                [KW_DOC_ID] = GraphViewConnection.GenerateDocumentId(),
+                [KW_DOC_ID] = DocumentDBConnection.GenerateDocumentId(),
                 [KW_EDGEDOC_ISREVERSE] = spillReverse.Value,
                 [KW_EDGEDOC_VERTEXID] = (string)vertexObject[KW_DOC_ID],
                 [KW_EDGEDOC_VERTEX_LABEL] = (string)vertexObject[KW_VERTEX_LABEL],
@@ -414,7 +414,7 @@ namespace GraphView
 
             // Create another new edge-document to store the existing edges.
             JObject existEdgeDocObject = new JObject {
-                [KW_DOC_ID] = GraphViewConnection.GenerateDocumentId(),
+                [KW_DOC_ID] = DocumentDBConnection.GenerateDocumentId(),
                 [KW_EDGEDOC_ISREVERSE] = spillReverse.Value,
                 [KW_EDGEDOC_VERTEXID] = (string)vertexObject[KW_DOC_ID],
                 [KW_EDGEDOC_VERTEX_LABEL] = (string)vertexObject[KW_VERTEX_LABEL],
@@ -465,7 +465,7 @@ namespace GraphView
         /// <param name="edgeObject"></param>
         /// <param name="edgeDocId"></param>
         public static void FindEdgeBySourceAndEdgeId(
-            GraphViewConnection connection,
+            DocumentDBConnection connection,
             JObject vertexObject, string srcVertexId, string edgeId, bool isReverseEdge,
             out JObject edgeObject, out string edgeDocId)
         {
@@ -518,7 +518,7 @@ namespace GraphView
 
         public static void RemoveEdge(
             Dictionary<string, Tuple<JObject, string>> documentMap,
-            GraphViewConnection connection,
+            DocumentDBConnection connection,
             string edgeDocId,
             VertexField vertexField,
             bool isReverse,
@@ -615,7 +615,7 @@ namespace GraphView
         /// <param name="isReverse"></param>
         /// <param name="newEdgeObject"></param>
         public static void UpdateEdgeProperty(
-            GraphViewConnection connection,
+            DocumentDBConnection connection,
             JObject vertexObject,
             string edgeDocId,  // Can be null
             bool isReverse,
@@ -769,7 +769,7 @@ namespace GraphView
         /// <param name="vertexIdSet"></param>
         /// <param name="vertexPartitionKeySet"></param>
         public static void ConstructLazyAdjacencyList(
-            GraphViewConnection connection,
+            DocumentDBConnection connection,
             EdgeType edgeType,
             HashSet<string> vertexIdSet, 
             HashSet<string> vertexPartitionKeySet)

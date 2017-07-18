@@ -79,12 +79,12 @@ namespace GraphView
         private Queue<RawRecord> outputBuffer;
         private JsonQuery vertexQuery;
         //private JsonQuery vertexViaExternalAPIQuery;
-        private GraphViewConnection connection;
+        private DocumentDBConnection connection;
 
         private IEnumerator<Tuple<VertexField, RawRecord>> verticesEnumerator;
         //private IEnumerator<RawRecord> verticesViaExternalAPIEnumerator;
 
-        public FetchNodeOperator2(GraphViewConnection connection, JsonQuery vertexQuery/*, JsonQuery vertexViaExternalAPIQuery*/)
+        public FetchNodeOperator2(DocumentDBConnection connection, JsonQuery vertexQuery/*, JsonQuery vertexViaExternalAPIQuery*/)
         {
             this.Open();
             this.connection = connection;
@@ -120,11 +120,11 @@ namespace GraphView
     internal class FetchEdgeOperator : GraphViewExecutionOperator
     {
         private JsonQuery edgeQuery;
-        private GraphViewConnection connection;
+        private DocumentDBConnection connection;
 
         private IEnumerator<RawRecord> verticesAndEdgesEnumerator;
 
-        public FetchEdgeOperator(GraphViewConnection connection, JsonQuery edgeQuery)
+        public FetchEdgeOperator(DocumentDBConnection connection, JsonQuery edgeQuery)
         {
             this.Open();
             this.connection = connection;
@@ -166,7 +166,7 @@ namespace GraphView
         private int outputBufferSize;
         private int batchSize = 5000;
         private Queue<RawRecord> outputBuffer;
-        private GraphViewConnection connection;
+        private DocumentDBConnection connection;
         private GraphViewExecutionOperator inputOp;
         
         internal enum TraversalTypeEnum
@@ -193,7 +193,7 @@ namespace GraphView
 
         public TraversalOperator2(
             GraphViewExecutionOperator inputOp,
-            GraphViewConnection connection,
+            DocumentDBConnection connection,
             int edgeFieldIndex,
             TraversalTypeEnum traversalType,
             JsonQuery sinkVertexQuery,
@@ -274,7 +274,7 @@ namespace GraphView
                 }
 
                 // Groups records returned by sinkVertexQuery by sink vertices' references
-                Dictionary<string, List<RawRecord>> sinkVertexCollection = new Dictionary<string, List<RawRecord>>(GraphViewConnection.InClauseLimit);
+                Dictionary<string, List<RawRecord>> sinkVertexCollection = new Dictionary<string, List<RawRecord>>(DocumentDBConnection.InClauseLimit);
 
                 HashSet<string> sinkReferenceSet = new HashSet<string>();
                 HashSet<string> sinkPartitionSet = new HashSet<string>();
@@ -293,7 +293,7 @@ namespace GraphView
                     sinkPartitionSet.Clear();
 
                     //TODO: Verify whether DocumentDB still has inClauseLimit
-                    while (sinkReferenceSet.Count < GraphViewConnection.InClauseLimit && j < inputSequence.Count)
+                    while (sinkReferenceSet.Count < DocumentDBConnection.InClauseLimit && j < inputSequence.Count)
                     {
                         string sinkReferenceId = inputSequence[j].Item2;
                         string sinkPartitionKey = inputSequence[j].Item3;
@@ -4806,7 +4806,7 @@ namespace GraphView
         private readonly bool isStartVertexTheOriginVertex;
 
         private readonly Queue<RawRecord> outputBuffer;
-        private readonly GraphViewConnection connection;
+        private readonly DocumentDBConnection connection;
 
         private readonly int batchSize;
         // RawRecord: the input record with the lazy adjacency list
@@ -4829,7 +4829,7 @@ namespace GraphView
             bool crossApplyForwardAdjacencyList, bool crossApplyBackwardAdjacencyList,
             bool isStartVertexTheOriginVertex,
             BooleanFunction edgePredicate, List<string> projectedFields,
-            GraphViewConnection connection,
+            DocumentDBConnection connection,
             int outputRecordLength,
             int batchSize = KW_DEFAULT_BATCH_SIZE)
         {

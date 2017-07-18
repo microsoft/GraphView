@@ -53,17 +53,6 @@ namespace GraphView
 
         }
 
-        public WSqlFragment Parse(TextReader queryInput, out IList<ParseError> errors)
-        {
-            var fragment = tsqlParser.Parse(queryInput, out errors);
-            if (errors.Count > 0)
-            {
-                return null;
-            }
-
-            return ConvertFragment(fragment);
-        }        
-
         private WSqlFragment ConvertFragment(TSqlFragment fragment)
         {
 
@@ -141,22 +130,6 @@ namespace GraphView
                     return BinaryExpressionType.Multiply;
                 case Microsoft.SqlServer.TransactSql.ScriptDom.BinaryExpressionType.Subtract:
                     return BinaryExpressionType.Subtract;
-                default:
-                    throw new NotImplementedException();
-            }
-        }
-
-        private BinaryQueryExpressionType ParseBinaryQueryExpressionType (
-            Microsoft.SqlServer.TransactSql.ScriptDom.BinaryQueryExpressionType type)
-        {
-            switch (type)
-            {
-                case Microsoft.SqlServer.TransactSql.ScriptDom.BinaryQueryExpressionType.Except:
-                    return BinaryQueryExpressionType.Except;
-                case Microsoft.SqlServer.TransactSql.ScriptDom.BinaryQueryExpressionType.Intersect:
-                    return BinaryQueryExpressionType.Intersect;
-                case Microsoft.SqlServer.TransactSql.ScriptDom.BinaryQueryExpressionType.Union:
-                    return BinaryQueryExpressionType.Union;
                 default:
                     throw new NotImplementedException();
             }
@@ -360,19 +333,6 @@ namespace GraphView
                     return BooleanComparisonType.RightOuterJoin;
                 default:
                     throw new NotImplementedException();
-            }
-        }
-
-        private ParameterModifier Parse(Microsoft.SqlServer.TransactSql.ScriptDom.ParameterModifier pm)
-        {
-            switch(pm)
-            {
-                case Microsoft.SqlServer.TransactSql.ScriptDom.ParameterModifier.Output:
-                    return ParameterModifier.Output;
-                case Microsoft.SqlServer.TransactSql.ScriptDom.ParameterModifier.ReadOnly:
-                    return ParameterModifier.ReadOnly;
-                default:
-                    return ParameterModifier.None;
             }
         }
 
