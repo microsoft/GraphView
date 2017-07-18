@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Newtonsoft.Json.Linq;
-using static GraphView.GraphViewKeywords;
+using static GraphView.DocumentDBKeywords;
 
 namespace GraphView
 {
@@ -1210,7 +1210,7 @@ namespace GraphView
                     RawRecord entryRecord = new RawRecord();
 
                     foreach (string columnName in this.populateColumns) {
-                        entryRecord.Append(columnName.Equals(GraphViewKeywords.KW_TABLE_DEFAULT_COLUMN_NAME)
+                        entryRecord.Append(columnName.Equals(DocumentDBKeywords.KW_TABLE_DEFAULT_COLUMN_NAME)
                             ? entry
                             : (FieldObject) null);
                     }

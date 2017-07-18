@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 using Microsoft.Azure.Documents;
 using Microsoft.Azure.Documents.Client;
 using Newtonsoft.Json.Linq;
-using static GraphView.GraphViewKeywords;
+using static GraphView.DocumentDBKeywords;
 
 namespace GraphView
 {
@@ -829,7 +829,7 @@ namespace GraphView
                                $"  \"{KW_EDGEDOC_VERTEX_LABEL}\": doc.{KW_EDGEDOC_VERTEX_LABEL}" +
                                $"}} AS {EdgeDocumentHelper.VirtualReverseEdge}";
                 alias = "doc";
-                joinClause = $"JOIN edge IN doc.{GraphViewKeywords.KW_VERTEX_EDGE}";
+                joinClause = $"JOIN edge IN doc.{DocumentDBKeywords.KW_VERTEX_EDGE}";
                 whereSearchCondition = $"edge.{KW_EDGE_SINKV} IN ({inClause})";
 
                 query = new JsonQuery

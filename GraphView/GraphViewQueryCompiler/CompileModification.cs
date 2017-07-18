@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Newtonsoft.Json.Linq;
-using static GraphView.GraphViewKeywords;
+using static GraphView.DocumentDBKeywords;
 
 namespace GraphView
 {

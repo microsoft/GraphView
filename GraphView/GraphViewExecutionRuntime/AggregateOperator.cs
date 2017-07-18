@@ -7,7 +7,7 @@ using System.Globalization;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using static GraphView.GraphViewKeywords;
+using static GraphView.DocumentDBKeywords;
 
 namespace GraphView
 {
@@ -296,8 +296,8 @@ namespace GraphView
 
 
                     Dictionary<string, FieldObject> compositeFieldObjects = new Dictionary<string, FieldObject>();
-                    compositeFieldObjects.Add(GraphViewKeywords.KW_TABLE_DEFAULT_COLUMN_NAME, new CollectionField(projectFields));
-                    result[key] = new CompositeField(compositeFieldObjects, GraphViewKeywords.KW_TABLE_DEFAULT_COLUMN_NAME);
+                    compositeFieldObjects.Add(DocumentDBKeywords.KW_TABLE_DEFAULT_COLUMN_NAME, new CollectionField(projectFields));
+                    result[key] = new CompositeField(compositeFieldObjects, DocumentDBKeywords.KW_TABLE_DEFAULT_COLUMN_NAME);
                 }
             }
             else
@@ -574,8 +574,8 @@ namespace GraphView
                     }
 
                     Dictionary<string, FieldObject> compositeFieldObjects = new Dictionary<string, FieldObject>();
-                    compositeFieldObjects.Add(GraphViewKeywords.KW_TABLE_DEFAULT_COLUMN_NAME, new CollectionField(projectFields));
-                    result[key] = new CompositeField(compositeFieldObjects, GraphViewKeywords.KW_TABLE_DEFAULT_COLUMN_NAME);
+                    compositeFieldObjects.Add(DocumentDBKeywords.KW_TABLE_DEFAULT_COLUMN_NAME, new CollectionField(projectFields));
+                    result[key] = new CompositeField(compositeFieldObjects, DocumentDBKeywords.KW_TABLE_DEFAULT_COLUMN_NAME);
                 }
             }
             else
@@ -735,8 +735,8 @@ namespace GraphView
                     }
 
                     Dictionary<string, FieldObject> compositeFieldObjects = new Dictionary<string, FieldObject>();
-                    compositeFieldObjects.Add(GraphViewKeywords.KW_TABLE_DEFAULT_COLUMN_NAME, new CollectionField(projectFields));
-                    result[key] = new CompositeField(compositeFieldObjects, GraphViewKeywords.KW_TABLE_DEFAULT_COLUMN_NAME);
+                    compositeFieldObjects.Add(DocumentDBKeywords.KW_TABLE_DEFAULT_COLUMN_NAME, new CollectionField(projectFields));
+                    result[key] = new CompositeField(compositeFieldObjects, DocumentDBKeywords.KW_TABLE_DEFAULT_COLUMN_NAME);
                 }
             }
             else

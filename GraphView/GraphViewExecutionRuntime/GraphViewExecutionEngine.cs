@@ -10,7 +10,7 @@ using System.Collections.Specialized;
 using System.Diagnostics;
 using System.Globalization;
 using Newtonsoft.Json;
-using static GraphView.GraphViewKeywords;
+using static GraphView.DocumentDBKeywords;
 
 // Add DocumentDB references
 
@@ -40,7 +40,7 @@ namespace GraphView
             RawRecord flatRecord = new RawRecord();
 
             foreach (string columnName in populateColumns) {
-                flatRecord.Append(columnName.Equals(GraphViewKeywords.KW_TABLE_DEFAULT_COLUMN_NAME)
+                flatRecord.Append(columnName.Equals(DocumentDBKeywords.KW_TABLE_DEFAULT_COLUMN_NAME)
                     ? this
                     : this[columnName]);
             }
@@ -731,11 +731,11 @@ namespace GraphView
                   vertexSinglePropertyObject[KW_PROPERTY_VALUE].ToString(), 
                   JsonDataTypeHelper.GetJsonDataType(vertexSinglePropertyObject[KW_PROPERTY_VALUE].Type))
         {
-            Debug.Assert(vertexSinglePropertyObject[GraphViewKeywords.KW_PROPERTY_ID] != null);
+            Debug.Assert(vertexSinglePropertyObject[DocumentDBKeywords.KW_PROPERTY_ID] != null);
 
             this.VertexProperty = vertexPropertyField;
 
-            this.PropertyId = (string)vertexSinglePropertyObject[GraphViewKeywords.KW_PROPERTY_ID];
+            this.PropertyId = (string)vertexSinglePropertyObject[DocumentDBKeywords.KW_PROPERTY_ID];
             this.Replace(vertexSinglePropertyObject);
         }
 
@@ -785,8 +785,8 @@ namespace GraphView
                   }
                 }
             */
-            Debug.Assert(vertexSinglePropertyObject[GraphViewKeywords.KW_PROPERTY_ID] != null);
-            Debug.Assert((string)vertexSinglePropertyObject[GraphViewKeywords.KW_PROPERTY_ID] == this.PropertyId);
+            Debug.Assert(vertexSinglePropertyObject[DocumentDBKeywords.KW_PROPERTY_ID] != null);
+            Debug.Assert((string)vertexSinglePropertyObject[DocumentDBKeywords.KW_PROPERTY_ID] == this.PropertyId);
 
             JValue value = (JValue) vertexSinglePropertyObject[KW_PROPERTY_VALUE];
             this.PropertyValue = value.ToString();
@@ -1272,7 +1272,7 @@ namespace GraphView
                 if (propertyName.Equals("*", StringComparison.OrdinalIgnoreCase))
                     return this;
 
-                if (propertyName.Equals(GraphViewKeywords.KW_TABLE_DEFAULT_COLUMN_NAME, StringComparison.OrdinalIgnoreCase))
+                if (propertyName.Equals(DocumentDBKeywords.KW_TABLE_DEFAULT_COLUMN_NAME, StringComparison.OrdinalIgnoreCase))
                     return this;
 
                 switch (propertyName)
@@ -1680,7 +1680,7 @@ namespace GraphView
                 if (propertyName.Equals("*", StringComparison.OrdinalIgnoreCase))
                     return this;
 
-                if (propertyName.Equals(GraphViewKeywords.KW_TABLE_DEFAULT_COLUMN_NAME, StringComparison.OrdinalIgnoreCase))
+                if (propertyName.Equals(DocumentDBKeywords.KW_TABLE_DEFAULT_COLUMN_NAME, StringComparison.OrdinalIgnoreCase))
                     return this;
 
                 if (propertyName.Equals(KW_VERTEX_EDGE, StringComparison.OrdinalIgnoreCase))

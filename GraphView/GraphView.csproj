@@ -24,6 +24,7 @@
     <WarningLevel>4</WarningLevel>
     <RunCodeAnalysis>false</RunCodeAnalysis>
     <NoWarn>3008,0162,0169,0219,0414,0649</NoWarn>
+    <CodeAnalysisRuleSet>..\Analyze.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
@@ -101,7 +102,7 @@
     <Compile Include="GremlinTranslation\filter\GremlinSimplePathOp.cs" />
     <Compile Include="GremlinTranslation\filter\GremlinWherePredicate.cs" />
     <Compile Include="GremlinTranslation\filter\GremlinWhereTraversal.cs" />
-    <Compile Include="GremlinTranslation\GraphTraversal.cs" />
+    <Compile Include="GraphTraversal.cs" />
     <Compile Include="GremlinTranslation\GremlinUtil.cs" />
     <Compile Include="GremlinTranslation\map\GremlinIdOp.cs" />
     <Compile Include="GremlinTranslation\map\GremlinLabelOp.cs" />
@@ -217,13 +218,13 @@
     <Compile Include="GraphViewExecutionRuntime\TVFOperator.cs" />
     <Compile Include="GraphViewQueryCompiler\GraphOptimizer.cs" />
     <Compile Include="GraphViewExecutionRuntime\GraphViewExecutionEngine.cs" />
-    <Compile Include="GraphViewJsonCommand.cs" />
+    <Compile Include="GraphViewUtils\GraphViewJsonCommand.cs" />
     <Compile Include="GraphViewQueryCompiler\MatchComponent.cs" />
     <Compile Include="GraphViewUtils\ObjectExtensions.cs" />
     <Compile Include="GraphViewQueryCompiler\CompileSelect.cs" />
     <Compile Include="GraphViewQueryCompiler\Statistics.cs" />
     <Compile Include="GraphViewCommand.cs" />
-    <Compile Include="GraphViewKeywords.cs" />
+    <Compile Include="GraphViewDBPortal\DocumentDBKeywords.cs" />
     <Compile Include="TSQL Syntax Tree\WControlFlow.cs" />
     <Compile Include="TSQL Syntax Tree\WCreateViewStatement.cs" />
     <Compile Include="TSQL Syntax Tree\WDeclareVariableStatement.cs" />

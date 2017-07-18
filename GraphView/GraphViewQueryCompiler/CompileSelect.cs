@@ -283,7 +283,7 @@ namespace GraphView
                 //
                 // SELECT N_0, {"id": E_0.id} as E_0 FROM Node N_0 ...
                 //
-                selectStrBuilder.AppendFormat(", {{\"{0}\": {1}.{0}}} AS {1} ", GraphViewKeywords.KW_EDGE_ID, edgeAlias);
+                selectStrBuilder.AppendFormat(", {{\"{0}\": {1}.{0}}} AS {1} ", DocumentDBKeywords.KW_EDGE_ID, edgeAlias);
 
                 foreach (string propertyName in edge.Properties) {
                     edgeProperties.Add(propertyName);
@@ -323,7 +323,7 @@ namespace GraphView
             if (edge != null)
             {
                 joinStrBuilder.AppendFormat(" JOIN {0} IN {1}.{2} ", edgeAlias, nodeAlias,
-                    isReverseAdj ? GraphViewKeywords.KW_VERTEX_REV_EDGE : GraphViewKeywords.KW_VERTEX_EDGE);
+                    isReverseAdj ? DocumentDBKeywords.KW_VERTEX_REV_EDGE : DocumentDBKeywords.KW_VERTEX_EDGE);
 
                 WBooleanExpression tempEdgeCondition = null;
                 foreach (WBooleanExpression predicate in edge.Predicates) {
@@ -345,8 +345,8 @@ namespace GraphView
                     edgeConditionString,
                     nodeAlias,
                     isReverseAdj
-                        ? GraphViewKeywords.KW_VERTEX_REVEDGE_SPILLED
-                        : GraphViewKeywords.KW_VERTEX_EDGE_SPILLED);
+                        ? DocumentDBKeywords.KW_VERTEX_REVEDGE_SPILLED
+                        : DocumentDBKeywords.KW_VERTEX_EDGE_SPILLED);
             }
 
             bool hasNodePredicates = nodeCondition != null;
@@ -356,12 +356,12 @@ namespace GraphView
             //
             //string searchConditionString = string.Format(
             //    "(IS_DEFINED({0}.{1}) = true{2}){3}",
-            //    nodeAlias, GraphViewKeywords.KW_VERTEX_VIAGRAPHAPI,
+            //    nodeAlias, DocumentDBKeywords.KW_VERTEX_VIAGRAPHAPI,
             //    hasNodePredicates ? $" AND ({nodeCondition.ToString()})" : "",
             //    hasEdgePredicates ? $" AND ({edgeConditionString})" : "");
             string searchConditionString = string.Format(
                 "(IS_DEFINED({0}.{1}) = false {2}) {3}",
-                nodeAlias, GraphViewKeywords.KW_EDGEDOC_IDENTIFIER,
+                nodeAlias, DocumentDBKeywords.KW_EDGEDOC_IDENTIFIER,
                 hasNodePredicates ? $" AND ({nodeCondition.ToString()})" : "",
                 hasEdgePredicates ? $" AND ({edgeConditionString})" : "");
 
@@ -392,7 +392,7 @@ namespace GraphView
             // SELECT N_0, E_0 FROM Node N_0 Join E_0 IN N_0._edge
             //
             selectStrBuilder.AppendFormat("{0}, {1}", nodeAlias, edgeAlias);
-            joinStrBuilder.AppendFormat(" JOIN {0} IN {1}.{2} ", edgeAlias, nodeAlias, GraphViewKeywords.KW_VERTEX_EDGE);
+            joinStrBuilder.AppendFormat(" JOIN {0} IN {1}.{2} ", edgeAlias, nodeAlias, DocumentDBKeywords.KW_VERTEX_EDGE);
 
             WBooleanExpression tempEdgeCondition = null;
             foreach (WBooleanExpression predicate in edge.Predicates)
@@ -415,8 +415,8 @@ namespace GraphView
             //
             string searchConditionString = string.Format(
                 "(({0}.{1} = true AND {0}.{2} = false) OR {0}.{3} = false){4}",
-                nodeAlias, GraphViewKeywords.KW_EDGEDOC_IDENTIFIER, 
-                GraphViewKeywords.KW_EDGEDOC_ISREVERSE, GraphViewKeywords.KW_VERTEX_EDGE_SPILLED,
+                nodeAlias, DocumentDBKeywords.KW_EDGEDOC_IDENTIFIER, 
+                DocumentDBKeywords.KW_EDGEDOC_ISREVERSE, DocumentDBKeywords.KW_VERTEX_EDGE_SPILLED,
                 string.IsNullOrEmpty(edgeConditionString) ? "" : $" AND ({edgeConditionString})");
 
             JsonQuery jsonQuery = new JsonQuery
@@ -468,8 +468,8 @@ namespace GraphView
             //
             string searchConditionString = string.Format("(IS_DEFINED({0}.{1}) = false AND IS_DEFINED({0}.{2}) = false{3})",
                 nodeAlias, 
-                GraphViewKeywords.KW_VERTEX_VIAGRAPHAPI,
-                GraphViewKeywords.KW_EDGEDOC_ISREVERSE,
+                DocumentDBKeywords.KW_VERTEX_VIAGRAPHAPI,
+                DocumentDBKeywords.KW_EDGEDOC_ISREVERSE,
                 hasNodePredicates ? $" AND ({nodeCondition.ToString()})" : "");
 
             JsonQuery jsonQuery = new JsonQuery
@@ -1929,7 +1929,7 @@ namespace GraphView
             }
 
             bool isSendQueryRequired = !(matchNode.Properties.Count == 1 &&
-                                         matchNode.Properties.First().Equals(GraphViewKeywords.KW_DOC_ID));
+                                         matchNode.Properties.First().Equals(DocumentDBKeywords.KW_DOC_ID));
 
             //
             // Construct JSON query
@@ -3062,13 +3062,13 @@ namespace GraphView
                 orderByElements.Add(new Tuple<ScalarFunction, IComparer>(byFunction, comparer));
             }
 
-            List<string> populateColumns = new List<string> { GraphViewKeywords.KW_TABLE_DEFAULT_COLUMN_NAME };
+            List<string> populateColumns = new List<string> { DocumentDBKeywords.KW_TABLE_DEFAULT_COLUMN_NAME };
             for (int i = this.OrderParameters.Count + 1; i < this.Parameters.Count; i++)
             {
                 WValueExpression populateColumn = this.Parameters[i] as WValueExpression;
                 Debug.Assert(populateColumn != null, "populateColumn != null");
 
-                if (populateColumn.Value.Equals(GraphViewKeywords.KW_TABLE_DEFAULT_COLUMN_NAME)) {
+                if (populateColumn.Value.Equals(DocumentDBKeywords.KW_TABLE_DEFAULT_COLUMN_NAME)) {
                     continue;
                 }
                 populateColumns.Add(populateColumn.Value);
@@ -3100,13 +3100,13 @@ namespace GraphView
             bool isLocal = localFlag > 0;
             bool isTail = tailFlag > 0;
 
-            List<string> populateColumns = new List<string> { GraphViewKeywords.KW_TABLE_DEFAULT_COLUMN_NAME };
+            List<string> populateColumns = new List<string> { DocumentDBKeywords.KW_TABLE_DEFAULT_COLUMN_NAME };
             for (int i = 5; i < this.Parameters.Count; i++)
             {
                 WValueExpression populateColumn = this.Parameters[i] as WValueExpression;
                 Debug.Assert(populateColumn != null, "populateColumn != null");
 
-                if (populateColumn.Value.Equals(GraphViewKeywords.KW_TABLE_DEFAULT_COLUMN_NAME)) {
+                if (populateColumn.Value.Equals(DocumentDBKeywords.KW_TABLE_DEFAULT_COLUMN_NAME)) {
                     continue;
                 }
                 populateColumns.Add(populateColumn.Value);

@@ -27,7 +27,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Microsoft.SqlServer.TransactSql.ScriptDom;
 
 namespace GraphView
 {

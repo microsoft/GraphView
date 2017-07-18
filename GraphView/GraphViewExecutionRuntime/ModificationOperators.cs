@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 using Microsoft.Azure.Documents;
 using Microsoft.Azure.Documents.Client;
 using Newtonsoft.Json.Linq;
-using static GraphView.GraphViewKeywords;
+using static GraphView.DocumentDBKeywords;
 
 namespace GraphView
 {
@@ -221,7 +221,7 @@ namespace GraphView
 
             JArray vertexProperty = (JArray)vertexObject[vp.PropertyName];
             vertexProperty
-                .First(singleProperty => (string)singleProperty[GraphViewKeywords.KW_PROPERTY_ID] == vp.PropertyId)
+                .First(singleProperty => (string)singleProperty[DocumentDBKeywords.KW_PROPERTY_ID] == vp.PropertyId)
                 .Remove();
             if (vertexProperty.Count == 0) {
                vertexObject.Property(vp.PropertyName).Remove();

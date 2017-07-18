@@ -6,7 +6,7 @@ using System.Globalization;
 using System.Linq;
 using System.Text;
 using Microsoft.Azure.Documents.Partitioning;
-using static GraphView.GraphViewKeywords;
+using static GraphView.DocumentDBKeywords;
 
 namespace GraphView
 {
@@ -265,7 +265,7 @@ namespace GraphView
                     {
                         RawRecord resultRecord = new RawRecord { fieldValues = new List<FieldObject>() };
                         resultRecord.Append(pair.Item1);
-                        resultRecord.Append(new ValuePropertyField(GraphViewKeywords.KW_DOC_ID, pair.Item2,
+                        resultRecord.Append(new ValuePropertyField(DocumentDBKeywords.KW_DOC_ID, pair.Item2,
                             JsonDataType.String, (VertexField) null));
                         outputBuffer.Enqueue(resultRecord);
                     }
@@ -320,7 +320,7 @@ namespace GraphView
                     }
 
                     //string spilledEdgeDocumentsInClause =
-                    //    $"{this.sinkVertexViaExternalAPIQuery.Alias}.{GraphViewKeywords.KW_EDGEDOC_VERTEXID} IN ({sinkReferenceList.ToString()})";
+                    //    $"{this.sinkVertexViaExternalAPIQuery.Alias}.{DocumentDBKeywords.KW_EDGEDOC_VERTEXID} IN ({sinkReferenceList.ToString()})";
 
                     //JsonQuery toSendViaExternalAPIQuery = new JsonQuery(this.sinkVertexViaExternalAPIQuery);
                     //if (string.IsNullOrEmpty(toSendViaExternalAPIQuery.WhereSearchCondition)) {

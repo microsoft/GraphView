@@ -213,7 +213,7 @@ namespace GraphView
                 string encodeName = EncodeString(originalColumnName);
                 this.referencedProperties[encodeName] = originalColumnName;
                 columnList[0].Value = encodeName;
-                columnList[1].Value = GraphViewKeywords.KW_PROPERTY_VALUE;
+                columnList[1].Value = DocumentDBKeywords.KW_PROPERTY_VALUE;
             }
             else {
                 throw new QueryCompilationException("Identifier " + columnList.ToString() + " should be bound to a table.");

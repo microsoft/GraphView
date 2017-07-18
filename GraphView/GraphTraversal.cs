@@ -52,7 +52,7 @@ namespace GraphView
                         edgeType |= EdgeType.Incoming;
                     }
 
-                    string vertexId = vertexField[GraphViewKeywords.KW_DOC_ID].ToValue;
+                    string vertexId = vertexField[DocumentDBKeywords.KW_DOC_ID].ToValue;
                     batchIdSet.Add(vertexId);
                     if (vertexField.Partition != null) {
                         batchPartitionKeySet.Add(vertexField.Partition);
