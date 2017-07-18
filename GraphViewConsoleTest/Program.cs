@@ -82,10 +82,10 @@ namespace GraphViewConsoleTest
        //     connection2.repartitionByBFS(connection1);
        //     connection2.getMetricsOfGraphPartition();
 
-//            GraphViewConnection connection2 = GraphViewConnection.ResetGraphAPICollection("https://graphview.documents.azure.com:443/",
-//"MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
-//"GroupMatch", col2,
-//false, 1, "name");
+       //            GraphViewConnection connection2 = GraphViewConnection.ResetGraphAPICollection("https://graphview.documents.azure.com:443/",
+       //"MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+       //"GroupMatch", col2,
+       //false, 1, "name");
             connection1.EdgeSpillThreshold = 1;
             connection1.AssignSeenDesNotSeenSrcToBalance = true;
             GraphViewConnection.partitionLoad = new int[GraphViewConnection.partitionNum];
@@ -729,6 +729,56 @@ namespace GraphViewConsoleTest
             Console.WriteLine("partition count" + 2 + "  " + collectionName + "(4)" + (start2p.ElapsedMilliseconds) + "ms");
         }
 
+        public static void getSampleOutVertex(GraphViewCommand graph, String src, List<Object> sample)
+        {
+            
+            var hop_1 = graph.g().V(src).Out("appear").Values("id").Next();
+            int c = 0;
+            int step = 3;
+            foreach (var h1 in hop_1)
+            {
+                if (c < step)
+                {
+                    sample.Add(h1);
+                }
+                else
+                {
+                    break;
+                }
+                c++;
+            }
+
+            c = 0;
+            var hop_2 = graph.g().V(src).Out("appear").Out("appear").Values("id").Next();
+            foreach (var h2 in hop_2)
+            {
+                if (c < step)
+                {
+                    sample.Add(h2);
+                }
+                else
+                {
+                    break;
+                }
+                c++;
+            }
+
+            c = 0;
+            var hop_3 = graph.g().V(src).Out("appear").Out("appear").Out("appear").Values("id").Next();
+            foreach (var h3 in hop_3)
+            {
+                if (c < step)
+                {
+                    sample.Add(h3);
+                }
+                else
+                {
+                    break;
+                }
+                c++;
+            }
+        }
+
         public static void partitionQueryTestCommon(String sampleCollection, String collectionName)
         {
             Console.WriteLine("[##################################################start warm query]");
@@ -797,25 +847,36 @@ namespace GraphViewConsoleTest
             // (3) Shortest Path: FindShortestPath (FS): finds the shortest path between the first node and 100 randomly picked nodes.
 
             var linesE = File.ReadLines("E:\\dataset\\thsinghua_dataset\\cit_network\\cit-HepTh.txt\\Cit-HepTh.txt");
-            var start3 = Stopwatch.StartNew();
-            String src = sample[0].ToString();
+            //String src = sample[0].ToString();
+            String src = "1001";
+           
             sample.RemoveAt(0);
             int i = 0;
-            foreach (var node in linesE)
-            {
-                var edge = node.Split('\t');
-                src = edge[0].ToString();
-                String des = edge[1].ToString();
-                //ShortestPathTest.GetShortestPath(edge[0], edge[1], graph);
-                ShortestPathTest.GetShortestPath(src, des, graph);
+            //foreach (var node in linesE)
+            //{
+            //    var edge = node.Split('\t');
+            //    src = edge[0].ToString();
+            //    String des = edge[1].ToString();
+            //    //ShortestPathTest.GetShortestPath(edge[0], edge[1], graph);
+            //    ShortestPathTest.GetShortestPath(src, des, graph);
 
-                // src = des;
-                i++;
-                if (i > 0)
-                {
-                    break;
-                }
+            //    // src = des;
+            //    i++;
+            //    if (i > 0)
+            //    {
+            //        break;
+            //    }
+            //}
+
+            sample.Clear();
+            getSampleOutVertex(graph0, src, sample);
+
+            var start3 = Stopwatch.StartNew();
+            foreach (var v in sample)
+            {
+                ShortestPathTest.GetShortestPath(src, v.ToString(), graph);
             }
+
             start3.Stop();
             Console.WriteLine(collectionName + "(3)" + (start3.ElapsedMilliseconds) + "ms");
             Console.WriteLine(collectionName + "end test");

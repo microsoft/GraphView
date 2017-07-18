@@ -1487,7 +1487,7 @@ namespace GraphView
                 // new yj
                 var result = ExecuteWithRetriesSync(this.DocDBClient, () => this.DocDBClient.CreateDocumentQuery(this._docDBCollectionUri, queryScript, queryOptions).ToList());
                 start2.Stop();
-                Console.WriteLine("\n\n" + start2.ElapsedMilliseconds + "    :" + queryScript);
+                //Console.WriteLine("\n\n" + start2.ElapsedMilliseconds + "    :" + queryScript);
                  
                 return result;
             } catch (Exception e)
