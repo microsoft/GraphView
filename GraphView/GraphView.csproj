@@ -229,7 +229,7 @@
     <Compile Include="TSQL Syntax Tree\WDeclareVariableStatement.cs" />
     <Compile Include="TranslateDataModificationVisitor.cs" />
     <Compile Include="GraphDataModificationAnnotation.cs" />
-    <Compile Include="GraphViewConnection.cs" />
+    <Compile Include="DocumentDBConnection.cs" />
     <Compile Include="GraphViewException.cs" />
     <Compile Include="MatchClauseVisitor.cs" />
     <Compile Include="GraphViewParser.cs" />
@@ -251,7 +251,6 @@
     <Compile Include="TSQL Syntax Tree\WIndexDefinition.cs" />
     <Compile Include="TSQL Syntax Tree\WSchemaObjectName.cs" />
     <Compile Include="TSQL Syntax Tree\WTableDefinition.cs" />
-    <Compile Include="WSqlParser.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="TSQL Syntax Tree\TsqlFragmentToString.cs" />
     <Compile Include="TSQL Syntax Tree\WBooleanExpression.cs" />
@@ -269,9 +268,6 @@
   </ItemGroup>
   <ItemGroup>
     <Service Include="{508349B6-6B84-4DF5-91F0-309BEEBAD82D}" />
-  </ItemGroup>
-  <ItemGroup>
-    <WCFMetadata Include="Service References\" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

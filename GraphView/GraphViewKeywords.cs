@@ -76,17 +76,5 @@ namespace GraphView
             First,
             Last
         }
-
-        static GraphViewKeywords()
-        {
-#if !DEBUG
-            Type thisType = typeof(GraphViewKeywords);
-            foreach (FieldInfo field in thisType.GetFields(BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)) {
-                if (field.FieldType == typeof(string)) {
-                    _keywords.Add((string) field.GetValue(null));
-                }
-            }
-#endif
-        }
     }
 }
