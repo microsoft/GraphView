@@ -481,8 +481,8 @@ namespace GraphView
         {
             try
             {
-                Random rnd = new Random();
-                var edgePartition = rnd.Next() % partitionNum;
+                //Random rnd = new Random();
+                var edgePartition = Math.Abs(docObject["id"].ToString().GetHashCode() % partitionNum);
                 docObject["_partition"] = edgePartition.ToString();
                 partitionLoad[Convert.ToInt32(edgePartition)]++;
                 return docObject;
@@ -947,31 +947,41 @@ namespace GraphView
                 str.Append(",'" + i + "'");
             }
             str.Remove(0, 1);
+            //if(ids.Contains("9603150"))
+            //{
+            //    int a = 0;
+            //}
             // (1) query the docs
             var docs = srcConnection.ExecuteQuery("SELECT * FROM Node where Node.id in (" + str.ToString() + ")").ToList();
             //var partition = getMinLoadPartitionIndex();
             foreach(var d in docs)
             {
+                if((((JObject)d)["id"]).ToString() == "9603150")
+                {
+                    int a = 0;
+                }
                 var doc = ((JObject)d);
                 doc["_partition"] = partition.ToString();
-                //((JObject)d)["_partition"] = partition.ToString();
-                // (1.1) des contains this doc, do nothing
-                //var script = "SELECT * FROM Node where Node.id ='" + ((JObject)d)["id"] + "'";
-                //var test = this.ExecuteQuery(script).ToList();
-               
-                // (1.2) des does not contains the doc, insert
-                //if (test.Count() == 0)
-                //{
-                //    this.CreateDocumentAsync(((JObject)d));
-                //}
-                //else
-                //{
-                    if (!processedSet.Contains(((JObject)d)["id"].ToString())) {
-                        var p = ((JObject)d)["_partition"].ToString();
-                        await this.ReplaceOrDeleteDocumentAsync(((JObject)d)["id"].ToString(), null, p);
-                        await this.CreateDocumentAsync(doc);
-                        //await this.CreateDocumentAsync(((JObject)d));
+                if (!processedSet.Contains(((JObject)d)["id"].ToString()))
+                {
+                    // (1) update the doc.
+                    var p = ((JObject)d)["_partition"].ToString();
+                    await this.ReplaceOrDeleteDocumentAsync(((JObject)d)["id"].ToString(), null, p);
+                    await this.CreateDocumentAsync(doc);
+                    partitionLoad[partition]++;
+                    // (2) Also need to update the edge meta data to support this. Note: future feature update, need store the src vertex info in the edge document
+                    var edge = srcConnection.ExecuteQuery("SELECT * FROM edge where edge._edge[0]._sinkV ='" + ((JObject)d)["id"].ToString() + "'").ToList();
+                    foreach(var et in edge) { 
+                        var e = ((JObject)et);
+                        e["_edge"][0]["_sinkVPartition"] = partition.ToString();
+                        var originPar = ((JObject)et)["_partition"].ToString();
+                        var id = ((JObject)et)["id"].ToString();
+                        await this.ReplaceOrDeleteDocumentAsync(id, null, originPar);
+                        await this.CreateDocumentAsync(e);
                         partitionLoad[partition]++;
+                    }
+
+                    //await this.CreateDocumentAsync(((JObject)d));
                     }
                // }
             }
@@ -979,6 +989,7 @@ namespace GraphView
 
         public async void repartitionByBFS(GraphViewConnection srcConnection)
         {
+            
             // (1) iterate all vertex
             GraphViewCommand srcCMD = new GraphViewCommand(srcConnection);
             var processedIDSet = new HashSet<String>();
@@ -1234,12 +1245,22 @@ namespace GraphView
             {
                 option.PartitionKey = new PartitionKey(partition);
             }
-
-            option.AccessCondition = new AccessCondition
+            // old
+            //option.AccessCondition = new AccessCondition
+            //{
+            //    Type = AccessConditionType.IfMatch,
+            //    Condition = this.VertexCache.GetCurrentEtag(docId),
+            //};
+            // old
+            // new yj
+            if (this.VertexCache.ContainsId(docId))
             {
-                Type = AccessConditionType.IfMatch,
-                Condition = this.VertexCache.GetCurrentEtag(docId),
-            };
+                option.AccessCondition = new AccessCondition
+                    {
+                        Type = AccessConditionType.IfMatch,
+                        Condition = this.VertexCache.GetCurrentEtag(docId),
+                    };
+            }
 
             Uri documentUri = UriFactory.CreateDocumentUri(this.DocDBDatabaseId, this.DocDBCollectionId, docId);
             if (docObject == null)
@@ -1259,7 +1280,11 @@ namespace GraphView
 
                 // Update the document's etag
                 docObject[KW_DOC_ETAG] = document.ETag;
-                this.VertexCache.UpdateCurrentEtag(document);
+                // new yj
+                if (this.VertexCache.ContainsId(document.Id))
+                {
+                    this.VertexCache.UpdateCurrentEtag(document);
+                }
             }
         }
 

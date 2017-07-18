@@ -92,26 +92,28 @@ namespace GraphViewUnitTest
                 }
                 builder.Remove(0, 1);
                 //var temp = graph.GraphViewConnection.ExecuteQuery("SELECT c._edge[0]._sinkV FROM c where c._vertex_id in (" + builder.ToString() + ")");
-                    var temp = graph.g().V(vs).Out("appear").Values("id").Next();
+                var temp = graph.g().V(vs).Out("appear").Values("id").Next();
 
                 foreach (var vertex in temp)
                 {
                     //var vertexId = ((JObject)vertex)["_sinkV"].ToString();
                     var vertexId = vertex;
-                    if(historyVertex.Contains(vertexId))
-                    {
-                        //continue;
-                    } else
-                    {
-                        historyVertex.Add(vertexId);
-                    }
+            
                     if(vertexId.ToString() == des)
                     {
                         reachDes = true;
                         break;
-                    } else if(vertexId.ToString() != src)
+                    } else if(vertexId.ToString() != src && !historyVertex.Contains(vertexId))
                     {
                         vertexIdQ2.Add(vertexId.ToString());
+                    }
+                    if (historyVertex.Contains(vertexId))
+                    {
+                        //continue;
+                    }
+                    else
+                    {
+                        historyVertex.Add(vertexId);
                     }
                 }
                 vertexIdQ1.Clear();

@@ -24,6 +24,12 @@ namespace GraphView
 
         private readonly Dictionary<string, string> _currentEtags = new Dictionary<string, string>();
 
+        // new yi
+        public Boolean ContainsId(String docID)
+        {
+            return this._currentEtags.ContainsKey(docID);
+        }
+        // new yj
         public string GetCurrentEtag(string docId)
         {
             Debug.Assert(docId != null);
@@ -33,7 +39,7 @@ namespace GraphView
         public void RemoveEtag(string docId)
         {
             Debug.Assert(docId != null);
-            Debug.Assert(this._currentEtags.ContainsKey(docId));
+            //Debug.Assert(this._currentEtags.ContainsKey(docId));
 
             this._currentEtags.Remove(docId);
         }

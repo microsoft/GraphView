@@ -26,15 +26,17 @@ namespace GraphViewConsoleTest
             //Console.WriteLine("#######start PartitionTestCitRep2 test");
             //partitionQueryTestCommon("PartitionTestCitRep2");
             //insertCitDataBulkInsert();
-           // insertCitHashPartitionByBulkInsert();
+            // insertCitHashPartitionByBulkInsert();
             //insertCitGreedyPartitionByBulkInsert("CitGreedyPartition1000item");
-           // getStatistic();
+            // getStatistic();
             //insertInSamePartition();
-            //insertCitHashPartitionByBulkInsert();
+
+            //insertCitHashPartitionByBulkInsert("CitHashPartition1000item");
+            //insertCitHashPartitionByBulkInsert("CitGreedyPartition1000item");
             //partitionQueryTestCommon("CitFakeDiffPartition", "CitFakeDiffPartition");
             //partitionQueryTestCommon("CitFakeDiffPartition", "CitFakeSamePartition");
             partitionQueryTestCommon("CitHashPartition1000item", "CitHashPartition1000item");
-            //partitionQueryTestCommon("CitHashPartition1000item", "CitGreedyPartition1000item");
+            partitionQueryTestCommon("CitHashPartition1000item", "CitGreedyPartition1000item");
             //insertDiffKeyPartitionBulkInsert("PartitionTest_100Key", 100);
             //insertDiffKeyPartitionBulkInsert("PartitionTest_50Key",50);
             //insertDiffKeyPartitionBulkInsert("PartitionTest_10Key", 10);
@@ -738,7 +740,7 @@ namespace GraphViewConsoleTest
 
             GraphViewCommand graph0 = new GraphViewCommand(connection0);
             var sample = new List<Object>();
-            var resultsS = graph0.g().V().Sample(100).Next();
+            var resultsS = graph0.g().V().Sample(10).Next();
 
             foreach (var result in resultsS)
             {
@@ -781,7 +783,7 @@ namespace GraphViewConsoleTest
 
             // (2) FindAdjacentNodes (FA): finds the 3-hop adjacent
             //var start2 = Stopwatch.StartNew();
-            //var results = graph.g().V(sample).Out("appear").Out("appear").Next();
+            //var results = graph.g().V("1001").Out("appear").Out("appear").Next();
             ////results = graph.g().V().Sample(10).Out().Out().Next();
 
             //foreach (var result in results)
@@ -795,11 +797,10 @@ namespace GraphViewConsoleTest
             // (3) Shortest Path: FindShortestPath (FS): finds the shortest path between the first node and 100 randomly picked nodes.
 
             var linesE = File.ReadLines("E:\\dataset\\thsinghua_dataset\\cit_network\\cit-HepTh.txt\\Cit-HepTh.txt");
-
             var start3 = Stopwatch.StartNew();
             String src = sample[0].ToString();
             sample.RemoveAt(0);
-            int i = 1000;
+            int i = 0;
             foreach (var node in linesE)
             {
                 var edge = node.Split('\t');
@@ -808,9 +809,9 @@ namespace GraphViewConsoleTest
                 //ShortestPathTest.GetShortestPath(edge[0], edge[1], graph);
                 ShortestPathTest.GetShortestPath(src, des, graph);
 
-               // src = des;
-                i--;
-                if (i < 0)
+                // src = des;
+                i++;
+                if (i > 0)
                 {
                     break;
                 }
@@ -867,7 +868,7 @@ namespace GraphViewConsoleTest
         //       connection.getMetricsOfGraphPartition();
         //   }
 
-        public static void insertCitHashPartitionByBulkInsert()
+        public static void insertCitHashPartitionByBulkInsert(String colName)
         {
             //GraphViewConnection connection =
             //new GraphViewConnection("https://graphview.documents.azure.com:443/",
@@ -877,7 +878,7 @@ namespace GraphViewConsoleTest
 
             GraphViewConnection connection = GraphViewConnection.ResetGraphAPICollection("https://graphview.documents.azure.com:443/",
        "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
-       "GroupMatch", "CitHashPartition1000item",
+       "GroupMatch", colName,
        false, 1, "name");
 
             //GraphViewConnection connection =
@@ -909,16 +910,16 @@ namespace GraphViewConsoleTest
                 {
                     i++;
                 }
-                if (c > 4)
-                {
+                //if (c > 4)
+                //{
                     blk.stringBufferList.Add(lineE);
                     Console.WriteLine(c);
                     c++;
-                }
-                else
-                {
-                    c++;
-                }
+                //}
+                //else
+                //{
+                //    c++;
+                //}
             }
             blk.startParseThread();
             blk.parseDataCountDownLatch.Await();
