@@ -12,7 +12,7 @@ namespace GraphViewUnitTest
         [TestMethod]
         public void SelectMarvelQuery1()
         {
-            DocumentDBConnection connection = new DocumentDBConnection("https://graphview.documents.azure.com:443/",
+            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
                 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
                 "GroupMatch", "MarvelTest", GraphType.GraphAPIOnly, AbstractGremlinTest.TEST_USE_REVERSE_EDGE,
                 AbstractGremlinTest.TEST_SPILLED_EDGE_THRESHOLD_VIAGRAPHAPI, null);
@@ -30,7 +30,7 @@ namespace GraphViewUnitTest
         [TestMethod]
         public void SelectMarvelQuery1b()
         {
-            DocumentDBConnection connection = new DocumentDBConnection("https://graphview.documents.azure.com:443/",
+            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
                 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
                 "GroupMatch", "MarvelTest", GraphType.GraphAPIOnly, AbstractGremlinTest.TEST_USE_REVERSE_EDGE,
                 AbstractGremlinTest.TEST_SPILLED_EDGE_THRESHOLD_VIAGRAPHAPI, null);
@@ -50,7 +50,7 @@ namespace GraphViewUnitTest
         [TestMethod]
         public void SelectMarvelQuery1c()
         {
-            DocumentDBConnection connection = new DocumentDBConnection("https://graphview.documents.azure.com:443/",
+            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
                 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
                 "GroupMatch", "MarvelTest", GraphType.GraphAPIOnly, AbstractGremlinTest.TEST_USE_REVERSE_EDGE,
                 AbstractGremlinTest.TEST_SPILLED_EDGE_THRESHOLD_VIAGRAPHAPI, null);
@@ -70,7 +70,7 @@ namespace GraphViewUnitTest
         [TestMethod]
         public void SelectMarvelQuery2()
         {
-            DocumentDBConnection connection = new DocumentDBConnection("https://graphview.documents.azure.com:443/",
+            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
                 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
                 "GroupMatch", "MarvelTest", GraphType.GraphAPIOnly, AbstractGremlinTest.TEST_USE_REVERSE_EDGE,
                 AbstractGremlinTest.TEST_SPILLED_EDGE_THRESHOLD_VIAGRAPHAPI, null);
@@ -95,7 +95,7 @@ namespace GraphViewUnitTest
         [TestMethod]
         public void SelectMarvelQuery2b()
         {
-            DocumentDBConnection connection = new DocumentDBConnection("https://graphview.documents.azure.com:443/",
+            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
                 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
                 "GroupMatch", "MarvelTest", GraphType.GraphAPIOnly, AbstractGremlinTest.TEST_USE_REVERSE_EDGE,
                 AbstractGremlinTest.TEST_SPILLED_EDGE_THRESHOLD_VIAGRAPHAPI, null);
@@ -113,7 +113,7 @@ namespace GraphViewUnitTest
         [TestMethod]
         public void SelectMarvelQuery3()
         {
-            DocumentDBConnection connection = new DocumentDBConnection("https://graphview.documents.azure.com:443/",
+            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
                 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
                 "GroupMatch", "MarvelTest", GraphType.GraphAPIOnly, AbstractGremlinTest.TEST_USE_REVERSE_EDGE,
                 AbstractGremlinTest.TEST_SPILLED_EDGE_THRESHOLD_VIAGRAPHAPI, null);
@@ -129,7 +129,7 @@ namespace GraphViewUnitTest
         [TestMethod]
         public void SelectMarvelQuery3b()
         {
-            DocumentDBConnection connection = new DocumentDBConnection("https://graphview.documents.azure.com:443/",
+            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
                 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
                 "GroupMatch", "MarvelTest", GraphType.GraphAPIOnly, AbstractGremlinTest.TEST_USE_REVERSE_EDGE,
                 AbstractGremlinTest.TEST_SPILLED_EDGE_THRESHOLD_VIAGRAPHAPI, null);
@@ -146,7 +146,7 @@ namespace GraphViewUnitTest
         [TestMethod]
         public void SelectMarvelQuery4()
         {
-            DocumentDBConnection connection = new DocumentDBConnection("https://graphview.documents.azure.com:443/",
+            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
                 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
                 "GroupMatch", "MarvelTest", GraphType.GraphAPIOnly, AbstractGremlinTest.TEST_USE_REVERSE_EDGE,
                 AbstractGremlinTest.TEST_SPILLED_EDGE_THRESHOLD_VIAGRAPHAPI, null);
@@ -162,7 +162,7 @@ namespace GraphViewUnitTest
         [TestMethod]
         public void SelectMarvelQuery4b()
         {
-            DocumentDBConnection connection = new DocumentDBConnection("https://graphview.documents.azure.com:443/",
+            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
                 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
                 "GroupMatch", "MarvelTest", GraphType.GraphAPIOnly, AbstractGremlinTest.TEST_USE_REVERSE_EDGE,
                 AbstractGremlinTest.TEST_SPILLED_EDGE_THRESHOLD_VIAGRAPHAPI, null);
@@ -182,7 +182,7 @@ namespace GraphViewUnitTest
         [TestMethod]
         public void SelectMarvelQueryNativeAPI1()
         {
-            DocumentDBConnection connection = new DocumentDBConnection("https://graphview.documents.azure.com:443/",
+            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
                 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
                 "GroupMatch", "MarvelTest", GraphType.GraphAPIOnly, AbstractGremlinTest.TEST_USE_REVERSE_EDGE,
                 AbstractGremlinTest.TEST_SPILLED_EDGE_THRESHOLD_VIAGRAPHAPI, null);
@@ -204,7 +204,7 @@ namespace GraphViewUnitTest
         [TestMethod]
         public void SelectMarvelQueryNativeAPI2()
         {
-            DocumentDBConnection connection = new DocumentDBConnection("https://graphview.documents.azure.com:443/",
+            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
                 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
                 "GroupMatch", "MarvelTest", GraphType.GraphAPIOnly, AbstractGremlinTest.TEST_USE_REVERSE_EDGE,
                 AbstractGremlinTest.TEST_SPILLED_EDGE_THRESHOLD_VIAGRAPHAPI, null);
@@ -231,7 +231,7 @@ namespace GraphViewUnitTest
         [TestMethod]
         public void GraphViewMarvelInsertDeleteTest()
         {
-            DocumentDBConnection connection = new DocumentDBConnection("https://graphview.documents.azure.com:443/",
+            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
                 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
                 "GroupMatch", "MarvelTest", GraphType.GraphAPIOnly, AbstractGremlinTest.TEST_USE_REVERSE_EDGE,
                 AbstractGremlinTest.TEST_SPILLED_EDGE_THRESHOLD_VIAGRAPHAPI, null);
@@ -249,7 +249,7 @@ namespace GraphViewUnitTest
         [TestMethod]
         public void GraphViewMarvelInsertTest()
         {
-            DocumentDBConnection connection = new DocumentDBConnection("https://graphview.documents.azure.com:443/",
+            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
                 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
                 "GroupMatch", "MarvelTest", GraphType.GraphAPIOnly, AbstractGremlinTest.TEST_USE_REVERSE_EDGE,
                 AbstractGremlinTest.TEST_SPILLED_EDGE_THRESHOLD_VIAGRAPHAPI, null);

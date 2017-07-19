@@ -21,7 +21,7 @@ namespace GraphView
 
     public class GraphSONProjector
     {
-        internal static string ToGraphSON(List<RawRecord> results, DocumentDBConnection connection)
+        internal static string ToGraphSON(List<RawRecord> results, GraphViewCommand command)
         {
             StringBuilder finalGraphSonResult = new StringBuilder("[");
             HashSet<string> batchIdSet = new HashSet<string>();
@@ -66,7 +66,7 @@ namespace GraphView
 
             if (batchIdSet.Any())
             {
-                EdgeDocumentHelper.ConstructLazyAdjacencyList(connection, edgeType, batchIdSet, batchPartitionKeySet);
+                EdgeDocumentHelper.ConstructLazyAdjacencyList(command, edgeType, batchIdSet, batchPartitionKeySet);
 
                 int startIndex = 0;
                 foreach (KeyValuePair<int, VertexField> kvp in batchGraphSonDict)
@@ -97,16 +97,16 @@ namespace GraphView
     {
         public class GraphTraversalIterator : IEnumerator<string>
         {
-            private DocumentDBConnection connection;
+            private readonly GraphViewCommand command;
             private string currentRecord;
-            private GraphViewExecutionOperator currentOperator;
-            OutputFormat outputFormat;
-            bool firstCall;
+            private readonly GraphViewExecutionOperator currentOperator;
+            private readonly OutputFormat outputFormat;
+            private bool firstCall;
 
             internal GraphTraversalIterator(GraphViewExecutionOperator pCurrentOperator, 
-                DocumentDBConnection connection, OutputFormat outputFormat)
+                GraphViewCommand command, OutputFormat outputFormat)
             {
-                this.connection = connection;
+                this.command = command;
                 this.currentOperator = pCurrentOperator;
                 this.outputFormat = outputFormat;
                 this.firstCall = true;
@@ -133,7 +133,7 @@ namespace GraphView
                     else
                     {
                         firstCall = false;
-                        currentRecord = GraphSONProjector.ToGraphSON(rawRecordResults, this.connection);
+                        currentRecord = GraphSONProjector.ToGraphSON(rawRecordResults, this.command);
                         return true;
                     }
                 }
@@ -177,7 +177,7 @@ namespace GraphView
         {
             var sqlScript = GetEndOp().ToSqlScript();
             SqlScript = sqlScript.ToString();
-            it = new GraphTraversalIterator(sqlScript.Batches[0].Compile(null, Connection), Connection, outputFormat);
+            it = new GraphTraversalIterator(sqlScript.Batches[0].Compile(null, this.Command), this.Command, outputFormat);
             return it;
         }
 
@@ -188,7 +188,7 @@ namespace GraphView
 
         public string SqlScript { get; set; }
         private GraphTraversalIterator it;
-        public DocumentDBConnection Connection { get; set; }
+        public GraphViewCommand Command { get; set; }
         internal List<GremlinTranslationOperator> GremlinTranslationOpList { get; set; }
 
         OutputFormat outputFormat;
@@ -198,17 +198,17 @@ namespace GraphView
             GremlinTranslationOpList = new List<GremlinTranslationOperator>();
         }
 
-        public GraphTraversal(DocumentDBConnection pConnection)
+        public GraphTraversal(GraphViewCommand command)
         {
             GremlinTranslationOpList = new List<GremlinTranslationOperator>();
-            Connection = pConnection;
+            Command = command;
             outputFormat = OutputFormat.Regular;
         }
 
-        public GraphTraversal(DocumentDBConnection connection, OutputFormat outputFormat)
+        public GraphTraversal(GraphViewCommand command, OutputFormat outputFormat)
         {
             GremlinTranslationOpList = new List<GremlinTranslationOperator>();
-            Connection = connection;
+            this.Command = command;
             this.outputFormat = outputFormat;
         }
 
@@ -217,7 +217,7 @@ namespace GraphView
             WSqlScript sqlScript = GetEndOp().ToSqlScript();
             SqlScript = sqlScript.ToString();
 
-            GraphViewExecutionOperator op = sqlScript.Batches[0].Compile(null, Connection);
+            GraphViewExecutionOperator op = sqlScript.Batches[0].Compile(null, this.Command);
             List<RawRecord> rawRecordResults = new List<RawRecord>();
             RawRecord outputRec = null;
 
@@ -230,7 +230,7 @@ namespace GraphView
             switch (outputFormat)
             {
                 case OutputFormat.GraphSON:
-                    results.Add(GraphSONProjector.ToGraphSON(rawRecordResults, this.Connection));
+                    results.Add(GraphSONProjector.ToGraphSON(rawRecordResults, this.Command));
                     break;
                 default:
                     foreach (var record in rawRecordResults) {
@@ -1475,7 +1475,7 @@ namespace GraphView
             sb.Append("namespace GraphView { \n");
             sb.Append("public class Program { \n");
             sb.Append("public object Main() {\n");
-            sb.Append("DocumentDBConnection connection = new DocumentDBConnection("+ getConnectionInfo() +");");
+            sb.Append("GraphViewConnection connection = new GraphViewConnection("+ getConnectionInfo() +");");
             sb.Append("GraphViewCommand graph = new GraphViewCommand(connection);\n");
             switch(outputFormat)
             {
@@ -1512,14 +1512,14 @@ namespace GraphView
         private string getConnectionInfo()
         {
             List<string> connectionList = new List<string>();
-            connectionList.Add(addDoubleQuotes(Connection.DocDBUrl));
-            connectionList.Add(addDoubleQuotes(Connection.DocDBPrimaryKey));
-            connectionList.Add(addDoubleQuotes(Connection.DocDBDatabaseId));
-            connectionList.Add(addDoubleQuotes(Connection.DocDBCollectionId));
-            connectionList.Add($"{nameof(GraphType)}.{this.Connection.GraphType}");
-            connectionList.Add(Connection.UseReverseEdges.ToString().ToLower());
-            connectionList.Add(Connection.EdgeSpillThreshold.ToString());
-            connectionList.Add(Connection.RealPartitionKey != null ? addDoubleQuotes(Connection.RealPartitionKey) : "null");
+            connectionList.Add(addDoubleQuotes(Command.Connection.DocDBUrl));
+            connectionList.Add(addDoubleQuotes(Command.Connection.DocDBPrimaryKey));
+            connectionList.Add(addDoubleQuotes(Command.Connection.DocDBDatabaseId));
+            connectionList.Add(addDoubleQuotes(Command.Connection.DocDBCollectionId));
+            connectionList.Add($"{nameof(GraphType)}.{this.Command.Connection.GraphType}");
+            connectionList.Add(Command.Connection.UseReverseEdges.ToString().ToLower());
+            connectionList.Add(Command.Connection.EdgeSpillThreshold.ToString());
+            connectionList.Add(Command.Connection.RealPartitionKey != null ? addDoubleQuotes(Command.Connection.RealPartitionKey) : "null");
             return string.Join(",", connectionList);
         }
 

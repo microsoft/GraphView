@@ -15,7 +15,7 @@ namespace GraphViewUnitTest
         [TestMethod]
         public void query1()
         {
-            DocumentDBConnection connection = new DocumentDBConnection("https://graphview.documents.azure.com:443/",
+            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
                 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
                 "GroupMatch", "IOTTest", GraphType.GraphAPIOnly, AbstractGremlinTest.TEST_USE_REVERSE_EDGE, 1, AbstractGremlinTest.TEST_PARTITION_BY_KEY);
             var expTimes = 100;
@@ -60,7 +60,7 @@ namespace GraphViewUnitTest
         [TestMethod]
         public void query1_RandomId()
         {
-            DocumentDBConnection connection = new DocumentDBConnection("https://graphview.documents.azure.com:443/",
+            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
                 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
                 "GroupMatch", "IOTTest", GraphType.GraphAPIOnly, AbstractGremlinTest.TEST_USE_REVERSE_EDGE, 1, AbstractGremlinTest.TEST_PARTITION_BY_KEY);
 
@@ -106,7 +106,7 @@ namespace GraphViewUnitTest
         [TestMethod]
         public void query2()
         {
-            DocumentDBConnection connection = new DocumentDBConnection("https://graphview.documents.azure.com:443/",
+            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
                 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
                 "GroupMatch", "IOTTest", GraphType.GraphAPIOnly, AbstractGremlinTest.TEST_USE_REVERSE_EDGE, 1, AbstractGremlinTest.TEST_PARTITION_BY_KEY);
             GraphViewCommand graph = new GraphViewCommand(connection);
@@ -154,7 +154,7 @@ namespace GraphViewUnitTest
         [TestMethod]
         public void query2_RandomId()
         {
-            DocumentDBConnection connection = new DocumentDBConnection("https://graphview.documents.azure.com:443/",
+            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
                 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
                 "GroupMatch", "IOTTest", GraphType.GraphAPIOnly, AbstractGremlinTest.TEST_USE_REVERSE_EDGE, 1, AbstractGremlinTest.TEST_PARTITION_BY_KEY);
             GraphViewCommand graph = new GraphViewCommand(connection);

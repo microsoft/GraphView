@@ -10,7 +10,7 @@ namespace GraphView
 {
     partial class WSelectQueryBlock
     {
-        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, DocumentDBConnection dbConnection)
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewCommand command)
         {
             List<WTableReferenceWithAlias> nonVertexTableReferences = null;
             MatchGraph graphPattern = this.ConstructGraph2(out nonVertexTableReferences);
@@ -79,9 +79,9 @@ namespace GraphView
 
             ConstructTraversalOrder(graphPattern);
 
-            ConstructJsonQueries(dbConnection, graphPattern);
+            ConstructJsonQueries(command, graphPattern);
 
-            return this.ConstructOperator2(dbConnection, graphPattern, context, nonVertexTableReferences,
+            return this.ConstructOperator2(command, graphPattern, context, nonVertexTableReferences,
                 predicatesAccessedTableReferences);
         }
 
@@ -164,22 +164,22 @@ namespace GraphView
             }
         }
 
-        internal static bool CanBePushedToServer(DocumentDBConnection connection, MatchEdge matchEdge)
+        internal static bool CanBePushedToServer(GraphViewCommand command, MatchEdge matchEdge)
         {
             // For Compatible & Hybrid, we can't push edge predicates to server side
-            if (connection.GraphType != GraphType.GraphAPIOnly) {
-                Debug.Assert(connection.EdgeSpillThreshold == 1);
+            if (command.Connection.GraphType != GraphType.GraphAPIOnly) {
+                Debug.Assert(command.Connection.EdgeSpillThreshold == 1);
                 return false;
             }
 
-            if (IsTraversalThroughPhysicalReverseEdge(matchEdge) && !connection.UseReverseEdges) {
+            if (IsTraversalThroughPhysicalReverseEdge(matchEdge) && !command.Connection.UseReverseEdges) {
                 return false;
             }
 
             return matchEdge != null && matchEdge.EdgeType != WEdgeType.BothEdge;
         }
 
-        internal static MatchEdge GetPushedToServerEdge(DocumentDBConnection connection,
+        internal static MatchEdge GetPushedToServerEdge(GraphViewCommand command,
             Tuple<MatchNode, MatchEdge, List<MatchEdge>, List<MatchEdge>, List<MatchEdge>> tuple)
         {
             MatchNode currentNode = tuple.Item1;
@@ -191,13 +191,13 @@ namespace GraphView
             {
                 if (traversalEdge != null)
                 {
-                    pushedToServerEdge = CanBePushedToServer(connection, traversalEdge)
+                    pushedToServerEdge = CanBePushedToServer(command, traversalEdge)
                         ? traversalEdge
                         : null;
                 }
                 else if (currentNode.DanglingEdges.Count == 1)
                 {
-                    pushedToServerEdge = CanBePushedToServer(connection, currentNode.DanglingEdges[0])
+                    pushedToServerEdge = CanBePushedToServer(command, currentNode.DanglingEdges[0])
                         ? currentNode.DanglingEdges[0]
                         : null;
                 }
@@ -206,7 +206,7 @@ namespace GraphView
             return pushedToServerEdge;
         }
 
-        internal static void ConstructJsonQueries(DocumentDBConnection connection, MatchGraph graphPattern)
+        internal static void ConstructJsonQueries(GraphViewCommand command, MatchGraph graphPattern)
         {
             foreach (ConnectedComponent subGraph in graphPattern.ConnectedSubGraphs)
             {
@@ -223,7 +223,7 @@ namespace GraphView
 
                     if (!processedNodes.Contains(currentNode.NodeAlias))
                     {
-                        MatchEdge pushedToServerEdge = GetPushedToServerEdge(connection, tuple);
+                        MatchEdge pushedToServerEdge = GetPushedToServerEdge(command, tuple);
                         //
                         // For the g.E() case
                         //
@@ -233,7 +233,7 @@ namespace GraphView
                             if (isFirstNodeInTheComponent && danglingEdge.EdgeType == WEdgeType.OutEdge && 
                                 (currentNode.Predicates == null || !currentNode.Predicates.Any()))
                             {
-                                ConstructJsonQueryOnEdge(connection, currentNode, danglingEdge);
+                                ConstructJsonQueryOnEdge(command, currentNode, danglingEdge);
                                 isFirstNodeInTheComponent = false;
                                 currentNode.IsDummyNode = true;
                                 processedNodes.Add(currentNode.NodeAlias);
@@ -241,8 +241,8 @@ namespace GraphView
                             }
                         }
 
-                        string partitionKey = connection.RealPartitionKey;
-                        ConstructJsonQueryOnNode(connection, currentNode, pushedToServerEdge, partitionKey);
+                        string partitionKey = command.Connection.RealPartitionKey;
+                        ConstructJsonQueryOnNode(command, currentNode, pushedToServerEdge, partitionKey);
                         //ConstructJsonQueryOnNodeViaExternalAPI(currentNode, null);
                         processedNodes.Add(currentNode.NodeAlias);
                         isFirstNodeInTheComponent = false;
@@ -252,7 +252,7 @@ namespace GraphView
         }
         
 
-        internal static void ConstructJsonQueryOnNode(DocumentDBConnection connection, MatchNode node, MatchEdge edge, string partitionKey)
+        internal static void ConstructJsonQueryOnNode(GraphViewCommand command, MatchNode node, MatchEdge edge, string partitionKey)
         {
             string nodeAlias = node.NodeAlias;
             string edgeAlias = null;
@@ -316,7 +316,7 @@ namespace GraphView
             // Now we don't try to use a JOIN clause to fetch the edges along with the vertex unless in GraphAPI only graph
             // Thus, `edgeCondition` is always null
             //
-            if (connection.GraphType != GraphType.GraphAPIOnly) {
+            if (command.Connection.GraphType != GraphType.GraphAPIOnly) {
                 Debug.Assert(edge == null);
             }
 
@@ -377,7 +377,7 @@ namespace GraphView
             node.AttachedJsonQuery = jsonQuery;
         }
 
-        internal static void ConstructJsonQueryOnEdge(DocumentDBConnection connection, MatchNode node, MatchEdge edge)
+        internal static void ConstructJsonQueryOnEdge(GraphViewCommand command, MatchNode node, MatchEdge edge)
         {
             string nodeAlias = node.NodeAlias;
             string edgeAlias = edge.EdgeAlias;
@@ -852,7 +852,7 @@ namespace GraphView
         /// <param name="tableReferences"></param>
         /// <param name="remainingPredicatesAndTheirTableReferences"></param>
         /// <param name="childrenProcessor"></param>
-        private static void CheckRemainingPredicatesAndAppendFilterOp(QueryCompilationContext context, DocumentDBConnection connection,
+        private static void CheckRemainingPredicatesAndAppendFilterOp(QueryCompilationContext context, GraphViewCommand command,
             HashSet<string> tableReferences,
             List<Tuple<WBooleanExpression, HashSet<string>>> remainingPredicatesAndTheirTableReferences,
             List<GraphViewExecutionOperator> childrenProcessor)
@@ -875,7 +875,7 @@ namespace GraphView
                             childrenProcessor.Count != 0
                             ? childrenProcessor.Last()
                             : context.OuterContextOp,
-                            predicate.CompileToBatchFunction(context, connection)));
+                            predicate.CompileToBatchFunction(context, command)));
 
                     //childrenProcessor.Add(
                     //    new FilterOperator(
@@ -905,7 +905,7 @@ namespace GraphView
         /// <param name="edges"></param>
         /// <param name="predicatesAccessedTableReferences"></param>
         /// <param name="isMatchingEdges"></param>
-        private void CrossApplyEdges(DocumentDBConnection connection, QueryCompilationContext context, 
+        private void CrossApplyEdges(GraphViewCommand command, QueryCompilationContext context, 
             List<GraphViewExecutionOperator> operatorChain, IList<MatchEdge> edges, 
             List<Tuple<WBooleanExpression, HashSet<string>>> predicatesAccessedTableReferences,
             bool isMatchingEdges = false)
@@ -921,8 +921,8 @@ namespace GraphView
                     operatorChain.Last(),
                     context.LocateColumnReference(edge.SourceNode.NodeAlias, GremlinKeyword.Star),
                     crossApplyTypeTuple.Item1, crossApplyTypeTuple.Item2, !edge.IsReversed,
-                    edgePredicates != null ? edgePredicates.CompileToFunction(localEdgeContext, connection) : null,
-                    edge.Properties, connection, context.RawRecordLayout.Count + edge.Properties.Count));
+                    edgePredicates != null ? edgePredicates.CompileToFunction(localEdgeContext, command) : null,
+                    edge.Properties, command, context.RawRecordLayout.Count + edge.Properties.Count));
                 context.CurrentExecutionOperator = operatorChain.Last();
 
                 // Update edge's context info
@@ -943,11 +943,11 @@ namespace GraphView
                         SecondExpr = sinkNodeIdColumnReference
                     };
                     operatorChain.Add(new FilterOperator(operatorChain.Last(),
-                        edgeJoinPredicate.CompileToFunction(context, connection)));
+                        edgeJoinPredicate.CompileToFunction(context, command)));
                     context.CurrentExecutionOperator = operatorChain.Last();
                 }
 
-                CheckRemainingPredicatesAndAppendFilterOp(context, connection,
+                CheckRemainingPredicatesAndAppendFilterOp(context, command,
                     new HashSet<string>(tableReferences.Keys),
                     predicatesAccessedTableReferences,
                     operatorChain);
@@ -1027,7 +1027,7 @@ namespace GraphView
             }
         }
 
-        private GraphViewExecutionOperator ConstructOperator2(DocumentDBConnection connection, MatchGraph graphPattern,
+        private GraphViewExecutionOperator ConstructOperator2(GraphViewCommand command, MatchGraph graphPattern,
             QueryCompilationContext context, List<WTableReferenceWithAlias> nonVertexTableReferences,
             List<Tuple<WBooleanExpression, HashSet<string>>> predicatesAccessedTableReferences)
         {
@@ -1037,7 +1037,7 @@ namespace GraphView
             if (context.OuterContextOp != null)
             {
                 context.CurrentExecutionOperator = context.OuterContextOp;
-                CheckRemainingPredicatesAndAppendFilterOp(context, connection,
+                CheckRemainingPredicatesAndAppendFilterOp(context, command,
                     new HashSet<string>(tableReferences.Keys), predicatesAccessedTableReferences,
                     operatorChain);
             }
@@ -1061,10 +1061,10 @@ namespace GraphView
                         isFirstNodeInTheComponent = false;
 
                         GraphViewExecutionOperator startOp = currentNode.IsDummyNode
-                            ? (GraphViewExecutionOperator)(new FetchEdgeOperator(connection,
+                            ? (GraphViewExecutionOperator)(new FetchEdgeOperator(command,
                                 currentNode.DanglingEdges[0].AttachedJsonQuery))
                             : new FetchNodeOperator2(
-                                connection,
+                                command,
                                 currentNode.AttachedJsonQuery
                                 /*currentNode.AttachedJsonQueryOfNodesViaExternalAPI*/);
 
@@ -1096,7 +1096,7 @@ namespace GraphView
                             this.UpdateEdgeLayout(danglingEdge.EdgeAlias, danglingEdge.Properties, context);
                             tableReferences.Add(danglingEdge.EdgeAlias, TableGraphType.Edge);
 
-                            CheckRemainingPredicatesAndAppendFilterOp(context, connection,
+                            CheckRemainingPredicatesAndAppendFilterOp(context, command,
                                 new HashSet<string>(tableReferences.Keys), predicatesAccessedTableReferences,
                                 operatorChain);
 
@@ -1110,8 +1110,8 @@ namespace GraphView
                         //
                         MatchEdge traversalEdge = tuple.Item2;
                         operatorChain.Add(new TraversalOperator2(
-                            operatorChain.Last(), 
-                            connection,
+                            operatorChain.Last(),
+                            command,
                             context.LocateColumnReference(traversalEdge.EdgeAlias, GremlinKeyword.Star),
                             this.GetTraversalType(traversalEdge),
                             currentNode.AttachedJsonQuery,
@@ -1128,29 +1128,29 @@ namespace GraphView
                     //
                     // Cross apply backwardMatchingEdges and update context info
                     //
-                    this.CrossApplyEdges(connection, context, operatorChain, backwardMatchingEdges,
+                    this.CrossApplyEdges(command, context, operatorChain, backwardMatchingEdges,
                         predicatesAccessedTableReferences, true);
                     //
                     // Cross apply forwardMatchingEdges and update context info
                     //
-                    this.CrossApplyEdges(connection, context, operatorChain, forwardMatchingEdges,
+                    this.CrossApplyEdges(command, context, operatorChain, forwardMatchingEdges,
                         predicatesAccessedTableReferences, true);
                     //
                     // Cross apply traversal edges whose source is current node and update context info
                     //
-                    this.CrossApplyEdges(connection, context, operatorChain, traversalEdges,
+                    this.CrossApplyEdges(command, context, operatorChain, traversalEdges,
                         predicatesAccessedTableReferences);
                     //
                     // Cross apply dangling edges and update context info
                     //
                     if (!processedNodes.Contains(currentNode.NodeAlias))
                     {
-                        this.CrossApplyEdges(connection, context, operatorChain, currentNode.DanglingEdges,
+                        this.CrossApplyEdges(command, context, operatorChain, currentNode.DanglingEdges,
                             predicatesAccessedTableReferences);
                     }
 
                     processedNodes.Add(currentNode.NodeAlias);
-                    CheckRemainingPredicatesAndAppendFilterOp(context, connection,
+                    CheckRemainingPredicatesAndAppendFilterOp(context, command,
                         new HashSet<string>(tableReferences.Keys), predicatesAccessedTableReferences,
                         operatorChain);
                 }
@@ -1160,7 +1160,7 @@ namespace GraphView
             {
                 if (tableReference is WQueryDerivedTable)
                 {
-                    var derivedTableOp = tableReference.Compile(context, connection);
+                    var derivedTableOp = tableReference.Compile(context, command);
                     operatorChain.Add(derivedTableOp);
                     
                     // TODO: Change to correct ColumnGraphType
@@ -1195,7 +1195,7 @@ namespace GraphView
                 {
                     var functionTableReference = tableReference as WSchemaObjectFunctionTableReference;
                     var functionName = functionTableReference.SchemaObject.Identifiers.Last().ToString();
-                    var tableOp = functionTableReference.Compile(context, connection);
+                    var tableOp = functionTableReference.Compile(context, command);
 
                     GraphViewEdgeTableReferenceEnum edgeTypeEnum;
                     GraphViewVertexTableReferenceEnum vertexTypeEnum;
@@ -1215,7 +1215,7 @@ namespace GraphView
                     throw new NotImplementedException("Not supported type of FROM clause.");
                 }
 
-                CheckRemainingPredicatesAndAppendFilterOp(context, connection,
+                CheckRemainingPredicatesAndAppendFilterOp(context, command,
                     new HashSet<string>(tableReferences.Keys), predicatesAccessedTableReferences,
                     operatorChain);
             }
@@ -1276,7 +1276,7 @@ namespace GraphView
 
                 foreach (var expr in selectScalarExprList)
                 {
-                    ScalarFunction scalarFunction = expr.SelectExpr.CompileToFunction(context, connection);
+                    ScalarFunction scalarFunction = expr.SelectExpr.CompileToFunction(context, command);
                     projectOperator.AddSelectScalarElement(scalarFunction);
                 }
 
@@ -1343,13 +1343,13 @@ namespace GraphView
                             if (foldedFunction == null)
                                 throw new SyntaxErrorException("The parameter of a Fold function must be a Compose1 function.");
                             projectAggregationOp.AddAggregateSpec(new FoldFunction(), 
-                                new List<ScalarFunction> { foldedFunction.CompileToFunction(context, connection), });
+                                new List<ScalarFunction> { foldedFunction.CompileToFunction(context, command), });
                             break;
                         case "TREE":
                             WColumnReferenceExpression pathField = fcall.Parameters[0] as WColumnReferenceExpression;
                             projectAggregationOp.AddAggregateSpec(
                                 new TreeFunction(), 
-                                new List<ScalarFunction>() { pathField.CompileToFunction(context, connection) });
+                                new List<ScalarFunction>() { pathField.CompileToFunction(context, command) });
                             break;
                         case "CAP":
                             CapAggregate capAggregate = new CapAggregate();
@@ -1369,25 +1369,25 @@ namespace GraphView
                             WColumnReferenceExpression targetField = fcall.Parameters[0] as WColumnReferenceExpression;
                             projectAggregationOp.AddAggregateSpec(
                                 new SumFunction(), 
-                                new List<ScalarFunction> { targetField.CompileToFunction(context, connection) });
+                                new List<ScalarFunction> { targetField.CompileToFunction(context, command) });
                             break;
                         case "MAX":
                             targetField = fcall.Parameters[0] as WColumnReferenceExpression;
                             projectAggregationOp.AddAggregateSpec(
                                 new MaxFunction(),
-                                new List<ScalarFunction> { targetField.CompileToFunction(context, connection) });
+                                new List<ScalarFunction> { targetField.CompileToFunction(context, command) });
                             break;
                         case "MIN":
                             targetField = fcall.Parameters[0] as WColumnReferenceExpression;
                             projectAggregationOp.AddAggregateSpec(
                                 new MinFunction(), 
-                                new List<ScalarFunction> { targetField.CompileToFunction(context, connection) });
+                                new List<ScalarFunction> { targetField.CompileToFunction(context, command) });
                             break;
                         case "MEAN":
                             targetField = fcall.Parameters[0] as WColumnReferenceExpression;
                             projectAggregationOp.AddAggregateSpec(
                                 new MeanFunction(),
-                                new List<ScalarFunction> { targetField.CompileToFunction(context, connection) });
+                                new List<ScalarFunction> { targetField.CompileToFunction(context, command) });
                             break;
                         default:
                             projectAggregationOp.AddAggregateSpec(null, null);
@@ -1448,7 +1448,7 @@ namespace GraphView
 
     partial class WWithPathClause
     {
-        //internal override GraphViewExecutionOperator Generate(DocumentDBConnection dbConnection)
+        //internal override GraphViewExecutionOperator Generate(GraphViewConnection dbConnection)
         //{
         //    foreach (var path in Paths)
         //    {
@@ -1463,7 +1463,7 @@ namespace GraphView
 
     partial class WChoose
     {
-        //internal override GraphViewExecutionOperator Generate(DocumentDBConnection dbConnection)
+        //internal override GraphViewExecutionOperator Generate(GraphViewConnection dbConnection)
         //{
         //    List<GraphViewExecutionOperator> Source = new List<GraphViewExecutionOperator>();
         //    foreach (var x in InputExpr)
@@ -1476,7 +1476,7 @@ namespace GraphView
 
     partial class WCoalesce
     {
-        //internal override GraphViewExecutionOperator Generate(DocumentDBConnection dbConnection)
+        //internal override GraphViewExecutionOperator Generate(GraphViewConnection dbConnection)
         //{
         //    List<GraphViewExecutionOperator> Source = new List<GraphViewExecutionOperator>();
         //    foreach (var x in InputExpr)
@@ -1490,7 +1490,7 @@ namespace GraphView
 
     partial class WSqlBatch
     {
-        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, DocumentDBConnection dbConnection)
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewCommand command)
         {
             QueryCompilationContext priorContext = new QueryCompilationContext();
             GraphViewExecutionOperator op = null;
@@ -1498,7 +1498,7 @@ namespace GraphView
             {
                 QueryCompilationContext statementContext = new QueryCompilationContext(priorContext.TemporaryTableCollection, 
                     priorContext.SideEffectStates);
-                op = st.Compile(statementContext, dbConnection);
+                op = st.Compile(statementContext, command);
                 priorContext = statementContext;
             }
 
@@ -1510,7 +1510,7 @@ namespace GraphView
 
     partial class WSetVariableStatement
     {
-        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, DocumentDBConnection dbConnection)
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewCommand command)
         {
             if (_expression.GetType() != typeof(WScalarSubquery))
             {
@@ -1518,7 +1518,7 @@ namespace GraphView
             }
 
             WSqlStatement subquery = (_expression as WScalarSubquery).SubQueryExpr;
-            GraphViewExecutionOperator subqueryOp = subquery.Compile(context, dbConnection);
+            GraphViewExecutionOperator subqueryOp = subquery.Compile(context, command);
             TemporaryTableHeader tmpTableHeader = context.ToTableHeader();
             // Adds the table populated by the statement as a temporary table to the context
             context.TemporaryTableCollection[_variable.Name] = new Tuple<TemporaryTableHeader, GraphViewExecutionOperator>(tmpTableHeader, subqueryOp);
@@ -1529,7 +1529,7 @@ namespace GraphView
 
     partial class WUnionTableReference
     {
-        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, DocumentDBConnection dbConnection)
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewCommand command)
         {
             UnionOperator unionOp = new UnionOperator(context.CurrentExecutionOperator);
             bool isUnionWithoutAnyBranch = Parameters.Count == 0 || Parameters[0] is WValueExpression;
@@ -1559,7 +1559,7 @@ namespace GraphView
                     subcontext.OuterContextOp.SourceEnumerator = sourceEnumerator;
                     subcontext.InBatchMode = context.InBatchMode;
                     subcontext.CarryOn = true;
-                    GraphViewExecutionOperator traversalOp = scalarSubquery.SubQueryExpr.Compile(subcontext, dbConnection);
+                    GraphViewExecutionOperator traversalOp = scalarSubquery.SubQueryExpr.Compile(subcontext, command);
                     unionOp.AddTraversal(traversalOp, sourceEnumerator);
                 }
             }
@@ -1602,7 +1602,7 @@ namespace GraphView
 
     partial class WCoalesceTableReference
     {
-        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, DocumentDBConnection dbConnection)
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewCommand command)
         {
             ContainerEnumerator sourceEnumerator = new ContainerEnumerator();
             CoalesceOperator coalesceOp = new CoalesceOperator(context.CurrentExecutionOperator, sourceEnumerator);
@@ -1630,7 +1630,7 @@ namespace GraphView
                 subcontext.OuterContextOp.SourceEnumerator = sourceEnumerator;
                 subcontext.AddField(GremlinKeyword.IndexTableName, GremlinKeyword.IndexColumnName, ColumnGraphType.Value, true);
                 subcontext.InBatchMode = true;
-                GraphViewExecutionOperator traversalOp = scalarSubquery.SubQueryExpr.Compile(subcontext, dbConnection);
+                GraphViewExecutionOperator traversalOp = scalarSubquery.SubQueryExpr.Compile(subcontext, command);
                 coalesceOp.AddTraversal(traversalOp);
             }
 
@@ -1663,7 +1663,7 @@ namespace GraphView
 
     partial class WOptionalTableReference
     {
-        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, DocumentDBConnection dbConnection)
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewCommand command)
         {
             WSelectQueryBlock contextSelect, optionalSelect;
             this.Split(out contextSelect, out optionalSelect);
@@ -1730,7 +1730,7 @@ namespace GraphView
             targetSubContext.OuterContextOp.SourceEnumerator = targetSourceEnumerator;
             targetSubContext.AddField(GremlinKeyword.IndexTableName, GremlinKeyword.IndexColumnName, ColumnGraphType.Value, true);
             targetSubContext.InBatchMode = true;
-            GraphViewExecutionOperator targetSubqueryOp = optionalSelect.Compile(targetSubContext, dbConnection);
+            GraphViewExecutionOperator targetSubqueryOp = optionalSelect.Compile(targetSubContext, command);
 
 
             QueryCompilationContext subcontext = new QueryCompilationContext(context);
@@ -1738,7 +1738,7 @@ namespace GraphView
             subcontext.OuterContextOp.SourceEnumerator = sourceEnumerator;
             subcontext.CarryOn = true;
             subcontext.InBatchMode = context.InBatchMode;
-            GraphViewExecutionOperator optionalTraversalOp = optionalSelect.Compile(subcontext, dbConnection);
+            GraphViewExecutionOperator optionalTraversalOp = optionalSelect.Compile(subcontext, command);
 
             OptionalOperator optionalOp = new OptionalOperator(
                 context.CurrentExecutionOperator,
@@ -1766,7 +1766,7 @@ namespace GraphView
 
     partial class WLocalTableReference
     {
-        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, DocumentDBConnection dbConnection)
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewCommand command)
         {
             WScalarSubquery localSubquery = Parameters[0] as WScalarSubquery;
             if (localSubquery == null)
@@ -1784,7 +1784,7 @@ namespace GraphView
             subcontext.OuterContextOp.SourceEnumerator = sourceEnumerator;
             subcontext.AddField(GremlinKeyword.IndexTableName, GremlinKeyword.IndexColumnName, ColumnGraphType.Value, true);
             subcontext.InBatchMode = true;
-            GraphViewExecutionOperator localTraversalOp = localSelect.Compile(subcontext, dbConnection);
+            GraphViewExecutionOperator localTraversalOp = localSelect.Compile(subcontext, command);
             LocalOperator localOp = new LocalOperator(context.CurrentExecutionOperator, localTraversalOp, sourceEnumerator);
 
             foreach (WSelectElement selectElement in localSelect.SelectElements)
@@ -1811,7 +1811,7 @@ namespace GraphView
 
     partial class WFlatMapTableReference
     {
-        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, DocumentDBConnection dbConnection)
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewCommand command)
         {
             WScalarSubquery flatMapSubquery = Parameters[0] as WScalarSubquery;
             if (flatMapSubquery == null)
@@ -1829,7 +1829,7 @@ namespace GraphView
             subcontext.OuterContextOp.SourceEnumerator = sourceEnumerator;
             subcontext.AddField(GremlinKeyword.IndexTableName, GremlinKeyword.IndexColumnName, ColumnGraphType.Value, true);
             subcontext.InBatchMode = true;
-            GraphViewExecutionOperator flatMapTraversalOp = flatMapSelect.Compile(subcontext, dbConnection);
+            GraphViewExecutionOperator flatMapTraversalOp = flatMapSelect.Compile(subcontext, command);
 
             //FlatMapOperator flatMapOp = new FlatMapOperator(context.CurrentExecutionOperator, flatMapTraversalOp, subcontext.OuterContextOp);
             FlatMapOperator flatMapOp = new FlatMapOperator(context.CurrentExecutionOperator, flatMapTraversalOp, sourceEnumerator);
@@ -1861,7 +1861,7 @@ namespace GraphView
 
     partial class WBoundNodeTableReference
     {
-        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, DocumentDBConnection dbConnection)
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewCommand command)
         {
             Debug.Assert(context.CurrentExecutionOperator != null, "context.CurrentExecutionOperator != null");
 
@@ -1882,11 +1882,11 @@ namespace GraphView
                 matchNode.Properties.Add(populateProperty.Value);
             }
 
-            WSelectQueryBlock.ConstructJsonQueryOnNode(dbConnection, matchNode, null, dbConnection.RealPartitionKey);
+            WSelectQueryBlock.ConstructJsonQueryOnNode(command, matchNode, null, command.Connection.RealPartitionKey);
             //WSelectQueryBlock.ConstructJsonQueryOnNodeViaExternalAPI(matchNode, null);
 
             FetchNodeOperator2 fetchNodeOp = new FetchNodeOperator2(
-                dbConnection, 
+                command, 
                 matchNode.AttachedJsonQuery
                 /*matchNode.AttachedJsonQueryOfNodesViaExternalAPI*/);
 
@@ -1906,7 +1906,7 @@ namespace GraphView
         private const int edgeFieldParameteIndex = 0;
         private const int populatePropertyParameterStartIndex = 1;
 
-        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, DocumentDBConnection dbConnection)
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewCommand command)
         {
             WColumnReferenceExpression edgeFieldParameter = this.Parameters[edgeFieldParameteIndex] as WColumnReferenceExpression;
             Debug.Assert(edgeFieldParameter != null, "edgeFieldParameter != null");
@@ -1935,12 +1935,12 @@ namespace GraphView
             // Construct JSON query
             //
             if (isSendQueryRequired) {
-                WSelectQueryBlock.ConstructJsonQueryOnNode(dbConnection, matchNode, null, dbConnection.RealPartitionKey);
+                WSelectQueryBlock.ConstructJsonQueryOnNode(command, matchNode, null, command.Connection.RealPartitionKey);
                 //WSelectQueryBlock.ConstructJsonQueryOnNodeViaExternalAPI(matchNode, null);
             }
 
             TraversalOperator2 traversalOp = new TraversalOperator2(
-                context.CurrentExecutionOperator, dbConnection, 
+                context.CurrentExecutionOperator, command, 
                 edgeFieldIndex, this.GetTraversalTypeParameter(),
                 matchNode.AttachedJsonQuery/*, matchNode.AttachedJsonQueryOfNodesViaExternalAPI*/, null);
             context.CurrentExecutionOperator = traversalOp;
@@ -2000,7 +2000,7 @@ namespace GraphView
         private const int populatePropertyParameterStartIndex = 1;
 
         internal override GraphViewExecutionOperator Compile(QueryCompilationContext context,
-            DocumentDBConnection dbConnection)
+            GraphViewCommand command)
         {
             WColumnReferenceExpression startVertexParameter = this.Parameters[startVertexParameterIndex] as WColumnReferenceExpression;
             Debug.Assert(startVertexParameter != null, "startVertexParameter != null");
@@ -2025,7 +2025,7 @@ namespace GraphView
                 context.CurrentExecutionOperator, startVertexIndex,
                 crossApplyForwardAdj, crossApplyBackwardAdj, 
                 true, null, 
-                projectFields, dbConnection, 
+                projectFields, command, 
                 context.RawRecordLayout.Count + projectFields.Count);
 
             context.CurrentExecutionOperator = adjListDecoder;
@@ -2071,7 +2071,7 @@ namespace GraphView
 
     partial class WValuesTableReference
     {
-        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, DocumentDBConnection dbConnection)
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewCommand command)
         {
             List<int> propertiesIndex = new List<int>();
 
@@ -2099,7 +2099,7 @@ namespace GraphView
 
     partial class WLabelTableReference
     {
-        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, DocumentDBConnection dbConnection)
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewCommand command)
         {
             Debug.Assert(this.Parameters.Count == 1);
 
@@ -2119,7 +2119,7 @@ namespace GraphView
 
     partial class WIdTableReference
     {
-        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, DocumentDBConnection dbConnection)
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewCommand command)
         {
             Debug.Assert(this.Parameters.Count == 1);
 
@@ -2140,7 +2140,7 @@ namespace GraphView
 
     partial class WAllPropertiesTableReference
     {
-        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, DocumentDBConnection dbConnection)
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewCommand command)
         {
             WColumnReferenceExpression inputParameter = Parameters[0] as WColumnReferenceExpression;
             Debug.Assert(inputParameter != null, "inputParameter != null");
@@ -2172,7 +2172,7 @@ namespace GraphView
 
     partial class WAllValuesTableReference
     {
-        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, DocumentDBConnection dbConnection)
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewCommand command)
         {
             WColumnReferenceExpression inputParameter = Parameters[0] as WColumnReferenceExpression;
             Debug.Assert(inputParameter != null, "inputParameter != null");
@@ -2189,7 +2189,7 @@ namespace GraphView
 
     partial class WPropertiesTableReference
     {
-        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, DocumentDBConnection dbConnection)
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewCommand command)
         {
             List<int> propertiesIndex = new List<int>();
             List<string> populateMetaproperties = new List<string>();
@@ -2230,10 +2230,10 @@ namespace GraphView
 
     partial class WDedupGlobalTableReference
     {
-        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, DocumentDBConnection dbConnection)
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewCommand command)
         {
             List<ScalarFunction> targetValueFunctionList =
-                this.Parameters.Select(expression => expression.CompileToFunction(context, dbConnection)).ToList();
+                this.Parameters.Select(expression => expression.CompileToFunction(context, command)).ToList();
 
             DeduplicateOperator dedupOp = context.InBatchMode
                 ? new DeduplicateInBatchOperator(context.CurrentExecutionOperator, targetValueFunctionList)
@@ -2246,10 +2246,10 @@ namespace GraphView
 
     partial class WDedupLocalTableReference
     {
-        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, DocumentDBConnection dbConnection)
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewCommand command)
         {
             DeduplicateLocalOperator dedupLocalOp = new DeduplicateLocalOperator(context.CurrentExecutionOperator,
-                Parameters[0].CompileToFunction(context, dbConnection));
+                Parameters[0].CompileToFunction(context, command));
             context.CurrentExecutionOperator = dedupLocalOp;
             context.AddField(Alias.Value, GremlinKeyword.TableDefaultColumnName, ColumnGraphType.Value);
 
@@ -2259,7 +2259,7 @@ namespace GraphView
 
     partial class WConstantReference
     {
-        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, DocumentDBConnection dbConnection)
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewCommand command)
         {
             List<ScalarFunction> constantValues = new List<ScalarFunction>();
 
@@ -2267,7 +2267,7 @@ namespace GraphView
             {
                 WValueExpression constantValue = expression as WValueExpression;
                 Debug.Assert(constantValue != null, "constantValue != null");
-                constantValues.Add(constantValue.CompileToFunction(context, dbConnection));
+                constantValues.Add(constantValue.CompileToFunction(context, command));
             }
 
             ConstantOperator constantOp = new ConstantOperator(context.CurrentExecutionOperator, constantValues,
@@ -2284,7 +2284,7 @@ namespace GraphView
         private const int StartParameterIndex = 0;
         private const int ParameterStep = 2;
 
-        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, DocumentDBConnection dbConnection)
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewCommand command)
         {
             ProjectByOperator projectByOp = new ProjectByOperator(context.CurrentExecutionOperator);
 
@@ -2298,7 +2298,7 @@ namespace GraphView
                 if (projectName == null)
                     throw new SyntaxErrorException("The parameter of ProjectTableReference at an even position has to be a WValueExpression.");
 
-                ScalarFunction byFunction = scalarSubquery.CompileToFunction(context, dbConnection);
+                ScalarFunction byFunction = scalarSubquery.CompileToFunction(context, command);
 
                 projectByOp.AddProjectBy(projectName.Value, byFunction);
             }
@@ -2312,7 +2312,7 @@ namespace GraphView
 
     partial class WRepeatTableReference
     {
-        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, DocumentDBConnection dbConnection)
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewCommand command)
         {
             WSelectQueryBlock contextSelect, repeatSelect;
             Split(out contextSelect, out repeatSelect);
@@ -2322,7 +2322,7 @@ namespace GraphView
             initialContext.OuterContextOp.SourceEnumerator = initialSource;
             initialContext.InBatchMode = context.InBatchMode;
             initialContext.CarryOn = true;
-            GraphViewExecutionOperator getInitialRecordOp = contextSelect.Compile(initialContext, dbConnection);
+            GraphViewExecutionOperator getInitialRecordOp = contextSelect.Compile(initialContext, command);
             
             QueryCompilationContext rTableContext = new QueryCompilationContext(context);
 
@@ -2345,17 +2345,17 @@ namespace GraphView
             bool emitFront = repeatCondition.EmitContext;
 
             // compile until
-            BooleanFunction terminationCondition = repeatCondition.TerminationCondition?.CompileToBatchFunction(rTableContext, dbConnection);
+            BooleanFunction terminationCondition = repeatCondition.TerminationCondition?.CompileToBatchFunction(rTableContext, command);
 
             // compile emit
-            BooleanFunction emitCondition = repeatCondition.EmitCondition?.CompileToBatchFunction(rTableContext, dbConnection);
+            BooleanFunction emitCondition = repeatCondition.EmitCondition?.CompileToBatchFunction(rTableContext, command);
             
             // compile sub-traversal
             ContainerEnumerator innerSource = new ContainerEnumerator();
             rTableContext.OuterContextOp.SourceEnumerator = innerSource;
             rTableContext.InBatchMode = context.InBatchMode;
             rTableContext.CarryOn = true;
-            GraphViewExecutionOperator innerOp = repeatSelect.Compile(rTableContext, dbConnection);
+            GraphViewExecutionOperator innerOp = repeatSelect.Compile(rTableContext, command);
             rTableContext.OuterContextOp.SourceEnumerator = innerSource;
 
             RepeatOperator repeatOp = new RepeatOperator(
@@ -2387,7 +2387,7 @@ namespace GraphView
 
     partial class WUnfoldTableReference
     {
-        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, DocumentDBConnection dbConnection)
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewCommand command)
         {
             List<string> unfoldColumns = new List<string>();
             for (int i = 1; i < this.Parameters.Count; i++)
@@ -2399,7 +2399,7 @@ namespace GraphView
 
             UnfoldOperator unfoldOp = new UnfoldOperator(
                 context.CurrentExecutionOperator,
-                Parameters[0].CompileToFunction(context, dbConnection), 
+                Parameters[0].CompileToFunction(context, command), 
                 unfoldColumns);
             context.CurrentExecutionOperator = unfoldOp;
 
@@ -2413,11 +2413,11 @@ namespace GraphView
 
     partial class WPathTableReference
     {
-        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, DocumentDBConnection dbConnection)
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewCommand command)
         {
             List<Tuple<ScalarFunction, bool, HashSet<string>>> pathStepList;
             List<ScalarFunction> byFuncList;
-            WPathTableReference.GetPathStepListAndByFuncList(context, dbConnection, this.Parameters, 
+            WPathTableReference.GetPathStepListAndByFuncList(context, command, this.Parameters, 
                 out pathStepList, out byFuncList);
 
             PathOperator pathOp = new PathOperator(context.CurrentExecutionOperator, pathStepList, byFuncList);
@@ -2435,7 +2435,7 @@ namespace GraphView
 
     partial class WPath2TableReference
     {
-        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, DocumentDBConnection dbcConnection)
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewCommand command)
         {
             //
             // If the boolean value is true, then it's a subPath to be unfolded
@@ -2454,15 +2454,15 @@ namespace GraphView
 
                 if (basicStep != null)
                 {
-                    pathStepList.Add(new Tuple<ScalarFunction, bool>(basicStep.CompileToFunction(context, dbcConnection), false));
+                    pathStepList.Add(new Tuple<ScalarFunction, bool>(basicStep.CompileToFunction(context, command), false));
                 }
                 else if (subPath != null)
                 {
-                    pathStepList.Add(new Tuple<ScalarFunction, bool>(subPath.CompileToFunction(context, dbcConnection), true));
+                    pathStepList.Add(new Tuple<ScalarFunction, bool>(subPath.CompileToFunction(context, command), true));
                 }
                 else if (byFunc != null)
                 {
-                    byFuncList.Add(byFunc.CompileToFunction(byInitContext, dbcConnection));
+                    byFuncList.Add(byFunc.CompileToFunction(byInitContext, command));
                 }
                 else {
                     throw new QueryCompilationException(
@@ -2480,7 +2480,7 @@ namespace GraphView
 
     partial class WInjectTableReference
     {
-        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, DocumentDBConnection dbConnection)
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewCommand command)
         {
             WColumnReferenceExpression injectColumn = this.Parameters[0] as WColumnReferenceExpression;
             //
@@ -2494,7 +2494,7 @@ namespace GraphView
             {
                 WValueExpression injectValue = this.Parameters[i] as WValueExpression;
                 Debug.Assert(injectValue != null, "injectValue != null");
-                injectValues.Add(injectValue.CompileToFunction(context, dbConnection));
+                injectValues.Add(injectValue.CompileToFunction(context, command));
 
             }
 
@@ -2514,12 +2514,12 @@ namespace GraphView
 
     partial class WAggregateTableReference
     {
-        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, DocumentDBConnection dbConnection)
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewCommand command)
         {
             WScalarSubquery getAggregateObjectSubqueryParameter = Parameters[0] as WScalarSubquery;
             if (getAggregateObjectSubqueryParameter == null)
                 throw new SyntaxErrorException("The first parameter of an Aggregate function must be a WScalarSubquery.");
-            ScalarFunction getAggregateObjectFunction = getAggregateObjectSubqueryParameter.CompileToFunction(context, dbConnection);
+            ScalarFunction getAggregateObjectFunction = getAggregateObjectSubqueryParameter.CompileToFunction(context, command);
 
             string storedName = (Parameters[1] as WValueExpression).Value;
 
@@ -2551,12 +2551,12 @@ namespace GraphView
 
     partial class WStoreTableReference
     {
-        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, DocumentDBConnection dbConnection)
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewCommand command)
         {
             WScalarSubquery getStoreObjectSubqueryParameter = Parameters[0] as WScalarSubquery;
             if (getStoreObjectSubqueryParameter == null)
                 throw new SyntaxErrorException("The first parameter of a Store function must be a WScalarSubquery.");
-            ScalarFunction getStoreObjectFunction = getStoreObjectSubqueryParameter.CompileToFunction(context, dbConnection);
+            ScalarFunction getStoreObjectFunction = getStoreObjectSubqueryParameter.CompileToFunction(context, command);
 
             string storedName = (Parameters[1] as WValueExpression).Value;
             
@@ -2588,19 +2588,19 @@ namespace GraphView
 
     partial class WSubgraphTableReference
     {
-        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, DocumentDBConnection dbConnection)
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewCommand command)
         {
             WScalarSubquery getSubgraphObjectSubqueryParameter = Parameters[0] as WScalarSubquery;
             if (getSubgraphObjectSubqueryParameter == null)
                 throw new SyntaxErrorException("The first parameter of a Store function must be a WScalarSubquery.");
-            ScalarFunction getSubgraphObjectFunction = getSubgraphObjectSubqueryParameter.CompileToFunction(context, dbConnection);
+            ScalarFunction getSubgraphObjectFunction = getSubgraphObjectSubqueryParameter.CompileToFunction(context, command);
             
             string sideEffectKey = (Parameters[1] as WValueExpression).Value;
 
             IAggregateFunction sideEffectState;
             if (!context.SideEffectStates.TryGetValue(sideEffectKey, out sideEffectState))
             {
-                sideEffectState = new SubgraphFunction(dbConnection);
+                sideEffectState = new SubgraphFunction(command);
                 context.SideEffectStates.Add(sideEffectKey, sideEffectState);
             }
             else if (!(sideEffectState is SubgraphFunction))
@@ -2635,7 +2635,7 @@ namespace GraphView
 
     partial class WBarrierTableReference
     {
-        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, DocumentDBConnection dbConnection)
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewCommand command)
         {
             var barrierOp = new BarrierOperator(context.CurrentExecutionOperator);
             context.CurrentExecutionOperator = barrierOp;
@@ -2646,7 +2646,7 @@ namespace GraphView
 
     partial class WMapTableReference
     {
-        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, DocumentDBConnection dbConnection)
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewCommand command)
         {
             WScalarSubquery mapSubquery = Parameters[0] as WScalarSubquery;
             if (mapSubquery == null)
@@ -2664,7 +2664,7 @@ namespace GraphView
             subcontext.OuterContextOp.SourceEnumerator = sourceEnumerator;
             subcontext.AddField(GremlinKeyword.IndexTableName, GremlinKeyword.IndexColumnName, ColumnGraphType.Value, true);
             subcontext.InBatchMode = true;
-            GraphViewExecutionOperator mapTraversalOp = mapSelect.Compile(subcontext, dbConnection);
+            GraphViewExecutionOperator mapTraversalOp = mapSelect.Compile(subcontext, command);
             MapOperator mapOp = new MapOperator(context.CurrentExecutionOperator, mapTraversalOp, sourceEnumerator);
             context.CurrentExecutionOperator = mapOp;
 
@@ -2693,7 +2693,7 @@ namespace GraphView
 
     partial class WSideEffectTableReference
     {
-        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, DocumentDBConnection dbConnection)
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewCommand command)
         {
             WScalarSubquery sideEffectSubquery = Parameters[0] as WScalarSubquery;
             if (sideEffectSubquery == null)
@@ -2711,7 +2711,7 @@ namespace GraphView
             subcontext.OuterContextOp.SourceEnumerator = sourceEnumerator;
             subcontext.AddField(GremlinKeyword.IndexTableName, GremlinKeyword.IndexColumnName, ColumnGraphType.Value, true);
             subcontext.InBatchMode = true;
-            GraphViewExecutionOperator sideEffectTraversalOp = sideEffectSelect.Compile(subcontext, dbConnection);
+            GraphViewExecutionOperator sideEffectTraversalOp = sideEffectSelect.Compile(subcontext, command);
             SideEffectOperator sideEffectOp = new SideEffectOperator(context.CurrentExecutionOperator, sideEffectTraversalOp, sourceEnumerator);
             context.CurrentExecutionOperator = sideEffectOp;
 
@@ -2721,7 +2721,7 @@ namespace GraphView
 
     partial class WKeyTableReference
     {
-        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, DocumentDBConnection dbConnection)
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewCommand command)
         {
             WColumnReferenceExpression propertyField = Parameters[0] as WColumnReferenceExpression;
 
@@ -2736,7 +2736,7 @@ namespace GraphView
 
     partial class WValueTableReference
     {
-        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, DocumentDBConnection dbConnection)
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewCommand command)
         {
             WColumnReferenceExpression propertyField = Parameters[0] as WColumnReferenceExpression;
 
@@ -2751,7 +2751,7 @@ namespace GraphView
 
     partial class WTreeTableReference
     {
-        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, DocumentDBConnection dbConnection)
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewCommand command)
         {
             WValueExpression sideEffectKey = Parameters[0] as WValueExpression;
             WColumnReferenceExpression pathColumn = Parameters[1] as WColumnReferenceExpression;
@@ -2785,18 +2785,18 @@ namespace GraphView
 
     partial class WGroupTableReference
     {
-        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, DocumentDBConnection dbConnection)
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewCommand command)
         {
             WScalarExpression groupKeySubQuery = Parameters[1];
             WScalarSubquery aggregateSubQuery = Parameters[2] as WScalarSubquery;
             Debug.Assert(aggregateSubQuery != null, "aggregateSubQuery != null");
 
-            ScalarFunction groupKeyFunction = groupKeySubQuery.CompileToFunction(context, dbConnection);
+            ScalarFunction groupKeyFunction = groupKeySubQuery.CompileToFunction(context, command);
 
             QueryCompilationContext subcontext = new QueryCompilationContext(context);
             ConstantSourceOperator tempSourceOp = new ConstantSourceOperator();
             ContainerOperator aggregatedSourceOp = new ContainerOperator(tempSourceOp);
-            GraphViewExecutionOperator aggregateOp = aggregateSubQuery.SubQueryExpr.Compile(subcontext, dbConnection);
+            GraphViewExecutionOperator aggregateOp = aggregateSubQuery.SubQueryExpr.Compile(subcontext, command);
             subcontext.OuterContextOp.SourceEnumerator = aggregatedSourceOp.GetEnumerator();
 
             WValueExpression groupParameter = Parameters[0] as WValueExpression;
@@ -2858,7 +2858,7 @@ namespace GraphView
 
     partial class WQueryDerivedTable
     {
-        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, DocumentDBConnection dbConnection)
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewCommand command)
         {
             WSelectQueryBlock derivedSelectQueryBlock = QueryExpr as WSelectQueryBlock;
             if (derivedSelectQueryBlock == null)
@@ -2876,7 +2876,7 @@ namespace GraphView
                 derivedTableContext.OuterContextOp.SourceEnumerator = sourceEnumerator;
             }
             
-            GraphViewExecutionOperator subQueryOp = derivedSelectQueryBlock.Compile(derivedTableContext, dbConnection);
+            GraphViewExecutionOperator subQueryOp = derivedSelectQueryBlock.Compile(derivedTableContext, command);
 
             ProjectAggregationInBatch projectAggregationInBatchOp = null;
             if (context.InBatchMode)
@@ -2925,7 +2925,7 @@ namespace GraphView
 
     partial class WSumLocalTableReference
     {
-        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, DocumentDBConnection dbConnection)
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewCommand command)
         {
             WColumnReferenceExpression targetField = Parameters[0] as WColumnReferenceExpression;
 
@@ -2940,7 +2940,7 @@ namespace GraphView
 
     partial class WMaxLocalTableReference
     {
-        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, DocumentDBConnection dbConnection)
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewCommand command)
         {
             WColumnReferenceExpression targetField = Parameters[0] as WColumnReferenceExpression;
 
@@ -2955,7 +2955,7 @@ namespace GraphView
 
     partial class WMinLocalTableReference
     {
-        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, DocumentDBConnection dbConnection)
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewCommand command)
         {
             WColumnReferenceExpression targetField = Parameters[0] as WColumnReferenceExpression;
 
@@ -2970,7 +2970,7 @@ namespace GraphView
 
     partial class WMeanLocalTableReference
     {
-        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, DocumentDBConnection dbConnection)
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewCommand command)
         {
             WColumnReferenceExpression targetField = Parameters[0] as WColumnReferenceExpression;
 
@@ -2985,7 +2985,7 @@ namespace GraphView
 
     partial class WCoinTableReference
     {
-        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, DocumentDBConnection dbConnection)
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewCommand command)
         {
             GraphViewExecutionOperator inputOp = context.CurrentExecutionOperator;
 
@@ -2999,12 +2999,12 @@ namespace GraphView
 
     partial class WSampleGlobalTableReference
     {
-        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, DocumentDBConnection dbConnection)
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewCommand command)
         {
             GraphViewExecutionOperator inputOp = context.CurrentExecutionOperator;
             long amountToSample = long.Parse(((WValueExpression)this.Parameters[0]).Value);
             ScalarFunction byFunction = this.Parameters.Count > 1 
-                ? this.Parameters[1].CompileToFunction(context, dbConnection) 
+                ? this.Parameters[1].CompileToFunction(context, command) 
                 : null;  // Can be null if no "by" step
 
             GraphViewExecutionOperator sampleOp = new SampleOperator(inputOp, amountToSample, byFunction);
@@ -3015,7 +3015,7 @@ namespace GraphView
 
     partial class WOrderGlobalTableReference
     {
-        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, DocumentDBConnection dbConnection)
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewCommand command)
         {
             List<Tuple<ScalarFunction, IComparer>> orderByElements = new List<Tuple<ScalarFunction, IComparer>>();
 
@@ -3023,7 +3023,7 @@ namespace GraphView
             {
                 WScalarExpression byParameter = tuple.Item1;
 
-                ScalarFunction byFunction = byParameter.CompileToFunction(context, dbConnection);
+                ScalarFunction byFunction = byParameter.CompileToFunction(context, command);
                 IComparer comparer = tuple.Item2;
 
                 orderByElements.Add(new Tuple<ScalarFunction, IComparer>(byFunction, comparer));
@@ -3040,7 +3040,7 @@ namespace GraphView
 
     partial class WOrderLocalTableReference
     {
-        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, DocumentDBConnection dbConnection)
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewCommand command)
         {
             WColumnReferenceExpression inputObject = this.Parameters[0] as WColumnReferenceExpression;
             Debug.Assert(inputObject != null, "inputObject != null");
@@ -3056,7 +3056,7 @@ namespace GraphView
             {
                 WScalarExpression byParameter = tuple.Item1;
 
-                ScalarFunction byFunction = byParameter.CompileToFunction(byInitContext, dbConnection);
+                ScalarFunction byFunction = byParameter.CompileToFunction(byInitContext, command);
                 IComparer comparer = tuple.Item2;
 
                 orderByElements.Add(new Tuple<ScalarFunction, IComparer>(byFunction, comparer));
@@ -3087,7 +3087,7 @@ namespace GraphView
 
     partial class WRangeTableReference
     {
-        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, DocumentDBConnection dbConnection)
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewCommand command)
         {
             //
             // The first parameter is used only when isLocal = true
@@ -3190,7 +3190,7 @@ namespace GraphView
     /// </summary>
     partial class WDecomposeTableReference
     {
-        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, DocumentDBConnection dbConnection)
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewCommand command)
         {
             WColumnReferenceExpression decomposeTargetParameter = this.Parameters[0] as WColumnReferenceExpression;
             Debug.Assert(decomposeTargetParameter != null, "decomposeTargetParameter != null");
@@ -3220,7 +3220,7 @@ namespace GraphView
 
     partial class WSimplePathTableReference
     {
-        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, DocumentDBConnection dbConnection)
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewCommand command)
         {
             WColumnReferenceExpression pathColumn = Parameters[0] as WColumnReferenceExpression;
             Debug.Assert(pathColumn != null, "pathColumn != null");
@@ -3235,7 +3235,7 @@ namespace GraphView
 
     partial class WCyclicPathTableReference
     {
-        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, DocumentDBConnection dbConnection)
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewCommand command)
         {
             WColumnReferenceExpression pathColumn = Parameters[0] as WColumnReferenceExpression;
             Debug.Assert(pathColumn != null, "pathColumn != null");
@@ -3250,7 +3250,7 @@ namespace GraphView
 
     partial class WValueMapTableReference
     {
-        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, DocumentDBConnection dbConnection)
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewCommand command)
         {
             WColumnReferenceExpression inputTarget = this.Parameters[0] as WColumnReferenceExpression;
             Debug.Assert(inputTarget != null, "inputTarget != null");
@@ -3280,7 +3280,7 @@ namespace GraphView
 
     partial class WPropertyMapTableReference
     {
-        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, DocumentDBConnection dbConnection)
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewCommand command)
         {
             WColumnReferenceExpression inputTarget = this.Parameters[0] as WColumnReferenceExpression;
             Debug.Assert(inputTarget != null, "inputTarget != null");
@@ -3306,7 +3306,7 @@ namespace GraphView
 
     partial class WChooseTableReference
     {
-        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, DocumentDBConnection dbConnection)
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewCommand command)
         {
             WScalarSubquery targetSubquery = this.Parameters[0] as WScalarSubquery;
             Debug.Assert(targetSubquery != null, "targetSubquery != null");
@@ -3325,7 +3325,7 @@ namespace GraphView
             targetSubContext.OuterContextOp.SourceEnumerator = targetSourceEnumerator;
             targetSubContext.AddField(GremlinKeyword.IndexTableName, GremlinKeyword.IndexColumnName, ColumnGraphType.Value, true);
             targetSubContext.InBatchMode = true;
-            GraphViewExecutionOperator targetSubqueryOp = targetSubquery.SubQueryExpr.Compile(targetSubContext, dbConnection);
+            GraphViewExecutionOperator targetSubqueryOp = targetSubquery.SubQueryExpr.Compile(targetSubContext, command);
             
 
             ContainerEnumerator trueBranchSource = new ContainerEnumerator();
@@ -3334,7 +3334,7 @@ namespace GraphView
             trueSubContext.InBatchMode = context.InBatchMode;
             trueSubContext.OuterContextOp.SourceEnumerator = trueBranchSource;
             GraphViewExecutionOperator trueBranchTraversalOp =
-                trueTraversalParameter.SubQueryExpr.Compile(trueSubContext, dbConnection);
+                trueTraversalParameter.SubQueryExpr.Compile(trueSubContext, command);
 
 
             ContainerEnumerator falseBranchSource = new ContainerEnumerator();
@@ -3343,7 +3343,7 @@ namespace GraphView
             falseSubContext.InBatchMode = context.InBatchMode;
             falseSubContext.OuterContextOp.SourceEnumerator = falseBranchSource;
             GraphViewExecutionOperator falseBranchTraversalOp =
-                falseTraversalParameter.SubQueryExpr.Compile(falseSubContext, dbConnection);
+                falseTraversalParameter.SubQueryExpr.Compile(falseSubContext, command);
 
             ChooseOperator chooseOp = new ChooseOperator(
                 context.CurrentExecutionOperator,
@@ -3375,7 +3375,7 @@ namespace GraphView
 
     partial class WChooseWithOptionsTableReference
     {
-        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, DocumentDBConnection dbConnection)
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewCommand command)
         {
             WScalarSubquery targetSubquery = this.Parameters[0] as WScalarSubquery;
             Debug.Assert(targetSubquery != null, "targetSubquery != null");
@@ -3385,7 +3385,7 @@ namespace GraphView
             targetContext.InBatchMode = true;
             targetContext.OuterContextOp.SourceEnumerator = targetSource;
             targetContext.AddField(GremlinKeyword.IndexTableName, GremlinKeyword.IndexColumnName, ColumnGraphType.Value, true);
-            GraphViewExecutionOperator targetSubqueryOp = targetSubquery.SubQueryExpr.Compile(targetContext, dbConnection);
+            GraphViewExecutionOperator targetSubqueryOp = targetSubquery.SubQueryExpr.Compile(targetContext, command);
 
 
             ContainerEnumerator optionSource = new ContainerEnumerator();
@@ -3418,8 +3418,8 @@ namespace GraphView
                 subcontext.CarryOn = true;
                 subcontext.InBatchMode = context.InBatchMode;
                 subcontext.OuterContextOp.SourceEnumerator = optionSource;
-                GraphViewExecutionOperator optionTraversalOp = scalarSubquery.SubQueryExpr.Compile(subcontext, dbConnection);
-                chooseWithOptionsOp.AddOptionTraversal(value?.CompileToFunction(context, dbConnection), optionTraversalOp);
+                GraphViewExecutionOperator optionTraversalOp = scalarSubquery.SubQueryExpr.Compile(subcontext, command);
+                chooseWithOptionsOp.AddOptionTraversal(value?.CompileToFunction(context, command), optionTraversalOp);
             }
 
             foreach (WSelectElement selectElement in firstSelectQuery.SelectElements)
@@ -3448,7 +3448,7 @@ namespace GraphView
     /// </summary>
     partial class WSelectColumnTableReference
     {
-        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, DocumentDBConnection dbConnection)
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewCommand command)
         {
             // inputTargetParameter always points to MapField
             WColumnReferenceExpression inputTargetParameter = this.Parameters[0] as WColumnReferenceExpression;
@@ -3484,7 +3484,7 @@ namespace GraphView
     /// </summary>
     partial class WSelectTableReference
     {
-        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, DocumentDBConnection dbcConnection)
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewCommand command)
         {
             WColumnReferenceExpression inputObjectParameter = this.Parameters[0] as WColumnReferenceExpression;
             Debug.Assert(inputObjectParameter != null, "inputObjectParameter != null");
@@ -3516,7 +3516,7 @@ namespace GraphView
                     selectLabels.Add(label.Value);
                 }
                 else if (byFunc != null) {
-                    byFuncList.Add(byFunc.CompileToFunction(byInitContext, dbcConnection));
+                    byFuncList.Add(byFunc.CompileToFunction(byInitContext, command));
                 }
                 else {
                     throw new QueryCompilationException(
@@ -3555,7 +3555,7 @@ namespace GraphView
     /// </summary>
     partial class WSelectOneTableReference
     {
-        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, DocumentDBConnection dbcConnection)
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewCommand command)
         {
             // inputObjectParameter points to the table reference right before WPathTableReference
             WColumnReferenceExpression inputObjectParameter = this.Parameters[0] as WColumnReferenceExpression;
@@ -3584,7 +3584,7 @@ namespace GraphView
             QueryCompilationContext byInitContext = new QueryCompilationContext(context);
             byInitContext.ClearField();
             byInitContext.AddField(GremlinKeyword.Compose1TableDefaultName, GremlinKeyword.TableDefaultColumnName, ColumnGraphType.Value);
-            ScalarFunction byFunc = byParameter.CompileToFunction(byInitContext, dbcConnection);
+            ScalarFunction byFunc = byParameter.CompileToFunction(byInitContext, command);
             
             List<string> populateColumns = new List<string>();
             for (int i = 5; i < this.Parameters.Count; i++)
@@ -3618,7 +3618,7 @@ namespace GraphView
 
     partial class WCountLocalTableReference
     {
-        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, DocumentDBConnection dbConnection)
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewCommand command)
         {
             WColumnReferenceExpression inputObjectParameter = this.Parameters[0] as WColumnReferenceExpression;
             Debug.Assert(inputObjectParameter != null, "inputObjectParameter != null");

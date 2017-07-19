@@ -1,39 +1,32 @@
-﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
+﻿using System;
 using GraphView;
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Text;
-using System.CodeDom.Compiler;
-using System.Reflection;
-using System.Text.RegularExpressions;
 using GraphViewUnitTest.Gremlin;
-using Microsoft.CSharp;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 
-namespace GremlinTranslationOperator.Tests
+namespace GraphViewUnitTest
 {
     [TestClass()]
     public class GremlinTranslationOperator
     {
-        [TestMethod]
-        public void ExecutingGraphTraversalString()
-        {
-            DocumentDBConnection connection = new DocumentDBConnection("https://graphview.documents.azure.com:443/",
-                "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
-                "GroupMatch", "Modern", GraphType.GraphAPIOnly, AbstractGremlinTest.TEST_USE_REVERSE_EDGE, 1, AbstractGremlinTest.TEST_PARTITION_BY_KEY);
-
-            
-            GraphTraversal graph = new GraphTraversal(connection);
-            string traversalStr = "graph.g().V().In().Out()";
-
-            var result = graph.EvalGraphTraversal(traversalStr);
-        }
+//        [TestMethod]
+//        public void ExecutingGraphTraversalString()
+//        {
+//            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
+//                "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+//                "GroupMatch", "Modern", GraphType.GraphAPIOnly, AbstractGremlinTest.TEST_USE_REVERSE_EDGE, 1, AbstractGremlinTest.TEST_PARTITION_BY_KEY);
+//
+//            
+//            GraphTraversal graph = new GraphTraversal(connection);
+//            string traversalStr = "graph.g().V().In().Out()";
+//
+//            var result = graph.EvalGraphTraversal(traversalStr);
+//        }
 
 
         [TestMethod]
         public void TestModernGraph()
         {
-            DocumentDBConnection connection = DocumentDBConnection.ResetGraphAPICollection("https://graphview.documents.azure.com:443/",
+            GraphViewConnection connection = GraphViewConnection.ResetGraphAPICollection("https://graphview.documents.azure.com:443/",
                 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
                 "GroupMatch", "GremlinFunctionalTestSuite", AbstractGremlinTest.TEST_USE_REVERSE_EDGE, AbstractGremlinTest.TEST_SPILLED_EDGE_THRESHOLD_VIAGRAPHAPI);
 
@@ -58,7 +51,7 @@ namespace GremlinTranslationOperator.Tests
         [TestMethod]
         public void TestExecuteCommandText()
         {
-            DocumentDBConnection connection = new DocumentDBConnection("https://graphview.documents.azure.com:443/",
+            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
                 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
                 "GroupMatch", "Modern", GraphType.GraphAPIOnly, AbstractGremlinTest.TEST_USE_REVERSE_EDGE, 1, AbstractGremlinTest.TEST_PARTITION_BY_KEY);
             GraphViewCommand graph = new GraphViewCommand(connection);
@@ -86,7 +79,7 @@ namespace GremlinTranslationOperator.Tests
         [TestMethod]
         public void TestStep()
         {
-            DocumentDBConnection connection = new DocumentDBConnection("https://graphview.documents.azure.com:443/",
+            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
                 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
                 "GroupMatch", "Modern", GraphType.GraphAPIOnly, AbstractGremlinTest.TEST_USE_REVERSE_EDGE, 1, AbstractGremlinTest.TEST_PARTITION_BY_KEY);
             //connection.ResetCollection();
@@ -304,7 +297,7 @@ namespace GremlinTranslationOperator.Tests
         [TestMethod]
         public void InsertMarvelData()
         {
-            DocumentDBConnection connection = new DocumentDBConnection("https://graphview.documents.azure.com:443/",
+            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
                 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
                 "GroupMatch", "MarvelUniverse", GraphType.GraphAPIOnly, AbstractGremlinTest.TEST_USE_REVERSE_EDGE, 1, AbstractGremlinTest.TEST_PARTITION_BY_KEY);
 

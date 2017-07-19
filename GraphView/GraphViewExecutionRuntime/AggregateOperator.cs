@@ -799,16 +799,16 @@ namespace GraphView
         private HashSet<string> edgeIds;
         private HashSet<string> vertexIds;
 
-        private readonly DocumentDBConnection connection;
+        private readonly GraphViewCommand command;
 
         public FieldObject Graph;
 
-        public SubgraphFunction(DocumentDBConnection connection)
+        public SubgraphFunction(GraphViewCommand command)
         {
             this.edgeIds = new HashSet<string>();
             this.vertexIds = new HashSet<string>();
 
-            this.connection = connection;
+            this.command = command;
         }
 
         public void Init()
@@ -845,7 +845,7 @@ namespace GraphView
             if (this.vertexIds.Any())
             {
                 // this API would modify the parameter, so deep copy it first.
-                List<VertexField> vertices = this.connection.CreateDatabasePortal().GetVerticesByIds(new HashSet<string>(this.vertexIds));
+                List<VertexField> vertices = this.command.Connection.CreateDatabasePortal().GetVerticesByIds(new HashSet<string>(this.vertexIds), this.command);
 
                 List<string> vertexGraphSON = new List<string>();
 

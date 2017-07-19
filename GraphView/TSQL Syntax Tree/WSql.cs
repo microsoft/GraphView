@@ -91,12 +91,12 @@ namespace GraphView
         {
         }
         
-        internal virtual GraphViewExecutionOperator Generate(DocumentDBConnection dbConnection) 
+        internal virtual GraphViewExecutionOperator Generate(GraphViewConnection dbConnection) 
         {
             return null;
         }
 
-        internal virtual GraphViewExecutionOperator Compile(QueryCompilationContext context, DocumentDBConnection dbConnection)
+        internal virtual GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewCommand command)
         {
             return null;
         }

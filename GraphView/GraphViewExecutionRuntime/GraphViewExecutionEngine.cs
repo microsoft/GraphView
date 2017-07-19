@@ -16,7 +16,7 @@ using static GraphView.DocumentDBKeywords;
 
 namespace GraphView
 {
-    internal abstract class FieldObject
+    public abstract class FieldObject
     {
         public virtual string ToGraphSON() => ToString();
 
@@ -645,7 +645,7 @@ namespace GraphView
         }
     }
 
-    internal abstract class PropertyField : FieldObject
+    public abstract class PropertyField : FieldObject
     {
         public string PropertyName { get; private set; }
         public virtual string PropertyValue { get; set; }
@@ -709,7 +709,7 @@ namespace GraphView
         }
     }
 
-    internal class VertexSinglePropertyField : PropertyField
+    public class VertexSinglePropertyField : PropertyField
     {
         public readonly Dictionary<string, ValuePropertyField> MetaProperties = new Dictionary<string, ValuePropertyField>();
 
@@ -863,7 +863,7 @@ namespace GraphView
         }
     }
 
-    internal class EdgePropertyField : PropertyField
+    public class EdgePropertyField : PropertyField
     {
         public EdgeField Edge { get; }
 
@@ -914,7 +914,7 @@ namespace GraphView
         }
     }
 
-    internal class ValuePropertyField : PropertyField
+    public class ValuePropertyField : PropertyField
     {
         /// <summary>
         /// If this is a vertex meta property (id, label, ...), its parent is VertexField
@@ -992,7 +992,7 @@ namespace GraphView
         }
     }
 
-    internal class VertexPropertyField : PropertyField
+    public class VertexPropertyField : PropertyField
     {
         // <id, single_property_field>
         public Dictionary<string, VertexSinglePropertyField> Multiples { get; } = new Dictionary<string, VertexSinglePropertyField>();
@@ -1199,7 +1199,7 @@ namespace GraphView
         }
     }
 
-    internal class EdgeField : FieldObject
+    public class EdgeField : FieldObject
     {
 
         // <PropertyName, EdgePropertyField>
@@ -1463,10 +1463,10 @@ namespace GraphView
         }
     }
 
-    internal class AdjacencyListField : FieldObject
+    public class AdjacencyListField : FieldObject
     {
         private readonly Dictionary<string, EdgeField> _edges = new Dictionary<string, EdgeField>();
-        private readonly DocumentDBConnection _connection;
+        private readonly GraphViewCommand command;
         private readonly string _vertexId;
         private readonly string _vertexPartitionKey;
         private readonly bool _isReverseAdjList;
@@ -1475,7 +1475,7 @@ namespace GraphView
         {
             if (!this.HasBeenFetched) {
                 EdgeDocumentHelper.ConstructLazyAdjacencyList(
-                    this._connection,
+                    this.command,
                     this._isReverseAdjList ? EdgeType.Incoming : EdgeType.Outgoing,
                     new HashSet<string> {this._vertexId}, 
                     this._vertexPartitionKey != null ? new HashSet<string> {this._vertexPartitionKey} : new HashSet<string>());
@@ -1492,7 +1492,7 @@ namespace GraphView
         public bool HasBeenFetched { get; set; }
 
         public AdjacencyListField(
-            DocumentDBConnection connection, 
+            GraphViewCommand command,
             string vertexId, 
             string vertexLabel,
             string vertexPartition,
@@ -1500,7 +1500,7 @@ namespace GraphView
             bool isReverseEdge,
             bool isSpilled)
         {
-            this._connection = connection;
+            this.command = command;
             this._vertexId = vertexId;
             this._vertexPartitionKey = vertexPartition;
             this._isReverseAdjList = isReverseEdge;
@@ -1596,7 +1596,7 @@ namespace GraphView
         }
     }
 
-    internal class VertexField : FieldObject
+    public class VertexField : FieldObject
     {
         public static bool IsVertexMetaProperty(string propertyName)
         {
@@ -1725,19 +1725,19 @@ namespace GraphView
         //}
 
         
-        public VertexField(DocumentDBConnection connection, JObject vertexObject)
+        public VertexField(GraphViewCommand command, JObject vertexObject)
         {
             Debug.Assert(vertexObject != null);
             this.VertexJObject = vertexObject;
             this.VertexProperties = new Dictionary<string, VertexPropertyField>();
 
             // The partition value
-            if (connection.CollectionType == CollectionType.STANDARD) {
+            if (command.Connection.CollectionType == CollectionType.STANDARD) {
                 this.Partition = null;
             }
             else {
-                Debug.Assert(connection.CollectionType == CollectionType.PARTITIONED);
-                this.Partition = connection.GetDocumentPartition(vertexObject);
+                Debug.Assert(command.Connection.CollectionType == CollectionType.PARTITIONED);
+                this.Partition = command.Connection.GetDocumentPartition(vertexObject);
             }
 
             //
@@ -1779,7 +1779,7 @@ namespace GraphView
                         break;
 
                     default: // user-defined properties
-                        if (property.Name == connection.RealPartitionKey || !(property.Value is JValue)) {
+                        if (property.Name == command.Connection.RealPartitionKey || !(property.Value is JValue)) {
                             this.VertexProperties.Add(property.Name, new VertexPropertyField(property, this));
                         }
                         break;
@@ -1810,17 +1810,17 @@ namespace GraphView
             if (this.ViaGraphAPI) {
                 Debug.Assert(forwardAdjList != null);
                 this.AdjacencyList = new AdjacencyListField(
-                    connection, vertexId, vertexLabel, this.Partition, forwardAdjList, false,
-                    EdgeDocumentHelper.IsBuildingTheAdjacencyListLazily(this.VertexJObject, false, connection.UseReverseEdges));
+                    command, vertexId, vertexLabel, this.Partition, forwardAdjList, false,
+                    EdgeDocumentHelper.IsBuildingTheAdjacencyListLazily(this.VertexJObject, false, command.Connection.UseReverseEdges));
 
                 Debug.Assert(backwardAdjList != null);
                 this.RevAdjacencyList = new AdjacencyListField(
-                    connection, vertexId, vertexLabel, this.Partition, backwardAdjList, true,
-                    EdgeDocumentHelper.IsBuildingTheAdjacencyListLazily(this.VertexJObject, true, connection.UseReverseEdges));
+                    command, vertexId, vertexLabel, this.Partition, backwardAdjList, true,
+                    EdgeDocumentHelper.IsBuildingTheAdjacencyListLazily(this.VertexJObject, true, command.Connection.UseReverseEdges));
             }
             else {
-                this.AdjacencyList = new AdjacencyListField(connection, vertexId, vertexLabel, this.Partition, null, false, true);
-                this.RevAdjacencyList = new AdjacencyListField(connection, vertexId, vertexLabel, this.Partition, null, true, true);
+                this.AdjacencyList = new AdjacencyListField(command, vertexId, vertexLabel, this.Partition, null, false, true);
+                this.RevAdjacencyList = new AdjacencyListField(command, vertexId, vertexLabel, this.Partition, null, true, true);
             }
         }
 
@@ -2313,7 +2313,7 @@ namespace GraphView
     /// 
     /// | node1 | node1_adjacency_list | node1_rev_adjacency_list |...| nodeK | nodeK_adjacency_list | nodeK_rev_adjacency_list | property1 | property2 |......
     /// </summary>
-    internal class RawRecord
+    public class RawRecord
     {
         internal RawRecord()
         {

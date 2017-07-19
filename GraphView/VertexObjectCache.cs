@@ -18,9 +18,9 @@ namespace GraphView
     /// NOTE: The vertex object cache is cleared after every GraphViewCommand.
     /// NOTE: A VertexObjectCache is accessed by only one thread. lock is not necessary.
     /// </summary>
-    internal sealed class VertexObjectCache
+    public sealed class VertexObjectCache
     {
-        public DocumentDBConnection Connection { get; }
+        public GraphViewCommand Command { get; }
 
         private readonly Dictionary<string, string> _currentEtags = new Dictionary<string, string>();
 
@@ -69,9 +69,9 @@ namespace GraphView
         //
         private readonly Dictionary<string, VertexField> _cachedVertexField = new Dictionary<string, VertexField>();
 
-        public VertexObjectCache(DocumentDBConnection dbConnection)
+        public VertexObjectCache(GraphViewCommand command)
         {
-            this.Connection = dbConnection;
+            this.Command = command;
         }
 
 
@@ -79,8 +79,8 @@ namespace GraphView
         {
             VertexField result;
             if (!this._cachedVertexField.TryGetValue(vertexId, out result)) {
-                JObject vertexObject = this.Connection.RetrieveDocumentById(vertexId, partition);
-                result = new VertexField(this.Connection, vertexObject);
+                JObject vertexObject = this.Command.Connection.RetrieveDocumentById(vertexId, partition, this.Command);
+                result = new VertexField(this.Command, vertexObject);
                 this._cachedVertexField.Add(vertexId, result);
             }
             return result;
@@ -99,7 +99,7 @@ namespace GraphView
                 //
                 this.SaveCurrentEtagNoOverride(vertexObject);
 
-                vertexField = new VertexField(this.Connection, vertexObject);
+                vertexField = new VertexField(this.Command, vertexObject);
                 this._cachedVertexField.Add(vertexId, vertexField);
             }
             return vertexField;

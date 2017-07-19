@@ -48,7 +48,7 @@ namespace GraphViewUnitTest
             string databaseId = ConfigurationManager.AppSettings["DocDBDatabaseGremlin"];
             string collectionId = ConfigurationManager.AppSettings["DocDBCollectionModern"];
 
-            DocumentDBConnection connection = DocumentDBConnection.ResetGraphAPICollection(
+            GraphViewConnection connection = GraphViewConnection.ResetGraphAPICollection(
                 endpoint, authKey, databaseId, collectionId, AbstractGremlinTest.TEST_USE_REVERSE_EDGE, AbstractGremlinTest.TEST_SPILLED_EDGE_THRESHOLD_VIAGRAPHAPI, null
                 );
 

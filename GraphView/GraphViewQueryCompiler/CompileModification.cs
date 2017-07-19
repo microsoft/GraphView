@@ -11,7 +11,7 @@ namespace GraphView
 {
     partial class WAddVTableReference2
     {
-        public JObject ConstructNodeJsonDocument(DocumentDBConnection connection, string vertexLabel, List<WPropertyExpression> vertexProperties, out List<string> projectedFieldList)
+        public JObject ConstructNodeJsonDocument(GraphViewCommand command, string vertexLabel, List<WPropertyExpression> vertexProperties, out List<string> projectedFieldList)
         {
             Debug.Assert(vertexLabel != null);
             JObject vertexObject = new JObject {
@@ -33,16 +33,16 @@ namespace GraphView
                 }
 
                 // Special treat the partition key
-                if (connection.CollectionType == CollectionType.PARTITIONED) {
-                    Debug.Assert(connection.RealPartitionKey != null);
-                    if (vertexProperty.Key.Value == connection.RealPartitionKey) {
+                if (command.Connection.CollectionType == CollectionType.PARTITIONED) {
+                    Debug.Assert(command.Connection.RealPartitionKey != null);
+                    if (vertexProperty.Key.Value == command.Connection.RealPartitionKey) {
                         if (vertexProperty.MetaProperties.Count > 0) {
                             throw new GraphViewException("Partition value must not have meta properties");
                         }
 
-                        if (vertexObject[connection.RealPartitionKey] == null) {
+                        if (vertexObject[command.Connection.RealPartitionKey] == null) {
                             JValue value = vertexProperty.Value.ToJValue();
-                            vertexObject[connection.RealPartitionKey] = value;
+                            vertexObject[command.Connection.RealPartitionKey] = value;
                         }
                         else {
                             throw new GraphViewException("Partition value must not be a list");
@@ -85,7 +85,7 @@ namespace GraphView
 
                 JObject prop = new JObject {
                     [KW_PROPERTY_VALUE] = vertexProperty.Value.ToJValue(),
-                    [KW_PROPERTY_ID] = DocumentDBConnection.GenerateDocumentId(),
+                    [KW_PROPERTY_ID] = GraphViewConnection.GenerateDocumentId(),
                 };
                 if (meta.Count >0) {
                     prop[KW_PROPERTY_META] = meta;
@@ -93,7 +93,7 @@ namespace GraphView
                 propArray.Add(prop);
             }
 
-            if (connection.EdgeSpillThreshold == 1) {
+            if (command.Connection.EdgeSpillThreshold == 1) {
                 vertexObject[KW_VERTEX_EDGE] = new JArray { KW_VERTEX_DUMMY_EDGE };
                 vertexObject[KW_VERTEX_REV_EDGE] = new JArray { KW_VERTEX_DUMMY_EDGE };
                 vertexObject[KW_VERTEX_EDGE_SPILLED] = true;
@@ -109,7 +109,7 @@ namespace GraphView
             return vertexObject;
         }
 
-        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, DocumentDBConnection dbConnection)
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewCommand command)
         {
             //
             // Parameters:
@@ -131,11 +131,11 @@ namespace GraphView
 
             List<string> projectedField;
 
-            JObject nodeJsonDocument = ConstructNodeJsonDocument(dbConnection, labelValue.Value, vertexProperties, out projectedField);
+            JObject nodeJsonDocument = ConstructNodeJsonDocument(command, labelValue.Value, vertexProperties, out projectedField);
 
             AddVOperator addVOp = new AddVOperator(
                 context.CurrentExecutionOperator,
-                dbConnection,
+                command,
                 nodeJsonDocument,
                 projectedField);
             context.CurrentExecutionOperator = addVOp;
@@ -150,8 +150,8 @@ namespace GraphView
             }
 
             // Convert the connection to Hybrid if necessary
-            if (dbConnection.GraphType != GraphType.GraphAPIOnly) {
-                dbConnection.GraphType = GraphType.Hybrid;
+            if (command.Connection.GraphType != GraphType.GraphAPIOnly) {
+                command.Connection.GraphType = GraphType.Hybrid;
             }
 
             return addVOp;
@@ -161,7 +161,7 @@ namespace GraphView
 
     partial class WAddETableReference
     {
-        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, DocumentDBConnection dbConnection)
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewCommand command)
         {
             List<string> projectedField;
             JObject edgeJsonObject = ConstructEdgeJsonObject(out projectedField);  // metadata remains missing
@@ -179,12 +179,12 @@ namespace GraphView
             int otherVTag = int.Parse(otherVTagParameter.Value);
 
             QueryCompilationContext srcSubContext = new QueryCompilationContext(context);
-            GraphViewExecutionOperator srcSubQueryOp = srcSubQuery.SubQueryExpr.Compile(srcSubContext, dbConnection);
+            GraphViewExecutionOperator srcSubQueryOp = srcSubQuery.SubQueryExpr.Compile(srcSubContext, command);
 
             QueryCompilationContext sinkSubContext = new QueryCompilationContext(context);
-            GraphViewExecutionOperator sinkSubQueryOp = sinkSubQuery.SubQueryExpr.Compile(sinkSubContext, dbConnection);
+            GraphViewExecutionOperator sinkSubQueryOp = sinkSubQuery.SubQueryExpr.Compile(sinkSubContext, command);
 
-            GraphViewExecutionOperator addEOp = new AddEOperator(context.CurrentExecutionOperator, dbConnection,
+            GraphViewExecutionOperator addEOp = new AddEOperator(context.CurrentExecutionOperator, command,
                 srcSubContext.OuterContextOp, srcSubQueryOp, sinkSubContext.OuterContextOp, sinkSubQueryOp, 
                 otherVTag, edgeJsonObject, projectedField);
             context.CurrentExecutionOperator = addEOp;
@@ -207,12 +207,12 @@ namespace GraphView
 
     partial class WDropTableReference
     {
-        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, DocumentDBConnection dbConnection)
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewCommand command)
         {
             var dropTargetParameter = Parameters[0] as WColumnReferenceExpression;
             var dropTargetIndex = context.LocateColumnReference(dropTargetParameter);
 
-            var dropOp = new DropOperator(context.CurrentExecutionOperator, dbConnection, dropTargetIndex);
+            var dropOp = new DropOperator(context.CurrentExecutionOperator, command, dropTargetIndex);
             context.CurrentExecutionOperator = dropOp;
 
             return dropOp;
@@ -222,18 +222,18 @@ namespace GraphView
 
     partial class WDropNodeTableReference
     {
-        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, DocumentDBConnection dbConnection)
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewCommand command)
         {
             var nodeIdParameter = Parameters[0] as WColumnReferenceExpression;
             var nodeIdIndex = context.LocateColumnReference(nodeIdParameter);
 
-            var dropNodeOp = new DropNodeOperator(context.CurrentExecutionOperator, dbConnection, nodeIdIndex);
+            var dropNodeOp = new DropNodeOperator(context.CurrentExecutionOperator, command, nodeIdIndex);
             context.CurrentExecutionOperator = dropNodeOp;
 
             return dropNodeOp;
         }
 
-        internal GraphViewExecutionOperator Compile2(QueryCompilationContext context, DocumentDBConnection dbConnection)
+        internal GraphViewExecutionOperator Compile2(QueryCompilationContext context, GraphViewCommand command)
         {
             WColumnReferenceExpression dropTargetParameter = Parameters[0] as WColumnReferenceExpression;
             Debug.Assert(dropTargetParameter != null, "dropTargetParameter != null");
@@ -242,7 +242,7 @@ namespace GraphView
             //
             // A new DropOperator which drops target based on its runtime type
             //
-            DropNodeOperator dropOp = new DropNodeOperator(context.CurrentExecutionOperator, dbConnection, dropTargetIndex);
+            DropNodeOperator dropOp = new DropNodeOperator(context.CurrentExecutionOperator, command, dropTargetIndex);
             context.CurrentExecutionOperator = dropOp;
 
             return dropOp;
@@ -251,7 +251,7 @@ namespace GraphView
 
     //partial class WDropEdgeTableReference
     //{
-    //    internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, DocumentDBConnection dbConnection)
+    //    internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
     //    {
     //        var srcIdParameter = Parameters[0] as WColumnReferenceExpression;
     //        var edgeOffsetParameter = Parameters[1] as WColumnReferenceExpression;
@@ -267,7 +267,7 @@ namespace GraphView
 
     //partial class WUpdateVertexPropertiesTableReference
     //{
-    //    internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, DocumentDBConnection dbConnection)
+    //    internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
     //    {
     //        var nodeIdParameter = Parameters[0] as WColumnReferenceExpression;
     //        var nodeIdIndex = context.LocateColumnReference(nodeIdParameter);
@@ -296,7 +296,7 @@ namespace GraphView
 
     //partial class WUpdateEdgePropertiesTableReference
     //{
-    //    internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, DocumentDBConnection dbConnection)
+    //    internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
     //    {
     //        var srcIdParameter = Parameters[0] as WColumnReferenceExpression;
     //        var edgeOffsetParameter = Parameters[1] as WColumnReferenceExpression;
@@ -328,7 +328,7 @@ namespace GraphView
 
     partial class WUpdatePropertiesTableReference
     {
-        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, DocumentDBConnection dbConnection)
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewCommand command)
         {
             WColumnReferenceExpression updateParameter = this.Parameters[0] as WColumnReferenceExpression;
             int updateIndex = context.LocateColumnReference(updateParameter);
@@ -342,8 +342,8 @@ namespace GraphView
             }
 
             UpdatePropertiesOperator updateOp = new UpdatePropertiesOperator(
-                context.CurrentExecutionOperator, 
-                dbConnection,
+                context.CurrentExecutionOperator,
+                command,
                 updateIndex, 
                 propertiesList);
             context.CurrentExecutionOperator = updateOp;
@@ -361,7 +361,7 @@ namespace GraphView
     //    /// </summary>
     //    /// <param name="docDbConnection">The Connection</param>
     //    /// <returns></returns>
-    //    internal override GraphViewExecutionOperator Generate(DocumentDBConnection dbConnection)
+    //    internal override GraphViewExecutionOperator Generate(GraphViewConnection dbConnection)
     //    {
     //        string Json_str = ConstructNode();
 
@@ -370,7 +370,7 @@ namespace GraphView
     //        return InsertOp;
     //    }
 
-    //    internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, DocumentDBConnection dbConnection)
+    //    internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
     //    {
     //        string Json_str = ConstructNode();
 
@@ -438,7 +438,7 @@ namespace GraphView
     //    }
 
 
-    //    internal override GraphViewExecutionOperator Generate(DocumentDBConnection dbConnection)
+    //    internal override GraphViewExecutionOperator Generate(GraphViewConnection dbConnection)
     //    {
     //        var SelectQueryBlock = SelectInsertSource.Select as WSelectQueryBlock;
 
@@ -479,7 +479,7 @@ namespace GraphView
     //        return InsertOp;
     //    }
 
-    //    //internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, DocumentDBConnection dbConnection)
+    //    //internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
     //    //{
     //    //    var SelectQueryBlock = SelectInsertSource.Select as WSelectQueryBlock;
     //    //    var srcTableVariable = SelectQueryBlock.FromClause.TableReferencesInFromClause[0] as WVariableTableReference;
@@ -563,7 +563,7 @@ namespace GraphView
     //    }
 
 
-    //    internal override GraphViewExecutionOperator Generate(DocumentDBConnection pConnection)
+    //    internal override GraphViewExecutionOperator Generate(GraphViewConnection pConnection)
     //    {
     //        WSelectQueryBlock SrcSelect;
     //        WSelectQueryBlock DestSelect;
@@ -680,7 +680,7 @@ namespace GraphView
 
     //        #endregion
     //    }
-    //    internal override GraphViewExecutionOperator Generate(DocumentDBConnection dbConnection)
+    //    internal override GraphViewExecutionOperator Generate(GraphViewConnection dbConnection)
     //    {
     //        ChangeSelectQuery();
 
@@ -714,7 +714,7 @@ namespace GraphView
     //    /// </summary>
     //    /// <param name="docDbConnection">The Connection</param>
     //    /// <returns></returns>
-    //    internal override GraphViewExecutionOperator Generate(DocumentDBConnection dbConnection)
+    //    internal override GraphViewExecutionOperator Generate(GraphViewConnection dbConnection)
     //    {
     //        var search = WhereClause.SearchCondition;
     //        var target = (Target as WNamedTableReference).ToStringWithoutRange();

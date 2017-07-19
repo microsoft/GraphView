@@ -60,29 +60,29 @@ namespace GraphView
 
     internal abstract class DbPortal : IDisposable
     {
-        public DocumentDBConnection Connection { get; protected set; }
+        public GraphViewConnection Connection { get; protected set; }
 
         public void Dispose() { }
 
-        public abstract IEnumerator<Tuple<VertexField, RawRecord>> GetVerticesAndEdgesViaVertices(JsonQuery vertexQuery);
+        public abstract IEnumerator<Tuple<VertexField, RawRecord>> GetVerticesAndEdgesViaVertices(JsonQuery vertexQuery, GraphViewCommand command);
 
-        public abstract IEnumerator<RawRecord> GetVerticesAndEdgesViaEdges(JsonQuery edgeQuery);
+        public abstract IEnumerator<RawRecord> GetVerticesAndEdgesViaEdges(JsonQuery edgeQuery, GraphViewCommand command);
 
         public abstract List<JObject> GetEdgeDocuments(JsonQuery query);
 
         public abstract JObject GetEdgeDocument(JsonQuery query);
 
-        public abstract List<VertexField> GetVerticesByIds(HashSet<string> vertexId);
+        public abstract List<VertexField> GetVerticesByIds(HashSet<string> vertexId, GraphViewCommand command);
     }
 
     internal class DocumentDbPortal : DbPortal
     {
-        public DocumentDbPortal(DocumentDBConnection connection)
+        public DocumentDbPortal(GraphViewConnection connection)
         {
-            Connection = connection;
+            this.Connection = connection;
         }
 
-        public override IEnumerator<Tuple<VertexField, RawRecord>> GetVerticesAndEdgesViaVertices(JsonQuery vertexQuery)
+        public override IEnumerator<Tuple<VertexField, RawRecord>> GetVerticesAndEdgesViaVertices(JsonQuery vertexQuery, GraphViewCommand command)
         {
             string queryScript = vertexQuery.ToString(DatabaseType.DocumentDB);
             IEnumerable<dynamic> items = this.Connection.ExecuteQuery(queryScript);
@@ -175,7 +175,7 @@ namespace GraphView
                             this.Connection.UseReverseEdges) && 
                             uniqueVertexIds.Add(vertexId))
                     {
-                        VertexField vertexField = this.Connection.VertexCache.AddOrUpdateVertexField(vertexId, tmpVertexObject);
+                        VertexField vertexField = command.VertexCache.AddOrUpdateVertexField(vertexId, tmpVertexObject);
                         yield return makeRawRecord(vertexField);
                     }
                     else // When the DocumentDB query crosses apply edges 
@@ -184,7 +184,7 @@ namespace GraphView
                         string edgeId = (string)edgeObjct[KW_EDGE_ID];
 
                         if (uniqueEdgeIds.Add(edgeId)) {
-                            VertexField vertexField = this.Connection.VertexCache.AddOrUpdateVertexField(vertexId, tmpVertexObject);
+                            VertexField vertexField = command.VertexCache.AddOrUpdateVertexField(vertexId, tmpVertexObject);
                             yield return makeCrossAppliedRecord(vertexField, edgeId);
                         }
                     }
@@ -194,13 +194,13 @@ namespace GraphView
                     if (!uniqueVertexIds.Add(vertexId)) {
                         continue;
                     }
-                    VertexField vertexField = this.Connection.VertexCache.AddOrUpdateVertexField(vertexId, tmpVertexObject);
+                    VertexField vertexField = command.VertexCache.AddOrUpdateVertexField(vertexId, tmpVertexObject);
                     yield return makeRawRecord(vertexField);
                 }
             }
         }
 
-        public override IEnumerator<RawRecord> GetVerticesAndEdgesViaEdges(JsonQuery edgeQuery)
+        public override IEnumerator<RawRecord> GetVerticesAndEdgesViaEdges(JsonQuery edgeQuery, GraphViewCommand command)
         {
             string queryScript = edgeQuery.ToString(DatabaseType.DocumentDB);
             IEnumerable<dynamic> items = this.Connection.ExecuteQuery(queryScript);
@@ -260,7 +260,7 @@ namespace GraphView
                 else
                 {
                     string vertexId = (string)tmpObject[KW_DOC_ID];
-                    this.Connection.VertexCache.AddOrUpdateVertexField(vertexId, tmpObject);
+                    command.VertexCache.AddOrUpdateVertexField(vertexId, tmpObject);
                     List<string> edgeIds;
                     if (!vertexIdAndEdgeIdsDict.TryGetValue(vertexId, out edgeIds))
                     {
@@ -284,7 +284,7 @@ namespace GraphView
                 {
                     JObject vertexObject = (JObject)vertex;
                     string vertexId = (string)vertexObject[KW_DOC_ID];
-                    VertexField vertexField = this.Connection.VertexCache.AddOrUpdateVertexField(vertexId, vertexObject);
+                    VertexField vertexField = command.VertexCache.AddOrUpdateVertexField(vertexId, vertexObject);
                     vertexField.ConstructPartialLazyAdjacencyList(vertexIdAndEdgeObjectsDict[vertexId], false);
                 }
             }
@@ -293,7 +293,7 @@ namespace GraphView
             {
                 string vertexId = pair.Key;
                 List<string> edgeIds = pair.Value;
-                VertexField vertexField = this.Connection.VertexCache.GetVertexField(vertexId);
+                VertexField vertexField = command.VertexCache.GetVertexField(vertexId);
 
                 foreach (string edgeId in edgeIds)
                 {
@@ -341,7 +341,7 @@ namespace GraphView
         }
 
 
-        public override List<VertexField> GetVerticesByIds(HashSet<string> vertexId)
+        public override List<VertexField> GetVerticesByIds(HashSet<string> vertexId, GraphViewCommand command)
         {
             string inClause = string.Join(", ", vertexId.Select(x => $"'{x}'"));
             JsonQuery query = new JsonQuery
@@ -352,7 +352,7 @@ namespace GraphView
                 NodeProperties = new List<string> {"node", "*"},
                 EdgeProperties = new List<string>()
             };
-            IEnumerator<Tuple<VertexField, RawRecord>> queryResult = this.GetVerticesAndEdgesViaVertices(query);
+            IEnumerator<Tuple<VertexField, RawRecord>> queryResult = this.GetVerticesAndEdgesViaVertices(query, command);
 
             List<VertexField> result = new List<VertexField>();
             while (queryResult.MoveNext())
@@ -361,7 +361,7 @@ namespace GraphView
                 result.Add(vertex);
             }
 
-            EdgeDocumentHelper.ConstructLazyAdjacencyList(this.Connection, EdgeType.Both, vertexId, new HashSet<string>());
+            EdgeDocumentHelper.ConstructLazyAdjacencyList(command, EdgeType.Both, vertexId, new HashSet<string>());
 
             return result;
         }

@@ -363,6 +363,11 @@ namespace GraphView
             }
             base.AcceptChildren(visitor);
         }
+
+        internal virtual GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
+        {
+            throw new NotImplementedException();
+        }
     }
 
     public partial class WOptionalTableReference : WSchemaObjectFunctionTableReference
@@ -416,7 +421,7 @@ namespace GraphView
     public partial class WPathTableReference : WSchemaObjectFunctionTableReference
     {
         internal static void GetPathStepListAndByFuncList(
-            QueryCompilationContext context, DocumentDBConnection dbConnection,
+            QueryCompilationContext context, GraphViewCommand command,
             IList<WScalarExpression> parameters,
             out List<Tuple<ScalarFunction, bool, HashSet<string>>> pathStepList,
             out List<ScalarFunction> byFuncList)
@@ -441,7 +446,7 @@ namespace GraphView
                 {
                     pathStepList.Add(
                         new Tuple<ScalarFunction, bool, HashSet<string>>(
-                            basicStep.CompileToFunction(context, dbConnection), false, new HashSet<string>()));
+                            basicStep.CompileToFunction(context, command), false, new HashSet<string>()));
                 }
                 else if (stepLabel != null)
                 {
@@ -455,11 +460,11 @@ namespace GraphView
                 {
                     pathStepList.Add(
                         new Tuple<ScalarFunction, bool, HashSet<string>>(
-                            subPath.CompileToFunction(context, dbConnection), true, new HashSet<string>()));
+                            subPath.CompileToFunction(context, command), true, new HashSet<string>()));
                 }
                 else if (byFunc != null)
                 {
-                    byFuncList.Add(byFunc.CompileToFunction(byInitContext, dbConnection));
+                    byFuncList.Add(byFunc.CompileToFunction(byInitContext, command));
                 }
                 else {
                     throw new QueryCompilationException(

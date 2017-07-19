@@ -77,20 +77,20 @@ namespace GraphView
     internal class FetchNodeOperator2 : GraphViewExecutionOperator
     {
         private Queue<RawRecord> outputBuffer;
-        private JsonQuery vertexQuery;
-        //private JsonQuery vertexViaExternalAPIQuery;
-        private DocumentDBConnection connection;
+        private readonly JsonQuery vertexQuery;
+
+        private readonly GraphViewCommand command;
 
         private IEnumerator<Tuple<VertexField, RawRecord>> verticesEnumerator;
         //private IEnumerator<RawRecord> verticesViaExternalAPIEnumerator;
 
-        public FetchNodeOperator2(DocumentDBConnection connection, JsonQuery vertexQuery/*, JsonQuery vertexViaExternalAPIQuery*/)
+        public FetchNodeOperator2(GraphViewCommand command, JsonQuery vertexQuery/*, JsonQuery vertexViaExternalAPIQuery*/)
         {
             this.Open();
-            this.connection = connection;
+            this.command = command;
             this.vertexQuery = vertexQuery;
             //this.vertexViaExternalAPIQuery = vertexViaExternalAPIQuery;
-            this.verticesEnumerator = connection.CreateDatabasePortal().GetVerticesAndEdgesViaVertices(vertexQuery);
+            this.verticesEnumerator = command.Connection.CreateDatabasePortal().GetVerticesAndEdgesViaVertices(vertexQuery, this.command);
             //this.verticesViaExternalAPIEnumerator = connection.CreateDatabasePortal().GetVerticesViaExternalAPI(vertexViaExternalAPIQuery);
         }
 
@@ -110,7 +110,7 @@ namespace GraphView
 
         public override void ResetState()
         {
-            this.verticesEnumerator = this.connection.CreateDatabasePortal().GetVerticesAndEdgesViaVertices(this.vertexQuery);
+            this.verticesEnumerator = this.command.Connection.CreateDatabasePortal().GetVerticesAndEdgesViaVertices(this.vertexQuery, this.command);
             //this.verticesViaExternalAPIEnumerator = connection.CreateDatabasePortal().GetVerticesViaExternalAPI(this.vertexViaExternalAPIQuery);
             this.outputBuffer?.Clear();
             this.Open();
@@ -120,16 +120,16 @@ namespace GraphView
     internal class FetchEdgeOperator : GraphViewExecutionOperator
     {
         private JsonQuery edgeQuery;
-        private DocumentDBConnection connection;
+        private GraphViewCommand command;
 
         private IEnumerator<RawRecord> verticesAndEdgesEnumerator;
 
-        public FetchEdgeOperator(DocumentDBConnection connection, JsonQuery edgeQuery)
+        public FetchEdgeOperator(GraphViewCommand command, JsonQuery edgeQuery)
         {
             this.Open();
-            this.connection = connection;
+            this.command = command;
             this.edgeQuery = edgeQuery;
-            this.verticesAndEdgesEnumerator = connection.CreateDatabasePortal().GetVerticesAndEdgesViaEdges(edgeQuery);
+            this.verticesAndEdgesEnumerator = command.Connection.CreateDatabasePortal().GetVerticesAndEdgesViaEdges(edgeQuery, this.command);
         }
 
         public override RawRecord Next()
@@ -145,7 +145,7 @@ namespace GraphView
 
         public override void ResetState()
         {
-            this.verticesAndEdgesEnumerator = this.connection.CreateDatabasePortal().GetVerticesAndEdgesViaEdges(this.edgeQuery);
+            this.verticesAndEdgesEnumerator = this.command.Connection.CreateDatabasePortal().GetVerticesAndEdgesViaEdges(this.edgeQuery, this.command);
             this.Open();
         }
     }
@@ -166,7 +166,7 @@ namespace GraphView
         private int outputBufferSize;
         private int batchSize = 5000;
         private Queue<RawRecord> outputBuffer;
-        private DocumentDBConnection connection;
+        private GraphViewCommand command;
         private GraphViewExecutionOperator inputOp;
         
         internal enum TraversalTypeEnum
@@ -193,7 +193,7 @@ namespace GraphView
 
         public TraversalOperator2(
             GraphViewExecutionOperator inputOp,
-            DocumentDBConnection connection,
+            GraphViewCommand command,
             int edgeFieldIndex,
             TraversalTypeEnum traversalType,
             JsonQuery sinkVertexQuery,
@@ -203,7 +203,7 @@ namespace GraphView
         {
             this.Open();
             this.inputOp = inputOp;
-            this.connection = connection;
+            this.command = command;
             this.edgeFieldIndex = edgeFieldIndex;
             this.traversalType = traversalType;
             this.sinkVertexQuery = sinkVertexQuery;
@@ -274,7 +274,7 @@ namespace GraphView
                 }
 
                 // Groups records returned by sinkVertexQuery by sink vertices' references
-                Dictionary<string, List<RawRecord>> sinkVertexCollection = new Dictionary<string, List<RawRecord>>(DocumentDBConnection.InClauseLimit);
+                Dictionary<string, List<RawRecord>> sinkVertexCollection = new Dictionary<string, List<RawRecord>>(GraphViewConnection.InClauseLimit);
 
                 HashSet<string> sinkReferenceSet = new HashSet<string>();
                 HashSet<string> sinkPartitionSet = new HashSet<string>();
@@ -293,7 +293,7 @@ namespace GraphView
                     sinkPartitionSet.Clear();
 
                     //TODO: Verify whether DocumentDB still has inClauseLimit
-                    while (sinkReferenceSet.Count < DocumentDBConnection.InClauseLimit && j < inputSequence.Count)
+                    while (sinkReferenceSet.Count < GraphViewConnection.InClauseLimit && j < inputSequence.Count)
                     {
                         string sinkReferenceId = inputSequence[j].Item2;
                         string sinkPartitionKey = inputSequence[j].Item3;
@@ -340,9 +340,9 @@ namespace GraphView
                     //toSendViaExternalAPIQuery.WhereSearchCondition =
                     //    $"{toSendViaExternalAPIQuery.WhereSearchCondition}{partitionInClause}";
 
-                    using (DbPortal databasePortal = this.connection.CreateDatabasePortal())
+                    using (DbPortal databasePortal = this.command.Connection.CreateDatabasePortal())
                     {
-                        IEnumerator<Tuple<VertexField, RawRecord>> verticesEnumerator = databasePortal.GetVerticesAndEdgesViaVertices(toSendQuery);
+                        IEnumerator<Tuple<VertexField, RawRecord>> verticesEnumerator = databasePortal.GetVerticesAndEdgesViaVertices(toSendQuery, this.command);
 
                         // The following lines are added for debugging convenience
                         // It nearly does no harm to performance
@@ -4806,7 +4806,7 @@ namespace GraphView
         private readonly bool isStartVertexTheOriginVertex;
 
         private readonly Queue<RawRecord> outputBuffer;
-        private readonly DocumentDBConnection connection;
+        private readonly GraphViewCommand command;
 
         private readonly int batchSize;
         // RawRecord: the input record with the lazy adjacency list
@@ -4829,7 +4829,7 @@ namespace GraphView
             bool crossApplyForwardAdjacencyList, bool crossApplyBackwardAdjacencyList,
             bool isStartVertexTheOriginVertex,
             BooleanFunction edgePredicate, List<string> projectedFields,
-            DocumentDBConnection connection,
+            GraphViewCommand command,
             int outputRecordLength,
             int batchSize = KW_DEFAULT_BATCH_SIZE)
         {
@@ -4841,7 +4841,7 @@ namespace GraphView
             this.isStartVertexTheOriginVertex = isStartVertexTheOriginVertex;
             this.edgePredicate = edgePredicate;
             this.projectedFields = projectedFields;
-            this.connection = connection;
+            this.command = command;
 
             this.batchSize = batchSize;
             this.lazyAdjacencyListBatch = new Queue<Tuple<RawRecord, string>>();
@@ -5015,7 +5015,7 @@ namespace GraphView
 
             if (vertexIdCollection.Count > 0) {
                 Debug.Assert(edgeType != 0);
-                EdgeDocumentHelper.ConstructLazyAdjacencyList(this.connection, edgeType, vertexIdCollection, vertexPartitionKeyCollection);
+                EdgeDocumentHelper.ConstructLazyAdjacencyList(this.command, edgeType, vertexIdCollection, vertexPartitionKeyCollection);
             }
         }
 

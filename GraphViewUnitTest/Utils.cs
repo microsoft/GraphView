@@ -25,11 +25,11 @@ namespace GraphViewUnitTest
         }
 
         //
-        // [Obsolete] Use DocumentDBConnection.ResetCollection() instead
+        // [Obsolete] Use GraphViewConnection.ResetCollection() instead
         //
         //public static void ResetCollection(string collection)
         //{
-        //    DocumentDBConnection connection = new DocumentDBConnection("https://graphview.documents.azure.com:443/",
+        //    GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
         //            "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
         //            "GroupMatch", collection);
 

@@ -15,20 +15,20 @@ namespace GraphViewUnitTest
     [TestClass]
     public class GremlinFunctionalTestSuite
     {
-        static DocumentDBConnection GetGraphViewConnection()
+        static GraphViewConnection GetGraphViewConnection()
         {
-            //return DocumentDBConnection.ResetGraphAPICollection("https://graphview.documents.azure.com:443/",
+            //return GraphViewConnection.ResetGraphAPICollection("https://graphview.documents.azure.com:443/",
             //    "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
             //    "GroupMatch", "GremlinFunctionalTestSuite", AbstractGremlinTest.TEST_USE_REVERSE_EDGE);
 
-            return new DocumentDBConnection("https://localhost:8081/",
+            return new GraphViewConnection("https://localhost:8081/",
                 "C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==",
                 "GroupMatch", "GremlinFunctionalTestSuite", GraphType.GraphAPIOnly,
                 AbstractGremlinTest.TEST_USE_REVERSE_EDGE, AbstractGremlinTest.TEST_SPILLED_EDGE_THRESHOLD_VIAGRAPHAPI,
                 null);
         }
 
-        static GraphViewCommand GetGraphViewCommand(DocumentDBConnection connection)
+        static GraphViewCommand GetGraphViewCommand(GraphViewConnection connection)
         {
             GraphViewCommand command = new GraphViewCommand(connection);
             //command.UseReverseEdges = false;
@@ -39,7 +39,7 @@ namespace GraphViewUnitTest
         [TestMethod]
         public void Test0Count()
         {
-            DocumentDBConnection connection = GetGraphViewConnection();
+            GraphViewConnection connection = GetGraphViewConnection();
 
             GraphViewCommand graph = GetGraphViewCommand(connection);
 
@@ -60,7 +60,7 @@ namespace GraphViewUnitTest
         [TestMethod]
         public void Test1CreateApplication()
         {
-            DocumentDBConnection connection = DocumentDBConnection.ResetGraphAPICollection("https://localhost:8081/",
+            GraphViewConnection connection = GraphViewConnection.ResetGraphAPICollection("https://localhost:8081/",
                 "C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==",
                 "GroupMatch", "GremlinFunctionalTestSuite", AbstractGremlinTest.TEST_USE_REVERSE_EDGE, AbstractGremlinTest.TEST_SPILLED_EDGE_THRESHOLD_VIAGRAPHAPI, null);
 
@@ -98,7 +98,7 @@ namespace GraphViewUnitTest
         [TestMethod]
         public void Test2ImportModels()
         {
-            DocumentDBConnection connection = GetGraphViewConnection();
+            GraphViewConnection connection = GetGraphViewConnection();
             //connection.ResetCollection();
 
             GraphViewCommand graph = GetGraphViewCommand(connection);
@@ -566,7 +566,7 @@ namespace GraphViewUnitTest
         [TestMethod]
         public void Test3ImportInstances()
         {
-            DocumentDBConnection connection = GetGraphViewConnection();
+            GraphViewConnection connection = GetGraphViewConnection();
             //connection.ResetCollection();
 
             GraphViewCommand graph = GetGraphViewCommand(connection);
@@ -1515,7 +1515,7 @@ namespace GraphViewUnitTest
         [TestMethod]
         public void Test4ListAllProducts()
         {
-            DocumentDBConnection connection = GetGraphViewConnection();
+            GraphViewConnection connection = GetGraphViewConnection();
             //connection.ResetCollection();
 
             GraphViewCommand graph = GetGraphViewCommand(connection);
@@ -1662,7 +1662,7 @@ namespace GraphViewUnitTest
         [TestMethod]
         public void Test5GetProduct()
         {
-            DocumentDBConnection connection = GetGraphViewConnection();
+            GraphViewConnection connection = GetGraphViewConnection();
             //connection.ResetCollection();
 
             GraphViewCommand graph = GetGraphViewCommand(connection);
@@ -1801,7 +1801,7 @@ namespace GraphViewUnitTest
         [TestMethod]
         public void Test6GetProductModel()
         {
-            DocumentDBConnection connection = GetGraphViewConnection();
+            GraphViewConnection connection = GetGraphViewConnection();
             //connection.ResetCollection();
 
             GraphViewCommand graph = GetGraphViewCommand(connection);
@@ -1940,7 +1940,7 @@ namespace GraphViewUnitTest
         [TestMethod]
         public void Test7GetDevicesforProduct()
         {
-            DocumentDBConnection connection = GetGraphViewConnection();
+            GraphViewConnection connection = GetGraphViewConnection();
             //connection.ResetCollection();
 
             GraphViewCommand graph = GetGraphViewCommand(connection);
@@ -2006,7 +2006,7 @@ namespace GraphViewUnitTest
         [TestMethod]
         public void Test8UpdateProductModel_AddRefProperty()
         {
-            DocumentDBConnection connection = GetGraphViewConnection();
+            GraphViewConnection connection = GetGraphViewConnection();
             //connection.ResetCollection();
 
             GraphViewCommand graph = GetGraphViewCommand(connection);
@@ -2887,7 +2887,7 @@ namespace GraphViewUnitTest
         [TestMethod]
         public void Test9LinkProducttoDevice()
         {
-            DocumentDBConnection connection = GetGraphViewConnection();
+            GraphViewConnection connection = GetGraphViewConnection();
             //connection.ResetCollection();
 
             GraphViewCommand graph = GetGraphViewCommand(connection);
@@ -3035,7 +3035,7 @@ namespace GraphViewUnitTest
         [TestMethod]
         public void Test10UpdateProductProperty()
         {
-            DocumentDBConnection connection = GetGraphViewConnection();
+            GraphViewConnection connection = GetGraphViewConnection();
             //connection.ResetCollection();
 
             GraphViewCommand graph = GetGraphViewCommand(connection);
@@ -3215,7 +3215,7 @@ namespace GraphViewUnitTest
         [TestMethod]
         public void Test11UpdateProductrefProperty()
         {
-            DocumentDBConnection connection = GetGraphViewConnection();
+            GraphViewConnection connection = GetGraphViewConnection();
             //connection.ResetCollection();
 
             GraphViewCommand graph = GetGraphViewCommand(connection);
@@ -3950,7 +3950,7 @@ namespace GraphViewUnitTest
         [TestMethod]
         public void Test12DeleteProductProperty_validation_error()
         {
-            DocumentDBConnection connection = GetGraphViewConnection();
+            GraphViewConnection connection = GetGraphViewConnection();
             GraphViewCommand graph = GetGraphViewCommand(connection);
             graph.OutputFormat = OutputFormat.GraphSON;
 
@@ -4130,7 +4130,7 @@ namespace GraphViewUnitTest
         [TestMethod]
         public void Test13GetProduct_format_resolved()
         {
-            DocumentDBConnection connection = GetGraphViewConnection();
+            GraphViewConnection connection = GetGraphViewConnection();
             //connection.ResetCollection();
 
             GraphViewCommand graph = GetGraphViewCommand(connection);
@@ -4278,7 +4278,7 @@ namespace GraphViewUnitTest
         [TestMethod]
         public void Test14DeleteProduct()
         {
-            DocumentDBConnection connection = GetGraphViewConnection();
+            GraphViewConnection connection = GetGraphViewConnection();
             //connection.ResetCollection();
 
             GraphViewCommand graph = GetGraphViewCommand(connection);
@@ -4416,7 +4416,7 @@ namespace GraphViewUnitTest
         [TestMethod]
         public void Test15DeleteProductModel()
         {
-            DocumentDBConnection connection = GetGraphViewConnection();
+            GraphViewConnection connection = GetGraphViewConnection();
             //connection.ResetCollection();
 
             GraphViewCommand graph = GetGraphViewCommand(connection);
@@ -4560,7 +4560,7 @@ namespace GraphViewUnitTest
         [TestMethod]
         public void Test16GetProduct_notfound()
         {
-            DocumentDBConnection connection = GetGraphViewConnection();
+            GraphViewConnection connection = GetGraphViewConnection();
             //connection.ResetCollection();
 
             GraphViewCommand graph = GetGraphViewCommand(connection);
@@ -4708,7 +4708,7 @@ namespace GraphViewUnitTest
         [TestMethod]
         public void Test17DeleteApp()
         {
-            DocumentDBConnection connection = GetGraphViewConnection();
+            GraphViewConnection connection = GetGraphViewConnection();
             //connection.ResetCollection();
 
             GraphViewCommand graph = GetGraphViewCommand(connection);

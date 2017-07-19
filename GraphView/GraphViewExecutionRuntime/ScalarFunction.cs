@@ -15,7 +15,7 @@ namespace GraphView
     /// These types are not a JSON standard, but a convention used Json.NET.  
     /// 
     /// Note: the precedence follows that of SQL Server.
-    internal enum JsonDataType
+    public enum JsonDataType
     {
         Bytes = 0,
         String,

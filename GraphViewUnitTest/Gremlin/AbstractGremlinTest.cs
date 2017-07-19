@@ -42,7 +42,7 @@ namespace GraphViewUnitTest.Gremlin
 
         internal const int TEST_SPILLED_EDGE_THRESHOLD_VIAGRAPHAPI = 1;
 
-        protected static DocumentDBConnection graphConnection;
+        protected static GraphViewConnection graphConnection;
 
         public TestContext TestContext { get; set; }
 
@@ -67,7 +67,7 @@ namespace GraphViewUnitTest.Gremlin
 
                 GraphDataLoader.ResetToCompatibleData_Modern(endpoint, authKey, databaseId, collectionId, TEST_USE_REVERSE_EDGE);
 
-                graphConnection = new DocumentDBConnection(
+                graphConnection = new GraphViewConnection(
                     endpoint, authKey, databaseId, collectionId,
                     GraphType.CompatibleOnly,
                     edgeSpillThreshold: 1,
@@ -81,7 +81,7 @@ namespace GraphViewUnitTest.Gremlin
 
                 GraphDataLoader.LoadGraphData(GraphData.MODERN);
 
-                graphConnection = new DocumentDBConnection(
+                graphConnection = new GraphViewConnection(
                     endpoint, authKey, databaseId, collectionId,
                     GraphType.GraphAPIOnly,
                     edgeSpillThreshold: AbstractGremlinTest.TEST_SPILLED_EDGE_THRESHOLD_VIAGRAPHAPI,

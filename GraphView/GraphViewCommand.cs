@@ -31,15 +31,18 @@ namespace GraphView
 {
     public partial class GraphViewCommand : IDisposable
     {
-        public DocumentDBConnection DocumentDbConnection { get; set; }
+        public GraphViewConnection Connection { get; set; }
+
+        public VertexObjectCache VertexCache { get; }
         
         public string CommandText { get; set; }
 
         public OutputFormat OutputFormat { get; set; }
 
-        public GraphViewCommand(DocumentDBConnection connecion)
+        public GraphViewCommand(GraphViewConnection connection)
         {
-            this.DocumentDbConnection = connecion;
+            this.Connection = connection;
+            this.VertexCache = new VertexObjectCache(this);
         }
 
         public GraphViewCommand(string commandText)
@@ -47,10 +50,10 @@ namespace GraphView
             CommandText = commandText;
         }
 
-        public GraphViewCommand(string commandText, DocumentDBConnection connection)
+        public GraphViewCommand(string commandText, GraphViewConnection connection)
         {
             CommandText = commandText;
-            this.DocumentDbConnection = connection;
+            this.Connection = connection;
         }
 
         public IEnumerable<string> Execute()
@@ -78,7 +81,7 @@ namespace GraphView
 
         public GraphTraversal g()
         {
-            return new GraphTraversal(this.DocumentDbConnection, OutputFormat);
+            return new GraphTraversal(this, OutputFormat);
         }
     }
 }

@@ -64,7 +64,6 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="GraphViewConnection\GraphViewConnection.cs" />
     <Compile Include="GraphViewDBPortal\CollectionType.cs" />
     <Compile Include="GraphViewExecutionRuntime\CollectionOperator.cs" />
     <Compile Include="GraphViewDBPortal\DbPortal.cs" />
@@ -228,7 +227,7 @@
     <Compile Include="TSQL Syntax Tree\WControlFlow.cs" />
     <Compile Include="TSQL Syntax Tree\WCreateViewStatement.cs" />
     <Compile Include="TSQL Syntax Tree\WDeclareVariableStatement.cs" />
-    <Compile Include="GraphViewConnection\DocumentDBConnection.cs" />
+    <Compile Include="GraphViewConnection\GraphViewConnection.cs" />
     <Compile Include="GraphViewException.cs" />
     <Compile Include="GraphViewQueryCompiler\MatchGraph.cs" />
     <Compile Include="TSQL Syntax Tree\WCallTarget.cs" />
@@ -240,7 +239,7 @@
     <Compile Include="TSQL Syntax Tree\WIdentifierOrValueExpression.cs" />
     <Compile Include="TSQL Syntax Tree\WTableHint.cs" />
     <Compile Include="TSQL Syntax Tree\WTransactionStatement.cs" />
-    <Compile Include="GraphViewConnection\VertexObjectCache.cs" />
+    <Compile Include="VertexObjectCache.cs" />
     <Compile Include="TSQL Syntax Tree\WSqlFragmentVisitor.cs" />
     <Compile Include="TSQL Syntax Tree\WGraphTableColumn.cs" />
     <Compile Include="TSQL Syntax Tree\WDataTypeReference.cs" />

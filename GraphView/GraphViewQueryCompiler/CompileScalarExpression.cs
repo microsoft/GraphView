@@ -8,7 +8,7 @@ namespace GraphView
 {
     public partial class WScalarExpression
     {
-        internal virtual ScalarFunction CompileToFunction(QueryCompilationContext context, DocumentDBConnection dbConnection)
+        internal virtual ScalarFunction CompileToFunction(QueryCompilationContext context, GraphViewCommand command)
         {
             throw new NotImplementedException();
         }
@@ -16,20 +16,20 @@ namespace GraphView
 
     public partial class WScalarSubquery
     {
-        internal override ScalarFunction CompileToFunction(QueryCompilationContext context, DocumentDBConnection dbConnection)
+        internal override ScalarFunction CompileToFunction(QueryCompilationContext context, GraphViewCommand command)
         {
             QueryCompilationContext subContext = new QueryCompilationContext(context);
-            GraphViewExecutionOperator subQueryOp = SubQueryExpr.Compile(subContext, dbConnection);
+            GraphViewExecutionOperator subQueryOp = SubQueryExpr.Compile(subContext, command);
             return new ScalarSubqueryFunction(subQueryOp, subContext.OuterContextOp);
         }
     }
 
     public partial class WBinaryExpression
     {
-        internal override ScalarFunction CompileToFunction(QueryCompilationContext context, DocumentDBConnection dbConnection)
+        internal override ScalarFunction CompileToFunction(QueryCompilationContext context, GraphViewCommand command)
         {
-            ScalarFunction f1 = FirstExpr.CompileToFunction(context, dbConnection);
-            ScalarFunction f2 = SecondExpr.CompileToFunction(context, dbConnection);
+            ScalarFunction f1 = FirstExpr.CompileToFunction(context, command);
+            ScalarFunction f2 = SecondExpr.CompileToFunction(context, command);
 
             return new BinaryScalarFunction(f1, f2, ExpressionType);
         }
@@ -37,7 +37,7 @@ namespace GraphView
 
     public partial class WColumnReferenceExpression
     {
-        internal override ScalarFunction CompileToFunction(QueryCompilationContext context, DocumentDBConnection dbConnection)
+        internal override ScalarFunction CompileToFunction(QueryCompilationContext context, GraphViewCommand command)
         {
             if (ColumnType == ColumnType.Wildcard)
                 return null;
@@ -48,7 +48,7 @@ namespace GraphView
 
     public partial class WValueExpression
     {
-        internal override ScalarFunction CompileToFunction(QueryCompilationContext context, DocumentDBConnection dbConnection)
+        internal override ScalarFunction CompileToFunction(QueryCompilationContext context, GraphViewCommand command)
         {
             DateTime date_value;
             double double_value;
@@ -109,7 +109,7 @@ namespace GraphView
 
     public partial class WFunctionCall
     {
-        internal override ScalarFunction CompileToFunction(QueryCompilationContext context, DocumentDBConnection dbConnection)
+        internal override ScalarFunction CompileToFunction(QueryCompilationContext context, GraphViewCommand command)
         {
             string funcName = FunctionName.ToString().ToLowerInvariant();
 
@@ -152,14 +152,14 @@ namespace GraphView
 
                     foreach (var parameter in Parameters)
                     {
-                        inputOfCompose2.Add(parameter.CompileToFunction(context, dbConnection));
+                        inputOfCompose2.Add(parameter.CompileToFunction(context, command));
                     }
 
                     return new Compose2(inputOfCompose2);
                 case "path":
                     List<Tuple<ScalarFunction, bool, HashSet<string>>> pathStepList;
                     List<ScalarFunction> byFuncList;
-                    WPathTableReference.GetPathStepListAndByFuncList(context, dbConnection, this.Parameters,
+                    WPathTableReference.GetPathStepListAndByFuncList(context, command, this.Parameters,
                         out pathStepList, out byFuncList);
                     return new Path(pathStepList);
                 default:
