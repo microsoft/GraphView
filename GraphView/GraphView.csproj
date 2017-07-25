@@ -57,6 +57,7 @@
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
+    <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="Microsoft.CSharp" />
@@ -74,6 +75,7 @@
     <Compile Include="GraphViewExecutionRuntime\SelectOperators.cs" />
     <Compile Include="GraphViewQueryCompiler\AttachWhereClauseVisitor.cs" />
     <Compile Include="GraphViewExecutionRuntime\BooleanFunction.cs" />
+    <Compile Include="GraphViewQueryCompiler\ToDocDBStringVisitor.cs" />
     <Compile Include="GraphViewUtils\DictionaryExtensions.cs" />
     <Compile Include="GraphViewQueryCompiler\CompileBooleanExpression.cs" />
     <Compile Include="GraphViewQueryCompiler\CompileModification.cs" />

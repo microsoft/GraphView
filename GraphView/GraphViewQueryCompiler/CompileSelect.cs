@@ -365,6 +365,49 @@ namespace GraphView
                 hasNodePredicates ? $" AND ({nodeCondition.ToString()})" : "",
                 hasEdgePredicates ? $" AND ({edgeConditionString})" : "");
 
+            WBooleanExpression searchCondition = new WBooleanComparisonExpression
+            {
+                ComparisonType = BooleanComparisonType.Equals,
+                FirstExpr = new WColumnReferenceExpression(nodeAlias, DocumentDBKeywords.KW_EDGEDOC_IDENTIFIER),
+                SecondExpr = new WValueExpression("null", false)
+            };
+
+            if (hasNodePredicates)
+            {
+                searchCondition = new WBooleanBinaryExpression
+                {
+                    BooleanExpressionType = BooleanBinaryExpressionType.And,
+                    FirstExpr = new WBooleanParenthesisExpression
+                    {
+                        Expression = searchCondition
+                    },
+                    SecondExpr = new WBooleanParenthesisExpression
+                    {
+                        Expression = nodeCondition
+                    }
+                };
+            }
+
+            if (hasEdgePredicates)
+            {
+                searchCondition = new WBooleanBinaryExpression
+                {
+                    BooleanExpressionType = BooleanBinaryExpressionType.And,
+                    FirstExpr = new WBooleanParenthesisExpression
+                    {
+                        Expression = searchCondition
+                    },
+                    SecondExpr = new WBooleanParenthesisExpression
+                    {
+                        Expression = edgeCondition
+                    }
+                };
+            }
+
+            ToDocDbStringVisitor docDbStringVisitor = new ToDocDbStringVisitor();
+            docDbStringVisitor.Invoke(searchCondition);
+            string qqq = docDbStringVisitor.GetString();
+
             JsonQuery jsonQuery = new JsonQuery
             {
                 Alias = nodeAlias,
