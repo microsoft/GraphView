@@ -40,7 +40,7 @@ namespace GraphView
             this.EdgeProperties = rhs.EdgeProperties;
         }
 
-        public string ToString(DatabaseType dbType)
+        public virtual string ToString(DatabaseType dbType)
         {
             switch (dbType) {
             case DatabaseType.DocumentDB:
@@ -54,6 +54,113 @@ namespace GraphView
                        $"{this.SelectClause}";
             default:
                 throw new NotImplementedException();
+            }
+        }
+    }
+
+    internal class ZQuery : JsonQuery
+    {
+        public WBooleanExpression RawWhereClause;
+
+        public string NodeAlias;
+        public string EdgeAlias;
+
+        public string PartitionKey;
+
+        public HashSet<string> FlatProperties;
+
+        public Dictionary<string, string> JoinDictionary;
+
+        private string zQueryString;
+
+        public ZQuery()
+        {
+            this.FlatProperties = new HashSet<string>();
+            this.JoinDictionary = new Dictionary<string, string>();
+        }
+
+        public string ToDocDbString()
+        {
+            if (this.zQueryString != null)
+            {
+                return this.zQueryString;
+            }
+            // construct select clause
+            StringBuilder selectStrBuilder = new StringBuilder();
+            selectStrBuilder.AppendFormat("SELECT {0}", this.NodeAlias);
+            if (this.EdgeAlias != null)
+            {
+                selectStrBuilder.AppendFormat(", {{\"{0}\": {1}.{0}}} AS {1} ", DocumentDBKeywords.KW_EDGE_ID, this.EdgeAlias);
+            }
+            string selectClauseString = selectStrBuilder.ToString();
+
+
+            // cpmstruct FROM clause with the first element of SelectAlias
+            StringBuilder fromStrBuilder = new StringBuilder();
+            fromStrBuilder.AppendFormat("FROM {0}", this.NodeAlias);
+            string fromClauseString = fromStrBuilder.ToString();
+
+
+            // construct JOIN clause, because the order of replacement is not matter,
+            // so use Dictinaty to store it(JoinDictionary).
+
+            // True --> true
+            BooleanWValueExpressionVisitor booleanWValueExpressionVisitor = new BooleanWValueExpressionVisitor();
+            booleanWValueExpressionVisitor.Invoke(this.RawWhereClause);
+
+            NormalizeNodePredicatesWColumnReferenceExpressionVisitor normalizeNodePredicatesColumnReferenceExpressionVisitor =
+                new NormalizeNodePredicatesWColumnReferenceExpressionVisitor(this.PartitionKey);
+            normalizeNodePredicatesColumnReferenceExpressionVisitor.AddFlatProperties(this.FlatProperties);
+            Dictionary<string, string> referencedProperties =
+                normalizeNodePredicatesColumnReferenceExpressionVisitor.Invoke(this.RawWhereClause);
+            StringBuilder joinStrBuilder = new StringBuilder();
+            foreach (var referencedProperty in referencedProperties)
+            {
+                joinStrBuilder.AppendFormat(" JOIN {0} IN {1}['{2}'] ", referencedProperty.Key,
+                    this.NodeAlias, referencedProperty.Value);
+            }
+
+            foreach (KeyValuePair<string, string> pair in JoinDictionary)
+            {
+                joinStrBuilder.AppendFormat(" JOIN {0} IN {1} ", pair.Key, pair.Value);
+            }
+            string joinClauseString = joinStrBuilder.ToString();
+
+
+            // WHERE clause
+            // convert some E_6.label --> E_6["label"] if needed(Add 'E_6' to visitor.NeedsConvertion before invoke the visitor).
+            
+            if (this.EdgeAlias != null)
+            {
+                DMultiPartIdentifierVisitor normalizeEdgePredicatesColumnReferenceExpressionVisitor = new DMultiPartIdentifierVisitor();
+                normalizeEdgePredicatesColumnReferenceExpressionVisitor.NeedsConvertion.Add(this.EdgeAlias);
+                normalizeEdgePredicatesColumnReferenceExpressionVisitor.Invoke(this.RawWhereClause);
+            }
+            
+
+            ToDocDbStringVisitor docDbStringVisitor = new ToDocDbStringVisitor();
+            docDbStringVisitor.Invoke(this.RawWhereClause);
+            string whereClauseString = $"WHERE ({docDbStringVisitor.GetString()})";
+
+            this.zQueryString = $"{selectClauseString}\n" +
+                           $"{fromClauseString} {joinClauseString}\n" +
+                           $"{whereClauseString}";
+
+            return this.zQueryString;
+        }
+
+        public override string ToString(DatabaseType dbType)
+        {
+            switch (dbType)
+            {
+                case DatabaseType.DocumentDB:
+                    return this.ToDocDbString();
+                case DatabaseType.JsonServer:
+                    return $"FOR {this.Alias} IN ('Node') " +
+                           $"{(string.IsNullOrEmpty(this.WhereSearchCondition) ? "" : $"WHERE {this.WhereSearchCondition}")}" +
+                           $"{this.SelectClause}";
+                default:
+                    throw new NotImplementedException();
             }
         }
     }

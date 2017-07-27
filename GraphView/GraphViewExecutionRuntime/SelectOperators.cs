@@ -311,6 +311,7 @@ namespace GraphView
 
                     string inClause = $"{this.sinkVertexQuery.Alias}.id IN ({sinkReferenceList.ToString()})";
 
+                    // TODO: (for Zing) here will turn ZQuery to JsonQuery and lost the virtual function pointer, remenber to remove here.
                     JsonQuery toSendQuery = new JsonQuery(this.sinkVertexQuery);
                     if (string.IsNullOrEmpty(toSendQuery.WhereSearchCondition)) {
                         toSendQuery.WhereSearchCondition = inClause;
@@ -347,9 +348,19 @@ namespace GraphView
                         // The following lines are added for debugging convenience
                         // It nearly does no harm to performance
                         List<Tuple<VertexField, RawRecord>> temp = new List<Tuple<VertexField, RawRecord>>();
-                        while (verticesEnumerator.MoveNext()) {
-                            temp.Add(verticesEnumerator.Current);
+                        try
+                        {
+                            while (verticesEnumerator.MoveNext())
+                            {
+                                temp.Add(verticesEnumerator.Current);
+                            }
                         }
+                        catch (Exception e)
+                        {
+                            Console.WriteLine(toSendQuery.ToString(DatabaseType.DocumentDB));
+                            throw e;
+                        }
+                        
 
                         //
                         // Now no matter whether this graph is CompatibleOnly, we should construct the sink vertices

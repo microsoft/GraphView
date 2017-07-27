@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Data;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Text;
 
@@ -263,6 +264,10 @@ namespace GraphView
             bool isReverseAdj = edge != null ? IsTraversalThroughPhysicalReverseEdge(edge) : false;
             bool isStartVertexTheOriginVertex = edge != null ? !edge.IsReversed : false;
 
+            // refacting!
+            ZQuery zQuery = new ZQuery();
+            zQuery.PartitionKey = partitionKey;
+
 
             foreach (string propertyName in node.Properties) {
                 nodeProperties.Add(propertyName);
@@ -272,6 +277,8 @@ namespace GraphView
             // SELECT N_0 FROM Node N_0
             //
             selectStrBuilder.Append(nodeAlias);
+
+            zQuery.NodeAlias = nodeAlias;
 
             if (edge != null)
             {
@@ -285,6 +292,8 @@ namespace GraphView
                 //
                 selectStrBuilder.AppendFormat(", {{\"{0}\": {1}.{0}}} AS {1} ", DocumentDBKeywords.KW_EDGE_ID, edgeAlias);
 
+                zQuery.EdgeAlias = edgeAlias;
+
                 foreach (string propertyName in edge.Properties) {
                     edgeProperties.Add(propertyName);
                 }
@@ -296,6 +305,8 @@ namespace GraphView
             }
 
             WBooleanExpression nodeCondition = tempNodeCondition.Copy();
+//            WBooleanExpression nodeCondition = tempNodeCondition;
+            // TODO: We can remove below code about nodeCondition when we finish the other TODO item at: SelectOperators.cs:line 314 :)
             BooleanWValueExpressionVisitor booleanWValueExpressionVisitor = new BooleanWValueExpressionVisitor();
             booleanWValueExpressionVisitor.Invoke(nodeCondition);
 
@@ -320,18 +331,21 @@ namespace GraphView
                 Debug.Assert(edge == null);
             }
 
+            WBooleanExpression tempEdgeCondition = null;
             if (edge != null)
             {
                 joinStrBuilder.AppendFormat(" JOIN {0} IN {1}.{2} ", edgeAlias, nodeAlias,
                     isReverseAdj ? DocumentDBKeywords.KW_VERTEX_REV_EDGE : DocumentDBKeywords.KW_VERTEX_EDGE);
+                zQuery.JoinDictionary.Add(edgeAlias, $"{nodeAlias}.{(isReverseAdj ? DocumentDBKeywords.KW_VERTEX_REV_EDGE : DocumentDBKeywords.KW_VERTEX_EDGE)}");
 
-                WBooleanExpression tempEdgeCondition = null;
+
                 foreach (WBooleanExpression predicate in edge.Predicates) {
                     tempEdgeCondition = WBooleanBinaryExpression.Conjunction(tempEdgeCondition, predicate);
                 }
 
                 booleanWValueExpressionVisitor.Invoke(tempEdgeCondition);
 
+                // E_6.label --> E_6["label"]
                 edgeCondition = tempEdgeCondition.Copy();
                 DMultiPartIdentifierVisitor normalizeEdgePredicatesColumnReferenceExpressionVisitor = new DMultiPartIdentifierVisitor();
                 normalizeEdgePredicatesColumnReferenceExpressionVisitor.Invoke(edgeCondition);
@@ -341,28 +355,36 @@ namespace GraphView
             string edgeConditionString = edgeCondition?.ToString();
             if (!string.IsNullOrEmpty(edgeConditionString))
             {
-                edgeConditionString = string.Format("({0}) OR {1}.{2} = true",
-                    edgeConditionString,
-                    nodeAlias,
-                    isReverseAdj
-                        ? DocumentDBKeywords.KW_VERTEX_REVEDGE_SPILLED
-                        : DocumentDBKeywords.KW_VERTEX_EDGE_SPILLED);
+                edgeConditionString =
+                    $"({edgeConditionString}) OR {nodeAlias}.{(isReverseAdj ? DocumentDBKeywords.KW_VERTEX_REVEDGE_SPILLED : DocumentDBKeywords.KW_VERTEX_EDGE_SPILLED)} = true";
+
+                // for zQuery
+                tempEdgeCondition = new WBooleanBinaryExpression
+                {
+                    BooleanExpressionType = BooleanBinaryExpressionType.Or,
+                    FirstExpr = new WBooleanParenthesisExpression
+                    {
+                        Expression = tempEdgeCondition
+                    },
+                    SecondExpr = new WBooleanComparisonExpression
+                    {
+                        ComparisonType = BooleanComparisonType.Equals,
+                        FirstExpr = new WColumnReferenceExpression(nodeAlias, isReverseAdj
+                            ? DocumentDBKeywords.KW_VERTEX_REVEDGE_SPILLED
+                            : DocumentDBKeywords.KW_VERTEX_EDGE_SPILLED),
+                        SecondExpr = new WValueExpression("true", false)
+                    }
+                };
+                zQuery.FlatProperties.Add(isReverseAdj ? DocumentDBKeywords.KW_VERTEX_REVEDGE_SPILLED: DocumentDBKeywords.KW_VERTEX_EDGE_SPILLED);
             }
 
             bool hasNodePredicates = nodeCondition != null;
             bool hasEdgePredicates = edgeCondition != null;
-            //
-            // (IS_DEFINED(nodeAlias._viaGraphAPI) = true AND (nodeCondition)) AND (edgeCondition)
-            //
-            //string searchConditionString = string.Format(
-            //    "(IS_DEFINED({0}.{1}) = true{2}){3}",
-            //    nodeAlias, DocumentDBKeywords.KW_VERTEX_VIAGRAPHAPI,
-            //    hasNodePredicates ? $" AND ({nodeCondition.ToString()})" : "",
-            //    hasEdgePredicates ? $" AND ({edgeConditionString})" : "");
+
             string searchConditionString = string.Format(
                 "(IS_DEFINED({0}.{1}) = false {2}) {3}",
                 nodeAlias, DocumentDBKeywords.KW_EDGEDOC_IDENTIFIER,
-                hasNodePredicates ? $" AND ({nodeCondition.ToString()})" : "",
+                hasNodePredicates ? $" AND ({nodeCondition})" : "",
                 hasEdgePredicates ? $" AND ({edgeConditionString})" : "");
 
             WBooleanExpression searchCondition = new WBooleanComparisonExpression
@@ -371,53 +393,42 @@ namespace GraphView
                 FirstExpr = new WColumnReferenceExpression(nodeAlias, DocumentDBKeywords.KW_EDGEDOC_IDENTIFIER),
                 SecondExpr = new WValueExpression("null", false)
             };
+            zQuery.FlatProperties.Add(DocumentDBKeywords.KW_EDGEDOC_IDENTIFIER);
 
-            if (hasNodePredicates)
+            if (tempNodeCondition != null)
             {
-                searchCondition = new WBooleanBinaryExpression
-                {
-                    BooleanExpressionType = BooleanBinaryExpressionType.And,
-                    FirstExpr = new WBooleanParenthesisExpression
-                    {
-                        Expression = searchCondition
-                    },
-                    SecondExpr = new WBooleanParenthesisExpression
-                    {
-                        Expression = nodeCondition
-                    }
-                };
+                searchCondition = WBooleanBinaryExpression.Conjunction(searchCondition,
+                    new WBooleanParenthesisExpression {Expression = tempNodeCondition});
             }
 
             if (hasEdgePredicates)
             {
-                searchCondition = new WBooleanBinaryExpression
-                {
-                    BooleanExpressionType = BooleanBinaryExpressionType.And,
-                    FirstExpr = new WBooleanParenthesisExpression
-                    {
-                        Expression = searchCondition
-                    },
-                    SecondExpr = new WBooleanParenthesisExpression
-                    {
-                        Expression = edgeCondition
-                    }
-                };
+                searchCondition = WBooleanBinaryExpression.Conjunction(searchCondition,
+                    new WBooleanParenthesisExpression {Expression = tempEdgeCondition.Copy()});
             }
 
-            ToDocDbStringVisitor docDbStringVisitor = new ToDocDbStringVisitor();
-            docDbStringVisitor.Invoke(searchCondition);
-            string qqq = docDbStringVisitor.GetString();
+            
+            zQuery.RawWhereClause = searchCondition; // Most important variable of a ZQuery object
+//            var qqq = zQuery.ToDocDbString(); // for debug
 
-            JsonQuery jsonQuery = new JsonQuery
-            {
-                Alias = nodeAlias,
-                JoinClause = joinStrBuilder.ToString(),
-                SelectClause = selectStrBuilder.ToString(),
-                WhereSearchCondition = searchConditionString,
-                NodeProperties = nodeProperties,
-                EdgeProperties = edgeProperties,
-            };
-            node.AttachedJsonQuery = jsonQuery;
+//            // For debugging
+//            string debugFilePath = @"C:\Users\v-yuzl\Desktop\debug.txt";
+//            using (StreamWriter sw = File.AppendText(debugFilePath))
+//            {
+//                sw.WriteLine(qqq + '\n');
+//            }
+
+            // for compatibility
+            zQuery.Alias = nodeAlias;
+            zQuery.JoinClause = joinStrBuilder.ToString();
+            zQuery.SelectClause = selectStrBuilder.ToString();
+            zQuery.WhereSearchCondition = searchConditionString;
+            zQuery.NodeProperties = nodeProperties;
+            zQuery.EdgeProperties = edgeProperties;
+
+//            var ppp = zQuery.ToString(DatabaseType.DocumentDB);
+            
+            node.AttachedJsonQuery = zQuery;
         }
 
         internal static void ConstructJsonQueryOnEdge(GraphViewCommand command, MatchNode node, MatchEdge edge)

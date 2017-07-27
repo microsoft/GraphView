@@ -177,8 +177,16 @@ namespace GraphView
         // <key: encode name with only letters, digits and underscore
         //  value: original column name>
         //
-        private Dictionary<string, string> referencedProperties;
-        private HashSet<string> flatProperties;
+        private readonly Dictionary<string, string> referencedProperties;
+        private readonly HashSet<string> flatProperties;
+
+        public void AddFlatProperties(HashSet<string> ps)
+        {
+            foreach (string s in ps)
+            {
+                this.flatProperties.Add(s);
+            }
+        }
 
         public NormalizeNodePredicatesWColumnReferenceExpressionVisitor(string partitionKey)
         {
@@ -252,6 +260,13 @@ namespace GraphView
     /// </summary>
     internal class DMultiPartIdentifierVisitor : WSqlFragmentVisitor
     {
+        public HashSet<string> NeedsConvertion;
+
+        public DMultiPartIdentifierVisitor()
+        {
+            this.NeedsConvertion = new HashSet<string>();
+        }
+
         public void Invoke(WBooleanExpression booleanExpression)
         {
             if (booleanExpression != null) {
@@ -264,9 +279,13 @@ namespace GraphView
         //
         public override void Visit(WColumnReferenceExpression node)
         {
-            node.MultiPartIdentifier = new DMultiPartIdentifier(node.MultiPartIdentifier);
+            if (this.NeedsConvertion.Count == 0 || this.NeedsConvertion.Contains(node.TableReference))
+            {
+                node.MultiPartIdentifier = new DMultiPartIdentifier(node.MultiPartIdentifier);
+            }
         }
     }
+
 
     /// <summary>
     /// Return how many times have GraphView runtime functions appeared in a BooleanExpression
