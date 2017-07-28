@@ -989,47 +989,91 @@ namespace GraphView
 
         public async void repartitionByBFS(GraphViewConnection srcConnection)
         {
-            
-            // (1) iterate all vertex
-            GraphViewCommand srcCMD = new GraphViewCommand(srcConnection);
-            var processedIDSet = new HashSet<String>();
-            var tempIDList = new List<Object>();
-            var swapTempIDList = new List<String>();
-            var allV = srcCMD.g().V().Next();
-            foreach (var vertex in allV)
-            {
-                tempIDList.Clear();
-                
-                if(processedIDSet.Contains(vertex))
-                {
-                    continue;
-                } else
-                {
-                    tempIDList.Add(vertex.Replace("v", "").Replace("[", "").Replace("]", ""));
-                    //insertForTheSamePartition(srcConnection, tempIDList, processedIDSet, 0);
-                    //tempIDList.Clear();
-                    processedIDSet.Add(vertex);
-                }
 
-                var partition = srcConnection.getMinLoadPartitionIndex();
-                while(tempIDList.Count() != 0)
+            // (1) iterate all vertex
+            try
+            {
+                GraphViewCommand srcCMD = new GraphViewCommand(srcConnection);
+                var processedIDSet = new HashSet<String>();
+                var tempIDList = new List<Object>();
+                var swapTempIDList = new List<String>();
+                var allV = srcCMD.g().V().Next();
+                var idBatchSize = 499;
+                foreach (var vertex in allV)
                 {
-                    insertForTheSamePartition(srcConnection,tempIDList, processedIDSet, partition);
-                    var temp = srcCMD.g().V(tempIDList).Out("appear").Next().ToList<String>();
-                    if(temp.Count != 0)
-                    {
-                        int a = 0;
-                    }
                     tempIDList.Clear();
-                    foreach (var v in temp)
+
+                    if (processedIDSet.Contains(vertex))
                     {
-                        if (!processedIDSet.Contains(v))
+                        continue;
+                    }
+                    else
+                    {
+                        tempIDList.Add(vertex.Replace("v", "").Replace("[", "").Replace("]", ""));
+                        processedIDSet.Add(vertex);
+                    }
+
+                    var partition = srcConnection.getMinLoadPartitionIndex();
+                    while (tempIDList.Count() != 0)
+                    {
+                        if(tempIDList.Count > idBatchSize)
                         {
-                            tempIDList.Add(v.Replace("v", "").Replace("[", "").Replace("]", ""));
-                            processedIDSet.Add(v);
+                            var tempCacheNextLevelList = new List<Object>(); 
+                            Console.WriteLine("id exceed the 500 vertexs");
+                            var batchList = new List<Object>();
+                            for(int i =0; i < tempIDList.Count / idBatchSize; i ++)
+                            {
+                                batchList.Clear();
+                                for (int j = 0; j < idBatchSize; j++)
+                                {
+                                    if (tempIDList.Count > 0) { 
+                                    batchList.Add(tempIDList.First());
+                                    tempIDList.RemoveAt(0);
+                                    } else {
+                                    break;
+                                    }
+                                }
+
+                                insertForTheSamePartition(srcConnection, batchList, processedIDSet, partition);
+                                var temp0 = srcCMD.g().V(batchList).Out("appear").Next().ToList<String>();
+                                if (temp0.Count != 0)
+                                    {
+                                        int a = 0;
+                                    }
+                                    //tempIDList.Clear();
+                                    foreach (var v in temp0)
+                                    {
+                                        if (!processedIDSet.Contains(v))
+                                        {
+                                            tempCacheNextLevelList.Add(v.Replace("v", "").Replace("[", "").Replace("]", ""));
+                                            processedIDSet.Add(v);
+                                        }
+                                    }
+                            }
+                            tempIDList = tempCacheNextLevelList;
+                        } else {
+                            insertForTheSamePartition(srcConnection, tempIDList, processedIDSet, partition);
+                            var temp = srcCMD.g().V(tempIDList).Out("appear").Next().ToList<String>();
+                            if (temp.Count != 0)
+                            {
+                                int a = 0;
+                            }
+                            tempIDList.Clear();
+                            foreach (var v in temp)
+                            {
+                                if (!processedIDSet.Contains(v))
+                                {
+                                    tempIDList.Add(v.Replace("v", "").Replace("[", "").Replace("]", ""));
+                                    processedIDSet.Add(v);
+                                }
+                            }
                         }
+                       
                     }
                 }
+            } catch (Exception e)
+            {
+                throw e;
             }
             
         }
@@ -1487,7 +1531,7 @@ namespace GraphView
                 // new yj
                 var result = ExecuteWithRetriesSync(this.DocDBClient, () => this.DocDBClient.CreateDocumentQuery(this._docDBCollectionUri, queryScript, queryOptions).ToList());
                 start2.Stop();
-                //Console.WriteLine("\n\n" + start2.ElapsedMilliseconds + "    :" + queryScript);
+                Console.WriteLine("\n\n" + start2.ElapsedMilliseconds + "    :" + queryScript);
                  
                 return result;
             } catch (Exception e)
