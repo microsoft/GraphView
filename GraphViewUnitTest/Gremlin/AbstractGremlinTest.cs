@@ -57,6 +57,14 @@ namespace GraphViewUnitTest.Gremlin
             //string authKey = ConfigurationManager.AppSettings["DocDBKey"];
             string authKey = ConfigurationManager.AppSettings["DocDBKeyLocal"];
             string databaseId = ConfigurationManager.AppSettings["DocDBDatabaseGremlin"];
+
+            // You can switch data on demand. And if you change the collection Id, you also need to change the parameter of 
+            // GraphDataLoader.LoadGraphData. You can find these data in GraphDataLoader.cs.
+
+            // ClassicGraphData
+            // string collectionId = ConfigurationManager.AppSettings["DocDBCollectionClassic"];
+
+            // ModernGraphData
             string collectionId = ConfigurationManager.AppSettings["DocDBCollectionModern"];
 
             Type classType = Type.GetType(TestContext.FullyQualifiedTestClassName);
@@ -79,6 +87,10 @@ namespace GraphViewUnitTest.Gremlin
             else {
                 Console.WriteLine($"[{TestContext.TestName}] Via Graph API!");
 
+                // ClassicGraphData
+                // GraphDataLoader.LoadGraphData(GraphData.CLASSIC);
+
+                // ModernGraphData
                 GraphDataLoader.LoadGraphData(GraphData.MODERN);
 
                 graphConnection = new GraphViewConnection(
