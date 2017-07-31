@@ -687,9 +687,24 @@ namespace GraphView
         public GraphTraversal From(string fromLabel)
         {
             GremlinAddEOp addEOp = this.GetEndOp() as GremlinAddEOp;
+            GremlinPathOp pathOp = this.GetEndOp() as GremlinPathOp;
+            GremlinSimplePathOp simplePathOp = this.GetEndOp() as GremlinSimplePathOp;
+            GremlinCyclicPathOp cyclicPathOp = this.GetEndOp() as GremlinCyclicPathOp;
             if (addEOp != null)
             {
                 addEOp.FromVertexTraversal = GraphTraversal.__().Select(fromLabel);
+            }
+            else if (pathOp != null)
+            {
+                pathOp.FromLabel = fromLabel;
+            }
+            else if (simplePathOp != null)
+            {
+                simplePathOp.FromLabel = fromLabel;
+            }
+            else if (cyclicPathOp != null)
+            {
+                cyclicPathOp.FromLabel = fromLabel;
             }
             else
             {
@@ -1254,9 +1269,24 @@ namespace GraphView
         public GraphTraversal To(string toLabel)
         {
             GremlinAddEOp addEOp = this.GetEndOp() as GremlinAddEOp;
+            GremlinPathOp pathOp = this.GetEndOp() as GremlinPathOp;
+            GremlinSimplePathOp simplePathOp = this.GetEndOp() as GremlinSimplePathOp;
+            GremlinCyclicPathOp cyclicPathOp = this.GetEndOp() as GremlinCyclicPathOp;
             if (addEOp != null)
             {
                 addEOp.ToVertexTraversal = GraphTraversal.__().Select(toLabel);
+            }
+            else if (pathOp != null)
+            {
+                pathOp.ToLabel = toLabel;
+            }
+            else if (simplePathOp != null)
+            {
+                simplePathOp.ToLabel = toLabel;
+            }
+            else if (cyclicPathOp != null)
+            {
+                cyclicPathOp.ToLabel = toLabel;
             }
             else
             {

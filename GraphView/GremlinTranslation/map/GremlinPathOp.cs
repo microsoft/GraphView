@@ -9,6 +9,8 @@ namespace GraphView
     internal class GremlinPathOp : GremlinTranslationOperator
     {
         public List<GraphTraversal> ByList { get; set; }
+        public string FromLabel { get; set; }
+        public string ToLabel { get; set; }
 
         public GremlinPathOp()
         {
@@ -28,7 +30,7 @@ namespace GraphView
                 ByList.Add(GraphTraversal.__());
             }
 
-            inputContext.PivotVariable.Path(inputContext, ByList);
+            inputContext.PivotVariable.Path(inputContext, ByList, FromLabel, ToLabel);
 
             return inputContext;
         }

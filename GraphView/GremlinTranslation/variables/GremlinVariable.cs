@@ -277,9 +277,9 @@ namespace GraphView
             currentContext.SetPivotVariable(newVariable);
         }
 
-        internal virtual void CyclicPath(GremlinToSqlContext currentContext)
+        internal virtual void CyclicPath(GremlinToSqlContext currentContext, string fromLabel = null, string toLabel = null)
         {
-            GremlinCyclicPathVariable newVariable = new GremlinCyclicPathVariable(GeneratePath(currentContext));
+            GremlinCyclicPathVariable newVariable = new GremlinCyclicPathVariable(GeneratePath(currentContext, fromLabel, toLabel));
             currentContext.VariableList.Add(newVariable);
             currentContext.TableReferencesInFromClause.Add(newVariable);
         }
@@ -637,18 +637,18 @@ namespace GraphView
             currentContext.SetPivotVariable(outVertex);
         }
 
-        private GremlinPathVariable GeneratePath(GremlinToSqlContext currentContext, List<GraphTraversal> byList = null)
+        private GremlinPathVariable GeneratePath(GremlinToSqlContext currentContext, List<GraphTraversal> byList, string fromLabel = null, string toLabel = null)
         {
             //TODO: refactor
             List<GremlinToSqlContext> byContexts = new List<GremlinToSqlContext>();
             List<GremlinVariable> steps = currentContext.GetGlobalPathStepList();
             if (byList == null)
             {
-                byList = new List<GraphTraversal> {GraphTraversal.__()};
+                byList = new List<GraphTraversal> { GraphTraversal.__() };
             }
 
 
-            GremlinGlobalPathVariable newVariable = new GremlinGlobalPathVariable(steps, byContexts);
+            GremlinGlobalPathVariable newVariable = new GremlinGlobalPathVariable(steps, byContexts, fromLabel, toLabel);
             currentContext.VariableList.Add(newVariable);
             currentContext.TableReferencesInFromClause.Add(newVariable);
 
@@ -668,9 +668,25 @@ namespace GraphView
             return newVariable;
         }
 
-        internal virtual void Path(GremlinToSqlContext currentContext, List<GraphTraversal> byList)
+        private GremlinPathVariable GeneratePath(GremlinToSqlContext currentContext, string fromLabel = null, string toLabel = null)
         {
-            currentContext.SetPivotVariable(GeneratePath(currentContext, byList));
+            //TODO: refactor
+            List<GremlinToSqlContext> byContexts = new List<GremlinToSqlContext>();
+            List<GremlinVariable> steps = currentContext.GetGlobalPathStepList();
+
+
+
+            GremlinGlobalPathVariable newVariable = new GremlinGlobalPathVariable(steps, byContexts, fromLabel, toLabel);
+            currentContext.VariableList.Add(newVariable);
+            currentContext.TableReferencesInFromClause.Add(newVariable);
+            newVariable.ByContexts = byContexts;
+
+            return newVariable;
+        }
+
+        internal virtual void Path(GremlinToSqlContext currentContext, List<GraphTraversal> byList, string fromLabel, string toLabel)
+        {
+            currentContext.SetPivotVariable(GeneratePath(currentContext, byList, fromLabel, toLabel));
         }
 
         internal virtual void Project(GremlinToSqlContext currentContext, List<string> projectKeys, List<GremlinToSqlContext> byContexts)
@@ -815,9 +831,9 @@ namespace GraphView
             currentContext.TableReferencesInFromClause.Add(newVariable);
         }
 
-        internal virtual void SimplePath(GremlinToSqlContext currentContext)
+        internal virtual void SimplePath(GremlinToSqlContext currentContext, string fromLabel, string toLabel)
         {
-            GremlinSimplePathVariable newVariable = new GremlinSimplePathVariable(GeneratePath(currentContext));
+            GremlinSimplePathVariable newVariable = new GremlinSimplePathVariable(GeneratePath(currentContext, fromLabel, toLabel));
             currentContext.VariableList.Add(newVariable);
             currentContext.TableReferencesInFromClause.Add(newVariable);
         }

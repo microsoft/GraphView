@@ -9,6 +9,9 @@ namespace GraphView
 {
     internal class GremlinSimplePathOp : GremlinTranslationOperator
     {
+        public string FromLabel { get; set; }
+        public string ToLabel { get; set; }
+
         internal override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = GetInputContext();
@@ -17,7 +20,7 @@ namespace GraphView
                 throw new QueryCompilationException("The PivotVariable can't be null.");
             }
 
-            inputContext.PivotVariable.SimplePath(inputContext);
+            inputContext.PivotVariable.SimplePath(inputContext, FromLabel, ToLabel);
 
             return inputContext;
         }

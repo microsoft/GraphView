@@ -9,6 +9,8 @@ namespace GraphView
 {
     internal class GremlinCyclicPathOp : GremlinTranslationOperator
     {
+        public string FromLabel { get; set; }
+        public string ToLabel { get; set; }
         internal override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = GetInputContext();
@@ -17,7 +19,7 @@ namespace GraphView
                 throw new QueryCompilationException("The PivotVariable can't be null.");
             }
 
-            inputContext.PivotVariable.CyclicPath(inputContext);
+            inputContext.PivotVariable.CyclicPath(inputContext, FromLabel, ToLabel);
 
             return inputContext;
         }
