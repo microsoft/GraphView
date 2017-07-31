@@ -203,6 +203,12 @@ namespace GraphView
             return GetBooleanBinaryExpr(firstExpr, secondExpr, BooleanBinaryExpressionType.And);
         }
 
+        internal static WBooleanBinaryExpression GetOrBooleanBinaryExpr(WBooleanExpression firstExpr,
+            WBooleanExpression secondExpr)
+        {
+            return GetBooleanBinaryExpr(firstExpr, secondExpr, BooleanBinaryExpressionType.Or);
+        }
+
         internal static WExistsPredicate GetExistPredicate(WSelectQueryBlock subQueryExpr)
         {
             return new WExistsPredicate() { Subquery = GetScalarSubquery(subQueryExpr) };
