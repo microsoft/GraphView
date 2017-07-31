@@ -7,6 +7,8 @@ using System.Configuration;
 using System.Linq;
 using System.Threading;
 using GraphViewUnitTest.Gremlin;
+using System.Threading.Tasks;
+using Newtonsoft.Json.Linq;
 
 namespace GraphViewUnitTest
 {
@@ -36,6 +38,16 @@ namespace GraphViewUnitTest
         {
             var results = graph.g().E().Count().Next();
             return JsonConvert.DeserializeObject<dynamic>(graph.g().E().FirstOrDefault()).Count;
+        }
+
+        public void CreateDocs(List<string> docs)
+        {
+            List<Task> tasks = new List<Task>();
+            foreach (string doc in docs)
+            {
+                tasks.Add(graph.Connection.CreateDocumentAsync(JObject.Parse(doc), graph));
+            }
+            Task.WaitAll(tasks.ToArray());
         }
 
         [TestInitialize]

@@ -117,6 +117,7 @@
     <Compile Include="Gremlin\ProcessTests\Traversal\Step\Map\VertexTest.cs" />
     <Compile Include="Gremlin\ProcessTests\Traversal\Step\SideEffect\SubgraphTest.cs" />
     <Compile Include="IoT61.cs" />
+    <Compile Include="IoT728.cs" />
     <Compile Include="IOTQueryTest.cs" />
     <Compile Include="IoTUnitTest.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
