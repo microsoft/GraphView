@@ -179,6 +179,7 @@ namespace GraphView
         //
         private readonly Dictionary<string, string> referencedProperties;
         private readonly HashSet<string> flatProperties;
+        private readonly HashSet<string> skipTableNames;
 
         public void AddFlatProperties(HashSet<string> ps)
         {
@@ -188,10 +189,16 @@ namespace GraphView
             }
         }
 
+        public void AddSkipTableName(string name)
+        {
+            this.skipTableNames.Add(name);
+        }
+
         public NormalizeNodePredicatesWColumnReferenceExpressionVisitor(string partitionKey)
         {
             this.referencedProperties = new Dictionary<string, string>();
             this.flatProperties = new HashSet<string> { GremlinKeyword.NodeID, GremlinKeyword.Label };
+            this.skipTableNames = new HashSet<string>();
             if (partitionKey != null) {
                 this.flatProperties.Add(partitionKey);
             }
@@ -212,8 +219,13 @@ namespace GraphView
 
             if (columnList.Count == 2)
             {
-                string originalColumnName = columnList[1].Value;
+                string tableName = columnList[0].Value;
+                if (this.skipTableNames.Contains(tableName))
+                {
+                    return;
+                }
 
+                string originalColumnName = columnList[1].Value;
                 if (this.flatProperties.Contains(originalColumnName)) {
                     return;
                 }

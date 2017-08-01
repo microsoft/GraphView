@@ -64,6 +64,7 @@ namespace GraphView
 
         public string NodeAlias;
         public string EdgeAlias;
+        public string SelectEdgeAlias; // TODO: refactor
 
         public string PartitionKey;
 
@@ -71,26 +72,38 @@ namespace GraphView
 
         public Dictionary<string, string> JoinDictionary;
 
-        private string zQueryString;
-
         public ZQuery()
         {
             this.FlatProperties = new HashSet<string>();
             this.JoinDictionary = new Dictionary<string, string>();
         }
 
+
+        public void Conjunction(WBooleanExpression condition, BooleanBinaryExpressionType conjunction)
+        {
+            Debug.Assert(condition!=null);
+            this.RawWhereClause = new WBooleanBinaryExpression
+            {
+                FirstExpr = new WBooleanParenthesisExpression
+                {
+                    Expression = this.RawWhereClause
+                },
+                SecondExpr = new WBooleanParenthesisExpression
+                {
+                    Expression = condition
+                },
+                BooleanExpressionType = conjunction
+            };
+        }
+
         public string ToDocDbString()
         {
-            if (this.zQueryString != null)
-            {
-                return this.zQueryString;
-            }
             // construct select clause
             StringBuilder selectStrBuilder = new StringBuilder();
             selectStrBuilder.AppendFormat("SELECT {0}", this.NodeAlias);
-            if (this.EdgeAlias != null)
+            if (this.SelectEdgeAlias != null)
             {
-                selectStrBuilder.AppendFormat(", {{\"{0}\": {1}.{0}}} AS {1} ", DocumentDBKeywords.KW_EDGE_ID, this.EdgeAlias);
+                selectStrBuilder.AppendFormat(", {0}", this.SelectEdgeAlias);
             }
             string selectClauseString = selectStrBuilder.ToString();
 
@@ -103,16 +116,17 @@ namespace GraphView
 
             // construct JOIN clause, because the order of replacement is not matter,
             // so use Dictinaty to store it(JoinDictionary).
-
+            var whereClauseCopy = this.RawWhereClause.Copy();
             // True --> true
             BooleanWValueExpressionVisitor booleanWValueExpressionVisitor = new BooleanWValueExpressionVisitor();
-            booleanWValueExpressionVisitor.Invoke(this.RawWhereClause);
+            booleanWValueExpressionVisitor.Invoke(whereClauseCopy);
 
             NormalizeNodePredicatesWColumnReferenceExpressionVisitor normalizeNodePredicatesColumnReferenceExpressionVisitor =
                 new NormalizeNodePredicatesWColumnReferenceExpressionVisitor(this.PartitionKey);
             normalizeNodePredicatesColumnReferenceExpressionVisitor.AddFlatProperties(this.FlatProperties);
+            normalizeNodePredicatesColumnReferenceExpressionVisitor.AddSkipTableName(this.SelectEdgeAlias);
             Dictionary<string, string> referencedProperties =
-                normalizeNodePredicatesColumnReferenceExpressionVisitor.Invoke(this.RawWhereClause);
+                normalizeNodePredicatesColumnReferenceExpressionVisitor.Invoke(whereClauseCopy);
             StringBuilder joinStrBuilder = new StringBuilder();
             foreach (var referencedProperty in referencedProperties)
             {
@@ -134,19 +148,18 @@ namespace GraphView
             {
                 DMultiPartIdentifierVisitor normalizeEdgePredicatesColumnReferenceExpressionVisitor = new DMultiPartIdentifierVisitor();
                 normalizeEdgePredicatesColumnReferenceExpressionVisitor.NeedsConvertion.Add(this.EdgeAlias);
-                normalizeEdgePredicatesColumnReferenceExpressionVisitor.Invoke(this.RawWhereClause);
+                normalizeEdgePredicatesColumnReferenceExpressionVisitor.Invoke(whereClauseCopy);
             }
             
 
             ToDocDbStringVisitor docDbStringVisitor = new ToDocDbStringVisitor();
-            docDbStringVisitor.Invoke(this.RawWhereClause);
+            docDbStringVisitor.Invoke(whereClauseCopy);
             string whereClauseString = $"WHERE ({docDbStringVisitor.GetString()})";
 
-            this.zQueryString = $"{selectClauseString}\n" +
-                           $"{fromClauseString} {joinClauseString}\n" +
-                           $"{whereClauseString}";
+            return $"{selectClauseString}\n" +
+                   $"{fromClauseString} {joinClauseString}\n" +
+                   $"{whereClauseString}";
 
-            return this.zQueryString;
         }
 
         public override string ToString(DatabaseType dbType)
