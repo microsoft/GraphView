@@ -118,11 +118,12 @@ namespace GraphViewConsoleTest
                         .V(src)
                         .Repeat(GraphTraversal2.__().Out("appear"))
                         .Until(GraphTraversal2.__().Has("id", des))
-                        .Limit(1);
+                        .Path();
 
             foreach (var t in traversal)
             {
-                Console.WriteLine(t);
+                //Console.WriteLine(t);
+                Console.WriteLine(src + "---" + des +"Path length" + (t.Split(',').Length - 1) + "  " + t);
                 break;
             }
         }
@@ -140,11 +141,11 @@ namespace GraphViewConsoleTest
                         .V("1001")
                         .Repeat(GraphTraversal2.__().Out("appear"))
                         .Until(GraphTraversal2.__().Has("id", "9502072"))
-                        .Limit(1);
+                        .Path();
 
             foreach (var t in traversal)
             {
-                Console.WriteLine(t);
+                Console.WriteLine("Path length" + (t.Split(',').Length - 1) + "  " + t);
                 break;
             }
         }
@@ -187,76 +188,40 @@ namespace GraphViewConsoleTest
 
             var start3 = new Stopwatch();
             int i = 0;
-            foreach (var node in linesE)
-            {
-                //if (i == 2)
-                //{
-                    var edge = node.Split('\t');
-                    src = edge[0].ToString();
-                    String des = edge[1].ToString();
-                    // warm
-                    var tempR = graph0.g().V("0").Values("id").Next();
-                    foreach (var r in tempR)
-                    {
-                        var t = r;
-                        break;
-                    }
-                    // warm
-                    start3.Reset();
-                    start3.Start();
-                    //ShortestPathTest.GetShortestPath(src, des, graph);
-                    repeatSSSP(graph, src, des);
-                    start3.Stop();
-                    Console.WriteLine(collectionName + "(3)" + (start3.ElapsedMilliseconds) + "ms");
-                    timeCollection.Add(start3.ElapsedMilliseconds);
-                //}
-                i++;
-                if (i > 30)
-                {
-                    break;
-                }
-            }
-
-            using (System.IO.StreamWriter file = new System.IO.StreamWriter(@"E:\project\GraphView_partition_temp\log\" + collectionName + "_ShortestPathRandomDistribution_1hop.txt"))
-            {
-                foreach (var line in timeCollection)
-                {
-                    file.WriteLine(line);
-                }
-            }
-            // 2 hop shortest path
             //timeCollection.Clear();
             //linesE = File.ReadLines("E:\\dataset\\thsinghua_dataset\\p2p-Gnutella08\\p2p-Gnutella08.txt");
             //src = "0";
             //i = 0;
             //foreach (var node in linesE)
             //{
-            //    //if (i == 5)
+            //    //if (i == 1)
             //    //{
-            //        var edge = node.Split('\t');
-            //        src = edge[0].ToString();
-            //        String des = edge[1].ToString();
-            //        // warm
-            //        var tempR = graph0.g().V(src).Out("appear").Out("appear").Values("id").Next();
-            //        if (tempR.Count != 0)
+            //    var edge = node.Split('\t');
+            //    src = edge[0].ToString();
+            //    String des = edge[1].ToString();
+            //    // warm
+            //    var tempR = graph0.g().V(src).Out("appear").Values("id").Next();
+            //    if (tempR.Count != 0)
+            //    {
+            //        foreach (var v in tempR)
             //        {
-            //            foreach (var v in tempR)
-            //            {
-            //                des = v;
-            //                break;
-            //            }
+            //            des = v;
+            //            break;
             //        }
-            //        else
-            //        {
-            //            continue;
-            //        }
-            //        // warm
-            //        start3.Reset();
-            //        start3.Start();
-            //        ShortestPathTest.GetShortestPath(src, des, graph);
-            //        start3.Stop();
-            //        Console.WriteLine(collectionName + "(3)" + (start3.ElapsedMilliseconds) + "ms");
-            //        timeCollection.Add(start3.ElapsedMilliseconds);
+            //    }
+            //    else
+            //    {
+            //        continue;
+            //    }
+            //    // warm
+            //    start3.Reset();
+            //    start3.Start();
+            //    repeatSSSP(graph, src, des);
+
+            //    //ShortestPathTest.GetShortestPath(src, des, graph);
+            //    start3.Stop();
+            //    Console.WriteLine(collectionName + "(3)" + (start3.ElapsedMilliseconds) + "ms");
+            //    timeCollection.Add(start3.ElapsedMilliseconds);
             //    //} 
             //    i++;
             //    if (i > 30)
@@ -265,13 +230,63 @@ namespace GraphViewConsoleTest
             //    }
             //}
 
-            //using (System.IO.StreamWriter file = new System.IO.StreamWriter(@"E:\project\GraphView_partition_temp\log\" + collectionName + "_ShortestPathRandomDistribution_2hop.txt"))
+            //using (System.IO.StreamWriter file = new System.IO.StreamWriter(@"E:\project\GraphView_partition_temp\log\" + collectionName + "_ShortestPathRandomDistribution_1hop.txt"))
             //{
             //    foreach (var line in timeCollection)
             //    {
             //        file.WriteLine(line);
             //    }
             //}
+            // 2 hop shortest path
+            timeCollection.Clear();
+            linesE = File.ReadLines("E:\\dataset\\thsinghua_dataset\\p2p-Gnutella08\\p2p-Gnutella08.txt");
+            src = "0";
+            i = 0;
+            foreach (var node in linesE)
+            {
+                if (i == 10)
+                {
+                var edge = node.Split('\t');
+                src = edge[0].ToString();
+                String des = edge[1].ToString();
+                // warm
+                var tempR = graph0.g().V(src).Out("appear").Out("appear").Values("id").Next();
+                if (tempR.Count != 0)
+                {
+                    foreach (var v in tempR)
+                    {
+                        des = v;
+                        break;
+                    }
+                }
+                else
+                {
+                    continue;
+                }
+                // warm
+                start3.Reset();
+                start3.Start();
+                repeatSSSP(graph, src, des);
+
+                //ShortestPathTest.GetShortestPath(src, des, graph);
+                start3.Stop();
+                Console.WriteLine(collectionName + "(3)" + (start3.ElapsedMilliseconds) + "ms");
+                timeCollection.Add(start3.ElapsedMilliseconds);
+                } 
+                i++;
+                if (i > 30)
+                {
+                    break;
+                }
+            }
+
+            using (System.IO.StreamWriter file = new System.IO.StreamWriter(@"E:\project\GraphView_partition_temp\log\" + collectionName + "_ShortestPathRandomDistribution_2hop.txt"))
+            {
+                foreach (var line in timeCollection)
+                {
+                    file.WriteLine(line);
+                }
+            }
 
             //timeCollection.Clear();
             //linesE = File.ReadLines("E:\\dataset\\thsinghua_dataset\\p2p-Gnutella08\\p2p-Gnutella08.txt");
@@ -293,13 +308,15 @@ namespace GraphViewConsoleTest
             //        }
             //    }
             //    else
+
             //    {
             //        continue;
             //    }
             //    // warm
             //    start3.Reset();
             //    start3.Start();
-            //    ShortestPathTest.GetShortestPath(src, des, graph);
+            //    //ShortestPathTest.GetShortestPath(src, des, graph);
+            //    repeatSSSP(graph, src, des);
             //    start3.Stop();
             //    Console.WriteLine(collectionName + "(3)" + (start3.ElapsedMilliseconds) + "ms");
             //    timeCollection.Add(start3.ElapsedMilliseconds);
