@@ -398,6 +398,21 @@ namespace GraphView
         internal WScalarSubquery Subquery { get; set; }
         internal IList<WScalarExpression> Values { get; set; }
 
+        internal WInPredicate()
+        {
+        }
+
+        internal WInPredicate(WScalarExpression expression, List<string> values)
+        {
+            this.Expression = expression;
+            this.Values = new List<WScalarExpression>();
+            this.NotDefined = false;
+            foreach (string value in values)
+            {
+                this.Values.Add(new WValueExpression(value, false));
+            }
+        }
+
         internal override bool OneLine()
         {
             var oneLineValue = Values != null && Values.All(e => e.OneLine());

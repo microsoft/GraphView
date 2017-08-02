@@ -151,7 +151,7 @@ namespace GraphView
                 normalizeEdgePredicatesColumnReferenceExpressionVisitor.Invoke(whereClauseCopy);
             }
             
-
+            // construct where clause string.
             ToDocDbStringVisitor docDbStringVisitor = new ToDocDbStringVisitor();
             docDbStringVisitor.Invoke(whereClauseCopy);
             string whereClauseString = $"WHERE ({docDbStringVisitor.GetString()})";
@@ -463,16 +463,33 @@ namespace GraphView
 
         public override List<VertexField> GetVerticesByIds(HashSet<string> vertexId, GraphViewCommand command)
         {
-            string inClause = string.Join(", ", vertexId.Select(x => $"'{x}'"));
-            JsonQuery query = new JsonQuery
+            // construct ZQuery now!
+            const string nodeAlias = "node";
+            ZQuery zQuery = new ZQuery
             {
-                SelectClause = "node",
-                WhereSearchCondition = "(IS_DEFINED(node._isEdgeDoc) = false AND node.id IN (" + inClause + "))",
-                Alias = "node",
-                NodeProperties = new List<string> {"node", "*"},
-                EdgeProperties = new List<string>()
+                NodeAlias = nodeAlias,
+                RawWhereClause = new WBooleanComparisonExpression
+                {
+                    ComparisonType = BooleanComparisonType.Equals,
+                    FirstExpr = new WColumnReferenceExpression(nodeAlias, DocumentDBKeywords.KW_EDGEDOC_IDENTIFIER),
+                    SecondExpr = new WValueExpression("null", false)
+                }
             };
-            IEnumerator<Tuple<VertexField, RawRecord>> queryResult = this.GetVerticesAndEdgesViaVertices(query, command);
+            zQuery.FlatProperties.Add(DocumentDBKeywords.KW_EDGEDOC_IDENTIFIER);
+
+            zQuery.Conjunction(new WInPredicate(
+                new WColumnReferenceExpression(nodeAlias, GremlinKeyword.NodeID),
+                vertexId.ToList()), BooleanBinaryExpressionType.And);
+
+            // TODO: remove this below.
+            string inClause = string.Join(", ", vertexId.Select(x => $"'{x}'"));
+            zQuery.SelectClause = "node";
+            zQuery.WhereSearchCondition = "(IS_DEFINED(node._isEdgeDoc) = false AND node.id IN (" + inClause + "))";
+            zQuery.Alias = "node";
+            zQuery.NodeProperties = new List<string> {"node", "*"};
+            zQuery.EdgeProperties = new List<string>();
+            
+            IEnumerator<Tuple<VertexField, RawRecord>> queryResult = this.GetVerticesAndEdgesViaVertices(zQuery, command);
 
             List<VertexField> result = new List<VertexField>();
             while (queryResult.MoveNext())

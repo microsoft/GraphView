@@ -522,8 +522,7 @@ namespace GraphView
             zQuery.WhereSearchCondition = searchConditionString;
             zQuery.NodeProperties = nodeProperties;
             zQuery.EdgeProperties = edgeProperties;
-
-            var qqq = zQuery.ToDocDbString();
+            
             edge.AttachedJsonQuery = zQuery;
         }
 

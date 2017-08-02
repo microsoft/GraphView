@@ -27,6 +27,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using GraphView.TSQL_Syntax_Tree;
 
 namespace GraphView
@@ -124,7 +125,19 @@ namespace GraphView
 
         public override void Visit(WInPredicate node)
         {
-            throw new NotImplementedException();
+            Debug.Assert(node.Subquery == null);
+
+            node.Expression.Accept(this);
+            string left = this.dfsStack.Pop();
+            List<string> values = new List<string>();
+            foreach (var wScalarExpression in node.Values)
+            {
+                var wv = (WValueExpression) wScalarExpression;
+                Debug.Assert(wv != null);
+                wv.Accept(this);
+                values.Add(this.dfsStack.Pop());
+            }
+            this.dfsStack.Push($"{left} {(node.NotDefined? "NOT IN": "IN")} ({string.Join(", ", values.Select(x => $"'{x}'"))})");
         }
 
         public override void Visit(WLikePredicate node)
