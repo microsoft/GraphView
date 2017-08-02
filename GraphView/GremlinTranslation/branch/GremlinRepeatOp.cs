@@ -26,6 +26,7 @@ namespace GraphView
             RepeatTraversal = repeatTraversal;
             IsFake = false;
             RepeatTimes = -1;
+            //RepeatTimes = 1;
         }
 
         public GremlinRepeatOp()

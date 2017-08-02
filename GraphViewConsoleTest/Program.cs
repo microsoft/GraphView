@@ -13,6 +13,11 @@ using System.IO;
 using System.Collections;
 using System.Collections.Generic;
 using Microsoft.Azure.Documents.Client;
+using Newtonsoft.Json;
+using System.Threading;
+using Newtonsoft.Json.Converters;
+using Newtonsoft.Json.Linq;
+using Newtonsoft.Json.Serialization;
 
 namespace GraphViewConsoleTest
 {
@@ -82,7 +87,7 @@ namespace GraphViewConsoleTest
             //queryComparePartitionInCondition("PartitionQueryCheck_100");
             //queryCrossOrFakePartitionCross("FakeCrossPartition");
             //queryCrossOrFakePartitionNotCross("FakeNotCrossPartition");
-            repartition("CitGreedyPartition1000item", "CitGreedyPartition1000item");
+            //repartition("CitGreedyPartition1000item", "CitGreedyPartition1000item");
             //randomDistributionExperimentRunner_2hop("CitHashPartition1000item", "CitHashPartition1000item");
             //randomDistributionExperimentRunner_2hop("CitHashPartition1000item", "CitGreedyPartition1000item");
 
@@ -90,15 +95,60 @@ namespace GraphViewConsoleTest
             //randomDistributionExperimentRunner_ShortestPath("CitHashPartition1000item", "CitGreedyPartition1000item");
 
             //randomDistributionExperimentRunner_2hop("CitHashPartitionAllData", "CitHashPartitionAllData");
-            //randomDistributionExperimentRunner_2hop("CitHashPartitionAllData", "CitGreedyPartitionAllData");
+            // randomDistributionExperimentRunner_2hop("CitHashPartitionAllData", "CitGreedyPartitionAllData");
 
-            //randomDistributionExperimentRunner_ShortestPath("CitHashPartitionAllData", "CitHashPartitionAllData");
-            //randomDistributionExperimentRunner_ShortestPath("CitHashPartitionAllData", "CitGreedyPartitionAllData");
+            //randomDistributionExperimentRunner_3hop("CitHashPartitionAllData", "CitHashPartitionAllData");
+            //randomDistributionExperimentRunner_3hop("CitHashPartitionAllData", "CitGreedyPartitionAllData");
+
+            //randomDistributionExperimentRunner_4hop("CitHashPartitionAllData", "CitHashPartitionAllData");
+            //randomDistributionExperimentRunner_4hop("CitHashPartitionAllData", "CitGreedyPartitionAllData");
+
+            randomDistributionExperimentRunner_ShortestPath("CitHashPartitionAllData", "CitHashPartitionAllData");
+            randomDistributionExperimentRunner_ShortestPath("CitHashPartitionAllData", "CitGreedyPartitionAllData");
+            //statisticAllThePartitionAndDegreeInformation("CitHashPartitionAllData");
+            //statisticAllThePartitionAndDegreeInformation("CitGreedyPartitionAllData");
+            //repeatSSSPTest("CitHashPartition1000item");
             Console.ReadLine();
             // CitGreedyRePartition1000Item
         }
 
-        
+        public static void repeatSSSP(GraphViewCommand graph, String src, String des)
+        {
+            var traversal = graph.g()
+                        .V(src)
+                        .Repeat(GraphTraversal2.__().Out("appear"))
+                        .Until(GraphTraversal2.__().Has("id", des))
+                        .Limit(1);
+
+            foreach (var t in traversal)
+            {
+                Console.WriteLine(t);
+                break;
+            }
+        }
+
+        public static void repeatSSSPTest(String collectionName)
+        {
+            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
+             "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+             "GroupMatch", collectionName, GraphType.GraphAPIOnly, false,
+             1, null);
+            GraphViewCommand graph = new GraphViewCommand(connection);
+            //var traversal = graph.g().V("0").Emit().Repeat(GraphTraversal2.__().Out("appear")).Times(2).Path();
+
+            var traversal = graph.g()
+                        .V("1001")
+                        .Repeat(GraphTraversal2.__().Out("appear"))
+                        .Until(GraphTraversal2.__().Has("id", "9502072"))
+                        .Limit(1);
+
+            foreach (var t in traversal)
+            {
+                Console.WriteLine(t);
+                break;
+            }
+        }
+
         public static void randomDistributionExperimentRunner_ShortestPath(String sampleCollectionName, String collectionName)
         {
             Dictionary<String, long> resultStatistic = new Dictionary<string, long>();
@@ -128,43 +178,183 @@ namespace GraphViewConsoleTest
               "GroupMatch", collectionName, GraphType.GraphAPIOnly, false,
               1, null);
             GraphViewCommand graph = new GraphViewCommand(connection);
-            // warm query
-            var re = graph.g().V("9345").Out("appear").Out("appear").Next();
-            // warm query
+            //// warm query
+            //var re = graph.g().V("9345").Out("appear").Out("appear").Next();
+            //// warm query
 
-            var linesE = File.ReadLines("E:\\dataset\\thsinghua_dataset\\cit_network\\cit-HepTh.txt\\Cit-HepTh.txt");
-            String src = "1001";
+            var linesE = File.ReadLines("E:\\dataset\\thsinghua_dataset\\p2p-Gnutella08\\p2p-Gnutella08.txt");
+            String src = "0";
 
             var start3 = new Stopwatch();
             int i = 0;
             foreach (var node in linesE)
             {
-                var edge = node.Split('\t');
-                src = edge[0].ToString();
-                String des = edge[1].ToString();
-                start3.Reset();
-                start3.Start();
-                ShortestPathTest.GetShortestPath(src, des, graph);
-                start3.Stop();
-                Console.WriteLine(collectionName + "(3)" + (start3.ElapsedMilliseconds) + "ms");
-                timeCollection.Add(start3.ElapsedMilliseconds);
-
+                //if (i == 2)
+                //{
+                    var edge = node.Split('\t');
+                    src = edge[0].ToString();
+                    String des = edge[1].ToString();
+                    // warm
+                    var tempR = graph0.g().V("0").Values("id").Next();
+                    foreach (var r in tempR)
+                    {
+                        var t = r;
+                        break;
+                    }
+                    // warm
+                    start3.Reset();
+                    start3.Start();
+                    //ShortestPathTest.GetShortestPath(src, des, graph);
+                    repeatSSSP(graph, src, des);
+                    start3.Stop();
+                    Console.WriteLine(collectionName + "(3)" + (start3.ElapsedMilliseconds) + "ms");
+                    timeCollection.Add(start3.ElapsedMilliseconds);
+                //}
                 i++;
-                if (i > 100)
+                if (i > 30)
                 {
                     break;
                 }
             }
-            
-            using (System.IO.StreamWriter file = new System.IO.StreamWriter(@"E:\project\GraphView_partition_temp\log\" + collectionName + "_ShortestPathRandomDistribution.txt"))
+
+            using (System.IO.StreamWriter file = new System.IO.StreamWriter(@"E:\project\GraphView_partition_temp\log\" + collectionName + "_ShortestPathRandomDistribution_1hop.txt"))
             {
                 foreach (var line in timeCollection)
                 {
                     file.WriteLine(line);
                 }
             }
+            // 2 hop shortest path
+            //timeCollection.Clear();
+            //linesE = File.ReadLines("E:\\dataset\\thsinghua_dataset\\p2p-Gnutella08\\p2p-Gnutella08.txt");
+            //src = "0";
+            //i = 0;
+            //foreach (var node in linesE)
+            //{
+            //    //if (i == 5)
+            //    //{
+            //        var edge = node.Split('\t');
+            //        src = edge[0].ToString();
+            //        String des = edge[1].ToString();
+            //        // warm
+            //        var tempR = graph0.g().V(src).Out("appear").Out("appear").Values("id").Next();
+            //        if (tempR.Count != 0)
+            //        {
+            //            foreach (var v in tempR)
+            //            {
+            //                des = v;
+            //                break;
+            //            }
+            //        }
+            //        else
+            //        {
+            //            continue;
+            //        }
+            //        // warm
+            //        start3.Reset();
+            //        start3.Start();
+            //        ShortestPathTest.GetShortestPath(src, des, graph);
+            //        start3.Stop();
+            //        Console.WriteLine(collectionName + "(3)" + (start3.ElapsedMilliseconds) + "ms");
+            //        timeCollection.Add(start3.ElapsedMilliseconds);
+            //    //} 
+            //    i++;
+            //    if (i > 30)
+            //    {
+            //        break;
+            //    }
+            //}
+
+            //using (System.IO.StreamWriter file = new System.IO.StreamWriter(@"E:\project\GraphView_partition_temp\log\" + collectionName + "_ShortestPathRandomDistribution_2hop.txt"))
+            //{
+            //    foreach (var line in timeCollection)
+            //    {
+            //        file.WriteLine(line);
+            //    }
+            //}
+
+            //timeCollection.Clear();
+            //linesE = File.ReadLines("E:\\dataset\\thsinghua_dataset\\p2p-Gnutella08\\p2p-Gnutella08.txt");
+            //src = "0";
+            //i = 0;
+            //foreach (var node in linesE)
+            //{
+            //    var edge = node.Split('\t');
+            //    src = edge[0].ToString();
+            //    String des = edge[1].ToString();
+            //    // warm
+            //    var tempR = graph0.g().V(src).Out("appear").Out("appear").Out("appear").Values("id").Next();
+            //    if (tempR.Count != 0)
+            //    {
+            //        foreach (var v in tempR)
+            //        {
+            //            des = v;
+            //            break;
+            //        }
+            //    }
+            //    else
+            //    {
+            //        continue;
+            //    }
+            //    // warm
+            //    start3.Reset();
+            //    start3.Start();
+            //    ShortestPathTest.GetShortestPath(src, des, graph);
+            //    start3.Stop();
+            //    Console.WriteLine(collectionName + "(3)" + (start3.ElapsedMilliseconds) + "ms");
+            //    timeCollection.Add(start3.ElapsedMilliseconds);
+            //    i++;
+            //    if (i > 30)
+            //    {
+            //        break;
+            //    }
+            //}
+
+            //using (System.IO.StreamWriter file = new System.IO.StreamWriter(@"E:\project\GraphView_partition_temp\log\" + collectionName + "_ShortestPathRandomDistribution_3hop.txt"))
+            //{
+            //    foreach (var line in timeCollection)
+            //    {
+            //        file.WriteLine(line);
+            //    }
+            //}
         }
 
+        public static void statisticAllThePartitionAndDegreeInformation(String collectionName)
+        {
+            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
+              "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+              "GroupMatch", collectionName, GraphType.GraphAPIOnly, false,
+              1, null);
+            GraphViewCommand graph = new GraphViewCommand(connection);
+            //var result = graph.g().V().Out("appear").Count();
+            //foreach(var v in result)
+            //{
+            //    var a = v;
+            //}
+            Dictionary<String, HashSet<String>> parSet = new Dictionary<string, HashSet<string>>();
+            var result = connection.ExecuteQuery("select * from c where c._isEdgeDoc = true");
+            foreach(var t in result)
+            {
+                var j = (JObject)t;
+                var id = j["_vertex_id"].ToString();
+                var sinkPartition = j["_edge"][0]["_sinkVPartition"].ToString();
+                if(!parSet.ContainsKey(id))
+                {
+                    parSet.Add(id, new HashSet<string>());
+                }
+                parSet[id].Add(sinkPartition);
+                Console.WriteLine(id + "_" + sinkPartition);
+            }
+
+            using (System.IO.StreamWriter file = new System.IO.StreamWriter(@"E:\project\GraphView_partition_temp\log\" + collectionName + "_PartitionNumberStatistic.txt"))
+            {
+                foreach (var line in parSet)
+                {
+                    file.WriteLine(line.Value.Count);
+                }
+                file.Flush();
+            }
+        }
 
         public static void randomDistributionExperimentRunner_2hop(String sampleCollectionName, String collectionName)
         {
@@ -186,6 +376,91 @@ namespace GraphViewConsoleTest
             start10.Stop();
             Console.WriteLine("sample vertex " + 1 + "  " + sampleCollectionName + "(0)" + (start10.ElapsedMilliseconds) + "ms");
 
+            var lines = new List<String>();
+            var timeCollection = new List<long>();
+            var idCollection = new List<object>();
+
+            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
+              "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+              "GroupMatch", collectionName, GraphType.GraphAPIOnly, false,
+              1, null);
+            GraphViewCommand graph = new GraphViewCommand(connection);
+            // warm query
+            //var re = graph.g().V("9345").Out("appear").Out("appear").Next();
+            // warm query
+            int i = 1;
+            foreach (var id in vertexIds0)
+            {
+                // warm
+                if (i == 50)
+                {
+                    var tmpD = graph0.g().V().Sample(1).Values("id").Next();
+                    Console.WriteLine("Warm query sample 1 vertex finish");
+                    // warm
+                    var start2 = Stopwatch.StartNew();
+                    var results = graph.g().V(id).Out("appear").Out("appear").Next();
+                    var c = 0;
+                    foreach (var result in results)
+                    {
+                        c++;
+                        var tempResult = result;
+                    }
+                    start2.Stop();
+                    var t = start2.ElapsedMilliseconds;
+                    if (c > 0)
+                    {
+                        timeCollection.Add(t);
+                        idCollection.Add(id);
+                        Console.WriteLine(collectionName + "(2)" + (t) + "ms");
+                        i++;
+                        //break;
+                    }
+                    else
+                    {
+                        Console.WriteLine("No Out out vertex");
+                    }
+                } else
+                {
+                    i++;
+                }
+                //i++;
+            }
+            using (System.IO.StreamWriter file = new System.IO.StreamWriter(@"E:\project\GraphView_partition_temp\log\" + collectionName + "_RandomDistribution2hop.txt"))
+            {
+                foreach (var line in timeCollection)
+                {
+                   file.WriteLine(line);
+                }
+            }
+
+            using (System.IO.StreamWriter file = new System.IO.StreamWriter(@"E:\project\GraphView_partition_temp\log\" + collectionName + "_RandomDistributionIDCollection2hop.txt"))
+            {
+                foreach (var line in idCollection)
+                {
+                    file.WriteLine(line);
+                }
+            }
+        }
+
+        public static void randomDistributionExperimentRunner_3hop(String sampleCollectionName, String collectionName)
+        {
+            Dictionary<String, long> resultStatistic = new Dictionary<string, long>();
+            GraphViewConnection connection0 = new GraphViewConnection("https://graphview.documents.azure.com:443/",
+              "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+              "GroupMatch", sampleCollectionName, GraphType.GraphAPIOnly, false,
+              1, null);
+            GraphViewCommand graph0 = new GraphViewCommand(connection0);
+            List<Object> vertexIds0 = new List<object>();
+
+            var start10 = Stopwatch.StartNew();
+            var results0 = graph0.g().V().Sample(100).Values("id").Next();
+
+            foreach (var result in results0)
+            {
+                vertexIds0.Add(result);
+            }
+            start10.Stop();
+            Console.WriteLine("sample vertex " + 1 + "  " + sampleCollectionName + "(0)" + (start10.ElapsedMilliseconds) + "ms");
 
             var lines = new List<String>();
             var timeCollection = new List<long>();
@@ -195,8 +470,6 @@ namespace GraphViewConsoleTest
               "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
               "GroupMatch", collectionName, GraphType.GraphAPIOnly, false,
               1, null);
-
-
             GraphViewCommand graph = new GraphViewCommand(connection);
             // warm query
             var re = graph.g().V("9345").Out("appear").Out("appear").Next();
@@ -204,8 +477,12 @@ namespace GraphViewConsoleTest
 
             foreach (var id in vertexIds0)
             {
+                // warm
+                var tmpD = graph0.g().V().Sample(1).Values("id").Next();
+                Console.WriteLine("Warm query sample 1 vertex finish");
+                // warm
                 var start2 = Stopwatch.StartNew();
-                var results = graph.g().V(id).Out("appear").Out("appear").Next();
+                var results = graph.g().V(id).Out("appear").Out("appear").Out("appear").Next();
 
                 var c = 0;
                 foreach (var result in results)
@@ -215,30 +492,120 @@ namespace GraphViewConsoleTest
                 }
 
                 start2.Stop();
+
                 var t = start2.ElapsedMilliseconds;
-                if (c > 0) { 
+                if (c > 0)
+                {
                     timeCollection.Add(t);
                     idCollection.Add(id);
-                } else
+                    Console.WriteLine(sampleCollectionName + "(2)" + (t) + "ms");
+                    //break;
+                }
+                else
                 {
                     Console.WriteLine("No Out out vertex");
                 }
-                Console.WriteLine(sampleCollectionName + "(2)" + (t) + "ms");
             }
-            using (System.IO.StreamWriter file = new System.IO.StreamWriter(@"E:\project\GraphView_partition_temp\log\" + collectionName + "_RandomDistribution.txt"))
+            using (System.IO.StreamWriter file = new System.IO.StreamWriter(@"E:\project\GraphView_partition_temp\log\" + collectionName + "_RandomDistribution3hop.txt"))
             {
                 foreach (var line in timeCollection)
                 {
-                   file.WriteLine(line);
+                    file.WriteLine(line);
                 }
+                file.Flush();
             }
 
-            using (System.IO.StreamWriter file = new System.IO.StreamWriter(@"E:\project\GraphView_partition_temp\log\" + collectionName + "_RandomDistributionIDCollection.txt"))
+            using (System.IO.StreamWriter file = new System.IO.StreamWriter(@"E:\project\GraphView_partition_temp\log\" + collectionName + "_RandomDistributionIDCollection3hop.txt"))
             {
                 foreach (var line in idCollection)
                 {
                     file.WriteLine(line);
                 }
+                file.Flush();
+            }
+        }
+
+
+        public static void randomDistributionExperimentRunner_4hop(String sampleCollectionName, String collectionName)
+        {
+            Dictionary<String, long> resultStatistic = new Dictionary<string, long>();
+            GraphViewConnection connection0 = new GraphViewConnection("https://graphview.documents.azure.com:443/",
+              "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+              "GroupMatch", sampleCollectionName, GraphType.GraphAPIOnly, false,
+              1, null);
+            GraphViewCommand graph0 = new GraphViewCommand(connection0);
+            List<Object> vertexIds0 = new List<object>();
+
+            var start10 = Stopwatch.StartNew();
+            var results0 = graph0.g().V().Sample(100).Values("id").Next();
+
+            foreach (var result in results0)
+            {
+                vertexIds0.Add(result);
+            }
+            start10.Stop();
+            Console.WriteLine("sample vertex " + 1 + "  " + sampleCollectionName + "(0)" + (start10.ElapsedMilliseconds) + "ms");
+
+            var lines = new List<String>();
+            var timeCollection = new List<long>();
+            var idCollection = new List<object>();
+
+            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
+              "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+              "GroupMatch", collectionName, GraphType.GraphAPIOnly, false,
+              1, null);
+            GraphViewCommand graph = new GraphViewCommand(connection);
+            // warm query
+            var re = graph.g().V("9345").Out("appear").Out("appear").Next();
+            // warm query
+
+            foreach (var id in vertexIds0)
+            {
+                // warm
+                var tmpD = graph0.g().V().Sample(1).Values("id").Next();
+                Console.WriteLine("Warm query sample 1 vertex finish");
+                // warm
+                var start2 = Stopwatch.StartNew();
+                var results = graph.g().V(id).Out("appear").Out("appear").Out("appear").Out("appear").Next();
+
+                var c = 0;
+                foreach (var result in results)
+                {
+                    c++;
+                    var tempResult = result;
+                }
+
+                start2.Stop();
+
+                var t = start2.ElapsedMilliseconds;
+                if (c > 0)
+                {
+                    timeCollection.Add(t);
+                    idCollection.Add(id);
+                    Console.WriteLine(sampleCollectionName + "(2)" + (t) + "ms");
+                    //break;
+                }
+                else
+                {
+                    Console.WriteLine("No Out out vertex");
+                }
+            }
+            using (System.IO.StreamWriter file = new System.IO.StreamWriter(@"E:\project\GraphView_partition_temp\log\" + collectionName + "_RandomDistribution4hop.txt"))
+            {
+                foreach (var line in timeCollection)
+                {
+                    file.WriteLine(line);
+                }
+                file.Flush();
+            }
+
+            using (System.IO.StreamWriter file = new System.IO.StreamWriter(@"E:\project\GraphView_partition_temp\log\" + collectionName + "_RandomDistributionIDCollection4hop.txt"))
+            {
+                foreach (var line in idCollection)
+                {
+                    file.WriteLine(line);
+                }
+                file.Flush();
             }
         }
 
@@ -270,7 +637,7 @@ namespace GraphViewConsoleTest
             connection1.AssignSeenDesNotSeenSrcToBalance = true;
             GraphViewConnection.partitionLoad = new int[GraphViewConnection.partitionNum];
             connection1.repartitionByBFS(connection1);
-            connection1.getMetricsOfGraphPartition();
+            //connection1.getMetricsOfGraphPartition();
         }
         public static void queryComparePartitionInCondition(String collectionName)
         {
@@ -635,6 +1002,7 @@ namespace GraphViewConsoleTest
 
             return vertex;
         }
+
         public static void insertSameVertexCountDiffPartitionCount(String collectionName)
         {
             // test for 1, 10, 30, 100, 200, 500, 1000 partition so the same vertex is 1000 vertex count
@@ -1390,6 +1758,7 @@ namespace GraphViewConsoleTest
         //       }
         //       connection.getMetricsOfGraphPartition();
         //   }
+
         public static void insertCitHashPartitionByBulkInsert(String colName)
         {
             //GraphViewConnection connection =
@@ -1514,6 +1883,7 @@ namespace GraphViewConsoleTest
             GraphViewConnection.bulkInsertUtil.startParseThread();
             connection.getMetricsOfGraphPartition();
         }
+
         //public static void insertCitDataBulkInsert()
         //{
         //    //          GraphViewConnection connection = GraphViewConnection.ResetGraphAPICollection("https://graphview.documents.azure.com:443/",
@@ -1571,6 +1941,7 @@ namespace GraphViewConsoleTest
         //    GraphViewConnection.bulkInsertUtil.startParseThread();
         //    connection.getMetricsOfGraphPartition();
         //}
+
         public static void getStatistic()
         {
             Console.WriteLine("start statistic 1");

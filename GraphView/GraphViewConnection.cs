@@ -659,8 +659,14 @@ namespace GraphView
                 var edge = (JObject)e;
                 var srcId = edge["_vertex_id"];
                 var desId = edge["_edge"][0]["_sinkV"];
-                var srcDocFromSrcCol = (JObject)ExecuteQuery("SELECT * FROM Node where Node.id=\"" + srcId + "\"").ToList()[0];
-                var desDocFromSrcCol = (JObject)ExecuteQuery("SELECT * FROM Node where Node.id=\"" + desId + "\"").ToList()[0];
+                var t1 = ExecuteQuery("SELECT * FROM Node where Node.id=\"" + srcId + "\"");
+                var t2 = ExecuteQuery("SELECT * FROM Node where Node.id=\"" + desId + "\"");
+                if(t1.Count() == 0 || t2.Count() == 0)
+                {
+                    continue;
+                }
+                var srcDocFromSrcCol = (JObject)t1.ToList()[0];
+                var desDocFromSrcCol = (JObject)t2.ToList()[0];
                 var srcPartition = srcDocFromSrcCol["_partition"].ToString();
                 var desPartition = desDocFromSrcCol["_partition"].ToString();
                 var edgePartition = edge["_partition"].ToString();
@@ -1121,6 +1127,7 @@ namespace GraphView
                         tempInsertedDocumentBatchSize++;
                     }
 
+
                     if (tempInsertedDocumentBatchSize > incRepartitionDocBatchSize)
                     {
                         repartitionTheCollectionInsideTheCollection(batchEdgeList);
@@ -1149,7 +1156,7 @@ namespace GraphView
                 docObject[KW_DOC_ETAG] = createdDocument.ETag;
                 this.VertexCache.UpdateCurrentEtag(createdDocument);
                 // new
-                Console.WriteLine(createdDocument.Id);
+                //Console.WriteLine(createdDocument.Id);
                 }
                 //}
                 //
@@ -1491,6 +1498,7 @@ namespace GraphView
         }
         // new
 
+        public static Boolean queryThrottle =false;
         //internal IEnumerable<dynamic> ExecuteQuery(string queryScript, FeedOptions queryOptions = null)
         public IEnumerable<dynamic> ExecuteQuery(string queryScript, FeedOptions queryOptions = null)
         {
@@ -1512,7 +1520,6 @@ namespace GraphView
                         queryOptions.EnableCrossPartitionQuery = true;
                     }
                 }
-                var start2 = Stopwatch.StartNew();
 
                 //var result = this.DocDBClient.CreateDocumentQuery(
                 //    this._docDBCollectionUri,
@@ -1524,21 +1531,40 @@ namespace GraphView
                 //  queryOptions);
                 // new
                 // new yj
-                if(queryScript.Contains(".id IN ("))
+                if (queryThrottle)
                 {
-                    int a = 0;
+                    if (queryScript.Contains(".id IN ("))
+                    {
+                        int a = 0;
+                    }
+                    // new yj
+                    var result = ExecuteWithRetriesSync(this.DocDBClient, () => executeQuerySync(queryScript, queryOptions));
+                    return result;
+                } else
+                {
+                    var start2 = Stopwatch.StartNew();
+                    var result = this.DocDBClient.CreateDocumentQuery(
+                        this._docDBCollectionUri,
+                        queryScript,
+                        queryOptions).ToList();
+                    start2.Stop();
+                    Console.WriteLine("\n\n" + start2.ElapsedMilliseconds + "    :" + queryScript);
+                    return result;
                 }
-                // new yj
-                var result = ExecuteWithRetriesSync(this.DocDBClient, () => this.DocDBClient.CreateDocumentQuery(this._docDBCollectionUri, queryScript, queryOptions).ToList());
-                start2.Stop();
-                Console.WriteLine("\n\n" + start2.ElapsedMilliseconds + "    :" + queryScript);
-                 
-                return result;
             } catch (Exception e)
             {
                 Console.WriteLine(e);
                 throw e;
             }
+        }
+
+        public List<dynamic> executeQuerySync(String queryScript, FeedOptions queryOptions)
+        {
+            var start2 = Stopwatch.StartNew();
+            var r = this.DocDBClient.CreateDocumentQuery(this._docDBCollectionUri, queryScript, queryOptions).ToList();
+            start2.Stop();
+            Console.WriteLine("\n\n" + start2.ElapsedMilliseconds + "    :" + queryScript);
+            return r;
         }
 
         internal JObject ExecuteQueryUnique(string queryScript, FeedOptions queryOptions = null)
