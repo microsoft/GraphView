@@ -409,7 +409,7 @@ namespace GraphView
             this.NotDefined = false;
             foreach (string value in values)
             {
-                this.Values.Add(new WValueExpression(value, false));
+                this.Values.Add(new WValueExpression(value, true));
             }
         }
 

@@ -79,9 +79,35 @@ namespace GraphView
         }
 
 
+        public ZQuery(ZQuery rhs)
+        {
+            // old things
+            this.SelectClause = rhs.SelectClause;
+            this.JoinClause = rhs.JoinClause;
+            this.WhereSearchCondition = rhs.WhereSearchCondition;
+            this.Alias = rhs.Alias;
+            this.NodeProperties = rhs.NodeProperties;
+            this.EdgeProperties = rhs.EdgeProperties;
+            // new things
+            this.RawWhereClause = rhs.RawWhereClause.Copy();
+            this.NodeAlias = rhs.NodeAlias;
+            this.EdgeAlias = rhs.EdgeAlias;
+            this.SelectEdgeAlias = rhs.SelectEdgeAlias;
+            this.PartitionKey = rhs.PartitionKey;
+            this.FlatProperties = new HashSet<string>(rhs.FlatProperties);
+            this.JoinDictionary = new Dictionary<string, string>(rhs.JoinDictionary);
+        }
+
+
         public void Conjunction(WBooleanExpression condition, BooleanBinaryExpressionType conjunction)
         {
             Debug.Assert(condition!=null);
+            if (this.RawWhereClause == null)
+            {
+                this.RawWhereClause = condition;
+                return;
+            }
+
             this.RawWhereClause = new WBooleanBinaryExpression
             {
                 FirstExpr = new WBooleanParenthesisExpression
@@ -463,7 +489,6 @@ namespace GraphView
 
         public override List<VertexField> GetVerticesByIds(HashSet<string> vertexId, GraphViewCommand command)
         {
-            // construct ZQuery now!
             const string nodeAlias = "node";
             ZQuery zQuery = new ZQuery
             {
@@ -480,12 +505,7 @@ namespace GraphView
             zQuery.Conjunction(new WInPredicate(
                 new WColumnReferenceExpression(nodeAlias, GremlinKeyword.NodeID),
                 vertexId.ToList()), BooleanBinaryExpressionType.And);
-
-            // TODO: remove this below.
-            string inClause = string.Join(", ", vertexId.Select(x => $"'{x}'"));
-            zQuery.SelectClause = "node";
-            zQuery.WhereSearchCondition = "(IS_DEFINED(node._isEdgeDoc) = false AND node.id IN (" + inClause + "))";
-            zQuery.Alias = "node";
+            
             zQuery.NodeProperties = new List<string> {"node", "*"};
             zQuery.EdgeProperties = new List<string>();
             

@@ -137,7 +137,7 @@ namespace GraphView
                 wv.Accept(this);
                 values.Add(this.dfsStack.Pop());
             }
-            this.dfsStack.Push($"{left} {(node.NotDefined? "NOT IN": "IN")} ({string.Join(", ", values.Select(x => $"'{x}'"))})");
+            this.dfsStack.Push($"{left} {(node.NotDefined? "NOT IN": "IN")} ({string.Join(", ", values)})");
         }
 
         public override void Visit(WLikePredicate node)

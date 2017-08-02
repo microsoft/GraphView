@@ -279,7 +279,7 @@ namespace GraphView
                 HashSet<string> sinkReferenceSet = new HashSet<string>();
                 HashSet<string> sinkPartitionSet = new HashSet<string>();
                 StringBuilder sinkReferenceList = new StringBuilder();
-                StringBuilder sinkPartitionList = new StringBuilder();
+
                 // Given a list of sink references, sends queries to the underlying system
                 // to retrieve the sink vertices. To reduce the number of queries to send,
                 // we pack multiple sink references in one query using the IN clause, i.e., 
@@ -302,44 +302,31 @@ namespace GraphView
                             sinkPartitionSet.Add(sinkPartitionKey);
                         j++;
                     }
-
-                    sinkReferenceList.Clear();
-                    sinkReferenceList.Append(string.Join(", ", sinkReferenceSet.Select(sinkRef => $"'{sinkRef}'")));
-
-                    sinkPartitionList.Clear();
-                    sinkPartitionList.Append(string.Join(", ", sinkPartitionSet.Select(partition => $"'{partition}'")));
-
-                    string inClause = $"{this.sinkVertexQuery.Alias}.id IN ({sinkReferenceList.ToString()})";
-
-                    // TODO: (for Zing) here will turn ZQuery to JsonQuery and lost the virtual function pointer, remenber to remove here.
-                    JsonQuery toSendQuery = new JsonQuery(this.sinkVertexQuery);
-                    if (string.IsNullOrEmpty(toSendQuery.WhereSearchCondition)) {
-                        toSendQuery.WhereSearchCondition = inClause;
+                    
+                    JsonQuery toSendQuery = null;
+                    ZQuery zQuery = this.sinkVertexQuery as ZQuery;
+                    if (zQuery != null)
+                    {
+                        toSendQuery = new ZQuery(zQuery);
+                        ((ZQuery)toSendQuery).Conjunction(new WInPredicate(new WColumnReferenceExpression(zQuery.NodeAlias, KW_DOC_ID), sinkReferenceSet.ToList()),
+                            BooleanBinaryExpressionType.And);
                     }
-                    else {
-                        toSendQuery.WhereSearchCondition = $"({this.sinkVertexQuery.WhereSearchCondition}) AND {inClause}";
+                    // TODO: (for Zing) when no more old version jsonQuery, remove this cases.
+                    else
+                    {
+                        sinkReferenceList.Clear();
+                        sinkReferenceList.Append(string.Join(", ", sinkReferenceSet.Select(sinkRef => $"'{sinkRef}'")));
+                        string inClause = $"{this.sinkVertexQuery.Alias}.id IN ({sinkReferenceList})";
+                        toSendQuery = new JsonQuery(this.sinkVertexQuery);
+                        if (string.IsNullOrEmpty(toSendQuery.WhereSearchCondition))
+                        {
+                            toSendQuery.WhereSearchCondition = inClause;
+                        }
+                        else
+                        {
+                            toSendQuery.WhereSearchCondition = $"({this.sinkVertexQuery.WhereSearchCondition}) AND {inClause}";
+                        }
                     }
-
-                    //string spilledEdgeDocumentsInClause =
-                    //    $"{this.sinkVertexViaExternalAPIQuery.Alias}.{DocumentDBKeywords.KW_EDGEDOC_VERTEXID} IN ({sinkReferenceList.ToString()})";
-
-                    //JsonQuery toSendViaExternalAPIQuery = new JsonQuery(this.sinkVertexViaExternalAPIQuery);
-                    //if (string.IsNullOrEmpty(toSendViaExternalAPIQuery.WhereSearchCondition)) {
-                    //    toSendViaExternalAPIQuery.WhereSearchCondition = $"({inClause}) OR ({spilledEdgeDocumentsInClause})";
-                    //}
-                    //else {
-                    //    toSendViaExternalAPIQuery.WhereSearchCondition =
-                    //        $"(({toSendViaExternalAPIQuery.WhereSearchCondition}) AND {inClause}) OR ({spilledEdgeDocumentsInClause})";
-                    //}
-
-                    //string partitionInClause = sinkPartitionList.Length > 0
-                    //    ? $" AND {this.sinkVertexQuery.Alias}{this.connection.GetPartitionPathIndexer()} IN ({sinkPartitionList.ToString()})"
-                    //    : "";
-
-                    //toSendQuery.WhereSearchCondition =
-                    //    $"{toSendQuery.WhereSearchCondition}{partitionInClause}";
-                    //toSendViaExternalAPIQuery.WhereSearchCondition =
-                    //    $"{toSendViaExternalAPIQuery.WhereSearchCondition}{partitionInClause}";
 
                     using (DbPortal databasePortal = this.command.Connection.CreateDatabasePortal())
                     {
