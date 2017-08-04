@@ -16,12 +16,8 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests
         {
             using (GraphViewCommand command = new GraphViewCommand(graphConnection))
             {
-                // var traversal = command.g().V().Repeat(GraphTraversal.__().As("a").Both().And(GraphTraversal.__().Select("b"))).Times(2).Path();
-                var traversal = command.g().V().Has("name", "josh").OutE().Subgraph("sg").Cap("sg");
+                var traversal = command.g().V().As("a").Out().As("b").Path();
                 var result = traversal.Next();
-                //command.CommandText =
-                //    "g.V().repeat(__.out().and(__.outE().path())).times(2)";
-                //var result = command.ExecuteAndGetResults();
                 foreach (var r in result)
                 {
                     Console.WriteLine(r);
