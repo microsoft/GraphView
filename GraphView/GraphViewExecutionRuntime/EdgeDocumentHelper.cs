@@ -496,14 +496,15 @@ namespace GraphView
                 //string edgeDocIdList = string.Join(", ", edgeContainer.Children<JObject>().Select(e => $"'{e[KW_DOC_ID]}'"));
 
                 const string EDGE_SELECT_TAG = "edge";
-                string partition = command.Connection.GetDocumentPartition(vertexObject);
-                ZQuery zQuery = new ZQuery
+                var partition = command.Connection.GetDocumentPartition(vertexObject);
+                var zQuery = new ZQuery
                 {
                     NodeAlias = "doc",
                     SelectNodeAlias = $"doc.{KW_DOC_ID}",
                     EdgeAlias = EDGE_SELECT_TAG,
                     Alias = "doc"
                 };
+                zQuery.FlatProperties.Add(partition);
                 zQuery.JoinDictionary.Add(EDGE_SELECT_TAG, $"doc.{KW_EDGEDOC_EDGE}");
                 zQuery.EdgeProperties = new List<string>();
                 zQuery.NodeProperties = new List<string>();
@@ -798,36 +799,53 @@ namespace GraphView
             HashSet<string> vertexPartitionKeySet)
         {
             if (!vertexIdSet.Any()) return;
-
-            string inClause = string.Join(", ", vertexIdSet.Select(vertexId => $"'{vertexId}'"));
-            string partitionInClause = string.Join(", ", vertexPartitionKeySet.Select(partitionKey => $"'{partitionKey}'"));
-            string selectClause = "*";
-            string alias = "edgeDoc";
-            string joinClause = "";
-            string whereSearchCondition = $"edgeDoc.{KW_EDGEDOC_VERTEXID} IN ({inClause}) " +
-                                          (string.IsNullOrEmpty(partitionInClause)
-                                              ? ""
-                                              : $"AND edgeDoc{command.Connection.GetPartitionPathIndexer()} IN ({partitionInClause}) ") +
-                                          (edgeType == EdgeType.Outgoing
-                                              ? $"AND edgeDoc.{KW_EDGEDOC_ISREVERSE} = false "
-                                              : edgeType == EdgeType.Incoming
-                                                  ? $"AND edgeDoc.{KW_EDGEDOC_ISREVERSE} = true "
-                                                  : "");
-            JsonQuery query = new JsonQuery
+            
+            const string ALIAS = "edgeDoc";
+            // new zQuery!
+            var zQuery = new ZQuery
             {
-                SelectClause = selectClause,
-                Alias = alias,
-                EdgeProperties = new List<string>(),
-                JoinClause = joinClause,
-                NodeProperties = new List<string>(),
-                WhereSearchCondition = whereSearchCondition
+                Alias = ALIAS
             };
+            // doesn't need
+//            foreach (string str in vertexPartitionKeySet)
+//            {
+//                zQuery.FlatProperties.Add(str);
+//            }
+            zQuery.AddSelectElement("*", null);
+            zQuery.RawWhereClause = new WInPredicate(new WColumnReferenceExpression(ALIAS, KW_EDGEDOC_VERTEXID), vertexIdSet.ToList());
+            zQuery.FlatProperties.Add(KW_EDGEDOC_VERTEXID);
 
-            List<JObject> edgeDocuments = command.Connection.CreateDatabasePortal().GetEdgeDocuments(query);
+            if (vertexPartitionKeySet.Any())
+            {
+                zQuery.Conjunction(new WInPredicate(new WValueExpression($"{ALIAS}{command.Connection.GetPartitionPathIndexer()}", false), vertexPartitionKeySet.ToList()),
+                    BooleanBinaryExpressionType.And);
+            }
+            if (edgeType == EdgeType.Outgoing)
+            {
+                zQuery.Conjunction(new WBooleanComparisonExpression
+                {
+                    ComparisonType = BooleanComparisonType.Equals,
+                    FirstExpr = new WColumnReferenceExpression(ALIAS, KW_EDGEDOC_ISREVERSE),
+                    SecondExpr = new WValueExpression("false", false)
+                }, BooleanBinaryExpressionType.And);
+                zQuery.FlatProperties.Add(KW_EDGEDOC_ISREVERSE);
+            }
+            else if (edgeType == EdgeType.Incoming)
+            {
+                zQuery.Conjunction(new WBooleanComparisonExpression
+                {
+                    ComparisonType = BooleanComparisonType.Equals,
+                    FirstExpr = new WColumnReferenceExpression(ALIAS, KW_EDGEDOC_ISREVERSE),
+                    SecondExpr = new WValueExpression("true", false)
+                }, BooleanBinaryExpressionType.And);
+                zQuery.FlatProperties.Add(KW_EDGEDOC_ISREVERSE);
+            }
+//            string qqq = zQuery.ToString(DatabaseType.DocumentDB);
+
+            List<JObject> edgeDocuments = command.Connection.CreateDatabasePortal().GetEdgeDocuments(zQuery);
 
             // Dictionary<vertexId, Dictionary<edgeDocumentId, edgeDocument>>
-            Dictionary<string, Dictionary<string, JObject>> edgeDict =
-                new Dictionary<string, Dictionary<string, JObject>>();
+            var edgeDict = new Dictionary<string, Dictionary<string, JObject>>();
 
             foreach (JObject edgeDocument in edgeDocuments) {
                 // Save edgeDocument's etag if necessary
@@ -841,7 +859,7 @@ namespace GraphView
             //
             if (!command.Connection.UseReverseEdges && edgeType.HasFlag(EdgeType.Incoming))
             {
-                selectClause = $"{{" +
+                string selectClause = $"{{" +
                                $"  \"{EdgeDocumentHelper.VirtualReverseEdgeObject}\": edge, " +
                                $"  \"{KW_EDGE_SRCV}\": doc.{KW_DOC_ID}, " +
                                $"  \"{KW_EDGE_SRCV_LABEL}\": doc.{KW_VERTEX_LABEL}," +
@@ -851,14 +869,15 @@ namespace GraphView
                                $"  \"{KW_EDGEDOC_VERTEXID}\": doc.{KW_EDGEDOC_VERTEXID}," +
                                $"  \"{KW_EDGEDOC_VERTEX_LABEL}\": doc.{KW_EDGEDOC_VERTEX_LABEL}" +
                                $"}} AS {EdgeDocumentHelper.VirtualReverseEdge}";
-                alias = "doc";
-                joinClause = $"JOIN edge IN doc.{DocumentDBKeywords.KW_VERTEX_EDGE}";
-                whereSearchCondition = $"edge.{KW_EDGE_SINKV} IN ({inClause})";
+                string alise = "doc";
+                string joinClause = $"JOIN edge IN doc.{DocumentDBKeywords.KW_VERTEX_EDGE}";
+                string inClause = string.Join(", ", vertexIdSet.Select(vertexId => $"'{vertexId}'"));
+                string whereSearchCondition = $"edge.{KW_EDGE_SINKV} IN ({inClause})";
 
-                query = new JsonQuery
+                JsonQuery query = new JsonQuery
                 {
                     SelectClause = selectClause,
-                    Alias = alias,
+                    Alias = alise,
                     EdgeProperties = new List<string>(),
                     JoinClause = joinClause,
                     NodeProperties = new List<string>(),

@@ -265,11 +265,12 @@ namespace GraphView
             //
             // SELECT N_0 FROM Node N_0
             //
-            ZQuery zQuery = new ZQuery
+            var zQuery = new ZQuery
             {
-                PartitionKey = partitionKey,
                 NodeAlias = nodeAlias
             };
+
+            zQuery.FlatProperties.Add(partitionKey);
             
             nodeProperties.AddRange(node.Properties);
 
@@ -371,7 +372,7 @@ namespace GraphView
             nodeProperties.AddRange(node.Properties);
             edgeProperties.AddRange(edge.Properties);
             
-            ZQuery zQuery = new ZQuery
+            var zQuery = new ZQuery
             {
                 NodeAlias = nodeAlias,
                 EdgeAlias = edgeAlias,

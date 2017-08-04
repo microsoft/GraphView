@@ -67,9 +67,10 @@ namespace GraphView
         public string SelectNodeAlias; // TODO: refactor
         public string SelectEdgeAlias; // TODO: refactor
 
-        public string PartitionKey; // only to protect this from normalize...
+        // TODO: rename this, and consider whether there is another better way to achieve this job.
+        private readonly Dictionary<string, Dictionary<string, string>> selectDictionary;
 
-        public HashSet<string> FlatProperties;
+        public HashSet<string> FlatProperties; // seems like only DocumentDB needs it.
 
         public Dictionary<string, string> JoinDictionary;
 
@@ -77,6 +78,7 @@ namespace GraphView
         {
             this.FlatProperties = new HashSet<string>();
             this.JoinDictionary = new Dictionary<string, string>();
+            this.selectDictionary = new Dictionary<string, Dictionary<string, string>>();
         }
 
 
@@ -95,9 +97,15 @@ namespace GraphView
             this.EdgeAlias = rhs.EdgeAlias;
             this.SelectEdgeAlias = rhs.SelectEdgeAlias;
             this.SelectNodeAlias = rhs.SelectNodeAlias;
-            this.PartitionKey = rhs.PartitionKey;
+            this.selectDictionary = rhs.selectDictionary;
             this.FlatProperties = new HashSet<string>(rhs.FlatProperties);
             this.JoinDictionary = new Dictionary<string, string>(rhs.JoinDictionary);
+        }
+
+
+        public void AddSelectElement(string selectName, Dictionary<string, string> asDictionary)
+        {
+            this.selectDictionary.Add(selectName, asDictionary);
         }
 
 
@@ -127,19 +135,41 @@ namespace GraphView
         public string ToDocDbString()
         {
             // construct select clause
-            StringBuilder selectStrBuilder = new StringBuilder();
-            selectStrBuilder.AppendFormat("SELECT {0}", this.SelectNodeAlias ?? this.NodeAlias);
-            if (this.SelectEdgeAlias != null || this.EdgeAlias != null)
+            string selectClauseString;
+            if (this.selectDictionary.Any())
             {
-                selectStrBuilder.AppendFormat(", {0}", this.SelectEdgeAlias ?? this.EdgeAlias);
+                var elements = new List<string>();
+                foreach (KeyValuePair<string, Dictionary<string, string>> kvp in this.selectDictionary)
+                {
+                    Debug.Assert(kvp.Key != "*" || kvp.Value == null, "`*` can't be used with `AS`");
+                    if (kvp.Value != null && kvp.Value.Any())
+                    {
+                        List<string> obj = kvp.Value.Select(pair => $"\"{pair.Key}\": {pair.Value}").ToList();
+                        elements.Add($"{string.Join(", ", obj)} AS {kvp.Key}");
+                    }
+                    else
+                    {
+                        elements.Add($"{kvp.Key}");
+                    }
+                }
+                selectClauseString = $"SELECT {string.Join(", ", elements)}";
             }
-            string selectClauseString = selectStrBuilder.ToString();
-
+            // TODO: remove this case below.
+            else
+            {
+                var selectStrBuilder = new StringBuilder();
+                selectStrBuilder.AppendFormat("SELECT {0}", this.SelectNodeAlias ?? this.NodeAlias);
+                if (this.SelectEdgeAlias != null || this.EdgeAlias != null)
+                {
+                    selectStrBuilder.AppendFormat(", {0}", this.SelectEdgeAlias ?? this.EdgeAlias);
+                }
+                selectClauseString = selectStrBuilder.ToString();
+            }
 
             // cpmstruct FROM clause with the first element of SelectAlias
-            StringBuilder fromStrBuilder = new StringBuilder();
-            fromStrBuilder.AppendFormat("FROM {0}", this.NodeAlias);
-            string fromClauseString = fromStrBuilder.ToString();
+            var fromStrBuilder = new StringBuilder();
+            fromStrBuilder.AppendFormat("FROM {0}", this.NodeAlias?? this.Alias); // TODO: remove one of this.
+            var fromClauseString = fromStrBuilder.ToString();
 
 
             // construct JOIN clause, because the order of replacement is not matter,
@@ -150,7 +180,7 @@ namespace GraphView
             booleanWValueExpressionVisitor.Invoke(whereClauseCopy);
 
             NormalizeNodePredicatesWColumnReferenceExpressionVisitor normalizeNodePredicatesColumnReferenceExpressionVisitor =
-                new NormalizeNodePredicatesWColumnReferenceExpressionVisitor(this.PartitionKey);
+                new NormalizeNodePredicatesWColumnReferenceExpressionVisitor(null);
             normalizeNodePredicatesColumnReferenceExpressionVisitor.AddFlatProperties(this.FlatProperties);
             normalizeNodePredicatesColumnReferenceExpressionVisitor.AddSkipTableName(this.SelectEdgeAlias ?? this.EdgeAlias);
 
@@ -492,21 +522,21 @@ namespace GraphView
 
         public override List<VertexField> GetVerticesByIds(HashSet<string> vertexId, GraphViewCommand command)
         {
-            const string nodeAlias = "node";
-            ZQuery zQuery = new ZQuery
+            const string NODE_ALIAS = "node";
+            var zQuery = new ZQuery
             {
-                NodeAlias = nodeAlias,
+                NodeAlias = NODE_ALIAS,
                 RawWhereClause = new WBooleanComparisonExpression
                 {
                     ComparisonType = BooleanComparisonType.Equals,
-                    FirstExpr = new WColumnReferenceExpression(nodeAlias, DocumentDBKeywords.KW_EDGEDOC_IDENTIFIER),
+                    FirstExpr = new WColumnReferenceExpression(NODE_ALIAS, DocumentDBKeywords.KW_EDGEDOC_IDENTIFIER),
                     SecondExpr = new WValueExpression("null", false)
                 }
             };
             zQuery.FlatProperties.Add(DocumentDBKeywords.KW_EDGEDOC_IDENTIFIER);
 
             zQuery.Conjunction(new WInPredicate(
-                new WColumnReferenceExpression(nodeAlias, GremlinKeyword.NodeID),
+                new WColumnReferenceExpression(NODE_ALIAS, GremlinKeyword.NodeID),
                 vertexId.ToList()), BooleanBinaryExpressionType.And);
             
             zQuery.NodeProperties = new List<string> {"node", "*"};
