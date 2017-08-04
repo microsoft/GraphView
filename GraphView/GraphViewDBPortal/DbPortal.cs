@@ -64,9 +64,10 @@ namespace GraphView
 
         public string NodeAlias;
         public string EdgeAlias;
+        public string SelectNodeAlias; // TODO: refactor
         public string SelectEdgeAlias; // TODO: refactor
 
-        public string PartitionKey;
+        public string PartitionKey; // only to protect this from normalize...
 
         public HashSet<string> FlatProperties;
 
@@ -93,6 +94,7 @@ namespace GraphView
             this.NodeAlias = rhs.NodeAlias;
             this.EdgeAlias = rhs.EdgeAlias;
             this.SelectEdgeAlias = rhs.SelectEdgeAlias;
+            this.SelectNodeAlias = rhs.SelectNodeAlias;
             this.PartitionKey = rhs.PartitionKey;
             this.FlatProperties = new HashSet<string>(rhs.FlatProperties);
             this.JoinDictionary = new Dictionary<string, string>(rhs.JoinDictionary);
@@ -126,10 +128,10 @@ namespace GraphView
         {
             // construct select clause
             StringBuilder selectStrBuilder = new StringBuilder();
-            selectStrBuilder.AppendFormat("SELECT {0}", this.NodeAlias);
-            if (this.SelectEdgeAlias != null)
+            selectStrBuilder.AppendFormat("SELECT {0}", this.SelectNodeAlias ?? this.NodeAlias);
+            if (this.SelectEdgeAlias != null || this.EdgeAlias != null)
             {
-                selectStrBuilder.AppendFormat(", {0}", this.SelectEdgeAlias);
+                selectStrBuilder.AppendFormat(", {0}", this.SelectEdgeAlias ?? this.EdgeAlias);
             }
             string selectClauseString = selectStrBuilder.ToString();
 
@@ -150,7 +152,8 @@ namespace GraphView
             NormalizeNodePredicatesWColumnReferenceExpressionVisitor normalizeNodePredicatesColumnReferenceExpressionVisitor =
                 new NormalizeNodePredicatesWColumnReferenceExpressionVisitor(this.PartitionKey);
             normalizeNodePredicatesColumnReferenceExpressionVisitor.AddFlatProperties(this.FlatProperties);
-            normalizeNodePredicatesColumnReferenceExpressionVisitor.AddSkipTableName(this.SelectEdgeAlias);
+            normalizeNodePredicatesColumnReferenceExpressionVisitor.AddSkipTableName(this.SelectEdgeAlias ?? this.EdgeAlias);
+
             Dictionary<string, string> referencedProperties =
                 normalizeNodePredicatesColumnReferenceExpressionVisitor.Invoke(whereClauseCopy);
             StringBuilder joinStrBuilder = new StringBuilder();

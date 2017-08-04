@@ -457,7 +457,7 @@ namespace GraphView
         /// Find incoming or outgoing edge by "srcId and edgeId"
         /// Output the edgeObject, as well as the edgeDocId (null for small-degree edges)
         /// </summary>
-        /// <param name="connection"></param>
+        /// <param name="command"></param>
         /// <param name="vertexObject"></param>
         /// <param name="srcVertexId"></param>
         /// <param name="edgeId"></param>
@@ -497,19 +497,42 @@ namespace GraphView
 
                 const string EDGE_SELECT_TAG = "edge";
                 string partition = command.Connection.GetDocumentPartition(vertexObject);
-                JsonQuery query = new JsonQuery
+                ZQuery zQuery = new ZQuery
                 {
-                    SelectClause = $"doc.{KW_DOC_ID}, {EDGE_SELECT_TAG}",
-                    Alias = "doc",
-                    JoinClause = $"JOIN {EDGE_SELECT_TAG} IN doc.{KW_EDGEDOC_EDGE}",
-                    EdgeProperties = new List<string>(),
-                    NodeProperties = new List<string>(),
-                    WhereSearchCondition = $"(doc.{KW_EDGEDOC_ISREVERSE} = {isReverseEdge.ToString().ToLowerInvariant()})\n" +
-                                           $"  AND ({EDGE_SELECT_TAG}.{KW_EDGE_ID} = '{edgeId}')\n" +
-                                           (partition != null ? $" AND (doc{command.Connection.GetPartitionPathIndexer()} = '{partition}')" : "")
+                    NodeAlias = "doc",
+                    SelectNodeAlias = $"doc.{KW_DOC_ID}",
+                    EdgeAlias = EDGE_SELECT_TAG,
+                    Alias = "doc"
                 };
+                zQuery.JoinDictionary.Add(EDGE_SELECT_TAG, $"doc.{KW_EDGEDOC_EDGE}");
+                zQuery.EdgeProperties = new List<string>();
+                zQuery.NodeProperties = new List<string>();
+                zQuery.RawWhereClause = new WBooleanComparisonExpression
+                {
+                    ComparisonType = BooleanComparisonType.Equals,
+                    FirstExpr = new WColumnReferenceExpression("doc", KW_EDGEDOC_ISREVERSE),
+                    SecondExpr = new WValueExpression(isReverseEdge.ToString().ToLowerInvariant(), false)
+                };
+                zQuery.FlatProperties.Add(KW_EDGEDOC_ISREVERSE);
+
+                zQuery.Conjunction(new WBooleanComparisonExpression
+                {
+                    ComparisonType = BooleanComparisonType.Equals,
+                    FirstExpr = new WColumnReferenceExpression(EDGE_SELECT_TAG, KW_EDGE_ID),
+                    SecondExpr = new WValueExpression(edgeId, true)
+                }, BooleanBinaryExpressionType.And);
                 
-                JObject result = command.Connection.CreateDatabasePortal().GetEdgeDocument(query);
+                if (partition != null)
+                {
+                    zQuery.Conjunction(new WBooleanComparisonExpression
+                    {
+                        ComparisonType = BooleanComparisonType.Equals,
+                        FirstExpr = new WValueExpression($"doc{command.Connection.GetPartitionPathIndexer()}", false),
+                        SecondExpr = new WValueExpression(partition, true)
+                    }, BooleanBinaryExpressionType.And);
+                }
+                
+                JObject result = command.Connection.CreateDatabasePortal().GetEdgeDocument(zQuery);
                 edgeDocId = (string) result?[KW_DOC_ID];
                 edgeObject = (JObject) result?[EDGE_SELECT_TAG];
             }
