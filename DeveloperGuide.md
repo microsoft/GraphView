@@ -1,7 +1,5 @@
 # GraphView
 
-[TOC]
-
 ## Introduction
 GraphView is a middleware of database.
 
@@ -27,7 +25,7 @@ var traversal = command.g().V().Has("name").Out("created");
 var result = traversal.Next();
 foreach (var r in result)
 {
-Console.WriteLine(r);
+    Console.WriteLine(r);
 }
 ```
 
