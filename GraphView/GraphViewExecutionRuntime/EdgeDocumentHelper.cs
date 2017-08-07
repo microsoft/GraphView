@@ -500,10 +500,13 @@ namespace GraphView
                 var zQuery = new ZQuery
                 {
                     NodeAlias = "doc",
-                    SelectNodeAlias = $"doc.{KW_DOC_ID}",
                     EdgeAlias = EDGE_SELECT_TAG,
                     Alias = "doc"
                 };
+                // SELECT doc.id, edge
+                zQuery.AddSelectElement($"doc.{KW_DOC_ID}");
+                zQuery.AddSelectElement(EDGE_SELECT_TAG);
+
                 zQuery.FlatProperties.Add(partition);
                 zQuery.JoinDictionary.Add(EDGE_SELECT_TAG, $"doc.{KW_EDGEDOC_EDGE}");
                 zQuery.EdgeProperties = new List<string>();

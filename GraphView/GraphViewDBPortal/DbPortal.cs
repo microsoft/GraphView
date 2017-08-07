@@ -64,11 +64,9 @@ namespace GraphView
 
         public string NodeAlias;
         public string EdgeAlias;
-        public string SelectNodeAlias; // TODO: refactor
-        public string SelectEdgeAlias; // TODO: refactor
 
-        // TODO: rename this, and consider whether there is another better way to achieve this job.
-        private readonly Dictionary<string, Dictionary<string, string>> selectDictionary;
+        // Note: this Dict is used to contruct select clause.
+        private readonly Dictionary<string, List<WPrimaryExpression>> selectDictionary;
 
         public HashSet<string> FlatProperties; // seems like only DocumentDB needs it.
 
@@ -78,7 +76,7 @@ namespace GraphView
         {
             this.FlatProperties = new HashSet<string>();
             this.JoinDictionary = new Dictionary<string, string>();
-            this.selectDictionary = new Dictionary<string, Dictionary<string, string>>();
+            this.selectDictionary = new Dictionary<string, List<WPrimaryExpression>>();
         }
 
 
@@ -95,17 +93,15 @@ namespace GraphView
             this.RawWhereClause = rhs.RawWhereClause.Copy();
             this.NodeAlias = rhs.NodeAlias;
             this.EdgeAlias = rhs.EdgeAlias;
-            this.SelectEdgeAlias = rhs.SelectEdgeAlias;
-            this.SelectNodeAlias = rhs.SelectNodeAlias;
             this.selectDictionary = rhs.selectDictionary;
             this.FlatProperties = new HashSet<string>(rhs.FlatProperties);
             this.JoinDictionary = new Dictionary<string, string>(rhs.JoinDictionary);
         }
 
 
-        public void AddSelectElement(string selectName, Dictionary<string, string> asDictionary)
+        public void AddSelectElement(string selectName, List<WPrimaryExpression> asJsonStrList = null)
         {
-            this.selectDictionary.Add(selectName, asDictionary);
+            this.selectDictionary.Add(selectName, asJsonStrList);
         }
 
 
@@ -135,36 +131,41 @@ namespace GraphView
         public string ToDocDbString()
         {
             // construct select clause
-            string selectClauseString;
-            if (this.selectDictionary.Any())
+            Debug.Assert(this.selectDictionary.Any(), "There is nothing to be selected!");
+            var elements = new List<string>();
+            foreach (KeyValuePair<string, List<WPrimaryExpression>> kvp in this.selectDictionary)
             {
-                var elements = new List<string>();
-                foreach (KeyValuePair<string, Dictionary<string, string>> kvp in this.selectDictionary)
+                Debug.Assert(kvp.Key != "*" || kvp.Value == null, "`*` can't be used with `AS`");
+                if (kvp.Value != null && kvp.Value.Any())
                 {
-                    Debug.Assert(kvp.Key != "*" || kvp.Value == null, "`*` can't be used with `AS`");
-                    if (kvp.Value != null && kvp.Value.Any())
+                    var sb = new StringBuilder();
+                    foreach (WPrimaryExpression expression in kvp.Value)
                     {
-                        List<string> obj = kvp.Value.Select(pair => $"\"{pair.Key}\": {pair.Value}").ToList();
-                        elements.Add($"{string.Join(", ", obj)} AS {kvp.Key}");
+                        var valueExp = expression as WValueExpression;
+                        if (valueExp != null)
+                        {
+                            sb.Append(valueExp);
+                            continue;
+                        }
+
+                        var columnExp = expression as WColumnReferenceExpression;
+                        if (columnExp != null)
+                        {
+                            sb.Append($"{columnExp.TableReference}.{columnExp.ColumnName}");
+                            continue;
+                        }
+
+                        throw new QueryExecutionException("Un-supported type of SELECT clause expression");
                     }
-                    else
-                    {
-                        elements.Add($"{kvp.Key}");
-                    }
+                    elements.Add($"{sb} AS {kvp.Key}");
                 }
-                selectClauseString = $"SELECT {string.Join(", ", elements)}";
-            }
-            // TODO: remove this case below.
-            else
-            {
-                var selectStrBuilder = new StringBuilder();
-                selectStrBuilder.AppendFormat("SELECT {0}", this.SelectNodeAlias ?? this.NodeAlias);
-                if (this.SelectEdgeAlias != null || this.EdgeAlias != null)
+                else
                 {
-                    selectStrBuilder.AppendFormat(", {0}", this.SelectEdgeAlias ?? this.EdgeAlias);
+                    elements.Add($"{kvp.Key}");
                 }
-                selectClauseString = selectStrBuilder.ToString();
             }
+            string selectClauseString = $"SELECT {string.Join(", ", elements)}";
+
 
             // cpmstruct FROM clause with the first element of SelectAlias
             var fromStrBuilder = new StringBuilder();
@@ -182,7 +183,7 @@ namespace GraphView
             NormalizeNodePredicatesWColumnReferenceExpressionVisitor normalizeNodePredicatesColumnReferenceExpressionVisitor =
                 new NormalizeNodePredicatesWColumnReferenceExpressionVisitor(null);
             normalizeNodePredicatesColumnReferenceExpressionVisitor.AddFlatProperties(this.FlatProperties);
-            normalizeNodePredicatesColumnReferenceExpressionVisitor.AddSkipTableName(this.SelectEdgeAlias ?? this.EdgeAlias);
+            normalizeNodePredicatesColumnReferenceExpressionVisitor.AddSkipTableName(this.EdgeAlias);
 
             Dictionary<string, string> referencedProperties =
                 normalizeNodePredicatesColumnReferenceExpressionVisitor.Invoke(whereClauseCopy);
@@ -533,6 +534,8 @@ namespace GraphView
                     SecondExpr = new WValueExpression("null", false)
                 }
             };
+            // SELECT node
+            zQuery.AddSelectElement("node");
             zQuery.FlatProperties.Add(DocumentDBKeywords.KW_EDGEDOC_IDENTIFIER);
 
             zQuery.Conjunction(new WInPredicate(

@@ -262,13 +262,15 @@ namespace GraphView
             bool isReverseAdj = edge != null && IsTraversalThroughPhysicalReverseEdge(edge);
             bool isStartVertexTheOriginVertex = edge != null && !edge.IsReversed;
             
-            //
-            // SELECT N_0 FROM Node N_0
-            //
+            
             var zQuery = new ZQuery
             {
                 NodeAlias = nodeAlias
             };
+            //
+            // SELECT N_0 FROM Node N_0
+            //
+            zQuery.AddSelectElement(nodeAlias);
 
             zQuery.FlatProperties.Add(partitionKey);
             
@@ -286,7 +288,13 @@ namespace GraphView
                 //
                 zQuery.EdgeAlias = edgeAlias;
                 // TODO:(for Zing) remove this ugly var
-                zQuery.SelectEdgeAlias = string.Format("{{\"{0}\": {1}.{0}}} AS {1} ", DocumentDBKeywords.KW_EDGE_ID, edgeAlias);
+//                zQuery.SelectEdgeAlias = string.Format("{{\"{0}\": {1}.{0}}} AS {1} ", DocumentDBKeywords.KW_EDGE_ID, edgeAlias);
+                zQuery.AddSelectElement(edgeAlias, new List<WPrimaryExpression>
+                {
+                    new WValueExpression($"{{\"{DocumentDBKeywords.KW_EDGE_ID}\": ", false),
+                    new WColumnReferenceExpression(edgeAlias, DocumentDBKeywords.KW_EDGE_ID),
+                    new WValueExpression("}", false)
+                });
 
                 edgeProperties.AddRange(edge.Properties);
             }
@@ -346,7 +354,7 @@ namespace GraphView
             };
             // Note: this move below protects that column name from replacing.(DocDB ToString)
             zQuery.FlatProperties.Add(DocumentDBKeywords.KW_EDGEDOC_IDENTIFIER);
-
+            
             if (nodeCondition != null)
             {
                 zQuery.Conjunction(nodeCondition, BooleanBinaryExpressionType.And);
@@ -359,6 +367,8 @@ namespace GraphView
             
             zQuery.NodeProperties = nodeProperties;
             zQuery.EdgeProperties = edgeProperties;
+
+//            string qqq = zQuery.ToString(DatabaseType.DocumentDB);
             
             node.AttachedJsonQuery = zQuery;
         }
@@ -375,13 +385,15 @@ namespace GraphView
             var zQuery = new ZQuery
             {
                 NodeAlias = nodeAlias,
-                EdgeAlias = edgeAlias,
-                SelectEdgeAlias = edgeAlias
+                EdgeAlias = edgeAlias
             };
 
             //
             // SELECT N_0, E_0 FROM Node N_0 Join E_0 IN N_0._edge
             //
+            zQuery.AddSelectElement(nodeAlias);
+            zQuery.AddSelectElement(edgeAlias);
+
             zQuery.JoinDictionary.Add(edgeAlias, $"{nodeAlias}.{DocumentDBKeywords.KW_VERTEX_EDGE}");
 
             WBooleanExpression tempEdgeCondition = null;
@@ -427,6 +439,8 @@ namespace GraphView
             
             zQuery.NodeProperties = nodeProperties;
             zQuery.EdgeProperties = edgeProperties;
+
+            string qqq = zQuery.ToString(DatabaseType.DocumentDB);
             
             edge.AttachedJsonQuery = zQuery;
         }
