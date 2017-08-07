@@ -360,31 +360,33 @@ In this case, `g.V().union(__.inE().outV(), __.outE().inV()).both().path()`, if 
 3. When the set of keys or values (i.e. columns) of a path or map are needed, use select(keys) and select(values), respectively. 
 
 ### Use select with one label
-``` SQL
--- The SQL-like script translated from g.V().as("a").out().select("a")
---                                  or g.V().as("a").out().select("a").by()
---                                  or g.V().as("a").out().select("a").by(__.identity())
 
-SELECT ALL R_2.value$f099d48e AS value$f099d48e
+``` SQL
+-- The SQL-like script translated from g.V().as("a").out().select("a").values("name", "age")
+--                                  or g.V().as("a").out().select("a").by().values("name", "age")
+--                                  or g.V().as("a").out().select("a").by(__.identity()).values("name", "age")
+
+SELECT ALL R_3.value$018cf619 AS value$018cf619
 FROM node AS [N_18], node AS [N_19], 
     CROSS APPLY 
     Path(
-      Compose1('value$f099d48e', N_18.*, 'value$f099d48e', N_18.*, '*'),
+      Compose1('value$018cf619', N_18.*, 'value$018cf619', N_18.name, 'name', N_18.age, 'age', N_18.*, '*'),
       'a',
-      Compose1('value$f099d48e', N_19.*, 'value$f099d48e', N_19.*, '*')
+      Compose1('value$018cf619', N_19.*, 'value$018cf619', N_19.name, 'name', N_19.age, 'age', N_19.*, '*')
     ) AS [R_0], 
     CROSS APPLY 
     SelectOne(
       N_19.*,
-      R_0.value$f099d48e,
+      R_0.value$018cf619,
       'All',
       'a',
       (
-        SELECT ALL Compose1('value$f099d48e', R_1.value$f099d48e, 'value$f099d48e') AS value$f099d48e
-        FROM CROSS APPLY  Decompose1(C.value$f099d48e, 'value$f099d48e') AS [R_1]
+        SELECT ALL Compose1('value$018cf619', R_1.value$018cf619, 'value$018cf619', R_1.name, 'name', R_1.age, 'age') AS value$018cf619
+        FROM CROSS APPLY  Decompose1(C.value$018cf619, 'name', 'age', 'value$018cf619') AS [R_1]
       ),
-      'value$f099d48e'
-    ) AS [R_2]
+      'name',
+      'age'
+    ) AS [R_2], CROSS APPLY  Values(R_2.name, R_2.age) AS [R_3]
 MATCH N_18-[Edge AS E_6]->N_19
 ```
 
@@ -394,7 +396,7 @@ First three arguments in `SelectOne`:
 
 - `N_19.*`:  The previous step of select-step, that is, the `out` in `g.V().as("a").out().select("a")`. If this step returns a dict(map), the `SelectOne` will select the value in this dict with key "a" (in this case, the `out` variable would not return a dict obviously). For instance, `g.V().valueMap().select("name")`, in which the `valueMap` yields a dict(map) representation of the properties of an element. And then `select` will select the value with key "name".
 
-- `R_0.value$f099d48e`: The path of `g.V().as("a").out()` in this case, which contains all the steps the traverser goes through (some steps are labeled, such as `V` with label "a"). So `select` will select the step `V`.
+- `R_0.value$018cf619`: The path of `g.V().as("a").out()` in this case, which contains all the steps the traverser goes through (some steps are labeled, such as `V` with label "a"). So `select` will select the step `V`.
 
 - `'All'`: The option of the "pop" operation. It could be `'All'`, `'First'` and `'Last'`.
 
@@ -421,9 +423,46 @@ The argument that a sub SQL-like select query in `SelectOne`:
 
 - `(SELECT ... FROM ... WHERE ... )`: The sub traversal in `by` after `select`. It will do some projections for results of  select-step.
 
-The last argument in `SelectOne`:
+The last two arguments in `SelectOne`:
 
-- `'value$f099d48e'`: The column name of the `SelectOne` result.
+- `'name'` and `'age'`: The populated columns' name of the `SelectOne` result.
+
+### Use select with multiple labels
+
+``` SQL
+-- g.V().as("a").out().as("b").in().select("a", "b").by("name").by(__.valueMap())
+
+SELECT ALL R_5.value$9bf2a502 AS value$9bf2a502
+FROM node AS [N_18], node AS [N_19], node AS [N_20], 
+    CROSS APPLY 
+    Path(
+      Compose1('value$9bf2a502', N_18.*, 'value$9bf2a502', N_18.name, 'name', N_18.*, '*'),
+      'a',
+      Compose1('value$9bf2a502', N_19.*, 'value$9bf2a502', N_19.name, 'name', N_19.*, '*'),
+      'b',
+      Compose1('value$9bf2a502', N_20.*, 'value$9bf2a502', N_20.name, 'name', N_20.*, '*')
+    ) AS [R_0], 
+    CROSS APPLY 
+    Select(
+      N_20.*,
+      R_0.value$9bf2a502,
+      'All',
+      'a',
+      'b',
+      (
+        SELECT ALL Compose1('value$9bf2a502', R_2.value$9bf2a502, 'value$9bf2a502') AS value$9bf2a502
+        FROM CROSS APPLY  Decompose1(C.value$9bf2a502, 'name') AS [R_1], CROSS APPLY  Values(R_1.name) AS [R_2]
+      ),
+      (
+        SELECT ALL Compose1('value$9bf2a502', R_4.value$9bf2a502, 'value$9bf2a502') AS value$9bf2a502
+        FROM CROSS APPLY  Decompose1(C.value$9bf2a502, 'value$9bf2a502') AS [R_3], CROSS APPLY  ValueMap(R_3.value$9bf2a502, -1) AS [R_4]
+      )
+    ) AS [R_5]
+MATCH N_18-[Edge AS E_6]->N_19
+  N_19<-[Edge AS E_7]-N_20
+```
+
+The situation of `Select` argument list is almost same as the `SelectOne`. Note that the first sub query translated from `by("name")` will apply to the selected value with label "a", and the second one will apply to the selected value with "b", and so on.
 
 ## Something about the implementation of [match-step][1] in Gremlin
 ### Semantic
