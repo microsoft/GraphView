@@ -468,6 +468,78 @@ The situation of `Select` argument list is almost same as the `SelectOne`. Note 
 We will insert a GremlinGlobalPathVariable before each select-step because the select-step depends on path.
 
 
+## Something about the implementation of [repeat-step](http://tinkerpop.apache.org/docs/current/reference/#repeat-step) in Gremlin
+
+### Repeat with emit/until/times
+
+We assume that you have know these usage cases such as 
+- `times(1).repeat(...)`
+- `repeat(...).until(...)`
+- `until(...).repeat(...)`
+- `until(...).repeat(...).emit(...)`
+- `emit(...).until(...).repeat(...)`
+- etc
+
+### The parameters of Repeat
+
+``` SQL
+-- g.V().repeat(out()).times(2).path().by('name')
+
+SELECT ALL R_1.value$be711b03 AS value$be711b03
+FROM node AS [N_18], 
+    CROSS APPLY 
+    Repeat(
+      (
+        SELECT ALL N_18.name AS key_0, N_18.* AS key_1, null AS _path
+        UNION ALL
+        SELECT ALL N_19.name AS key_0, N_19.* AS key_1, R_0.value$be711b03 AS _path
+        FROM CROSS APPLY  VertexToForwardEdge(R.key_1, '*') AS [E_6], CROSS APPLY  EdgeToSinkVertex(E_6.*, 'name', '*') AS [N_19], 
+            CROSS APPLY 
+            Path(
+              R._path,
+              Compose1('value$be711b03', N_19.*, 'value$be711b03', N_19.name, 'name', N_19.*, '*')
+            ) AS [R_0]
+      ),
+      RepeatCondition(2)
+    ) AS [N_20], 
+    CROSS APPLY 
+    Path(
+      Compose1('value$be711b03', N_18.*, 'value$be711b03', N_18.name, 'name', N_18.*, '*'),
+      N_20._path,
+      (
+        SELECT ALL Compose1('value$be711b03', R_3.value$be711b03, 'value$be711b03') AS value$be711b03
+        FROM CROSS APPLY  Decompose1(C.value$be711b03, 'name') AS [R_2], CROSS APPLY  Values(R_2.name) AS [R_3]
+      )
+    ) AS [R_1]
+```
+
+#### RepeatCondition
+A number of repeat rounds from argument of `times`, or an EXISTS clause translated from sub traversal in `until`.
+
+#### Sub Traversal of Repeat
+``` SQL
+...
+	(
+	   SELECT ALL N_18.name AS key_0, N_18.* AS key_1, null AS _path
+	   
+	   UNION ALL
+	   
+	   SELECT ALL N_19.name AS key_0, N_19.* AS key_1, R_0.value$be711b03 AS _path
+	   
+	   FROM CROSS APPLY  VertexToForwardEdge(R.key_1, '*') AS [E_6], CROSS APPLY  EdgeToSinkVertex(E_6.*, 'name', '*') AS [N_19], 
+	       CROSS APPLY 
+	       Path(
+	         R._path,
+	         Compose1('value$be711b03', N_19.*, 'value$be711b03', N_19.name, 'name', N_19.*, '*')
+	       ) AS [R_0]
+	 )
+ ...
+```
+
+The first SELECT clause would be run only one time to select the specific columns in RawRecord for align when the traverser comes in this repeat step at the first time. And `null As _path` is only the dummy padding.
+
+The second time and later, the repeat step receives the result of previous repeat as the input, applies the second SELECT clause in the final stage of process. And in fact, `R` refers to it. So `R._path` means the local path in previous repeat.
+
 
 ## Something about the implementation of [match-step][1] in Gremlin
 ### Semantic
