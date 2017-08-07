@@ -349,6 +349,82 @@ FROM node AS [N_18],
 
 In this case, `g.V().union(__.inE().outV(), __.outE().inV()).both().path()`, if one traverser which has finished this traversal has walked through the path in order `V` -> `inE` -> `outV` -> `both`, the GraphView got `V` -> `union` -> `both` at first and `N_21._path` pointed to the path in sub traversal of `union` (called local path). Then `N_21._path` would be **flattened** and inserted into the global path. So after replacing the `N_21._path` with `inE` -> `outV` (for this traverser), we get the final path result `V` -> `inE` -> `outV` -> `both`.
 
+
+## Something about the implementation of [select-step](http://tinkerpop.apache.org/docs/current/reference/#select-step) in Gremlin
+
+### Usage
+
+> There are three ways to use select()-step.  
+1. Select labeled steps within a path (as defined by as() in a traversal).  
+2. Select objects out of a Map&lt;String,Object&gt; flow (i.e. a sub-map).  
+3. When the set of keys or values (i.e. columns) of a path or map are needed, use select(keys) and select(values), respectively. 
+
+### Use select with one label
+``` SQL
+-- The SQL-like script translated from g.V().as("a").out().select("a")
+--                                  or g.V().as("a").out().select("a").by()
+--                                  or g.V().as("a").out().select("a").by(__.identity())
+
+SELECT ALL R_2.value$f099d48e AS value$f099d48e
+FROM node AS [N_18], node AS [N_19], 
+    CROSS APPLY 
+    Path(
+      Compose1('value$f099d48e', N_18.*, 'value$f099d48e', N_18.*, '*'),
+      'a',
+      Compose1('value$f099d48e', N_19.*, 'value$f099d48e', N_19.*, '*')
+    ) AS [R_0], 
+    CROSS APPLY 
+    SelectOne(
+      N_19.*,
+      R_0.value$f099d48e,
+      'All',
+      'a',
+      (
+        SELECT ALL Compose1('value$f099d48e', R_1.value$f099d48e, 'value$f099d48e') AS value$f099d48e
+        FROM CROSS APPLY  Decompose1(C.value$f099d48e, 'value$f099d48e') AS [R_1]
+      ),
+      'value$f099d48e'
+    ) AS [R_2]
+MATCH N_18-[Edge AS E_6]->N_19
+```
+
+When using select-step with only one label, we will get the SQL-like script which includes a TVF `SelectOne`.
+
+First three arguments in `SelectOne`:
+
+- `N_19.*`:  The previous step of select-step, that is, the `out` in `g.V().as("a").out().select("a")`. If this step returns a dict(map), the `SelectOne` will select the value in this dict with key "a" (in this case, the `out` variable would not return a dict obviously). For instance, `g.V().valueMap().select("name")`, in which the `valueMap` yields a dict(map) representation of the properties of an element. And then `select` will select the value with key "name".
+
+- `R_0.value$f099d48e`: The path of `g.V().as("a").out()` in this case, which contains all the steps the traverser goes through (some steps are labeled, such as `V` with label "a"). So `select` will select the step `V`.
+
+- `'All'`: The option of the "pop" operation. It could be `'All'`, `'First'` and `'Last'`.
+
+	> There is also an option to supply a Pop operation to select() to manipulate List objects in the Traverser:
+	>
+	> gremlin> g.V(1).as("a").repeat(out().as("a")).times(2).select(**first**, "a")
+	> ==>v[1]
+	> ==>v[1]
+	> gremlin> g.V(1).as("a").repeat(out().as("a")).times(2).select(**last**, "a")
+	> ==>v[5]
+	> ==>v[3]
+	> gremlin> g.V(1).as("a").repeat(out().as("a")).times(2).select(**all**, "a")
+	> ==>[v[1],v[4],v[5]]
+	> ==>[v[1],v[4],v[3]]
+
+The argument as label in `SelectOne`:
+
+- `'a'`: `g.V().as("a").out().select("a")` so ... but pay attention:
+
+	> If the selection is one step, no map is returned. 
+	> When there is only one label selected, then a single object is returned. 
+
+The argument that a sub SQL-like select query in `SelectOne`:
+
+- `(SELECT ... FROM ... WHERE ... )`: The sub traversal in `by` after `select`. It will do some projections for results of  select-step.
+
+The last argument in `SelectOne`:
+
+- `'value$f099d48e'`: The column name of the `SelectOne` result.
+
 ## Something about the implementation of [match-step][1] in Gremlin
 ### Semantic
 The match-step in Gremlin is a map step, which maps the traverser to some object for the next step to process. That is, one traverser in, some object out. And match-step does the same thing as it.
