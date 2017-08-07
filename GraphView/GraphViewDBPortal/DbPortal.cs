@@ -151,7 +151,19 @@ namespace GraphView
                         var columnExp = expression as WColumnReferenceExpression;
                         if (columnExp != null)
                         {
-                            sb.Append($"{columnExp.TableReference}.{columnExp.ColumnName}");
+                            if (columnExp.ColumnName == "*")
+                            {
+                                sb.Append($"{columnExp.TableReference}");
+                            }
+                            else if (columnExp.ColumnName[0] == '[')
+                            {
+                                // TODO: Refactor, doc["partionKey"], try to use AddIdentifier() function of WColumnRefExp.
+                                sb.Append($"{columnExp.TableReference}{columnExp.ColumnName}");
+                            }
+                            else
+                            {
+                                sb.Append($"{columnExp.TableReference}.{columnExp.ColumnName}");
+                            }
                             continue;
                         }
 

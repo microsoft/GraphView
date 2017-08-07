@@ -278,13 +278,7 @@ namespace GraphView
             }
         }
 
-        public string TableReference
-        {
-            get
-            {
-                return MultiPartIdentifier.Count == 2 ? MultiPartIdentifier[0].Value : null;
-            }
-        }
+        public string TableReference => MultiPartIdentifier.Count == 2 ? MultiPartIdentifier[0].Value : null;
 
         internal override bool OneLine()
         {
@@ -471,7 +465,7 @@ namespace GraphView
         internal string Value { get; set; }
         internal bool SingleQuoted { get; set; }
 
-        public WValueExpression(string value, bool quoted)
+        public WValueExpression(string value, bool quoted = false)
         {
             Value = value;
             SingleQuoted = quoted;

@@ -236,7 +236,7 @@ namespace GraphView
                 columnList[1].Value = DocumentDBKeywords.KW_PROPERTY_VALUE;
             }
             else {
-                throw new QueryCompilationException("Identifier " + columnList.ToString() + " should be bound to a table.");
+                throw new QueryCompilationException("Identifier " + columnList + " should be bound to a table.");
             }
         }
 
