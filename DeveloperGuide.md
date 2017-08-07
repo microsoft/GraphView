@@ -464,6 +464,11 @@ MATCH N_18-[Edge AS E_6]->N_19
 
 The situation of `Select` argument list is almost same as the `SelectOne`. Note that the first sub query translated from `by("name")` will apply to the selected value with label "a", and the second one will apply to the selected value with "b", and so on.
 
+### Some detials of our Implementation
+We will insert a GremlinGlobalPathVariable before each select-step because the select-step depends on path.
+
+
+
 ## Something about the implementation of [match-step][1] in Gremlin
 ### Semantic
 The match-step in Gremlin is a map step, which maps the traverser to some object for the next step to process. That is, one traverser in, some object out. And match-step does the same thing as it.
