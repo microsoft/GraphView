@@ -226,6 +226,23 @@ WHERE N_1.id = '1'
 
 Then the translation part is finished. However, it is the simplest example. We will show you more.
 
+### Table-Valued Functions
+
+由于后面部分比较难理解，也有一些坑，开始讲中文。
+显然如果一个数据库只执行取边、取点的操作，那么这个数据库的应用范围就不会很广。但是传统的SQL，只能做一些比较简单的操作，简单的分支都做不到。所以我们要引入SQL Server里面的[Table-Valued Functions][15]。
+
+> A table-valued function is a user-defined function that returns a table.
+
+
+对于一个TVF(Table-Valued Function)，需要注意3个方面：
+1. 输入的scheme
+2. 输出的scheme
+3. 要执行怎样的操作
+
+在GraphView中，当看见`CROSS APPLY`就意味着这是一个TVF。目前（8/8/2017）GraphView的局限性之一就是出现一个TVF之后，后面全部要跟TVF，这是后来要做的工作之一。
+
+但是翻译中的TVF的参数，并不是上面提到的输入的scheme。
+
 ## Something about the translation part implementation of [path-step][14] in Gremlin
 
 ### Semantic
