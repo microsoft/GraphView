@@ -168,38 +168,63 @@ Pay attention, not all steps can be represented by states. For example, the FSM 
 
 We do not build a [FSM][15] directly from the a Gremlin query due to some historical reasons. We build a GremlinTranslationOpList firstly. Generally, every step in gremlin can correspond to a  GremlinTranslationOperator, such as `V()` and `GremlinVOp`, `has("...")` and `GremlinHasOp`. Every GremlinTranslationOperator can maintain the information of the corresponding step so that the GremlinTranslationOpList can maintain the information of the gremlin query. This GremlinTranslationOpList belongs to a traversal object. The GremlinTranslationOpList of `g.V("1").out().outE()` is [`GrenlinVOp`, `GremlinOutOp`, `GremlinOutEOp`]
 
-####  Build a [FSM][15]
+####  Build a FSM
 
 Our model is a lazy model, that is to say we generate something only when we need it. If we want to get the last state of the FSM, we need the previous state, then previous... until the first state.
 
 After we get a traversal object, we call the method `Next()`. This methodis very complex, but only two main processes are related to the translation, `GetContext()` and `ToSqlScript()`. `GetContext()` is the method to build the FSM.
 
-Due to the lasy property, we just need to call `GetContext()` on the last `GremlinTranslationOperator` of the GremlinTranslationOpList. It calls `GetContext()` on the previous `GremlinTranslationOperator`... The first `GremlinTranslationOperator` is an object of `GrenlinVOp`. We will create an instance of `GremlinFreeVertexVariable`. Because we want the vertex whose label is "1" rather all vertices, we need to add a predicate in order to ensure { v | v is a vertex whose label is "1" }. We need to add the instance to a `VariableList`, which maintains all `GremlinTranslationOperator`, add the it to a `TableReferencesInFromClause`, which is used to generate the `FROM` clause, and set it as the `PivotVariable`, which means the current state in FSM, and add it to `StepList`, which maintains all states.
+Due to the lasy property, we just need to call `GetContext()` on the last `GremlinTranslationOperator` of the GremlinTranslationOpList. It calls `GetContext()` on the previous `GremlinTranslationOperator`... The first `GremlinTranslationOperator` is an object of `GrenlinVOp`. We will create an instance of `GremlinFreeVertexVariable`. Because we want the vertex whose id is "1" rather all vertices, we need to add a predicate in order to ensure {v| v is a vertex whose id is "1"}. We need to add the instance to a `VariableList`, which maintains all `GremlinTranslationOperator`, add the it to a `TableReferencesInFromClause`, which is used to generate the `FROM` clause, and set it as the `PivotVariable`, which means the current state in FSM, and add it to `StepList`, which maintains all states.  
 
-The first state is generated, then how to transfor it to the next state?
+The first state is generated, then how to transfor it to the next state?  
 
-We maintain all information about FSM in an instance of `GremlinToSqlContext`. Because C# pass objects by reference, we can add new information on the previous object. Finally, we can use an object of `GremlinToSqlContext` to represent the FSM. Therefore, we can return an object of `GremlinToSqlContext` to the next state.
+We maintain all information about FSM in an instance of `GremlinToSqlContext`. Because C# pass objects by reference, we can add new information on the previous object. Finally, we can use an object of `GremlinToSqlContext` to represent the FSM. Therefore, we can return an object of `GremlinToSqlContext` to the next state.  
 
-The next `GremlinTranslationOperator` is an object of `GremlinOutOp`. We need to get an object of `GremlinVertexToForwardEdgeVariable` and then an object of `GremlinEdgeToSinkVertexVariable`. Then add the two to `VariableList` and `TableReferencesInFromClause`, but only set the latter as the `PivotVariable` and add it to `StepList`. Because the second state of the FSM is {v | There exists an edge from a vertex in N_1 to v}.
+The next `GremlinTranslationOperator` is an object of `GremlinOutOp`. We need to get an object of `GremlinFreeEdgeVariable` and then an object of `GremlinFreeVertexVariable`. Then add the two to `VariableList` and `TableReferencesInFromClause`, but only set the latter as the `PivotVariable` and add it to `StepList`. Because the second state of the FSM is {v | There exists an edge from a vertex in N_1 to v}. If you still remember, `MATCH` can be used to find edges. Therefore, we add the object of `GremlinFreeVertexVariable` to `MatchPathList`.
 
-`GremlinOutEOp` is the next and the last one. Similar to the `GremlinTranslationOperator`, add an object of `GremlinVertexToForwardEdgeVariable` to `VariableList` and `TableReferencesInFromClause` and set the object as the `PivotVariable` and add it to `StepList`.  
+`GremlinOutEOp` is the next and the last one. Similar to the `GremlinTranslationOperator`, add an object of `GremlinVertexToForwardEdgeVariable` to `VariableList` and `MatchPathList` and set the object as the `PivotVariable` and add it to `StepList`.  
+
 So far, the construction of FSM is finished.
 
-### How to get the SQL-like query from a [FSM][15]?
+### How to get the SQL-like query from a FSM?
 
 During constructing the FSM, we created `VariableList`, `TableReferencesInFromClause`, `Predicates`, `StepList` and `PivotVariable`. We will use them to get the SQL-like query.
 
 #### SELECT
 
-Because our ultimate goal is to get the final state so that the 'SELECT' of SQL-like query is determined by the `c`.  
-As we know, in some cases, not all the columns are needed. If `PivotVariable` records the columns (or projectedProperties) we need, we will explicitly stated. But if we do not records any columns, we will state the `DefaultProjection`. For example, the `PivotVariable` of `g.V()` is an object of `GremlinFreeEdgeVariable` without any column given so that the `SELECT` will get the `DefaultProjection``*` of `GremlinFreeEdgeVariable`, like `SELECT ALL N_18.* AS value$2c25dcb6`. The`DefaultProjection` is `*` if and only if the type of `GremlinVariableType` is Edge or Vertex.
+Because our ultimate goal is to get the final state so that the 'SELECT' of SQL-like query is determined by the `PivotVariable`.  
+As we know, in some cases, not all the columns are needed. If `PivotVariable` records the columns (or projectedProperties) we need, we will explicitly stated. But if we do not records any columns, we will state the `DefaultProjection`. For example, the `PivotVariable` of `g.V()` is an object of `GremlinFreeVertexVariable` without any column given so that the `SELECT` will get the `DefaultProjection``*` of `GremlinFreeVertexVariable`, like `SELECT ALL N_1.* AS value$2c25dcb6`. The`DefaultProjection` is `*` if and only if the type of `GremlinVariableType` is Edge or Vertex. Now the `PivotVariable` of `g.V("1").out().outE()` is an object of  `GremlinFreeEdgeVariable` without any column given so that the `SELECT` clause is "SELECT ALL E_2.* AS value$821a7846"
 
 #### FROM
 
 This part is the most complicated. Keep in mind that GraphView is a lasy and pull system. Assume that `TableReferencesInFromClause` is [T_1, T_2, ..., T_i, ..., T_n]. T_i may depends on T_1, T_2, ..., T_i-1.
 
-Therefore, if we traverse `TableReferencesInFromClause` from 1 to n, we do not know the properties the latter obnject of `GremlinTableVariable` needs. The wiser way to traverse in the reverse order. If one object of `GremlinTableVariable` needs some properties, it will "tell" previous objects. 
+Therefore, if we traverse `TableReferencesInFromClause` from 1 to n, we do not know the properties the latter obnject of `GremlinTableVariable` needs. The wiser way to traverse in the reverse order. If one object of `GremlinTableVariable` needs some properties, it will "tell" previous objects. `g.V("1").out().outE()` is so simple that it does not use this information. 
 
+Now, `TableReferencesInFromClause` is [`GremlinFreeVertexVariable`, `GremlinFreeVertexVariable`]. The first one is created due to `g.V("1")`, the second one is created due to `.out()`. We firstly call `ToTableReference` on the second `GremlinFreeVertexVariable`. The `ToTableReference` method is designed to translate `GremlinTableVariable` to `WTableReference`. `GremlinFreeVertexVariable` is so simple that the instance is just like "node AS [N_2]". So similarly， the first instance is "node AS [N_1]"
+
+Finally, we put them into a list, ["node AS [N_1]", "node AS [N_2]"]. And the `FROM` clause is "FROM node AS [N_1], node AS [N_2]"
+
+#### MATCH
+
+Maybe you never hear the `MATCH` clause before, but it is easy to understand. The result of MatchClause is ["N_1-[Edge AS E_1]->N_2", "N_2-[Edge AS E_2]"]. Every element is an object of `WMatchPath` with three parts, `SourceVariable`, `EdgeVariable` and `SinkVariable`. Take "N_1-[Edge AS E_1]->N_2" for example, "N_1" is the `SourceVariable`, "E_1" is the `EdgeVariable` and "N_2" is the `SinkVariable`. Repeat it again, the `MATCH` clause is "MATCH N_1-[Edge AS E_1]->N_2
+  N_2-[Edge AS E_2]"
+
+#### WHERE
+
+`Predicates` is generated during building the FSM. But how to compose many predicates? Every predicate is an instance of `WBooleanExpression`, which has two instances of `WBooleanExpression`. You can image it as one node in a binary tree. If one predicate is added, just need to create an object of `WBooleanExpression` to store the new predicate, create an instance of `WBooleanExpression` to merge the old object and the new object with `AND`, `OR`. We can use the result to represent all predicates. Finally, the `WHERE` clause is "WHERE N_1.id = '1'"
+
+#### SQL-like query
+
+``` SQL
+SELECT ALL E_2.* AS value$821a7846
+FROM node AS [N_1], node AS [N_2]
+MATCH N_1-[Edge AS E_1]->N_2
+  N_2-[Edge AS E_2]
+WHERE N_1.id = '1'
+```
+
+Then the translation part is finished. However, it is the simplest example. We will show you more.
 
 ## Something about the translation part implementation of [path-step][14] in Gremlin
 
