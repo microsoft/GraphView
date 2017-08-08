@@ -816,4 +816,4 @@ We will **string the match-traversals into one flatmap-traversal**. (and will ad
 [12]: https://en.wikipedia.org/wiki/Declarative_programming
 [13]: https://en.wikipedia.org/wiki/Finite-state_machine
 [14]: http://tinkerpop.apache.org/docs/current/reference/#path-step
-[15]: https://en.wikipedia.org/wiki/Finite-state_machine
+[15]: https://technet.microsoft.com/en-us/library/ms131103(v=sql.110).aspx
