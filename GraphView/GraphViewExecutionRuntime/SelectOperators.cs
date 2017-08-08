@@ -302,31 +302,10 @@ namespace GraphView
                             sinkPartitionSet.Add(sinkPartitionKey);
                         j++;
                     }
-                    
-                    JsonQuery toSendQuery = null;
-                    ZQuery zQuery = this.sinkVertexQuery as ZQuery;
-                    if (zQuery != null)
-                    {
-                        toSendQuery = new ZQuery(zQuery);
-                        ((ZQuery)toSendQuery).Conjunction(new WInPredicate(new WColumnReferenceExpression(zQuery.NodeAlias, KW_DOC_ID), sinkReferenceSet.ToList()),
-                            BooleanBinaryExpressionType.And);
-                    }
-                    // TODO: (for Zing) when no more old version jsonQuery, remove this cases.
-                    else
-                    {
-                        sinkReferenceList.Clear();
-                        sinkReferenceList.Append(string.Join(", ", sinkReferenceSet.Select(sinkRef => $"'{sinkRef}'")));
-                        string inClause = $"{this.sinkVertexQuery.Alias}.id IN ({sinkReferenceList})";
-                        toSendQuery = new JsonQuery(this.sinkVertexQuery);
-                        if (string.IsNullOrEmpty(toSendQuery.WhereSearchCondition))
-                        {
-                            toSendQuery.WhereSearchCondition = inClause;
-                        }
-                        else
-                        {
-                            toSendQuery.WhereSearchCondition = $"({this.sinkVertexQuery.WhereSearchCondition}) AND {inClause}";
-                        }
-                    }
+
+                    var toSendQuery = new JsonQuery(this.sinkVertexQuery);
+                    toSendQuery.WhereConjunction(new WInPredicate(new WColumnReferenceExpression(toSendQuery.NodeAlias, KW_DOC_ID), sinkReferenceSet.ToList()),
+                        BooleanBinaryExpressionType.And);
 
                     using (DbPortal databasePortal = this.command.Connection.CreateDatabasePortal())
                     {

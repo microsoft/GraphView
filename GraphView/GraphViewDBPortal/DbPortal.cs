@@ -16,50 +16,12 @@ namespace GraphView
         DocumentDB,
         JsonServer
     }
-
+    
     internal class JsonQuery
     {
-        public string SelectClause { get; set; }
-        public string JoinClause { get; set; }
-        public string WhereSearchCondition { get; set; }
-        public string Alias { get; set; }
-
-        public List<string> NodeProperties { get; set; } 
+        public List<string> NodeProperties { get; set; }
 
         public List<string> EdgeProperties { get; set; }
-
-        public JsonQuery() { }
-
-        public JsonQuery(JsonQuery rhs)
-        {
-            this.SelectClause = rhs.SelectClause;
-            this.JoinClause = rhs.JoinClause;
-            this.WhereSearchCondition = rhs.WhereSearchCondition;
-            this.Alias = rhs.Alias;
-            this.NodeProperties = rhs.NodeProperties;
-            this.EdgeProperties = rhs.EdgeProperties;
-        }
-
-        public virtual string ToString(DatabaseType dbType)
-        {
-            switch (dbType) {
-            case DatabaseType.DocumentDB:
-                return $"SELECT {this.SelectClause} " +
-                       $"FROM {this.Alias} " +
-                       $"{this.JoinClause} " +
-                       $"{(string.IsNullOrEmpty(this.WhereSearchCondition) ? "" : $"WHERE {this.WhereSearchCondition}")}";
-            case DatabaseType.JsonServer:
-                return $"FOR {this.Alias} IN ('Node') " +
-                       $"{(string.IsNullOrEmpty(this.WhereSearchCondition) ? "" : $"WHERE {this.WhereSearchCondition}")}" +
-                       $"{this.SelectClause}";
-            default:
-                throw new NotImplementedException();
-            }
-        }
-    }
-
-    internal class ZQuery : JsonQuery
-    {
         public WBooleanExpression RawWhereClause;
 
         public string NodeAlias;
@@ -68,11 +30,11 @@ namespace GraphView
         // Note: this Dict is used to contruct select clause.
         private readonly Dictionary<string, List<WPrimaryExpression>> selectDictionary;
 
-        public HashSet<string> FlatProperties; // seems like only DocumentDB needs it.
+        public HashSet<string> FlatProperties;
 
         public Dictionary<string, string> JoinDictionary;
 
-        public ZQuery()
+        public JsonQuery()
         {
             this.FlatProperties = new HashSet<string>();
             this.JoinDictionary = new Dictionary<string, string>();
@@ -80,16 +42,10 @@ namespace GraphView
         }
 
 
-        public ZQuery(ZQuery rhs)
+        public JsonQuery(JsonQuery rhs)
         {
-            // old things
-            this.SelectClause = rhs.SelectClause;
-            this.JoinClause = rhs.JoinClause;
-            this.WhereSearchCondition = rhs.WhereSearchCondition;
-            this.Alias = rhs.Alias;
             this.NodeProperties = rhs.NodeProperties;
             this.EdgeProperties = rhs.EdgeProperties;
-            // new things
             this.RawWhereClause = rhs.RawWhereClause.Copy();
             this.NodeAlias = rhs.NodeAlias;
             this.EdgeAlias = rhs.EdgeAlias;
@@ -105,7 +61,7 @@ namespace GraphView
         }
 
 
-        public void Conjunction(WBooleanExpression condition, BooleanBinaryExpressionType conjunction)
+        public void WhereConjunction(WBooleanExpression condition, BooleanBinaryExpressionType conjunction)
         {
             Debug.Assert(condition!=null);
             if (this.RawWhereClause == null)
@@ -132,7 +88,7 @@ namespace GraphView
         {
             // construct select clause
             Debug.Assert(this.selectDictionary.Any(), "There is nothing to be selected!");
-            var elements = new List<string>();
+            List<string> elements = new List<string>();
             foreach (KeyValuePair<string, List<WPrimaryExpression>> kvp in this.selectDictionary)
             {
                 Debug.Assert(kvp.Key != "*" || kvp.Value == null, "`*` can't be used with `AS`");
@@ -157,7 +113,7 @@ namespace GraphView
                             }
                             else if (columnExp.ColumnName[0] == '[')
                             {
-                                // TODO: Refactor, doc["partionKey"], try to use AddIdentifier() function of WColumnRefExp.
+                                // TODO: Refactor, case like doc["partionKey"], try to use AddIdentifier() function of WColumnRefExp.
                                 sb.Append($"{columnExp.TableReference}{columnExp.ColumnName}");
                             }
                             else
@@ -181,26 +137,26 @@ namespace GraphView
 
             // cpmstruct FROM clause with the first element of SelectAlias
             var fromStrBuilder = new StringBuilder();
-            fromStrBuilder.AppendFormat("FROM {0}", this.NodeAlias?? this.Alias); // TODO: remove one of this.
-            var fromClauseString = fromStrBuilder.ToString();
+            fromStrBuilder.AppendFormat("FROM {0}", this.NodeAlias?? this.EdgeAlias); // TODO: double check here
+            string fromClauseString = fromStrBuilder.ToString();
 
 
             // construct JOIN clause, because the order of replacement is not matter,
             // so use Dictinaty to store it(JoinDictionary).
-            var whereClauseCopy = this.RawWhereClause.Copy();
+            WBooleanExpression whereClauseCopy = this.RawWhereClause.Copy();
             // True --> true
-            BooleanWValueExpressionVisitor booleanWValueExpressionVisitor = new BooleanWValueExpressionVisitor();
+            var booleanWValueExpressionVisitor = new BooleanWValueExpressionVisitor();
             booleanWValueExpressionVisitor.Invoke(whereClauseCopy);
 
-            NormalizeNodePredicatesWColumnReferenceExpressionVisitor normalizeNodePredicatesColumnReferenceExpressionVisitor =
+            var normalizeNodePredicatesColumnReferenceExpressionVisitor =
                 new NormalizeNodePredicatesWColumnReferenceExpressionVisitor(null);
             normalizeNodePredicatesColumnReferenceExpressionVisitor.AddFlatProperties(this.FlatProperties);
             normalizeNodePredicatesColumnReferenceExpressionVisitor.AddSkipTableName(this.EdgeAlias);
 
             Dictionary<string, string> referencedProperties =
                 normalizeNodePredicatesColumnReferenceExpressionVisitor.Invoke(whereClauseCopy);
-            StringBuilder joinStrBuilder = new StringBuilder();
-            foreach (var referencedProperty in referencedProperties)
+            var joinStrBuilder = new StringBuilder();
+            foreach (KeyValuePair<string, string> referencedProperty in referencedProperties)
             {
                 joinStrBuilder.AppendFormat(" JOIN {0} IN {1}['{2}'] ", referencedProperty.Key,
                     this.NodeAlias, referencedProperty.Value);
@@ -218,13 +174,13 @@ namespace GraphView
             
             if (this.EdgeAlias != null)
             {
-                DMultiPartIdentifierVisitor normalizeEdgePredicatesColumnReferenceExpressionVisitor = new DMultiPartIdentifierVisitor();
+                var normalizeEdgePredicatesColumnReferenceExpressionVisitor = new DMultiPartIdentifierVisitor();
                 normalizeEdgePredicatesColumnReferenceExpressionVisitor.NeedsConvertion.Add(this.EdgeAlias);
                 normalizeEdgePredicatesColumnReferenceExpressionVisitor.Invoke(whereClauseCopy);
             }
             
             // construct where clause string.
-            ToDocDbStringVisitor docDbStringVisitor = new ToDocDbStringVisitor();
+            var docDbStringVisitor = new ToDocDbStringVisitor();
             docDbStringVisitor.Invoke(whereClauseCopy);
             string whereClauseString = $"WHERE ({docDbStringVisitor.GetString()})";
 
@@ -234,16 +190,16 @@ namespace GraphView
 
         }
 
-        public override string ToString(DatabaseType dbType)
+        public string ToString(DatabaseType dbType)
         {
             switch (dbType)
             {
                 case DatabaseType.DocumentDB:
                     return this.ToDocDbString();
-                case DatabaseType.JsonServer:
-                    return $"FOR {this.Alias} IN ('Node') " +
-                           $"{(string.IsNullOrEmpty(this.WhereSearchCondition) ? "" : $"WHERE {this.WhereSearchCondition}")}" +
-                           $"{this.SelectClause}";
+//                case DatabaseType.JsonServer:
+//                    return $"FOR {this.Alias} IN ('Node') " +
+//                           $"{(string.IsNullOrEmpty(this.WhereSearchCondition) ? "" : $"WHERE {this.WhereSearchCondition}")}" +
+//                           $"{this.SelectClause}";
                 default:
                     throw new NotImplementedException();
             }
@@ -536,28 +492,28 @@ namespace GraphView
         public override List<VertexField> GetVerticesByIds(HashSet<string> vertexId, GraphViewCommand command)
         {
             const string NODE_ALIAS = "node";
-            var zQuery = new ZQuery
+            var jsonQuery = new JsonQuery
             {
                 NodeAlias = NODE_ALIAS,
                 RawWhereClause = new WBooleanComparisonExpression
                 {
                     ComparisonType = BooleanComparisonType.Equals,
                     FirstExpr = new WColumnReferenceExpression(NODE_ALIAS, DocumentDBKeywords.KW_EDGEDOC_IDENTIFIER),
-                    SecondExpr = new WValueExpression("null", false)
+                    SecondExpr = new WValueExpression("null")
                 }
             };
             // SELECT node
-            zQuery.AddSelectElement("node");
-            zQuery.FlatProperties.Add(DocumentDBKeywords.KW_EDGEDOC_IDENTIFIER);
+            jsonQuery.AddSelectElement("node");
+            jsonQuery.FlatProperties.Add(DocumentDBKeywords.KW_EDGEDOC_IDENTIFIER);
 
-            zQuery.Conjunction(new WInPredicate(
+            jsonQuery.WhereConjunction(new WInPredicate(
                 new WColumnReferenceExpression(NODE_ALIAS, GremlinKeyword.NodeID),
                 vertexId.ToList()), BooleanBinaryExpressionType.And);
             
-            zQuery.NodeProperties = new List<string> {"node", "*"};
-            zQuery.EdgeProperties = new List<string>();
+            jsonQuery.NodeProperties = new List<string> {"node", "*"};
+            jsonQuery.EdgeProperties = new List<string>();
             
-            IEnumerator<Tuple<VertexField, RawRecord>> queryResult = this.GetVerticesAndEdgesViaVertices(zQuery, command);
+            IEnumerator<Tuple<VertexField, RawRecord>> queryResult = this.GetVerticesAndEdgesViaVertices(jsonQuery, command);
 
             List<VertexField> result = new List<VertexField>();
             while (queryResult.MoveNext())
