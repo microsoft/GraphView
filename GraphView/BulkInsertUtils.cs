@@ -33,10 +33,78 @@ namespace GraphView
         List<GraphViewConnection> connList;
         public List<DocumentClient> clientList = new List<DocumentClient>();
         public int threadNum;
+
+        // new
+        public BoundedBuffer<String> vertexRawStringBuffer;
+        public BoundedBuffer<String> edgeRawStringBuffer;
+        String[] vertexSchema;
+        String vertexSeperator;
+        String[] edgeSchema;
+        String edgeSeperator;
+
         public BulkInsertUtils(int _threadNum)
         {
             threadNum = _threadNum;
         }
+
+        public void initBulkInsertUtilsForFormatDataFile(int threadNum, int bufferSize, GraphViewConnection conn, String[] _vertexSchema, String[] _edgeSchema,
+            String _vertexSeperator, String _edgeSeperator)
+        {
+
+            vertexIdsSet = new ConcurrentDictionary<String, String>();
+            stringBufferList = new BoundedBuffer<String>(bufferSize);
+            connList = new List<GraphViewConnection>();
+            parseDataCountDownLatch = new CountDownLatch(threadNum);
+            insertNodeCountDownLatch = new CountDownLatch(threadNum);
+            insertEdgeCountDownLatch = new CountDownLatch(threadNum);
+            insertNodeBuffer = new BoundedBuffer<String>(bufferSize * 2);
+            insertEdgeBuffer = new BoundedBuffer<String>(bufferSize);
+            stringWorkerList = new List<InsertDocFromStringWorker>();
+
+            // new
+            vertexRawStringBuffer = new BoundedBuffer<string>(bufferSize * 2);
+            edgeRawStringBuffer = new BoundedBuffer<string>(bufferSize);
+            vertexSchema = _vertexSchema;
+            vertexSeperator = _vertexSeperator;
+            edgeSchema = _edgeSchema;
+            edgeSeperator = _vertexSeperator;
+
+            Console.WriteLine("init thread and buffer started for parse data");
+            //(1) init the thread list
+            for (int j = 0; j < threadNum; j++)
+            {
+                InsertDocFromStringWorker worker1 = new InsertDocFromStringWorker();
+                worker1.workerIndex = j;
+                worker1.blk = this;
+                worker1.buffer = stringBufferList;
+                worker1.DocDBClient = conn.getDocDBClient();
+                worker1.insertNodeBuffer = insertNodeBuffer;
+                worker1.insertEdgeBuffer = insertEdgeBuffer;
+
+                // raw string parser
+                worker1.vertexRawStringBuffer = vertexRawStringBuffer;
+                worker1.edgeRawStringBuffer = edgeRawStringBuffer;
+                worker1.vertexSchema = vertexSchema;
+                worker1.vertexSeperator = vertexSeperator;
+                worker1.edgeSchema = edgeSchema;
+                worker1.edgeSeperator = edgeSeperator;
+
+                stringWorkerList.Add(worker1);
+                Thread t1 = new Thread(worker1.parseFormatdoc);
+                insertNodeThreadList.Add(t1);
+                Console.WriteLine("init parse thread" + j);
+
+                GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
+                "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+                conn.DocDBDatabaseId, conn.DocDBCollectionId, GraphType.GraphAPIOnly, false,
+                1, "name");
+                worker1.connList = connList;
+                connList.Add(connection);
+            }
+
+            Console.WriteLine("init thread and buffer finished for parse data");
+        }
+
         public void initBulkInsertUtilsForCreateDoc(int _threadNum, int bufferSize, GraphViewConnection conn)
         {
             threadNum = _threadNum;
@@ -77,6 +145,7 @@ namespace GraphView
             }
             Console.WriteLine("startParseThread init thread and buffer finished");
         }
+
         public void processDoc(Uri _docDBCollectionUri, JObject doc, GraphViewConnection connection)
         {
             try {
@@ -189,8 +258,120 @@ namespace GraphView
         public BoundedBuffer<String> insertEdgeBuffer;
         public DocumentClient client;
         public List<GraphViewConnection> connList;
-
         public BulkInsertUtils blk;
+
+        // raw string parser
+        public BoundedBuffer<String> vertexRawStringBuffer;
+        public BoundedBuffer<String> edgeRawStringBuffer;
+        public String[] vertexSchema;
+        public String vertexSeperator;
+        public String[] edgeSchema;
+        public String edgeSeperator;
+
+        /*
+         * Ref: Neo4j loader and format 
+         * https://neo4j.com/blog/bulk-data-import-neo4j-3-0/
+         * http://neo4j.com/docs/developer-manual/current/cypher/clauses/load-csv/#csv-file-format
+         * "Id","Name","Year"
+         * "1","ABBA","1992"
+         * **/
+        public String vertexParser(String line, String[] schema, String wordSeperator)
+        {
+            StringBuilder vertexInsertCMD = new StringBuilder();
+            var splitLine = line.Split(',');
+            //var insertV1 = "g.addV('id', '" + src + "').property('name', '" + src + "').next()";
+            var i = 0;
+            String prefix = null;
+
+            foreach (var s in schema)
+            {
+                if (s.ToLower() == "id")
+                {
+                    prefix = "g.addV('" + s + "', '" + splitLine[i] + "')";
+
+                    if (!blk.vertexIdsSet.ContainsKey(splitLine[i]))
+                    {
+                        blk.vertexIdsSet.TryAdd(splitLine[i], null);
+                    }
+                }
+                else
+                {
+                    vertexInsertCMD.Append(".property('" + s + "', '" + splitLine[i] + "')");
+                }
+                i++;
+            }
+
+            return prefix + vertexInsertCMD.ToString() + ".next()";
+        }
+
+        public String edgeParser(String line, String schema, String wordSeperator)
+        {
+            StringBuilder edgeInsertCMD = new StringBuilder();
+            var splitLine = line.Split(',');
+            // var insertE = "g.V('" + src + "').addE('appear').to(g.V('" + des + "')).next()";
+            var i = 0;
+            String prefix = null;
+            prefix = "g.addE('" + splitLine[0] + "', '" + splitLine[1] + "')";
+
+            foreach (var s in schema)
+            {
+                if (i > 1)
+                {
+                    edgeInsertCMD.Append(".property('" + s + "', '" + splitLine[i] + "')");
+                }
+                i++;
+            }
+
+            return prefix + edgeInsertCMD.ToString() + ".next()";
+        }
+
+        public void parseFormatdoc()
+        {
+            parseVertexDocWithProp();
+            parseEdgeDocWithProp();
+        }
+        public void parseVertexDocWithProp()
+        {
+            var doc = vertexRawStringBuffer.Retrieve();
+            var cmd = new GraphViewCommand(connList[workerIndex]);
+            HashSet<String> nodeIdSet = new HashSet<String>();
+
+            while (doc != null)
+            {
+                var lineE = doc;
+                var insertV1 = vertexParser(lineE, vertexSchema, vertexSeperator);
+                insertNodeBuffer.Add(insertV1);
+                doc = vertexRawStringBuffer.Retrieve();
+                Console.WriteLine("threadNum:" + workerIndex + " buffer size" + buffer.boundedBuffer.Count + " cmd:" + lineE);
+                if (buffer.boundedBuffer.Count() == 0)
+                {
+                    buffer.more = false;
+                }
+            }
+            blk.parseDataCountDownLatch.CountDown();
+        }
+
+        public void parseEdgeDocWithProp()
+        {
+            var doc = edgeRawStringBuffer.Retrieve();
+            var cmd = new GraphViewCommand(connList[workerIndex]);
+            HashSet<String> nodeIdSet = new HashSet<String>();
+
+            while (doc != null)
+            {
+                var lineE = doc;
+                var insertV1 = vertexParser(lineE, edgeSchema, edgeSeperator);
+                insertEdgeBuffer.Add(insertV1);
+                doc = edgeRawStringBuffer.Retrieve();
+                Console.WriteLine("threadNum:" + workerIndex + " buffer size" + buffer.boundedBuffer.Count + " cmd:" + lineE);
+                if (buffer.boundedBuffer.Count() == 0)
+                {
+                    buffer.more = false;
+                }
+            }
+            blk.parseDataCountDownLatch.CountDown();
+        }
+
         public void parseDoc()
         {
             try

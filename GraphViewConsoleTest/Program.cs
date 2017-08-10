@@ -2675,5 +2675,60 @@ namespace GraphViewConsoleTest
             start1.Stop();
             Console.WriteLine("partition count" + 30 + "  " + collectionName + "(0)" + (start1.ElapsedMilliseconds) + "ms");
         }
+
+        public static void bulkLoadFromFileWithFormat(String collectionName, int partitionNum, int startPartitionOffset)
+        {
+            var vertex = File.ReadLines("E:\\dataset\\vertex.txt");
+            var edge = File.ReadLines("E:\\dataset\\edge.txt");
+            var vertexSchema = vertex.First();
+            var edgeSchema = edge.First();
+
+            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
+                    "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+                    "GroupMatch", collectionName, GraphType.GraphAPIOnly, false, 1, "name");
+            connection.initPartitionConfig(partitionNum);
+            connection.EdgeSpillThreshold = 1;
+            GraphViewConnection.useHashPartitionWhenCreateDoc = false;
+            GraphViewConnection.useFakePartitionWhenCreateDoc = true;
+            GraphViewConnection.useBulkInsert = true;
+            GraphViewCommand cmd = new GraphViewCommand(connection);
+            HashSet<String> nodeIdSet = new HashSet<String>();
+
+            int c = 1;
+
+            //var linesE = edgeList.ToList();
+            BulkInsertUtils blk = new BulkInsertUtils(GraphViewConnection.partitionNum);
+            blk.initBulkInsertUtilsForParseData(GraphViewConnection.partitionNum, Math.Max(vertex.Count(), edge.Count()), connection);
+            int i = 0;
+
+            foreach (var lineE in vertex)
+            {
+                if(i == 0)
+                {
+                    i++;
+                    continue;
+                }
+                blk.vertexRawStringBuffer.Add(lineE);
+                Console.WriteLine(c);
+            }
+
+            i = 0;
+            foreach (var lineE in edge)
+            {
+                if (i == 0)
+                {
+                    i++;
+                    continue;
+                }
+                blk.edgeRawStringBuffer.Add(lineE);
+                Console.WriteLine(c);
+            }
+            blk.startParseThread();
+            blk.parseDataCountDownLatch.Await();
+            blk.initAndStartInsertNodeStringCMD();
+            blk.insertNodeCountDownLatch.Await();
+            blk.initAndStartInsertEdgeStringCMD();
+            GraphViewConnection.bulkInsertUtil.startParseThread();
+        }
     }
 }
