@@ -226,6 +226,23 @@ WHERE N_1.id = '1'
 
 Then the translation part is finished. However, it is the simplest example. We will show you more.
 
+### Table-Valued Functions
+
+由于后面部分比较难理解，也有一些坑，开始讲中文。
+显然如果一个数据库只执行取边、取点的操作，那么这个数据库的应用范围就不会很广。但是传统的SQL，只能做一些比较简单的操作，简单的分支都做不到。所以我们要引入SQL Server里面的[Table-Valued Functions][15]。
+
+> A table-valued function is a user-defined function that returns a table.
+
+
+对于一个TVF(Table-Valued Function)，需要注意3个方面：
+1. 输入的scheme
+2. 输出的scheme
+3. 要执行怎样的操作
+
+在GraphView中，当看见`CROSS APPLY`就意味着这是一个TVF。目前（8/8/2017）GraphView的局限性之一就是出现一个TVF之后，后面全部要跟TVF，这是后来要做的工作之一。
+
+但是翻译中的TVF的参数，并不是上面提到的输入的scheme。
+
 ## Something about the translation part implementation of [path-step][14] in Gremlin
 
 ### Semantic
@@ -672,6 +689,7 @@ If there is a graph as below:
 
 Obviously, if it is not a connectivity, let A = {a, b, c}, B = {e, f}, where anyone on the front does not matter.
 
+
 #### Therefore
 For this graph:
 ``` plain
@@ -696,7 +714,7 @@ sorted result: []
 ```
 Our solution is:
 
-- **Step 1**: For every vertex, do the [Breadth-first search (BFS)][5] to find a longest path starting from it:
+- **Step 1**: For every vertex, do the [Breadth-first search (BFS)][5] to find shortest paths between it and other vertices, and find the longest one in these shortest paths, mark this vertex with the length of this longest path:
 ``` plain
 5 +------> 1 +--------> 0
 +          ^
@@ -717,7 +735,7 @@ v          +
 
 sorted result: []
 ```
-- **Step 2**: Compare their longest paths, find the "global longest path" (if not only one, choose one arbitrarily):
+- **Step 2**: Compare their results got from step 1, find the max one as the "global longest path" (if not only one, choose one arbitrarily):
 ``` plain
 g          e +--------> f
            ^
@@ -738,7 +756,7 @@ h          a            b <--+
 
 sorted result: []
 ```
-- **Step 3**: Move it out from the graph, remove all the related edges:
+- **Step 3**: Move it out from the graph, add it to the result list, remove all the related edges:
 ``` plain
 g
 +
@@ -757,7 +775,7 @@ h
 
 sorted result: [ c, b, d, a, e, f ]
 ```
-- **Step 4**: Put this path in the result list, then loop the step 1, 2, 3 for the rest graph. Because of `g -> e`, which means {g, h} > {c, b, d, a, e, f}, so we should put {g, h} on the front of the part {c, b, d, a, e, f}
+- **Step 4**:  Loop the step 1, 2, 3 for the rest graph. Because of `g -> e`, which means {g, h} > {c, b, d, a, e, f}, so we should put {g, h} on the front of the part {c, b, d, a, e, f}
 ``` plain
 
 
