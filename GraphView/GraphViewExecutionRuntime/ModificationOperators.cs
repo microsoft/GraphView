@@ -186,22 +186,6 @@ namespace GraphView
             // Now VertexCacheObject has been updated (in DataModify)
         }
 
-        private void DropVertexProperty(VertexPropertyField vp)
-        {
-            // Update DocDB
-            VertexField vertexField = vp.Vertex;
-            JObject vertexObject = vertexField.VertexJObject;
-
-            Debug.Assert(vertexObject[vp.PropertyName] != null);
-            vertexObject.Property(vp.PropertyName).Remove();
-
-            this.Command.Connection.ReplaceOrDeleteDocumentAsync(vertexField.VertexId, vertexObject, 
-                this.Command.Connection.GetDocumentPartition(vertexObject), this.Command).Wait();
-
-            // Update vertex field
-            vertexField.VertexProperties.Remove(vp.PropertyName);
-        }
-
         private void DropVertexSingleProperty(VertexSinglePropertyField vp)
         {
             //if (!vp.VertexProperty.Vertex.ViaGraphAPI) {
@@ -343,11 +327,7 @@ namespace GraphView
             PropertyField property = dropTarget as PropertyField;
             if (property != null)
             {
-                if (property is VertexPropertyField)
-                {
-                    this.DropVertexProperty((VertexPropertyField)property);
-                }
-                else if (property is VertexSinglePropertyField)
+                if (property is VertexSinglePropertyField)
                 {
                     this.DropVertexSingleProperty((VertexSinglePropertyField)property);
                 }
