@@ -220,7 +220,7 @@ namespace GraphView
 
         public abstract JObject GetEdgeDocument(JsonQuery query);
 
-        public abstract List<VertexField> GetVerticesByIds(HashSet<string> vertexId, GraphViewCommand command);
+        public abstract List<VertexField> GetVerticesByIds(HashSet<string> vertexId, GraphViewCommand command, string partition, bool constructEdges = false);
     }
 
     internal class DocumentDbPortal : DbPortal
@@ -489,7 +489,7 @@ namespace GraphView
         }
 
 
-        public override List<VertexField> GetVerticesByIds(HashSet<string> vertexId, GraphViewCommand command)
+        public override List<VertexField> GetVerticesByIds(HashSet<string> vertexId, GraphViewCommand command, string partition, bool constructEdges = false)
         {
             const string NODE_ALIAS = "node";
             var jsonQuery = new JsonQuery
@@ -503,12 +503,22 @@ namespace GraphView
                 }
             };
             // SELECT node
-            jsonQuery.AddSelectElement("node");
+            jsonQuery.AddSelectElement(NODE_ALIAS);
             jsonQuery.FlatProperties.Add(DocumentDBKeywords.KW_EDGEDOC_IDENTIFIER);
 
             jsonQuery.WhereConjunction(new WInPredicate(
                 new WColumnReferenceExpression(NODE_ALIAS, GremlinKeyword.NodeID),
                 vertexId.ToList()), BooleanBinaryExpressionType.And);
+
+            if (partition != null)
+            {
+                jsonQuery.WhereConjunction(new WBooleanComparisonExpression
+                {
+                    ComparisonType = BooleanComparisonType.Equals,
+                    FirstExpr = new WValueExpression($"{NODE_ALIAS}{command.Connection.GetPartitionPathIndexer()}", false),
+                    SecondExpr = new WValueExpression(partition, true)
+                }, BooleanBinaryExpressionType.And);
+            }
             
             jsonQuery.NodeProperties = new List<string> {"node", "*"};
             jsonQuery.EdgeProperties = new List<string>();
@@ -522,7 +532,10 @@ namespace GraphView
                 result.Add(vertex);
             }
 
-            EdgeDocumentHelper.ConstructLazyAdjacencyList(command, EdgeType.Both, vertexId, new HashSet<string>());
+            if (constructEdges)
+            {
+                EdgeDocumentHelper.ConstructLazyAdjacencyList(command, EdgeType.Both, vertexId, new HashSet<string>());
+            }
 
             return result;
         }
