@@ -97,7 +97,7 @@ namespace GraphView
                 GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
                 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
                 conn.DocDBDatabaseId, conn.DocDBCollectionId, GraphType.GraphAPIOnly, false,
-                1, "name");
+                1, "_partition");
                 worker1.connList = connList;
                 connList.Add(connection);
             }
@@ -278,16 +278,16 @@ namespace GraphView
         public String vertexParser(String line, String[] schema, String wordSeperator)
         {
             StringBuilder vertexInsertCMD = new StringBuilder();
-            var splitLine = line.Split(',');
+            var splitLine = line.Replace("\"", "").Split(',');
             //var insertV1 = "g.addV('id', '" + src + "').property('name', '" + src + "').next()";
             var i = 0;
             String prefix = null;
 
             foreach (var s in schema)
             {
-                if (s.ToLower() == "id")
+                if (s.ToLower().Contains("id"))
                 {
-                    prefix = "g.addV('" + s + "', '" + splitLine[i] + "')";
+                    prefix = "g.addV('" + s.Replace("\"", "").ToLower() + "', '" + splitLine[i] + "').property('_partition','0')";
 
                     if (!blk.vertexIdsSet.ContainsKey(splitLine[i]))
                     {
@@ -296,7 +296,7 @@ namespace GraphView
                 }
                 else
                 {
-                    vertexInsertCMD.Append(".property('" + s + "', '" + splitLine[i] + "')");
+                    vertexInsertCMD.Append(".property('" + s.Replace("\"", "") + "', '" + splitLine[i] + "')");
                 }
                 i++;
             }
@@ -304,25 +304,26 @@ namespace GraphView
             return prefix + vertexInsertCMD.ToString() + ".next()";
         }
 
-        public String edgeParser(String line, String schema, String wordSeperator)
+        public String edgeParser(String line, String[] schema, String wordSeperator)
         {
             StringBuilder edgeInsertCMD = new StringBuilder();
-            var splitLine = line.Split(',');
+            var splitLine = line.Replace("\"", "").Split(',');
             // var insertE = "g.V('" + src + "').addE('appear').to(g.V('" + des + "')).next()";
             var i = 0;
             String prefix = null;
-            prefix = "g.addE('" + splitLine[0] + "', '" + splitLine[1] + "')";
+            prefix = "g.V('" + splitLine[0] + "').addE('').to(g.V('" + splitLine[1] + "'))";
 
             foreach (var s in schema)
             {
                 if (i > 1)
                 {
-                    edgeInsertCMD.Append(".property('" + s + "', '" + splitLine[i] + "')");
+                    edgeInsertCMD.Append(".property('" + s.Replace("\"", "") + "', '" + splitLine[i] + "')");
                 }
                 i++;
             }
 
-            return prefix + edgeInsertCMD.ToString() + ".next()";
+            var edgeInsertCMDStr = prefix + edgeInsertCMD.ToString() + ".next()";
+            return edgeInsertCMDStr;
         }
 
         public void parseFormatdoc()
@@ -330,6 +331,7 @@ namespace GraphView
             parseVertexDocWithProp();
             parseEdgeDocWithProp();
         }
+
         public void parseVertexDocWithProp()
         {
             var doc = vertexRawStringBuffer.Retrieve();
@@ -360,7 +362,7 @@ namespace GraphView
             while (doc != null)
             {
                 var lineE = doc;
-                var insertV1 = vertexParser(lineE, edgeSchema, edgeSeperator);
+                var insertV1 = edgeParser(lineE, edgeSchema, edgeSeperator);
                 insertEdgeBuffer.Add(insertV1);
                 doc = edgeRawStringBuffer.Retrieve();
                 Console.WriteLine("threadNum:" + workerIndex + " buffer size" + buffer.boundedBuffer.Count + " cmd:" + lineE);
@@ -458,6 +460,7 @@ namespace GraphView
                     cmd.CommandText = lineE;
                     cmd.Execute();
                     doc = insertEdgeBuffer.Retrieve();
+
                     if (insertEdgeBuffer.boundedBuffer.Count() == 0)
                     {
                         insertEdgeBuffer.more = false;

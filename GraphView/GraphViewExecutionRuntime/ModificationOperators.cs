@@ -102,7 +102,8 @@ namespace GraphView
                 vertexId = (string)vertexObject[KW_DOC_ID];
             }
 
-            Debug.Assert(vertexObject[KW_DOC_PARTITION] == null);
+            //var test = vertexObject[KW_DOC_PARTITION];
+            //Debug.Assert(vertexObject[KW_DOC_PARTITION] == null);
             if (this.Connection.PartitionPathTopLevel == KW_DOC_PARTITION) {
 
                 // Now the collection is created via GraphAPI
