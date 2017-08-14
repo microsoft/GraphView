@@ -220,6 +220,8 @@ namespace GraphView
 
         public abstract JObject GetEdgeDocument(JsonQuery query);
 
+        public abstract JObject GetVertexDocument(JsonQuery query);
+
         public abstract List<VertexField> GetVerticesByIds(HashSet<string> vertexId, GraphViewCommand command, string partition, bool constructEdges = false);
     }
 
@@ -483,6 +485,12 @@ namespace GraphView
         }
 
         public override JObject GetEdgeDocument(JsonQuery query)
+        {
+            string queryScript = query.ToString(DatabaseType.DocumentDB);
+            return this.Connection.ExecuteQueryUnique(queryScript);
+        }
+
+        public override JObject GetVertexDocument(JsonQuery query)
         {
             string queryScript = query.ToString(DatabaseType.DocumentDB);
             return this.Connection.ExecuteQueryUnique(queryScript);

@@ -478,13 +478,41 @@ namespace GraphView
         {
             Debug.Assert(!string.IsNullOrEmpty(docId), "'docId' should not be null or empty");
 
-            if (partition != null) {
+            const string NODE_ALIAS = "doc";
+
+            JsonQuery jsonQuery = new JsonQuery
+            {
+                NodeAlias = NODE_ALIAS
+            };
+
+            jsonQuery.AddSelectElement("*");
+
+            jsonQuery.RawWhereClause = new WBooleanComparisonExpression
+            {
+                ComparisonType = BooleanComparisonType.Equals,
+                FirstExpr = new WColumnReferenceExpression(NODE_ALIAS, KW_DOC_ID),
+                SecondExpr = new WValueExpression(docId, true)
+            };
+            jsonQuery.FlatProperties.Add(KW_DOC_ID);
+
+
+            if (partition != null)
+            {
                 Debug.Assert(this.PartitionPath != null);
+                jsonQuery.FlatProperties.Add(partition);
+                jsonQuery.WhereConjunction(new WBooleanComparisonExpression
+                {
+                    ComparisonType = BooleanComparisonType.Equals,
+                    // TODO: new type to represent this??
+                    FirstExpr = new WValueExpression($"{NODE_ALIAS}{this.GetPartitionPathIndexer()}", false),
+                    SecondExpr = new WValueExpression(partition, true)
+                }, BooleanBinaryExpressionType.And);
             }
 
-            string script = $"SELECT * FROM Doc WHERE Doc.{KW_DOC_ID} = '{docId}'" +
-                            (partition != null ? $" AND Doc{this.GetPartitionPathIndexer()} = '{partition}'" : "");
-            JObject result = this.ExecuteQueryUnique(script);
+//            string script = $"SELECT * FROM Doc WHERE Doc.{KW_DOC_ID} = '{docId}'" +
+//                            (partition != null ? $" AND Doc{this.GetPartitionPathIndexer()} = '{partition}'" : "");
+//            JObject result = this.ExecuteQueryUnique(script);
+            JObject result = this.CreateDatabasePortal().GetVertexDocument(jsonQuery);
 
             //
             // Save etag of the fetched document

@@ -94,7 +94,7 @@ namespace GraphView
         /// If the operation fails due to other reasons, nothing is changed and an exception is thrown
         /// If the operation succeeds, docObject[KW_DOC_ID] is set if it doesn't have one
         /// </summary>
-        /// <param name="connection"></param>
+        /// <param name="command"></param>
         /// <param name="docId"></param>
         /// <param name="docObject"></param>
         /// <param name="tooLarge"></param>
@@ -123,7 +123,7 @@ namespace GraphView
         /// NOTE: This function may upload the edge-document.
         /// NOTE: srcVertex and sinkVertex are updated and uploaded.
         /// </summary>
-        /// <param name="connection"></param>
+        /// <param name="command"></param>
         /// <param name="srcId"></param>
         /// <param name="sinkId"></param>
         /// <param name="srcVertexField"></param>
@@ -352,7 +352,7 @@ namespace GraphView
         /// Either its incoming or outgoing edges are moved to a new document, decided by which is larger in size
         /// NOTE: This function will upload the vertex document
         /// </summary>
-        /// <param name="connection"></param>
+        /// <param name="command"></param>
         /// <param name="vertexObject"></param>
         /// <param name="spillReverse">
         /// Whether to spill the outgoing edges or incoming edges.
@@ -495,25 +495,24 @@ namespace GraphView
                 // Now the vertex document stores the last(latest) spilled edge document only.
                 //string edgeDocIdList = string.Join(", ", edgeContainer.Children<JObject>().Select(e => $"'{e[KW_DOC_ID]}'"));
 
+                const string VERTEX_ALIAS = "doc";
                 const string EDGE_SELECT_TAG = "edge";
-                var partition = command.Connection.GetDocumentPartition(vertexObject);
                 var jsonQuery = new JsonQuery
                 {
-                    NodeAlias = "doc",
+                    NodeAlias = VERTEX_ALIAS,
                     EdgeAlias = EDGE_SELECT_TAG
                 };
                 // SELECT doc.id, edge
-                jsonQuery.AddSelectElement($"doc.{KW_DOC_ID}");
+                jsonQuery.AddSelectElement($"{VERTEX_ALIAS}.{KW_DOC_ID}");
                 jsonQuery.AddSelectElement(EDGE_SELECT_TAG);
 
-                jsonQuery.FlatProperties.Add(partition);
-                jsonQuery.JoinDictionary.Add(EDGE_SELECT_TAG, $"doc.{KW_EDGEDOC_EDGE}");
+                jsonQuery.JoinDictionary.Add(EDGE_SELECT_TAG, $"{VERTEX_ALIAS}.{KW_EDGEDOC_EDGE}");
                 jsonQuery.EdgeProperties = new List<string>();
                 jsonQuery.NodeProperties = new List<string>();
                 jsonQuery.RawWhereClause = new WBooleanComparisonExpression
                 {
                     ComparisonType = BooleanComparisonType.Equals,
-                    FirstExpr = new WColumnReferenceExpression("doc", KW_EDGEDOC_ISREVERSE),
+                    FirstExpr = new WColumnReferenceExpression(VERTEX_ALIAS, KW_EDGEDOC_ISREVERSE),
                     SecondExpr = new WValueExpression(isReverseEdge.ToString().ToLowerInvariant(), false)
                 };
                 jsonQuery.FlatProperties.Add(KW_EDGEDOC_ISREVERSE);
@@ -524,13 +523,16 @@ namespace GraphView
                     FirstExpr = new WColumnReferenceExpression(EDGE_SELECT_TAG, KW_EDGE_ID),
                     SecondExpr = new WValueExpression(edgeId, true)
                 }, BooleanBinaryExpressionType.And);
-                
+
+                string partition = command.Connection.GetDocumentPartition(vertexObject);
                 if (partition != null)
                 {
+                    jsonQuery.FlatProperties.Add(partition);
                     jsonQuery.WhereConjunction(new WBooleanComparisonExpression
                     {
                         ComparisonType = BooleanComparisonType.Equals,
-                        FirstExpr = new WValueExpression($"doc{command.Connection.GetPartitionPathIndexer()}", false),
+                        // TODO: new type to represent this??
+                        FirstExpr = new WValueExpression($"{VERTEX_ALIAS}{command.Connection.GetPartitionPathIndexer()}", false),
                         SecondExpr = new WValueExpression(partition, true)
                     }, BooleanBinaryExpressionType.And);
                 }
