@@ -240,7 +240,7 @@ namespace GraphView
         public override IEnumerator<Tuple<VertexField, RawRecord>> GetVerticesAndEdgesViaVertices(JsonQuery vertexQuery, GraphViewCommand command)
         {
             string queryScript = vertexQuery.ToString(DatabaseType.DocumentDB);
-            IEnumerable<dynamic> items = this.Connection.ExecuteQuery(queryScript);
+            IEnumerable<dynamic> items = this.Connection.ExecuteDocDbQuery(queryScript);
             List<string> nodeProperties = new List<string>(vertexQuery.NodeProperties);
             List<string> edgeProperties = new List<string>(vertexQuery.EdgeProperties);
 
@@ -358,7 +358,7 @@ namespace GraphView
         public override IEnumerator<RawRecord> GetVerticesAndEdgesViaEdges(JsonQuery edgeQuery, GraphViewCommand command)
         {
             string queryScript = edgeQuery.ToString(DatabaseType.DocumentDB);
-            IEnumerable<dynamic> items = this.Connection.ExecuteQuery(queryScript);
+            IEnumerable<dynamic> items = this.Connection.ExecuteDocDbQuery(queryScript);
             List<string> nodeProperties = new List<string>(edgeQuery.NodeProperties);
             List<string> edgeProperties = new List<string>(edgeQuery.EdgeProperties);
 
@@ -434,7 +434,7 @@ namespace GraphView
                               (string.IsNullOrEmpty(partitionInClause)
                                   ? ""
                                   : $" AND Node{this.Connection.GetPartitionPathIndexer()} IN ({partitionInClause})");
-                IEnumerable<dynamic> spilledVertices = this.Connection.ExecuteQuery(queryScript);
+                IEnumerable<dynamic> spilledVertices = this.Connection.ExecuteDocDbQuery(queryScript);
                 foreach (dynamic vertex in spilledVertices)
                 {
                     JObject vertexObject = (JObject)vertex;
@@ -480,7 +480,7 @@ namespace GraphView
         public override List<JObject> GetEdgeDocuments(JsonQuery query)
         {
             string queryScript = query.ToString(DatabaseType.DocumentDB);
-            IEnumerable<dynamic> items = this.Connection.ExecuteQuery(queryScript);
+            IEnumerable<dynamic> items = this.Connection.ExecuteDocDbQuery(queryScript);
             List<JObject> edgeDocuments = new List<JObject>();
             foreach (JObject item in items)
             {
@@ -492,13 +492,13 @@ namespace GraphView
         public override JObject GetEdgeDocument(JsonQuery query)
         {
             string queryScript = query.ToString(DatabaseType.DocumentDB);
-            return this.Connection.ExecuteQueryUnique(queryScript);
+            return this.Connection.ExecuteDocDbQueryUnique(queryScript);
         }
 
         public override JObject GetVertexDocument(JsonQuery query)
         {
             string queryScript = query.ToString(DatabaseType.DocumentDB);
-            return this.Connection.ExecuteQueryUnique(queryScript);
+            return this.Connection.ExecuteDocDbQueryUnique(queryScript);
         }
 
 
