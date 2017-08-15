@@ -85,10 +85,11 @@ namespace GraphView
         internal string Identifier { get; }
 
 
-        private readonly Uri _docDBDatabaseUri, _docDBCollectionUri;
-        private bool _disposed;        
+        private readonly Uri _docDBDatabaseUri;
+        internal readonly Uri _docDBCollectionUri;
+        private bool _disposed;
 
-        private DocumentClient DocDBClient { get; }  // Don't expose DocDBClient to outside!
+        internal DocumentClient DocDBClient { get; }  // Don't expose DocDBClient to outside!
 
         internal CollectionType CollectionType { get; private set; }
 
@@ -107,7 +108,7 @@ namespace GraphView
         public string PartitionPathTopLevel { get; }  // Like "location"
 
 
-
+        // DocDB
         public static GraphViewConnection ResetGraphAPICollection(
             string endpoint,
             string authKey,
@@ -135,6 +136,7 @@ namespace GraphView
                 useReverseEdge, spilledEdgeThreshold, partitionByKey);
         }
 
+        // DocDB
         public static GraphViewConnection ResetFlatCollection(
             string endpoint,
             string authKey,
@@ -188,7 +190,6 @@ namespace GraphView
 
             // Initialze the two URI for future use
             // They are immutable during the life of this connection
-//            Uri docDbDatabaseUri;
             this._docDBDatabaseUri = UriFactory.CreateDatabaseUri(docDBDatabaseID);
             this._docDBCollectionUri = UriFactory.CreateDocumentCollectionUri(docDBDatabaseID, docDBCollectionID);
 
@@ -272,7 +273,6 @@ namespace GraphView
             }
 
             this.Identifier = $"{docDBEndpointUrl}\0{docDBDatabaseID}\0{docDBCollectionID}";
-//            this.VertexCache = new VertexObjectCache(this);
 
             this.EdgeSpillThreshold = edgeSpillThreshold ?? 0;
         }
@@ -312,6 +312,7 @@ namespace GraphView
 
 
         /// <summary>
+        /// DocDB
         /// If the collection has existed, reset the collection.
         ///   - collectionType = STANDARD: the collection is reset to STANDARD
         ///   - collectionType = PARTITIONED: the collection is reset to PARTITIONED
@@ -343,7 +344,7 @@ namespace GraphView
         }
 
 
-
+        // DocDB
         private static void CreateCollection(DocumentClient client, string databaseId, string collectionId, string partitionPath = null)
         {
             DocumentCollection collection = new DocumentCollection {
@@ -382,7 +383,7 @@ namespace GraphView
             Debug.Assert(docObject[KW_DOC_ID] != null, $"The newly created document should specify '{KW_DOC_ID}' field");
             //Debug.Assert(docObject[KW_DOC_PARTITION] != null, $"The newly created document should specify '{KW_DOC_PARTITION}' field");
 
-            Document createdDocument = await this.DocDBClient.CreateDocumentAsync(this._docDBCollectionUri, docObject);
+            Document createdDocument = await this.CreateDatabasePortal().CreateDocumentAsync(docObject);
             Debug.Assert((string)docObject[KW_DOC_ID] == createdDocument.Id);
 
             //
@@ -408,7 +409,7 @@ namespace GraphView
                 Debug.Assert(docObject[KW_DOC_ID] != null, $"The newly created document should contain '{KW_DOC_ID}' field");
                 //Debug.Assert(docObject[KW_DOC_PARTITION] != null, $"The newly created document should contain '{KW_DOC_PARTITION}' field");
 
-                Document createdDoc = await this.DocDBClient.CreateDocumentAsync(this._docDBCollectionUri, docObject);
+                Document createdDoc = await this.CreateDatabasePortal().CreateDocumentAsync(docObject);
                 Debug.Assert((string)docObject[KW_DOC_ID] == createdDoc.Id);
             }
         }
@@ -416,40 +417,7 @@ namespace GraphView
 
         internal async Task ReplaceOrDeleteDocumentAsync(string docId, JObject docObject, string partition, GraphViewCommand command)
         {
-            if (docObject != null) {
-                Debug.Assert((string)docObject[KW_DOC_ID] == docId);
-            }
-
-            RequestOptions option = new RequestOptions();
-            if (this.CollectionType == CollectionType.PARTITIONED)
-            {
-                option.PartitionKey = new PartitionKey(partition);
-            }
-
-            option.AccessCondition = new AccessCondition
-            {
-                Type = AccessConditionType.IfMatch,
-                Condition = command.VertexCache.GetCurrentEtag(docId),
-            };
-
-            Uri documentUri = UriFactory.CreateDocumentUri(this.DocDBDatabaseId, this.DocDBCollectionId, docId);
-            if (docObject == null) {
-                this.DocDBClient.DeleteDocumentAsync(documentUri, option).Wait();
-
-                // Remove the document's etag from saved
-                command.VertexCache.RemoveEtag(docId);
-            }
-            else {
-                Debug.Assert(docObject[KW_DOC_ID] is JValue);
-                Debug.Assert((string)docObject[KW_DOC_ID] == docId, "The replaced document should match ID in the parameter");
-                //Debug.Assert(partition != null && partition == (string)docObject[KW_DOC_PARTITION]);
-
-                Document document = await this.DocDBClient.ReplaceDocumentAsync(documentUri, docObject, option);
-
-                // Update the document's etag
-                docObject[KW_DOC_ETAG] = document.ETag;
-                command.VertexCache.UpdateCurrentEtag(document);
-            }
+            await this.CreateDatabasePortal().ReplaceOrDeleteDocumentAsync(docId, docObject, command, partition);
         }
 
         internal async Task ReplaceOrDeleteDocumentsAsync(Dictionary<string, Tuple<JObject, string>> documentsMap, GraphViewCommand command)
@@ -470,8 +438,6 @@ namespace GraphView
                 await this.ReplaceOrDeleteDocumentAsync(docId, docObject, partition, command);
             }
         }
-
-
 
 
         internal JObject RetrieveDocumentById(string docId, string partition, GraphViewCommand command)
@@ -508,10 +474,7 @@ namespace GraphView
                     SecondExpr = new WValueExpression(partition, true)
                 }, BooleanBinaryExpressionType.And);
             }
-
-//            string script = $"SELECT * FROM Doc WHERE Doc.{KW_DOC_ID} = '{docId}'" +
-//                            (partition != null ? $" AND Doc{this.GetPartitionPathIndexer()} = '{partition}'" : "");
-//            JObject result = this.ExecuteQueryUnique(script);
+            
             JObject result = this.CreateDatabasePortal().GetVertexDocument(jsonQuery);
 
             //
@@ -579,8 +542,8 @@ namespace GraphView
             return partitionIndexerBuilder.ToString();
         }
 
-
-        internal IEnumerable<dynamic> ExecuteQuery(string queryScript, FeedOptions queryOptions = null)
+        // DocDB
+        internal IEnumerable<dynamic> ExecuteDocDbQuery(string queryScript, FeedOptions queryOptions = null)
         {
             if (queryOptions == null)
             {
@@ -601,14 +564,15 @@ namespace GraphView
                 queryOptions);
         }
 
-        internal JObject ExecuteQueryUnique(string queryScript, FeedOptions queryOptions = null)
+        // DocDB
+        internal JObject ExecuteDocDbQueryUnique(string queryScript, FeedOptions queryOptions = null)
         {
             try
             {
                 //
                 // It seems that DocDB won't return an empty result, but throw an exception instead!
                 // 
-                List<dynamic> result = ExecuteQuery(queryScript, queryOptions).ToList();
+                List<dynamic> result = ExecuteDocDbQuery(queryScript, queryOptions).ToList();
 
                 Debug.Assert(result.Count <= 1, "A unique query should have at most 1 result");
                 return (result.Count == 0)

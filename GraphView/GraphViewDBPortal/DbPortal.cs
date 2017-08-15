@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.Azure.Documents;
 using Microsoft.Azure.Documents.Client;
 using Microsoft.SqlServer.TransactSql.ScriptDom;
 using Newtonsoft.Json.Linq;
@@ -223,6 +224,10 @@ namespace GraphView
         public abstract JObject GetVertexDocument(JsonQuery query);
 
         public abstract List<VertexField> GetVerticesByIds(HashSet<string> vertexId, GraphViewCommand command, string partition, bool constructEdges = false);
+
+        public abstract Task<ResourceResponse<Document>> CreateDocumentAsync(JObject docObject);
+
+        public abstract Task ReplaceOrDeleteDocumentAsync(string docId, JObject docObject, GraphViewCommand command, string partition = null);
     }
 
     internal class DocumentDbPortal : DbPortal
@@ -546,6 +551,52 @@ namespace GraphView
             }
 
             return result;
+        }
+
+        public override async Task<ResourceResponse<Document>> CreateDocumentAsync(JObject docObject)
+        {
+            return await this.Connection.DocDBClient.CreateDocumentAsync(this.Connection._docDBCollectionUri, docObject);
+        }
+
+        public override async Task ReplaceOrDeleteDocumentAsync(string docId, JObject docObject, GraphViewCommand command, string partition = null)
+        {
+            if (docObject != null)
+            {
+                Debug.Assert((string)docObject[KW_DOC_ID] == docId);
+            }
+
+            RequestOptions option = new RequestOptions();
+            if (this.Connection.CollectionType == CollectionType.PARTITIONED)
+            {
+                option.PartitionKey = new PartitionKey(partition);
+            }
+
+            option.AccessCondition = new AccessCondition
+            {
+                Type = AccessConditionType.IfMatch,
+                Condition = command.VertexCache.GetCurrentEtag(docId),
+            };
+
+            Uri documentUri = UriFactory.CreateDocumentUri(this.Connection.DocDBDatabaseId, this.Connection.DocDBCollectionId, docId);
+            if (docObject == null)
+            {
+                this.Connection.DocDBClient.DeleteDocumentAsync(documentUri, option).Wait();
+
+                // Remove the document's etag from saved
+                command.VertexCache.RemoveEtag(docId);
+            }
+            else
+            {
+                Debug.Assert(docObject[KW_DOC_ID] is JValue);
+                Debug.Assert((string)docObject[KW_DOC_ID] == docId, "The replaced document should match ID in the parameter");
+                //Debug.Assert(partition != null && partition == (string)docObject[KW_DOC_PARTITION]);
+
+                Document document = await this.Connection.DocDBClient.ReplaceDocumentAsync(documentUri, docObject, option);
+
+                // Update the document's etag
+                docObject[KW_DOC_ETAG] = document.ETag;
+                command.VertexCache.UpdateCurrentEtag(document);
+            }
         }
     }
 }
