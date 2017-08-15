@@ -83,7 +83,7 @@ GraphViewCommand command = new GraphViewCommand(graphConnection);
 var traversal = command.g().V().Out("created").Has("name", "lop");
 var result = traversal.Next();
 ```
-  
+
 #### GraphViewConnection
 It provides the ability of communication between the GraphView and datebase (i.e. CosmosDB, MariaDB). 
 
@@ -242,6 +242,37 @@ Then the translation part is finished. However, it is the simplest example. We w
 在GraphView中，当看见`CROSS APPLY`就意味着这是一个TVF。目前（8/8/2017）GraphView的局限性之一就是出现一个TVF之后，后面全部要跟TVF，这是后来要做的工作之一。
 
 但是翻译中的TVF的参数，并不是上面提到的输入的scheme。
+
+例如，`g().V().optional(__().out()).values("name")`的意思是，如果图中的点有邻居，将邻居的`name`取出，否则取出改点自己的`name`。`opitional`实际上是一个分支操作，可以用if-else来表示，但是传统的SQL无法做到分支，所以需要使用TVF。
+对于一个`optional`这个TVF，需要注意三个方面。输出是一列，图中所有点的信息；输出是一列，点的`name`；中间执行所需的操作是：对于每一个点，如果有邻居，返回邻居的`name`，否则返回自己的`name`。
+最后的SQL-like query是
+
+```SQL
+SELECT ALL R_0.value$3a55f880 AS value$3a55f880
+FROM node AS [N_18], 
+  CROSS APPLY 
+  Optional(
+   (
+    SELECT ALL N_18.name AS name
+    UNION ALL
+    SELECT ALL N_19.name AS name
+    FROM CROSS APPLY VertexToForwardEdge(N_18.*, '*') AS [E_6], CROSS APPLY EdgeToSinkVertex(E_6.*, 'name') AS [N_19]
+   )
+  ) AS [N_20], CROSS APPLY Values(N_20.name) AS [R_0]
+```
+正如你所见，`CROSS APPLY Optional(...)`, `CROSS APPLY VertexToForwardEdge(...)`,`CROSS APPLY EdgeToSinkVertex(...)`,`CROSS APPLY Values(...)`都是TVF。
+接下来对每个TVF进行解释分析
+1. `CROSS APPLY VertexToForwardEdge(...)`
+    由于我们的目前（8/8/2017）的局限性，出现第一个TVF后(这里是optional)，后面都需使用TVF来完成查询。TVF的输入是所有点(N_18.\*)，输出是这些点连接的出边(E_6)，中间做的操作是取边。但是在SQL-like中，参数有两个，N_18.\*和\*。这两个参数和TVF的输入含义不同。其中N_18.\*是指TVF的真正输入，\*是指TVF的输出为1列，是边的所有信息。这里可以看出，TVF的输入和TVF的参数是不能等价的。
+2. `CROSS APPLY EdgeToSinkVertex(...)`
+    同样由于局限性，需要这个TVF。这个TVF的输入是所有边(E_6.\*)，输出是这些边连接的出点的name。
+3. `CROSS APPLY Optional(...)`
+    这个TVF实际上做的是分支，所以有两部分结果。一部分是结果为空的时候需要返回的结果，另一部分是结果不为空返回的结果。TVF的输入是所有点(N_18.\*)，输出是一列name属性。为什么是name属性而不是其他，因为Gremlin的查询是`g().V().optional(__().out()).values("name")`，最终的结果需要name属性。也就是说，`optional`的输出结果需要后面的step来决定，这也就是为什么我们需要使用pull模型的原因之一。这里`Optional`的参数包含两部分，通过`UNION`连接。第一部分是结果为空的时候需要返回的结果，第二部分是结果不为空返回的结果。至于为什么在SQL-query中参数是这样，是由翻译、编译、运行共同协商的约定，没有其他特别的意义。
+4. `CROSS APPLY Values(...)`
+    这个TVF做的是将点的若干列取出作为新的一个table。
+
+所以TVF的输入和参数列表的并不完全等价。我们更多需要关注的是TVF的输入，参数上的形式有些需要去人为设定规则，同样也是我们需要关注的重点。
+
 
 ## Something about the translation part implementation of [path-step][14] in Gremlin
 
@@ -442,24 +473,24 @@ First three arguments in `SelectOne`:
 
 - `'All'`: The option of the "pop" operation. It could be `'All'`, `'First'` and `'Last'`.
 
-	> There is also an option to supply a Pop operation to select() to manipulate List objects in the Traverser:
-	>
-	> gremlin> g.V(1).as("a").repeat(out().as("a")).times(2).select(**first**, "a")
-	> ==>v[1]
-	> ==>v[1]
-	> gremlin> g.V(1).as("a").repeat(out().as("a")).times(2).select(**last**, "a")
-	> ==>v[5]
-	> ==>v[3]
-	> gremlin> g.V(1).as("a").repeat(out().as("a")).times(2).select(**all**, "a")
-	> ==>[v[1],v[4],v[5]]
-	> ==>[v[1],v[4],v[3]]
+  > There is also an option to supply a Pop operation to select() to manipulate List objects in the Traverser:
+  >
+  > gremlin> g.V(1).as("a").repeat(out().as("a")).times(2).select(**first**, "a")
+  > ==>v[1]
+  > ==>v[1]
+  > gremlin> g.V(1).as("a").repeat(out().as("a")).times(2).select(**last**, "a")
+  > ==>v[5]
+  > ==>v[3]
+  > gremlin> g.V(1).as("a").repeat(out().as("a")).times(2).select(**all**, "a")
+  > ==>[v[1],v[4],v[5]]
+  > ==>[v[1],v[4],v[3]]
 
 The argument as label in `SelectOne`:
 
 - `'a'`: `g.V().as("a").out().select("a")` so ... but pay attention:
 
-	> If the selection is one step, no map is returned. 
-	> When there is only one label selected, then a single object is returned. 
+  > If the selection is one step, no map is returned. 
+  > When there is only one label selected, then a single object is returned. 
 
 The argument that a sub SQL-like select query in `SelectOne`:
 
@@ -627,7 +658,7 @@ And some rules we should follow:
 * For each start label in traversal, if we can not recognize it (the label not in the traverser's path), it fails. 
 * The result of match-step is a map(dict) including all the keys on all match-traversals (which are on the traverser's path without doubt).
 
---- 
+---
 
 First of all, we should find the proper order. 
 
