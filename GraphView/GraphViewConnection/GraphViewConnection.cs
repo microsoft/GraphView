@@ -48,6 +48,8 @@ using Newtonsoft.Json.Linq;
 using Newtonsoft.Json.Serialization;
 using static GraphView.DocumentDBKeywords;
 
+using JsonServer;
+
 // For debugging
 
 namespace GraphView
@@ -90,6 +92,8 @@ namespace GraphView
         private bool _disposed;
 
         internal DocumentClient DocDBClient { get; }  // Don't expose DocDBClient to outside!
+
+        internal JsonServerConnection JsonServerClient { get; }
 
         internal CollectionType CollectionType { get; private set; }
 
@@ -277,10 +281,38 @@ namespace GraphView
             this.EdgeSpillThreshold = edgeSpillThreshold ?? 0;
         }
 
+        /// <summary>
+        /// Create a connection to JsonServer
+        /// </summary>
+        /// <param name="jsonServerConnectionString"></param>
+        /// <param name="graphType"></param>
+        /// <param name="useReverseEdges"></param>
+        /// <param name="edgeSpillThreshold"></param>
+        public GraphViewConnection(string jsonServerConnectionString,
+                                    GraphType graphType,
+                                    bool useReverseEdges,
+                                    int? edgeSpillThreshold)
+        {
+            this.JsonServerClient = new JsonServerConnection(jsonServerConnectionString);
+
+            this.GraphType = graphType;
+            this.UseReverseEdges = useReverseEdges;
+            this.Identifier = jsonServerConnectionString;
+            this.EdgeSpillThreshold = edgeSpillThreshold ?? 0;
+        }
+
 
         internal DbPortal CreateDatabasePortal()
         {
-            return new DocumentDbPortal(this);
+            if (this.DocDBClient != null)
+            {
+                return new DocumentDbPortal(this);
+            }
+            if (this.JsonServerClient != null)
+            {
+                return new JsonServerDbPortal(this);
+            }
+            throw new GraphViewException("Unsupported type of database.");
         }
 
 
@@ -584,6 +616,12 @@ namespace GraphView
             {
                 return null;
             }
+        }
+
+        // Finalizers
+        ~GraphViewConnection()
+        {
+            this.JsonServerClient.Close();
         }
 
 
