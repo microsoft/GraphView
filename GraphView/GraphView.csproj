@@ -69,6 +69,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="GraphViewDBPortal\CollectionType.cs" />
+    <Compile Include="GraphViewDBPortal\JsonServerDbPortal.cs" />
     <Compile Include="GraphViewExecutionRuntime\CollectionOperator.cs" />
     <Compile Include="GraphViewDBPortal\DbPortal.cs" />
     <Compile Include="GraphViewExecutionRuntime\AggregateOperator.cs" />
@@ -79,6 +80,7 @@
     <Compile Include="GraphViewQueryCompiler\AttachWhereClauseVisitor.cs" />
     <Compile Include="GraphViewExecutionRuntime\BooleanFunction.cs" />
     <Compile Include="GraphViewQueryCompiler\ToDocDBStringVisitor.cs" />
+    <Compile Include="GraphViewQueryCompiler\ToJsonServerStringVisitor.cs" />
     <Compile Include="GraphViewUtils\DictionaryExtensions.cs" />
     <Compile Include="GraphViewQueryCompiler\CompileBooleanExpression.cs" />
     <Compile Include="GraphViewQueryCompiler\CompileModification.cs" />
