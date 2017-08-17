@@ -192,27 +192,26 @@ During constructing the FSM, we created `VariableList`, `TableReferencesInFromCl
 
 #### SELECT
 
-Because our ultimate goal is to get the final state so that the 'SELECT' of SQL-like query is determined by the `PivotVariable`.  
-As we know, in some cases, not all the columns are needed. If `PivotVariable` records the columns (or projectedProperties) we need, we will explicitly stated. But if we do not records any columns, we will state the `DefaultProjection`. For example, the `PivotVariable` of `g.V()` is an object of `GremlinFreeVertexVariable` without any column given so that the `SELECT` will get the `DefaultProjection``*` of `GremlinFreeVertexVariable`, like `SELECT ALL N_1.* AS value$2c25dcb6`. The`DefaultProjection` is `*` if and only if the type of `GremlinVariableType` is Edge or Vertex. Now the `PivotVariable` of `g.V("1").out().outE()` is an object of  `GremlinFreeEdgeVariable` without any column given so that the `SELECT` clause is "SELECT ALL E_2.* AS value$821a7846"
+Because our ultimate goal is to get the final state so that the 'SELECT' of SQL-like query is determined by the `PivotVariable`. 
+As we know, in some cases, not all the columns are needed. If `PivotVariable` records the columns (or projectedProperties) we need, we will explicitly stated. But if we do not records any columns, we will state the `DefaultProjection`. For example, the `PivotVariable` of `g.V()` is an object of `GremlinFreeVertexVariable` without any column given so that the `SELECT` will get the `DefaultProjection``*` of `GremlinFreeVertexVariable`, like `SELECT ALL N_1.* AS value$2c25dcb6`. The`DefaultProjection` is `*` if and only if the type of `GremlinVariableType` is Edge or Vertex. Now the `PivotVariable` of `g.V("1").out().outE()` is an object of  `GremlinFreeEdgeVariable` without any column given so that the `SELECT` clause is `SELECT ALL E_2.* AS value$821a7846`
 
 #### FROM
 
-This part is the most complicated. Keep in mind that GraphView is a lasy and pull system. Assume that `TableReferencesInFromClause` is [T_1, T_2, ..., T_i, ..., T_n]. T_i may depends on T_1, T_2, ..., T_i-1.
+This part is the most complicated. Keep in mind that GraphView is a lasy and pull system. Assume that `TableReferencesInFromClause` is $[T_1, T_2, ..., T_i, ..., T_n]$. $T_i$ may depends on $T_1, T_2, ..., T_{i-1}$.
 
 Therefore, if we traverse `TableReferencesInFromClause` from 1 to n, we do not know the properties the latter obnject of `GremlinTableVariable` needs. The wiser way to traverse in the reverse order. If one object of `GremlinTableVariable` needs some properties, it will "tell" previous objects. `g.V("1").out().outE()` is so simple that it does not use this information. 
 
-Now, `TableReferencesInFromClause` is [`GremlinFreeVertexVariable`, `GremlinFreeVertexVariable`]. The first one is created due to `g.V("1")`, the second one is created due to `.out()`. We firstly call `ToTableReference` on the second `GremlinFreeVertexVariable`. The `ToTableReference` method is designed to translate `GremlinTableVariable` to `WTableReference`. `GremlinFreeVertexVariable` is so simple that the instance is just like "node AS [N_2]". So similarly， the first instance is "node AS [N_1]"
+Now, `TableReferencesInFromClause` is [`GremlinFreeVertexVariable`, `GremlinFreeVertexVariable`]. The first one is created due to `g.V("1")`, the second one is created due to `.out()`. We firstly call `ToTableReference` on the second `GremlinFreeVertexVariable`. The `ToTableReference` method is designed to translate `GremlinTableVariable` to `WTableReference`. `GremlinFreeVertexVariable` is so simple that the instance is just like `node AS [N_2]`. So similarly， the first instance is `node AS [N_1]`
 
-Finally, we put them into a list, ["node AS [N_1]", "node AS [N_2]"]. And the `FROM` clause is "FROM node AS [N_1], node AS [N_2]"
+Finally, we put them into a list, [`node AS [N_1]`, `node AS [N_2]`]. And the `FROM` clause is `FROM node AS [N_1], node AS [N_2]`
 
 #### MATCH
 
-Maybe you never hear the `MATCH` clause before, but it is easy to understand. The result of MatchClause is ["N_1-[Edge AS E_1]->N_2", "N_2-[Edge AS E_2]"]. Every element is an object of `WMatchPath` with three parts, `SourceVariable`, `EdgeVariable` and `SinkVariable`. Take "N_1-[Edge AS E_1]->N_2" for example, "N_1" is the `SourceVariable`, "E_1" is the `EdgeVariable` and "N_2" is the `SinkVariable`. Repeat it again, the `MATCH` clause is "MATCH N_1-[Edge AS E_1]->N_2
-  N_2-[Edge AS E_2]"
+Maybe you never hear the `MATCH` clause before, but it is easy to understand. The result of MatchClause is [`N_1-[Edge AS E_1]->N_2`, `N_2-[Edge AS E_2]`]. Every element is an object of `WMatchPath` with three parts, `SourceVariable`, `EdgeVariable` and `SinkVariable`. Take `N_1-[Edge AS E_1]->N_2` for example, `N_1` is the `SourceVariable`, `E_1` is the `EdgeVariable` and `N_2` is the `SinkVariable`. Repeat it again, the `MATCH` clause is `MATCH N_1-[Edge AS E_1]->N_2    N_2-[Edge AS E_2]`
 
 #### WHERE
 
-`Predicates` is generated during building the FSM. But how to compose many predicates? Every predicate is an instance of `WBooleanExpression`, which has two instances of `WBooleanExpression`. You can image it as one node in a binary tree. If one predicate is added, just need to create an object of `WBooleanExpression` to store the new predicate, create an instance of `WBooleanExpression` to merge the old object and the new object with `AND`, `OR`. We can use the result to represent all predicates. Finally, the `WHERE` clause is "WHERE N_1.id = '1'"
+`Predicates` is generated during building the FSM. But how to compose many predicates? Every predicate is an instance of `WBooleanExpression`, which has two instances of `WBooleanExpression`. You can image it as one node in a binary tree. If one predicate is added, just need to create an object of `WBooleanExpression` to store the new predicate, create an instance of `WBooleanExpression` to merge the old object and the new object with `AND`, `OR`. We can use the result to represent all predicates. Finally, the `WHERE` clause is `WHERE N_1.id = '1'`
 
 #### SQL-like query
 
@@ -263,16 +262,109 @@ FROM node AS [N_18],
 正如你所见，`CROSS APPLY Optional(...)`, `CROSS APPLY VertexToForwardEdge(...)`,`CROSS APPLY EdgeToSinkVertex(...)`,`CROSS APPLY Values(...)`都是TVF。
 接下来对每个TVF进行解释分析
 1. `CROSS APPLY VertexToForwardEdge(...)`
-    由于我们的目前（8/8/2017）的局限性，出现第一个TVF后(这里是optional)，后面都需使用TVF来完成查询。TVF的输入是所有点(N_18.\*)，输出是这些点连接的出边(E_6)，中间做的操作是取边。但是在SQL-like中，参数有两个，N_18.\*和\*。这两个参数和TVF的输入含义不同。其中N_18.\*是指TVF的真正输入，\*是指TVF的输出为1列，是边的所有信息。这里可以看出，TVF的输入和TVF的参数是不能等价的。
+    由于我们的目前（8/8/2017）的局限性，出现第一个TVF后(这里是optional)，后面都需使用TVF来完成查询。TVF的输入是所有点(`N_18.*`)，输出是这些点连接的出边(`E_6`)，中间做的操作是取边。但是在SQL-like中，参数有两个，`N_18.*`和`*`。这两个参数和TVF的输入含义不同。其中`N_18.*`是指TVF的真正输入，`*`是指TVF的输出为1列，是边的所有信息。这里可以看出，TVF的输入和TVF的参数是不能等价的。
 2. `CROSS APPLY EdgeToSinkVertex(...)`
-    同样由于局限性，需要这个TVF。这个TVF的输入是所有边(E_6.\*)，输出是这些边连接的出点的name。
+    同样由于局限性，需要这个TVF。这个TVF的输入是所有边(`E_6.*`)，输出是这些边连接的出点的name。
 3. `CROSS APPLY Optional(...)`
-    这个TVF实际上做的是分支，所以有两部分结果。一部分是结果为空的时候需要返回的结果，另一部分是结果不为空返回的结果。TVF的输入是所有点(N_18.\*)，输出是一列name属性。为什么是name属性而不是其他，因为Gremlin的查询是`g().V().optional(__().out()).values("name")`，最终的结果需要name属性。也就是说，`optional`的输出结果需要后面的step来决定，这也就是为什么我们需要使用pull模型的原因之一。这里`Optional`的参数包含两部分，通过`UNION`连接。第一部分是结果为空的时候需要返回的结果，第二部分是结果不为空返回的结果。至于为什么在SQL-query中参数是这样，是由翻译、编译、运行共同协商的约定，没有其他特别的意义。
+    这个TVF实际上做的是分支，所以有两部分结果。一部分是结果为空的时候需要返回的结果，另一部分是结果不为空返回的结果。TVF的输入是所有点(`N_18.*`)，输出是一列name属性。为什么是name属性而不是其他，因为Gremlin的查询是`g().V().optional(__().out()).values("name")`，最终的结果需要name属性。也就是说，`optional`的输出结果需要后面的step来决定，这也就是为什么我们需要使用pull模型的原因之一。这里`Optional`的参数包含两部分，通过`UNION`连接。第一部分是结果为空的时候需要返回的结果，第二部分是结果不为空返回的结果。至于为什么在SQL-query中参数是这样，是由翻译、编译、运行共同协商的约定，没有其他特别的意义。
 4. `CROSS APPLY Values(...)`
     这个TVF做的是将点的若干列取出作为新的一个table。
 
 所以TVF的输入和参数列表的并不完全等价。我们更多需要关注的是TVF的输入，参数上的形式有些需要去人为设定规则，同样也是我们需要关注的重点。
 
+### Subquery
+
+Generally, it is common to use some queries to realize some functions. For example, if we want to add an edge in one graph, we need the sink vertex and source vertex. In GraphView, we need to use queries to find vertices. Therefore, we usually use subqueries in one complicated query。
+
+### Subquery with TVF
+
+#### GremlinPathVariable
+
+##### Senmatic
+
+>A traverser is transformed as it moves through a series of steps within a traversal. The history of the traverser is realized by examining its path with path()-step (map).
+
+##### Parameters
+
+```SQL
+-- The SQL-like script translated from 'g().V().Out().Out().Path()'
+SELECT ALL R_0.value$12f42b2d AS value$12f42b2d
+FROM node AS [N_18], node AS [N_19], node AS [N_20], 
+  CROSS APPLY 
+  Path(
+   Compose1('value$12f42b2d', N_18.*, 'value$12f42b2d', N_18.*, '*'), 
+   Compose1('value$12f42b2d', N_19.*, 'value$12f42b2d', N_19.*, '*'), 
+   Compose1('value$12f42b2d', N_20.*, 'value$12f42b2d', N_20.*, '*'), 
+   (
+    SELECT ALL Compose1('value$12f42b2d', R_1.value$12f42b2d, 'value$12f42b2d') AS value$12f42b2d
+    FROM CROSS APPLY Decompose1(C.value$12f42b2d, 'value$12f42b2d') AS [R_1]
+   )
+  ) AS [R_0]
+MATCH N_18-[Edge AS E_6]->N_19
+ N_19-[Edge AS E_7]->N_20
+```
+
+In `CROSS APPLY Path(...)`, there are some `Compose1` clauses and a subquery with `Compose1` and `Decompose1`. `Compose1` is aim to extract some columns and rename them(i.e. `Compose1('value$12f42b2d', N_18.*, 'value$12f42b2d', N_18.*, '*')`, `N_18.*` will be the default projection and `N_18.*` will rename as `value$12f42b2d`, `N_18.*` will rename as `*`). Only these columns which have been `populated` will be extracted. However, not all these `populated` columns are needed in `path`. Therefore, `Decompose1` will choose these columns which the `path` needs(i.e. `Decompose1(C.value$12f42b2d, 'value$12f42b2d')`, only `value$12f42b2d` will be choosed). After `Decompose1`, we need to `Compose1` the result of `Decompose1` finally.
+
+Because in `CROSS APPLY Path(...)`, there is a subquery with `CROSS APPLY Decompose1`, it belongs to *Subquery with TVF*.
+
+
+### Subquery without TVF
+
+As you can see, TVFs are powerful tools to help SQL to execute complex queries. But if the subqueries are simple, we do not need TVFs.
+
+#### GremlinAddVVariable
+
+##### Semantic
+
+>The addV()-step is used to add vertices to the graph (map/sideEffect). For every incoming object, a vertex is created. Moreover, GraphTraversalSource maintains an addV() method.
+
+##### Parameters
+
+```SQL
+-- The SQL-like script translated from 'g().AddV("person")'
+SELECT ALL N_18.* AS value$dea493c9
+FROM 
+  (
+   SELECT ALL '1'
+  ) AS [_]
+  CROSS APPLY 
+  AddV(
+   'person', 
+   (list, '*', null)
+  ) AS [N_18]
+```
+
+This query is a special because it has `(SELECT ALL '1') AS [_]`. In translation part, firstly we will build a `GremlinTranlationOpList` with an instance of `GremlinAddVOp`. Then it will build an object of  `GremlinToSqlContext` with an instance of `GremlinAddVVariable`, in fact a FSM. When the  instance of `GremlinAddVVariable` calls `ToTableReference`, the reference will set the first table reference as `(SELECT ALL '1') AS [_]` because the instance of `GremlinAddVVariable` is the first one in `GremlinToSqlContext.VariableList`. It is easy to understand because we must add a vertex in a graph which we must give explicitly. Therefore, we need the subquery, `(SELECT ALL '1') AS [_]`. Although we need the subquery, it not a TVF. Therefore, it belongs to *Subquery without TVF*
+
+#### GremlinSimplePathVariable
+
+##### Semantic
+
+> When it is important that a traverser not repeat its path through the graph, simplePath()-step should be used (filter). The path information of the traverser is analyzed and if the path has repeated objects in it, the traverser is filtered. 
+
+##### Parameters
+
+```SQL
+-- The SQL-like script translated from 'g().V(1).Out().Out().SimplePath()'
+SELECT ALL N_20.* AS value$ff1ae84f
+FROM node AS [N_18], node AS [N_19], node AS [N_20], 
+  CROSS APPLY 
+  Path(
+   Compose1('value$ff1ae84f', N_18.*, 'value$ff1ae84f', N_18.id, 'id', N_18.*, '*'), 
+   Compose1('value$ff1ae84f', N_19.*, 'value$ff1ae84f', N_19.*, '*'), 
+   Compose1('value$ff1ae84f', N_20.*, 'value$ff1ae84f', N_20.*, '*'), 
+   (
+    SELECT ALL Compose1('value$ff1ae84f', R_1.value$ff1ae84f, 'value$ff1ae84f') AS value$ff1ae84f
+    FROM CROSS APPLY Decompose1(C.value$ff1ae84f, 'value$ff1ae84f') AS [R_1]
+   )
+  ) AS [R_0], CROSS APPLY SimplePath(R_0.value$ff1ae84f) AS [R_2]
+MATCH N_18-[Edge AS E_6]->N_19
+ N_19-[Edge AS E_7]->N_20
+WHERE N_18.id = 1
+```
+
+Before we filter `simplepath`, we need get `path` first. However, the parameter of `SimplePath` is the default projection of the result of `Path`. Therefore, it belongs to *Subquery without TVF*.
 
 ## Something about the translation part implementation of [path-step][14] in Gremlin
 
