@@ -109,6 +109,7 @@ namespace GraphViewConsoleTest
             //statisticAllThePartitionAndDegreeInformation("CitGreedyPartitionAllData");
             //repeatSSSPTest("CitHashPartition1000item");
             bulkLoadFromFileWithFormat("CitHashPartition1000item", 3, "E:\\dataset\\vertex.txt", "E:\\dataset\\edge.txt");
+            //Graphs_DirectedSparseGraphTest.DoTest();
             Console.ReadLine();
             // CitGreedyRePartition1000Item
         }
@@ -2695,7 +2696,9 @@ namespace GraphViewConsoleTest
             connection.EdgeSpillThreshold = 1;
             GraphViewConnection.partitionNum = partitionNum;
             GraphViewConnection.useHashPartitionWhenCreateDoc = false;
-            GraphViewConnection.useFakePartitionWhenCreateDoc = true;
+            GraphViewConnection.useFakePartitionWhenCreateDoc = false;
+            GraphViewConnection.useGreedyPartitionWhenCreateDoc = false;
+            GraphViewConnection.useIncRepartitionDoc = false;
             GraphViewConnection.useBulkInsert = true;
             GraphViewCommand cmd = new GraphViewCommand(connection);
             HashSet<String> nodeIdSet = new HashSet<String>();
@@ -2731,11 +2734,14 @@ namespace GraphViewConsoleTest
                     continue;
                 }
                 blk.edgeRawStringBuffer.Add(lineE);
+                // parse and add to the in memory graph
+                
                 Console.WriteLine(c);
             }
 
             blk.startParseThread();
             blk.parseDataCountDownLatch.Await();
+            blk.partitionTheGraph();
             blk.initAndStartInsertNodeStringCMD();
             blk.insertNodeCountDownLatch.Await();
             blk.initAndStartInsertEdgeStringCMD();

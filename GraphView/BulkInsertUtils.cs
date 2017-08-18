@@ -41,12 +41,18 @@ namespace GraphView
         String vertexSeperator;
         String[] edgeSchema;
         String edgeSeperator;
+        public DirectedSparseGraph<String> graph;
+        public Dictionary<String, String> vertexPartition;
 
         public BulkInsertUtils(int _threadNum)
         {
             threadNum = _threadNum;
         }
 
+        public void partitionTheGraph()
+        {
+            graph.BFSPartitionGraph(vertexPartition, threadNum);
+        }
         public void initBulkInsertUtilsForFormatDataFile(int threadNum, int bufferSize, GraphViewConnection conn, String[] _vertexSchema, String[] _edgeSchema,
             String _vertexSeperator, String _edgeSeperator)
         {
@@ -60,7 +66,8 @@ namespace GraphView
             insertNodeBuffer = new BoundedBuffer<String>(bufferSize * 2);
             insertEdgeBuffer = new BoundedBuffer<String>(bufferSize);
             stringWorkerList = new List<InsertDocFromStringWorker>();
-
+            graph = new DirectedSparseGraph<String>();
+            vertexPartition = new Dictionary<String, String>();
             // new
             vertexRawStringBuffer = new BoundedBuffer<string>(bufferSize * 2);
             edgeRawStringBuffer = new BoundedBuffer<string>(bufferSize);
@@ -282,12 +289,15 @@ namespace GraphView
             //var insertV1 = "g.addV('id', '" + src + "').property('name', '" + src + "').next()";
             var i = 0;
             String prefix = null;
-
+            var id = "";
             foreach (var s in schema)
             {
                 if (s.ToLower().Contains("id"))
                 {
-                    prefix = "g.addV('" + s.Replace("\"", "").ToLower() + "', '" + splitLine[i] + "').property('_partition','0')";
+                    //prefix = "g.addV('" + s.Replace("\"", "").ToLower() + "', '" + splitLine[i] + "').property('_partition','0')";
+                    id = splitLine[i];
+                    prefix = "g.addV('" + s.Replace("\"", "").ToLower() + "', '" + splitLine[i] + "')";
+                    blk.graph.AddVertex(splitLine[1]);
 
                     if (!blk.vertexIdsSet.ContainsKey(splitLine[i]))
                     {
@@ -301,7 +311,8 @@ namespace GraphView
                 i++;
             }
 
-            return prefix + vertexInsertCMD.ToString() + ".next()";
+            //return prefix + vertexInsertCMD.ToString() + ".next()";
+            return prefix + vertexInsertCMD.ToString() + "\t" + id;
         }
 
         public String edgeParser(String line, String[] schema, String wordSeperator)
@@ -312,6 +323,7 @@ namespace GraphView
             var i = 0;
             String prefix = null;
             prefix = "g.V('" + splitLine[0] + "').addE('').to(g.V('" + splitLine[1] + "'))";
+            blk.graph.AddEdge(splitLine[0], splitLine[1]);
 
             foreach (var s in schema)
             {
@@ -430,7 +442,9 @@ namespace GraphView
                 while (doc != null)
                 {
                     var lineE = doc;
-                    cmd.CommandText = lineE;
+                    var splits = lineE.Split('\t');
+                    var CMD = splits[0] + ".property('_partition','" + splits[1] + "')" + ".next()";
+                    cmd.CommandText = CMD;
                     cmd.Execute();
                     doc = insertNodeBuffer.Retrieve();
                     if (insertNodeBuffer.boundedBuffer.Count() == 0)
