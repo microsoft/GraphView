@@ -41,6 +41,7 @@ namespace GraphView
                     }
                 }
                 this.StepList.Reverse();
+                this.StepLabelsAtThatMoment.Reverse();
             }
             else if (fromLabel != null)
             {
@@ -55,6 +56,7 @@ namespace GraphView
 
                 }
                 this.StepList.Reverse();
+                this.StepLabelsAtThatMoment.Reverse();
             }
             else
             {

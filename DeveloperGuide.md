@@ -473,6 +473,42 @@ MATCH N_18-[Edge AS E_6]->N_19
 
 As you can see, the label will be a parameter after its related Variable in Path parameter list.
 
+### sub-path using from() and to() modulations
+
+Generally, we need the total path from the first step to the last step. But Gremlin provides sub-paths using `from()` and `to()` modulations with respective, path-based steps. This is useful in `simplePath()` and `cyclicPath()`.
+
+```SQL
+-- g.V().as('a').out('created').as('b').in('created').as('c').cyclicPath().from('a').to('b').path()
+
+SELECT ALL R_2.value$882d44d2 AS value$882d44d2
+FROM node AS [N_18], node AS [N_19], node AS [N_20], 
+    CROSS APPLY 
+    Path(
+      Compose1('value$882d44d2', N_18.*, 'value$882d44d2', N_18.*, '*'),
+      'a',
+      Compose1('value$882d44d2', N_19.*, 'value$882d44d2', N_19.*, '*'),
+      'b'
+    ) AS [R_0], CROSS APPLY  SimplePath(R_0.value$882d44d2) AS [R_1], 
+    CROSS APPLY 
+    Path(
+      Compose1('value$882d44d2', N_18.*, 'value$882d44d2', N_18.*, '*'),
+      'a',
+      Compose1('value$882d44d2', N_19.*, 'value$882d44d2', N_19.*, '*'),
+      'b',
+      Compose1('value$882d44d2', N_20.*, 'value$882d44d2', N_20.*, '*'),
+      'c',
+      (
+        SELECT ALL Compose1('value$882d44d2', R_3.value$882d44d2, 'value$882d44d2') AS value$882d44d2
+        FROM CROSS APPLY  Decompose1(C.value$882d44d2, 'value$882d44d2') AS [R_3]
+      )
+    ) AS [R_2]
+MATCH N_18-[Edge AS E_6]->N_19
+  N_19<-[Edge AS E_7]-N_20
+WHERE E_6.label = 'created' AND E_7.label = 'created'
+```
+
+It is easy to get the sub-path as long as we can find all steps from the step with the label given by `from` to the step with the label given by `to`. If we have more than one step labeled by the same label, what should we do? After testing, we find we prefer the last step if there are some steps with the same label. That is to say, if the path is `a-a-a-b-b-b-c-c-c`, the sub-path from(`a`) and to(`c`) is `a-b-b-b-c-c-c`. So we need to walk backwards. If the query has no `to()` or we find the label given by `to()`, we begin to add steps into `StepList` until we find the label given by `from()`.
+
 ### Path performance with steps which have sub traversals
 ``` SQL
 -- g.V().union(__.inE().outV(), __.outE().inV()).both().path()
@@ -629,7 +665,7 @@ MATCH N_18-[Edge AS E_6]->N_19
 
 The situation of `Select` argument list is almost same as the `SelectOne`. Note that the first sub query translated from `by("name")` will apply to the selected value with label "a", and the second one will apply to the selected value with "b", and so on.
 
-### Some detials of our Implementation
+### Some details of our Implementation
 We will insert a GremlinGlobalPathVariable before each select-step because the select-step depends on path.
 
 
