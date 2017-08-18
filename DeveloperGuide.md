@@ -228,7 +228,7 @@ Then the translation part is finished. However, it is the simplest example. We w
 ### Table-Valued Functions
 
 由于后面部分比较难理解，也有一些坑，开始讲中文。
-显然如果一个数据库只执行取边、取点的操作，那么这个数据库的应用范围就不会很广。但是传统的SQL，只能做一些比较简单的操作，简单的分支都做不到。所以我们要引入SQL Server里面的[Table-Valued Functions][15]。
+显然如果一个数据库只执行取边、取点的操作，那么这个数据库的应用范围就不会很广。但是传统的SQL，只能做一些比较简单的操作，简单的分支都做不到。所以我们要引入SQL Server里面的Table-Valued Functions。
 
 > A table-valued function is a user-defined function that returns a table.
 
@@ -242,7 +242,7 @@ Then the translation part is finished. However, it is the simplest example. We w
 
 但是翻译中的TVF的参数，并不是上面提到的输入的scheme。
 
-例如，`g().V().optional(__().out()).values("name")`的意思是，如果图中的点有邻居，将邻居的`name`取出，否则取出改点自己的`name`。`opitional`实际上是一个分支操作，可以用if-else来表示，但是传统的SQL无法做到分支，所以需要使用TVF。
+例如，`g().V().optional(__().out()).values("name")`的意思是，如果图中的点有邻居，将邻居的`name`取出，否则取出该点自己的`name`。`opitional`实际上是一个分支操作，可以用if-else来表示，但是传统的SQL无法做到分支，所以需要使用TVF。
 对于一个`optional`这个TVF，需要注意三个方面。输出是一列，图中所有点的信息；输出是一列，点的`name`；中间执行所需的操作是：对于每一个点，如果有邻居，返回邻居的`name`，否则返回自己的`name`。
 最后的SQL-like query是
 
@@ -264,9 +264,9 @@ FROM node AS [N_18],
 1. `CROSS APPLY VertexToForwardEdge(...)`
     由于我们的目前（8/8/2017）的局限性，出现第一个TVF后(这里是optional)，后面都需使用TVF来完成查询。TVF的输入是所有点(`N_18.*`)，输出是这些点连接的出边(`E_6`)，中间做的操作是取边。但是在SQL-like中，参数有两个，`N_18.*`和`*`。这两个参数和TVF的输入含义不同。其中`N_18.*`是指TVF的真正输入，`*`是指TVF的输出为1列，是边的所有信息。这里可以看出，TVF的输入和TVF的参数是不能等价的。
 2. `CROSS APPLY EdgeToSinkVertex(...)`
-    同样由于局限性，需要这个TVF。这个TVF的输入是所有边(`E_6.*`)，输出是这些边连接的出点的name。
+    同样由于局限性，需要这个TVF。这个TVF的输入是所有边(`E_6.*`)，输出是这些边连接的出点的`name`。
 3. `CROSS APPLY Optional(...)`
-    这个TVF实际上做的是分支，所以有两部分结果。一部分是结果为空的时候需要返回的结果，另一部分是结果不为空返回的结果。TVF的输入是所有点(`N_18.*`)，输出是一列name属性。为什么是name属性而不是其他，因为Gremlin的查询是`g().V().optional(__().out()).values("name")`，最终的结果需要name属性。也就是说，`optional`的输出结果需要后面的step来决定，这也就是为什么我们需要使用pull模型的原因之一。这里`Optional`的参数包含两部分，通过`UNION`连接。第一部分是结果为空的时候需要返回的结果，第二部分是结果不为空返回的结果。至于为什么在SQL-query中参数是这样，是由翻译、编译、运行共同协商的约定，没有其他特别的意义。
+    这个TVF实际上做的是分支，所以有两部分结果。一部分是结果为空的时候需要返回的结果，另一部分是结果不为空返回的结果。TVF的输入是所有点(`N_18.*`)，输出是一列name属性。为什么是`name`属性而不是其他，因为Gremlin的查询是`g().V().optional(__().out()).values("name")`，最终的结果需要`name`属性。也就是说，`optional`的输出结果需要后面的step来决定，这也就是为什么我们需要使用pull模型的原因之一。这里`Optional`的参数包含两部分，通过`UNION`连接。第一部分是结果为空的时候需要返回的结果，第二部分是结果不为空返回的结果。至于为什么在SQL-query中参数是这样，是由翻译、编译、运行共同协商的约定，没有其他特别的意义。
 4. `CROSS APPLY Values(...)`
     这个TVF做的是将点的若干列取出作为新的一个table。
 
@@ -426,9 +426,9 @@ FROM node AS [N_18], node AS [N_19],
 MATCH N_18-[Edge AS E_6]->N_19
 ```
 
-Here, `V()` creates a FreeVariable N_18 and `out()` creates a FreeVariable N_19. So in this traversal, each traverser will take along a path (history) including two elements, N_18 and N_19. And we can see that the TVF `Path` in script has n + 1 parameters, the information of n steps and the `By` projection sub query.
+Here, `V()` creates a FreeVariable `N_18` and `out()` creates a FreeVariable `N_19`. So in this traversal, each traverser will take along a path (history) including two elements, `N_18` and `N_19`. And we can see that the TVF `Path` in script has n + 1 parameters, the information of n steps and the `By` projection sub query.
 
-For each Compose1 in parameter list, the `By` projection sub query will decompose it and do some projections, then compose it as last, which is one element of the path-step result.
+For each `Compose1` in parameter list, the `By` projection sub query will decompose it and do some projections, then compose it as last, which is one element of the path-step result.
 
 By the way, the `C` in Decompose1 argument is a bound variable of the input, pointing to each Compose1 in Path argument list.
 
@@ -635,6 +635,10 @@ We will insert a GremlinGlobalPathVariable before each select-step because the s
 
 ## Something about the implementation of [repeat-step](http://tinkerpop.apache.org/docs/current/reference/#repeat-step) in Gremlin
 
+### Senmatic
+
+>The repeat()-step (branch) is used for looping over a traversal given some break predicate. Below are some examples of repeat()-step in action.
+
 ### Repeat with emit/until/times
 
 We assume that you have know these usage cases such as 
@@ -679,7 +683,7 @@ FROM node AS [N_18],
 ```
 
 #### RepeatCondition
-A number of repeat rounds from argument of `times`, or an EXISTS clause translated from sub traversal in `until`.
+A number of repeat rounds from argument of `times`, or an `EXISTS` clause translated from sub traversal in `until`.
 
 #### Sub Traversal of Repeat
 ``` SQL
@@ -701,12 +705,56 @@ A number of repeat rounds from argument of `times`, or an EXISTS clause translat
  ...
 ```
 
-The first SELECT clause would be run only one time to select the specific columns in RawRecord for align when the traverser comes in this repeat step at the first time. And `null As _path` is only the dummy padding.
+The first `SELECT` clause would be run only one time to select the specific columns in RawRecord for align when the traverser comes in this repeat step at the first time. And `null As _path` is only the dummy padding.
 
-The second time and later, the repeat step receives the result of previous repeat as the input, applies the second SELECT clause in the final stage of process. And in fact, `R` refers to it. So `R._path` means the local path in previous repeat.
+The second time and later, the repeat step receives the result of previous repeat as the input, applies the second `SELECT` clause. Here, `R` refers to previous output and `R._path` means the local path in previous repeat.
+
+The most important thing is that the first `SELECT` clause and the second `SELECT` clause have the same scheme. The reason is obvious, no matter how many times we execute the repeat-step, the scheme should be the same. The first `SELECT` clause is related to the first time, and the second `SELECT` clause is related to the second time and later. 
+
+The scheme of repeat is determined by
+
+1. What projections do we need in sub traversal of repeat(Here, we need `*`).
+2. What projections do we need after the repeat-step(Here, we need `_path` and `name`).
+
+### Our Implementation
+
+Firstly we will build a `GremlinTranlationOpList` with an instance of `GremlinVOp`, an instance of `GremlinRepeatOp` and an instance of `GremlinPathOp`. The `GremlinRepeatOp` contains the `RepeatTimes`(2) and the  `GremlinPath` contains the `name` property. 
+
+Then it will build an object of  `GremlinToSqlContext`. The object has `StepList` with an instance of `GremlinFreeVertexVariable`, an instance of `GremlinRepeatVariable` and an instance of `GremlinGlobalPathVariable`. In `GetFromClause`, we will firstly generate `CROSS APPLY Path(...) AS [R_1]`. Here one of parameters is `N_20._path` due to the instance of `GremlinRepeatVariable`. 
+
+When the object of `GremlinRepeatVariable` calls `ToTableReference`, it will generate the `repeatConditionExpr`(`RepeatCondition(2)`). The first version of  `repeatQueryBlock` is 
+
+```SQL
+SELECT ALL R_0.value$8e6c32f5 AS _path
+FROM CROSS APPLY  VertexToForwardEdge(N_18.*, '*') AS [E_6], CROSS APPLY  EdgeToSinkVertex(E_6.*, 'name', '*') AS [N_19], 
+    CROSS APPLY 
+    Path(
+      R._path,
+      Compose1('value$8e6c32f5', N_19.*, 'value$8e6c32f5', N_19.name, 'name', N_19.*, '*')
+    ) AS [R_0]
+```
+
+Then we will modify the `SelectElements` with `SELECT ALL N_19.name AS key_0, N_19.* AS key_1, R_0.value$8e6c32f5 AS _path`, modify the `FromClause` by replacing `N_18` with `R`. Then the `repeatQueryBlock` is 
+
+```SQL
+SELECT ALL N_19.name AS key_0, N_19.* AS key_1, R_0.value$8e6c32f5 AS _path
+FROM CROSS APPLY  VertexToForwardEdge(R.key_1, '*') AS [E_6], CROSS APPLY  EdgeToSinkVertex(E_6.*, 'name', '*') AS [N_19], 
+    CROSS APPLY 
+    Path(
+      R._path,
+      Compose1('value$8e6c32f5', N_19.*, 'value$8e6c32f5', N_19.name, 'name', N_19.*, '*')
+    ) AS [R_0]
+```
+
+And the `firstQueryExpr` is also easy to get, `SELECT ALL N_18.name AS key_0, N_18.* AS key_1, null AS _path`. Then we just need to merge them, `CROSS APPLY Repeat(... UNION ALL ...)`
+
+Then we will get `node AS [N_18]`
+
+Finally, we will reverse the `FromClause`.
 
 
 ## Something about the implementation of [match-step][1] in Gremlin
+
 ### Semantic
 The match-step in Gremlin is a map step, which maps the traverser to some object for the next step to process. That is, one traverser in, some object out. And match-step does the same thing as it.
 
@@ -957,4 +1005,3 @@ We will **string the match-traversals into one flatmap-traversal**. (and will ad
 [12]: https://en.wikipedia.org/wiki/Declarative_programming
 [13]: https://en.wikipedia.org/wiki/Finite-state_machine
 [14]: http://tinkerpop.apache.org/docs/current/reference/#path-step
-[15]: https://technet.microsoft.com/en-us/library/ms131103(v=sql.110).aspx
