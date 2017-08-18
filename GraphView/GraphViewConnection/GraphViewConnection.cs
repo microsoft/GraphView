@@ -622,7 +622,7 @@ namespace GraphView
         // Finalizers
         ~GraphViewConnection()
         {
-            this.JsonServerClient.Close();
+            this.JsonServerClient?.Close();
         }
 
 

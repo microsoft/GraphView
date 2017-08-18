@@ -336,49 +336,58 @@ namespace GraphView
         }
     }
 
-    /// <summary>
-    /// Return how many times have aggregate functions appeared in a SelectQueryBlock
-    /// </summary>
-    internal class AggregateFunctionCountVisitor : WSqlFragmentVisitor
+    internal class JsonServerStringArrayUnfoldVisitor : WSqlFragmentVisitor
     {
-        private int aggregateFunctionCount;
+        private readonly HashSet<string> flatProperties;
+        private readonly HashSet<string> skipTableNames;
 
-        public int Invoke(
-            WSelectQueryBlock selectQueryBlock)
+        public JsonServerStringArrayUnfoldVisitor(HashSet<string> flatProperties)
         {
-            aggregateFunctionCount = 0;
-
-            if (selectQueryBlock != null)
-                selectQueryBlock.Accept(this);
-
-            return aggregateFunctionCount;
+            this.flatProperties = flatProperties;
+            this.skipTableNames = new HashSet<string>();
         }
 
-        public override void Visit(WFunctionCall fcall)
+        public void AddFlatAttribute(string attr)
         {
-            switch (fcall.FunctionName.Value.ToUpper())
-            {
-                case "COUNT":
-                case "FOLD":
-                case "TREE":
-                case "CAP":
-                case "SUM":
-                case "MAX":
-                case "MIN":
-                case "MEAN":
-                    aggregateFunctionCount++;
-                    break;
-            }
+            this.flatProperties.Add(attr);
         }
 
-        public override void Visit(WSchemaObjectFunctionTableReference tableReference)
+        public void AddSkipTableName(string table)
         {
-            if (tableReference is WGroupTableReference)
-            {
-                aggregateFunctionCount++;
-            }
+            this.skipTableNames.Add(table);
+        }
 
-            tableReference.AcceptChildren(this);
+        public void Invoke(WBooleanExpression booleanExpression)
+        {
+            booleanExpression?.Accept(this);
+        }
+
+        public override void Visit(WColumnReferenceExpression columnReference)
+        {
+            IList<Identifier> columnList = columnReference.MultiPartIdentifier.Identifiers;
+            string propertyName = "";
+
+            if (columnList.Count == 2)
+            {
+                string tableName = columnList[0].Value;
+                if (this.skipTableNames.Contains(tableName))
+                {
+                    return;
+                }
+
+                string originalColumnName = columnList[1].Value;
+                if (this.flatProperties.Contains(originalColumnName))
+                {
+                    return;
+                }
+
+                columnReference.AddIdentifier("*");
+                columnReference.AddIdentifier("_value");
+            }
+            else
+            {
+                throw new QueryCompilationException("Identifier " + columnList + " should be bound to a table.");
+            }
         }
     }
 }

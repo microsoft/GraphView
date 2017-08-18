@@ -73,16 +73,7 @@ namespace GraphView.GraphViewQueryCompiler
             node.SecondExpr.Accept(this);
             string right = this.dfsStack.Pop();
 
-            string nodeStr;
-            if (node.ComparisonType == BooleanComparisonType.Equals && right == "null")
-            {
-                // IS_DEFINED(N_18._isEdgeDoc) = false
-                nodeStr = $"IS_DEFINED({left}) = false";
-            }
-            else
-            {
-                nodeStr = $"{left} {TsqlFragmentToString.BooleanComparisonType(node.ComparisonType)} {right}";
-            }
+            string nodeStr = $"{left} {TsqlFragmentToString.BooleanComparisonType(node.ComparisonType)} {right}";
 
             this.dfsStack.Push(nodeStr);
         }

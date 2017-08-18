@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using GraphView.GraphViewQueryCompiler;
 using Microsoft.Azure.Documents;
 using Microsoft.Azure.Documents.Client;
 using Microsoft.SqlServer.TransactSql.ScriptDom;
@@ -188,7 +189,96 @@ namespace GraphView
             return $"{selectClauseString}\n" +
                    $"{fromClauseString} {joinClauseString}\n" +
                    $"{whereClauseString}";
+        }
 
+
+        public string ToJsonServerString()
+        {
+            // SELECT clause
+            Debug.Assert(this.selectDictionary.Any(), "There is nothing to be selected!");
+            string selectClauseString;
+            if (this.selectDictionary.Count == 1 && this.selectDictionary.ContainsKey("*"))
+            {
+                Debug.Assert(this.selectDictionary["*"] == null, "`*` can't be used with `AS`");
+                selectClauseString = $"DOC({this.NodeAlias ?? this.EdgeAlias})";
+            }
+            else
+            {
+                List<string> elements = new List<string>();
+                foreach (KeyValuePair<string, List<WPrimaryExpression>> kvp in this.selectDictionary)
+                {
+                    if (kvp.Value != null && kvp.Value.Any())
+                    {
+                        var attributes = new List<string>();
+                        foreach (WPrimaryExpression expression in kvp.Value)
+                        {
+                            var valueExp = expression as WValueExpression;
+                            if (valueExp != null)
+                            {
+                                attributes.Add($"'{valueExp}'");
+                                continue;
+                            }
+
+                            var columnExp = expression as WColumnReferenceExpression;
+                            if (columnExp != null)
+                            {
+                                if (columnExp.ColumnName == "*")
+                                {
+                                    attributes.Add($"{columnExp.TableReference}");
+                                }
+                                else if (columnExp.ColumnName[0] == '[')
+                                {
+                                    // TODO: Refactor, case like doc["partionKey"], try to use AddIdentifier() function of WColumnRefExp.
+                                    attributes.Add($"{columnExp.TableReference}{columnExp.ColumnName}");
+                                }
+                                else
+                                {
+                                    attributes.Add($"{columnExp.TableReference}.{columnExp.ColumnName}");
+                                }
+                                continue;
+                            }
+
+                            throw new QueryExecutionException("Un-supported type of SELECT clause expression");
+                        }
+                        elements.Add($"'{kvp.Key}: ', {string.Join(", ", attributes)}");
+                    }
+                    else if (kvp.Key == "*")
+                    {
+                        throw new QueryExecutionException("`*` can only be used with no one in SELECT clause.");
+                    }
+                    else
+                    {
+                        elements.Add($"'{kvp.Key}: ', DOC({kvp.Key})");
+                    }
+                }
+                selectClauseString = $"'{{', {string.Join(", ", elements)}, '}}'";
+            }
+
+            // Join clause ( in JsonServer, it is called `FOR`, but you know, `JOIN` is what it really do)
+            //   if you get a better name, please refactor it.
+            var joinStrBuilder = new StringBuilder();
+            foreach (KeyValuePair<string, string> pair in JoinDictionary)
+            {
+                joinStrBuilder.AppendFormat("FOR {0} IN {1}\n", pair.Key, pair.Value);
+            }
+            string joinClauseString = joinStrBuilder.ToString();
+
+
+            // Where clause
+            WBooleanExpression whereClauseCopy = this.RawWhereClause.Copy();
+            // N_18.age --> N_18.age.*._value
+            var jsonServerStringArrayUnfoldVisitor = new JsonServerStringArrayUnfoldVisitor(this.FlatProperties);
+            jsonServerStringArrayUnfoldVisitor.AddSkipTableName(this.EdgeAlias);
+            jsonServerStringArrayUnfoldVisitor.Invoke(whereClauseCopy);
+
+            ToJsonServerStringVisitor whereVisitor = new ToJsonServerStringVisitor();
+            whereVisitor.Invoke(whereClauseCopy);
+
+            string whereClauseString = whereVisitor.GetString();
+            return $"FOR {this.NodeAlias?? this.EdgeAlias} IN (\"JsonTesting\")\n" +
+                   $"{joinClauseString}" +
+                   $"WHERE {whereClauseString}\n" +
+                   $"SELECT {selectClauseString}";
         }
 
         public string ToString(DatabaseType dbType)
@@ -197,10 +287,8 @@ namespace GraphView
             {
                 case DatabaseType.DocumentDB:
                     return this.ToDocDbString();
-//                case DatabaseType.JsonServer:
-//                    return $"FOR {this.Alias} IN ('Node') " +
-//                           $"{(string.IsNullOrEmpty(this.WhereSearchCondition) ? "" : $"WHERE {this.WhereSearchCondition}")}" +
-//                           $"{this.SelectClause}";
+                case DatabaseType.JsonServer:
+                    return this.ToJsonServerString();
                 default:
                     throw new NotImplementedException();
             }
