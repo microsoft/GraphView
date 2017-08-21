@@ -51,10 +51,22 @@ namespace GraphView
             }
         }
 
+        // DocDB
         public void UpdateCurrentEtag(Document document)
         {
             string docId = document.Id;
             string etag = document.ETag;
+            Debug.Assert(docId != null);
+            Debug.Assert(etag != null);
+
+            this._currentEtags[docId] = etag;
+        }
+
+        // JsonServer
+        public void UpdateCurrentEtag(JObject document)
+        {
+            string docId = document.GetValue(KW_DOC_ID).ToString(); // check this
+            string etag = document.GetValue(KW_DOC_ETAG).ToString();
             Debug.Assert(docId != null);
             Debug.Assert(etag != null);
 

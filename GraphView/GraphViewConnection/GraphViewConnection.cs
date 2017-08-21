@@ -50,6 +50,7 @@ using Newtonsoft.Json.Serialization;
 using static GraphView.DocumentDBKeywords;
 
 using JsonServer;
+using JsonServer.Exceptions;
 
 // For debugging
 
@@ -86,14 +87,15 @@ namespace GraphView
 //        internal VertexObjectCache VertexCache { get; }
 
         internal string Identifier { get; }
+        private bool disposed;
 
 
         private readonly Uri _docDBDatabaseUri;
         internal readonly Uri _docDBCollectionUri;
-        private bool _disposed;
 
         internal DocumentClient DocDBClient { get; }  // Don't expose DocDBClient to outside!
 
+        internal readonly string jsonServerCollectionName;
         internal JsonServerConnection JsonServerClient { get; }
 
         internal CollectionType CollectionType { get; private set; }
@@ -286,20 +288,25 @@ namespace GraphView
         /// Create a connection to JsonServer
         /// </summary>
         /// <param name="jsonServerConnectionString"></param>
+        /// <param name="collectionName"></param>
         /// <param name="graphType"></param>
         /// <param name="useReverseEdges"></param>
         /// <param name="edgeSpillThreshold"></param>
         public GraphViewConnection(string jsonServerConnectionString,
+                                    string collectionName,
                                     GraphType graphType,
                                     bool useReverseEdges,
                                     int? edgeSpillThreshold)
         {
             this.JsonServerClient = new JsonServerConnection(jsonServerConnectionString);
-
+            this.JsonServerClient.Open(true);
             this.GraphType = graphType;
             this.UseReverseEdges = useReverseEdges;
             this.Identifier = jsonServerConnectionString;
             this.EdgeSpillThreshold = edgeSpillThreshold ?? 0;
+
+            this.jsonServerCollectionName = collectionName;
+            EnsureCollectionExist(this.JsonServerClient, this.jsonServerCollectionName);
         }
 
 
@@ -323,14 +330,14 @@ namespace GraphView
         /// </summary>
         public void Dispose()
         {
-            if (this._disposed) return;
+            if (this.disposed) return;
 
             this.DocDBClient.Dispose();
-            this._disposed = true;
+            this.disposed = true;
         }
 
-
-        public static void EnsureDatabaseExist(DocumentClient client, string databaseId)
+        // DocDB
+        internal static void EnsureDatabaseExist(DocumentClient client, string databaseId)
         {
             Database docDBDatabase = client.CreateDatabaseQuery()
                                            .Where(db => db.Id == databaseId)
@@ -340,6 +347,19 @@ namespace GraphView
             // If the database does not exist, create one
             if (docDBDatabase == null) {
                 client.CreateDatabaseAsync(new Database {Id = databaseId}).Wait();
+            }
+        }
+
+        // JsonServer
+        internal static void EnsureCollectionExist(JsonServerConnection client, string collection)
+        {
+            try
+            {
+                client.CreateCollection(collection);
+            }
+            catch (JsonCollectionException e)
+            {
+                // The collection is already exist.
             }
         }
 
@@ -376,6 +396,12 @@ namespace GraphView
             Trace.WriteLine($"[ResetCollection] Database/Collection {databaseId}/{collectionId} has been reset.");
         }
 
+        // JsonServer
+        private static void ResetCollection(JsonServerConnection client, string collectionName)
+        {
+            throw new NotImplementedException();
+        }
+
 
         // DocDB
         private static void CreateCollection(DocumentClient client, string databaseId, string collectionId, string partitionPath = null)
@@ -396,11 +422,25 @@ namespace GraphView
             ).Wait();
         }
 
+        // JsonServer
+        private static void CreateCollection(JsonServerConnection client, string collectionName)
+        {
+            client.CreateCollection(collectionName);
+        }
+
+        // DocDB
         private static void DeleteCollection(DocumentClient client, string databaseId, string collectionId)
         {
             client.DeleteDocumentCollectionAsync(
                 UriFactory.CreateDocumentCollectionUri(databaseId, collectionId)
             ).Wait();
+        }
+
+
+        // JsonServer
+        private static void DeleteCollection(JsonServerConnection client, string collectionName)
+        {
+            client.DeleteCollection(collectionName);
         }
 
 
@@ -416,16 +456,28 @@ namespace GraphView
             Debug.Assert(docObject[KW_DOC_ID] != null, $"The newly created document should specify '{KW_DOC_ID}' field");
             //Debug.Assert(docObject[KW_DOC_PARTITION] != null, $"The newly created document should specify '{KW_DOC_PARTITION}' field");
 
-            Document createdDocument = await this.CreateDatabasePortal().CreateDocumentAsync(docObject);
-            Debug.Assert((string)docObject[KW_DOC_ID] == createdDocument.Id);
+            if (this.DocDBClient != null)
+            {
+                Document createdDocument = await ((DocumentDbPortal)this.CreateDatabasePortal()).CreateDocumentAsync(docObject);
+                Debug.Assert((string)docObject[KW_DOC_ID] == createdDocument.Id);
+                //
+                // Save the created document's etag
+                //
+                docObject[KW_DOC_ETAG] = createdDocument.ETag;
+                command.VertexCache.UpdateCurrentEtag(createdDocument);
 
-            //
-            // Save the created document's etag
-            //
-            docObject[KW_DOC_ETAG] = createdDocument.ETag;
-            command.VertexCache.UpdateCurrentEtag(createdDocument);
+                return createdDocument.Id;
+            }
+            if (this.JsonServerClient != null)
+            {
+                JObject createdDocument =
+                    ((JsonServerDbPortal) this.CreateDatabasePortal()).CreateDocumentAsync(docObject);
+                command.VertexCache.UpdateCurrentEtag(createdDocument);
 
-            return createdDocument.Id;
+                return createdDocument.GetValue(KW_DOC_ID).ToString();
+            }
+
+            throw new QueryExecutionException("Create docment fail because no DB client.");
         }
 
         /// <summary>
@@ -442,8 +494,13 @@ namespace GraphView
                 Debug.Assert(docObject[KW_DOC_ID] != null, $"The newly created document should contain '{KW_DOC_ID}' field");
                 //Debug.Assert(docObject[KW_DOC_PARTITION] != null, $"The newly created document should contain '{KW_DOC_PARTITION}' field");
 
-                Document createdDoc = await this.CreateDatabasePortal().CreateDocumentAsync(docObject);
-                Debug.Assert((string)docObject[KW_DOC_ID] == createdDoc.Id);
+                if (this.DocDBClient != null)
+                {
+                    Document createdDoc = await ((DocumentDbPortal)this.CreateDatabasePortal()).CreateDocumentAsync(docObject);
+                    Debug.Assert((string)docObject[KW_DOC_ID] == createdDoc.Id);
+                }
+
+                throw new QueryExecutionException("Create docment fail because no DB client.");
             }
         }
 

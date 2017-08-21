@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Azure.Documents;
 using Microsoft.Azure.Documents.Client;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
 namespace GraphView.GraphViewDBPortal
@@ -46,9 +47,13 @@ namespace GraphView.GraphViewDBPortal
             throw new NotImplementedException();
         }
 
-        public override async Task<ResourceResponse<Document>> CreateDocumentAsync(JObject docObject)
+        public JObject CreateDocumentAsync(JObject docObject)
         {
-            throw new NotImplementedException();
+            // Add etag
+            docObject[DocumentDBKeywords.KW_DOC_ETAG] = DateTimeOffset.Now.ToUniversalTime().ToString();
+            string doc = docObject.ToString(Formatting.None);
+            this.Connection.JsonServerClient.InsertJson(doc, "JsonTesting");
+            return docObject;
         }
 
         public override async Task ReplaceOrDeleteDocumentAsync(string docId, JObject docObject, GraphViewCommand command, string partition = null)

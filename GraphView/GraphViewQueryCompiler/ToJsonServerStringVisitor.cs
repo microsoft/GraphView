@@ -196,7 +196,13 @@ namespace GraphView.GraphViewQueryCompiler
 
         public override void Visit(WValueExpression node)
         {
-            this.dfsStack.Push(node.ToString(""));
+            string value = node.ToString("");
+            // TODO: double check, how to use boolean type in database?
+//            if (value == "true" || value == "false")
+//            {
+//                value = $"'{value}'";
+//            }
+            this.dfsStack.Push(value);
         }
 
         public void Visit(WVariableReference node)

@@ -196,6 +196,7 @@ namespace GraphView
         {
             // SELECT clause
             Debug.Assert(this.selectDictionary.Any(), "There is nothing to be selected!");
+            // TODO: using StringConcat() function when it is available
             string selectClauseString;
             if (this.selectDictionary.Count == 1 && this.selectDictionary.ContainsKey("*"))
             {
@@ -224,12 +225,13 @@ namespace GraphView
                             {
                                 if (columnExp.ColumnName == "*")
                                 {
-                                    attributes.Add($"{columnExp.TableReference}");
+                                    attributes.Add($"DOC({columnExp.TableReference})");
                                 }
                                 else if (columnExp.ColumnName[0] == '[')
                                 {
-                                    // TODO: Refactor, case like doc["partionKey"], try to use AddIdentifier() function of WColumnRefExp.
-                                    attributes.Add($"{columnExp.TableReference}{columnExp.ColumnName}");
+                                    // NOTE: JsonServer accepts path like: aaa.["bbb"].["ccc"]
+                                    // TODO: Deal with ["aaa"]["bbb"]["ccc"] --> .["aaa"].["bbb"].["ccc"]
+                                    attributes.Add($"{columnExp.TableReference}{columnExp.ColumnName.Replace("[", ".[")}");
                                 }
                                 else
                                 {
@@ -273,8 +275,8 @@ namespace GraphView
 
             ToJsonServerStringVisitor whereVisitor = new ToJsonServerStringVisitor();
             whereVisitor.Invoke(whereClauseCopy);
+            string whereClauseString = whereVisitor.GetString().Replace("[", ".["); // TODO: refactor!
 
-            string whereClauseString = whereVisitor.GetString();
             return $"FOR {this.NodeAlias?? this.EdgeAlias} IN (\"JsonTesting\")\n" +
                    $"{joinClauseString}" +
                    $"WHERE {whereClauseString}\n" +
@@ -313,7 +315,8 @@ namespace GraphView
 
         public abstract List<VertexField> GetVerticesByIds(HashSet<string> vertexId, GraphViewCommand command, string partition, bool constructEdges = false);
 
-        public abstract Task<ResourceResponse<Document>> CreateDocumentAsync(JObject docObject);
+        // different pattern between DocDB and JsonServer
+//        public abstract Task<ResourceResponse<Document>> CreateDocumentAsync(JObject docObject);
 
         public abstract Task ReplaceOrDeleteDocumentAsync(string docId, JObject docObject, GraphViewCommand command, string partition = null);
     }
@@ -641,7 +644,7 @@ namespace GraphView
             return result;
         }
 
-        public override async Task<ResourceResponse<Document>> CreateDocumentAsync(JObject docObject)
+        public async Task<ResourceResponse<Document>> CreateDocumentAsync(JObject docObject)
         {
             return await this.Connection.DocDBClient.CreateDocumentAsync(this.Connection._docDBCollectionUri, docObject);
         }
