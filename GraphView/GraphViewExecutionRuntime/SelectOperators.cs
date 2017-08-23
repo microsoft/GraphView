@@ -2368,7 +2368,11 @@ namespace GraphView
             //
             while (this.inputOp.State() && (srcRecord = this.inputOp.Next()) != null)
             {
-                if (this.index < this.startIndex || (this.highEnd != -1 && this.index >= this.highEnd))
+                if (this.highEnd != -1 && this.index >= this.highEnd)
+                {
+                    break;
+                }
+                if (this.index < this.startIndex)
                 {
                     this.index++;
                     continue;
