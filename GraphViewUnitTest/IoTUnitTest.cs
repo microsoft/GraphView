@@ -82,6 +82,7 @@ namespace GraphViewUnitTest
         }
 
         [TestMethod]
+        [Ignore]
         public void preProcessTheQueries()
         {
             int counter = 1;
@@ -104,12 +105,14 @@ namespace GraphViewUnitTest
         }
 
         [TestMethod]
+        [Ignore]
         public void testSingleQuery()
         {
             //runQuery(9);
         }
 
         [TestMethod]
+        [Ignore]
         public void test_IoT_topology_queries()
         {
             graph.OutputFormat = OutputFormat.Regular;
@@ -137,6 +140,7 @@ namespace GraphViewUnitTest
         }
 
         [TestMethod]
+        [Ignore]
         public void test_IOT_HUB_queries()
         {
             graph.OutputFormat = OutputFormat.Regular;
@@ -570,6 +574,7 @@ namespace GraphViewUnitTest
     {
 
         [TestMethod]
+        [Ignore]
         public void TestNewIoTTest()
         {
             var results = Get_query_processed_1();

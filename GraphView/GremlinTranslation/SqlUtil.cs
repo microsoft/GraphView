@@ -526,6 +526,9 @@ namespace GraphView
                 case GremlinKeyword.func.VertexToBothEdge:
                     funcTableRef = new WVertexToBothEdgeTableReference();
                     break;
+                case GremlinKeyword.func.Filter:
+                    funcTableRef = new WFilterTableReference();
+                    break;
                 case GremlinKeyword.func.Match:
                     funcTableRef = new WMatchTableReference();
                     break;

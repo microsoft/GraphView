@@ -13,6 +13,7 @@ using GraphViewUnitTest.Gremlin;
 namespace GraphViewUnitTest
 {
     [TestClass]
+    [Ignore]
     public class IOTQueryTest
     {
         /// <summary>

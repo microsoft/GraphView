@@ -440,7 +440,7 @@ namespace GraphView
             currentContext.AddPredicate(SqlUtil.GetNotExistPredicate(traversal.GetEndOp().GetContext().ToSelectQueryBlock()));
         }
 
-        private WBooleanExpression CreateBooleanExpression(GremlinVariableProperty variableProperty, object valuesOrPredicate)
+        internal WBooleanExpression CreateBooleanExpression(GremlinVariableProperty variableProperty, object valuesOrPredicate)
         {
             if (valuesOrPredicate is string || GremlinUtil.IsNumber(valuesOrPredicate) || valuesOrPredicate is bool)
             {

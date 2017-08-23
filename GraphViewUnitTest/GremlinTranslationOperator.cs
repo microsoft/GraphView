@@ -6,6 +6,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 namespace GraphViewUnitTest
 {
     [TestClass()]
+    [Ignore]
     public class GremlinTranslationOperator
     {
 //        [TestMethod]

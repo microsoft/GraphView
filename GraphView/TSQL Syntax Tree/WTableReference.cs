@@ -740,6 +740,7 @@ namespace GraphView
 
     public partial class WLabelTableReference : WSchemaObjectFunctionTableReference {}
 
+    public partial class WFilterTableReference : WSchemaObjectFunctionTableReference { }
 
     public partial class WJoinParenthesisTableReference : WTableReference
     {

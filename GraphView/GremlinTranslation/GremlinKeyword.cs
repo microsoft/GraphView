@@ -119,6 +119,7 @@ namespace GraphView
             public const string VertexToForwardEdge = "VertexToForwardEdge";
             public const string VertexToBackwardEdge = "VertexToBackwardEdge";
             public const string VertexToBothEdge = "VertexToBothEdge";
+            public const string Filter = "Filter";
 
             public const string Match = "Match";
             public const string MatchStart = "MatchStart";
