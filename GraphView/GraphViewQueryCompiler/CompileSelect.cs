@@ -6,6 +6,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
+using GraphView.GraphViewDBPortal;
 
 namespace GraphView
 {
@@ -284,15 +285,10 @@ namespace GraphView
                 edgeProperties.Add(isStartVertexTheOriginVertex.ToString());
 
                 //
-                // SELECT N_0, {"id": E_0.id} as E_0 FROM Node N_0 ...
+                // SELECT N_0, E_0 FROM Node N_0 ...
                 //
                 jsonQuery.EdgeAlias = edgeAlias;
-                jsonQuery.AddSelectElement(edgeAlias, new List<WPrimaryExpression>
-                {
-                    new WValueExpression($"{{\"{DocumentDBKeywords.KW_EDGE_ID}\": "),
-                    new WColumnReferenceExpression(edgeAlias, DocumentDBKeywords.KW_EDGE_ID),
-                    new WValueExpression("}")
-                });
+                jsonQuery.AddSelectElement(edgeAlias);
 
                 edgeProperties.AddRange(edge.Properties);
             }
@@ -363,7 +359,7 @@ namespace GraphView
             {
                 jsonQuery.WhereConjunction(edgeCondition, BooleanBinaryExpressionType.And);
             }
-            
+
             jsonQuery.NodeProperties = nodeProperties;
             jsonQuery.EdgeProperties = edgeProperties;
             
@@ -854,7 +850,7 @@ namespace GraphView
         /// <summary>
         /// Generate AdjacencyListDecoder and update context's layout for edges
         /// </summary>
-        /// <param name="connection"></param>
+        /// <param name="command"></param>
         /// <param name="context"></param>
         /// <param name="operatorChain"></param>
         /// <param name="edges"></param>

@@ -69,6 +69,8 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="GraphViewDBPortal\CollectionType.cs" />
+    <Compile Include="GraphViewDBPortal\DocumentDbPortal.cs" />
+    <Compile Include="GraphViewDBPortal\JsonQuery.cs" />
     <Compile Include="GraphViewDBPortal\JsonServerDbPortal.cs" />
     <Compile Include="GraphViewExecutionRuntime\CollectionOperator.cs" />
     <Compile Include="GraphViewDBPortal\DbPortal.cs" />

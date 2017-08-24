@@ -1,10 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
+using System.Data;
+using System.Diagnostics;
 using System.Text;
-using System.Threading.Tasks;
-using Microsoft.Azure.Documents;
-using Microsoft.Azure.Documents.Client;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
@@ -17,48 +15,75 @@ namespace GraphView.GraphViewDBPortal
             this.Connection = connection;
         }
 
-        public override IEnumerator<Tuple<VertexField, RawRecord>> GetVerticesAndEdgesViaVertices(JsonQuery vertexQuery, GraphViewCommand command)
+        internal override IEnumerable<JObject> ExecuteQueryScript(JsonQuery jsonQuery)
         {
-            throw new NotImplementedException();
+            jsonQuery.JsonServerCollectionName = this.Connection.jsonServerCollectionName;
+            string script = jsonQuery.ToString(DatabaseType.JsonServer);
+            List<JObject> results = new List<JObject>();
+            IDataReader reader = this.Connection.JsonServerClient.ExecuteReader(script);
+            StringBuilder jsonStringBuilder = new StringBuilder();
+            while (reader.Read())
+            {
+                jsonStringBuilder.Clear();
+                JObject job = new JObject();
+                for (int i = 0; i < reader.FieldCount; i++)
+                {
+                    if (reader.GetName(i) == "")
+                    {
+                        // case: SELECT * ==> SELECT Doc(xxx), without `AS`.
+                        Debug.Assert(reader.FieldCount == 1, "More than one unnamed column is unparseable");
+                        job = JObject.Parse(reader.GetString(i));
+                    }
+                    else
+                    {
+                        string inner = reader.GetString(i);
+                        job.Add(new JProperty(reader.GetName(i), JObject.Parse(reader.GetString(i))));
+                    }
+                }
+                results.Add(job);
+            }
+            reader.Close();
+            return results;
         }
 
-        public override IEnumerator<RawRecord> GetVerticesAndEdgesViaEdges(JsonQuery edgeQuery, GraphViewCommand command)
+        public JObject CreateDocument(JObject docObject)
         {
-            throw new NotImplementedException();
-        }
-
-        public override List<JObject> GetEdgeDocuments(JsonQuery query)
-        {
-            throw new NotImplementedException();
-        }
-
-        public override JObject GetEdgeDocument(JsonQuery query)
-        {
-            throw new NotImplementedException();
-        }
-
-        public override JObject GetVertexDocument(JsonQuery query)
-        {
-            throw new NotImplementedException();
-        }
-
-        public override List<VertexField> GetVerticesByIds(HashSet<string> vertexId, GraphViewCommand command, string partition, bool constructEdges = false)
-        {
-            throw new NotImplementedException();
-        }
-
-        public JObject CreateDocumentAsync(JObject docObject)
-        {
-            // Add etag
+            // Add or update etag
             docObject[DocumentDBKeywords.KW_DOC_ETAG] = DateTimeOffset.Now.ToUniversalTime().ToString();
             string doc = docObject.ToString(Formatting.None);
-            this.Connection.JsonServerClient.InsertJson(doc, "JsonTesting");
+            this.Connection.JsonServerClient.InsertJson(doc, this.Connection.jsonServerCollectionName); // TODO: remove this const.
             return docObject;
         }
 
-        public override async Task ReplaceOrDeleteDocumentAsync(string docId, JObject docObject, GraphViewCommand command, string partition = null)
+        private void DeleteDocument(string docId, string partition = null)
         {
-            throw new NotImplementedException();
+            Debug.Assert(this.Connection.jsonServerCollectionName != null, "Delete document from JsonServer needs collection name.");
+            string partitionIndexer = this.Connection.GetPartitionPathIndexer().Replace("[", ".[");
+            string deleteString = $"FOR md IN ('{this.Connection.jsonServerCollectionName}')\n" +
+                                  $"WHERE md.{DocumentDBKeywords.KW_DOC_ID} = '{docId}' " +
+                                  (partition == null ? "" : $"AND md{partitionIndexer} = '{partition}'") +
+                                  $"\nDELETE md";
+            this.Connection.JsonServerClient.ExecuteNonQuery(deleteString);
+        }
+
+        public void ReplaceOrDeleteDocument(string docId, JObject docObject, GraphViewCommand command, string partition = null)
+        {
+            this.DeleteDocument(docId, partition);
+            if (docObject != null)
+            {
+                // Replace
+                Debug.Assert(docObject[DocumentDBKeywords.KW_DOC_ID] is JValue);
+                Debug.Assert((string)docObject[DocumentDBKeywords.KW_DOC_ID] == docId);
+                JObject document = this.CreateDocument(docObject);
+
+                // Update the document's etag
+                command.VertexCache.UpdateCurrentEtag(document);
+            }
+            else
+            {
+                // Delete only
+                command.VertexCache.RemoveEtag(docId);
+            }
         }
     }
 }

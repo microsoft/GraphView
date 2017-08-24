@@ -29,6 +29,7 @@
 #define EASY_DEBUG
 
 using System;
+using System.CodeDom;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -99,6 +100,8 @@ namespace GraphView
         internal JsonServerConnection JsonServerClient { get; }
 
         internal CollectionType CollectionType { get; private set; }
+
+        internal DbPortal dbPortal;
 
         /// <summary>
         /// Warning: This is actually a collection meta property.
@@ -310,17 +313,33 @@ namespace GraphView
         }
 
 
+        public void ResetJsonServerCollection(string collectionName)
+        {
+            EnsureCollectionExist(this.JsonServerClient, collectionName);
+            string clearQuery = $"FOR md IN ('{collectionName}')\n" +
+                                $"WHERE 1=1\n" +
+                                $"DELETE md";
+            this.JsonServerClient.ExecuteNonQuery(clearQuery);
+        }
+
+
         internal DbPortal CreateDatabasePortal()
         {
+            if (this.dbPortal != null)
+            {
+                return this.dbPortal;
+            }
+
             if (this.DocDBClient != null)
             {
-                return new DocumentDbPortal(this);
+                this.dbPortal = new DocumentDbPortal(this);
             }
             if (this.JsonServerClient != null)
             {
-                return new JsonServerDbPortal(this);
+                this.dbPortal = new JsonServerDbPortal(this);
             }
-            throw new GraphViewException("Unsupported type of database.");
+            Debug.Assert(this.dbPortal != null, "Unsupported type of database.");
+            return this.dbPortal;
         }
 
 
@@ -332,7 +351,8 @@ namespace GraphView
         {
             if (this.disposed) return;
 
-            this.DocDBClient.Dispose();
+            this.DocDBClient?.Dispose();
+            this.JsonServerClient?.Close();
             this.disposed = true;
         }
 
@@ -353,13 +373,9 @@ namespace GraphView
         // JsonServer
         internal static void EnsureCollectionExist(JsonServerConnection client, string collection)
         {
-            try
+            if (!client.ContainsCollection(collection))
             {
                 client.CreateCollection(collection);
-            }
-            catch (JsonCollectionException e)
-            {
-                // The collection is already exist.
             }
         }
 
@@ -394,12 +410,6 @@ namespace GraphView
             CreateCollection(client, databaseId, collectionId, partitionPath);
             
             Trace.WriteLine($"[ResetCollection] Database/Collection {databaseId}/{collectionId} has been reset.");
-        }
-
-        // JsonServer
-        private static void ResetCollection(JsonServerConnection client, string collectionName)
-        {
-            throw new NotImplementedException();
         }
 
 
@@ -471,7 +481,7 @@ namespace GraphView
             if (this.JsonServerClient != null)
             {
                 JObject createdDocument =
-                    ((JsonServerDbPortal) this.CreateDatabasePortal()).CreateDocumentAsync(docObject);
+                    ((JsonServerDbPortal) this.CreateDatabasePortal()).CreateDocument(docObject);
                 command.VertexCache.UpdateCurrentEtag(createdDocument);
 
                 return createdDocument.GetValue(KW_DOC_ID).ToString();
@@ -507,7 +517,14 @@ namespace GraphView
 
         internal async Task ReplaceOrDeleteDocumentAsync(string docId, JObject docObject, string partition, GraphViewCommand command)
         {
-            await this.CreateDatabasePortal().ReplaceOrDeleteDocumentAsync(docId, docObject, command, partition);
+            if (this.DocDBClient != null)
+            {
+                await ((DocumentDbPortal)this.CreateDatabasePortal()).ReplaceOrDeleteDocumentAsync(docId, docObject, command, partition);
+            }
+            else
+            {
+                ((JsonServerDbPortal)this.CreateDatabasePortal()).ReplaceOrDeleteDocument(docId, docObject, command, partition);
+            }
         }
 
         internal async Task ReplaceOrDeleteDocumentsAsync(Dictionary<string, Tuple<JObject, string>> documentsMap, GraphViewCommand command)
@@ -679,7 +696,15 @@ namespace GraphView
         // Finalizers
         ~GraphViewConnection()
         {
-            this.JsonServerClient?.Close();
+            // TODO: Figure out why this error.
+            try
+            {
+                this.JsonServerClient?.Close();
+            }
+            catch (System.InvalidOperationException)
+            {
+                Console.WriteLine("Error at closing JsonServerClient.");
+            }
         }
 
 

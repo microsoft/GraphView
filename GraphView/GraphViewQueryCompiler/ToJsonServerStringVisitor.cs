@@ -26,14 +26,11 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using GraphView.TSQL_Syntax_Tree;
 
-namespace GraphView.GraphViewQueryCompiler
+namespace GraphView
 {
-    class ToJsonServerStringVisitor : WSqlFragmentVisitor
+    internal class ToJsonServerStringVisitor : WSqlFragmentVisitor
     {
         private readonly Stack<string> dfsStack;
 
@@ -73,7 +70,10 @@ namespace GraphView.GraphViewQueryCompiler
             node.SecondExpr.Accept(this);
             string right = this.dfsStack.Pop();
 
-            string nodeStr = $"{left} {TsqlFragmentToString.BooleanComparisonType(node.ComparisonType)} {right}";
+            // TODO: Consider to ues ISNULLExpression
+            string nodeStr = right == "null"
+                ? $"{left} IS {right}"
+                : $"{left} {TsqlFragmentToString.BooleanComparisonType(node.ComparisonType)} {right}";
 
             this.dfsStack.Push(nodeStr);
         }

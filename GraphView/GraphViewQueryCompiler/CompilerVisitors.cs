@@ -344,6 +344,8 @@ namespace GraphView
         public JsonServerStringArrayUnfoldVisitor(HashSet<string> flatProperties)
         {
             this.flatProperties = flatProperties;
+            this.flatProperties.Add(GremlinKeyword.NodeID);
+            this.flatProperties.Add(GremlinKeyword.Label);
             this.skipTableNames = new HashSet<string>();
         }
 

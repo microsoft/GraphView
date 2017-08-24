@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using GraphView.GraphViewDBPortal;
 using Microsoft.Azure.Documents;
 using Microsoft.Azure.Documents.Client;
 using Newtonsoft.Json.Linq;
@@ -841,6 +842,8 @@ namespace GraphView
                 queryBoth.FlatProperties.Add(KW_EDGEDOC_ISREVERSE);
             }
 
+//            var qqq = queryBoth.ToJsonServerString();
+
             List<JObject> edgeDocuments = command.Connection.CreateDatabasePortal().GetEdgeDocuments(queryBoth);
 
             // Dictionary<vertexId, Dictionary<edgeDocumentId, edgeDocument>>
@@ -911,8 +914,9 @@ namespace GraphView
                 queryReversed.RawWhereClause = new WInPredicate(
                     new WColumnReferenceExpression(EDGE_ALISE_S, KW_EDGE_SINKV),
                     new List<string>(vertexIdSet));
-                
 
+
+//                qqq = queryReversed.ToJsonServerString();
                 edgeDocuments = command.Connection.CreateDatabasePortal().GetEdgeDocuments(queryReversed);
 
                 List<JObject> virtualReverseEdgeDocuments = EdgeDocumentHelper.ConstructVirtualReverseEdgeDocuments(edgeDocuments);

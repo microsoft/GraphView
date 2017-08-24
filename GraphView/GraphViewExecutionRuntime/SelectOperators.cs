@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
 using System.Text;
+using GraphView.GraphViewDBPortal;
 using Microsoft.Azure.Documents.Partitioning;
 using static GraphView.DocumentDBKeywords;
 
