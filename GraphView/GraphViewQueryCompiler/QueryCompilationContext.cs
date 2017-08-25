@@ -83,13 +83,6 @@ namespace GraphView
         }
     }
 
-    internal enum TableGraphType
-    {
-        Vertex,
-        Edge,
-        Value
-    }
-
     /// <summary>
     /// QueryCompilationContext is an entity providing contexts 
     /// for translating a SQL statement or a nested SQL query. 
@@ -114,7 +107,7 @@ namespace GraphView
 
         public ConstantSourceOperator OuterContextOp { get; set; }
 
-        public Dictionary<string, TableGraphType> TableReferences { get; private set; }
+        public HashSet<string> TableReferences { get; private set; }
 
         public bool InBatchMode { get; set; }
 
@@ -132,7 +125,7 @@ namespace GraphView
         {
             TemporaryTableCollection = new Dictionary<string, Tuple<TemporaryTableHeader, GraphViewExecutionOperator>>();
             RawRecordLayout = new Dictionary<WColumnReferenceExpression, int>(new WColumnReferenceExpressionComparer());
-            TableReferences = new Dictionary<string, TableGraphType>();
+            TableReferences = new HashSet<string>();
             SideEffectStates = new Dictionary<string, IAggregateFunction>();
 
             CarryOn = false;
@@ -144,7 +137,7 @@ namespace GraphView
             TemporaryTableCollection = parentContext.TemporaryTableCollection;
             RawRecordLayout = new Dictionary<WColumnReferenceExpression, int>(parentContext.RawRecordLayout,
                 new WColumnReferenceExpressionComparer());
-            TableReferences = new Dictionary<string, TableGraphType>(parentContext.TableReferences);
+            TableReferences = new HashSet<string>(parentContext.TableReferences);
             OuterContextOp = new ConstantSourceOperator();
             SideEffectStates = parentContext.SideEffectStates;
 
@@ -158,7 +151,7 @@ namespace GraphView
         {
             TemporaryTableCollection = priorTemporaryTables;
             RawRecordLayout = new Dictionary<WColumnReferenceExpression, int>(new WColumnReferenceExpressionComparer());
-            TableReferences = new Dictionary<string, TableGraphType>();
+            TableReferences = new HashSet<string>();
             SideEffectStates = priorSideEffectStates;
         }
 

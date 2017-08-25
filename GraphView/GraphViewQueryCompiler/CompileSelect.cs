@@ -856,12 +856,15 @@ namespace GraphView
         /// <param name="edges"></param>
         /// <param name="predicatesAccessedTableReferences"></param>
         /// <param name="isMatchingEdges"></param>
-        private void CrossApplyEdges(GraphViewCommand command, QueryCompilationContext context, 
-            List<GraphViewExecutionOperator> operatorChain, IList<MatchEdge> edges, 
+        private void CrossApplyEdges(
+            GraphViewCommand command, 
+            QueryCompilationContext context, 
+            List<GraphViewExecutionOperator> operatorChain, 
+            IList<MatchEdge> edges, 
             List<Tuple<WBooleanExpression, HashSet<string>>> predicatesAccessedTableReferences,
             bool isMatchingEdges = false)
         {
-            Dictionary<string, TableGraphType> tableReferences = context.TableReferences;
+            HashSet<string> tableReferences = context.TableReferences;
 
             foreach (MatchEdge edge in edges)
             {
@@ -877,7 +880,7 @@ namespace GraphView
                 context.CurrentExecutionOperator = operatorChain.Last();
 
                 // Update edge's context info
-                tableReferences.Add(edge.EdgeAlias, TableGraphType.Edge);
+                tableReferences.Add(edge.EdgeAlias);
                 this.UpdateEdgeLayout(edge.EdgeAlias, edge.Properties, context);
 
                 if (isMatchingEdges)
@@ -899,7 +902,7 @@ namespace GraphView
                 }
 
                 CheckRemainingPredicatesAndAppendFilterOp(context, command,
-                    new HashSet<string>(tableReferences.Keys),
+                    new HashSet<string>(tableReferences),
                     predicatesAccessedTableReferences,
                     operatorChain);
             }
@@ -983,13 +986,13 @@ namespace GraphView
             List<Tuple<WBooleanExpression, HashSet<string>>> predicatesAccessedTableReferences)
         {
             List<GraphViewExecutionOperator> operatorChain = new List<GraphViewExecutionOperator>();
-            Dictionary<string, TableGraphType> tableReferences = context.TableReferences;
+            HashSet<string> tableReferences = context.TableReferences;
 
             if (context.OuterContextOp != null)
             {
                 context.CurrentExecutionOperator = context.OuterContextOp;
                 CheckRemainingPredicatesAndAppendFilterOp(context, command,
-                    new HashSet<string>(tableReferences.Keys), predicatesAccessedTableReferences,
+                    new HashSet<string>(tableReferences), predicatesAccessedTableReferences,
                     operatorChain);
             }
             
@@ -1037,7 +1040,7 @@ namespace GraphView
                         // Update current node's context info
                         //
                         this.UpdateNodeLayout(currentNode.NodeAlias, currentNode.Properties, context);
-                        tableReferences.Add(currentNode.NodeAlias, TableGraphType.Vertex);
+                        tableReferences.Add(currentNode.NodeAlias);
 
                         if (currentNode.IsDummyNode)
                         {
@@ -1045,10 +1048,10 @@ namespace GraphView
                             MatchEdge danglingEdge = currentNode.DanglingEdges[0];
 
                             this.UpdateEdgeLayout(danglingEdge.EdgeAlias, danglingEdge.Properties, context);
-                            tableReferences.Add(danglingEdge.EdgeAlias, TableGraphType.Edge);
+                            tableReferences.Add(danglingEdge.EdgeAlias);
 
                             CheckRemainingPredicatesAndAppendFilterOp(context, command,
-                                new HashSet<string>(tableReferences.Keys), predicatesAccessedTableReferences,
+                                new HashSet<string>(tableReferences), predicatesAccessedTableReferences,
                                 operatorChain);
 
                             continue;
@@ -1073,7 +1076,7 @@ namespace GraphView
                         // Update current node's context info
                         //
                         this.UpdateNodeLayout(currentNode.NodeAlias, currentNode.Properties, context);
-                        tableReferences.Add(currentNode.NodeAlias, TableGraphType.Vertex);
+                        tableReferences.Add(currentNode.NodeAlias);
                     }
 
                     //
@@ -1102,7 +1105,7 @@ namespace GraphView
 
                     processedNodes.Add(currentNode.NodeAlias);
                     CheckRemainingPredicatesAndAppendFilterOp(context, command,
-                        new HashSet<string>(tableReferences.Keys), predicatesAccessedTableReferences,
+                        new HashSet<string>(tableReferences), predicatesAccessedTableReferences,
                         operatorChain);
                 }
             }
@@ -1115,7 +1118,7 @@ namespace GraphView
                     operatorChain.Add(derivedTableOp);
                     
                     // TODO: Change to correct ColumnGraphType
-                    tableReferences.Add(tableReference.Alias.Value, TableGraphType.Vertex);
+                    tableReferences.Add(tableReference.Alias.Value);
                 }
                 else if (tableReference is WVariableTableReference)
                 {
@@ -1148,15 +1151,7 @@ namespace GraphView
                     var functionName = functionTableReference.SchemaObject.Identifiers.Last().ToString();
                     var tableOp = functionTableReference.Compile(context, command);
 
-                    GraphViewEdgeTableReferenceEnum edgeTypeEnum;
-                    GraphViewVertexTableReferenceEnum vertexTypeEnum;
-                    if (Enum.TryParse(functionName, true, out edgeTypeEnum))
-                        tableReferences.Add(functionTableReference.Alias.Value, TableGraphType.Edge);
-                    else if (Enum.TryParse(functionName, true, out vertexTypeEnum))
-                        tableReferences.Add(functionTableReference.Alias.Value, TableGraphType.Vertex);
-                    // TODO: Change to correct ColumnGraphType
-                    else
-                        tableReferences.Add(functionTableReference.Alias.Value, TableGraphType.Value);
+                    tableReferences.Add(functionTableReference.Alias.Value);
 
                     operatorChain.Add(tableOp);
                     context.CurrentExecutionOperator = operatorChain.Last();
@@ -1167,7 +1162,7 @@ namespace GraphView
                 }
 
                 CheckRemainingPredicatesAndAppendFilterOp(context, command,
-                    new HashSet<string>(tableReferences.Keys), predicatesAccessedTableReferences,
+                    new HashSet<string>(tableReferences), predicatesAccessedTableReferences,
                     operatorChain);
             }
 
