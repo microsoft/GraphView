@@ -142,25 +142,25 @@ It defines an abstract class `AbstractGremlinTest`, which is used to identify cl
 
 ### The SQL-like language format
 
-In fact, the translation part is the most amazing part in GraphView. A gremlin-groove query is a sequencial steps ([Imperative programmming][11]). However, it is hard to optimize. We want to translate the query to a descriptive format ([Declarative programming][12]), here that it is the SQL-like format. A SQL query consists of `SELECT`, `FROM`, `WHERE` clauses, but the SQL-like format adds the `MATCH` clause, which is used to find the neighbours of vectrices or the edges of vectrices.
+In fact, the translation part is the most amazing part in GraphView. A gremlin-groove query is a sequence of steps ([Imperative programming][11]). However, it is hard to optimize. We want to translate the query to a descriptive format ([Declarative programming][12]),that is the SQL-like format. A SQL query consists of `SELECT`, `FROM`, `WHERE` clauses, but the SQL-like format adds the `MATCH` clause, which is used to find the neighbors of vertices or the edges of vertices.
 
 ```  SQL
 MATCH N_1-[Edge E_1]->N_2
 ```
 
-This clause can find the outgoing edge E_1 of vertices N_1, and the neighbours N_2 through E_1.
+This clause can find the outgoing edge `E_1` of vertices `N_1`, and the neighbors `N_2` through `E_1`.
 
 ```  SQL
 MATCH N_1<-[Edge E_1]-N_2
 ```
 
-This clause can find the incoming edge E_1 of vertices N_1, and the neighbours N_2 through E_1.
+This clause can find the incoming edge `E_1` of vertices `N_1`, and the neighbors `N_2` through `E_1`.
 
-### How to describe the behaviours of Gremlin steps? 
+### How to describe the behaviors of Gremlin steps? 
 
-`g.V("1")` can get one vertex whose id is 1, `g.V("1").out()` can find the neighbours of `g.V("1")`...  
+`g.V("1")` can get one vertex whose id is 1, `g.V("1").out()` can find the neighbors of `g.V("1")`...  
 We can use a [finite-state machine][13] to simulate this process.  
-Consider the Gremlin query `g.V("1").out().outE()`, the initial state is the whole graph, the vertex set N_1 = {v| v is a vertex whose label is "1"} is the next state, which is determined by `g.V("1")`. The next state is the vertex set N_2 = {v | There exists an edge from a vertex in N_1 to v}. The last state is the edge set E_1 = {The outgoing edges of any vertex in N_2}.
+Consider the Gremlin query `g.V("1").out().outE()`, the initial state is the whole graph, the vertex set `N_1 = {v| v is a vertex whose label is "1"}` is the next state, which is determined by `g.V("1")`. The next state is the vertex set `N_2 = {v | There exists an edge from a vertex in N_1 to v}`. The last state is the edge set `E_1 = {The outgoing edges of any vertex in N_2}`.
 
 Pay attention, not all steps can be represented by states. For example, the FSM of `g.V().hasLabel("person")` has only one state, the vertex set N_1 = {v| v is a vertex who have the "person" label}.
 
@@ -168,7 +168,7 @@ Pay attention, not all steps can be represented by states. For example, the FSM 
 
 #### Build a GremlinTranslationOpList
 
-We do not build a [FSM][15] directly from the a Gremlin query due to some historical reasons. We build a GremlinTranslationOpList firstly. Generally, every step in gremlin can correspond to a  GremlinTranslationOperator, such as `V()` and `GremlinVOp`, `has("...")` and `GremlinHasOp`. Every GremlinTranslationOperator can maintain the information of the corresponding step so that the GremlinTranslationOpList can maintain the information of the gremlin query. This GremlinTranslationOpList belongs to a traversal object. The GremlinTranslationOpList of `g.V("1").out().outE()` is [`GrenlinVOp`, `GremlinOutOp`, `GremlinOutEOp`]
+We do not build a [FSM][15] directly from the a Gremlin query due to some historical reasons. We build a `GremlinTranslationOpList` firstly. Generally, every step in gremlin can correspond to a  `GremlinTranslationOperator`, such as `V()` and `GremlinVOp`, `has("...")` and `GremlinHasOp`. Every `GremlinTranslationOperator` can maintain the information of the corresponding step so that the `GremlinTranslationOpList` can maintain the information of the gremlin query. This `GremlinTranslationOpList` belongs to a traversal object. The `GremlinTranslationOpList` of `g.V("1").out().outE()` is [`GrenlinVOp`, `GremlinOutOp`, `GremlinOutEOp`]
 
 ####  Build a FSM
 
@@ -176,13 +176,13 @@ Our model is a lazy model, that is to say we generate something only when we nee
 
 After we get a traversal object, we call the method `Next()`. This methodis very complex, but only two main processes are related to the translation, `GetContext()` and `ToSqlScript()`. `GetContext()` is the method to build the FSM.
 
-Due to the lasy property, we just need to call `GetContext()` on the last `GremlinTranslationOperator` of the GremlinTranslationOpList. It calls `GetContext()` on the previous `GremlinTranslationOperator`... The first `GremlinTranslationOperator` is an object of `GrenlinVOp`. We will create an instance of `GremlinFreeVertexVariable`. Because we want the vertex whose id is "1" rather all vertices, we need to add a predicate in order to ensure {v| v is a vertex whose id is "1"}. We need to add the instance to a `VariableList`, which maintains all `GremlinTranslationOperator`, add the it to a `TableReferencesInFromClause`, which is used to generate the `FROM` clause, and set it as the `PivotVariable`, which means the current state in FSM, and add it to `StepList`, which maintains all states.  
+Due to the lazy property, we just need to call `GetContext()` on the last `GremlinTranslationOperator` of the `GremlinTranslationOpList`. It calls `GetContext()` on the previous `GremlinTranslationOperator`... The first `GremlinTranslationOperator` is an object of `GrenlinVOp`. We will create an instance of `GremlinFreeVertexVariable`. Because we want the vertex whose id is "1" rather all vertices, we need to add a predicate in order to ensure `{v| v is a vertex whose id is "1"}`. We need to add the instance to a `VariableList`, which maintains all `GremlinTranslationOperator`, add the it to a `TableReferencesInFromClause`, which is used to generate the `FROM` clause, and set it as the `PivotVariable`, which means the current state in FSM, and add it to `StepList`, which maintains all states.  
 
 The first state is generated, then how to transfor it to the next state?  
 
 We maintain all information about FSM in an instance of `GremlinToSqlContext`. Because C# pass objects by reference, we can add new information on the previous object. Finally, we can use an object of `GremlinToSqlContext` to represent the FSM. Therefore, we can return an object of `GremlinToSqlContext` to the next state.  
 
-The next `GremlinTranslationOperator` is an object of `GremlinOutOp`. We need to get an object of `GremlinFreeEdgeVariable` and then an object of `GremlinFreeVertexVariable`. Then add the two to `VariableList` and `TableReferencesInFromClause`, but only set the latter as the `PivotVariable` and add it to `StepList`. Because the second state of the FSM is {v | There exists an edge from a vertex in N_1 to v}. If you still remember, `MATCH` can be used to find edges. Therefore, we add the object of `GremlinFreeVertexVariable` to `MatchPathList`.
+The next `GremlinTranslationOperator` is an object of `GremlinOutOp`. We need to get an object of `GremlinFreeEdgeVariable` and then an object of `GremlinFreeVertexVariable`. Then add the two to `VariableList` and `TableReferencesInFromClause`, but only set the latter as the `PivotVariable` and add it to `StepList`. Because the second state of the FSM is `{v | There exists an edge from a vertex in N_1 to v}`. If you still remember, `MATCH` can be used to find edges. Therefore, we add the object of `GremlinFreeVertexVariable` to `MatchPathList`.
 
 `GremlinOutEOp` is the next and the last one. Similar to the `GremlinTranslationOperator`, add an object of `GremlinVertexToForwardEdgeVariable` to `VariableList` and `MatchPathList` and set the object as the `PivotVariable` and add it to `StepList`.  
 
@@ -194,14 +194,14 @@ During constructing the FSM, we created `VariableList`, `TableReferencesInFromCl
 
 #### SELECT
 
-Because our ultimate goal is to get the final state so that the 'SELECT' of SQL-like query is determined by the `PivotVariable`. 
-As we know, in some cases, not all the columns are needed. If `PivotVariable` records the columns (or projectedProperties) we need, we will explicitly stated. But if we do not records any columns, we will state the `DefaultProjection`. For example, the `PivotVariable` of `g.V()` is an object of `GremlinFreeVertexVariable` without any column given so that the `SELECT` will get the `DefaultProjection``*` of `GremlinFreeVertexVariable`, like `SELECT ALL N_1.* AS value$2c25dcb6`. The`DefaultProjection` is `*` if and only if the type of `GremlinVariableType` is Edge or Vertex. Now the `PivotVariable` of `g.V("1").out().outE()` is an object of  `GremlinFreeEdgeVariable` without any column given so that the `SELECT` clause is `SELECT ALL E_2.* AS value$821a7846`
+Because our ultimate goal is to get the final state so that the `SELECT` of SQL-like query is determined by the `PivotVariable`. 
+As we know, in some cases, not all the columns are needed. We just explicitly state the columns (or projectedProperties) we record. But if we do not record any columns, we will state the `DefaultProjection`. For example, the `PivotVariable` of `g.V()` is an object of `GremlinFreeVertexVariable` without any column given so that the `SELECT` will get the `DefaultProjection *` of `GremlinFreeVertexVariable`, like `SELECT ALL N_1.* AS value$2c25dcb6`. The`DefaultProjection` is `*` if and only if the type of `GremlinVariableType` is Edge or Vertex, else the `DefaultProjection` is `value`. Now the `PivotVariable` of `g.V("1").out().outE()` is an object of  `GremlinFreeEdgeVariable` without any column given so that the `SELECT` clause is `SELECT ALL E_2.* AS value$821a7846`
 
 #### FROM
 
 This part is the most complicated. Keep in mind that GraphView is a lasy and pull system. Assume that `TableReferencesInFromClause` is $[T_1, T_2, ..., T_i, ..., T_n]$. $T_i$ may depends on $T_1, T_2, ..., T_{i-1}$.
 
-Therefore, if we traverse `TableReferencesInFromClause` from 1 to n, we do not know the properties the latter obnject of `GremlinTableVariable` needs. The wiser way to traverse in the reverse order. If one object of `GremlinTableVariable` needs some properties, it will "tell" previous objects. `g.V("1").out().outE()` is so simple that it does not use this information. 
+Therefore, if we traverse `TableReferencesInFromClause` from 1 to n, we do not know the properties the latter object of `GremlinTableVariable` needs. The wiser way is to traverse in the reverse order. If one object of `GremlinTableVariable` needs some properties, it will "tell" previous objects. `g.V("1").out().outE()` is so simple that it does not use this information. 
 
 Now, `TableReferencesInFromClause` is [`GremlinFreeVertexVariable`, `GremlinFreeVertexVariable`]. The first one is created due to `g.V("1")`, the second one is created due to `.out()`. We firstly call `ToTableReference` on the second `GremlinFreeVertexVariable`. The `ToTableReference` method is designed to translate `GremlinTableVariable` to `WTableReference`. `GremlinFreeVertexVariable` is so simple that the instance is just like `node AS [N_2]`. So similarly， the first instance is `node AS [N_1]`
 
@@ -280,11 +280,17 @@ Generally, it is common to use some queries to realize some functions. For examp
 
 ### Subquery with TVF
 
-#### GremlinPathVariable
+#### path-step
 
-##### Senmatic
+##### Sematic
 
 >A traverser is transformed as it moves through a series of steps within a traversal. The history of the traverser is realized by examining its path with path()-step (map).
+
+##### Usage
+
+1. path can record all traces, even some traversers terminate early, their paths will also be listed.
+2. A faltMap-step will transform the incoming traverser’s object to an iterator of other objects. So the number of paths will turn several times.
+3. The traversers in the one path may be duplicates.
 
 ##### Parameters
 
@@ -315,11 +321,16 @@ Because in `CROSS APPLY Path(...)`, there is a subquery with `CROSS APPLY Decomp
 
 As you can see, TVFs are powerful tools to help SQL to execute complex queries. But if the subqueries are simple, we do not need TVFs.
 
-#### GremlinAddVVariable
+#### addV-step
 
 ##### Semantic
 
 >The addV()-step is used to add vertices to the graph (map/sideEffect). For every incoming object, a vertex is created. Moreover, GraphTraversalSource maintains an addV() method.
+
+##### Usage
+
+1. GraphView will add a vertex in the graph if there is no subgraph given.
+2. If there are some steps before add-step, this step will execute multiply times.
 
 ##### Parameters
 
@@ -337,13 +348,17 @@ FROM
   ) AS [N_18]
 ```
 
-This query is a special because it has `(SELECT ALL '1') AS [_]`. In translation part, firstly we will build a `GremlinTranlationOpList` with an instance of `GremlinAddVOp`. Then it will build an object of  `GremlinToSqlContext` with an instance of `GremlinAddVVariable`, in fact a FSM. When the  instance of `GremlinAddVVariable` calls `ToTableReference`, the reference will set the first table reference as `(SELECT ALL '1') AS [_]` because the instance of `GremlinAddVVariable` is the first one in `GremlinToSqlContext.VariableList`. It is easy to understand because we must add a vertex in a graph which we must give explicitly. Therefore, we need the subquery, `(SELECT ALL '1') AS [_]`. Although we need the subquery, it not a TVF. Therefore, it belongs to *Subquery without TVF*
+This query is special because it has `(SELECT ALL '1') AS [_]`. In translation part, firstly we will build a `GremlinTranlationOpList` with an instance of `GremlinAddVOp`. Then it will build an object of  `GremlinToSqlContext` with an instance of `GremlinAddVVariable`, in fact a FSM. When the  instance of `GremlinAddVVariable` calls `ToTableReference`, the reference will set the first table reference as `(SELECT ALL '1') AS [_]` because the instance of `GremlinAddVVariable` is the first one in `GremlinToSqlContext.VariableList` and there is no subgraph or graph before. It is easy to understand that we must add a vertex in a graph which we must give explicitly. Therefore, we need the subquery, `(SELECT ALL '1') AS [_]`. Although we need the subquery, it does not contain a TVF. Therefore, it belongs to *Subquery without TVF*
 
-#### GremlinSimplePathVariable
+#### simplePath-step
 
 ##### Semantic
 
 > When it is important that a traverser not repeat its path through the graph, simplePath()-step should be used (filter). The path information of the traverser is analyzed and if the path has repeated objects in it, the traverser is filtered. 
+
+##### Usage
+
+1. simplePath-step is just a filter. If we want all paths without repeat, we need use `simplePath().path()`
 
 ##### Parameters
 
@@ -367,6 +382,12 @@ WHERE N_18.id = 1
 ```
 
 Before we filter `simplepath`, we need get `path` first. However, the parameter of `SimplePath` is the default projection of the result of `Path`. Therefore, it belongs to *Subquery without TVF*.
+
+The regex is 
+
+```
+CROSS APPLY SimplePath\(#{pathDefaultProjection}\)
+```
 
 ## Something about the translation part implementation of [path-step][14] in Gremlin
 
@@ -475,7 +496,25 @@ MATCH N_18-[Edge AS E_6]->N_19
 
 As you can see, the label will be a parameter after its related Variable in Path parameter list.
 
-### sub-path using from() and to() modulations
+### Parameters Regex
+
+```Python
+CROSS APPLY Path \(
+  ( 
+    Compose1\(
+      TableDefaultColumnName, 
+      DefaultProjection, TableDefaultColumnName 
+      (, projectPropertyScalarExpression, projectProperty)* 
+    \),
+    (StepLabelsAtThatMoment,)*
+  )+
+  (\(
+    byContextSubQuery,
+  \))*
+\)
+```
+
+### Sub-path using from() and to() modulations
 
 Generally, we need the total path from the first step to the last step. But Gremlin provides sub-paths using `from()` and `to()` modulations with respective, path-based steps. This is useful in `simplePath()` and `cyclicPath()`.
 
@@ -557,10 +596,20 @@ In this case, `g.V().union(__.inE().outV(), __.outE().inV()).both().path()`, if 
 
 ### Usage
 
-> There are three ways to use select()-step.  
 1. Select labeled steps within a path (as defined by as() in a traversal).  
+
 2. Select objects out of a Map&lt;String,Object&gt; flow (i.e. a sub-map).  
+
 3. When the set of keys or values (i.e. columns) of a path or map are needed, use select(keys) and select(values), respectively. 
+
+4. When many steps have the same label (both name and type), the latter will be chosen.
+
+5. When many steps have labels with the same name, the priority order from high to low is
+
+   | Priority | Type of Label        |
+   | -------- | -------------------- |
+   | High     | `store`, `aggregate` |
+   | Low      | `As`                 |
 
 ### Use select with one label
 
@@ -630,6 +679,8 @@ The last two arguments in `SelectOne`:
 
 - `'name'` and `'age'`: The populated columns' name of the `SelectOne` result.
 
+
+
 ### Use select with multiple labels
 
 ``` SQL
@@ -667,6 +718,20 @@ MATCH N_18-[Edge AS E_6]->N_19
 
 The situation of `Select` argument list is almost same as the `SelectOne`. Note that the first sub query translated from `by("name")` will apply to the selected value with label "a", and the second one will apply to the selected value with "b", and so on.
 
+### Parameters Regex
+
+```
+CROSS APPLY Select \(
+    DefaultProjection,
+    pathDefaultProjection,
+    ("ALL"|"First"|"Last"),
+    (SelectKeys, )+
+    (\(
+        byContextSubQuery,
+    \))*
+\)
+```
+
 ### Some details of our Implementation
 We will insert a GremlinGlobalPathVariable before each select-step because the select-step depends on path.
 
@@ -687,10 +752,17 @@ We assume that you have know these usage cases such as
 - `emit(...).until(...).repeat(...)`
 - etc
 
-### The parameters of Repeat
+### Usage
+
+There are 3 important things
+1. input for each time
+2. output for each time
+3. repeat condition
+
+### Parameters
 
 ``` SQL
--- g.V().repeat(out()).times(2).path().by('name')
+-- g.V().repeat(__.out()).times(2).path().by('name')
 
 SELECT ALL R_1.value$be711b03 AS value$be711b03
 FROM node AS [N_18], 
@@ -720,10 +792,13 @@ FROM node AS [N_18],
     ) AS [R_1]
 ```
 
-#### RepeatCondition
-A number of repeat rounds from argument of `times`, or an `EXISTS` clause translated from sub traversal in `until`.
+#### Subquery
+The out-step will execute 2 times. Because  of `.path().by("name")`, the repeat-step provides `name` property and `path`.
 
-#### Sub Traversal of Repeat
+For the first time,  `__.out()` needs vertices from the step before `repeat`, that is `V()`. Then it can get the neighbors as the result. In addition, it also get the `name` property and `path`.
+
+For the second time, `__.out()` needs vertices from last result(`g.V().out()`). Then it can get the neighbors as the result as well as `name` property and `path`.
+
 ``` SQL
 ...
 	(
@@ -743,16 +818,51 @@ A number of repeat rounds from argument of `times`, or an `EXISTS` clause transl
  ...
 ```
 
+
 The first `SELECT` clause would be run only one time to select the specific columns in RawRecord for align when the traverser comes in this repeat step at the first time. And `null As _path` is only the dummy padding.
 
-The second time and later, the repeat step receives the result of previous repeat as the input, applies the second `SELECT` clause. Here, `R` refers to previous output and `R._path` means the local path in previous repeat.
+The second time and later, the repeat-step receives the result of previous repeat as the input, applies the second `SELECT` clause. Here, `R` refers to previous output and `R._path` means the local path in previous repeat.
 
 The most important thing is that the first `SELECT` clause and the second `SELECT` clause have the same scheme. The reason is obvious, no matter how many times we execute the repeat-step, the scheme should be the same. The first `SELECT` clause is related to the first time, and the second `SELECT` clause is related to the second time and later. 
 
 The scheme of repeat is determined by
 
-1. What projections do we need in sub traversal of repeat(Here, we need `*`).
-2. What projections do we need after the repeat-step(Here, we need `_path` and `name`).
+1. What projections do we need after the repeat-step(Here, we need `_path` and `name`).
+2. What projections do we need from the previous step(Here, we need `*`).
+3. What projections do we need to compute the until-condition(Here, none)
+4. What projections do we need to emit(Here, none)
+
+#### Repeat condition
+
+A number of repeat rounds from argument of `times`, or an predicate or an `EXISTS` clause translated from sub traversal in `until`.
+
+```SQL
+-- g.V().repeat(__.out()).times(2).path().by('name')
+RepeatCondition(2)
+
+-- g.V(1).repeat(out()).until(hasLabel('software')).path().by('name')
+RepeatCondition(R.key_2 = 'software')
+
+-- g.V(1).repeat(out()).until(has("lang")).path().by('name')
+RepeatCondition(
+    EXISTS (
+      SELECT ALL R_0.value$4ed9c917 AS value$4ed9c917
+      FROM CROSS APPLY  Properties(R.key_2) AS [R_0]
+    ))
+```
+
+### Parameters Regex
+
+```
+CROSS APPLY Repeat\(
+    \(
+        firstQueryExpr
+        UNION ALL
+        repeatQueryExpr
+    \),
+    RepeatCondition
+\)
+```
 
 ### Our Implementation
 
