@@ -11,6 +11,8 @@ We implement GraphView in C#, which is an open source project published on [Gith
 
 We divide a Gremlin query into three parts, including translation, compilation, execution. And if SQL-like language is used,  the latter two parts will enough.
 
+*Semantics always comes first. They define the problem.*
+
 ## Main processes
 
 ### Translation
