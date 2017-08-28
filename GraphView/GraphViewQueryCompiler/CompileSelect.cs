@@ -3577,5 +3577,28 @@ namespace GraphView
             return countLocalOp;
         }
     }
+
+    partial class WFilterTableReference
+    {
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewCommand command)
+        {
+            Debug.Assert(Parameters.Count == 1);
+            WSearchedCaseExpression caseExpression = Parameters[0] as WSearchedCaseExpression;
+            Debug.Assert(caseExpression!=null && caseExpression.WhenClauses.Count==1);
+
+            WBooleanExpression condition = caseExpression.WhenClauses[0].WhenExpression;
+
+            BooleanFunction func = context.InBatchMode
+                ? condition.CompileToBatchFunction(context, command)
+                : condition.CompileToFunction(context, command);
+            GraphViewExecutionOperator filterOp = context.InBatchMode
+                ? (GraphViewExecutionOperator) new FilterInBatchOperator(context.CurrentExecutionOperator, func)
+                : new FilterOperator(context.CurrentExecutionOperator, func);
+
+            context.CurrentExecutionOperator = filterOp;
+            context.AddField(Alias.Value, GremlinKeyword.TableDefaultColumnName, ColumnGraphType.Value);
+            return filterOp;
+        }
+    }
 }
 

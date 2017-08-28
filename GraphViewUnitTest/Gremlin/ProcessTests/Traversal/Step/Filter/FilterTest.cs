@@ -337,7 +337,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
             {
                 GraphTraversal traversal = graphCommand.g().V().Store("x")
                     .And(GraphTraversal.__().OutE("knows"), GraphTraversal.__().Values("age").Is(Predicate.lte(30)))
-                    .Cap("x").Unfold().Values("name");
+                    .Cap("x").Unfold();
                 List<string> result = traversal.Next();
                 foreach (var r in result)
                 {
@@ -395,6 +395,42 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
                     Console.WriteLine(r);
                 }
                 Assert.AreEqual(4, result.Count);
+            }
+        }
+
+        [TestMethod]
+        public void FlatMapFilter()
+        {
+            using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
+            {
+                GraphTraversal traversal = graphCommand.g().V().FlatMap(GraphTraversal.__().Aggregate("x").Has("age")).Cap("x").Unfold();
+                List<string> result = traversal.Next();
+                foreach (var r in result)
+                {
+                    Console.WriteLine(r);
+                }
+                Assert.AreEqual(6, result.Count);
+            }
+        }
+
+
+
+        [TestMethod]
+        public void UnionFilter()
+        {
+            using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
+            {
+                GraphTraversal traversal = graphCommand.g()
+                    .V()
+                    .Union(GraphTraversal.__().Aggregate("x").Has("age"), GraphTraversal.__().Has("age").Aggregate("x"))
+                    .Cap("x")
+                    .Unfold();
+                List<string> result = traversal.Next();
+                foreach (var r in result)
+                {
+                    Console.WriteLine(r);
+                }
+                Assert.AreEqual(10, result.Count);
             }
         }
     }
