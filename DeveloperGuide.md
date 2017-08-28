@@ -449,11 +449,11 @@ FROM node AS [N_18], node AS [N_19],
 MATCH N_18-[Edge AS E_6]->N_19
 ```
 
-Here, `V()` creates a FreeVariable `N_18` and `out()` creates a FreeVariable `N_19`. So in this traversal, each traverser will take along a path (history) including two elements, `N_18` and `N_19`. And we can see that the TVF `Path` in script has n + 1 parameters, the information of n steps and the `By` projection sub query.
+Here, `V()` creates a FreeVariable `N_18` and `out()` creates a FreeVariable `N_19`. So in this traversal, each traverser will take along a path (history) including two elements, `N_18` and `N_19`. And we can see that the TVF `Path` in script has n `Compose1` and 1 subquery with `Compose1` and `Decompose1`.
 
-For each `Compose1` in parameter list, the `By` projection sub query will decompose it and do some projections, then compose it as last, which is one element of the path-step result.
+Each `Compose1` corresponds one step. The `Compose1` has many parameters. The first one is `TableDefaultColumnName`. The second and third are `DefaultProjectionScalarExpression`, `TableDefaultColumnName`. The rest of parameters are another `projectPropertyScalarExpression` and `projectProperty`. One `Compose1` will generate a `CompositeField` during runtime part.
 
-By the way, the `C` in Decompose1 argument is a bound variable of the input, pointing to each Compose1 in Path argument list.
+After all `Compose1` functions, there is a subquery finally in the majority situation. Each `CompositeField` contains all information about this step, but not all of it is useful. The first example only needs `value$77083d6d`, the second only needs `value$77083d6d`, the last only needs `name`. Therefore, the last subquery use `Decompose1` and `Compose1` to extract what we really need. We can use `by(...)` to point out the processes of all elements. The symbol `C` in `Decompose1` is a bound variable of the input, pointing to each Compose1 in Path argument list.
 
 ### Parameters including `As` labels
 
@@ -494,7 +494,26 @@ FROM node AS [N_18], node AS [N_19],
 MATCH N_18-[Edge AS E_6]->N_19
 ```
 
-As you can see, the label will be a parameter after its related Variable in Path parameter list.
+```SQL
+-- g.V().as("a").as("b").out().as("c").path()
+SELECT ALL R_0.value$1846385a AS value$1846385a
+FROM node AS [N_18], node AS [N_19], 
+    CROSS APPLY 
+    Path(
+      Compose1('value$1846385a', N_18.*, 'value$1846385a', N_18.*, '*'),
+      'a',
+      'b',
+      Compose1('value$1846385a', N_19.*, 'value$1846385a', N_19.*, '*'),
+      'c',
+      (
+        SELECT ALL Compose1('value$1846385a', R_1.value$1846385a, 'value$1846385a') AS value$1846385a
+        FROM CROSS APPLY  Decompose1(C.value$1846385a, 'value$1846385a') AS [R_1]
+      )
+    ) AS [R_0]
+MATCH N_18-[Edge AS E_6]->N_19
+```
+
+As you can see, the label will be a parameter after its related Variable in Path parameter list. And any step can have multiple labels.
 
 ### Parameters Regex
 
@@ -503,7 +522,7 @@ CROSS APPLY Path \(
   ( 
     Compose1\(
       TableDefaultColumnName, 
-      DefaultProjection, TableDefaultColumnName 
+      DefaultProjectionScalarExpression, TableDefaultColumnName 
       (, projectPropertyScalarExpression, projectProperty)* 
     \),
     (StepLabelsAtThatMoment,)*
@@ -548,7 +567,7 @@ MATCH N_18-[Edge AS E_6]->N_19
 WHERE E_6.label = 'created' AND E_7.label = 'created'
 ```
 
-It is easy to get the sub-path as long as we can find all steps from the step with the label given by `from` to the step with the label given by `to`. If we have more than one step labeled by the same label, what should we do? After testing, we find we prefer the last step if there are some steps with the same label. That is to say, if the path is `a-a-a-b-b-b-c-c-c`, the sub-path from(`a`) and to(`c`) is `a-b-b-b-c-c-c`. So we need to walk backwards. If the query has no `to()` or we find the label given by `to()`, we begin to add steps into `StepList` until we find the label given by `from()`.
+It is easy to get the sub-path as long as we can find these steps from the step with the label given by `from` to the step with the label given by `to`. If we have more than one step labeled by the same label, what should we do? Gremlin prefers the last step if there are some steps with the same label. That is to say, if the path is `a`->`a`->`a`->`b`->`b`->`b`->`c`->`c`->`c`, the sub-path from(`a`) and to(`c`) is `a`->`b`->`b`->`b`->`c`->`c`->`c`. So we need to walk backwards. If the query has no `to()` or we find the label given by `to()`, we begin to add steps into `StepList` until we find the label given by `from()`.
 
 ### Path performance with steps which have sub traversals
 ``` SQL
@@ -1139,6 +1158,115 @@ g.V().flatMap(__.choose(__.select('a'), __.identity(), __.as('a')).
 
 We will **string the match-traversals into one flatmap-traversal**. (and will add some steps in it)
 
+
+
+## Something about the implementation of Filter TVF
+
+### Usage
+
+1. There is no step corresponding to `Filter` TVF in Gremlin.
+2. `Filter` TVF is aim to solve some problems related with steps(`sideEffect` type or `filter` type).
+3. Now(8/28/2017), the `Filter` TVF is very simple but useful. It contains a [CASE (Transact-SQL)][15] , which provide the condition of this filter.
+
+### Problems in previous versions
+
+Consider a Gremlin query, `g.V().aggregate("x").has("lang").cap("x")`. The aggregate-step is used to aggregate all the vertices in this query. But in previous versions, we translate this Gremlin query to a SQL-like query as follows:
+
+```SQL
+-- g.V().aggregate("x").has("lang").cap("x")
+
+SELECT ALL R_2.value$48733624 AS value$48733624
+FROM 
+  (
+    SELECT ALL Cap(('value$48733624'), 'x') AS value$48733624
+    FROM node AS [N_18], CROSS APPLY  Aggregate((SELECT ALL Compose1('value$48733624', N_18.*, 'value$48733624', N_18.*, '*') AS value$48733624), 'x') AS [R_1]
+    WHERE 
+     EXISTS (
+       SELECT ALL R_0.value$48733624 AS value$48733624
+       FROM CROSS APPLY  Properties(N_18.lang) AS [R_0]
+     )
+  ) AS [R_2]
+```
+
+In fact, if we translate `g.V().has("lang").aggregate("x").cap("x")`, we can get this
+
+```SQL
+-- g.V().has("lang").aggregate("x").cap("x")
+
+SELECT ALL R_2.value$48733624 AS value$48733624
+FROM 
+  (
+    SELECT ALL Cap(('value$48733624'), 'x') AS value$48733624
+    FROM node AS [N_18], CROSS APPLY  Aggregate((SELECT ALL Compose1('value$48733624', N_18.*, 'value$48733624', N_18.*, '*') AS value$48733624), 'x') AS [R_1]
+    WHERE 
+     EXISTS (
+       SELECT ALL R_0.value$48733624 AS value$48733624
+       FROM CROSS APPLY  Properties(N_18.lang) AS [R_0]
+     )
+  ) AS [R_2]
+```
+
+The two SQL-like queries are same while the Gremlin query are different. The translation is wrong because latter one's  aggregate-step only aggregates those who has "lang" property.
+
+The deeper explanation is that we change the order of sideEffect-steps and filter-steps.
+
+To simplify things, we consider only two steps: `s` and `f`, where `s` is a step of sideEffect type and `f` is a step of filter type.
+
+* `s(xxx).f(yyy)` means filter the result of sideEffect. All input of `s` will yield some computational sideEffect.
+* `f(xxx).s(yyy)` means yield some computational sideEffect on the result of filter. Only those that satisfy some conditions will be affected.
+
+Above all, we need some tragedies to solve our mistake.
+
+### Our Implementation
+
+In GraphView, the priority of predicates in `WHERE` clause is higher that TVF in  `FROM` clause. Therefore, GraphVIew must ensure that `f` is after `s` in `s(xxx).f(yyy)`. So we design the filter TVF for `f` to take the place of predicates in `WHERE` clause.
+
+Now, the translation result is 
+
+```SQL
+-- g.V().aggregate("x").has("lang").cap("x")
+
+SELECT ALL R_3.value$f8962792 AS value$f8962792
+FROM 
+  (
+    SELECT ALL Cap(('value$f8962792'), 'x') AS value$f8962792
+    FROM node AS [N_18], CROSS APPLY  Aggregate((SELECT ALL Compose1('value$f8962792', N_18.*, 'value$f8962792', N_18.*, '*') AS value$f8962792), 'x') AS [R_0], 
+        CROSS APPLY 
+        Filter(
+          ( CASE
+              WHEN 
+               EXISTS (
+                 SELECT ALL R_1.value$f8962792 AS value$f8962792
+                 FROM CROSS APPLY  Properties(N_18.lang) AS [R_1]
+               ) THEN 1
+              ELSE 0
+          END )
+        ) AS [R_2]
+  ) AS [R_3]
+```
+
+It is easy to understand if you know the [CASE (Transact-SQL)][15]. If exists one element which has "lang" property, the Filter will get 1, else get 0.
+
+Because `Aggregate` is before `Filter` in `WHERE` clause, the `Filter` won't have a influence on `Aggregate`.
+
+### Parameters Regex
+
+```SQL
+CROSS APPLY Filter(
+  ( CASE
+      WHEN 
+       Predicate THEN 1
+      ELSE 0
+  END )
+)
+```
+
+### Conditions of usage
+
+Not all filters should be translated to a filter TVF because of poor efficiency. Only when the input of filter has been affected by one sideEffect-step or more sideEffect-steps. In Gremlin, `coin`, `cyclicPath`, `dedup`, `drop`, `range`, `simplePath`, `timeLimit`, `limit`, `and`, `or`, `not`, `is`, `has`, `where` are of sideEffect type. `and`, `or`, `not`, `is`, `has`, `where` use predicates to implement. So we may need Filter TVF to make sure our translation result is correct in face of them as well as sideEffect steps.
+
+In translation part, we use a local variable `NeedFilter` to keep information about sideEffect. If current state of FSM is affected by a sideEffect-step, GraphView will assign `true` to it. During translation, if we face a filter-step, such as `and`, `or`, `not`, `is`, `has` and `where`, we must use Filter TVF to make sure the correct order if `NeedFilter` is `true`. `NeedFilter`  is a member variable of `GramlinVariable`, so if the current state(`pivotVariable`) is changed, the `NeedFilter`  will be initialed as `false`.
+
 [1]: http://tinkerpop.apache.org/docs/current/reference/#match-step
 [2]: https://en.wikipedia.org/wiki/Partially_ordered_set
 [3]: https://en.wikipedia.org/wiki/Topological_sorting
@@ -1153,3 +1281,4 @@ We will **string the match-traversals into one flatmap-traversal**. (and will ad
 [12]: https://en.wikipedia.org/wiki/Declarative_programming
 [13]: https://en.wikipedia.org/wiki/Finite-state_machine
 [14]: http://tinkerpop.apache.org/docs/current/reference/#path-step
+[15]: https://docs.microsoft.com/en-us/sql/t-sql/language-elements/case-transact-sql
