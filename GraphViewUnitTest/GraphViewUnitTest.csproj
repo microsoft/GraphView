@@ -92,8 +92,10 @@
     <Compile Include="Gremlin\ProcessTests\Traversal\Step\Filter\CoinTest.cs" />
     <Compile Include="Gremlin\ProcessTests\Traversal\Step\Filter\DedupTest.cs" />
     <Compile Include="Gremlin\ProcessTests\Traversal\Step\Filter\DropTest.cs" />
+    <Compile Include="Gremlin\ProcessTests\Traversal\Step\Filter\FilterTest.cs" />
     <Compile Include="Gremlin\ProcessTests\Traversal\Step\Filter\HasTest.cs" />
     <Compile Include="Gremlin\ProcessTests\Traversal\Step\Filter\IsTest.cs" />
+    <Compile Include="Gremlin\ProcessTests\Traversal\Step\Filter\LimitTest.cs" />
     <Compile Include="Gremlin\ProcessTests\Traversal\Step\Filter\RangeTest.cs" />
     <Compile Include="Gremlin\ProcessTests\Traversal\Step\Filter\WhereTest.cs" />
     <Compile Include="Gremlin\ProcessTests\Traversal\Step\Map\AddVertexTest.cs" />
