@@ -433,5 +433,20 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
                 Assert.AreEqual(10, result.Count);
             }
         }
+
+        [TestMethod]
+        public void FilterPath()
+        {
+            using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
+            {
+                var traversal = graphCommand.g().V().Aggregate("x").Has("lang").Path();
+                var result = traversal.Next();
+
+                foreach (var r in result)
+                {
+                    Console.WriteLine(r);
+                }
+            }
+        }
     }
 }

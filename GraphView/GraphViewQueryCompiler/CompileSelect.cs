@@ -3596,7 +3596,6 @@ namespace GraphView
                 : new FilterOperator(context.CurrentExecutionOperator, func);
 
             context.CurrentExecutionOperator = filterOp;
-            context.AddField(Alias.Value, GremlinKeyword.TableDefaultColumnName, ColumnGraphType.Value);
             return filterOp;
         }
     }
