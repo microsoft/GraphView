@@ -165,21 +165,44 @@ namespace GraphView
     {
         public List<string> SideEffectKeys { get; set; }
 
-        public GremlinCapVariable(GremlinToSqlContext subqueryContext, List<string> sideEffectKeys)
+        public List<GremlinVariable> SideEffectVariables { get; set; } // such as aggregate("a"), sotre("a"), as("a")
+
+        public GremlinCapVariable(GremlinToSqlContext subqueryContext, List<GremlinVariable> sideEffectVariables, List<string> sideEffectKeys)
             : base(subqueryContext)
         {
             SideEffectKeys = sideEffectKeys;
+            SideEffectVariables = sideEffectVariables;
+        }
+
+        internal override void Populate(string property)
+        {
+            foreach (var sideEffectVariable in SideEffectVariables)
+            {
+                sideEffectVariable.Populate(property);
+            }
+
+            if (SideEffectKeys.Count > 1 && property != GremlinKeyword.TableDefaultColumnName)
+            {
+                return;
+            }
+            else
+            {
+                base.Populate(property);
+            }
         }
 
         public override WTableReference ToTableReference()
         {
             WSelectQueryBlock queryBlock = SubqueryContext.ToSelectQueryBlock();
             queryBlock.SelectElements.Clear();
+            
             List<WValueExpression> columnListExpr = new List<WValueExpression>();
+
             foreach (var projectProperty in ProjectedProperties)
             {
                 columnListExpr.Add(SqlUtil.GetValueExpr(projectProperty));
             }
+            
             List<WScalarExpression> capParameters = new List<WScalarExpression>();
             foreach (var sideEffectKey in SideEffectKeys)
             {
@@ -188,6 +211,7 @@ namespace GraphView
             }
 
             queryBlock.SelectElements.Add(SqlUtil.GetSelectScalarExpr(SqlUtil.GetFunctionCall(GremlinKeyword.func.Cap, capParameters), GremlinKeyword.TableDefaultColumnName));
+
             return SqlUtil.GetDerivedTable(queryBlock, GetVariableName());
         }
     }

@@ -365,7 +365,8 @@ namespace GraphView
 
         internal virtual void Cap(GremlinToSqlContext currentContext, List<string> sideEffectKeys)
         {
-            GremlinCapVariable newVariable = new GremlinCapVariable(currentContext.Duplicate(), sideEffectKeys);
+            List<GremlinVariable> sideEffectVariables = currentContext.GetSideEffectVariables();
+            GremlinCapVariable newVariable = new GremlinCapVariable(currentContext.Duplicate(), sideEffectVariables, sideEffectKeys);
             currentContext.Reset();
             currentContext.VariableList.Add(newVariable);
             currentContext.TableReferencesInFromClause.Add(newVariable);
