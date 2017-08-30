@@ -752,12 +752,73 @@ CROSS APPLY Select \(
 ```
 
 ### Some details of our Implementation
-We will insert a GremlinGlobalPathVariable before each select-step because the select-step depends on path.
+We will insert a `GremlinGlobalPathVariable` before each select-step because the select-step depends on path.
+
+## Something about the implementation of [cap-step](http://tinkerpop.apache.org/docs/current/reference/#cap-step) in Gremlin
+
+### Semantic
+
+> The `cap()`-step (**barrier**) iterates the traversal up to itself and emits the sideEffect referenced by the provided key. If multiple keys are provided, then a `Map<String,Object>` of sideEffects is emitted.
+
+### Usage
+
+cap-step is different with select-step. If one label is given, cap-step will emit the related sideEffect, while select-step will select the related step within a path or select objects out of a `Map<String,Object>` flow. That is to say, the result of select-step depends on the previous step.
+
+For example, in `g.V().aggregate("x").out().cap("x").Unfold().Values("name")`, `cap("x")` will emit `aggregate("x")`, which actually `V()`. So `cap("x")` will get all vertices and the results of this query are all names of vertices
+
+However, `g.V().aggregate('x').out().select("x").unfold().Values("name")`, `select("x")` will get the result of `aggregate("x")` within a path if one vertex has at least one neighbor. Because there are 6 vertices, any of which has at least one neighbor, the final results of `select("x")` are 6*6 vertices. The results of this query are repeated six times for each name.
+
+When it comes to multiple labels, the difference is similar if the `select` is not to select objects out of a `Map<String,Object>` flow.
+
+### Use cap with one label
+
+```SQL
+-- g.V().aggregate("x").out().cap("x").Unfold().Values("name")
+
+SELECT ALL R_3.value$a946ea00 AS value$a946ea00
+FROM 
+  (
+    SELECT ALL Cap(('value$a946ea00'), 'x') AS value$a946ea00
+    FROM node AS [N_18], CROSS APPLY  Aggregate((SELECT ALL Compose1('value$a946ea00', N_18.*, 'value$a946ea00', N_18.name, 'name', N_18.*, '*') AS value$a946ea00), 'x') AS [R_0], CROSS APPLY  VertexToForwardEdge(N_18.*, '*') AS [E_6], CROSS APPLY  EdgeToSinkVertex(E_6.*, '*') AS [N_19]
+  ) AS [R_1], CROSS APPLY  Unfold(R_1.value$a946ea00, 'name') AS [R_2], CROSS APPLY  Values(R_2.name) AS [R_3]
+```
+
+Because the result of cap-step is independent of the previous step, we can't use a TVF to implement this function. We choose to use a subquery and `SELECT` the result of cap-step.
+
+GraphView is a pull system, when it sees `Values("name")`, it will notice that `cap("x")` should provide `name` property. And then, `cap` will call `populate` for every sideEffect variable in its subquery. Therefore, `CROSS APPLY  Aggregate((SELECT ALL Compose1('value$39e0a30b', ..., N_18.name, 'name', ...) AS value$39e0a30b), 'x') AS [R_0]` needs compose with `name` property. `Cap(('value$a946ea00'), 'x')` will find the sideEffect with label "x", which is `R_0`.
+
+### Use cap with multiple labels
+
+```SQL
+-- g.V().aggregate("x").out().aggregate("y").cap("x", "y")
+
+SELECT ALL R_2.value$a53bc80b AS value$a53bc80b
+FROM 
+  (
+    SELECT ALL Cap(('value$a53bc80b'), 'x', ('value$a53bc80b'), 'y') AS value$a53bc80b
+    FROM node AS [N_18], CROSS APPLY  Aggregate((SELECT ALL Compose1('value$a53bc80b', N_18.*, 'value$a53bc80b', N_18.*, '*') AS value$a53bc80b), 'x') AS [R_0], CROSS APPLY  VertexToForwardEdge(N_18.*, '*') AS [E_6], CROSS APPLY  EdgeToSinkVertex(E_6.*, 'value$a53bc80b', '*') AS [N_19], CROSS APPLY  Aggregate((SELECT ALL Compose1('value$a53bc80b', N_19.*, 'value$a53bc80b', N_19.*, '*') AS value$a53bc80b), 'y') AS [R_1]
+  ) AS [R_2]
+```
+
+The difference is that there are multiple groups of parameters in the `SELECT` clause of the subquery.
+
+### Parameters Regex
+
+```SQL
+(
+  SELECT ALL Cap\( (\(defaultProjection\), label,)+ \) AS defaultProjection
+  FROM  ...
+)
+```
+
+### Implementation 
+
+When GraphView constructs a instance of `GremlinCapVariable` in `GremlinTranslationOpList`, the instance will keep the `sideEffectVariables` in its `subqueryContext`. When later steps need properties from `cap`, it will call `populate`. For each of `sideEffectVariables`, it will call `populate` respectively.
 
 
 ## Something about the implementation of [repeat-step](http://tinkerpop.apache.org/docs/current/reference/#repeat-step) in Gremlin
 
-### Senmatic
+### Sematic
 
 >The repeat()-step (branch) is used for looping over a traversal given some break predicate. Below are some examples of repeat()-step in action.
 
@@ -883,7 +944,7 @@ CROSS APPLY Repeat\(
 \)
 ```
 
-### Our Implementation
+### Implementation
 
 Firstly we will build a `GremlinTranlationOpList` with an instance of `GremlinVOp`, an instance of `GremlinRepeatOp` and an instance of `GremlinPathOp`. The `GremlinRepeatOp` contains the `RepeatTimes`(2) and the  `GremlinPath` contains the `name` property. 
 
@@ -1217,7 +1278,7 @@ To simplify things, we consider only two steps: `s` and `f`, where `s` is a step
 
 Above all, we need some tragedies to solve our mistake.
 
-### Our Implementation
+### Implementation
 
 In GraphView, the priority of predicates in `WHERE` clause is higher that TVF in  `FROM` clause. Therefore, GraphVIew must ensure that `f` is after `s` in `s(xxx).f(yyy)`. So we design the filter TVF for `f` to take the place of predicates in `WHERE` clause.
 

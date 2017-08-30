@@ -183,9 +183,9 @@ namespace GraphView
 
             if (SideEffectKeys.Count > 1 && property != GremlinKeyword.TableDefaultColumnName)
             {
-                return;
+                throw new TranslationException("Multiple variables can only populate TableDefaultColumnName");
             }
-            else
+            else if (property == GremlinKeyword.TableDefaultColumnName)
             {
                 base.Populate(property);
             }
