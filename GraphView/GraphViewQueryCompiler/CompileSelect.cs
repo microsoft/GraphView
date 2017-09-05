@@ -3008,15 +3008,11 @@ namespace GraphView
                 orderByElements.Add(new Tuple<ScalarFunction, IComparer>(byFunction, comparer));
             }
 
-            List<string> populateColumns = new List<string> { DocumentDBKeywords.KW_TABLE_DEFAULT_COLUMN_NAME };
+            List<string> populateColumns = new List<string> ();
             for (int i = this.OrderParameters.Count + 1; i < this.Parameters.Count; i++)
             {
                 WValueExpression populateColumn = this.Parameters[i] as WValueExpression;
                 Debug.Assert(populateColumn != null, "populateColumn != null");
-
-                if (populateColumn.Value.Equals(DocumentDBKeywords.KW_TABLE_DEFAULT_COLUMN_NAME)) {
-                    continue;
-                }
                 populateColumns.Add(populateColumn.Value);
             }
 
