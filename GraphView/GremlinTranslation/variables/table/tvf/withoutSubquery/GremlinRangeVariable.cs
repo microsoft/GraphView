@@ -45,14 +45,6 @@ namespace GraphView
             parameters.Add(Scope == GremlinKeyword.Scope.Local ? SqlUtil.GetValueExpr(1) : SqlUtil.GetValueExpr(-1));
             parameters.Add(IsReverse ? SqlUtil.GetValueExpr(1): SqlUtil.GetValueExpr(-1));
 
-            if (Scope == GremlinKeyword.Scope.Local)
-            {
-                foreach (var property in ProjectedProperties)
-                {
-                    parameters.Add(SqlUtil.GetValueExpr(property));
-                }
-            }
-
             var tableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Range, parameters, GetVariableName());
             return SqlUtil.GetCrossApplyTableReference(tableRef);
         }

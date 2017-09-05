@@ -3042,15 +3042,8 @@ namespace GraphView
             bool isLocal = localFlag > 0;
             bool isTail = tailFlag > 0;
 
-            List<string> populateColumns = new List<string> ();
+            List<string> populateColumns = new List<string> {DocumentDBKeywords.KW_TABLE_DEFAULT_COLUMN_NAME};
             
-            for (int i = 5; i < this.Parameters.Count; i++)
-            {
-                WValueExpression populateColumn = this.Parameters[i] as WValueExpression;
-                Debug.Assert(populateColumn != null, "populateColumn != null");
-                populateColumns.Add(populateColumn.Value);
-            }
-
             //
             // Compilation of Tail op, which returns lastN elements
             //
