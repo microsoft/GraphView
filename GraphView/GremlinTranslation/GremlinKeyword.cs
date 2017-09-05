@@ -29,10 +29,8 @@ namespace GraphView
         public const string RepeatInitalTableName = "R";
         public const string RepeatColumnPrefix = "key_";
         public static string TableDefaultColumnName = "value$" + Guid.NewGuid().ToString().Substring(0, 8);
-
-        private static int indexColumnCount = 0;
+        
         public const string IndexTableName = "$INDEX";
-        public static string IndexColumnName => (indexColumnCount++).ToString();
 
         public static class func
         {

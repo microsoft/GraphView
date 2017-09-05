@@ -1574,7 +1574,7 @@ namespace GraphView
                 // Set all sub-traversals' source to a same `sourceEnumerator`, and turn on InBatchMode
                 QueryCompilationContext subcontext = new QueryCompilationContext(context);
                 subcontext.OuterContextOp.SourceEnumerator = sourceEnumerator;
-                subcontext.AddField(GremlinKeyword.IndexTableName, GremlinKeyword.IndexColumnName, ColumnGraphType.Value, true);
+                subcontext.AddField(GremlinKeyword.IndexTableName, command.IndexColumnName, ColumnGraphType.Value, true);
                 subcontext.InBatchMode = true;
                 GraphViewExecutionOperator traversalOp = scalarSubquery.SubQueryExpr.Compile(subcontext, command);
                 coalesceOp.AddTraversal(traversalOp);
@@ -1674,7 +1674,7 @@ namespace GraphView
             ContainerEnumerator targetSourceEnumerator = new ContainerEnumerator();
             QueryCompilationContext targetSubContext = new QueryCompilationContext(context);
             targetSubContext.OuterContextOp.SourceEnumerator = targetSourceEnumerator;
-            targetSubContext.AddField(GremlinKeyword.IndexTableName, GremlinKeyword.IndexColumnName, ColumnGraphType.Value, true);
+            targetSubContext.AddField(GremlinKeyword.IndexTableName, command.IndexColumnName, ColumnGraphType.Value, true);
             targetSubContext.InBatchMode = true;
             GraphViewExecutionOperator targetSubqueryOp = optionalSelect.Compile(targetSubContext, command);
 
@@ -1728,7 +1728,7 @@ namespace GraphView
             ContainerEnumerator sourceEnumerator = new ContainerEnumerator();
             QueryCompilationContext subcontext = new QueryCompilationContext(context);
             subcontext.OuterContextOp.SourceEnumerator = sourceEnumerator;
-            subcontext.AddField(GremlinKeyword.IndexTableName, GremlinKeyword.IndexColumnName, ColumnGraphType.Value, true);
+            subcontext.AddField(GremlinKeyword.IndexTableName, command.IndexColumnName, ColumnGraphType.Value, true);
             subcontext.InBatchMode = true;
             GraphViewExecutionOperator localTraversalOp = localSelect.Compile(subcontext, command);
             LocalOperator localOp = new LocalOperator(context.CurrentExecutionOperator, localTraversalOp, sourceEnumerator);
@@ -1773,7 +1773,7 @@ namespace GraphView
             ContainerEnumerator sourceEnumerator = new ContainerEnumerator();
             QueryCompilationContext subcontext = new QueryCompilationContext(context);
             subcontext.OuterContextOp.SourceEnumerator = sourceEnumerator;
-            subcontext.AddField(GremlinKeyword.IndexTableName, GremlinKeyword.IndexColumnName, ColumnGraphType.Value, true);
+            subcontext.AddField(GremlinKeyword.IndexTableName, command.IndexColumnName, ColumnGraphType.Value, true);
             subcontext.InBatchMode = true;
             GraphViewExecutionOperator flatMapTraversalOp = flatMapSelect.Compile(subcontext, command);
 
@@ -2608,7 +2608,7 @@ namespace GraphView
             ContainerEnumerator sourceEnumerator = new ContainerEnumerator();
             QueryCompilationContext subcontext = new QueryCompilationContext(context);
             subcontext.OuterContextOp.SourceEnumerator = sourceEnumerator;
-            subcontext.AddField(GremlinKeyword.IndexTableName, GremlinKeyword.IndexColumnName, ColumnGraphType.Value, true);
+            subcontext.AddField(GremlinKeyword.IndexTableName, command.IndexColumnName, ColumnGraphType.Value, true);
             subcontext.InBatchMode = true;
             GraphViewExecutionOperator mapTraversalOp = mapSelect.Compile(subcontext, command);
             MapOperator mapOp = new MapOperator(context.CurrentExecutionOperator, mapTraversalOp, sourceEnumerator);
@@ -2655,7 +2655,7 @@ namespace GraphView
             ContainerEnumerator sourceEnumerator = new ContainerEnumerator();
             QueryCompilationContext subcontext = new QueryCompilationContext(context);
             subcontext.OuterContextOp.SourceEnumerator = sourceEnumerator;
-            subcontext.AddField(GremlinKeyword.IndexTableName, GremlinKeyword.IndexColumnName, ColumnGraphType.Value, true);
+            subcontext.AddField(GremlinKeyword.IndexTableName, command.IndexColumnName, ColumnGraphType.Value, true);
             subcontext.InBatchMode = true;
             GraphViewExecutionOperator sideEffectTraversalOp = sideEffectSelect.Compile(subcontext, command);
             SideEffectOperator sideEffectOp = new SideEffectOperator(context.CurrentExecutionOperator, sideEffectTraversalOp, sourceEnumerator);
@@ -3046,15 +3046,12 @@ namespace GraphView
             bool isLocal = localFlag > 0;
             bool isTail = tailFlag > 0;
 
-            List<string> populateColumns = new List<string> { DocumentDBKeywords.KW_TABLE_DEFAULT_COLUMN_NAME };
+            List<string> populateColumns = new List<string> ();
+            
             for (int i = 5; i < this.Parameters.Count; i++)
             {
                 WValueExpression populateColumn = this.Parameters[i] as WValueExpression;
                 Debug.Assert(populateColumn != null, "populateColumn != null");
-
-                if (populateColumn.Value.Equals(DocumentDBKeywords.KW_TABLE_DEFAULT_COLUMN_NAME)) {
-                    continue;
-                }
                 populateColumns.Add(populateColumn.Value);
             }
 
@@ -3269,7 +3266,7 @@ namespace GraphView
             ContainerEnumerator targetSourceEnumerator = new ContainerEnumerator();
             QueryCompilationContext targetSubContext = new QueryCompilationContext(context);
             targetSubContext.OuterContextOp.SourceEnumerator = targetSourceEnumerator;
-            targetSubContext.AddField(GremlinKeyword.IndexTableName, GremlinKeyword.IndexColumnName, ColumnGraphType.Value, true);
+            targetSubContext.AddField(GremlinKeyword.IndexTableName, command.IndexColumnName, ColumnGraphType.Value, true);
             targetSubContext.InBatchMode = true;
             GraphViewExecutionOperator targetSubqueryOp = targetSubquery.SubQueryExpr.Compile(targetSubContext, command);
             
@@ -3330,7 +3327,7 @@ namespace GraphView
             QueryCompilationContext targetContext = new QueryCompilationContext(context);
             targetContext.InBatchMode = true;
             targetContext.OuterContextOp.SourceEnumerator = targetSource;
-            targetContext.AddField(GremlinKeyword.IndexTableName, GremlinKeyword.IndexColumnName, ColumnGraphType.Value, true);
+            targetContext.AddField(GremlinKeyword.IndexTableName, command.IndexColumnName, ColumnGraphType.Value, true);
             GraphViewExecutionOperator targetSubqueryOp = targetSubquery.SubQueryExpr.Compile(targetContext, command);
 
 

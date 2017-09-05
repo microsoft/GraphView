@@ -18,7 +18,7 @@ namespace GraphView
             GraphViewCommand command)
         {
             QueryCompilationContext subContext = new QueryCompilationContext(context);
-            subContext.AddField(GremlinKeyword.IndexTableName, GremlinKeyword.IndexColumnName, ColumnGraphType.Value, true);
+            subContext.AddField(GremlinKeyword.IndexTableName, command.IndexColumnName, ColumnGraphType.Value, true);
             subContext.InBatchMode = true;
 
             return this.CompileToFunction(subContext, command);
@@ -130,7 +130,7 @@ namespace GraphView
         internal override BooleanFunction CompileToBatchFunction(QueryCompilationContext context, GraphViewCommand command)
         {
             QueryCompilationContext subContext = new QueryCompilationContext(context);
-            subContext.AddField(GremlinKeyword.IndexTableName, GremlinKeyword.IndexColumnName, ColumnGraphType.Value, true);
+            subContext.AddField(GremlinKeyword.IndexTableName, command.IndexColumnName, ColumnGraphType.Value, true);
             subContext.InBatchMode = true;
 
             ContainerEnumerator sourceEnumerator = new ContainerEnumerator();

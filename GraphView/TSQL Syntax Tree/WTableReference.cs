@@ -659,9 +659,11 @@ namespace GraphView
             if (MetaProperties.Count > 0)
             {
                 sb.Append(", Meta: (");
+                bool isFirst = true;
                 foreach (var metaProperty in MetaProperties)
                 {
-                    sb.AppendFormat("{0}:{1}", metaProperty.Key.ToString(), metaProperty.Value.ToString());
+                    sb.Append($"{(isFirst ? "" : ", ")}{metaProperty.Key}:{metaProperty.Value}");
+                    isFirst = false;
                 }
                 sb.Append(")");
             }

@@ -2,6 +2,8 @@
 // Copyright (c) Microsoft Corporation.  All rights reserved.
 //------------------------------------------------------------
 
+using System;
+using System.Diagnostics;
 using System.Linq;
 using GraphView;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -306,6 +308,18 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
                 var traversal = graphCommand.g().V().As("a").Out().As("b").Out().As("c").Select("a", "b", "c").By("name")/*.Range(GremlinKeyword.Scope.Local, 1, 2)*/;
                 dynamic results = JsonConvert.DeserializeObject<dynamic>(traversal.Next().FirstOrDefault());
                 CheckUnOrderedResults(new [] {"josh", "josh"}, ((JArray)results).Select(p=>p["b"].ToString()).ToList());
+            }
+        }
+
+        [TestMethod]
+        public void RangeLocalProjection()
+        {
+            using (GraphViewCommand command = new GraphViewCommand(graphConnection))
+            {
+                var traversal = command.g()
+                    .V().Fold().Range(GremlinKeyword.Scope.Local, 2, 5).Unfold().Values("name");
+                var result = traversal.Next();
+                Debug.Assert(result.Count == 3);
             }
         }
 

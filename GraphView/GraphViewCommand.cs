@@ -39,6 +39,10 @@ namespace GraphView
 
         public OutputFormat OutputFormat { get; set; }
 
+
+        private int indexColumnCount;
+        public string IndexColumnName => (indexColumnCount++).ToString();
+
         public GraphViewCommand(GraphViewConnection connection)
         {
             this.Connection = connection;
