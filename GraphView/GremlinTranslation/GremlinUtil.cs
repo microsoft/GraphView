@@ -37,6 +37,13 @@ namespace GraphView
             return "R_" + _tableCount++;
         }
 
+        public static void ClearCounters()
+        {
+            _vertexCount = 0;
+            _edgeCount = 0;
+            _tableCount = 0;
+        }
+
         internal static GremlinVariableType GetContextListType(List<GremlinToSqlContext> contextList)
         {
             if (contextList.Count == 0) return GremlinVariableType.Table;

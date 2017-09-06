@@ -162,7 +162,7 @@ namespace GraphView
         internal virtual WFunctionCall ToCompose1()
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();
-            parameters.Add(SqlUtil.GetValueExpr(GremlinKeyword.TableDefaultColumnName));
+            // parameters.Add(SqlUtil.GetValueExpr(GremlinKeyword.TableDefaultColumnName));
             parameters.Add(DefaultProjection().ToScalarExpression());
             parameters.Add(SqlUtil.GetValueExpr(GremlinKeyword.TableDefaultColumnName));
             foreach (var projectProperty in ProjectedProperties)

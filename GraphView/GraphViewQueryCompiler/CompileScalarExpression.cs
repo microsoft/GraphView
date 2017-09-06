@@ -129,19 +129,19 @@ namespace GraphView
                     return new HasProperty(context.LocateColumnReference(checkField), propertyName.Value);
                 case "compose1":
                     List<Tuple<string, int>> targetFieldsAndTheirNames = new List<Tuple<string, int>>();
-                    WValueExpression defaultProjectionKey = Parameters[0] as WValueExpression;
+                    WValueExpression defaultProjectionKey = Parameters[1] as WValueExpression;
                     if (defaultProjectionKey == null)
                         throw new SyntaxErrorException("The first parameter of Compose1 has to be a WValueExpression.");
 
-                    for (int i = 1; i < Parameters.Count; i += 2)
+                    for (int i = 0; i < Parameters.Count; i += 2)
                     {
                         WColumnReferenceExpression columnRef = Parameters[i] as WColumnReferenceExpression;
                         WValueExpression name = Parameters[i+1] as WValueExpression;
 
                         if (name == null)
-                            throw new SyntaxErrorException("The parameter of Compose1 at an odd position has to be a WValueExpression.");
+                            throw new SyntaxErrorException("The parameter of Compose1 at an even position has to be a WValueExpression.");
                         if (columnRef == null)
-                            throw new SyntaxErrorException("The parameter of Compose1 at an even position has to be a WColumnReference.");
+                            throw new SyntaxErrorException("The parameter of Compose1 at an odd position has to be a WColumnReference.");
 
                         targetFieldsAndTheirNames.Add(new Tuple<string, int>(name.Value, context.LocateColumnReference(columnRef)));
                     }

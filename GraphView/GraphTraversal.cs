@@ -214,6 +214,7 @@ namespace GraphView
 
         public List<string> Next()
         {
+            GremlinUtil.ClearCounters();
             WSqlScript sqlScript = GetEndOp().ToSqlScript();
             SqlScript = sqlScript.ToString();
 
