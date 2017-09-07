@@ -668,7 +668,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
             {
-                var traversal = graphCommand.g().V().Until(GraphTraversal.__().Out().Out()).Repeat(GraphTraversal.__().In().As("a")).Select("a").By(GraphTraversal.__().Tail(GremlinKeyword.Scope.Local).Values("name"));
+                var traversal = graphCommand.g().V().Until(GraphTraversal.__().Out().Out()).Repeat(GraphTraversal.__().In().As("a")).Select("a").By(GraphTraversal.__().Tail(GremlinKeyword.Scope.Local).Unfold().Values("name"));
 
                 var results = traversal.Next();
                 Assert.AreEqual(5, results.Count);
