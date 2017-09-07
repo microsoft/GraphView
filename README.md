@@ -97,6 +97,10 @@ Get Help
 
 `Email` If you prefer to talk to us in private, write to graphview@microsoft.com
 
+Dev branches
+------------------------
+* [Clean-Up][clean-up]
+* [DocDB-merge-temp-partition][DocDB-merge-temp-partition]
 
 License
 --------------
@@ -106,4 +110,6 @@ GraphView is under the [MIT license][MIT].
 [Email]:mailto:graphview@microsoft.com
 [MIT]:LICENSE
 [datatools]:https://msdn.microsoft.com/en-us/library/mt204009.aspx
+[clean-up]:https://github.com/Microsoft/GraphView/tree/clean-up
+[DocDB-merge-temp-partition]:https://github.com/Microsoft/GraphView/tree/DocDB-merge-temp-partition
 
