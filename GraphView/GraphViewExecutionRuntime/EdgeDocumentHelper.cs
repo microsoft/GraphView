@@ -504,7 +504,8 @@ namespace GraphView
                     EdgeAlias = EDGE_SELECT_TAG
                 };
                 // SELECT doc.id, edge
-                jsonQuery.AddSelectElement($"{VERTEX_ALIAS}.{KW_DOC_ID}");
+//                jsonQuery.AddSelectElement(KW_DOC_ID, new List<WPrimaryExpression> {new WColumnReferenceExpression(VERTEX_ALIAS, KW_DOC_ID)});
+                jsonQuery.AddSelectElement(VERTEX_ALIAS);
                 jsonQuery.AddSelectElement(EDGE_SELECT_TAG);
 
                 jsonQuery.JoinDictionary.Add(EDGE_SELECT_TAG, $"{VERTEX_ALIAS}.{KW_EDGEDOC_EDGE}");
@@ -538,8 +539,9 @@ namespace GraphView
                     }, BooleanBinaryExpressionType.And);
                 }
                 
+                
                 JObject result = command.Connection.CreateDatabasePortal().GetEdgeDocument(jsonQuery);
-                edgeDocId = (string) result?[KW_DOC_ID];
+                edgeDocId = (string) result?[VERTEX_ALIAS]?[KW_DOC_ID];
                 edgeObject = (JObject) result?[EDGE_SELECT_TAG];
             }
         }
@@ -915,8 +917,7 @@ namespace GraphView
                     new WColumnReferenceExpression(EDGE_ALISE_S, KW_EDGE_SINKV),
                     new List<string>(vertexIdSet));
 
-
-//                qqq = queryReversed.ToJsonServerString();
+                
                 edgeDocuments = command.Connection.CreateDatabasePortal().GetEdgeDocuments(queryReversed);
 
                 List<JObject> virtualReverseEdgeDocuments = EdgeDocumentHelper.ConstructVirtualReverseEdgeDocuments(edgeDocuments);

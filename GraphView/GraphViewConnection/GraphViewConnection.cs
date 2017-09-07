@@ -295,11 +295,15 @@ namespace GraphView
         /// <param name="graphType"></param>
         /// <param name="useReverseEdges"></param>
         /// <param name="edgeSpillThreshold"></param>
+        /// <param name="partitionPath"></param>
+        /// <param name="partitionByKeyIfViaGraphApi"></param>
         public GraphViewConnection(string jsonServerConnectionString,
                                     string collectionName,
                                     GraphType graphType,
                                     bool useReverseEdges,
-                                    int? edgeSpillThreshold)
+                                    int? edgeSpillThreshold,
+                                    string partitionPath,
+                                    string partitionByKeyIfViaGraphApi)
         {
             this.JsonServerClient = new JsonServerConnection(jsonServerConnectionString);
             this.JsonServerClient.Open(true);
@@ -310,16 +314,56 @@ namespace GraphView
 
             this.jsonServerCollectionName = collectionName;
             EnsureCollectionExist(this.JsonServerClient, this.jsonServerCollectionName);
+
+            // TODO: refactor partition settings, JsonServer doesn't need them right now, but ToQueryString needs.
+            if (partitionPath != null)
+            {
+                this.CollectionType = CollectionType.PARTITIONED;
+
+                this.PartitionPath = partitionPath;
+                this.PartitionPathTopLevel = this.PartitionPath.Split(new[] { '/' }, StringSplitOptions.RemoveEmptyEntries)[0];
+
+                if (this.PartitionPath == $"/{KW_DOC_PARTITION}")
+                {  // Partitioned, created via GraphAPI
+                    Debug.Assert(partitionByKeyIfViaGraphApi != null);
+                    Debug.Assert(graphType == GraphType.GraphAPIOnly);
+                    this.RealPartitionKey = partitionByKeyIfViaGraphApi;
+                }
+                else
+                {
+                    Debug.Assert(partitionByKeyIfViaGraphApi == null);
+                    this.RealPartitionKey = this.PartitionPathTopLevel;
+                }
+            }
+            else
+            {
+                this.CollectionType = CollectionType.STANDARD;
+
+                Debug.Assert(partitionPath == null);
+                this.PartitionPath = null;
+                this.PartitionPathTopLevel = null;
+                this.RealPartitionKey = null;
+
+                Debug.Assert(partitionByKeyIfViaGraphApi == null);
+            }
+
+            if (graphType != GraphType.GraphAPIOnly)
+            {
+                Debug.Assert(edgeSpillThreshold == 1);
+            }
         }
 
 
         public void ResetJsonServerCollection(string collectionName)
         {
+            if (this.JsonServerClient.ContainsCollection(collectionName))
+            {
+                this.JsonServerClient.DeleteCollection(collectionName);
+            }
             EnsureCollectionExist(this.JsonServerClient, collectionName);
-            string clearQuery = $"FOR md IN ('{collectionName}')\n" +
-                                $"WHERE 1=1\n" +
-                                $"DELETE md";
-            this.JsonServerClient.ExecuteNonQuery(clearQuery);
+//            string clearQuery = $"FOR md IN ('{collectionName}')\n" +
+//                                $"DELETE md";
+//            this.JsonServerClient.ExecuteNonQuery(clearQuery);
         }
 
 

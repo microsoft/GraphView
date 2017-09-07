@@ -97,7 +97,7 @@ namespace GraphView.GraphViewDBPortal
 
             HashSet<string> uniqueVertexIds = new HashSet<string>();
             HashSet<string> uniqueEdgeIds = new HashSet<string>();
-            foreach (dynamic dynamicItem in items)
+            foreach (JObject dynamicItem in items)
             {
                 JObject tmpVertexObject = (JObject)((JObject)dynamicItem)[nodeAlias];
                 string vertexId = (string)tmpVertexObject[DocumentDBKeywords.KW_DOC_ID];
@@ -338,13 +338,7 @@ namespace GraphView.GraphViewDBPortal
         
         public List<JObject> GetEdgeDocuments(JsonQuery query)
         {
-            IEnumerable<JObject> items = this.ExecuteQueryScript(query);
-            List<JObject> edgeDocuments = new List<JObject>();
-            foreach (JObject item in items)
-            {
-                edgeDocuments.Add(item);
-            }
-            return edgeDocuments;
+            return this.ExecuteQueryScript(query).ToList();
         }
 
         public JObject GetEdgeDocument(JsonQuery query)

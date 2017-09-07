@@ -29,7 +29,15 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
 
                 Assert.AreEqual(2, result.Count);
                 Assert.AreEqual("josh", result[0]);
-                Assert.AreEqual("[name:[marko], age:[29]]", result[1]);
+                try
+                {
+                    Assert.AreEqual("[name:[marko], age:[29]]", result[1]);
+                }
+                catch (Exception)
+                {
+                    Assert.AreEqual("[age:[29], name:[marko]]", result[1]);
+                }
+                
             }
         }
 

@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Configuration;
 using System.Linq;
 using GraphView;
@@ -197,6 +198,9 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Branch
                 string vertexId1 = this.ConvertToVertexId(GraphViewCommand, "marko");
                 string vertexId2 = this.ConvertToVertexId(GraphViewCommand, "vadas");
 
+                Console.WriteLine(vertexId1);
+                Console.WriteLine(vertexId2);
+
                 var traversal = GraphViewCommand.g().V(vertexId1, vertexId2)
                     .Union(
                         GraphTraversal.__().OutE().Count(),
@@ -204,6 +208,11 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Branch
                         GraphTraversal.__().OutE().Values("weight").Sum());
 
                 dynamic result = JsonConvert.DeserializeObject<dynamic>(traversal.FirstOrDefault());
+
+                foreach (dynamic o in result)
+                {
+                    Console.WriteLine(o);
+                }
 
                 CheckUnOrderedResults(new double[] { 3d, 1.9d, 1d }, ((JArray)result).Select(j => j.ToObject<double>()).ToList());
             }

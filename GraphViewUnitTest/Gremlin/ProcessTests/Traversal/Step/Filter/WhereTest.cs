@@ -29,7 +29,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
             {
                 graphCommand.OutputFormat = OutputFormat.GraphSON;
-                var traversal = graphCommand.g().V(1).As("a").Out("created").In("created").Where(Predicate.neq("a"));
+                var traversal = graphCommand.g().V("dummy").As("a").Out("created").In("created").Where(Predicate.neq("a"));
                 var result = traversal.Next();
                 Console.WriteLine("Result Count: " + result.Count);
             }

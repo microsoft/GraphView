@@ -1621,7 +1621,8 @@ namespace GraphView
 
         public AdjacencyListField RevAdjacencyList { get; }
 
-        public bool ViaGraphAPI => (this.VertexJObject[KW_VERTEX_EDGE] != null);
+        public bool ViaGraphAPI => this.VertexJObject[KW_VERTEX_EDGE] != null &&
+            (string)this.VertexJObject[KW_VERTEX_EDGE][0] != "dummy";
 
         public string Partition { get; }
 

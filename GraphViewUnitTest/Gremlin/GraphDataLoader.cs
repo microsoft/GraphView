@@ -296,7 +296,7 @@ namespace GraphViewUnitTest.Gremlin
             graphCommand.Dispose();
             connection.Dispose();
         }
-
+        
         private static void ClearGraphData(string CollectionName)
         {
             //string endpoint = ConfigurationManager.AppSettings["DocDBEndPoint"];

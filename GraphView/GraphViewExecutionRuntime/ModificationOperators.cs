@@ -424,7 +424,7 @@ namespace GraphView
                 }
             }
 
-            // Upload to DocDB
+            // Upload to DB
             this.Command.Connection.ReplaceOrDeleteDocumentAsync(
                 vertex.VertexId, vertexDocument,
                 this.Command.Connection.GetDocumentPartition(vertexDocument), this.Command).Wait();
@@ -482,7 +482,7 @@ namespace GraphView
             // Update vertex single property
             vp.Replace(singleProperty);
 
-            // Upload to DocDB
+            // Upload to DB
             this.Command.Connection.ReplaceOrDeleteDocumentAsync(vertexId, vertexDocument, 
                 this.Command.Connection.GetDocumentPartition(vertexDocument), this.Command).Wait();
         }

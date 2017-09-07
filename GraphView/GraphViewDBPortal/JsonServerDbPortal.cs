@@ -32,12 +32,13 @@ namespace GraphView.GraphViewDBPortal
                     {
                         // case: SELECT * ==> SELECT Doc(xxx), without `AS`.
                         Debug.Assert(reader.FieldCount == 1, "More than one unnamed column is unparseable");
-                        job = JObject.Parse(reader.GetString(i));
+                        job = JObject.Parse(reader.GetString(i)); // must be an object? Needs double check.
                     }
                     else
                     {
-                        string inner = reader.GetString(i);
-                        job.Add(new JProperty(reader.GetName(i), JObject.Parse(reader.GetString(i))));
+//                        string qqq = reader.GetName(i);
+//                        string ppp = reader.GetString(i);
+                        job.Add(new JProperty(reader.GetName(i), JToken.Parse(reader.GetString(i))));
                     }
                 }
                 results.Add(job);
@@ -51,7 +52,7 @@ namespace GraphView.GraphViewDBPortal
             // Add or update etag
             docObject[DocumentDBKeywords.KW_DOC_ETAG] = DateTimeOffset.Now.ToUniversalTime().ToString();
             string doc = docObject.ToString(Formatting.None);
-            this.Connection.JsonServerClient.InsertJson(doc, this.Connection.jsonServerCollectionName); // TODO: remove this const.
+            this.Connection.JsonServerClient.InsertJson(doc, this.Connection.jsonServerCollectionName);
             return docObject;
         }
 

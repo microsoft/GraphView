@@ -1,3 +1,8 @@
+#define TEST_ON_DOCUMENT_DB
+//#define TEST_ON_JSONSERVER
+
+// !!! Important, change the same define in AbstractGremlinTest.cs at the same time.
+
 using System;
 using System.CodeDom.Compiler;
 using System.Collections;
@@ -1539,7 +1544,7 @@ namespace GraphView
         {
             return "\"" + str + "\"";
         }
-
+#if TEST_ON_DOCUMENT_DB
         private string getConnectionInfo()
         {
             List<string> connectionList = new List<string>();
@@ -1553,6 +1558,24 @@ namespace GraphView
             connectionList.Add(Command.Connection.RealPartitionKey != null ? addDoubleQuotes(Command.Connection.RealPartitionKey) : "null");
             return string.Join(",", connectionList);
         }
+#elif TEST_ON_JSONSERVER
+        private string getConnectionInfo()
+        {
+            const string CONNECTION_STRING = "Data Source = (local); Initial Catalog = JsonTesting; Integrated Security = true;";
+            const string COLLECTION_NAME = "GraphViewCollection";
+            List<string> connectionList = new List<string>
+            {
+                this.addDoubleQuotes(CONNECTION_STRING),
+                this.addDoubleQuotes(COLLECTION_NAME),
+                "GraphType.GraphAPIOnly",
+                "true",
+                "1",
+                "null",
+                "null"
+            };
+            return string.Join(", ", connectionList);
+        }
+#endif
 
         public class PolyfillHelper
         {
