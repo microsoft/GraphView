@@ -388,7 +388,6 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         /// Equivalent gremlin: "g.V(v1Id).repeat(__.bothE('created').where(without('e')).aggregate('e').otherV).emit.path", "v1Id", v1Id
         /// </summary>
         [TestMethod]
-        [Ignore]
         public void HasVertexIdRepeatBothECreatedWhereWithoutEAggregateEOtherVEmitPath()
         {
             //==>[v[1], e[9][1 - created->3], v[3]]
@@ -410,7 +409,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
 
                 var result = traversal.Next();
 
-                dynamic dynamicResult = JsonConvert.DeserializeObject<dynamic>(traversal.FirstOrDefault());
+                Assert.AreEqual(4, result.Count);
                 
                 //No idea how to evaluate the results.
             }

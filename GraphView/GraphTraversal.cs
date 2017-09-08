@@ -180,6 +180,7 @@ namespace GraphView
 
         public IEnumerator<string> GetEnumerator()
         {
+            GremlinUtil.ClearCounters();
             var sqlScript = GetEndOp().ToSqlScript();
             SqlScript = sqlScript.ToString();
             it = new GraphTraversalIterator(sqlScript.Batches[0].Compile(null, this.Command), this.Command, outputFormat);

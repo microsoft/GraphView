@@ -17,7 +17,7 @@ namespace GraphView
 
         internal override void Populate(string property)
         {
-            if (ComposeVariable is GremlinPathVariable)
+            if (ComposeVariable is GremlinPathVariable && property != GremlinKeyword.TableDefaultColumnName)
                 ComposeVariable.PopulateStepProperty(property);
             else
                 ComposeVariable.Populate(property);

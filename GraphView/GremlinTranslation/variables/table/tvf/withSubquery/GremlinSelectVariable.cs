@@ -59,7 +59,10 @@ namespace GraphView
         internal override void Populate(string property)
         {
             InputVariable.Populate(property);
-            PathVariable.Populate(property);
+            if (property != GremlinKeyword.TableDefaultColumnName)
+            {
+                PathVariable.Populate(property);
+            }
             foreach (var sideEffectVariable in SideEffectVariables)
             {
                 sideEffectVariable.Populate(property);

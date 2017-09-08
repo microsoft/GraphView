@@ -16,6 +16,7 @@ namespace GraphView
                                        GremlinVariableType variableType)
             : base(variableType)
         {
+            inputVariable.ProjectedProperties.Clear();
             OptionalContext = context;
             InputVariable = inputVariable;
         }

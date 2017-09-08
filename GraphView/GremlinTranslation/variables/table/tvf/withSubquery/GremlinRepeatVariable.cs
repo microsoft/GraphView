@@ -19,6 +19,7 @@ namespace GraphView
                                     GremlinVariableType variableType)
             : base(variableType)
         {
+            inputVariable.ProjectedProperties.Clear();
             this.RepeatContext = repeatContext;
             this.InputVariable = inputVariable;
             this.RepeatCondition = repeatCondition;
@@ -28,8 +29,11 @@ namespace GraphView
         {
             base.Populate(property);
 
-            this.InputVariable.Populate(property);
-            this.RepeatContext.Populate(property);
+            if (property != GremlinKeyword.TableDefaultColumnName)
+            {
+                this.InputVariable.Populate(property);
+                this.RepeatContext.Populate(property);
+            }
         }
 
         internal override void PopulateStepProperty(string property)
