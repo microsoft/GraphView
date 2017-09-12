@@ -8,12 +8,12 @@ namespace GraphView
 {
     internal class GremlinUnfoldVariable : GremlinTableVariable
     {
-        public GremlinVariable UnfoldVariable { get; set; }
+        public GremlinContextVariable UnfoldVariable { get; set; }
 
         public GremlinUnfoldVariable(GremlinVariable unfoldVariable)
             : base(GremlinVariableType.Table)
         {
-            UnfoldVariable = unfoldVariable;
+            UnfoldVariable = new GremlinContextVariable(unfoldVariable);
         }
 
         internal override void Populate(string property)

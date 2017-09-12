@@ -12,12 +12,12 @@ namespace GraphView
         public GremlinToSqlContext ProjectByContext { get; set; }
         public bool IsProjectingACollection { get; set; }
         public string SideEffectKey { get; set; }
-        public GremlinVariable PrimaryVariable { get; set; }
+        public GremlinContextVariable PrimaryVariable { get; set; }
 
         public GremlinGroupVariable(GremlinVariable primaryVariable, string sideEffectKey, GremlinToSqlContext groupByContext,
             GremlinToSqlContext projectByContext, bool isProjectingACollection)
         {
-            PrimaryVariable = primaryVariable;
+            PrimaryVariable = new GremlinContextVariable(primaryVariable);
             SideEffectKey = sideEffectKey;
             GroupByContext = groupByContext;
             ProjectByContext = projectByContext;

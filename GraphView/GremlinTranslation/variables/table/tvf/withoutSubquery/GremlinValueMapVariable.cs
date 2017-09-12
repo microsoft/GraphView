@@ -10,11 +10,11 @@ namespace GraphView
     {
         public bool IsIncludeTokens { get; set; }
         public List<string> PropertyKeys { get; set; }
-        public GremlinVariable InputVariable { get; set; }
+        public GremlinContextVariable InputVariable { get; set; }
 
         public GremlinValueMapVariable(GremlinVariable inputVariable, bool isIncludeTokens, List<string>  propertyKeys) : base(GremlinVariableType.Table)
         {
-            InputVariable = inputVariable;
+            InputVariable = new GremlinContextVariable(inputVariable);
             IsIncludeTokens = isIncludeTokens;
             PropertyKeys = propertyKeys;
         }

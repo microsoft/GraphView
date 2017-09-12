@@ -8,7 +8,7 @@ namespace GraphView
 {
     internal class GremlinSelectVariable : GremlinTableVariable
     {
-        public GremlinVariable InputVariable { get; set; }
+        public GremlinContextVariable InputVariable { get; set; }
         public GremlinPathVariable PathVariable { get; set; }
         public List<GremlinVariable> SideEffectVariables { get; set; } // Such as aggregate("a")/store("a")..
         public List<GremlinToSqlContext> ByContexts { get; set; }
@@ -23,7 +23,7 @@ namespace GraphView
                                     List<GremlinToSqlContext> byContexts)
             : base(GremlinVariableType.Table)
         {
-            InputVariable = inputVariable;
+            InputVariable = new GremlinContextVariable(inputVariable);
             PathVariable = pathVariable;
             SideEffectVariables = sideEffectVariables;
             Pop = pop;

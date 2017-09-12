@@ -8,11 +8,11 @@ namespace GraphView
 {
     internal class GremlinKeyVariable : GremlinScalarTableVariable
     {
-        public GremlinVariable ProjectVariable { get; set; }
+        public GremlinContextVariable ProjectVariable { get; set; }
 
         public GremlinKeyVariable(GremlinVariable projectVariable)
         {
-            ProjectVariable = projectVariable;
+            ProjectVariable = new GremlinContextVariable(projectVariable);
         }
 
         internal override List<GremlinVariable> FetchAllVars()

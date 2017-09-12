@@ -9,7 +9,7 @@ namespace GraphView
     internal class GremlinOptionalVariable : GremlinTableVariable
     {
         public GremlinToSqlContext OptionalContext { get; set; }
-        public GremlinVariable InputVariable { get; set; }
+        public GremlinContextVariable InputVariable { get; set; }
 
         public GremlinOptionalVariable(GremlinVariable inputVariable,
                                        GremlinToSqlContext context,
@@ -18,7 +18,7 @@ namespace GraphView
         {
             inputVariable.ProjectedProperties.Clear();
             OptionalContext = context;
-            InputVariable = inputVariable;
+            InputVariable = new GremlinContextVariable(inputVariable);
         }
 
         internal override void PopulateStepProperty(string property)
@@ -72,11 +72,11 @@ namespace GraphView
                     firstQueryExpr.SelectElements.Add(SqlUtil.GetSelectScalarExpr(InputVariable.DefaultProjection().ToScalarExpression(),
                         GremlinKeyword.TableDefaultColumnName));
                 }
-                else if (InputVariable.ProjectedProperties.Contains(projectProperty))
+                else if (InputVariable.RealVariable.ProjectedProperties.Contains(projectProperty))
                 {
                     firstQueryExpr.SelectElements.Add(
                         SqlUtil.GetSelectScalarExpr(
-                            InputVariable.GetVariableProperty(projectProperty).ToScalarExpression(), projectProperty));
+                            InputVariable.RealVariable.GetVariableProperty(projectProperty).ToScalarExpression(), projectProperty));
                 }
                 else
                 {

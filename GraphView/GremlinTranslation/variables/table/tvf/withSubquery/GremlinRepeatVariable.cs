@@ -9,19 +9,18 @@ namespace GraphView
 {
     internal class GremlinRepeatVariable : GremlinTableVariable
     {
-        public GremlinVariable InputVariable { get; set; }
+        public GremlinContextVariable InputVariable { get; set; }
         public GremlinToSqlContext RepeatContext { get; set; }
         public RepeatCondition RepeatCondition { get; set; }
 
         public GremlinRepeatVariable(GremlinVariable inputVariable,
-                                    GremlinToSqlContext repeatContext,
-                                    RepeatCondition repeatCondition,
-                                    GremlinVariableType variableType)
+            GremlinToSqlContext repeatContext,
+            RepeatCondition repeatCondition,
+            GremlinVariableType variableType)
             : base(variableType)
         {
-            inputVariable.ProjectedProperties.Clear();
+            this.InputVariable = new GremlinContextVariable(inputVariable);
             this.RepeatContext = repeatContext;
-            this.InputVariable = inputVariable;
             this.RepeatCondition = repeatCondition;
         }
 
@@ -29,11 +28,8 @@ namespace GraphView
         {
             base.Populate(property);
 
-            if (property != GremlinKeyword.TableDefaultColumnName)
-            {
-                this.InputVariable.Populate(property);
-                this.RepeatContext.Populate(property);
-            }
+            this.InputVariable.Populate(property);
+            this.RepeatContext.Populate(property);
         }
 
         internal override void PopulateStepProperty(string property)
@@ -87,34 +83,45 @@ namespace GraphView
             // Then we will use this map to replace ColumnRefernceExpression in the syntax tree which matchs n_0.id to R_0.key_0 
             Dictionary<Tuple<string, string>, Tuple<string, string>> inputVariableVistorMap = new Dictionary<Tuple<string, string>, Tuple<string, string>>();
             Dictionary<Tuple<string, string>, Tuple<string, string>> outerVariablesVistorMap = new Dictionary<Tuple<string, string>, Tuple<string, string>>();
+            Dictionary<Tuple<string, string>, Tuple<string, string>> reverseOuterVariablesVistorMap = new Dictionary<Tuple<string, string>, Tuple<string, string>>();
 
             //We should generate the syntax tree firstly
             //Some variables will populate ProjectProperty only when we call the ToTableReference function where they appear.
             WRepeatConditionExpression repeatConditionExpr = this.GetRepeatConditionExpression();
             WSelectQueryBlock repeatQueryBlock = this.RepeatContext.ToSelectQueryBlock();
 
+            GremlinVariable repeatInputVariable = this.RepeatContext.VariableList.First();
+            GremlinVariable realInputVariable = InputVariable.RealVariable;
+            GremlinVariable repeatPivotVariable = this.RepeatContext.PivotVariable;
+
             List<GremlinVariable> outerVariables = this.GetOuterVariables(this.RepeatContext);
             outerVariables.AddRange(this.GetOuterVariables(this.RepeatCondition.TerminationContext));
             outerVariables.AddRange(this.GetOuterVariables(this.RepeatCondition.EmitContext));
+
             foreach (GremlinVariable outerVariable in outerVariables)
             {
-                foreach (string property in outerVariable.ProjectedProperties)
+                List<string> ProjectedProperties;
+                if (outerVariable == realInputVariable)
+                {
+                    ProjectedProperties = repeatInputVariable.ProjectedProperties;
+                }
+                else
+                {
+                    ProjectedProperties = outerVariable.ProjectedProperties;
+                }
+                foreach (string property in ProjectedProperties)
                 {
                     string aliasName = this.GenerateKey();
-                    WScalarExpression firstSelectColumn = outerVariable.GetVariableProperty(property).ToScalarExpression() as WColumnReferenceExpression;
-                    WScalarExpression secondSelectColumn = SqlUtil.GetColumnReferenceExpr(GremlinKeyword.RepeatInitalTableName, aliasName);
-
-                    firstSelectList.Add(SqlUtil.GetSelectScalarExpr(firstSelectColumn, aliasName));
-                    secondSelectList.Add(SqlUtil.GetSelectScalarExpr(secondSelectColumn, aliasName));
 
                     Tuple<string, string> key = new Tuple<string, string>(outerVariable.GetVariableName(), property);
                     Tuple<string, string> value = new Tuple<string, string>(GremlinKeyword.RepeatInitalTableName, aliasName);
                     outerVariablesVistorMap[key] = value;
+                    reverseOuterVariablesVistorMap[value] = key;
                 }
             }
 
-            GremlinVariable repeatInputVariable = this.RepeatContext.VariableList.First();
-            GremlinVariable repeatPivotVariable = this.RepeatContext.PivotVariable;
+            count = 0;
+
             foreach (string property in repeatInputVariable.ProjectedProperties)
             {
                 string aliasName = this.GenerateKey();
@@ -173,8 +180,8 @@ namespace GraphView
                     secondSelectList.Add(SqlUtil.GetSelectScalarExpr(this.RepeatContext.ContextLocalPath.DefaultProjection().ToScalarExpression(), GremlinKeyword.Path));
                     continue;
                 }
-                WScalarExpression firstExpr = this.InputVariable.ProjectedProperties.Contains(property)
-                    ? this.InputVariable.GetVariableProperty(property).ToScalarExpression()
+                WScalarExpression firstExpr = realInputVariable.ProjectedProperties.Contains(property)
+                    ? realInputVariable.GetVariableProperty(property).ToScalarExpression()
                     : SqlUtil.GetValueExpr(null);
 
                 WScalarExpression secondExpr = this.RepeatContext.PivotVariable.ProjectedProperties.Contains(property)
@@ -203,6 +210,8 @@ namespace GraphView
             new ModifyOuterVariablesVisitor().Invoke(repeatConditionExpr, outerVariablesVistorMap);
             new ModifyColumnNameVisitor().Invoke(repeatQueryBlock, inputVariableVistorMap);
             new ModifyColumnNameVisitor().Invoke(repeatConditionExpr, inputVariableVistorMap);
+            new ModifyOuterVariablesVisitor().Invoke(repeatQueryBlock, reverseOuterVariablesVistorMap);
+            new ModifyOuterVariablesVisitor().Invoke(repeatConditionExpr, reverseOuterVariablesVistorMap);
 
             List<WScalarExpression> repeatParameters = new List<WScalarExpression>()
             {

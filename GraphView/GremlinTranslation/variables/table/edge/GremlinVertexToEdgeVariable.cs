@@ -8,11 +8,11 @@ namespace GraphView
 {
     internal class GremlinVertexToEdgeVariable : GremlinEdgeTableVariable
     {
-        public GremlinVariable VertexVariable { get; set; }
+        public GremlinContextVariable VertexVariable { get; set; }
 
         public GremlinVertexToEdgeVariable(GremlinVariable vertexVariable)
         {
-            this.VertexVariable = vertexVariable;
+            this.VertexVariable = new GremlinContextVariable(vertexVariable);
         }
     }
 
