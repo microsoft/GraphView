@@ -13,6 +13,8 @@ namespace GraphView
         public GremlinToSqlContext RepeatContext { get; set; }
         public RepeatCondition RepeatCondition { get; set; }
 
+        private int Count;
+
         public GremlinRepeatVariable(GremlinVariable inputVariable,
             GremlinToSqlContext repeatContext,
             RepeatCondition repeatCondition,
@@ -22,6 +24,7 @@ namespace GraphView
             this.InputVariable = new GremlinContextVariable(inputVariable);
             this.RepeatContext = repeatContext;
             this.RepeatCondition = repeatCondition;
+            this.Count = 0;
         }
 
         internal override void Populate(string property)
@@ -72,56 +75,45 @@ namespace GraphView
             return variableList;
         }
 
+        // Repeat algorithm
+        // Firstly, we generate the repeatQueryBlock in order that we can get the initial query
+        // Secondly, we generate the inputVariableVistorMap via repeatInputVariable.ProjectedProperties, 
+        // untilInputVariable.ProjectedProperties, emitInputVariable.ProjectedProperties and ProjectedProperties. 
+        // Generally, these properties are related to the input every time, but in repeatQueryBlock, these are 
+        // just related to the input of the first time. Therefore, we need to replace these after.
+        // Thirdly, we need to generate the firstQueryExpr and the selectColumnExpr of repeatQueryBlock. Pay 
+        // attention, we need to repeatQueryBlock again because we need more properties about the output of 
+        // the last step in repeat-step. These properties are populated in the second step.
+        // Fourthly, we use the inputVariableVistorMap to replace the columns in the repeatQueryBlock. But we
+        // should not change the columns in path-step. Because if we generate the path in the repeat-step, the 
+        // path consists of 
+        //  1. the previous steps before the repeat-step
+        //  2. the local path(_path) in the repeat-step
+        // Keep in mind that the initial _path is null, the _path includes all steps as long as they are in
+        // the repeat-step except for the first input. And the _path after the first pass includes the last step
+        // in the repeat-step. So the path must include the two part. That means all columns in path-step should 
+        // not be replaced. Here, we use the ModifyRepeatInputVariablesVisitor to finish this work. If it visits
+        // WPathTableReference, it does nothing, otherwise, it will replace the columns according to the 
+        // inputVariableVistorMap.
         public override WTableReference ToTableReference()
         {
             //The following two variables are used for manually creating SelectScalarExpression of repeat
             List<WSelectScalarExpression> firstSelectList = new List<WSelectScalarExpression>();
             List<WSelectScalarExpression> secondSelectList = new List<WSelectScalarExpression>();
 
-            // The following two variables are used for Generating a Map
+            // The following map is used to replace columns of the first input to columns of the repeat input
             // such as N_0.id -> R.key_0 
-            // Then we will use this map to replace ColumnRefernceExpression in the syntax tree which matchs n_0.id to R_0.key_0 
             Dictionary<Tuple<string, string>, Tuple<string, string>> inputVariableVistorMap = new Dictionary<Tuple<string, string>, Tuple<string, string>>();
-            Dictionary<Tuple<string, string>, Tuple<string, string>> outerVariablesVistorMap = new Dictionary<Tuple<string, string>, Tuple<string, string>>();
-            Dictionary<Tuple<string, string>, Tuple<string, string>> reverseOuterVariablesVistorMap = new Dictionary<Tuple<string, string>, Tuple<string, string>>();
-
-            //We should generate the syntax tree firstly
-            //Some variables will populate ProjectProperty only when we call the ToTableReference function where they appear.
+            
+            // We should generate the syntax tree firstly
+            // Some variables will populate ProjectProperty only when we call the ToTableReference function where they appear.
             WRepeatConditionExpression repeatConditionExpr = this.GetRepeatConditionExpression();
             WSelectQueryBlock repeatQueryBlock = this.RepeatContext.ToSelectQueryBlock();
 
             GremlinVariable repeatInputVariable = this.RepeatContext.VariableList.First();
             GremlinVariable realInputVariable = InputVariable.RealVariable;
             GremlinVariable repeatPivotVariable = this.RepeatContext.PivotVariable;
-
-            List<GremlinVariable> outerVariables = this.GetOuterVariables(this.RepeatContext);
-            outerVariables.AddRange(this.GetOuterVariables(this.RepeatCondition.TerminationContext));
-            outerVariables.AddRange(this.GetOuterVariables(this.RepeatCondition.EmitContext));
-
-            foreach (GremlinVariable outerVariable in outerVariables)
-            {
-                List<string> ProjectedProperties;
-                if (outerVariable == realInputVariable)
-                {
-                    ProjectedProperties = repeatInputVariable.ProjectedProperties;
-                }
-                else
-                {
-                    ProjectedProperties = outerVariable.ProjectedProperties;
-                }
-                foreach (string property in ProjectedProperties)
-                {
-                    string aliasName = this.GenerateKey();
-
-                    Tuple<string, string> key = new Tuple<string, string>(outerVariable.GetVariableName(), property);
-                    Tuple<string, string> value = new Tuple<string, string>(GremlinKeyword.RepeatInitalTableName, aliasName);
-                    outerVariablesVistorMap[key] = value;
-                    reverseOuterVariablesVistorMap[value] = key;
-                }
-            }
-
-            count = 0;
-
+            
             foreach (string property in repeatInputVariable.ProjectedProperties)
             {
                 string aliasName = this.GenerateKey();
@@ -205,13 +197,10 @@ namespace GraphView
                 repeatQueryBlock.SelectElements.Add(selectColumnExpr);
             }
 
-            //Replace N_0.id -> R_0.key_0, when N_0 is a outer variable
-            new ModifyOuterVariablesVisitor().Invoke(repeatQueryBlock, outerVariablesVistorMap);
-            new ModifyOuterVariablesVisitor().Invoke(repeatConditionExpr, outerVariablesVistorMap);
-            new ModifyColumnNameVisitor().Invoke(repeatQueryBlock, inputVariableVistorMap);
-            new ModifyColumnNameVisitor().Invoke(repeatConditionExpr, inputVariableVistorMap);
-            new ModifyOuterVariablesVisitor().Invoke(repeatQueryBlock, reverseOuterVariablesVistorMap);
-            new ModifyOuterVariablesVisitor().Invoke(repeatConditionExpr, reverseOuterVariablesVistorMap);
+            //Then we will use the inputVariableVistorMap to replace ColumnRefernceExpression in the syntax tree 
+            //which matchs n_0.id to R_0.key_0 except for WPathTableReference
+            new ModifyRepeatInputVariablesVisitor().Invoke(repeatQueryBlock, inputVariableVistorMap);
+            new ModifyRepeatInputVariablesVisitor().Invoke(repeatConditionExpr, inputVariableVistorMap);
 
             List<WScalarExpression> repeatParameters = new List<WScalarExpression>()
             {
@@ -235,32 +224,13 @@ namespace GraphView
             };
         }
 
-        public List<GremlinVariable> GetOuterVariables(GremlinToSqlContext context)
-        {
-            List<GremlinVariable> outerVariables = new List<GremlinVariable>();
-            if (context == null) return outerVariables;
-
-            List<GremlinVariable> allVariables = context.FetchAllVars().Distinct().ToList();
-            List<GremlinTableVariable> allTableVariables = context.FetchAllTableVars();
-            for (int i = 1; i < allVariables.Count; i++)
-            {
-                if (!allTableVariables.Select(var => var.GetVariableName()).ToList().Contains(allVariables[i].GetVariableName()))
-                {
-                    outerVariables.Add(allVariables[i]);
-                }
-            }
-            return outerVariables;
-        }
-
         public string GenerateKey()
         {
-            return GremlinKeyword.RepeatColumnPrefix + this.count++;
+            return GremlinKeyword.RepeatColumnPrefix + this.Count++;
         }
-
-        private int count;
     }
-
-    internal class ModifyColumnNameVisitor : WSqlFragmentVisitor
+    
+    internal class ModifyRepeatInputVariablesVisitor : WSqlFragmentVisitor
     {
         private Dictionary<Tuple<string, string>, Tuple<string, string>> map;
 
@@ -268,6 +238,18 @@ namespace GraphView
         {
             this.map = map;
             queryBlock.Accept(this);
+        }
+
+        public override void Visit(WSchemaObjectFunctionTableReference tableRef)
+        {
+            if (tableRef is WPathTableReference)
+            {
+                return;
+            }
+            else
+            {
+                tableRef.AcceptChildren(this);
+            }
         }
 
         public override void Visit(WColumnReferenceExpression columnReference)
@@ -281,29 +263,6 @@ namespace GraphView
                     columnReference.MultiPartIdentifier.Identifiers[0].Value = item.Value.Item1;
                     columnReference.MultiPartIdentifier.Identifiers[1].Value = item.Value.Item2;
                 }
-            }
-        }
-    }
-
-    internal class ModifyOuterVariablesVisitor : WSqlFragmentVisitor
-    {
-        private Dictionary<Tuple<string, string>, Tuple<string, string>> map;
-
-        public void Invoke(WSqlFragment queryBlock, Dictionary<Tuple<string, string>, Tuple<string, string>> map)
-        {
-            this.map = map;
-            queryBlock.Accept(this);
-        }
-
-        public override void Visit(WSchemaObjectFunctionTableReference pathTable)
-        {
-            if (pathTable is WPathTableReference)
-            {
-                new ModifyColumnNameVisitor().Invoke(pathTable, this.map);
-            }
-            else
-            {
-                pathTable.AcceptChildren(this);
             }
         }
     }
