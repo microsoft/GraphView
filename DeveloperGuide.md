@@ -907,10 +907,10 @@ The most important thing is that the first `SELECT` clause and the second `SELEC
 
 The scheme of repeat is determined by
 
-1. What projections do we need after the repeat-step(Here, we need `_path` and `name`).
-2. What projections do we need from the previous step(Here, we need `*`).
-3. What projections do we need to compute the until-condition(Here, none)
-4. What projections do we need to emit(Here, none)
+1. What projections do we need from the step before repeat-step(Here, we need `*`).
+2. What projections do we need to compute the until-condition(Here, none)
+3. What projections do we need to emit(Here, none)
+4. What projections do we need after the repeat-step(Here, we need `_path` and `name`).
 
 #### Repeat condition
 
@@ -943,6 +943,23 @@ CROSS APPLY Repeat\(
     RepeatCondition
 \)
 ```
+
+### Algorithm
+
+There are four main steps in this algorithm
+
+1. Generate the repeatQueryBlock in order that we can get the initial query, whose input is the step before repeat-step
+
+2. Generate a inputVariableVistorMap, which maps the columns about the input of repeat-step to the columns which we name. This inputVariableVistorMap is generated via repeatInputVariable.ProjectedProperties, untilInputVariable.ProjectedProperties, emitInputVariable.ProjectedProperties and repeatVariable.ProjectedProperties. Generally, these properties are related to the input every time, but in the repeatQueryBlock, these are just related to the input of the first time. Therefore, we need to replace these after.
+
+3. Generate the firstQueryExpr and the selectColumnExpr of repeatQueryBlock. Pay attention, we need to repeatQueryBlock again because we need more properties about the output of the last step in repeat-step. These properties are populated in the second step.
+
+4. Use the inputVariableVistorMap to replace the columns in the repeatQueryBlock. But we should not change the columns in path-step. Because if we generate the path in the repeat-step, the path consists of 
+
+   1. the previous steps before the repeat-step
+   2. the local path(_path) in the repeat-step
+
+   Keep in mind that the initial _path is null, the _path includes all steps as long as they are in the repeat-step except for the first input. And the _path after the first pass includes the last step in the repeat-step. So the path must include the two part. That means all columns in path-step should not be replaced. Here, we use the ModifyRepeatInputVariablesVisitor to finish this work. If it visits WPathTableReference, it does nothing, otherwise, it will replace the columns according to the inputVariableVistorMap.
 
 ### Implementation
 
