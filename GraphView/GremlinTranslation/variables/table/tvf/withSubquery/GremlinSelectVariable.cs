@@ -114,19 +114,22 @@ namespace GraphView
                 parameters.Add(SqlUtil.GetValueExpr(selectKey));
             }
 
-            foreach (var block in queryBlocks)
-            {
-                parameters.Add(SqlUtil.GetScalarSubquery(block));
-            }
-
             if (SelectKeys.Count == 1)
             {
+                parameters.Add(SqlUtil.GetScalarSubquery(queryBlocks[queryBlocks.Count - 1]));
+
                 foreach (var projectProperty in ProjectedProperties)
                 {
                     parameters.Add(SqlUtil.GetValueExpr(projectProperty));
                 }
             }
-
+            else
+            {
+                foreach (var block in queryBlocks)
+                {
+                    parameters.Add(SqlUtil.GetScalarSubquery(block));
+                }
+            }
             var tableRef = SqlUtil.GetFunctionTableReference(
                                 SelectKeys.Count == 1 ? GremlinKeyword.func.SelectOne: GremlinKeyword.func.Select, 
                                 parameters, GetVariableName());
