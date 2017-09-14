@@ -950,7 +950,7 @@ There are four main steps in this algorithm
 
 1. Generate the repeatQueryBlock in order that we can get the initial query, whose input is the step before repeat-step
 
-2. Generate a inputVariableVistorMap, which maps the columns about the input of repeat-step to the columns which we name. This inputVariableVistorMap is generated via repeatInputVariable.ProjectedProperties, untilInputVariable.ProjectedProperties, emitInputVariable.ProjectedProperties and repeatVariable.ProjectedProperties. Generally, these properties are related to the input every time, but in the repeatQueryBlock, these are just related to the input of the first time. Therefore, we need to replace these after.
+2. Generate a inputVariableVistorMap, which maps the columns about the input of repeat-step to the columns which we name. This inputVariableVistorMap is generated via repeatVariable.ProjectedProperties, repeatInputVariable.ProjectedProperties, untilInputVariable.ProjectedProperties and emitInputVariable.ProjectedProperties. Generally, these properties are related to the input every time, but in the repeatQueryBlock, these are just related to the input of the first time. Therefore, we need to replace these after.
 
 3. Generate the firstQueryExpr and the selectColumnExpr of repeatQueryBlock. Pay attention, we need to repeatQueryBlock again because we need more properties about the output of the last step in repeat-step. These properties are populated in the second step.
 
