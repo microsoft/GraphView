@@ -30,7 +30,7 @@ namespace GraphView
             WTableReference tableRef = null;
             if (PropertyKeys.Count == 0)
             {
-                parameters.Add(ProjectVariable.GetVariableProperty(GremlinKeyword.Star).ToScalarExpression());
+                parameters.Add(ProjectVariable.DefaultProjection().ToScalarExpression());
                 tableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.AllValues, parameters, GetVariableName());
             }
             else

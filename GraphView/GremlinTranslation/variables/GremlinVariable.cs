@@ -1293,16 +1293,9 @@ namespace GraphView
 
         internal virtual void Values(GremlinToSqlContext currentContext, List<string> propertyKeys)
         {
-            if (propertyKeys.Count == 0)
+            foreach (var property in propertyKeys)
             {
-                Populate(GremlinKeyword.Star);
-            }
-            else
-            {
-                foreach (var property in propertyKeys)
-                {
-                    Populate(property);
-                }
+                Populate(property);
             }
             GremlinValuesVariable newVariable = new GremlinValuesVariable(this, propertyKeys);
             currentContext.VariableList.Add(newVariable);
