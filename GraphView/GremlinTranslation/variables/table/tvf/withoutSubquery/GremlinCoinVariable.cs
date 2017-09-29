@@ -12,13 +12,13 @@ namespace GraphView
 
         public GremlinCoinVariable(double probability) : base(GremlinVariableType.Table)
         {
-            Probability = probability;
+            this.Probability = probability;
         }
 
         public override WTableReference ToTableReference()
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();
-            parameters.Add(SqlUtil.GetValueExpr(Probability));
+            parameters.Add(SqlUtil.GetValueExpr(this.Probability));
             var tableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Coin, parameters, GetVariableName());
             return SqlUtil.GetCrossApplyTableReference(tableRef);
         }

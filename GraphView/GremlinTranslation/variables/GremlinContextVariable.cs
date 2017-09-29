@@ -12,67 +12,192 @@ namespace GraphView
 
         internal override GremlinVariableType GetVariableType()
         {
-            return RealVariable.GetVariableType();
+            return this.RealVariable.GetVariableType();
         }
 
         internal override string GetVariableName()
         {
-            return RealVariable.GetVariableName();
+            return this.RealVariable.GetVariableName();
         }
 
         public GremlinContextVariable(GremlinVariable contextVariable)
         {
-            RealVariable = contextVariable;
+            this.RealVariable = contextVariable;
         }
 
         internal override GremlinVariableProperty GetVariableProperty(string property)
         {
-            Populate(property);
-            return RealVariable.GetVariableProperty(property);
+            this.Populate(property, null);
+            return this.RealVariable.GetVariableProperty(property);
         }
 
-        internal override void Populate(string property)
+        internal override void As(GremlinToSqlContext currentContext, List<string> labels)
         {
-            RealVariable.Populate(property);
-
-            switch (RealVariable.GetVariableType())
+            foreach (var label in labels)
             {
-                case GremlinVariableType.Vertex:
-                    if (GremlinUtil.IsEdgeProperty(property)) return;
-                    break;
-                case GremlinVariableType.Edge:
-                    if (GremlinUtil.IsVertexProperty(property)) return;
-                    break;
-                case GremlinVariableType.VertexProperty:
-                    if (GremlinUtil.IsVertexProperty(property) || GremlinUtil.IsEdgeProperty(property)) return;
-                    break;
-                case GremlinVariableType.Scalar:
-                case GremlinVariableType.Property:
-                    if (property != GremlinKeyword.TableDefaultColumnName) return;
-                    break;
+                if (!this.Labels.Contains(label))
+                {
+                    this.Labels.Add(label);
+                }
             }
-            base.Populate(property);
         }
 
-        internal override void PopulateStepProperty(string property)
+        internal override bool Populate(string property, string label = null)
         {
-            base.PopulateStepProperty(property);
-            RealVariable.PopulateStepProperty(property);
+            if (base.Populate(property, label))
+            {
+                return this.RealVariable.Populate(property, null);
+            }
+            else if (this.RealVariable.Populate(property, label))
+            {
+                return base.Populate(property, null);
+            }
+            else
+            {
+                return false;
+            }
+        }
+
+        internal override bool PopulateStepProperty(string property, string label = null)
+        {
+            if (this.RealVariable.PopulateStepProperty(property, label))
+            {
+                return base.PopulateStepProperty(property, null);
+            }
+            else if (base.PopulateStepProperty(property, label))
+            {
+                return this.RealVariable.PopulateStepProperty(property, null);
+            }
+            else
+            {
+                return false;
+            }
+        }
+        internal override void PopulateLocalPath()
+        {
+            this.MinPathLength = 0;
         }
     }
 
     internal class GremlinRepeatContextVariable : GremlinContextVariable
     {
-        public GremlinRepeatContextVariable(GremlinVariable contextVariable) : base(contextVariable) {}
+        public GremlinLocalPathVariable ContextLocalPath { get; set; }
+        public List<Tuple<string, string>> LabelPropertyList { get; set; }
+
+        public GremlinRepeatContextVariable(GremlinVariable contextVariable) : base(contextVariable)
+        {
+            LabelPropertyList = new List<Tuple<string, string>>();
+        }
+
+        public void SetContextLocalPath(GremlinLocalPathVariable contextLocalPath)
+        {
+            this.ContextLocalPath = contextLocalPath;
+            foreach (var labelproperty in this.LabelPropertyList)
+            {
+                this.ContextLocalPath.PopulateStepProperty(labelproperty.Item2, labelproperty.Item1);
+            }
+        }
+
+        internal override bool PopulateStepProperty(string property, string label = null)
+        {
+            if (this.ContextLocalPath != null)
+            {
+                return this.ContextLocalPath.PopulateStepProperty(property, label);
+            }
+            else
+            {
+                Tuple<string, string> labelproperty = new Tuple<string, string>(label, property);
+                if (!this.LabelPropertyList.Contains(labelproperty))
+                {
+                    this.LabelPropertyList.Add(labelproperty);
+                }
+                return true;
+            }
+        }
+
+        internal override WScalarExpression ToStepScalarExpr(List<string> composedProperties = null)
+        {
+            return SqlUtil.GetColumnReferenceExpr(GremlinKeyword.RepeatInitalTableName, GremlinKeyword.Path);
+        }
     }
 
     internal class GremlinUntilContextVariable : GremlinContextVariable
     {
-        public GremlinUntilContextVariable(GremlinVariable contextVariable) : base(contextVariable) { }
+        public GremlinLocalPathVariable ContextLocalPath { get; set; }
+        public List<Tuple<string, string>> LabelPropertyList { get; set; }
+        public GremlinUntilContextVariable(GremlinVariable contextVariable) : base(contextVariable)
+        {
+            LabelPropertyList = new List<Tuple<string, string>>();
+        }
+        public void SetContextLocalPath(GremlinLocalPathVariable contextLocalPath)
+        {
+            this.ContextLocalPath = contextLocalPath;
+            foreach (var labelproperty in this.LabelPropertyList)
+            {
+                this.ContextLocalPath.PopulateStepProperty(labelproperty.Item2, labelproperty.Item1);
+            }
+        }
+
+        internal override bool PopulateStepProperty(string property, string label = null)
+        {
+            if (this.ContextLocalPath != null)
+            {
+                return this.ContextLocalPath.PopulateStepProperty(property, label);
+            }
+            else
+            {
+                Tuple<string, string> labelproperty = new Tuple<string, string>(label, property);
+                if (!this.LabelPropertyList.Contains(labelproperty))
+                {
+                    this.LabelPropertyList.Add(labelproperty);
+                }
+                return true;
+            }
+        }
+
+        internal override WScalarExpression ToStepScalarExpr(List<string> composedProperties = null)
+        {
+            return SqlUtil.GetColumnReferenceExpr(GremlinKeyword.RepeatInitalTableName, GremlinKeyword.Path);
+        }
     }
 
     internal class GremlinEmitContextVariable : GremlinContextVariable
     {
-        public GremlinEmitContextVariable(GremlinVariable contextVariable) : base(contextVariable) { }
+        public GremlinLocalPathVariable ContextLocalPath { get; set; }
+        public List<Tuple<string, string>> LabelPropertyList { get; set; }
+        public GremlinEmitContextVariable(GremlinVariable contextVariable) : base(contextVariable)
+        {
+            LabelPropertyList = new List<Tuple<string, string>>();
+        }
+        public void SetContextLocalPath(GremlinLocalPathVariable contextLocalPath)
+        {
+            this.ContextLocalPath = contextLocalPath;
+            foreach (var labelproperty in this.LabelPropertyList)
+            {
+                this.ContextLocalPath.PopulateStepProperty(labelproperty.Item2, labelproperty.Item1);
+            }
+        }
+
+        internal override bool PopulateStepProperty(string property, string label = null)
+        {
+            if (this.ContextLocalPath != null)
+            {
+                return this.ContextLocalPath.PopulateStepProperty(property, label);
+            }
+            else
+            {
+                Tuple<string, string> labelproperty = new Tuple<string, string>(label, property);
+                if (!this.LabelPropertyList.Contains(labelproperty))
+                {
+                    this.LabelPropertyList.Add(labelproperty);
+                }
+                return true;
+            }
+        }
+
+        internal override WScalarExpression ToStepScalarExpr(List<string> composedProperties = null)
+        {
+            return SqlUtil.GetColumnReferenceExpr(GremlinKeyword.RepeatInitalTableName, GremlinKeyword.Path);
+        }
     }
 }

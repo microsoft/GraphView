@@ -13,29 +13,39 @@ namespace GraphView
 
         public GremlinTreeSideEffectVariable(string sideEffectKey, GremlinPathVariable pathVariable)
         {
-            SideEffectKey = sideEffectKey;
-            PathVariable = pathVariable;
-            Labels.Add(sideEffectKey);
+            this.SideEffectKey = sideEffectKey;
+            this.PathVariable = pathVariable;
+            this.Labels.Add(sideEffectKey);
         }
 
         internal override List<GremlinVariable> FetchAllVars()
         {
             List<GremlinVariable> variableList = new List<GremlinVariable>() {this};
-            variableList.AddRange(PathVariable.FetchAllVars());
+            variableList.AddRange(this.PathVariable.FetchAllVars());
             return variableList;
         }
 
-        internal override void Populate(string property)
+        internal override bool Populate(string property, string label = null)
         {
-            PathVariable.Populate(property);
-            base.Populate(property);
+            if (base.Populate(property, label))
+            {
+                return PathVariable.Populate(property, null);
+            }
+            else if (this.PathVariable.Populate(property, label))
+            {
+                return base.Populate(property, null);
+            }
+            else
+            {
+                return false;
+            }
         }
 
         public override WTableReference ToTableReference()
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();
-            parameters.Add(SqlUtil.GetValueExpr(SideEffectKey));
-            parameters.Add(PathVariable.DefaultProjection().ToScalarExpression());
+            parameters.Add(SqlUtil.GetValueExpr(this.SideEffectKey));
+            parameters.Add(this.PathVariable.DefaultProjection().ToScalarExpression());
             var tableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Tree, parameters, GetVariableName());
             return SqlUtil.GetCrossApplyTableReference(tableRef);
         }

@@ -13,25 +13,22 @@ namespace GraphView
 
         public GremlinPropertyMapVariable(GremlinVariable inputVariable, List<string> propertyKeys) : base(GremlinVariableType.Table)
         {
-            InputVariable = new GremlinContextVariable(inputVariable);
-            PropertyKeys = propertyKeys;
+            this.InputVariable = new GremlinContextVariable(inputVariable);
+            this.PropertyKeys = propertyKeys;
         }
 
         internal override List<GremlinVariable> FetchAllVars()
         {
             List<GremlinVariable> variableList = new List<GremlinVariable>() { this };
-            variableList.AddRange(InputVariable.FetchAllVars());
+            variableList.AddRange(this.InputVariable.FetchAllVars());
             return variableList;
         }
 
         public override WTableReference ToTableReference()
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();
-            parameters.Add(InputVariable.DefaultProjection().ToScalarExpression());
-            foreach (var propertyKey in PropertyKeys)
-            {
-                parameters.Add(SqlUtil.GetValueExpr(propertyKey));
-            }
+            parameters.Add(this.InputVariable.DefaultProjection().ToScalarExpression());
+            parameters.AddRange(this.PropertyKeys.Select(SqlUtil.GetValueExpr));
             var tableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.PropertyMap, parameters, GetVariableName());
             return SqlUtil.GetCrossApplyTableReference(tableRef);
         }

@@ -16,18 +16,19 @@ namespace GraphView
         internal List<GremlinTableVariable> TableReferencesInFromClause { get; private set; } // Used for generating from clause
         internal List<GremlinMatchPath> MatchPathList { get; set; }  // Used for generating match clause
         internal WBooleanExpression Predicates { get; private set; } // Used for generating where clause
-        internal List<GremlinTableVariable> AllTableVariablesInWhereClause { get; private set; } // Store all tableVariables in where clause (Predicates)
+        internal List<GremlinTableVariable> AllTableVariablesInWhereClause { get; private set; } // Store all tableVariables in where clause (this.Predicates)
         internal List<GremlinVariable> StepList { get; set; }  // Used for generating Path
         internal GremlinLocalPathVariable ContextLocalPath { get; set; }
+        public int MinPathLength { get; set; }
 
         internal GremlinToSqlContext()
         {
             this.TableReferencesInFromClause = new List<GremlinTableVariable>();
             this.AllTableVariablesInWhereClause = new List<GremlinTableVariable>();
-            VariableList = new List<GremlinVariable>();
-            MatchPathList = new List<GremlinMatchPath>();
-            StepList = new List<GremlinVariable>();
-            ProjectedProperties = new List<string>();
+            this.VariableList = new List<GremlinVariable>();
+            this.MatchPathList = new List<GremlinMatchPath>();
+            this.StepList = new List<GremlinVariable>();
+            this.ProjectedProperties = new List<string>();
         }
 
         internal GremlinToSqlContext Duplicate()
@@ -50,67 +51,82 @@ namespace GraphView
         internal void Reset()
         {
             GremlinVariable inputVariable = null;
-            if (VariableList.First() is GremlinContextVariable)
+            if (this.VariableList.First() is GremlinContextVariable)
             {
-                inputVariable = VariableList.First();
+                inputVariable = this.VariableList.First();
             }
 
-            ParentContext = null;
-            PivotVariable = null;
-            VariableList.Clear();
-            ProjectedProperties.Clear();
+            this.ParentContext = null;
+            this.PivotVariable = null;
+            this.VariableList.Clear();
+            this.ProjectedProperties.Clear();
             this.TableReferencesInFromClause.Clear();
             this.AllTableVariablesInWhereClause.Clear();
-            MatchPathList.Clear();
-            Predicates = null;
-            StepList.Clear();
-            ContextLocalPath = null;
+            this.MatchPathList.Clear();
+            this.Predicates = null;
+            this.StepList.Clear();
+            this.ContextLocalPath = null;
 
             //TODO: reserve the InputVariable, used for repeat step, should be refactored later
             if (inputVariable != null)
             {
-                VariableList.Add(inputVariable);
+                this.VariableList.Add(inputVariable);
             }
         }
 
-        internal void Populate(string property)
+        internal bool Populate(string property, string label = null)
         {
-            if (ProjectedProperties.Contains(property)) return;
-            ProjectedProperties.Add(property);
-            PivotVariable.Populate(property);
+            if (this.ProjectedProperties.Contains(property))
+            {
+                return true;
+            }
+            else if (this.PivotVariable.Populate(property, label))
+            {
+                this.ProjectedProperties.Add(property);
+                return true;
+            }
+            else
+            {
+                return false;
+            }
         }
 
         internal void PopulateLocalPath()
         {
-            if (ContextLocalPath != null) return;
-            ProjectedProperties.Add(GremlinKeyword.Path);
+            if (this.ContextLocalPath != null)
+            {
+                return;
+            }
+            this.ProjectedProperties.Add(GremlinKeyword.Path);
 
-            foreach (var step in StepList)
+            this.MinPathLength = 0;
+            foreach (var step in this.StepList)
             {
                 step.PopulateLocalPath();
+                this.MinPathLength += step.MinPathLength;
             }
 
-            GremlinLocalPathVariable newVariable = new GremlinLocalPathVariable(StepList);
-            VariableList.Add(newVariable);
-            TableReferencesInFromClause.Add(newVariable);
-            ContextLocalPath = newVariable;
+            GremlinLocalPathVariable newVariable = new GremlinLocalPathVariable(this.StepList);
+            this.VariableList.Add(newVariable);
+            this.TableReferencesInFromClause.Add(newVariable);
+            this.ContextLocalPath = newVariable;
         }
 
         internal List<GremlinVariable> GetGlobalPathStepList()
         {
-            List<GremlinVariable> steps = ParentContext?.GetGlobalPathStepList() ?? new List<GremlinVariable>();
-            foreach (var step in StepList)
+            List<GremlinVariable> steps = this.ParentContext?.GetGlobalPathStepList() ?? new List<GremlinVariable>();
+            foreach (var step in this.StepList)
             {
                 step.PopulateLocalPath();
             }
-            steps.AddRange(StepList);
+            steps.AddRange(this.StepList);
             return steps;
         }
 
         internal List<GremlinVariable> GetSideEffectVariables()
         {
-            List<GremlinVariable> sideEffectVariables = ParentContext?.GetSideEffectVariables() ?? new List<GremlinVariable>();
-            foreach (var variable in VariableList)
+            List<GremlinVariable> sideEffectVariables = this.ParentContext?.GetSideEffectVariables() ?? new List<GremlinVariable>();
+            foreach (var variable in this.VariableList)
             {
                 var aggregate = variable as GremlinAggregateVariable;
                 if (aggregate != null)
@@ -149,14 +165,14 @@ namespace GraphView
 
         internal void SetPivotVariable(GremlinVariable newPivotVariable)
         {
-            PivotVariable = newPivotVariable;
-            StepList.Add(newPivotVariable);
+            this.PivotVariable = newPivotVariable;
+            this.StepList.Add(newPivotVariable);
         }
 
         internal void AddPredicate(WBooleanExpression newPredicate)
         {
             if (newPredicate == null) return;
-            Predicates = Predicates == null ? newPredicate : SqlUtil.GetAndBooleanBinaryExpr(Predicates, newPredicate);
+            this.Predicates = this.Predicates == null ? newPredicate : SqlUtil.GetAndBooleanBinaryExpr(this.Predicates, newPredicate);
         }
 
         internal void AddLabelPredicateForEdge(GremlinEdgeTableVariable edgeTable, List<string> edgeLabels)
@@ -176,7 +192,7 @@ namespace GraphView
         {
             if (this.TableReferencesInFromClause.Count == 0)
             {
-                return Predicates;
+                return this.Predicates;
             }
             return SqlUtil.GetExistPredicate(ToSelectQueryBlock());
         }
@@ -217,7 +233,7 @@ namespace GraphView
         {
             var selectElements = new List<WSelectElement>();
 
-            if (PivotVariable.GetVariableType() == GremlinVariableType.NULL)
+            if (this.PivotVariable.GetVariableType() == GremlinVariableType.NULL)
             {
                 selectElements.Add(SqlUtil.GetSelectScalarExpr(SqlUtil.GetStarColumnReferenceExpr(), GremlinKeyword.TableDefaultColumnName));
                 return selectElements;
@@ -225,38 +241,27 @@ namespace GraphView
 
             if (isToCompose1)
             {
-                selectElements.Add(SqlUtil.GetSelectScalarExpr(PivotVariable.ToCompose1(), GremlinKeyword.TableDefaultColumnName));
+                selectElements.Add(SqlUtil.GetSelectScalarExpr(this.PivotVariable.ToCompose1(), GremlinKeyword.TableDefaultColumnName));
                 return selectElements;
             }
 
-            foreach (var projectProperty in ProjectedProperties)
+            GremlinVariableProperty defaultProjection = this.PivotVariable.DefaultProjection();
+            selectElements.Add(SqlUtil.GetSelectScalarExpr(defaultProjection.ToScalarExpression(), this.PivotVariable.DefaultProperty()));
+
+            foreach (var property in this.ProjectedProperties)
             {
-                WSelectScalarExpression selectScalarExpr;
-                if (projectProperty == GremlinKeyword.Path)
+                WScalarExpression selectScalarExpr;
+                if (property == GremlinKeyword.Path)
                 {
-                    selectScalarExpr = SqlUtil.GetSelectScalarExpr(ContextLocalPath.DefaultProjection().ToScalarExpression(), GremlinKeyword.Path);
-                }
-                else if (projectProperty == GremlinKeyword.TableDefaultColumnName)
-                {
-                    GremlinVariableProperty defaultProjection = PivotVariable.DefaultProjection();
-                    selectScalarExpr = SqlUtil.GetSelectScalarExpr(defaultProjection.ToScalarExpression(), GremlinKeyword.TableDefaultColumnName);
-                }
-                else if (PivotVariable.ProjectedProperties.Contains(projectProperty))
-                {
-                    WScalarExpression columnExpr = PivotVariable.GetVariableProperty(projectProperty).ToScalarExpression();
-                    selectScalarExpr = SqlUtil.GetSelectScalarExpr(columnExpr, projectProperty);
+                    selectScalarExpr = ContextLocalPath.DefaultProjection().ToScalarExpression();
                 }
                 else
                 {
-                    selectScalarExpr = SqlUtil.GetSelectScalarExpr(SqlUtil.GetValueExpr(null), projectProperty);
+                    selectScalarExpr = this.PivotVariable.ProjectedProperties.Contains(property)
+                        ? this.PivotVariable.GetVariableProperty(property).ToScalarExpression()
+                        : SqlUtil.GetValueExpr(null);
                 }
-                selectElements.Add(selectScalarExpr);
-            }
-
-            if (selectElements.Count == 0)
-            {
-                GremlinVariableProperty defaultProjection = PivotVariable.DefaultProjection();
-                selectElements.Add(SqlUtil.GetSelectScalarExpr(defaultProjection.ToScalarExpression(), GremlinKeyword.TableDefaultColumnName));
+                selectElements.Add(SqlUtil.GetSelectScalarExpr(selectScalarExpr, property));
             }
 
             return selectElements;
@@ -283,7 +288,7 @@ namespace GraphView
         internal WMatchClause GetMatchClause()
         {
             var newMatchClause = new WMatchClause();
-            foreach (var path in MatchPathList)
+            foreach (var path in this.MatchPathList)
             {
                 newMatchClause.Paths.Add(SqlUtil.GetMatchPath(path));
             }
@@ -292,7 +297,7 @@ namespace GraphView
 
         internal WWhereClause GetWhereClause()
         {
-            return Predicates == null ? null : SqlUtil.GetWhereClause(Predicates);
+            return this.Predicates == null ? null : SqlUtil.GetWhereClause(this.Predicates);
         }
     }
 }

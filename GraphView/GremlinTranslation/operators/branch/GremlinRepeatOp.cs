@@ -130,7 +130,6 @@ namespace GraphView
 
             return inputContext;
         }
-
     }
 
     public class RepeatCondition

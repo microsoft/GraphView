@@ -13,32 +13,40 @@ namespace GraphView
 
         public GremlinSelectColumnVariable(GremlinVariable inputVariable, GremlinKeyword.Column column) : base(GremlinVariableType.Table)
         {
-            InputVariable = new GremlinContextVariable(inputVariable);
-            Column = column;
+            this.InputVariable = new GremlinContextVariable(inputVariable);
+            this.Column = column;
         }
 
-        internal override void Populate(string property)
+        internal override bool Populate(string property, string label = null)
         {
-            base.Populate(property);
-            InputVariable.Populate(property);
+            if (base.Populate(property, label))
+            {
+                return this.InputVariable.Populate(property, null);
+            }
+            else if (this.InputVariable.Populate(property, label))
+            {
+                return base.Populate(property, null);
+            }
+            else
+            {
+                return false;
+            }
         }
 
         internal override List<GremlinVariable> FetchAllVars()
         {
             List<GremlinVariable> variableList = new List<GremlinVariable>() { this };
-            variableList.AddRange(InputVariable.FetchAllVars());
+            variableList.AddRange(this.InputVariable.FetchAllVars());
             return variableList;
         }
 
         public override WTableReference ToTableReference()
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();
-            parameters.Add(InputVariable.DefaultProjection().ToScalarExpression());
-            parameters.Add(SqlUtil.GetValueExpr(Column == GremlinKeyword.Column.Keys ? "Keys" : "Values"));
-            foreach (var property in this.ProjectedProperties)
-            {
-                parameters.Add(SqlUtil.GetValueExpr(property));
-            }
+            parameters.Add(this.InputVariable.DefaultProjection().ToScalarExpression());
+            parameters.Add(SqlUtil.GetValueExpr(this.Column == GremlinKeyword.Column.Keys ? "Keys" : "Values"));
+            parameters.Add(SqlUtil.GetValueExpr(this.DefaultProperty()));
+            parameters.AddRange(this.ProjectedProperties.Select(SqlUtil.GetValueExpr));
             var tableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.SelectColumn, parameters, GetVariableName());
             return SqlUtil.GetCrossApplyTableReference(tableRef);
         }
@@ -48,7 +56,7 @@ namespace GraphView
     {
         public GremlinOrderLocalInitVariable()
         {
-            VariableName = GremlinKeyword.Compose1TableDefaultName;
+            this.VariableName = GremlinKeyword.Compose1TableDefaultName;
         }
 
         internal override GremlinVariableProperty DefaultProjection()

@@ -13,23 +13,27 @@ namespace GraphView
         public GremlinCoalesceVariable(List<GremlinToSqlContext> coalesceContextList, GremlinVariableType variableType)
             : base(variableType)
         {
-            CoalesceContextList = new List<GremlinToSqlContext>(coalesceContextList);
+            this.CoalesceContextList = new List<GremlinToSqlContext>(coalesceContextList);
         }
 
-        internal override void Populate(string property)
+        internal override bool Populate(string property, string label = null)
         {
-            base.Populate(property);
-
-            foreach (var context in CoalesceContextList)
+            bool populateSuccess = false;
+            foreach (var context in this.CoalesceContextList)
             {
-                context.Populate(property);
+                populateSuccess |= context.Populate(property, label);
             }
+            if (populateSuccess)
+            {
+                base.Populate(property, null);
+            }
+            return populateSuccess;
         }
 
         internal override List<GremlinVariable> FetchAllVars()
         {
             List<GremlinVariable> variableList = new List<GremlinVariable>() {this};
-            foreach (var context in CoalesceContextList)
+            foreach (var context in this.CoalesceContextList)
             {
                 variableList.AddRange(context.FetchAllVars());
             }
@@ -39,7 +43,7 @@ namespace GraphView
         internal override List<GremlinTableVariable> FetchAllTableVars()
         {
             List<GremlinTableVariable> variableList = new List<GremlinTableVariable> { this };
-            foreach (var context in CoalesceContextList)
+            foreach (var context in this.CoalesceContextList)
             {
                 variableList.AddRange(context.FetchAllTableVars());
             }
@@ -49,13 +53,33 @@ namespace GraphView
         public override  WTableReference ToTableReference()
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();
-
-            foreach (var context in CoalesceContextList)
+            //List<WSelectQueryBlock> selectQueryBlocks = new List<WSelectQueryBlock>();
+            //selectQueryBlocks.AddRange(this.CoalesceContextList.Select(context => context.ToSelectQueryBlock()));
+            //this.AlignSelectQueryBlocks(selectQueryBlocks);
+            //parameters.AddRange(selectQueryBlocks.Select(SqlUtil.GetScalarSubquery));
+            //parameters.AddRange(this.CoalesceContextList.Select(context => SqlUtil.GetScalarSubquery(context.ToSelectQueryBlock())));
+            foreach (GremlinToSqlContext context in this.CoalesceContextList)
             {
-                parameters.Add(SqlUtil.GetScalarSubquery(context.ToSelectQueryBlock()));
-            }
-            var tableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Coalesce, parameters, GetVariableName());
+                WSelectQueryBlock selectQueryBlock = context.ToSelectQueryBlock();
+                Dictionary<string, WSelectElement> projectionMap = new Dictionary<string, WSelectElement>();
+                WSelectElement value = selectQueryBlock.SelectElements[0].Copy();
+                foreach (WSelectElement selectElement in selectQueryBlock.SelectElements)
+                {
+                    projectionMap[(selectElement as WSelectScalarExpression).ColumnName] = selectElement;
+                }
+                selectQueryBlock.SelectElements.Clear();
 
+                selectQueryBlock.SelectElements.Add(SqlUtil.GetSelectScalarExpr((value as WSelectScalarExpression).SelectExpr, this.DefaultProperty()));
+                foreach (string property in this.ProjectedProperties)
+                {
+                    selectQueryBlock.SelectElements.Add(
+                        projectionMap.TryGetValue(property, out value)
+                            ? value : SqlUtil.GetSelectScalarExpr(SqlUtil.GetValueExpr(null), property));
+                }
+                parameters.Add(SqlUtil.GetScalarSubquery(selectQueryBlock));
+            }
+
+            var tableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Coalesce, parameters, GetVariableName());
             return SqlUtil.GetCrossApplyTableReference(tableRef);
         }
     }

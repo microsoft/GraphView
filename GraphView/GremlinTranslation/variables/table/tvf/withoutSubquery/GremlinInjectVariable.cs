@@ -14,42 +14,42 @@ namespace GraphView
 
         public GremlinInjectVariable(GremlinVariable inputVariable, object injection): base(GremlinVariableType.Table)
         {
-            InputVariable = new GremlinContextVariable(inputVariable);
-            Injection = injection;
-            ProjectedProperties.Add(GremlinKeyword.TableDefaultColumnName);
+            this.InputVariable = new GremlinContextVariable(inputVariable);
+            this.Injection = injection;
+            this.ProjectedProperties.Add(GremlinKeyword.TableDefaultColumnName);
         }
 
-        internal override void Populate(string property)
+        internal override bool Populate(string property, string label = null)
         {
-            return;
+            return false;
         }
 
         public override WTableReference ToTableReference()
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();
 
-            if (InputVariable == null || InputVariable.RealVariable == null)
+            if (this.InputVariable == null || this.InputVariable.RealVariable == null)
             {
                 //g.Inject()
                 parameters.Add(SqlUtil.GetValueExpr(null));
             }
             else
             {
-                parameters.Add(InputVariable.DefaultProjection().ToScalarExpression());
+                parameters.Add(this.InputVariable.DefaultProjection().ToScalarExpression());
             }
 
             bool isList = false;
-            if (GremlinUtil.IsList(Injection) || GremlinUtil.IsArray(Injection))
+            if (GremlinUtil.IsList(this.Injection) || GremlinUtil.IsArray(this.Injection))
             {
                 isList = true;  //1 It's a list
-                foreach (var value in (IEnumerable)Injection)
+                foreach (var value in (IEnumerable)this.Injection)
                 {
                     parameters.Add(SqlUtil.GetValueExpr(value));
                 }
             }
-            else if (GremlinUtil.IsNumber(Injection) || Injection is string || Injection is bool)
+            else if (GremlinUtil.IsNumber(this.Injection) || this.Injection is string || this.Injection is bool)
             {
-                parameters.Add(SqlUtil.GetValueExpr(Injection));
+                parameters.Add(SqlUtil.GetValueExpr(this.Injection));
             }
             else
             {

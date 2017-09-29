@@ -10,30 +10,45 @@ namespace GraphView
 
         protected GremlinTableVariable(GremlinVariableType variableType)
         {
-            VariableType = variableType;
-            VariableName = GremlinUtil.GenerateTableAlias(VariableType);
+            this.VariableType = variableType;
+            this.VariableName = GremlinUtil.GenerateTableAlias(this.VariableType);
         }
 
-        internal override void Populate(string property)
+        internal override bool Populate(string property, string label = null)
         {
-            if (ProjectedProperties.Contains(property)) return;
-            switch (GetVariableType())
+            if (ProjectedProperties.Contains(property))
+            {
+                return true;
+            }
+            switch (this.GetVariableType())
             {
                 case GremlinVariableType.Vertex:
-                    if (GremlinUtil.IsEdgeProperty(property)) return;
+                    if (GremlinUtil.IsEdgeProperty(property))
+                    {
+                        return false;
+                    }
                     break;
                 case GremlinVariableType.Edge:
-                    if (GremlinUtil.IsVertexProperty(property)) return;
+                    if (GremlinUtil.IsVertexProperty(property))
+                    {
+                        return false;
+                    }
                     break;
                 case GremlinVariableType.VertexProperty:
-                    if (GremlinUtil.IsVertexProperty(property) || GremlinUtil.IsEdgeProperty(property)) return;
+                    if (GremlinUtil.IsVertexProperty(property) || GremlinUtil.IsEdgeProperty(property))
+                    {
+                        return false;
+                    }
                     break;
                 case GremlinVariableType.Scalar:
                 case GremlinVariableType.Property:
-                    if (property != GremlinKeyword.TableDefaultColumnName) return;
+                    if (property != GremlinKeyword.TableDefaultColumnName)
+                    {
+                        return false;
+                    }
                     break;
             }
-            base.Populate(property);
+            return base.Populate(property, label);
         }
 
         public virtual WTableReference ToTableReference()
@@ -43,7 +58,7 @@ namespace GraphView
 
         internal override GremlinVariableType GetVariableType()
         {
-            return VariableType;
+            return this.VariableType;
         }
 
         internal virtual List<GremlinTableVariable> FetchAllTableVars()

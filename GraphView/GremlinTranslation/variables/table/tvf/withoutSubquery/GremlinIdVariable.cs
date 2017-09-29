@@ -12,20 +12,20 @@ namespace GraphView
 
         public GremlinIdVariable(GremlinVariable projectVariable)
         {
-            ProjectVariable = new GremlinContextVariable(projectVariable);
+            this.ProjectVariable = new GremlinContextVariable(projectVariable);
         }
 
         internal override List<GremlinVariable> FetchAllVars()
         {
             List<GremlinVariable> variableList = new List<GremlinVariable>() { this };
-            variableList.AddRange(ProjectVariable.FetchAllVars());
+            variableList.AddRange(this.ProjectVariable.FetchAllVars());
             return variableList;
         }
 
         public override WTableReference ToTableReference()
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();
-            parameters.Add(ProjectVariable.DefaultProjection().ToScalarExpression());
+            parameters.Add(this.ProjectVariable.DefaultProjection().ToScalarExpression());
             var tableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.GraphViewId, parameters, GetVariableName());
             return SqlUtil.GetCrossApplyTableReference(tableRef);
         }

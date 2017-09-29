@@ -12,20 +12,20 @@ namespace GraphView
 
         public GremlinSimplePathVariable(GremlinPathVariable pathVariable): base(GremlinVariableType.Table)
         {
-            PathVariable = pathVariable;
+            this.PathVariable = pathVariable;
         }
 
         internal override List<GremlinVariable> FetchAllVars()
         {
             List<GremlinVariable> variableList = new List<GremlinVariable>() { this };
-            variableList.AddRange(PathVariable.FetchAllVars());
+            variableList.AddRange(this.PathVariable.FetchAllVars());
             return variableList;
         }
 
         public override WTableReference ToTableReference()
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();
-            parameters.Add(PathVariable.DefaultProjection().ToScalarExpression());
+            parameters.Add(this.PathVariable.DefaultProjection().ToScalarExpression());
             var tableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.SimplePath, parameters, GetVariableName());
             return SqlUtil.GetCrossApplyTableReference(tableRef);
         }

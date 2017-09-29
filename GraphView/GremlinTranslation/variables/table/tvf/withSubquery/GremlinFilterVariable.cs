@@ -9,6 +9,7 @@ namespace GraphView
         {
             this.Predicate = newPredicate;
         }
+
         public override WTableReference ToTableReference()
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();
@@ -17,7 +18,7 @@ namespace GraphView
             searchCaseExpr.WhenClauses = new List<WSearchedWhenClause>();
 
             WSearchedWhenClause booleanIsTrueClause = new WSearchedWhenClause();
-            booleanIsTrueClause.WhenExpression = Predicate;
+            booleanIsTrueClause.WhenExpression = this.Predicate;
             booleanIsTrueClause.ThenExpression = new WValueExpression("1");
 
             searchCaseExpr.WhenClauses.Add(booleanIsTrueClause);

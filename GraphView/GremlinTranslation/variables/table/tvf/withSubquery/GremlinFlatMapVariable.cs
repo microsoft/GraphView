@@ -13,33 +13,43 @@ namespace GraphView
         public GremlinFlatMapVariable(GremlinToSqlContext flatMapContext, GremlinVariableType variableType)
             : base(variableType)
         {
-            FlatMapContext = flatMapContext;
+            this.FlatMapContext = flatMapContext;
         }
 
-        internal override void Populate(string property)
+        internal override bool Populate(string property, string label = null)
         {
-            base.Populate(property);
-            FlatMapContext.Populate(property);
+            if (base.Populate(property, label))
+            {
+                return FlatMapContext.Populate(property, null);
+            }
+            else if (this.FlatMapContext.Populate(property, label))
+            {
+                return base.Populate(property, null);
+            }
+            else
+            {
+                return false;
+            }
         }
 
         internal override List<GremlinVariable> FetchAllVars()
         {
             List<GremlinVariable> variableList = new List<GremlinVariable>() { this };
-            variableList.AddRange(FlatMapContext.FetchAllVars());
+            variableList.AddRange(this.FlatMapContext.FetchAllVars());
             return variableList;
         }
 
         internal override List<GremlinTableVariable> FetchAllTableVars()
         {
             List<GremlinTableVariable> variableList = new List<GremlinTableVariable> { this };
-            variableList.AddRange(FlatMapContext.FetchAllTableVars());
+            variableList.AddRange(this.FlatMapContext.FetchAllTableVars());
             return variableList;
         }
 
         public override WTableReference ToTableReference()
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();
-            parameters.Add(SqlUtil.GetScalarSubquery(FlatMapContext.ToSelectQueryBlock()));
+            parameters.Add(SqlUtil.GetScalarSubquery(this.FlatMapContext.ToSelectQueryBlock()));
             var tableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.FlatMap, parameters, GetVariableName());
             return SqlUtil.GetCrossApplyTableReference(tableRef);
         }

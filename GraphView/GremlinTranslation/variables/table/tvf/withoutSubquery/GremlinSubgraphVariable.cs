@@ -15,13 +15,13 @@ namespace GraphView
         {
             this.SideEffectKey = sideEffectKey;
             this.DummyContext = dummyContext;
-            Labels.Add(sideEffectKey);
+            this.Labels.Add(sideEffectKey);
         }
 
         public override WTableReference ToTableReference()
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();
-            WSelectQueryBlock selectQueryBlock = DummyContext.ToSelectQueryBlock(false);
+            WSelectQueryBlock selectQueryBlock = this.DummyContext.ToSelectQueryBlock(false);
             parameters.Add(SqlUtil.GetScalarSubquery(selectQueryBlock));
             parameters.Add(SqlUtil.GetValueExpr(SideEffectKey));
             var tableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Subgraph, parameters, GetVariableName());

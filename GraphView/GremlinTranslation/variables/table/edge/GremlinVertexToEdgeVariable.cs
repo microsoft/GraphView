@@ -18,16 +18,13 @@ namespace GraphView
 
     internal class GremlinVertexToForwardEdgeVariable : GremlinVertexToEdgeVariable
     {
-        public GremlinVertexToForwardEdgeVariable(GremlinVariable vertexVariable) :base(vertexVariable)
-        {
-        }
+        public GremlinVertexToForwardEdgeVariable(GremlinVariable vertexVariable) : base(vertexVariable) {}
 
         public override WTableReference ToTableReference()
         {
-            List<WScalarExpression> parameters = new List<WScalarExpression>()
-            {
-                this.VertexVariable.DefaultProjection().ToScalarExpression()
-            };
+            List<WScalarExpression> parameters = new List<WScalarExpression>();
+            parameters.Add(this.VertexVariable.DefaultProjection().ToScalarExpression());
+            parameters.Add(SqlUtil.GetValueExpr(this.DefaultProperty()));
             parameters.AddRange(this.ProjectedProperties.Select(SqlUtil.GetValueExpr));
             WTableReference tableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.VertexToForwardEdge, parameters, this.GetVariableName());
             return SqlUtil.GetCrossApplyTableReference(tableRef);
@@ -36,16 +33,13 @@ namespace GraphView
 
     internal class GremlinVertexToBackwardEdgeVariable : GremlinVertexToEdgeVariable
     {
-        public GremlinVertexToBackwardEdgeVariable(GremlinVariable vertexVariable): base(vertexVariable)
-        {
-        }
+        public GremlinVertexToBackwardEdgeVariable(GremlinVariable vertexVariable) : base(vertexVariable) {}
 
         public override WTableReference ToTableReference()
         {
-            List<WScalarExpression> parameters = new List<WScalarExpression>()
-            {
-                this.VertexVariable.DefaultProjection().ToScalarExpression()
-            };
+            List<WScalarExpression> parameters = new List<WScalarExpression>();
+            parameters.Add(this.VertexVariable.DefaultProjection().ToScalarExpression());
+            parameters.Add(SqlUtil.GetValueExpr(this.DefaultProperty()));
             parameters.AddRange(this.ProjectedProperties.Select(SqlUtil.GetValueExpr));
             WTableReference tableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.VertexToBackwardEdge, parameters, this.GetVariableName());
             return SqlUtil.GetCrossApplyTableReference(tableRef);
@@ -54,16 +48,13 @@ namespace GraphView
 
     internal class GremlinVertexToBothEdgeVariable : GremlinVertexToEdgeVariable
     {
-        public GremlinVertexToBothEdgeVariable(GremlinVariable vertexVariable):base(vertexVariable)
-        {
-        }
+        public GremlinVertexToBothEdgeVariable(GremlinVariable vertexVariable):base(vertexVariable) {}
 
         public override WTableReference ToTableReference()
         {
-            List<WScalarExpression> parameters = new List<WScalarExpression>()
-            {
-                this.VertexVariable.DefaultProjection().ToScalarExpression()
-            };
+            List<WScalarExpression> parameters = new List<WScalarExpression>();
+            parameters.Add(this.VertexVariable.DefaultProjection().ToScalarExpression());
+            parameters.Add(SqlUtil.GetValueExpr(this.DefaultProperty()));
             parameters.AddRange(this.ProjectedProperties.Select(SqlUtil.GetValueExpr));
             WTableReference tableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.VertexToBothEdge, parameters, this.GetVariableName());
             return SqlUtil.GetCrossApplyTableReference(tableRef);

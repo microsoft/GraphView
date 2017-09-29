@@ -8,9 +8,7 @@ namespace GraphView
 {
     internal class GremlinBarrierVariable : GremlinTableVariable
     {
-        public GremlinBarrierVariable() : base(GremlinVariableType.Table)
-        {
-        }
+        public GremlinBarrierVariable() : base(GremlinVariableType.Table) {}
 
         public override WTableReference ToTableReference()
         {

@@ -14,14 +14,14 @@ namespace GraphView
         public GremlinPropertiesVariable(GremlinVariable inputVariable, List<string> propertyKeys)
             :base(GremlinVariableType.VertexProperty)
         {
-            InputVariable = new GremlinContextVariable(inputVariable);
-            PropertyKeys = new List<string>(propertyKeys);
+            this.InputVariable = new GremlinContextVariable(inputVariable);
+            this.PropertyKeys = new List<string>(propertyKeys);
         }
 
         internal override List<GremlinVariable> FetchAllVars()
         {
             List<GremlinVariable> variableList = new List<GremlinVariable>() { this };
-            variableList.AddRange(InputVariable.FetchAllVars());
+            variableList.AddRange(this.InputVariable.FetchAllVars());
             return variableList;
         }
 
@@ -30,24 +30,17 @@ namespace GraphView
             List<WScalarExpression> parameters = new List<WScalarExpression>();
 
             bool isFetchAll = false;
-            if (PropertyKeys.Count == 0)
+            if (this.PropertyKeys.Count == 0)
             {
-                parameters.Add(InputVariable.DefaultProjection().ToScalarExpression());
+                parameters.Add(this.InputVariable.DefaultProjection().ToScalarExpression());
                 isFetchAll = true;
             }
             else
             {
-                foreach (var property in PropertyKeys)
-                {
-                    parameters.Add(InputVariable.GetVariableProperty(property).ToScalarExpression());
-                }
+                parameters.AddRange(this.PropertyKeys.Select(property => this.InputVariable.GetVariableProperty(property).ToScalarExpression()));
             }
-
-            foreach (var projectProperty in ProjectedProperties)
-            {
-                if (projectProperty == GremlinKeyword.TableDefaultColumnName) continue;
-                parameters.Add(SqlUtil.GetValueExpr(projectProperty));
-            }
+            
+            parameters.AddRange(this.ProjectedProperties.Select(SqlUtil.GetValueExpr));
 
             var tableRef =
                 SqlUtil.GetFunctionTableReference(

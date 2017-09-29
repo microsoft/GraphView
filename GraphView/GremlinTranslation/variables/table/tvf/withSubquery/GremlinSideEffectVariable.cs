@@ -13,27 +13,27 @@ namespace GraphView
         public GremlinSideEffectVariable(GremlinToSqlContext sideEffectContext)
             : base(GremlinVariableType.Table)
         {
-            SideEffectContext = sideEffectContext;
+            this.SideEffectContext = sideEffectContext;
         }
 
         internal override List<GremlinVariable> FetchAllVars()
         {
             List<GremlinVariable> variableList = new List<GremlinVariable>() { this };
-            variableList.AddRange(SideEffectContext.FetchAllVars());
+            variableList.AddRange(this.SideEffectContext.FetchAllVars());
             return variableList;
         }
 
         internal override List<GremlinTableVariable> FetchAllTableVars()
         {
             List<GremlinTableVariable> variableList = new List<GremlinTableVariable> { this };
-            variableList.AddRange(SideEffectContext.FetchAllTableVars());
+            variableList.AddRange(this.SideEffectContext.FetchAllTableVars());
             return variableList;
         }
 
         public override WTableReference ToTableReference()
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();
-            parameters.Add(SqlUtil.GetScalarSubquery(SideEffectContext.ToSelectQueryBlock()));
+            parameters.Add(SqlUtil.GetScalarSubquery(this.SideEffectContext.ToSelectQueryBlock()));
             var tableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.SideEffect, parameters, GetVariableName());
 
             return SqlUtil.GetCrossApplyTableReference(tableRef);

@@ -25,29 +25,65 @@ namespace GraphView
             this.RepeatContext = repeatContext;
             this.RepeatCondition = repeatCondition;
             this.Count = 0;
+            GremlinRepeatContextVariable repeatContextVariable = this.RepeatContext.VariableList.First() as GremlinRepeatContextVariable;
+            GremlinUntilContextVariable untilContextVariable = null;
+            if (this.RepeatCondition.TerminationContext?.VariableList.Count > 0)
+            {
+                untilContextVariable = this.RepeatCondition.TerminationContext.VariableList.First() as GremlinUntilContextVariable;
+            }
+            GremlinEmitContextVariable emitContextVariable = null;
+            if (this.RepeatCondition.EmitContext?.VariableList.Count > 0)
+            {
+                emitContextVariable = this.RepeatCondition.EmitContext?.VariableList?.First() as GremlinEmitContextVariable;
+            }
+            if (repeatContextVariable?.LabelPropertyList.Count > 0 ||
+                untilContextVariable?.LabelPropertyList.Count > 0 || emitContextVariable?.LabelPropertyList.Count > 0)
+            {
+                this.PopulateLocalPath();
+                repeatContextVariable?.SetContextLocalPath(this.RepeatContext.ContextLocalPath);
+                untilContextVariable?.SetContextLocalPath(this.RepeatContext.ContextLocalPath);
+                emitContextVariable?.SetContextLocalPath(this.RepeatContext.ContextLocalPath);
+            }
         }
 
-        internal override void Populate(string property)
+        internal override bool Populate(string property, string label = null)
         {
-            base.Populate(property);
-
-            this.InputVariable.Populate(property);
-            this.RepeatContext.Populate(property);
+            if (base.Populate(property, label))
+            {
+                this.InputVariable.Populate(property, null);
+                this.RepeatContext.Populate(property, null);
+                return true;
+            }
+            else
+            {
+                bool populateSuccess = false;
+                populateSuccess |= this.InputVariable.Populate(property, label);
+                populateSuccess |= this.RepeatContext.Populate(property, label);
+                if (populateSuccess)
+                {
+                    base.Populate(property, label);
+                }
+                return populateSuccess;
+            }
         }
 
-        internal override void PopulateStepProperty(string property)
+        internal override bool PopulateStepProperty(string property, string label = null)
         {
-            this.RepeatContext.ContextLocalPath.PopulateStepProperty(property);
+            return this.RepeatContext.ContextLocalPath.PopulateStepProperty(property, label);
         }
 
         internal override void PopulateLocalPath()
         {
-            if (this.ProjectedProperties.Contains(GremlinKeyword.Path)) return;
+            if (this.ProjectedProperties.Contains(GremlinKeyword.Path))
+            {
+                return;
+            }
             this.ProjectedProperties.Add(GremlinKeyword.Path);
             this.RepeatContext.PopulateLocalPath();
+            this.MinPathLength = this.RepeatContext.MinPathLength;
         }
 
-        internal override WScalarExpression ToStepScalarExpr()
+        internal override WScalarExpression ToStepScalarExpr(List<string> composedProperties = null)
         {
             return SqlUtil.GetColumnReferenceExpr(this.GetVariableName(), GremlinKeyword.Path);
         }
@@ -77,8 +113,8 @@ namespace GraphView
 
         // Repeat algorithm
         // Firstly, we generate the repeatQueryBlock in order that we can get the initial query
-        // Secondly, we generate the inputVariableVistorMap via ProjectedProperties, repeatInputVariable.ProjectedProperties, 
-        // untilInputVariable.ProjectedProperties and emitInputVariable.ProjectedProperties. 
+        // Secondly, we generate the inputVariableVistorMap via repeatInputVariable.ProjectedProperties, 
+        // untilInputVariable.ProjectedProperties, emitInputVariable.ProjectedProperties and ProjectedProperties. 
         // Generally, these properties are related to the input every time, but in repeatQueryBlock, these are 
         // just related to the input of the first time. Therefore, we need to replace these after.
         // Thirdly, we need to generate the firstQueryExpr and the selectColumnExpr of repeatQueryBlock. Pay 
@@ -117,8 +153,20 @@ namespace GraphView
             GremlinVariable repeatOutputVariable = this.RepeatContext.PivotVariable;
             GremlinVariable realInputVariable = this.InputVariable.RealVariable;
             GremlinVariable repeatPivotVariable = this.RepeatContext.PivotVariable;
+            
+            // this.DefaultProperty
+            key = new Tuple<string, string>(this.GetVariableName(), this.DefaultProperty());
+            value = key;
+            inputVariableVistorMap[key] = value;
 
+            key = new Tuple<string, string>(realInputVariable.GetVariableName(), realInputVariable.DefaultProperty());
+            value = new Tuple<string, string>(GremlinKeyword.RepeatInitalTableName, this.DefaultProperty());
+            inputVariableVistorMap[key] = value;
 
+            firstExpr = realInputVariable.DefaultProjection().ToScalarExpression();
+            secondExpr = repeatOutputVariable.DefaultProjection().ToScalarExpression();
+            firstSelectList.Add(SqlUtil.GetSelectScalarExpr(firstExpr, this.DefaultProperty()));
+            secondSelectList.Add(SqlUtil.GetSelectScalarExpr(secondExpr, this.DefaultProperty()));
 
             foreach (string property in this.ProjectedProperties)
             {
@@ -133,6 +181,10 @@ namespace GraphView
                     value = key;
                     inputVariableVistorMap[key] = value;
 
+                    key = new Tuple<string, string>(realInputVariable.GetVariableName(), property);
+                    value = new Tuple<string, string>(GremlinKeyword.RepeatInitalTableName, property);
+                    inputVariableVistorMap[key] = value;
+
                     firstExpr = realInputVariable.ProjectedProperties.Contains(property)
                         ? realInputVariable.GetVariableProperty(property).ToScalarExpression()
                         : SqlUtil.GetValueExpr(null);
@@ -145,6 +197,19 @@ namespace GraphView
                 }
             }
 
+            // repeatInputVariable.DefaultProperty()
+            key = new Tuple<string, string>(repeatInputVariable.GetVariableName(), repeatInputVariable.DefaultProperty());
+            if (!inputVariableVistorMap.Keys.Contains(key))
+            {
+                aliasName = this.GenerateKey();
+                value = new Tuple<string, string>(GremlinKeyword.RepeatInitalTableName, aliasName);
+                inputVariableVistorMap[key] = value;
+
+                firstSelectColumn = repeatInputVariable.DefaultProjection().ToScalarExpression() as WColumnReferenceExpression;
+                secondSelectColumn = repeatPivotVariable.DefaultProjection().ToScalarExpression() as WColumnReferenceExpression;
+                firstSelectList.Add(SqlUtil.GetSelectScalarExpr(firstSelectColumn, aliasName));
+                secondSelectList.Add(SqlUtil.GetSelectScalarExpr(secondSelectColumn, aliasName));
+            }
             foreach (string property in repeatInputVariable.ProjectedProperties)
             {
                 key = new Tuple<string, string>(repeatInputVariable.GetVariableName(), property);
@@ -165,6 +230,22 @@ namespace GraphView
             {
                 GremlinVariable untilInputVariable = this.RepeatCondition.TerminationContext.VariableList.First();
 
+                // untilInputVariable.DefaultProperty()
+                key = new Tuple<string, string>(untilInputVariable.GetVariableName(), untilInputVariable.DefaultProperty());
+                if (!inputVariableVistorMap.Keys.Contains(key))
+                {
+                    aliasName = this.GenerateKey();
+                    value = new Tuple<string, string>(GremlinKeyword.RepeatInitalTableName, aliasName);
+                    inputVariableVistorMap[key] = value;
+
+                    firstSelectColumn =
+                        untilInputVariable.DefaultProjection().ToScalarExpression() as WColumnReferenceExpression;
+                    secondSelectColumn =
+                        repeatPivotVariable.DefaultProjection().ToScalarExpression() as WColumnReferenceExpression;
+                    firstSelectList.Add(SqlUtil.GetSelectScalarExpr(firstSelectColumn, aliasName));
+                    secondSelectList.Add(SqlUtil.GetSelectScalarExpr(secondSelectColumn, aliasName));
+                }
+                
                 foreach (string property in untilInputVariable.ProjectedProperties)
                 {
                     key = new Tuple<string, string>(untilInputVariable.GetVariableName(), property);
@@ -178,13 +259,29 @@ namespace GraphView
                         secondSelectColumn = repeatPivotVariable.GetVariableProperty(property).ToScalarExpression() as WColumnReferenceExpression;
                         firstSelectList.Add(SqlUtil.GetSelectScalarExpr(firstSelectColumn, aliasName));
                         secondSelectList.Add(SqlUtil.GetSelectScalarExpr(secondSelectColumn, aliasName));
-                    }
+                    }                    
                 }
             }
 
             if (this.RepeatCondition.EmitContext != null && this.RepeatCondition.EmitContext.VariableList.Count > 0)
             {
                 GremlinVariable emitInputVariable = this.RepeatCondition.EmitContext.VariableList.First();
+
+                // emitInputVariable.DefaultProperty()
+                key = new Tuple<string, string>(emitInputVariable.GetVariableName(), emitInputVariable.DefaultProperty());
+                if (!inputVariableVistorMap.Keys.Contains(key))
+                {
+                    aliasName = this.GenerateKey();
+                    value = new Tuple<string, string>(GremlinKeyword.RepeatInitalTableName, aliasName);
+                    inputVariableVistorMap[key] = value;
+
+                    firstSelectColumn = 
+                        emitInputVariable.DefaultProjection().ToScalarExpression() as WColumnReferenceExpression;
+                    secondSelectColumn = 
+                        repeatPivotVariable.DefaultProjection().ToScalarExpression() as WColumnReferenceExpression;
+                    firstSelectList.Add(SqlUtil.GetSelectScalarExpr(firstSelectColumn, aliasName));
+                    secondSelectList.Add(SqlUtil.GetSelectScalarExpr(secondSelectColumn, aliasName));
+                }
 
                 foreach (string property in emitInputVariable.ProjectedProperties)
                 {
@@ -204,7 +301,6 @@ namespace GraphView
                     }
                 }
             }
-
 
             WSelectQueryBlock firstQueryExpr = new WSelectQueryBlock();
             foreach (WSelectScalarExpression selectColumnExpr in firstSelectList)
@@ -254,11 +350,11 @@ namespace GraphView
     
     internal class ModifyRepeatInputVariablesVisitor : WSqlFragmentVisitor
     {
-        private Dictionary<Tuple<string, string>, Tuple<string, string>> map;
+        private Dictionary<Tuple<string, string>, Tuple<string, string>> Map;
 
         public void Invoke(WSqlFragment queryBlock, Dictionary<Tuple<string, string>, Tuple<string, string>> map)
         {
-            this.map = map;
+            this.Map = map;
             queryBlock.Accept(this);
         }
 
@@ -278,7 +374,7 @@ namespace GraphView
         {
             string key = columnReference.TableReference;
             string value = columnReference.ColumnName;
-            foreach (KeyValuePair<Tuple<string, string>, Tuple<string, string>> item in this.map)
+            foreach (KeyValuePair<Tuple<string, string>, Tuple<string, string>> item in this.Map)
             {
                 if (item.Key.Item1.Equals(key) && item.Key.Item2.Equals(value))
                 {

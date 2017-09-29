@@ -8,7 +8,7 @@ namespace GraphView
 {
     internal class GremlinFoldOp: GremlinTranslationOperator
     {
-        public GremlinFoldOp() { }
+        public GremlinFoldOp() {}
 
         internal override GremlinToSqlContext GetContext()
         {
