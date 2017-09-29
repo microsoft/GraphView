@@ -157,6 +157,25 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
             }
         }
 
+        [TestMethod]
+        public void PathFromToTest()
+        {
+            using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
+            {
+                graphCommand.OutputFormat = OutputFormat.Regular;
+
+                var vertex = this.getVertexString(graphCommand, "marko");
+                string vertexId = this.ConvertToVertexId(graphCommand, "marko");
+
+                graphCommand.OutputFormat = OutputFormat.Regular;
+                GraphTraversal traversal =
+                    graphCommand.g().V(vertexId).As("a").Out().As("a").In().As("b").Out().As("c").In().As("d").Out()
+                        .As("d").CyclicPath().From("a").To("c").SimplePath().From("c").To("d").Path();
+                var results = traversal.Next();
+                Assert.AreEqual(13, results.Count);
+            }
+        }
+
         /// <summary>
         /// from org/apache/tinkerpop/gremlin/process/traversal/step/map/PathTest.java
         /// Gremlin: g.V(v1Id).outE("created").inV().inE().outV().path()
