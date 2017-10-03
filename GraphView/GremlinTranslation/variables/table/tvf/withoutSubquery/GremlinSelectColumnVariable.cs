@@ -46,14 +46,9 @@ namespace GraphView
 
     internal class GremlinOrderLocalInitVariable : GremlinVariable
     {
-        public GremlinOrderLocalInitVariable()
+        public GremlinOrderLocalInitVariable(): base(GremlinVariableType.Scalar)
         {
             VariableName = GremlinKeyword.Compose1TableDefaultName;
-        }
-
-        internal override GremlinVariableProperty DefaultProjection()
-        {
-            return new GremlinVariableProperty(this, GremlinKeyword.TableDefaultColumnName);
         }
     }
 }

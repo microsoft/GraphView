@@ -61,5 +61,20 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
                 }
             }
         }
+
+        [TestMethod]
+        [TestModernCompatible()]
+        public void g_V_GroupCount()
+        {
+            using (GraphViewCommand GraphViewCommand = new GraphViewCommand(graphConnection))
+            {
+                var traversal = GraphViewCommand.g().V().GroupCount().Order(GremlinKeyword.Scope.Local).By(GremlinKeyword.Column.Values, GremlinKeyword.Order.Decr);
+                var result = traversal.Next();
+                foreach (var r in result)
+                {
+                    Console.WriteLine(r);
+                }
+            }
+        }
     }
 }

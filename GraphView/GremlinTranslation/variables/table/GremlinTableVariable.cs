@@ -6,11 +6,8 @@ namespace GraphView
 {
     internal abstract class GremlinTableVariable : GremlinVariable
     {
-        public GremlinVariableType VariableType { get; set; }
-
-        protected GremlinTableVariable(GremlinVariableType variableType)
+        protected GremlinTableVariable(GremlinVariableType variableType): base(variableType)
         {
-            VariableType = variableType;
             VariableName = GremlinUtil.GenerateTableAlias(VariableType);
         }
 
@@ -39,11 +36,6 @@ namespace GraphView
         public virtual WTableReference ToTableReference()
         {
             throw new NotImplementedException();
-        }
-
-        internal override GremlinVariableType GetVariableType()
-        {
-            return VariableType;
         }
 
         internal virtual List<GremlinTableVariable> FetchAllTableVars()

@@ -26,18 +26,28 @@ namespace GraphView
         public List<string> Labels { get; set; }
         public List<string> ProjectedProperties { get; set; }
 
-        public bool NeedFilter;
+        public bool NeedFilter { get; set; }
+        public GremlinVariableType VariableType { get; set; }
 
         public GremlinVariable()
         {
             Labels = new List<string>();
             ProjectedProperties = new List<string>();
             NeedFilter = false;
+            VariableType = GremlinVariableType.Undefined;
+        }
+
+        public GremlinVariable(GremlinVariableType variableType)
+        {
+            Labels = new List<string>();
+            ProjectedProperties = new List<string>();
+            NeedFilter = false;
+            VariableType = variableType;
         }
 
         internal virtual GremlinVariableType GetVariableType()
         {
-            throw new NotImplementedException();
+            return this.VariableType;
         }
 
         internal virtual void Populate(string property)

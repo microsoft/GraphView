@@ -11,15 +11,10 @@ namespace GraphView
         public GremlinContextVariable GremlinVariable { get; set; }
         public string VariableProperty { get; set; }
 
-        public GremlinVariableProperty(GremlinVariable gremlinVariable, string variableProperty)
+        public GremlinVariableProperty(GremlinVariable gremlinVariable, string variableProperty): base(GremlinVariableType.Scalar)
         {
             GremlinVariable = new GremlinContextVariable(gremlinVariable);
             VariableProperty = variableProperty;
-        }
-
-        internal override GremlinVariableType GetVariableType()
-        {
-            return GremlinVariableType.Scalar;
         }
 
         internal override void Populate(string property)
