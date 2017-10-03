@@ -112,6 +112,11 @@ namespace GraphView
 
     public class GremlinProperty
     {
+        public GremlinKeyword.PropertyCardinality Cardinality { get; set; }
+        public string Key { get; set; }
+        public object Value { get; set; }
+        public Dictionary<string, object> MetaProperties { get; set; }
+
         public GremlinProperty(GremlinKeyword.PropertyCardinality cardinality,
             string key, object value, Dictionary<string, object> metaProperties)
         {
@@ -120,12 +125,7 @@ namespace GraphView
             Value = value;
             MetaProperties = metaProperties ?? new Dictionary<string, object>();
         }
-
-        public GremlinKeyword.PropertyCardinality Cardinality { get; set; }
-        public string Key { get; set; }
-        public object Value { get; set; }
-        public Dictionary<string, object> MetaProperties { get; set; }
-
+        
         public WPropertyExpression ToPropertyExpr()
         {
             Dictionary<WValueExpression, WValueExpression> metaPropertiesExpr = new Dictionary<WValueExpression, WValueExpression>();

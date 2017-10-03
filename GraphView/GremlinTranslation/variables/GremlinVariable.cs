@@ -26,6 +26,7 @@ namespace GraphView
         public List<string> Labels { get; set; }
         public List<string> ProjectedProperties { get; set; }
         public int MinPathLength { get; set; }
+        public GremlinVariableType VariableType { get; set; }
 
         public bool NeedFilter;
 
@@ -34,11 +35,20 @@ namespace GraphView
             this.Labels = new List<string>();
             this.ProjectedProperties = new List<string>();
             this.NeedFilter = false;
+            this.VariableType = GremlinVariableType.Undefined;
+        }
+
+        public GremlinVariable(GremlinVariableType variableType)
+        {
+            this.Labels = new List<string>();
+            this.ProjectedProperties = new List<string>();
+            this.NeedFilter = false;
+            this.VariableType = variableType;
         }
 
         internal virtual GremlinVariableType GetVariableType()
         {
-            throw new NotImplementedException();
+            return this.VariableType;
         }
 
         internal virtual bool Populate(string property, string label = null)

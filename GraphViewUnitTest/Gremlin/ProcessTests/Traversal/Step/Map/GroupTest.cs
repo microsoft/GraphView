@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Configuration;
+using System.Diagnostics;
 using System.Linq;
 using GraphView;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -58,6 +59,21 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
                 foreach (var result in results)
                 {
                     Console.WriteLine(result);
+                }
+            }
+        }
+
+        [TestMethod]
+        [TestModernCompatible()]
+        public void g_V_GroupCount()
+        {
+            using (GraphViewCommand GraphViewCommand = new GraphViewCommand(graphConnection))
+            {
+                var traversal = GraphViewCommand.g().V().GroupCount().Order(GremlinKeyword.Scope.Local).By(GremlinKeyword.Column.Values, GremlinKeyword.Order.Decr);
+                var result = traversal.Next();
+                foreach (var r in result)
+                {
+                    Console.WriteLine(r);
                 }
             }
         }
