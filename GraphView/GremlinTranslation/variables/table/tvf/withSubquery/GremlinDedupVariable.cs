@@ -8,7 +8,7 @@ namespace GraphView
 {
     internal class GremlinDedupVariable : GremlinTableVariable
     {
-        public GremlinContextVariable InputVariable { get; set; }
+        public GremlinVariable InputVariable { get; set; }
         public List<GremlinVariable> DedupVariables { get; set; }
         public GremlinToSqlContext DedupContext { get; set; }
         public GremlinKeyword.Scope Scope { get; set; }
@@ -18,7 +18,7 @@ namespace GraphView
                                     GremlinToSqlContext dedupContext,
                                     GremlinKeyword.Scope scope) : base(GremlinVariableType.Table)
         {
-            InputVariable = new GremlinContextVariable(inputVariable);
+            InputVariable = inputVariable;
             DedupVariables = new List<GremlinVariable>(dedupVariables);
             DedupContext = dedupContext;
             Scope = scope;

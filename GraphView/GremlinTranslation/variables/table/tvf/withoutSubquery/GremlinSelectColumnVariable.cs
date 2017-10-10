@@ -8,12 +8,12 @@ namespace GraphView
 {
     internal class GremlinSelectColumnVariable : GremlinTableVariable
     {
-        public GremlinContextVariable InputVariable { get; set; }
+        public GremlinVariable InputVariable { get; set; }
         public GremlinKeyword.Column Column { get; set; }
 
         public GremlinSelectColumnVariable(GremlinVariable inputVariable, GremlinKeyword.Column column) : base(GremlinVariableType.Table)
         {
-            InputVariable = new GremlinContextVariable(inputVariable);
+            InputVariable = inputVariable;
             Column = column;
         }
 

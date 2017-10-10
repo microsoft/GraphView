@@ -8,11 +8,11 @@ namespace GraphView
 {
     internal class GremlinDropVariable : GremlinTableVariable
     {
-        public GremlinContextVariable DroppedVariable { get; set; }
+        public GremlinVariable DroppedVariable { get; set; }
 
         public GremlinDropVariable(GremlinVariable droppedVariable) : base(GremlinVariableType.NULL)
         {
-            DroppedVariable = new GremlinContextVariable(droppedVariable);
+            DroppedVariable = droppedVariable;
         }
 
         internal override List<GremlinVariable> FetchAllVars()

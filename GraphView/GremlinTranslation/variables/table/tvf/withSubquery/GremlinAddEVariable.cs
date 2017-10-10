@@ -8,7 +8,7 @@ namespace GraphView
 {
     internal class GremlinAddETableVariable: GremlinEdgeTableVariable
     {
-        public GremlinContextVariable InputVariable { get; set; }
+        public GremlinVariable InputVariable { get; set; }
         public GremlinToSqlContext FromVertexContext { get; set; }
         public GremlinToSqlContext ToVertexContext { get; set; }
         public List<GremlinProperty> EdgeProperties { get; set; }
@@ -20,7 +20,7 @@ namespace GraphView
         {
             EdgeProperties = edgeProperties;
             EdgeLabel = edgeLabel;
-            InputVariable = new GremlinContextVariable(inputVariable);
+            InputVariable = inputVariable;
             EdgeType = WEdgeType.OutEdge;
             OtherVIndex = 1;
             ProjectedProperties.Add(GremlinKeyword.Label);

@@ -12,11 +12,11 @@ namespace GraphView
         public int High { get; set; }
         public bool IsReverse { get; set; }
         public GremlinKeyword.Scope Scope { get; set; }
-        public GremlinContextVariable InputVaribale { get; set; }
+        public GremlinVariable InputVaribale { get; set; }
 
         public GremlinRangeVariable(GremlinVariable inputVariable, int low, int high, GremlinKeyword.Scope scope, bool isReverse): base(GremlinVariableType.Table)
         {
-            InputVaribale = new GremlinContextVariable(inputVariable);
+            InputVaribale = inputVariable;
             Low = low;
             High = high;
             Scope = scope;
