@@ -9,11 +9,11 @@ namespace GraphView
     internal class GremlinValuesVariable: GremlinScalarTableVariable
     {
         public List<string> PropertyKeys { get; set; }
-        public GremlinContextVariable ProjectVariable { get; set; }
+        public GremlinVariable ProjectVariable { get; set; }
 
         public GremlinValuesVariable(GremlinVariable projectVariable, List<string> propertyKeys)
         {
-            this.ProjectVariable = new GremlinContextVariable(projectVariable);
+            this.ProjectVariable = projectVariable;
             this.PropertyKeys = new List<string>(propertyKeys);
         }
 

@@ -40,7 +40,8 @@ namespace GraphView
             }
             else if (this.ProjectContext.Populate(property, label))
             {
-                return base.Populate(property, null);
+                base.Populate(property, null);
+                return true;
             }
             else
             {

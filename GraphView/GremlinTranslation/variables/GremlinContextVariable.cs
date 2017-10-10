@@ -46,11 +46,13 @@ namespace GraphView
         {
             if (base.Populate(property, label))
             {
-                return this.RealVariable.Populate(property, null);
+                this.RealVariable.Populate(property, null);
+                return true;
             }
             else if (this.RealVariable.Populate(property, label))
             {
-                return base.Populate(property, null);
+                base.Populate(property, null);
+                return true;
             }
             else
             {

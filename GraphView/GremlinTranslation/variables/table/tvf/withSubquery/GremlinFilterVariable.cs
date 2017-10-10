@@ -5,9 +5,15 @@ namespace GraphView
     internal class GremlinFilterVariable : GremlinTableVariable
     {
         public WBooleanExpression Predicate { get; set; }
+
         public GremlinFilterVariable(WBooleanExpression newPredicate) : base(GremlinVariableType.Table)
         {
             this.Predicate = newPredicate;
+        }
+
+        internal override bool Populate(string property, string label = null)
+        {
+            return false;
         }
 
         public override WTableReference ToTableReference()

@@ -8,7 +8,7 @@ namespace GraphView
 {
     internal class GremlinDedupVariable : GremlinTableVariable
     {
-        public GremlinContextVariable InputVariable { get; set; }
+        public GremlinVariable InputVariable { get; set; }
         public List<GremlinVariable> DedupVariables { get; set; }
         public GremlinToSqlContext DedupContext { get; set; }
         public GremlinKeyword.Scope Scope { get; set; }
@@ -18,7 +18,7 @@ namespace GraphView
                                     GremlinToSqlContext dedupContext,
                                     GremlinKeyword.Scope scope) : base(GremlinVariableType.Table)
         {
-            this.InputVariable = new GremlinContextVariable(inputVariable);
+            this.InputVariable = inputVariable;
             this.DedupVariables = new List<GremlinVariable>(dedupVariables);
             this.DedupContext = dedupContext;
             this.Scope = scope;
@@ -26,20 +26,35 @@ namespace GraphView
 
         internal override bool Populate(string property, string label = null)
         {
-            bool populateSuccess = false;
-            if (this.InputVariable != null)
+            if (base.Populate(property, label))
             {
-                populateSuccess |= this.InputVariable.Populate(property, label);
+                if (this.InputVariable != null)
+                {
+                    this.InputVariable.Populate(property, null);
+                }
+                foreach (var variable in this.DedupVariables)
+                {
+                    variable.Populate(property, null);
+                }
+                return true;
             }
-            foreach (var variable in this.DedupVariables)
+            else
             {
-                populateSuccess |= variable.Populate(property, label);
+                bool populateSuccess = false;
+                if (this.InputVariable != null)
+                {
+                    populateSuccess |= this.InputVariable.Populate(property, label);
+                }
+                foreach (var variable in this.DedupVariables)
+                {
+                    populateSuccess |= variable.Populate(property, label);
+                }
+                if (populateSuccess)
+                {
+                    base.Populate(property, null);
+                }
+                return populateSuccess;
             }
-            if (populateSuccess)
-            {
-                base.Populate(property, null);
-            }
-            return populateSuccess;
         }
 
         internal override List<GremlinVariable> FetchAllVars()

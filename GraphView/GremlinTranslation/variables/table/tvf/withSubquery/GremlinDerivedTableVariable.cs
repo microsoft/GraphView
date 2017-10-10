@@ -20,11 +20,13 @@ namespace GraphView
         {
             if (base.Populate(property, label))
             {
-                return this.SubqueryContext.Populate(property, null);
+                this.SubqueryContext.Populate(property, null);
+                return true;
             }
             else if (this.SubqueryContext.Populate(property, label))
             {
-                return base.Populate(property, null);
+                base.Populate(property, null);
+                return true;
             }
             else
             {

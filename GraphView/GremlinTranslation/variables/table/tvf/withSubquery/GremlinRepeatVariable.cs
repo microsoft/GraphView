@@ -12,8 +12,7 @@ namespace GraphView
         public GremlinContextVariable InputVariable { get; set; }
         public GremlinToSqlContext RepeatContext { get; set; }
         public RepeatCondition RepeatCondition { get; set; }
-
-        private int Count;
+        private int Count { get; set; }
 
         public GremlinRepeatVariable(GremlinVariable inputVariable,
             GremlinToSqlContext repeatContext,

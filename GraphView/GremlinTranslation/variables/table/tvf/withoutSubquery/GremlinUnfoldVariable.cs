@@ -8,22 +8,24 @@ namespace GraphView
 {
     internal class GremlinUnfoldVariable : GremlinTableVariable
     {
-        public GremlinContextVariable UnfoldVariable { get; set; }
+        public GremlinVariable UnfoldVariable { get; set; }
 
         public GremlinUnfoldVariable(GremlinVariable unfoldVariable) : base(GremlinVariableType.Table)
         {
-            this.UnfoldVariable = new GremlinContextVariable(unfoldVariable);
+            this.UnfoldVariable = unfoldVariable;
         }
 
         internal override bool Populate(string property, string label = null)
         {
             if (base.Populate(property, label))
             {
-                return this.UnfoldVariable.Populate(property, null);
+                this.UnfoldVariable.Populate(property, null);
+                return true;
             }
             else if (this.UnfoldVariable.Populate(property, label))
             {
-                return base.Populate(property, null);
+                base.Populate(property, null);
+                return true;
             }
             else
             {

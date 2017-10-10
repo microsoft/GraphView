@@ -29,11 +29,13 @@ namespace GraphView
         {
             if (base.Populate(property, label))
             {
-                return PathVariable.Populate(property, null);
+                PathVariable.Populate(property, null);
+                return true;
             }
             else if (this.PathVariable.Populate(property, label))
             {
-                return base.Populate(property, null);
+                base.Populate(property, null);
+                return true;
             }
             else
             {

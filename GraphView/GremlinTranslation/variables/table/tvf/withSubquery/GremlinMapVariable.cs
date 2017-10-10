@@ -20,11 +20,13 @@ namespace GraphView
         {
             if (base.Populate(property, label))
             {
-                return MapContext.Populate(property, null);
+                MapContext.Populate(property, null);
+                return true;
             }
             else if (this.MapContext.Populate(property, label))
             {
-                return base.Populate(property, null);
+                base.Populate(property, null);
+                return true;
             }
             else
             {

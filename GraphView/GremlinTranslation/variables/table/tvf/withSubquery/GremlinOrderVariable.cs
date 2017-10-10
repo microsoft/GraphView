@@ -11,13 +11,13 @@ namespace GraphView
     {
         public List<Tuple<GremlinToSqlContext, IComparer>> ByModulatingList;
         public GremlinKeyword.Scope Scope { get; set; }
-        public GremlinContextVariable InputVariable { get; set; }
+        public GremlinVariable InputVariable { get; set; }
         public GremlinOrderVariable(GremlinVariable inputVariable, List<Tuple<GremlinToSqlContext, IComparer>> byModulatingList, GremlinKeyword.Scope scope)
             :base(GremlinVariableType.Table)
         {
             this.ByModulatingList = byModulatingList;
             this.Scope = scope;
-            this.InputVariable = new GremlinContextVariable(inputVariable);
+            this.InputVariable = inputVariable;
         }
 
         internal override List<GremlinVariable> FetchAllVars()
@@ -45,11 +45,13 @@ namespace GraphView
         {
             if (base.Populate(property, label))
             {
-                return this.InputVariable.Populate(property, label);
+                this.InputVariable.Populate(property, label);
+                return true;
             }
             else if (this.InputVariable.Populate(property, label))
             {
-                return base.Populate(property, null);
+                base.Populate(property, null);
+                return true;
             }
             else
             {

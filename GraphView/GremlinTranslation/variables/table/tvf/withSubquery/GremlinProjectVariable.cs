@@ -33,7 +33,8 @@ namespace GraphView
                 {
                     context.Populate(property, null);
                 }
-                return base.Populate(property, null);
+                base.Populate(property, null);
+                return true;
             }
             else
             {

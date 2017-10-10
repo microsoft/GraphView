@@ -8,11 +8,16 @@ namespace GraphView
 {
     internal class GremlinIdVariable : GremlinScalarTableVariable
     {
-        public GremlinContextVariable ProjectVariable { get; set; }
+        public GremlinVariable ProjectVariable { get; set; }
 
         public GremlinIdVariable(GremlinVariable projectVariable)
         {
-            this.ProjectVariable = new GremlinContextVariable(projectVariable);
+            this.ProjectVariable = projectVariable;
+        }
+
+        internal override bool Populate(string property, string label = null)
+        {
+            return false;
         }
 
         internal override List<GremlinVariable> FetchAllVars()

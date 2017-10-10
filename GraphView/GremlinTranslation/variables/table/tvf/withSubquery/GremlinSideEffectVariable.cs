@@ -23,6 +23,11 @@ namespace GraphView
             return variableList;
         }
 
+        internal override bool Populate(string property, string label = null)
+        {
+            return false;
+        }
+
         internal override List<GremlinTableVariable> FetchAllTableVars()
         {
             List<GremlinTableVariable> variableList = new List<GremlinTableVariable> { this };

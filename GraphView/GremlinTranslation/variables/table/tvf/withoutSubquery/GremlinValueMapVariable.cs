@@ -10,13 +10,18 @@ namespace GraphView
     {
         public bool IsIncludeTokens { get; set; }
         public List<string> PropertyKeys { get; set; }
-        public GremlinContextVariable InputVariable { get; set; }
+        public GremlinVariable InputVariable { get; set; }
 
         public GremlinValueMapVariable(GremlinVariable inputVariable, bool isIncludeTokens, List<string>  propertyKeys) : base(GremlinVariableType.Table)
         {
-            this.InputVariable = new GremlinContextVariable(inputVariable);
+            this.InputVariable = inputVariable;
             this.IsIncludeTokens = isIncludeTokens;
             this.PropertyKeys = propertyKeys;
+        }
+
+        internal override bool Populate(string property, string label = null)
+        {
+            return false;
         }
 
         internal override List<GremlinVariable> FetchAllVars()

@@ -9,12 +9,12 @@ namespace GraphView
     internal class GremlinPropertiesVariable: GremlinTableVariable
     {
         public List<string> PropertyKeys { get; set; }
-        public GremlinContextVariable InputVariable { get; set; }
+        public GremlinVariable InputVariable { get; set; }
 
         public GremlinPropertiesVariable(GremlinVariable inputVariable, List<string> propertyKeys)
             :base(GremlinVariableType.VertexProperty)
         {
-            this.InputVariable = new GremlinContextVariable(inputVariable);
+            this.InputVariable = inputVariable;
             this.PropertyKeys = new List<string>(propertyKeys);
         }
 

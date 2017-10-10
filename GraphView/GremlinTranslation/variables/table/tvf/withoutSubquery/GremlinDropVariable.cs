@@ -8,11 +8,17 @@ namespace GraphView
 {
     internal class GremlinDropVariable : GremlinTableVariable
     {
-        public GremlinContextVariable DroppedVariable { get; set; }
+        public GremlinVariable DroppedVariable { get; set; }
 
         public GremlinDropVariable(GremlinVariable droppedVariable) : base(GremlinVariableType.NULL)
         {
-            this.DroppedVariable = new GremlinContextVariable(droppedVariable);
+            this.DroppedVariable = droppedVariable;
+        }
+
+        internal override bool Populate(string property, string label = null)
+        {
+            // Because the traversal yields no outgoing objects.
+            return false;
         }
 
         internal override List<GremlinVariable> FetchAllVars()

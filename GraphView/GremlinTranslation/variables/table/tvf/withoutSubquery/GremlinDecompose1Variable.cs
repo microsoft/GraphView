@@ -35,7 +35,8 @@ namespace GraphView
                 {
                     this.ComposeVariable.Populate(property, label);
                 }
-                return base.Populate(property, null);
+                base.Populate(property, null);
+                return true;
             }
             else
             {
@@ -50,8 +51,8 @@ namespace GraphView
                         this.ComposeVariable.Populate(property, sideEffectKey);
                     }
                 }
-
-                return base.Populate(property, null);
+                base.Populate(property, null);
+                return true;
             }
         }
 

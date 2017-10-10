@@ -11,18 +11,23 @@ namespace GraphView
     internal class GremlinUpdatePropertiesVariable : GremlinTableVariable
     {
         public List<GremlinProperty> PropertyList { get; set; }
-        public GremlinContextVariable UpdateVariable { get; set; }
+        public GremlinVariable UpdateVariable { get; set; }
 
         public GremlinUpdatePropertiesVariable(GremlinVariable updateVariable, GremlinProperty property): base(GremlinVariableType.NULL)
         {
-            this.UpdateVariable = new GremlinContextVariable(updateVariable);
+            this.UpdateVariable = updateVariable;
             this.PropertyList = new List<GremlinProperty> { property };
         }
 
         public GremlinUpdatePropertiesVariable(GremlinVariable vertexVariable, List<GremlinProperty> properties) : base(GremlinVariableType.NULL)
         {
-            this.UpdateVariable = new GremlinContextVariable(vertexVariable);
+            this.UpdateVariable = vertexVariable;
             this.PropertyList = properties;
+        }
+
+        internal override bool Populate(string property, string label = null)
+        {
+            return false;
         }
 
         internal override List<GremlinVariable> FetchAllVars()

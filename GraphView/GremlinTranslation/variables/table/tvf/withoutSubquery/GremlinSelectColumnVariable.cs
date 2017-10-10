@@ -8,12 +8,12 @@ namespace GraphView
 {
     internal class GremlinSelectColumnVariable : GremlinTableVariable
     {
-        public GremlinContextVariable InputVariable { get; set; }
+        public GremlinVariable InputVariable { get; set; }
         public GremlinKeyword.Column Column { get; set; }
 
         public GremlinSelectColumnVariable(GremlinVariable inputVariable, GremlinKeyword.Column column) : base(GremlinVariableType.Table)
         {
-            this.InputVariable = new GremlinContextVariable(inputVariable);
+            this.InputVariable = inputVariable;
             this.Column = column;
         }
 
@@ -21,11 +21,13 @@ namespace GraphView
         {
             if (base.Populate(property, label))
             {
-                return this.InputVariable.Populate(property, null);
+                this.InputVariable.Populate(property, null);
+                return true;
             }
             else if (this.InputVariable.Populate(property, label))
             {
-                return base.Populate(property, null);
+                base.Populate(property, null);
+                return true;
             }
             else
             {

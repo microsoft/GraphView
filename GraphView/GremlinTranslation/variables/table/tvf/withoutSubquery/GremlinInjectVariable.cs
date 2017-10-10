@@ -10,11 +10,11 @@ namespace GraphView
     internal class GremlinInjectVariable : GremlinTableVariable
     {
         public object Injection { get; set; }
-        public GremlinContextVariable InputVariable { get; set; }
+        public GremlinVariable InputVariable { get; set; }
 
         public GremlinInjectVariable(GremlinVariable inputVariable, object injection): base(GremlinVariableType.Table)
         {
-            this.InputVariable = new GremlinContextVariable(inputVariable);
+            this.InputVariable = inputVariable;
             this.Injection = injection;
             this.ProjectedProperties.Add(GremlinKeyword.TableDefaultColumnName);
         }
@@ -28,7 +28,7 @@ namespace GraphView
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();
 
-            if (this.InputVariable == null || this.InputVariable.RealVariable == null)
+            if (this.InputVariable == null)
             {
                 //g.Inject()
                 parameters.Add(SqlUtil.GetValueExpr(null));
