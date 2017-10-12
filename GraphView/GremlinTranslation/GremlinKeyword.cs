@@ -94,7 +94,7 @@ namespace GraphView
             public const string OrderGlobal = "OrderGlobal";
             public const string OrderLocal = "OrderLocal";
             public const string Path2 = "Path2";
-            public const string Range = "Range";
+            public const string RangeGlobal = "RangeGlobal";
             public const string Decompose1 = "Decompose1";
             public const string SimplePath = "SimplePath";
             public const string CyclicPath = "CyclicPath";
