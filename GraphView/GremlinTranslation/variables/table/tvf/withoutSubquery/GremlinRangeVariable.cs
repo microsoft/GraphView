@@ -49,13 +49,19 @@ namespace GraphView
         public override WTableReference ToTableReference()
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();
-            parameters.Add(this.InputVaribale.DefaultProjection().ToScalarExpression());
+
+            if (Scope == GremlinKeyword.Scope.Local)
+            {
+                parameters.Add(InputVaribale.DefaultProjection().ToScalarExpression());
+            }
+
             parameters.Add(SqlUtil.GetValueExpr(this.Low));
             parameters.Add(SqlUtil.GetValueExpr(this.High));
-            parameters.Add(this.Scope == GremlinKeyword.Scope.Local ? SqlUtil.GetValueExpr(1) : SqlUtil.GetValueExpr(-1));
             parameters.Add(this.IsReverse ? SqlUtil.GetValueExpr(1): SqlUtil.GetValueExpr(-1));
 
-            var tableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Range, parameters, GetVariableName());
+            var tableRef = Scope == GremlinKeyword.Scope.Global
+                ? SqlUtil.GetFunctionTableReference(GremlinKeyword.func.RangeGlobal, parameters, GetVariableName())
+                : SqlUtil.GetFunctionTableReference(GremlinKeyword.func.RangeLocal, parameters, GetVariableName());
             return SqlUtil.GetCrossApplyTableReference(tableRef);
         }
     }

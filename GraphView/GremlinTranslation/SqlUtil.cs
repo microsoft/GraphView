@@ -451,8 +451,11 @@ namespace GraphView
                 case GremlinKeyword.func.Path2:
                     funcTableRef = new WPath2TableReference();
                     break;
-                case GremlinKeyword.func.Range:
-                    funcTableRef = new WRangeTableReference();
+                case GremlinKeyword.func.RangeGlobal:
+                    funcTableRef = new WRangeGlobalTableReference();
+                    break;
+                case GremlinKeyword.func.RangeLocal:
+                    funcTableRef = new WRangeLocalTableReference();
                     break;
                 case GremlinKeyword.func.Decompose1:
                     funcTableRef = new WDecomposeTableReference();

@@ -730,7 +730,9 @@ namespace GraphView
 
     public partial class WPath2TableReference : WSchemaObjectFunctionTableReference {}
 
-    public partial class WRangeTableReference : WSchemaObjectFunctionTableReference {}
+    public partial class WRangeGlobalTableReference : WSchemaObjectFunctionTableReference {}
+
+    public partial class WRangeLocalTableReference : WSchemaObjectFunctionTableReference { }
 
     public partial class WSelectTableReference : WSchemaObjectFunctionTableReference {}
 

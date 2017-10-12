@@ -82,6 +82,7 @@ namespace GraphView
             public const string Aggregate = "Aggregate";
             public const string Coin = "Coin";
             public const string CountLocal = "CountLocal";
+            public const string RangeGlobal = "RangeGlobal";
             public const string RangeLocal = "RangeLocal";
             public const string MinLocal = "MinLocal";
             public const string MaxLocal = "MaxLocal";
@@ -94,7 +95,6 @@ namespace GraphView
             public const string OrderGlobal = "OrderGlobal";
             public const string OrderLocal = "OrderLocal";
             public const string Path2 = "Path2";
-            public const string Range = "Range";
             public const string Decompose1 = "Decompose1";
             public const string SimplePath = "SimplePath";
             public const string CyclicPath = "CyclicPath";
