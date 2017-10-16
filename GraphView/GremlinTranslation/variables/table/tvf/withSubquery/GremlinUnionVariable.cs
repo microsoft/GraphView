@@ -11,8 +11,7 @@ namespace GraphView
     {
         public List<GremlinToSqlContext> UnionContextList { get; set; }
 
-        public GremlinUnionVariable(List<GremlinToSqlContext> unionContextList, GremlinVariableType variableType)
-            : base(variableType)
+        public GremlinUnionVariable(List<GremlinToSqlContext> unionContextList, GremlinVariableType variableType) : base(variableType)
         {
             this.UnionContextList = unionContextList;
         }

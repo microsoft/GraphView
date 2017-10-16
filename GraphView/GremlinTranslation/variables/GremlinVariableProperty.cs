@@ -11,7 +11,7 @@ namespace GraphView
         public GremlinVariable GremlinVariable { get; set; }
         public string VariableProperty { get; set; }
 
-        public GremlinVariableProperty(GremlinVariable gremlinVariable, string variableProperty): base(GremlinVariableType.Scalar)
+        public GremlinVariableProperty(GremlinVariable gremlinVariable, string variableProperty): base(GremlinVariableType.Property)
         {
             this.GremlinVariable = gremlinVariable;
             this.VariableProperty = variableProperty;

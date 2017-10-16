@@ -12,6 +12,12 @@ namespace GraphView
 
         public GremlinSumLocalVariable(GremlinVariable inputVariable)
         {
+            GremlinVariableType inputVariableType = inputVariable.GetVariableType();
+            if (!(inputVariableType == GremlinVariableType.List || GremlinVariableType.NULL <= inputVariableType && inputVariableType <= GremlinVariableType.Unknown))
+            {
+                throw new SyntaxErrorException("The inputVariable of sum(local) can not be " + inputVariableType);
+            }
+
             this.InputVariable = inputVariable;
         }
 

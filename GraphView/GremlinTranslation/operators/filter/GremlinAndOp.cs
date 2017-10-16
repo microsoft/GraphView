@@ -31,7 +31,7 @@ namespace GraphView
             GremlinToSqlContext inputContext = InputOperator.GetContext();
             if (inputContext.PivotVariable == null)
             {
-                throw new QueryCompilationException("The PivotVariable can't be null.");
+                throw new TranslationException("The PivotVariable of and()-step can't be null.");
             }
 
             List<GremlinToSqlContext> andContexts = new List<GremlinToSqlContext>();

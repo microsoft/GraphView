@@ -12,6 +12,12 @@ namespace GraphView
 
         public GremlinLabelVariable(GremlinVariable projectVariable)
         {
+            GremlinVariableType inputVariableType = projectVariable.GetVariableType();
+            if (!(inputVariableType <= GremlinVariableType.Unknown))
+            {
+                throw new SyntaxErrorException("The inputVariable of label() can not be " + inputVariableType);
+            }
+
             this.ProjectVariable = projectVariable;
         }
 

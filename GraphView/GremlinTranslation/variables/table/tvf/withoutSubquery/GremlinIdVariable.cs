@@ -12,6 +12,13 @@ namespace GraphView
 
         public GremlinIdVariable(GremlinVariable projectVariable)
         {
+            GremlinVariableType inputVariableType = projectVariable.GetVariableType();
+            if (!(inputVariableType <= GremlinVariableType.Unknown || inputVariableType == GremlinVariableType.VertexProperty ||
+                  inputVariableType == GremlinVariableType.Property))
+            {
+                throw new SyntaxErrorException("The inputVariable of id() can not be " + inputVariableType);
+            }
+
             this.ProjectVariable = projectVariable;
         }
 

@@ -21,7 +21,7 @@ namespace GraphView
             GremlinToSqlContext inputContext = GetInputContext();
             if (inputContext.PivotVariable == null)
             {
-                throw new QueryCompilationException("The PivotVariable can't be null.");
+                throw new TranslationException("The PivotVariable of order()-step can't be null.");
             }
 
             if (ByModulatingList.Count == 0)
@@ -48,7 +48,7 @@ namespace GraphView
                     {
                         //FROM selectColumn(C._value, "Keys"/"Values")
                         GremlinToSqlContext newContext = new GremlinToSqlContext();
-                        GremlinOrderLocalInitVariable initVar = new GremlinOrderLocalInitVariable();
+                        GremlinOrderLocalInitVariable initVar = new GremlinOrderLocalInitVariable(inputContext.PivotVariable);
                         newContext.VariableList.Add(initVar);
                         newContext.SetPivotVariable(initVar);
 

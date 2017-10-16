@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace GraphView
 {
-    internal class GremlinStoreVariable : GremlinScalarTableVariable
+    internal class GremlinStoreVariable : GremlinListTableVariable
     {
         public string SideEffectKey { get; set; }
         public GremlinToSqlContext ProjectContext { get; set; }

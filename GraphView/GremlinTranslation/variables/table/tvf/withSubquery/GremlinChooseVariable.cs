@@ -14,8 +14,8 @@ namespace GraphView
         public GremlinToSqlContext ChoiceContext { get; set; }
         public Dictionary<object, GremlinToSqlContext> Options { get; set; }
 
-        public GremlinChooseVariable(GremlinToSqlContext predicateContext, GremlinToSqlContext trueChoiceContext, GremlinToSqlContext falseChocieContext)
-            : base(GremlinVariableType.Table)
+        public GremlinChooseVariable(GremlinToSqlContext predicateContext, GremlinToSqlContext trueChoiceContext,
+            GremlinToSqlContext falseChocieContext, GremlinVariableType variableType) : base(variableType)
         {
             this.PredicateContext = predicateContext;
             this.TrueChoiceContext = trueChoiceContext;
@@ -23,8 +23,8 @@ namespace GraphView
             this.Options = new Dictionary<object, GremlinToSqlContext>();
         }
 
-        public GremlinChooseVariable(GremlinToSqlContext choiceContext, Dictionary<object, GremlinToSqlContext> options)
-            : base(GremlinVariableType.Table)
+        public GremlinChooseVariable(GremlinToSqlContext choiceContext, Dictionary<object, GremlinToSqlContext> options,
+            GremlinVariableType variableType) : base(variableType)
         {
             this.ChoiceContext = choiceContext;
             this.Options = options;

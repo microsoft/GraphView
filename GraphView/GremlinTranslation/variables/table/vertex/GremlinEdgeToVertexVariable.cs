@@ -12,13 +12,19 @@ namespace GraphView
 
         public GremlinEdgeToVertexVariable(GremlinVariable edgeVariable)
         {
+            GremlinVariableType inputVariableType = edgeVariable.GetVariableType();
+            if (!(inputVariableType <= GremlinVariableType.Unknown && inputVariableType != GremlinVariableType.Vertex))
+            {
+                throw new SyntaxErrorException("The inputVariable of VertexToEdgeVariable must be a Edge");
+            }
+
             this.EdgeVariable = edgeVariable;
         }
     }
 
     internal class GremlinEdgeToSourceVertexVariable : GremlinEdgeToVertexVariable
     {
-        public GremlinEdgeToSourceVertexVariable(GremlinVariable edgeVariable) :base (edgeVariable) {}
+        public GremlinEdgeToSourceVertexVariable(GremlinVariable edgeVariable) : base (edgeVariable) {}
         
         public override WTableReference ToTableReference()
         {

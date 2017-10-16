@@ -15,13 +15,8 @@ namespace GraphView
         public List<string> SelectKeys { get; set; }
         public GremlinKeyword.Pop Pop { get; set; }
 
-        public GremlinSelectVariable(GremlinVariable inputVariable, 
-                                    GremlinPathVariable pathVariable, 
-                                    List<GremlinVariable> sideEffectVariables, 
-                                    GremlinKeyword.Pop pop, 
-                                    List<string> selectKeys, 
-                                    List<GremlinToSqlContext> byContexts)
-            : base(GremlinVariableType.Table)
+        public GremlinSelectVariable(GremlinVariable inputVariable,  GremlinPathVariable pathVariable,  List<GremlinVariable> sideEffectVariables, 
+            GremlinKeyword.Pop pop,  List<string> selectKeys,  List<GremlinToSqlContext> byContexts) : base(GremlinVariableType.Unknown)
         {
             this.InputVariable = inputVariable;
             this.PathVariable = pathVariable;

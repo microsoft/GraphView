@@ -7,11 +7,11 @@ using System.Threading.Tasks;
 
 namespace GraphView
 {
-    internal class GremlinDerivedTableVariable: GremlinScalarTableVariable
+    internal class GremlinDerivedTableVariable: GremlinTableVariable
     {
         public GremlinToSqlContext SubqueryContext { get; set; }
 
-        public GremlinDerivedTableVariable(GremlinToSqlContext subqueryContext)
+        public GremlinDerivedTableVariable(GremlinToSqlContext subqueryContext, GremlinVariableType variableType) : base(variableType)
         {
             this.SubqueryContext = subqueryContext;
         }
@@ -58,7 +58,7 @@ namespace GraphView
     {
         public GremlinVariable FoldVariable { get; set; }
 
-        public GremlinFoldVariable(GremlinToSqlContext subqueryContext) : base(subqueryContext)
+        public GremlinFoldVariable(GremlinToSqlContext subqueryContext) : base(subqueryContext, GremlinVariableType.List)
         {
             FoldVariable = subqueryContext.PivotVariable;
         }
@@ -85,7 +85,7 @@ namespace GraphView
 
     internal class GremlinCountVariable : GremlinDerivedTableVariable
     {
-        public GremlinCountVariable(GremlinToSqlContext subqueryContext) : base(subqueryContext) {}
+        public GremlinCountVariable(GremlinToSqlContext subqueryContext) : base(subqueryContext, GremlinVariableType.Scalar) { }
 
         public override WTableReference ToTableReference()
         {
@@ -98,7 +98,7 @@ namespace GraphView
 
     internal class GremlinMinVariable : GremlinDerivedTableVariable
     {
-        public GremlinMinVariable(GremlinToSqlContext subqueryContext) : base(subqueryContext) {}
+        public GremlinMinVariable(GremlinToSqlContext subqueryContext) : base(subqueryContext, GremlinVariableType.Scalar) { }
 
         public override WTableReference ToTableReference()
         {
@@ -115,7 +115,7 @@ namespace GraphView
 
     internal class GremlinMaxVariable : GremlinDerivedTableVariable
     {
-        public GremlinMaxVariable(GremlinToSqlContext subqueryContext) : base(subqueryContext) {}
+        public GremlinMaxVariable(GremlinToSqlContext subqueryContext) : base(subqueryContext, GremlinVariableType.Scalar) { }
 
         public override WTableReference ToTableReference()
         {
@@ -132,7 +132,7 @@ namespace GraphView
 
     internal class GremlinMeanVariable : GremlinDerivedTableVariable
     {
-        public GremlinMeanVariable(GremlinToSqlContext subqueryContext) : base(subqueryContext) {}
+        public GremlinMeanVariable(GremlinToSqlContext subqueryContext) : base(subqueryContext, GremlinVariableType.Scalar) { }
 
         public override WTableReference ToTableReference()
         {
@@ -149,7 +149,7 @@ namespace GraphView
 
     internal class GremlinSumVariable : GremlinDerivedTableVariable
     {
-        public GremlinSumVariable(GremlinToSqlContext subqueryContext) : base(subqueryContext) {}
+        public GremlinSumVariable(GremlinToSqlContext subqueryContext) : base(subqueryContext, GremlinVariableType.Scalar) { }
 
         public override WTableReference ToTableReference()
         {
@@ -168,7 +168,7 @@ namespace GraphView
     {
         public GremlinVariable PathVariable { get; set; }
 
-        public GremlinTreeVariable(GremlinToSqlContext subqueryContext, GremlinVariable pathVariable) : base(subqueryContext)
+        public GremlinTreeVariable(GremlinToSqlContext subqueryContext, GremlinVariable pathVariable) : base(subqueryContext, GremlinVariableType.Tree)
         {
             PathVariable = pathVariable;
         }
@@ -200,7 +200,7 @@ namespace GraphView
         public List<GremlinVariable> SideEffectVariables { get; set; } // such as aggregate("a"), sotre("a"), as("a")
 
         public GremlinCapVariable(GremlinToSqlContext subqueryContext, List<GremlinVariable> sideEffectVariables, List<string> sideEffectKeys)
-            : base(subqueryContext)
+            : base(subqueryContext, GremlinVariableType.List)
         {
             SideEffectKeys = sideEffectKeys;
             SideEffectVariables = sideEffectVariables;

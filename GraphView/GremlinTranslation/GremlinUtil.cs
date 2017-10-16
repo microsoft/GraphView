@@ -46,16 +46,45 @@ namespace GraphView
 
         internal static GremlinVariableType GetContextListType(List<GremlinToSqlContext> contextList)
         {
-            if (contextList.Count == 0) return GremlinVariableType.Table;
-            if (contextList.Count == 1) return contextList.First().PivotVariable.GetVariableType();
-            bool isSameType = true;
-            for (var i = 1; i < contextList.Count; i++)
+            if (contextList.Count == 0)
             {
-                isSameType = contextList[i - 1].PivotVariable.GetVariableType() ==
-                              contextList[i].PivotVariable.GetVariableType();
-                if (isSameType == false) return GremlinVariableType.Table;
+                return GremlinVariableType.NULL;
             }
-            return contextList.First().PivotVariable.GetVariableType();
+
+            HashSet<GremlinVariableType> variableTypes = new HashSet<GremlinVariableType>();
+            foreach (var context in contextList)
+            {
+                variableTypes.Add(context.PivotVariable.GetVariableType());
+            }
+            variableTypes.Remove(GremlinVariableType.NULL);
+
+            GremlinVariableType variableType;
+            if (variableTypes.Count == 0)
+            {
+                variableType = GremlinVariableType.NULL;
+            }
+            else if (variableTypes.Count == 1)
+            {
+                variableType = variableTypes.First();
+            }
+            else
+            {
+                variableTypes.Remove(GremlinVariableType.Vertex);
+                variableTypes.Remove(GremlinVariableType.Edge);
+                variableTypes.Remove(GremlinVariableType.VertexAndEdge);
+
+                if (variableTypes.Count == 0)
+                {
+                    variableType = GremlinVariableType.VertexAndEdge;
+                }
+                else
+                {
+                    variableType = GremlinVariableType.Mixed;
+                }
+            }
+           
+
+            return variableType;
         }
 
         internal static bool IsVertexProperty(string property)

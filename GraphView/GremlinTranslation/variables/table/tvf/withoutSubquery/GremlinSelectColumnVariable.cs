@@ -11,8 +11,14 @@ namespace GraphView
         public GremlinVariable InputVariable { get; set; }
         public GremlinKeyword.Column Column { get; set; }
 
-        public GremlinSelectColumnVariable(GremlinVariable inputVariable, GremlinKeyword.Column column) : base(GremlinVariableType.Table)
+        public GremlinSelectColumnVariable(GremlinVariable inputVariable, GremlinKeyword.Column column) : base(GremlinVariableType.Unknown)
         {
+            GremlinVariableType inputVariableType = inputVariable.GetVariableType();
+            if (!(GremlinVariableType.NULL <= inputVariableType && inputVariableType <= GremlinVariableType.Map))
+            {
+                throw new SyntaxErrorException("The inputVariable of select() can not be " + inputVariableType);
+            }
+
             this.InputVariable = inputVariable;
             this.Column = column;
         }
@@ -56,7 +62,7 @@ namespace GraphView
 
     internal class GremlinOrderLocalInitVariable : GremlinVariable
     {
-        public GremlinOrderLocalInitVariable(): base(GremlinVariableType.Scalar)
+        public GremlinOrderLocalInitVariable(GremlinVariable inputVariable): base(inputVariable.GetVariableType())
         {
             this.VariableName = GremlinKeyword.Compose1TableDefaultName;
         }

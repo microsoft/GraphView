@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace GraphView
 {
-    internal class GremlinDedupVariable : GremlinTableVariable
+    internal class GremlinDedupVariable : GremlinFilterTableVariable
     {
         public GremlinVariable InputVariable { get; set; }
         public List<GremlinVariable> DedupVariables { get; set; }
@@ -16,7 +16,7 @@ namespace GraphView
         public GremlinDedupVariable(GremlinVariable inputVariable, 
                                     List<GremlinVariable> dedupVariables, 
                                     GremlinToSqlContext dedupContext,
-                                    GremlinKeyword.Scope scope) : base(GremlinVariableType.Table)
+                                    GremlinKeyword.Scope scope) : base(inputVariable.GetVariableType())
         {
             this.InputVariable = inputVariable;
             this.DedupVariables = new List<GremlinVariable>(dedupVariables);

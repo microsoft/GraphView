@@ -9,7 +9,7 @@ namespace GraphView
 {
     internal class GremlinFreeEdgeVariable : GremlinEdgeTableVariable
     {
-        private bool IsTraversalToBound;
+        private bool IsTraversalToBound { get; set; }
 
         public GremlinFreeEdgeVariable(WEdgeType edgeType)
         {
@@ -55,7 +55,7 @@ namespace GraphView
             currentContext.SetPivotVariable(outVertex);
         }
 
-        internal override void BothV(GremlinToSqlContext currentContext)
+        internal override void BothV1(GremlinToSqlContext currentContext)
         {
             if (this.IsTraversalToBound)
             {

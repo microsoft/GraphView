@@ -10,7 +10,10 @@ namespace GraphView
     {
         public GremlinVariable UnfoldVariable { get; set; }
 
-        public GremlinUnfoldVariable(GremlinVariable unfoldVariable) : base(GremlinVariableType.Table)
+        public GremlinUnfoldVariable(GremlinVariable unfoldVariable) : base(
+            unfoldVariable.GetVariableType() == GremlinVariableType.Map
+                ? GremlinVariableType.MapEntry
+                : GremlinVariableType.Unknown) 
         {
             this.UnfoldVariable = unfoldVariable;
         }

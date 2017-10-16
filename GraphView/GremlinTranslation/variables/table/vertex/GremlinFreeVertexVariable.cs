@@ -10,7 +10,7 @@ namespace GraphView
 {
     internal class GremlinFreeVertexVariable : GremlinVertexTableVariable
     {
-        private bool IsTraversalToBound;
+        private bool IsTraversalToBound { get; set; }
 
         public override WTableReference ToTableReference()
         {

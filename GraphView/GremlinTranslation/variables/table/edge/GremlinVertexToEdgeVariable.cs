@@ -12,6 +12,12 @@ namespace GraphView
 
         public GremlinVertexToEdgeVariable(GremlinVariable vertexVariable)
         {
+            GremlinVariableType inputVariableType = vertexVariable.GetVariableType();
+            if (!(inputVariableType <= GremlinVariableType.Unknown && inputVariableType != GremlinVariableType.Edge))
+            {
+                throw new SyntaxErrorException("The inputVariable of VertexToEdgeVariable must be a vertex");
+            }
+
             this.VertexVariable = vertexVariable;
         }
     }

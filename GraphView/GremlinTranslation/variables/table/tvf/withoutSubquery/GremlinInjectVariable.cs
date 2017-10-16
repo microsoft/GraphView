@@ -12,7 +12,8 @@ namespace GraphView
         public object Injection { get; set; }
         public GremlinVariable InputVariable { get; set; }
 
-        public GremlinInjectVariable(GremlinVariable inputVariable, object injection): base(GremlinVariableType.Table)
+        public GremlinInjectVariable(GremlinVariable inputVariable, object injection) : base(
+            inputVariable?.GetVariableType() == GremlinVariableType.Scalar ? GremlinVariableType.Scalar : GremlinVariableType.Mixed)
         {
             this.InputVariable = inputVariable;
             this.Injection = injection;

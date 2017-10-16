@@ -13,7 +13,7 @@ namespace GraphView
         public GremlinKeyword.Scope Scope { get; set; }
         public GremlinVariable InputVariable { get; set; }
         public GremlinOrderVariable(GremlinVariable inputVariable, List<Tuple<GremlinToSqlContext, IComparer>> byModulatingList, GremlinKeyword.Scope scope)
-            :base(GremlinVariableType.Table)
+            :base(inputVariable.GetVariableType())
         {
             this.ByModulatingList = byModulatingList;
             this.Scope = scope;

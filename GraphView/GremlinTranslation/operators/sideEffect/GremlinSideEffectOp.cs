@@ -20,7 +20,7 @@ namespace GraphView
             GremlinToSqlContext inputContext = GetInputContext();
             if (inputContext.PivotVariable == null)
             {
-                throw new QueryCompilationException("The PivotVariable can't be null.");
+                throw new TranslationException("The PivotVariable of sideEffect()-step can't be null.");
             }
 
             SideEffectTraversal.GetStartOp().InheritedVariableFromParent(inputContext);

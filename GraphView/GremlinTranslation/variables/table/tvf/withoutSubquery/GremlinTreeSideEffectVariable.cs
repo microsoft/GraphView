@@ -6,12 +6,12 @@ using System.Threading.Tasks;
 
 namespace GraphView
 {
-    internal class GremlinTreeSideEffectVariable : GremlinScalarTableVariable
+    internal class GremlinTreeSideEffectVariable : GremlinTableVariable
     {
         public string SideEffectKey { get; set; }
         public GremlinPathVariable PathVariable { get; set; }
 
-        public GremlinTreeSideEffectVariable(string sideEffectKey, GremlinPathVariable pathVariable)
+        public GremlinTreeSideEffectVariable(string sideEffectKey, GremlinPathVariable pathVariable) : base(GremlinVariableType.Tree)
         {
             this.SideEffectKey = sideEffectKey;
             this.PathVariable = pathVariable;

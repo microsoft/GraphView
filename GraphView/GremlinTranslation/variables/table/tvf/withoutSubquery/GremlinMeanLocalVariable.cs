@@ -12,6 +12,12 @@ namespace GraphView
 
         public GremlinMeanLocalVariable(GremlinVariable inputVariable)
         {
+            GremlinVariableType inputVariableType = inputVariable.GetVariableType();
+            if (!(inputVariableType == GremlinVariableType.List || GremlinVariableType.NULL <= inputVariableType && inputVariableType <= GremlinVariableType.Unknown))
+            {
+                throw new SyntaxErrorException("The inputVariable of mean(local) can not be " + inputVariableType);
+            }
+
             this.InputVariable = inputVariable;
         }
 

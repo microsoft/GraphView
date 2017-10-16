@@ -10,8 +10,7 @@ namespace GraphView
     {
         public GremlinToSqlContext SideEffectContext { get; set; }
 
-        public GremlinSideEffectVariable(GremlinToSqlContext sideEffectContext)
-            : base(GremlinVariableType.Table)
+        public GremlinSideEffectVariable(GremlinVariable inputVariable, GremlinToSqlContext sideEffectContext) : base(inputVariable.GetVariableType())
         {
             this.SideEffectContext = sideEffectContext;
         }

@@ -14,8 +14,8 @@ namespace GraphView
         public List<GremlinToSqlContext> ByContexts { get; set; }
         public List<Tuple<string, string> > LabelPropertyList { get; set; }
 
-        public GremlinPathVariable(List<GremlinVariable> stepList, List<GremlinToSqlContext> byContexts = null, string fromLabel = null, string toLabel = null)
-            : base(GremlinVariableType.Table)
+        public GremlinPathVariable(List<GremlinVariable> stepList, List<GremlinToSqlContext> byContexts = null,
+            string fromLabel = null, string toLabel = null) : base(GremlinVariableType.Path)
         {
             NormalizePathAndLabels(stepList, fromLabel, toLabel);
 

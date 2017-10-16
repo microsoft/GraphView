@@ -6,12 +6,12 @@ using System.Threading.Tasks;
 
 namespace GraphView
 {
-    internal class GremlinSubgraphVariable : GremlinScalarTableVariable
+    internal class GremlinSubgraphVariable : GremlinTableVariable
     {
         public string SideEffectKey { get; set; }
         public GremlinToSqlContext DummyContext { get; set; }
 
-        public GremlinSubgraphVariable(GremlinToSqlContext dummyContext, string sideEffectKey)
+        public GremlinSubgraphVariable(GremlinToSqlContext dummyContext, string sideEffectKey) : base(GremlinVariableType.Subgraph)
         {
             this.SideEffectKey = sideEffectKey;
             this.DummyContext = dummyContext;

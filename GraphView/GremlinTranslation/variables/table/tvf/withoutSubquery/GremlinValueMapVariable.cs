@@ -6,14 +6,20 @@ using System.Threading.Tasks;
 
 namespace GraphView
 {
-    internal class GremlinValueMapVariable : GremlinTableVariable
+    internal class GremlinValueMapVariable : GremlinMapTableVariable
     {
         public bool IsIncludeTokens { get; set; }
         public List<string> PropertyKeys { get; set; }
         public GremlinVariable InputVariable { get; set; }
 
-        public GremlinValueMapVariable(GremlinVariable inputVariable, bool isIncludeTokens, List<string>  propertyKeys) : base(GremlinVariableType.Table)
+        public GremlinValueMapVariable(GremlinVariable inputVariable, bool isIncludeTokens, List<string>  propertyKeys)
         {
+            GremlinVariableType inputVariableType = inputVariable.GetVariableType();
+            if (!(inputVariableType <= GremlinVariableType.Unknown))
+            {
+                throw new SyntaxErrorException("The inputVariable of valueMap() can not be " + inputVariableType);
+            }
+
             this.InputVariable = inputVariable;
             this.IsIncludeTokens = isIncludeTokens;
             this.PropertyKeys = propertyKeys;

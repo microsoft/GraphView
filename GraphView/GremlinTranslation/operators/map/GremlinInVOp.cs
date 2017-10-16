@@ -15,7 +15,7 @@ namespace GraphView
             GremlinToSqlContext inputContext = GetInputContext();
             if (inputContext.PivotVariable == null)
             {
-                throw new QueryCompilationException("The PivotVariable can't be null.");
+                throw new TranslationException("The PivotVariable of inV()-step can't be null.");
             }
 
             inputContext.PivotVariable.InV(inputContext);

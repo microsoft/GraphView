@@ -10,8 +10,7 @@ namespace GraphView
     {
         public GremlinToSqlContext MapContext { get; set; }
 
-        public GremlinMapVariable(GremlinToSqlContext mapContext, GremlinVariableType variableType)
-            : base(variableType)
+        public GremlinMapVariable(GremlinToSqlContext mapContext, GremlinVariableType variableType) : base(variableType)
         {
             this.MapContext = mapContext;
         }

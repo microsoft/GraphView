@@ -25,7 +25,7 @@ namespace GraphView
             GremlinToSqlContext inputContext = GetInputContext();
             if (inputContext.PivotVariable == null)
             {
-                throw new QueryCompilationException("This step should follow by a vertex variable.");
+                throw new TranslationException("The PivotVariable of out()-step can't be null.");
             }
 
             inputContext.PivotVariable.Out(inputContext, EdgeLabels);

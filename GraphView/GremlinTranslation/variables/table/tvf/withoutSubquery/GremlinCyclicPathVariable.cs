@@ -6,11 +6,11 @@ using System.Threading.Tasks;
 
 namespace GraphView
 {
-    internal class GremlinCyclicPathVariable : GremlinTableVariable
+    internal class GremlinCyclicPathVariable : GremlinFilterTableVariable
     {
         public GremlinPathVariable PathVariable { get; set; }
 
-        public GremlinCyclicPathVariable(GremlinPathVariable pathVariable) : base(GremlinVariableType.Table)
+        public GremlinCyclicPathVariable(GremlinVariable inputVariable, GremlinPathVariable pathVariable) : base(inputVariable.GetVariableType())
         {
             this.PathVariable = pathVariable;
         }

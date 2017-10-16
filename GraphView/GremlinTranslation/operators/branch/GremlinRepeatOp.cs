@@ -45,7 +45,7 @@ namespace GraphView
             GremlinToSqlContext inputContext = GetInputContext();
             if (inputContext.PivotVariable == null)
             {
-                throw new QueryCompilationException("The PivotVariable can't be null.");
+                throw new TranslationException("The PivotVariable of repeat()-step can't be null.");
             }
 
             // Convert GremlinParentContextOp to GremlinRepeatParentContextOp

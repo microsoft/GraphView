@@ -6,14 +6,19 @@ using System.Threading.Tasks;
 
 namespace GraphView
 {
-    internal class GremlinPropertiesVariable: GremlinTableVariable
+    internal class GremlinPropertiesVariable: GremlinVertexPropertyTableVariable
     {
         public List<string> PropertyKeys { get; set; }
         public GremlinVariable InputVariable { get; set; }
 
         public GremlinPropertiesVariable(GremlinVariable inputVariable, List<string> propertyKeys)
-            :base(GremlinVariableType.VertexProperty)
         {
+            GremlinVariableType inputVariableType = inputVariable.GetVariableType();
+            if (!(inputVariableType <= GremlinVariableType.Unknown || inputVariableType == GremlinVariableType.VertexProperty))
+            {
+                throw new SyntaxErrorException("The inputVariable of properties() can not be " + inputVariableType);
+            }
+
             this.InputVariable = inputVariable;
             this.PropertyKeys = new List<string>(propertyKeys);
         }

@@ -2,11 +2,11 @@
 
 namespace GraphView
 {
-    internal class GremlinFilterVariable : GremlinTableVariable
+    internal class GremlinFilterVariable : GremlinFilterTableVariable
     {
         public WBooleanExpression Predicate { get; set; }
 
-        public GremlinFilterVariable(WBooleanExpression newPredicate) : base(GremlinVariableType.Table)
+        public GremlinFilterVariable(GremlinVariable inputVariable, WBooleanExpression newPredicate) : base(inputVariable.GetVariableType())
         {
             this.Predicate = newPredicate;
         }

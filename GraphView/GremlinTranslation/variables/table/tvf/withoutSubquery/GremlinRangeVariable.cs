@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace GraphView
 {
-    internal class GremlinRangeVariable : GremlinTableVariable
+    internal class GremlinRangeVariable : GremlinFilterTableVariable
     {
         public int Low { get; set; }
         public int High { get; set; }
@@ -14,7 +14,7 @@ namespace GraphView
         public GremlinKeyword.Scope Scope { get; set; }
         public GremlinVariable InputVaribale { get; set; }
 
-        public GremlinRangeVariable(GremlinVariable inputVariable, int low, int high, GremlinKeyword.Scope scope, bool isReverse): base(GremlinVariableType.Table)
+        public GremlinRangeVariable(GremlinVariable inputVariable, int low, int high, GremlinKeyword.Scope scope, bool isReverse): base(inputVariable.GetVariableType())
         {
             this.InputVaribale = inputVariable;
             this.Low = low;

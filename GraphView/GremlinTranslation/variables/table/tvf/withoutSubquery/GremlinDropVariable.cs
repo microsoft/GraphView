@@ -6,11 +6,11 @@ using System.Threading.Tasks;
 
 namespace GraphView
 {
-    internal class GremlinDropVariable : GremlinTableVariable
+    internal class GremlinDropVariable : GremlinNULLTableVariable
     {
         public GremlinVariable DroppedVariable { get; set; }
 
-        public GremlinDropVariable(GremlinVariable droppedVariable) : base(GremlinVariableType.NULL)
+        public GremlinDropVariable(GremlinVariable droppedVariable)
         {
             this.DroppedVariable = droppedVariable;
         }

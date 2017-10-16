@@ -25,7 +25,7 @@ namespace GraphView
             GremlinToSqlContext inputContext = GetInputContext();
             if (inputContext.PivotVariable == null)
             {
-                throw new QueryCompilationException("The PivotVariable can't be null.");
+                throw new TranslationException("The PivotVariable of dedup()-step can't be null.");
             }
 
             // Dedup(Local, "x", "y"), the dedupLabels should be ignored
@@ -38,7 +38,11 @@ namespace GraphView
 
         public override void ModulateBy(GraphTraversal traversal)
         {
-            if (Scope == GremlinKeyword.Scope.Local) throw new SyntaxErrorException("Dedup(Local) can't be modulated by by()");
+            if (Scope == GremlinKeyword.Scope.Local)
+            {
+                throw new SyntaxErrorException("Dedup(Local) can't be modulated by by()");
+            }
+
             ByTraversal = traversal;
         }
     }

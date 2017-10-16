@@ -12,6 +12,13 @@ namespace GraphView
 
         public GremlinKeyVariable(GremlinVariable projectVariable)
         {
+            GremlinVariableType inputVariableType = projectVariable.GetVariableType();
+            if (!(GremlinVariableType.NULL <= inputVariableType && inputVariableType <= GremlinVariableType.Unknown ||
+                  inputVariableType == GremlinVariableType.VertexProperty || inputVariableType == GremlinVariableType.Property))
+            {
+                throw new SyntaxErrorException("The inputVariable of key() can not be " + inputVariableType);
+            }
+
             this.ProjectVariable = projectVariable;
         }
 

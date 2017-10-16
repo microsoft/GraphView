@@ -6,11 +6,11 @@ using System.Threading.Tasks;
 
 namespace GraphView
 {
-    internal class GremlinCoinVariable : GremlinTableVariable
+    internal class GremlinCoinVariable : GremlinFilterTableVariable
     {
         public double Probability { get; set; }
 
-        public GremlinCoinVariable(double probability) : base(GremlinVariableType.Table)
+        public GremlinCoinVariable(GremlinVariable inputVariable, double probability) : base(inputVariable.GetVariableType())
         {
             this.Probability = probability;
         }

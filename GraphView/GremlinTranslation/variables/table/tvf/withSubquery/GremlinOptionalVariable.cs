@@ -11,10 +11,8 @@ namespace GraphView
         public GremlinToSqlContext OptionalContext { get; set; }
         public GremlinContextVariable InputVariable { get; set; }
 
-        public GremlinOptionalVariable(GremlinVariable inputVariable,
-                                       GremlinToSqlContext context,
-                                       GremlinVariableType variableType)
-            : base(variableType)
+        public GremlinOptionalVariable(GremlinVariable inputVariable, GremlinToSqlContext context,
+            GremlinVariableType variableType) : base(variableType)
         {
             inputVariable.ProjectedProperties.Clear();
             this.OptionalContext = context;

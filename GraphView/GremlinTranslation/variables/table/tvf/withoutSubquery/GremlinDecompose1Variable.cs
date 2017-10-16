@@ -11,13 +11,13 @@ namespace GraphView
         public GremlinVariable ComposeVariable { get; set; }
         public List<string> SideEffectKeys { get; set; }
         
-        public GremlinDecompose1Variable(GremlinVariable composeVariable) : base(GremlinVariableType.Table)
+        public GremlinDecompose1Variable(GremlinVariable composeVariable) : base(GremlinVariableType.Unknown)
         {
             this.ComposeVariable = composeVariable;
             this.SideEffectKeys = new List<string>();
         }
 
-        public GremlinDecompose1Variable(GremlinVariable composeVariable, List<string> sideEffectKeys) : base(GremlinVariableType.Table)
+        public GremlinDecompose1Variable(GremlinVariable composeVariable, List<string> sideEffectKeys) : base(GremlinVariableType.Unknown)
         {
             this.ComposeVariable = composeVariable;
             this.SideEffectKeys = sideEffectKeys;

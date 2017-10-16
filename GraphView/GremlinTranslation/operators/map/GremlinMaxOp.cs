@@ -20,7 +20,7 @@ namespace GraphView
             GremlinToSqlContext inputContext = GetInputContext();
             if (inputContext.PivotVariable == null)
             {
-                throw new QueryCompilationException("The PivotVariable can't be null.");
+                throw new TranslationException("The PivotVariable of max()-step can't be null.");
             }
 
             if (Scope == GremlinKeyword.Scope.Global)

@@ -19,7 +19,11 @@ namespace GraphView
 
         public GremlinAddVOp(params object[] propertyKeyValues)
         {
-            if (propertyKeyValues.Length > 1 && propertyKeyValues.Length % 2 != 0) throw new Exception("The parameter of property should be even");
+            if (propertyKeyValues.Length > 1 && propertyKeyValues.Length % 2 != 0)
+            {
+                throw new Exception("The parameter of property should be even");
+            }
+
             PropertyKeyValues = new List<GremlinProperty>();
             for (var i = 0; i < propertyKeyValues.Length; i += 2)
             {

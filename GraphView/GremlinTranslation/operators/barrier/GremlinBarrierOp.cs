@@ -24,7 +24,7 @@ namespace GraphView
             GremlinToSqlContext inputContext = GetInputContext();
             if (inputContext.PivotVariable == null)
             {
-                throw new QueryCompilationException("The PivotVariable can't be null.");
+                throw new TranslationException("The PivotVariable of barrier()-step can't be null.");
             }
 
             //maxBarrierSize is useless for our runtime, so we won't use this parameter

@@ -8,18 +8,18 @@ using GraphView;
 
 namespace GraphView
 {
-    internal class GremlinUpdatePropertiesVariable : GremlinTableVariable
+    internal class GremlinUpdatePropertiesVariable : GremlinNULLTableVariable
     {
         public List<GremlinProperty> PropertyList { get; set; }
         public GremlinVariable UpdateVariable { get; set; }
 
-        public GremlinUpdatePropertiesVariable(GremlinVariable updateVariable, GremlinProperty property): base(GremlinVariableType.NULL)
+        public GremlinUpdatePropertiesVariable(GremlinVariable updateVariable, GremlinProperty property)
         {
             this.UpdateVariable = updateVariable;
             this.PropertyList = new List<GremlinProperty> { property };
         }
 
-        public GremlinUpdatePropertiesVariable(GremlinVariable vertexVariable, List<GremlinProperty> properties) : base(GremlinVariableType.NULL)
+        public GremlinUpdatePropertiesVariable(GremlinVariable vertexVariable, List<GremlinProperty> properties)
         {
             this.UpdateVariable = vertexVariable;
             this.PropertyList = properties;
