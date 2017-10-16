@@ -13,9 +13,12 @@ namespace GraphView
         public GremlinToSqlContext ToVertexContext { get; set; }
         public List<GremlinProperty> EdgeProperties { get; set; }
         public string EdgeLabel { get; set; }
+        public bool IsFirstTableReference { get; set; }
         private int OtherVIndex;
 
-        public GremlinAddETableVariable(GremlinVariable inputVariable, string edgeLabel, List<GremlinProperty> edgeProperties, GremlinToSqlContext fromContext, GremlinToSqlContext toContext)
+        public GremlinAddETableVariable(GremlinVariable inputVariable, string edgeLabel,
+            List<GremlinProperty> edgeProperties, GremlinToSqlContext fromContext, GremlinToSqlContext toContext,
+            bool isFirstTableReference = false)
         {
             this.EdgeProperties = edgeProperties;
             this.EdgeLabel = edgeLabel;
@@ -25,6 +28,7 @@ namespace GraphView
             this.ProjectedProperties.Add(GremlinKeyword.Label);
             this.FromVertexContext = fromContext;
             this.ToVertexContext = toContext;
+            this.IsFirstTableReference = isFirstTableReference;
 
             foreach (var edgeProperty in this.EdgeProperties)
             {
@@ -56,7 +60,10 @@ namespace GraphView
         internal override List<GremlinVariable> FetchAllVars()
         {
             List<GremlinVariable> variableList = new List<GremlinVariable>() {this};
-            variableList.Add(this.InputVariable);
+            if (this.InputVariable != null)
+            {
+                variableList.Add(this.InputVariable);
+            }
             if (this.FromVertexContext != null)
             {
                 variableList.AddRange(this.FromVertexContext.FetchAllVars());
@@ -114,9 +121,12 @@ namespace GraphView
                 parameters.Add(SqlUtil.GetValueExpr(property.Key));
                 parameters.Add(SqlUtil.GetValueExpr(property.Value));
             }
-            var tableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.AddE, parameters, GetVariableName());
 
-            return SqlUtil.GetCrossApplyTableReference(tableRef);
+            var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.AddE, parameters, GetVariableName());
+            var crossApplyTableRef = SqlUtil.GetCrossApplyTableReference(secondTableRef);
+            crossApplyTableRef.FirstTableRef = this.IsFirstTableReference ? SqlUtil.GetDerivedTable(SqlUtil.GetSimpleSelectQueryBlock("1"), "_") : null;
+
+            return SqlUtil.GetCrossApplyTableReference(crossApplyTableRef);
         }
 
         private WSelectQueryBlock GetSelectQueryBlock(GremlinToSqlContext context)

@@ -23,19 +23,29 @@ namespace GraphView
         {
             GremlinToSqlContext inputContext = GetInputContext();
 
-            if (inputContext.PivotVariable == null)
-            {
-                throw new QueryCompilationException("AddE should follow by a Vertex");
-            }
-
             FromVertexTraversal?.GetStartOp().InheritedVariableFromParent(inputContext);
             GremlinToSqlContext fromVertexContext = FromVertexTraversal?.GetEndOp().GetContext();
 
             ToVertexTraversal?.GetStartOp().InheritedVariableFromParent(inputContext);
             GremlinToSqlContext toVertexContext = ToVertexTraversal?.GetEndOp().GetContext();
 
-            inputContext.PivotVariable.AddE(inputContext, EdgeLabel, EdgeProperties, fromVertexContext, toVertexContext);
+            if (inputContext.PivotVariable == null)
+            {
+                if (fromVertexContext == null || toVertexContext == null)
+                {
+                    throw new SyntaxErrorException("The PivotVariable of addE()-step and fromTraversal( or toTraversal) can't be null at the same time.");
+                }
 
+                GremlinAddETableVariable newTableVariable = new GremlinAddETableVariable(null, EdgeLabel, EdgeProperties, fromVertexContext, toVertexContext, true);
+                inputContext.VariableList.Add(newTableVariable);
+                inputContext.TableReferencesInFromClause.Add(newTableVariable);
+                inputContext.SetPivotVariable(newTableVariable);
+            }
+            else
+            {
+                inputContext.PivotVariable.AddE(inputContext, EdgeLabel, EdgeProperties, fromVertexContext, toVertexContext);
+            }
+            
             return inputContext;
         }
     }
