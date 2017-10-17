@@ -4510,6 +4510,37 @@ namespace GraphView
 
                     return r;
                 }
+                else if (selectObj is TreeField)
+                {
+                    TreeField inputTree = (TreeField)selectObj;
+                    List<FieldObject> columns = new List<FieldObject>();
+
+                    foreach (var child in inputTree.Children)
+                    {
+                        if (this.isSelectKeys)
+                        {
+                            columns.Add(child.Key);
+                        }
+                        else
+                        {
+                            columns.Add(child.Value);
+                        }
+                    }
+
+                    foreach (string rawRecordColumnName in this.populateColumns)
+                    {
+                        if (rawRecordColumnName.Equals(GremlinKeyword.TableDefaultColumnName))
+                        {
+                            r.Append(new CollectionField(columns));
+                        }
+                        else
+                        {
+                            r.Append((FieldObject)null);
+                        }
+                    }
+
+                    return r;
+                }
                 throw new GraphViewException(string.Format("The provided object does not have acessible {0}.",
                     this.isSelectKeys ? "keys" : "values"));
             }

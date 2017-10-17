@@ -14,7 +14,8 @@ namespace GraphView
         public GremlinSelectColumnVariable(GremlinVariable inputVariable, GremlinKeyword.Column column) : base(GremlinVariableType.Unknown)
         {
             GremlinVariableType inputVariableType = inputVariable.GetVariableType();
-            if (!(GremlinVariableType.NULL <= inputVariableType && inputVariableType <= GremlinVariableType.Map))
+            if (!(GremlinVariableType.NULL <= inputVariableType && inputVariableType <= GremlinVariableType.Map ||
+                  inputVariableType == GremlinVariableType.Path || inputVariableType == GremlinVariableType.Tree))
             {
                 throw new SyntaxErrorException("The inputVariable of select() can not be " + inputVariableType);
             }
