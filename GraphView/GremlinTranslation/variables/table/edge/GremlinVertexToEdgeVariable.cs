@@ -30,7 +30,6 @@ namespace GraphView
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();
             parameters.Add(this.VertexVariable.DefaultProjection().ToScalarExpression());
-            parameters.Add(SqlUtil.GetValueExpr(this.DefaultProperty()));
             parameters.AddRange(this.ProjectedProperties.Select(SqlUtil.GetValueExpr));
             WTableReference tableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.VertexToForwardEdge, parameters, this.GetVariableName());
             return SqlUtil.GetCrossApplyTableReference(tableRef);
@@ -45,7 +44,6 @@ namespace GraphView
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();
             parameters.Add(this.VertexVariable.DefaultProjection().ToScalarExpression());
-            parameters.Add(SqlUtil.GetValueExpr(this.DefaultProperty()));
             parameters.AddRange(this.ProjectedProperties.Select(SqlUtil.GetValueExpr));
             WTableReference tableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.VertexToBackwardEdge, parameters, this.GetVariableName());
             return SqlUtil.GetCrossApplyTableReference(tableRef);
@@ -60,7 +58,6 @@ namespace GraphView
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();
             parameters.Add(this.VertexVariable.DefaultProjection().ToScalarExpression());
-            parameters.Add(SqlUtil.GetValueExpr(this.DefaultProperty()));
             parameters.AddRange(this.ProjectedProperties.Select(SqlUtil.GetValueExpr));
             WTableReference tableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.VertexToBothEdge, parameters, this.GetVariableName());
             return SqlUtil.GetCrossApplyTableReference(tableRef);

@@ -380,7 +380,7 @@ namespace GraphView
                     funcTableRef = new WProjectTableReference();
                     break;
                 case GremlinKeyword.func.AddV:
-                    funcTableRef = new WAddVTableReference2();
+                    funcTableRef = new WAddVTableReference();
                     break;
                 case GremlinKeyword.func.AddE:
                     funcTableRef = new WAddETableReference();

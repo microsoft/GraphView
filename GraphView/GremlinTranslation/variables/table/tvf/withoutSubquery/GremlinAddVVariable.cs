@@ -64,7 +64,7 @@ namespace GraphView
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();
             parameters.Add(SqlUtil.GetValueExpr(this.VertexLabel));
-            this.VertexProperties.Add(new GremlinProperty(GremlinKeyword.PropertyCardinality.List, GremlinKeyword.Star, null, null));
+            // this.VertexProperties.Add(new GremlinProperty(GremlinKeyword.PropertyCardinality.List, GremlinKeyword.Star, null, null));
             parameters.AddRange(this.VertexProperties.Select(property => property.ToPropertyExpr()));
             var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.AddV, parameters, GetVariableName());
             var crossApplyTableRef = SqlUtil.GetCrossApplyTableReference(secondTableRef);

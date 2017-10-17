@@ -30,7 +30,6 @@ namespace GraphView
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();
             parameters.Add(this.EdgeVariable.DefaultProjection().ToScalarExpression());
-            parameters.Add(SqlUtil.GetValueExpr(this.DefaultProperty()));
             parameters.AddRange(this.ProjectedProperties.Select(SqlUtil.GetValueExpr));
             WTableReference tableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.EdgeToSourceVertex, parameters, this.GetVariableName());
             return SqlUtil.GetCrossApplyTableReference(tableRef);
@@ -45,7 +44,6 @@ namespace GraphView
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();
             parameters.Add(this.EdgeVariable.DefaultProjection().ToScalarExpression());
-            parameters.Add(SqlUtil.GetValueExpr(this.DefaultProperty()));
             parameters.AddRange(this.ProjectedProperties.Select(SqlUtil.GetValueExpr));
             WTableReference tableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.EdgeToSinkVertex, parameters, this.GetVariableName());
             return SqlUtil.GetCrossApplyTableReference(tableRef);
@@ -60,7 +58,6 @@ namespace GraphView
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();
             parameters.Add(this.EdgeVariable.DefaultProjection().ToScalarExpression());
-            parameters.Add(SqlUtil.GetValueExpr(this.DefaultProperty()));
             parameters.AddRange(this.ProjectedProperties.Select(SqlUtil.GetValueExpr));
             WTableReference tableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.EdgeToOtherVertex, parameters, this.GetVariableName());
             return SqlUtil.GetCrossApplyTableReference(tableRef);
@@ -75,7 +72,6 @@ namespace GraphView
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();
             parameters.Add(this.EdgeVariable.DefaultProjection().ToScalarExpression());
-            parameters.Add(SqlUtil.GetValueExpr(this.DefaultProperty()));
             parameters.AddRange(this.ProjectedProperties.Select(SqlUtil.GetValueExpr));
             WTableReference tableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.EdgeToBothVertex, parameters, this.GetVariableName());
             return SqlUtil.GetCrossApplyTableReference(tableRef);

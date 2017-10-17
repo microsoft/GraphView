@@ -48,7 +48,6 @@ namespace GraphView
             List<WScalarExpression> parameters = new List<WScalarExpression>();
         
             parameters.Add(this.UnfoldVariable.DefaultProjection().ToScalarExpression());
-            parameters.Add(SqlUtil.GetValueExpr(this.DefaultProperty()));
             parameters.AddRange(this.ProjectedProperties.Select(SqlUtil.GetValueExpr));
             
             var tableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Unfold, parameters, GetVariableName());

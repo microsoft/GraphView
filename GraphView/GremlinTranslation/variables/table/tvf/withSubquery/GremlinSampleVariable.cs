@@ -12,8 +12,8 @@ namespace GraphView
         public int AmountToSample { get; set; }
         public GremlinToSqlContext ProbabilityContext { get; set; }
 
-        public GremlinSampleVariable(GremlinVariable inputVariable, GremlinKeyword.Scope scope, int amountToSample, GremlinToSqlContext probabilityContext)
-            : base(inputVariable.GetVariableType())
+        public GremlinSampleVariable(GremlinVariable inputVariable, GremlinKeyword.Scope scope, int amountToSample, 
+            GremlinToSqlContext probabilityContext) : base(inputVariable.GetVariableType())
         {
             this.Scope = scope;
             this.AmountToSample = amountToSample;

@@ -73,7 +73,7 @@ namespace GraphView
                     orderParameters.Add(new Tuple<WScalarExpression, IComparer>(scalarExpr, pair.Item2));
                     parameters.Add(scalarExpr);
                 }
-                parameters.Add(SqlUtil.GetValueExpr(this.DefaultProperty()));
+                
                 foreach (var property in this.ProjectedProperties)
                 {
                     parameters.Add(SqlUtil.GetValueExpr(property));

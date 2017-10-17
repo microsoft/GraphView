@@ -136,17 +136,18 @@ namespace GraphView
 
             if (this.SelectKeys.Count == 1)
             {
-                parameters.Add(SqlUtil.GetValueExpr(this.DefaultProperty()));
                 foreach (var projectProperty in ProjectedProperties)
                 {
                     parameters.Add(SqlUtil.GetValueExpr(projectProperty));
                 }
+                var tableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.SelectOne, parameters, GetVariableName());
+                return SqlUtil.GetCrossApplyTableReference(tableRef);
             }
-
-            var tableRef = SqlUtil.GetFunctionTableReference(
-                                this.SelectKeys.Count == 1 ? GremlinKeyword.func.SelectOne: GremlinKeyword.func.Select, 
-                                parameters, GetVariableName());
-            return SqlUtil.GetCrossApplyTableReference(tableRef);
+            else
+            {
+                var tableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Select, parameters, GetVariableName());
+                return SqlUtil.GetCrossApplyTableReference(tableRef);
+            }
         }
     }
 }

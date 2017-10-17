@@ -1864,7 +1864,7 @@ namespace GraphView
                 AttachedJsonQuery = null,
                 NodeAlias = nodeAlias,
                 Predicates = new List<WBooleanExpression>(),
-                Properties = new HashSet<string>(),
+                Properties = new HashSet<string>() { GremlinKeyword.Star },
             };
 
             for (int i = populatePropertyParameterStartIndex; i < this.Parameters.Count; i++) {
@@ -2335,7 +2335,8 @@ namespace GraphView
     {
         internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewCommand command)
         {
-            List<string> unfoldColumns = new List<string>();
+            List<string> unfoldColumns = new List<string>() { GremlinKeyword.TableDefaultColumnName };
+
             for (int i = 1; i < this.Parameters.Count; i++)
             {
                 WValueExpression unfoldColumn = this.Parameters[i] as WValueExpression;
@@ -3008,7 +3009,8 @@ namespace GraphView
                 orderByElements.Add(new Tuple<ScalarFunction, IComparer>(byFunction, comparer));
             }
 
-            List<string> populateColumns = new List<string> ();
+            List<string> populateColumns = new List<string> () { GremlinKeyword.TableDefaultColumnName };
+
             for (int i = this.OrderParameters.Count + 1; i < this.Parameters.Count; i++)
             {
                 WValueExpression populateColumn = this.Parameters[i] as WValueExpression;
@@ -3156,7 +3158,7 @@ namespace GraphView
             Debug.Assert(decomposeTargetParameter != null, "decomposeTargetParameter != null");
 
             int decomposeTargetIndex = context.LocateColumnReference(decomposeTargetParameter);
-            List<string> populateColumns = new List<string>();
+            List<string> populateColumns = new List<string>() { GremlinKeyword.TableDefaultColumnName };
 
             for (int i = 1; i < this.Parameters.Count; i++)
             {
@@ -3419,7 +3421,8 @@ namespace GraphView
             WValueExpression selectParameter = this.Parameters[1] as WValueExpression;
             Debug.Assert(selectParameter != null, "selectParameter != null");
             bool isSelectKeys = selectParameter.Value.Equals("keys", StringComparison.OrdinalIgnoreCase);
-            List<string> populateColumns = new List<string>();
+            List<string> populateColumns = new List<string>() { GremlinKeyword.TableDefaultColumnName };
+
             for (int i = 2; i < this.Parameters.Count; i++)
             {
                 WValueExpression populateParameter = this.Parameters[i] as WValueExpression;
@@ -3546,7 +3549,8 @@ namespace GraphView
             byInitContext.AddField(GremlinKeyword.Compose1TableDefaultName, GremlinKeyword.TableDefaultColumnName, ColumnGraphType.Value);
             ScalarFunction byFunc = byParameter.CompileToFunction(byInitContext, command);
             
-            List<string> populateColumns = new List<string>();
+            List<string> populateColumns = new List<string>() { GremlinKeyword.TableDefaultColumnName };
+
             for (int i = 5; i < this.Parameters.Count; i++)
             {
                 WValueExpression populateColumnParameter = this.Parameters[i] as WValueExpression;
