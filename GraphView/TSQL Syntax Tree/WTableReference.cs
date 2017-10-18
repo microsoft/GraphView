@@ -672,7 +672,7 @@ namespace GraphView
         }
     }
 
-    public partial class WAddVTableReference2 : WSchemaObjectFunctionTableReference { }
+    public partial class WAddVTableReference : WSchemaObjectFunctionTableReference { }
 
     //public partial class WAddVTableReference : WSchemaObjectFunctionTableReference { }
 
@@ -688,13 +688,13 @@ namespace GraphView
 
     //public partial class WDropEdgeTableReference : WSchemaObjectFunctionTableReference {}
 
-    public partial class WDropTableReference : WSchemaObjectFunctionTableReference { }
+    //public partial class WDropTableReference : WSchemaObjectFunctionTableReference { }
 
-    public partial class WDropPropertiesTableReference : WSchemaObjectFunctionTableReference { }
+    //public partial class WDropPropertiesTableReference : WSchemaObjectFunctionTableReference { }
 
     //public partial class WUpdateVertexPropertiesTableReference : WSchemaObjectFunctionTableReference {}
 
-    public partial class WUpdateMetaPropertiesTableReference : WSchemaObjectFunctionTableReference { }
+    //public partial class WUpdateMetaPropertiesTableReference : WSchemaObjectFunctionTableReference { }
 
     public partial class WUpdatePropertiesTableReference : WSchemaObjectFunctionTableReference { }
 
@@ -707,6 +707,8 @@ namespace GraphView
     public partial class WAggregateTableReference : WSchemaObjectFunctionTableReference {}
 
     public partial class WBarrierTableReference : WSchemaObjectFunctionTableReference {}
+
+    public partial class WCommitTableReference : WSchemaObjectFunctionTableReference { }
 
     public partial class WExpandTableReference : WSchemaObjectFunctionTableReference {}
 

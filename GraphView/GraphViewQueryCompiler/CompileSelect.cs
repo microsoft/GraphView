@@ -1526,9 +1526,6 @@ namespace GraphView
                     //
                     // TODO: Remove this case
                     //
-                    if (columnRef != null && columnRef.ColumnType == ColumnType.Wildcard) {
-                        continue;
-                    }
                     context.AddField(Alias.Value, selectScalar.ColumnName, columnRef?.ColumnGraphType ?? ColumnGraphType.Value);
                 }
             }

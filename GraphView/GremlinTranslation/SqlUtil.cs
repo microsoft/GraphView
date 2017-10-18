@@ -337,6 +337,9 @@ namespace GraphView
                 case GremlinKeyword.func.Coalesce:
                     funcTableRef = new WCoalesceTableReference();
                     break;
+                case GremlinKeyword.func.Commit:
+                    funcTableRef = new WCommitTableReference();
+                    break;
                 case GremlinKeyword.func.Constant:
                     funcTableRef = new WConstantReference();
                     break;
@@ -380,7 +383,7 @@ namespace GraphView
                     funcTableRef = new WProjectTableReference();
                     break;
                 case GremlinKeyword.func.AddV:
-                    funcTableRef = new WAddVTableReference2();
+                    funcTableRef = new WAddVTableReference();
                     break;
                 case GremlinKeyword.func.AddE:
                     funcTableRef = new WAddETableReference();

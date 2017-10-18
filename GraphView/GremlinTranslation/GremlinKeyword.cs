@@ -35,6 +35,7 @@ namespace GraphView
         public static class func
         {
             public const string Coalesce = "Coalesce";
+            public const string Commit = "Commit";
             public const string Constant = "Constant";
             public const string OutE = "OutE";
             public const string InE = "InE";
@@ -191,6 +192,7 @@ namespace GraphView
                 {"count", "Count"},
                 {"choose", "Choose"},
                 {"constant", "Constant"},
+                {"commit", "Commit"},
                 {"coalesce", "Coalesce"},
                 {"cyclicPath", "CyclicPath"},
                 {"coin", "Coin"},

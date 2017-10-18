@@ -93,6 +93,7 @@
     <Compile Include="GraphViewQueryCompiler\CompilerVisitors.cs" />
     <Compile Include="GremlinTranslation\barrier\GremlinBarrierOp.cs" />
     <Compile Include="GremlinTranslation\barrier\GremlinCapOp.cs" />
+    <Compile Include="GremlinTranslation\barrier\GremlinCommitOp.cs" />
     <Compile Include="GremlinTranslation\branch\GremlinChooseOp.cs" />
     <Compile Include="GremlinTranslation\branch\GremlinLocalOp.cs" />
     <Compile Include="GremlinTranslation\branch\GremlinRepeatOp.cs" />
@@ -166,6 +167,7 @@
     <Compile Include="GremlinTranslation\sideEffect\GremlinSideEffectOp.cs" />
     <Compile Include="GremlinTranslation\sideEffect\GremlinTreeOp.cs" />
     <Compile Include="GremlinTranslation\variables\table\tvf\withoutSubquery\GremlinBarrierVariable.cs" />
+    <Compile Include="GremlinTranslation\variables\table\tvf\withoutSubquery\GremlinCommitVariable.cs" />
     <Compile Include="GremlinTranslation\variables\table\tvf\withoutSubquery\GremlinCyclicPathVariable.cs" />
     <Compile Include="GremlinTranslation\variables\table\tvf\withoutSubquery\GremlinDecompose1Variable.cs" />
     <Compile Include="GremlinTranslation\variables\table\tvf\withSubquery\GremlinFilterVariable.cs" />

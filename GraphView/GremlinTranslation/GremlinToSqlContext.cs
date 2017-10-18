@@ -219,7 +219,7 @@ namespace GraphView
 
             if (PivotVariable.GetVariableType() == GremlinVariableType.NULL)
             {
-                selectElements.Add(SqlUtil.GetSelectScalarExpr(SqlUtil.GetStarColumnReferenceExpr(), GremlinKeyword.TableDefaultColumnName));
+                selectElements.Add(SqlUtil.GetSelectScalarExpr(SqlUtil.GetValueExpr(null), GremlinKeyword.TableDefaultColumnName));
                 return selectElements;
             }
 

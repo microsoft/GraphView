@@ -136,5 +136,20 @@ namespace GraphView
             return this._cachedVertexField.Remove(vertexId);
 #endif
         }
+
+        private readonly Queue<DeltaField> DeltaFields = new Queue<DeltaField>();
+
+        public void AddDelta(DeltaField delta)
+        {
+            this.DeltaFields.Enqueue(delta);
+        }
+
+        public void UploadDelta()
+        {
+            while (this.DeltaFields.Count > 0)
+            {
+                this.DeltaFields.Dequeue().Upload();
+            }
+        }
     }
 }

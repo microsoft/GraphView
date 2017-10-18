@@ -9,7 +9,18 @@ using static GraphView.DocumentDBKeywords;
 
 namespace GraphView
 {
-    partial class WAddVTableReference2
+    partial class WCommitTableReference
+    {
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewCommand command)
+        {
+            CommitOperator commitOp = new CommitOperator(command, context.CurrentExecutionOperator);
+            context.CurrentExecutionOperator = commitOp;
+
+            return commitOp;
+        }
+    }
+
+    partial class WAddVTableReference
     {
         public JObject ConstructNodeJsonDocument(GraphViewCommand command, string vertexLabel, List<WPropertyExpression> vertexProperties, out List<string> projectedFieldList)
         {
@@ -232,7 +243,7 @@ namespace GraphView
 
             return dropNodeOp;
         }
-
+        /*
         internal GraphViewExecutionOperator Compile2(QueryCompilationContext context, GraphViewCommand command)
         {
             WColumnReferenceExpression dropTargetParameter = Parameters[0] as WColumnReferenceExpression;
@@ -247,6 +258,7 @@ namespace GraphView
 
             return dropOp;
         }
+        */
     }
 
     //partial class WDropEdgeTableReference

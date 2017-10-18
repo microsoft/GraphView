@@ -439,6 +439,13 @@ namespace GraphView
             currentContext.SetPivotVariable(newVariable);
         }
 
+        internal virtual void Commit(GremlinToSqlContext currentContext)
+        {
+            GremlinCommitVariable newVariable = new GremlinCommitVariable();
+            currentContext.VariableList.Add(newVariable);
+            currentContext.TableReferencesInFromClause.Add(newVariable);
+        }
+
         internal virtual void CyclicPath(GremlinToSqlContext currentContext, string fromLabel = null, string toLabel = null)
         {
             GremlinCyclicPathVariable newVariable = new GremlinCyclicPathVariable(GeneratePath(currentContext, fromLabel, toLabel));

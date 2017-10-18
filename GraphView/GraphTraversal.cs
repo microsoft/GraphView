@@ -133,6 +133,10 @@ namespace GraphView
                     }
 
                     if (firstEntry && !firstCall) {
+                        if (this.command.InLazyMode)
+                        {
+                            this.command.VertexCache.UploadDelta();
+                        }
                         return false;
                     }
                     else
@@ -148,9 +152,22 @@ namespace GraphView
                     if ((outputRec = currentOperator.Next()) != null)
                     {
                         currentRecord = outputRec[0].ToString();
+
+                        if (currentRecord == null && this.command.InLazyMode)
+                        {
+                            this.command.VertexCache.UploadDelta();
+                        }
+
                         return currentRecord != null;
                     }
-                    else return false;
+                    else
+                    {
+                        if (this.command.InLazyMode)
+                        {
+                            this.command.VertexCache.UploadDelta();
+                        }              
+                        return false;
+                    }
                 }
             }
 
@@ -181,6 +198,7 @@ namespace GraphView
         public IEnumerator<string> GetEnumerator()
         {
             GremlinUtil.ClearCounters();
+            this.Command.InLazyMode = false;
             var sqlScript = GetEndOp().ToSqlScript();
             SqlScript = sqlScript.ToString();
             it = new GraphTraversalIterator(sqlScript.Batches[0].Compile(null, this.Command), this.Command, outputFormat);
@@ -221,6 +239,7 @@ namespace GraphView
         public List<string> Next()
         {
             GremlinUtil.ClearCounters();
+            this.Command.InLazyMode = false;
             WSqlScript sqlScript = GetEndOp().ToSqlScript();
             SqlScript = sqlScript.ToString();
 
@@ -230,6 +249,11 @@ namespace GraphView
 
             while ((outputRec = op.Next()) != null) {
                 rawRecordResults.Add(outputRec);
+            }
+
+            if (this.Command.InLazyMode)
+            {
+                this.Command.VertexCache.UploadDelta();
             }
 
             List<string> results = new List<string>();
@@ -540,6 +564,12 @@ namespace GraphView
         public GraphTraversal Coin(double probability)
         {
             AddGremlinOperator(new GremlinCoinOp(probability));
+            return this;
+        }
+
+        public GraphTraversal Commit()
+        {
+            AddGremlinOperator(new GremlinCommitOp());
             return this;
         }
 

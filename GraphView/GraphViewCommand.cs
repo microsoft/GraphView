@@ -34,6 +34,8 @@ namespace GraphView
         public GraphViewConnection Connection { get; set; }
 
         public VertexObjectCache VertexCache { get; }
+
+        public bool InLazyMode { get; set; } = false;
         
         public string CommandText { get; set; }
 
