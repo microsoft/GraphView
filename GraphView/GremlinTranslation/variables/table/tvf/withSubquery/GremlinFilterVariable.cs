@@ -2,13 +2,20 @@
 
 namespace GraphView
 {
-    internal class GremlinFilterVariable : GremlinTableVariable
+    internal class GremlinFilterVariable : GremlinFilterTableVariable
     {
         public WBooleanExpression Predicate { get; set; }
-        public GremlinFilterVariable(WBooleanExpression newPredicate) : base(GremlinVariableType.Table)
+
+        public GremlinFilterVariable(GremlinVariable inputVariable, WBooleanExpression newPredicate) : base(inputVariable.GetVariableType())
         {
             this.Predicate = newPredicate;
         }
+
+        internal override bool Populate(string property, string label = null)
+        {
+            return false;
+        }
+
         public override WTableReference ToTableReference()
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();
@@ -17,7 +24,7 @@ namespace GraphView
             searchCaseExpr.WhenClauses = new List<WSearchedWhenClause>();
 
             WSearchedWhenClause booleanIsTrueClause = new WSearchedWhenClause();
-            booleanIsTrueClause.WhenExpression = Predicate;
+            booleanIsTrueClause.WhenExpression = this.Predicate;
             booleanIsTrueClause.ThenExpression = new WValueExpression("1");
 
             searchCaseExpr.WhenClauses.Add(booleanIsTrueClause);

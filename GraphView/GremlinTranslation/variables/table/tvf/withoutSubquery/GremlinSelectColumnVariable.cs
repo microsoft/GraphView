@@ -11,34 +11,50 @@ namespace GraphView
         public GremlinVariable InputVariable { get; set; }
         public GremlinKeyword.Column Column { get; set; }
 
-        public GremlinSelectColumnVariable(GremlinVariable inputVariable, GremlinKeyword.Column column) : base(GremlinVariableType.Table)
+        public GremlinSelectColumnVariable(GremlinVariable inputVariable, GremlinKeyword.Column column) : base(GremlinVariableType.Unknown)
         {
-            InputVariable = inputVariable;
-            Column = column;
+            GremlinVariableType inputVariableType = inputVariable.GetVariableType();
+            if (!(GremlinVariableType.NULL <= inputVariableType && inputVariableType <= GremlinVariableType.Map ||
+                  inputVariableType == GremlinVariableType.Path || inputVariableType == GremlinVariableType.Tree))
+            {
+                throw new SyntaxErrorException("The inputVariable of select() can not be " + inputVariableType);
+            }
+
+            this.InputVariable = inputVariable;
+            this.Column = column;
         }
 
-        internal override void Populate(string property)
+        internal override bool Populate(string property, string label = null)
         {
-            base.Populate(property);
-            InputVariable.Populate(property);
+            if (base.Populate(property, label))
+            {
+                this.InputVariable.Populate(property, null);
+                return true;
+            }
+            else if (this.InputVariable.Populate(property, label))
+            {
+                base.Populate(property, null);
+                return true;
+            }
+            else
+            {
+                return false;
+            }
         }
 
         internal override List<GremlinVariable> FetchAllVars()
         {
             List<GremlinVariable> variableList = new List<GremlinVariable>() { this };
-            variableList.AddRange(InputVariable.FetchAllVars());
+            variableList.AddRange(this.InputVariable.FetchAllVars());
             return variableList;
         }
 
         public override WTableReference ToTableReference()
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();
-            parameters.Add(InputVariable.DefaultProjection().ToScalarExpression());
-            parameters.Add(SqlUtil.GetValueExpr(Column == GremlinKeyword.Column.Keys ? "Keys" : "Values"));
-            foreach (var property in this.ProjectedProperties)
-            {
-                parameters.Add(SqlUtil.GetValueExpr(property));
-            }
+            parameters.Add(this.InputVariable.DefaultProjection().ToScalarExpression());
+            parameters.Add(SqlUtil.GetValueExpr(this.Column == GremlinKeyword.Column.Keys ? "Keys" : "Values"));
+            parameters.AddRange(this.ProjectedProperties.Select(SqlUtil.GetValueExpr));
             var tableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.SelectColumn, parameters, GetVariableName());
             return SqlUtil.GetCrossApplyTableReference(tableRef);
         }
@@ -46,9 +62,9 @@ namespace GraphView
 
     internal class GremlinOrderLocalInitVariable : GremlinVariable
     {
-        public GremlinOrderLocalInitVariable(): base(GremlinVariableType.Scalar)
+        public GremlinOrderLocalInitVariable(GremlinVariable inputVariable): base(inputVariable.GetVariableType())
         {
-            VariableName = GremlinKeyword.Compose1TableDefaultName;
+            this.VariableName = GremlinKeyword.Compose1TableDefaultName;
         }
     }
 }

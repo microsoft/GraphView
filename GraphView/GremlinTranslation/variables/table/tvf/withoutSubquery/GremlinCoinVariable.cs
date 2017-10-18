@@ -6,19 +6,19 @@ using System.Threading.Tasks;
 
 namespace GraphView
 {
-    internal class GremlinCoinVariable : GremlinTableVariable
+    internal class GremlinCoinVariable : GremlinFilterTableVariable
     {
         public double Probability { get; set; }
 
-        public GremlinCoinVariable(double probability) : base(GremlinVariableType.Table)
+        public GremlinCoinVariable(GremlinVariable inputVariable, double probability) : base(inputVariable.GetVariableType())
         {
-            Probability = probability;
+            this.Probability = probability;
         }
 
         public override WTableReference ToTableReference()
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();
-            parameters.Add(SqlUtil.GetValueExpr(Probability));
+            parameters.Add(SqlUtil.GetValueExpr(this.Probability));
             var tableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Coin, parameters, GetVariableName());
             return SqlUtil.GetCrossApplyTableReference(tableRef);
         }

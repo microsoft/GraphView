@@ -10,22 +10,36 @@ namespace GraphView
     {
         public GremlinVariable UnfoldVariable { get; set; }
 
-        public GremlinUnfoldVariable(GremlinVariable unfoldVariable)
-            : base(GremlinVariableType.Table)
+        public GremlinUnfoldVariable(GremlinVariable unfoldVariable) : base(
+            unfoldVariable.GetVariableType() == GremlinVariableType.Map
+                ? GremlinVariableType.MapEntry
+                : GremlinVariableType.Unknown) 
         {
-            UnfoldVariable = unfoldVariable;
+            this.UnfoldVariable = unfoldVariable;
         }
 
-        internal override void Populate(string property)
+        internal override bool Populate(string property, string label = null)
         {
-            base.Populate(property);
-            UnfoldVariable.Populate(property);
+            if (base.Populate(property, label))
+            {
+                this.UnfoldVariable.Populate(property, null);
+                return true;
+            }
+            else if (this.UnfoldVariable.Populate(property, label))
+            {
+                base.Populate(property, null);
+                return true;
+            }
+            else
+            {
+                return false;
+            }
         }
 
         internal override List<GremlinVariable> FetchAllVars()
         {
             List<GremlinVariable> variableList = new List<GremlinVariable>() { this };
-            variableList.AddRange(UnfoldVariable.FetchAllVars());
+            variableList.AddRange(this.UnfoldVariable.FetchAllVars());
             return variableList;
         }
 
@@ -33,15 +47,9 @@ namespace GraphView
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();
         
-            parameters.Add(UnfoldVariable.DefaultProjection().ToScalarExpression());
-            if (ProjectedProperties.Count == 0)
-            {
-                parameters.Add(SqlUtil.GetValueExpr(GremlinKeyword.TableDefaultColumnName));
-            }
-            foreach (var projectProperty in ProjectedProperties)
-            {
-                parameters.Add(SqlUtil.GetValueExpr(projectProperty));
-            }
+            parameters.Add(this.UnfoldVariable.DefaultProjection().ToScalarExpression());
+            parameters.AddRange(this.ProjectedProperties.Select(SqlUtil.GetValueExpr));
+            
             var tableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Unfold, parameters, GetVariableName());
             return SqlUtil.GetCrossApplyTableReference(tableRef);
         }

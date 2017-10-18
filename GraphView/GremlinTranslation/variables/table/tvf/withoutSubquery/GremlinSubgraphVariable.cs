@@ -6,22 +6,22 @@ using System.Threading.Tasks;
 
 namespace GraphView
 {
-    internal class GremlinSubgraphVariable : GremlinScalarTableVariable
+    internal class GremlinSubgraphVariable : GremlinTableVariable
     {
         public string SideEffectKey { get; set; }
         public GremlinToSqlContext DummyContext { get; set; }
 
-        public GremlinSubgraphVariable(GremlinToSqlContext dummyContext, string sideEffectKey)
+        public GremlinSubgraphVariable(GremlinToSqlContext dummyContext, string sideEffectKey) : base(GremlinVariableType.Subgraph)
         {
             this.SideEffectKey = sideEffectKey;
             this.DummyContext = dummyContext;
-            Labels.Add(sideEffectKey);
+            this.Labels.Add(sideEffectKey);
         }
 
         public override WTableReference ToTableReference()
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();
-            WSelectQueryBlock selectQueryBlock = DummyContext.ToSelectQueryBlock(false);
+            WSelectQueryBlock selectQueryBlock = this.DummyContext.ToSelectQueryBlock(false);
             parameters.Add(SqlUtil.GetScalarSubquery(selectQueryBlock));
             parameters.Add(SqlUtil.GetValueExpr(SideEffectKey));
             var tableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Subgraph, parameters, GetVariableName());

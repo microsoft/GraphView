@@ -11,37 +11,52 @@ namespace GraphView
         public GremlinToSqlContext OptionalContext { get; set; }
         public GremlinContextVariable InputVariable { get; set; }
 
-        public GremlinOptionalVariable(GremlinVariable inputVariable,
-                                       GremlinToSqlContext context,
-                                       GremlinVariableType variableType)
-            : base(variableType)
+        public GremlinOptionalVariable(GremlinVariable inputVariable, GremlinToSqlContext context,
+            GremlinVariableType variableType) : base(variableType)
         {
             inputVariable.ProjectedProperties.Clear();
-            OptionalContext = context;
-            InputVariable = new GremlinContextVariable(inputVariable);
+            this.OptionalContext = context;
+            this.InputVariable = new GremlinContextVariable(inputVariable);
         }
 
-        internal override void PopulateStepProperty(string property)
+        internal override bool PopulateStepProperty(string property, string label = null)
         {
-            OptionalContext.ContextLocalPath.PopulateStepProperty(property);
+            return this.OptionalContext.ContextLocalPath.PopulateStepProperty(property, label);
         }
 
         internal override void PopulateLocalPath()
         {
-            if (ProjectedProperties.Contains(GremlinKeyword.Path)) return;
+            if (ProjectedProperties.Contains(GremlinKeyword.Path))
+            {
+                return;
+            }
             ProjectedProperties.Add(GremlinKeyword.Path);
-            OptionalContext.PopulateLocalPath();
+            this.OptionalContext.PopulateLocalPath();
+            this.MinPathLength = 0;
         }
 
-        internal override void Populate(string property)
+        internal override bool Populate(string property, string label = null)
         {
-            base.Populate(property);
-
-            InputVariable.Populate(property);
-            OptionalContext.Populate(property);
+            if (base.Populate(property, label))
+            {
+                this.InputVariable.Populate(property, null);
+                this.OptionalContext.Populate(property, null);
+                return true;
+            }
+            else
+            {
+                bool populateSuccess = false;
+                populateSuccess |= this.InputVariable.Populate(property, label);
+                populateSuccess |= this.OptionalContext.Populate(property, label);
+                if (populateSuccess)
+                {
+                    base.Populate(property, label);
+                }
+                return populateSuccess;
+            }
         }
 
-        internal override WScalarExpression ToStepScalarExpr()
+        internal override WScalarExpression ToStepScalarExpr(List<string> composedProperties = null)
         {
             return SqlUtil.GetColumnReferenceExpr(GetVariableName(), GremlinKeyword.Path);
         }
@@ -49,48 +64,53 @@ namespace GraphView
         internal override List<GremlinVariable> FetchAllVars()
         {
             List<GremlinVariable> variableList = new List<GremlinVariable>() { this };
-            variableList.Add(InputVariable);
-            variableList.AddRange(OptionalContext.FetchAllVars());
+            variableList.Add(this.InputVariable);
+            variableList.AddRange(this.OptionalContext.FetchAllVars());
             return variableList;
         }
 
         internal override List<GremlinTableVariable> FetchAllTableVars()
         {
             List<GremlinTableVariable> variableList = new List<GremlinTableVariable> { this };
-            variableList.AddRange(OptionalContext.FetchAllTableVars());
+            variableList.AddRange(this.OptionalContext.FetchAllTableVars());
             return variableList;
         }
 
         public override WTableReference ToTableReference()
         {
-            WSelectQueryBlock firstQueryExpr = new WSelectQueryBlock();
-
-            foreach (var projectProperty in ProjectedProperties)
+            List<WSelectQueryBlock> selectQueryBlocks = new List<WSelectQueryBlock>();
+            selectQueryBlocks.Add(new WSelectQueryBlock());
+            selectQueryBlocks.Add(this.OptionalContext.ToSelectQueryBlock());
+            
+            Dictionary<string, WSelectElement> projectionMap = new Dictionary<string, WSelectElement>();
+            WSelectElement value = selectQueryBlocks[1].SelectElements[0].Copy();
+            foreach (WSelectElement selectElement in selectQueryBlocks[1].SelectElements)
             {
-                if (projectProperty == GremlinKeyword.TableDefaultColumnName)
-                {
-                    firstQueryExpr.SelectElements.Add(SqlUtil.GetSelectScalarExpr(InputVariable.DefaultProjection().ToScalarExpression(),
-                        GremlinKeyword.TableDefaultColumnName));
-                }
-                else if (InputVariable.RealVariable.ProjectedProperties.Contains(projectProperty))
-                {
-                    firstQueryExpr.SelectElements.Add(
-                        SqlUtil.GetSelectScalarExpr(
-                            InputVariable.RealVariable.GetVariableProperty(projectProperty).ToScalarExpression(), projectProperty));
-                }
-                else
-                {
-                    firstQueryExpr.SelectElements.Add(
-                        SqlUtil.GetSelectScalarExpr(SqlUtil.GetValueExpr(null), projectProperty));
-                }
+                projectionMap[(selectElement as WSelectScalarExpression).ColumnName] = selectElement;
             }
+            selectQueryBlocks[1].SelectElements.Clear();
 
-            WSelectQueryBlock secondQueryExpr = OptionalContext.ToSelectQueryBlock();
+            selectQueryBlocks[0].SelectElements.Add(SqlUtil.GetSelectScalarExpr(this.InputVariable.DefaultProjection().ToScalarExpression(), this.DefaultProperty()));
+            selectQueryBlocks[1].SelectElements.Add(SqlUtil.GetSelectScalarExpr((value as WSelectScalarExpression).SelectExpr, this.DefaultProperty()));
+            foreach (string property in this.ProjectedProperties)
+            {
 
-            var WBinaryQueryExpression = SqlUtil.GetBinaryQueryExpr(firstQueryExpr, secondQueryExpr);
+                selectQueryBlocks[0].SelectElements.Add(
+                    SqlUtil.GetSelectScalarExpr(
+                        this.InputVariable.RealVariable.ProjectedProperties.Contains(property)
+                            ? this.InputVariable.RealVariable.GetVariableProperty(property).ToScalarExpression()
+                            : SqlUtil.GetValueExpr(null), property));
+                 
+                selectQueryBlocks[1].SelectElements.Add(
+                    projectionMap.TryGetValue(property, out value)
+                        ? value : SqlUtil.GetSelectScalarExpr(SqlUtil.GetValueExpr(null), property));
+            }
+            
+
+            WBinaryQueryExpression binaryQueryExpression = SqlUtil.GetBinaryQueryExpr(selectQueryBlocks[0], selectQueryBlocks[1]);
 
             List<WScalarExpression> parameters = new List<WScalarExpression>();
-            parameters.Add(SqlUtil.GetScalarSubquery(WBinaryQueryExpression));
+            parameters.Add(SqlUtil.GetScalarSubquery(binaryQueryExpression));
             var tableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Optional, parameters, GetVariableName());
 
             return SqlUtil.GetCrossApplyTableReference(tableRef);

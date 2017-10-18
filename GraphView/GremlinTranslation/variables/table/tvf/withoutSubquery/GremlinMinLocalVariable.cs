@@ -13,20 +13,31 @@ namespace GraphView
 
         public GremlinMinLocalVariable(GremlinVariable inputVariable)
         {
-            InputVariable = inputVariable;
+            GremlinVariableType inputVariableType = inputVariable.GetVariableType();
+            if (!(inputVariableType == GremlinVariableType.List || GremlinVariableType.NULL <= inputVariableType && inputVariableType <= GremlinVariableType.Unknown))
+            {
+                throw new SyntaxErrorException("The inputVariable of min(local) can not be " + inputVariableType);
+            }
+
+            this.InputVariable = inputVariable;
+        }
+
+        internal override bool Populate(string property, string label = null)
+        {
+            return false;
         }
 
         internal override List<GremlinVariable> FetchAllVars()
         {
             List<GremlinVariable> variableList = new List<GremlinVariable>() { this };
-            variableList.AddRange(InputVariable.FetchAllVars());
+            variableList.AddRange(this.InputVariable.FetchAllVars());
             return variableList;
         }
 
         public override WTableReference ToTableReference()
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();
-            parameters.Add(InputVariable.DefaultProjection().ToScalarExpression());
+            parameters.Add(this.InputVariable.DefaultProjection().ToScalarExpression());
             var tableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.MinLocal, parameters, GetVariableName());
             return SqlUtil.GetCrossApplyTableReference(tableRef);
         }

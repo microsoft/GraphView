@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using Microsoft.VisualBasic.ApplicationServices;
 
 namespace GraphView
 {
@@ -8,29 +9,43 @@ namespace GraphView
     {
         protected GremlinTableVariable(GremlinVariableType variableType): base(variableType)
         {
-            VariableName = GremlinUtil.GenerateTableAlias(VariableType);
+            this.VariableName = GremlinUtil.GenerateTableAlias(this.VariableType);
         }
 
-        internal override void Populate(string property)
+        internal override bool Populate(string property, string label = null)
         {
-            if (ProjectedProperties.Contains(property)) return;
-            switch (GetVariableType())
+            if (ProjectedProperties.Contains(property))
+            {
+                return true;
+            }
+            switch (this.GetVariableType())
             {
                 case GremlinVariableType.Vertex:
-                    if (GremlinUtil.IsEdgeProperty(property)) return;
+                    if (GremlinUtil.IsEdgeProperty(property))
+                    {
+                        return false;
+                    }
                     break;
                 case GremlinVariableType.Edge:
-                    if (GremlinUtil.IsVertexProperty(property)) return;
+                    if (GremlinUtil.IsVertexProperty(property))
+                    {
+                        return false;
+                    }
                     break;
                 case GremlinVariableType.VertexProperty:
-                    if (GremlinUtil.IsVertexProperty(property) || GremlinUtil.IsEdgeProperty(property)) return;
+                    if (GremlinUtil.IsVertexProperty(property) || GremlinUtil.IsEdgeProperty(property))
+                    {
+                        return false;
+                    }
                     break;
-                case GremlinVariableType.Scalar:
-                case GremlinVariableType.Property:
-                    if (property != GremlinKeyword.TableDefaultColumnName) return;
+                case GremlinVariableType.VertexAndEdge:
+                case GremlinVariableType.Mixed:
+                case GremlinVariableType.Unknown:
                     break;
+                default:
+                    return false;
             }
-            base.Populate(property);
+            return base.Populate(property, label);
         }
 
         public virtual WTableReference ToTableReference()
@@ -44,20 +59,45 @@ namespace GraphView
         }
     }
 
-    internal abstract class GremlinScalarTableVariable : GremlinTableVariable
-    {
-        protected GremlinScalarTableVariable(): base(GremlinVariableType.Scalar) {}
-    }
-
     internal abstract class GremlinVertexTableVariable : GremlinTableVariable
     {
-        protected GremlinVertexTableVariable(): base(GremlinVariableType.Vertex) {}
+        protected GremlinVertexTableVariable(): base(GremlinVariableType.Vertex) { }
     }
 
     internal abstract class GremlinEdgeTableVariable : GremlinTableVariable
     {
         public WEdgeType EdgeType { get; set; }
 
-        protected GremlinEdgeTableVariable(): base(GremlinVariableType.Edge) {}
+        protected GremlinEdgeTableVariable(): base(GremlinVariableType.Edge) { }
+    }
+
+    internal abstract class GremlinScalarTableVariable : GremlinTableVariable
+    {
+        protected GremlinScalarTableVariable() : base(GremlinVariableType.Scalar) { }
+    }
+
+    internal abstract class GremlinVertexPropertyTableVariable : GremlinTableVariable
+    {
+        protected GremlinVertexPropertyTableVariable() : base(GremlinVariableType.VertexProperty) { }
+    }
+    
+    internal abstract class GremlinNULLTableVariable : GremlinTableVariable
+    {
+        protected GremlinNULLTableVariable() : base(GremlinVariableType.NULL) { }
+    }
+
+    internal abstract class GremlinFilterTableVariable : GremlinTableVariable
+    {
+        protected GremlinFilterTableVariable(GremlinVariableType variableType) : base(variableType) { }
+    }
+
+    internal abstract class GremlinListTableVariable : GremlinTableVariable
+    {
+        protected GremlinListTableVariable() : base(GremlinVariableType.List) { }
+    }
+
+    internal abstract class GremlinMapTableVariable : GremlinTableVariable
+    {
+        protected GremlinMapTableVariable() : base(GremlinVariableType.Map) { }
     }
 }

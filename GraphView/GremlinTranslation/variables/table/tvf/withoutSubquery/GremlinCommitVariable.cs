@@ -8,7 +8,7 @@ namespace GraphView
 {
     internal class GremlinCommitVariable : GremlinTableVariable
     {
-        public GremlinCommitVariable() : base(GremlinVariableType.Table) { }
+        public GremlinCommitVariable(GremlinVariable inputVariable) : base(inputVariable.GetVariableType()) { }
 
         public override WTableReference ToTableReference()
         {

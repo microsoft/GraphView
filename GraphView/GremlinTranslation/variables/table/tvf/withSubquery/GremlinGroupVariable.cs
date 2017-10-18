@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace GraphView
 {
-    internal class GremlinGroupVariable: GremlinScalarTableVariable
+    internal class GremlinGroupVariable: GremlinMapTableVariable
     {
         public GremlinToSqlContext GroupByContext { get; set; }
         public GremlinToSqlContext ProjectByContext { get; set; }
@@ -17,50 +17,64 @@ namespace GraphView
         public GremlinGroupVariable(GremlinVariable primaryVariable, string sideEffectKey, GremlinToSqlContext groupByContext,
             GremlinToSqlContext projectByContext, bool isProjectingACollection)
         {
-            PrimaryVariable = primaryVariable;
-            SideEffectKey = sideEffectKey;
-            GroupByContext = groupByContext;
-            ProjectByContext = projectByContext;
-            IsProjectingACollection = isProjectingACollection;
+            this.PrimaryVariable = primaryVariable;
+            this.SideEffectKey = sideEffectKey;
+            this.GroupByContext = groupByContext;
+            this.ProjectByContext = projectByContext;
+            this.IsProjectingACollection = isProjectingACollection;
         }
 
         internal override List<GremlinVariable> FetchAllVars()
         {
             List<GremlinVariable> variableList = new List<GremlinVariable>() { this };
-            variableList.Add(PrimaryVariable);
-            variableList.AddRange(GroupByContext.FetchAllVars());
-            variableList.AddRange(ProjectByContext.FetchAllVars());
+            variableList.Add(this.PrimaryVariable);
+            variableList.AddRange(this.GroupByContext.FetchAllVars());
+            variableList.AddRange(this.ProjectByContext.FetchAllVars());
             return variableList;
         }
 
         internal override List<GremlinTableVariable> FetchAllTableVars()
         {
             List<GremlinTableVariable> variableList = new List<GremlinTableVariable> { this };
-            variableList.AddRange(GroupByContext.FetchAllTableVars());
-            variableList.AddRange(ProjectByContext.FetchAllTableVars());
+            variableList.AddRange(this.GroupByContext.FetchAllTableVars());
+            variableList.AddRange(this.ProjectByContext.FetchAllTableVars());
             return variableList;
         }
 
-        internal override void Populate(string property)
+        internal override bool Populate(string property, string label = null)
         {
-            GroupByContext.Populate(property);
-            ProjectByContext.Populate(property);
-            base.Populate(property);
+            if (base.Populate(property, label))
+            {
+                this.GroupByContext.Populate(property, null);
+                this.ProjectByContext.Populate(property, null);
+                return true;
+            }
+            else
+            {
+                bool populateSuccess = false;
+                populateSuccess |= this.GroupByContext.Populate(property, label);
+                populateSuccess |= this.ProjectByContext.Populate(property, label);
+                if (populateSuccess)
+                {
+                    base.Populate(property, null);
+                }
+                return populateSuccess;
+            }
         }
 
         public override WTableReference ToTableReference()
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();
-            parameters.Add(SqlUtil.GetValueExpr(SideEffectKey));
+            parameters.Add(SqlUtil.GetValueExpr(this.SideEffectKey));
 
-            WSelectQueryBlock groupBlock = GroupByContext.ToSelectQueryBlock(true);
+            WSelectQueryBlock groupBlock = this.GroupByContext.ToSelectQueryBlock(true);
             parameters.Add(SqlUtil.GetScalarSubquery(groupBlock));
 
-            WSelectQueryBlock projectBlock = ProjectByContext.ToSelectQueryBlock(true);
+            WSelectQueryBlock projectBlock = this.ProjectByContext.ToSelectQueryBlock(true);
             parameters.Add(SqlUtil.GetScalarSubquery(projectBlock));
 
             var tableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Group, parameters, GetVariableName());
-            ((WGroupTableReference) tableRef).IsProjectingACollection = IsProjectingACollection;
+            ((WGroupTableReference) tableRef).IsProjectingACollection = this.IsProjectingACollection;
             return SqlUtil.GetCrossApplyTableReference(tableRef);
         }
     }

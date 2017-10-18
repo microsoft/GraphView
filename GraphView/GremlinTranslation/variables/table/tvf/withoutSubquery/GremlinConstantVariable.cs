@@ -14,24 +14,24 @@ namespace GraphView
 
         public GremlinConstantVariable(object value)
         {
-            ConstantValue = value;
+            this.ConstantValue = value;
         }
 
         public override WTableReference ToTableReference()
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();
             bool isList = false;
-            if (GremlinUtil.IsList(ConstantValue) || GremlinUtil.IsArray(ConstantValue))
+            if (GremlinUtil.IsList(this.ConstantValue) || GremlinUtil.IsArray(this.ConstantValue))
             {
                 isList = true;  //1 It's a list
-                foreach (var value in (IEnumerable) ConstantValue)
+                foreach (var value in (IEnumerable) this.ConstantValue)
                 {
                     parameters.Add(SqlUtil.GetValueExpr(value));
                 }
             }
-            else if (GremlinUtil.IsNumber(ConstantValue) || ConstantValue is string || ConstantValue is bool)
+            else if (GremlinUtil.IsNumber(this.ConstantValue) || this.ConstantValue is string || this.ConstantValue is bool)
             {
-                parameters.Add(SqlUtil.GetValueExpr(ConstantValue));
+                parameters.Add(SqlUtil.GetValueExpr(this.ConstantValue));
             }
             else
             {

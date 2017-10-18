@@ -15,31 +15,26 @@ namespace GraphView
         public List<string> SelectKeys { get; set; }
         public GremlinKeyword.Pop Pop { get; set; }
 
-        public GremlinSelectVariable(GremlinVariable inputVariable, 
-                                    GremlinPathVariable pathVariable, 
-                                    List<GremlinVariable> sideEffectVariables, 
-                                    GremlinKeyword.Pop pop, 
-                                    List<string> selectKeys, 
-                                    List<GremlinToSqlContext> byContexts)
-            : base(GremlinVariableType.Table)
+        public GremlinSelectVariable(GremlinVariable inputVariable,  GremlinPathVariable pathVariable,  List<GremlinVariable> sideEffectVariables, 
+            GremlinKeyword.Pop pop,  List<string> selectKeys,  List<GremlinToSqlContext> byContexts) : base(GremlinVariableType.Unknown)
         {
-            InputVariable = inputVariable;
-            PathVariable = pathVariable;
-            SideEffectVariables = sideEffectVariables;
-            Pop = pop;
-            SelectKeys = selectKeys;
-            ByContexts = byContexts;
+            this.InputVariable = inputVariable;
+            this.PathVariable = pathVariable;
+            this.SideEffectVariables = sideEffectVariables;
+            this.Pop = pop;
+            this.SelectKeys = selectKeys;
+            this.ByContexts = byContexts;
         }
 
         internal override List<GremlinVariable> FetchAllVars()
         {
             List<GremlinVariable> variableList = new List<GremlinVariable>() { this };
-            variableList.AddRange(PathVariable.FetchAllVars());
-            foreach (var sideEffectVariable in SideEffectVariables)
+            variableList.AddRange(this.PathVariable.FetchAllVars());
+            foreach (var sideEffectVariable in this.SideEffectVariables)
             {
                 variableList.AddRange(sideEffectVariable.FetchAllVars());
             }
-            foreach (var context in ByContexts)
+            foreach (var context in this.ByContexts)
             {
                 variableList.AddRange(context.FetchAllVars());
             }
@@ -49,38 +44,53 @@ namespace GraphView
         internal override List<GremlinTableVariable> FetchAllTableVars()
         {
             List<GremlinTableVariable> variableList = new List<GremlinTableVariable> { this };
-            foreach (var context in ByContexts)
+            foreach (var context in this.ByContexts)
             {
                 variableList.AddRange(context.FetchAllTableVars());
             }
             return variableList;
         }
 
-        internal override void Populate(string property)
+        internal override bool Populate(string property, string label = null)
         {
-            InputVariable.Populate(property);
-            if (property != GremlinKeyword.TableDefaultColumnName)
+            if (label == null || this.Labels.Contains(label))
             {
-                PathVariable.Populate(property);
-            }
-            foreach (var sideEffectVariable in SideEffectVariables)
-            {
-                sideEffectVariable.Populate(property);
-            }
-            foreach (var context in ByContexts)
-            {
-                context.Populate(property);
-            }
-
-            if (SelectKeys.Count() > 1 && property != GremlinKeyword.TableDefaultColumnName)
-            {
-                //block the select multi label to populate column 
-                return;
+                foreach (string selectKey in this.SelectKeys)
+                {
+                    this.InputVariable.Populate(property, selectKey);
+                    this.PathVariable.PopulateStepProperty(property, selectKey);
+                    foreach (var sideEffectVariable in this.SideEffectVariables)
+                    {
+                        sideEffectVariable.Populate(property, selectKey);
+                    }
+                    foreach (var context in this.ByContexts)
+                    {
+                        context.Populate(property, selectKey);
+                    }
+                }
+                if (SelectKeys.Count() == 1)
+                {
+                    return base.Populate(property, null);
+                }
             }
             else
             {
-                base.Populate(property);
+                this.InputVariable.Populate(property, label);
+                this.PathVariable.PopulateStepProperty(property, label);
+                foreach (var sideEffectVariable in this.SideEffectVariables)
+                {
+                    sideEffectVariable.Populate(property, label);
+                }
+                foreach (var context in this.ByContexts)
+                {
+                    context.Populate(property, label);
+                }
+                if (SelectKeys.Count() == 1)
+                {
+                    return base.Populate(property, label);
+                }
             }
+            return false;
         }
 
         public override WTableReference ToTableReference()
@@ -89,14 +99,19 @@ namespace GraphView
             List<WSelectQueryBlock> queryBlocks = new List<WSelectQueryBlock>();
 
             //Must toSelectQueryBlock before toCompose1 of variableList in order to populate needed columns
-            foreach (var byContext in ByContexts)
+            //If only one selectKey, we just need to select the last one because it is a map flow.
+            if (this.SelectKeys.Count == 1)
             {
-                queryBlocks.Add(byContext.ToSelectQueryBlock(true));
+                queryBlocks.Add(this.ByContexts[this.ByContexts.Count - 1].ToSelectQueryBlock(true));
             }
-
-            parameters.Add(InputVariable.DefaultProjection().ToScalarExpression());
-            parameters.Add(PathVariable.DefaultProjection().ToScalarExpression());
-            switch (Pop)
+            else
+            {
+                queryBlocks.AddRange(this.ByContexts.Select(byContext => byContext.ToSelectQueryBlock(true)));
+            }
+            
+            parameters.Add(this.InputVariable.DefaultProjection().ToScalarExpression());
+            parameters.Add(this.PathVariable.DefaultProjection().ToScalarExpression());
+            switch (this.Pop)
             {
                 case GremlinKeyword.Pop.All:
                     parameters.Add(SqlUtil.GetValueExpr("All"));
@@ -109,31 +124,30 @@ namespace GraphView
                     break;
             }
 
-            foreach (var selectKey in SelectKeys)
+            foreach (var selectKey in this.SelectKeys)
             {
                 parameters.Add(SqlUtil.GetValueExpr(selectKey));
             }
 
-            if (SelectKeys.Count == 1)
+            foreach (var block in queryBlocks)
             {
-                parameters.Add(SqlUtil.GetScalarSubquery(queryBlocks[queryBlocks.Count - 1]));
+                parameters.Add(SqlUtil.GetScalarSubquery(block));
+            }
 
+            if (this.SelectKeys.Count == 1)
+            {
                 foreach (var projectProperty in ProjectedProperties)
                 {
                     parameters.Add(SqlUtil.GetValueExpr(projectProperty));
                 }
+                var tableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.SelectOne, parameters, GetVariableName());
+                return SqlUtil.GetCrossApplyTableReference(tableRef);
             }
             else
             {
-                foreach (var block in queryBlocks)
-                {
-                    parameters.Add(SqlUtil.GetScalarSubquery(block));
-                }
+                var tableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Select, parameters, GetVariableName());
+                return SqlUtil.GetCrossApplyTableReference(tableRef);
             }
-            var tableRef = SqlUtil.GetFunctionTableReference(
-                                SelectKeys.Count == 1 ? GremlinKeyword.func.SelectOne: GremlinKeyword.func.Select, 
-                                parameters, GetVariableName());
-            return SqlUtil.GetCrossApplyTableReference(tableRef);
         }
     }
 }

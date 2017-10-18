@@ -6,26 +6,26 @@ using System.Threading.Tasks;
 
 namespace GraphView
 {
-    internal class GremlinCyclicPathVariable : GremlinTableVariable
+    internal class GremlinCyclicPathVariable : GremlinFilterTableVariable
     {
         public GremlinPathVariable PathVariable { get; set; }
 
-        public GremlinCyclicPathVariable(GremlinPathVariable pathVariable) : base(GremlinVariableType.Table)
+        public GremlinCyclicPathVariable(GremlinVariable inputVariable, GremlinPathVariable pathVariable) : base(inputVariable.GetVariableType())
         {
-            PathVariable = pathVariable;
+            this.PathVariable = pathVariable;
         }
 
         internal override List<GremlinVariable> FetchAllVars()
         {
             List<GremlinVariable> variableList = new List<GremlinVariable>() { this };
-            variableList.AddRange(PathVariable.FetchAllVars());
+            variableList.AddRange(this.PathVariable.FetchAllVars());
             return variableList;
         }
 
         public override WTableReference ToTableReference()
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();
-            parameters.Add(PathVariable.DefaultProjection().ToScalarExpression());
+            parameters.Add(this.PathVariable.DefaultProjection().ToScalarExpression());
             var tableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.CyclicPath, parameters, GetVariableName());
             return SqlUtil.GetCrossApplyTableReference(tableRef);
         }

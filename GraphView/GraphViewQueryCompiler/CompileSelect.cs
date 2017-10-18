@@ -1589,13 +1589,7 @@ namespace GraphView
                 Debug.Assert(selectScalar.ColumnName != null, "selectScalar.ColumnName != null");
 
                 WColumnReferenceExpression columnRef = selectScalar.SelectExpr as WColumnReferenceExpression;
-                //
-                // TODO: Remove this case
-                //
-                if (columnRef != null && columnRef.ColumnType == ColumnType.Wildcard)
-                {
-                    continue;
-                }
+                
                 context.AddField(Alias.Value, selectScalar.ColumnName, columnRef?.ColumnGraphType ?? ColumnGraphType.Value);
             }
 
@@ -1739,12 +1733,7 @@ namespace GraphView
                 Debug.Assert(selectScalar.ColumnName != null, "selectScalar.ColumnName != null");
 
                 WColumnReferenceExpression columnRef = selectScalar.SelectExpr as WColumnReferenceExpression;
-                //
-                // TODO: Remove this case
-                //
-                if (columnRef != null && columnRef.ColumnType == ColumnType.Wildcard) {
-                    continue;
-                }
+                
                 context.AddField(Alias.Value, selectScalar.ColumnName, columnRef?.ColumnGraphType ?? ColumnGraphType.Value);
             }
 
@@ -1788,13 +1777,7 @@ namespace GraphView
                 Debug.Assert(selectScalar.ColumnName != null, "selectScalar.ColumnName != null");
 
                 WColumnReferenceExpression columnRef = selectScalar.SelectExpr as WColumnReferenceExpression;
-                //
-                // TODO: Remove this case
-                //
-                if (columnRef != null && columnRef.ColumnType == ColumnType.Wildcard)
-                {
-                    continue;
-                }
+                
                 context.AddField(Alias.Value, selectScalar.ColumnName, columnRef?.ColumnGraphType ?? ColumnGraphType.Value);
             }
 
@@ -1861,7 +1844,7 @@ namespace GraphView
                 AttachedJsonQuery = null,
                 NodeAlias = nodeAlias,
                 Predicates = new List<WBooleanExpression>(),
-                Properties = new HashSet<string>(),
+                Properties = new HashSet<string>() { GremlinKeyword.Star },
             };
 
             for (int i = populatePropertyParameterStartIndex; i < this.Parameters.Count; i++) {
@@ -2332,7 +2315,8 @@ namespace GraphView
     {
         internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewCommand command)
         {
-            List<string> unfoldColumns = new List<string>();
+            List<string> unfoldColumns = new List<string>() { GremlinKeyword.TableDefaultColumnName };
+
             for (int i = 1; i < this.Parameters.Count; i++)
             {
                 WValueExpression unfoldColumn = this.Parameters[i] as WValueExpression;
@@ -2621,12 +2605,7 @@ namespace GraphView
                 Debug.Assert(selectScalar.ColumnName != null, "selectScalar.ColumnName != null");
 
                 WColumnReferenceExpression columnRef = selectScalar.SelectExpr as WColumnReferenceExpression;
-                //
-                // TODO: Remove this case
-                //
-                if (columnRef != null && columnRef.ColumnType == ColumnType.Wildcard) {
-                    continue;
-                }
+                
                 context.AddField(Alias.Value, selectScalar.ColumnName, columnRef?.ColumnGraphType ?? ColumnGraphType.Value);
             }
 
@@ -2844,9 +2823,7 @@ namespace GraphView
                 }
 
                 WColumnReferenceExpression columnRef = selectScalar.SelectExpr as WColumnReferenceExpression;
-                if (columnRef != null && columnRef.ColumnType == ColumnType.Wildcard)
-                    continue;
-
+                
                 string selectElementAlias = selectScalar.ColumnName;
                 if (selectElementAlias == null)
                 {
@@ -3005,7 +2982,8 @@ namespace GraphView
                 orderByElements.Add(new Tuple<ScalarFunction, IComparer>(byFunction, comparer));
             }
 
-            List<string> populateColumns = new List<string> ();
+            List<string> populateColumns = new List<string> () { GremlinKeyword.TableDefaultColumnName };
+
             for (int i = this.OrderParameters.Count + 1; i < this.Parameters.Count; i++)
             {
                 WValueExpression populateColumn = this.Parameters[i] as WValueExpression;
@@ -3032,14 +3010,14 @@ namespace GraphView
             int highEnd = int.Parse((Parameters[1] as WValueExpression).Value);
             int tailFlag = int.Parse((Parameters[2] as WValueExpression).Value);
             bool isTail = tailFlag > 0;
-            
+
             //
             // Compilation of Tail op, which returns lastN elements
             //
             if (isTail)
             {
                 int lastN = highEnd < 0 ? 1 : highEnd;
-                
+
                 TailOperator tailOp = context.InBatchMode
                     ? new TailInBatchOperator(context.CurrentExecutionOperator, lastN)
                     : new TailOperator(context.CurrentExecutionOperator, lastN);
@@ -3128,9 +3106,10 @@ namespace GraphView
                 else if ((count = highEnd - startIndex) < 0) {
                     count = 0;
                 }
-
+                
                 RangeLocalOperator rangeLocalOp = new RangeLocalOperator(context.CurrentExecutionOperator,
-                        context.LocateColumnReference(inputCollection), startIndex, count, populateColumns);
+                    context.LocateColumnReference(inputCollection), startIndex, count, populateColumns);
+
                 context.CurrentExecutionOperator = rangeLocalOp;
                 foreach (string columnName in populateColumns) {
                     context.AddField(Alias.Value, columnName, ColumnGraphType.Value);
@@ -3154,7 +3133,7 @@ namespace GraphView
             Debug.Assert(decomposeTargetParameter != null, "decomposeTargetParameter != null");
 
             int decomposeTargetIndex = context.LocateColumnReference(decomposeTargetParameter);
-            List<string> populateColumns = new List<string>();
+            List<string> populateColumns = new List<string>() { GremlinKeyword.TableDefaultColumnName };
 
             for (int i = 1; i < this.Parameters.Count; i++)
             {
@@ -3318,12 +3297,7 @@ namespace GraphView
                 Debug.Assert(selectScalar.ColumnName != null, "selectScalar.ColumnName != null");
 
                 WColumnReferenceExpression columnRef = selectScalar.SelectExpr as WColumnReferenceExpression;
-                //
-                // TODO: Remove this case
-                //
-                if (columnRef != null && columnRef.ColumnType == ColumnType.Wildcard) {
-                    continue;
-                }
+                
                 context.AddField(Alias.Value, selectScalar.ColumnName, columnRef?.ColumnGraphType ?? ColumnGraphType.Value);
             }
 
@@ -3387,12 +3361,7 @@ namespace GraphView
                 Debug.Assert(selectScalar.ColumnName != null, "selectScalar.ColumnName != null");
 
                 WColumnReferenceExpression columnRef = selectScalar.SelectExpr as WColumnReferenceExpression;
-                //
-                // TODO: Remove this case
-                //
-                if (columnRef != null && columnRef.ColumnType == ColumnType.Wildcard) {
-                    continue;
-                }
+                
                 context.AddField(Alias.Value, selectScalar.ColumnName, columnRef?.ColumnGraphType ?? ColumnGraphType.Value);
             }
 
@@ -3417,7 +3386,8 @@ namespace GraphView
             WValueExpression selectParameter = this.Parameters[1] as WValueExpression;
             Debug.Assert(selectParameter != null, "selectParameter != null");
             bool isSelectKeys = selectParameter.Value.Equals("keys", StringComparison.OrdinalIgnoreCase);
-            List<string> populateColumns = new List<string>();
+            List<string> populateColumns = new List<string>() { GremlinKeyword.TableDefaultColumnName };
+
             for (int i = 2; i < this.Parameters.Count; i++)
             {
                 WValueExpression populateParameter = this.Parameters[i] as WValueExpression;
@@ -3544,7 +3514,8 @@ namespace GraphView
             byInitContext.AddField(GremlinKeyword.Compose1TableDefaultName, GremlinKeyword.TableDefaultColumnName, ColumnGraphType.Value);
             ScalarFunction byFunc = byParameter.CompileToFunction(byInitContext, command);
             
-            List<string> populateColumns = new List<string>();
+            List<string> populateColumns = new List<string>() { GremlinKeyword.TableDefaultColumnName };
+
             for (int i = 5; i < this.Parameters.Count; i++)
             {
                 WValueExpression populateColumnParameter = this.Parameters[i] as WValueExpression;

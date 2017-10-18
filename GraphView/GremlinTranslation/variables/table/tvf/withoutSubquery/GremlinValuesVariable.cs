@@ -13,14 +13,20 @@ namespace GraphView
 
         public GremlinValuesVariable(GremlinVariable projectVariable, List<string> propertyKeys)
         {
-            ProjectVariable = projectVariable;
-            PropertyKeys = new List<string>(propertyKeys);
+            GremlinVariableType inputVariableType = projectVariable.GetVariableType();
+            if (!(inputVariableType <= GremlinVariableType.Unknown))
+            {
+                throw new SyntaxErrorException("The inputVariable of values() can not be " + inputVariableType);
+            }
+
+            this.ProjectVariable = projectVariable;
+            this.PropertyKeys = new List<string>(propertyKeys);
         }
 
         internal override List<GremlinVariable> FetchAllVars()
         {
             List<GremlinVariable> variableList = new List<GremlinVariable>() { this };
-            variableList.AddRange(ProjectVariable.FetchAllVars());
+            variableList.AddRange(this.ProjectVariable.FetchAllVars());
             return variableList;
         }
 
@@ -28,17 +34,14 @@ namespace GraphView
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();
             WTableReference tableRef = null;
-            if (PropertyKeys.Count == 0)
+            if (this.PropertyKeys.Count == 0)
             {
-                parameters.Add(ProjectVariable.DefaultProjection().ToScalarExpression());
+                parameters.Add(this.ProjectVariable.DefaultProjection().ToScalarExpression());
                 tableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.AllValues, parameters, GetVariableName());
             }
             else
             {
-                foreach (var property in PropertyKeys)
-                {
-                    parameters.Add(ProjectVariable.GetVariableProperty(property).ToScalarExpression());
-                }
+                parameters.AddRange(this.PropertyKeys.Select(property => this.ProjectVariable.GetVariableProperty(property).ToScalarExpression()));
                 tableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Values, parameters, GetVariableName());
             }
             return SqlUtil.GetCrossApplyTableReference(tableRef);

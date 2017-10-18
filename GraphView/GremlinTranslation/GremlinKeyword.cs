@@ -29,7 +29,7 @@ namespace GraphView
         public const string RepeatInitalTableName = "R";
         public const string RepeatColumnPrefix = "key_";
         public static string TableDefaultColumnName = "value$" + Guid.NewGuid().ToString().Substring(0, 8);
-        
+
         public const string IndexTableName = "$INDEX";
 
         public static class func
@@ -83,6 +83,7 @@ namespace GraphView
             public const string Aggregate = "Aggregate";
             public const string Coin = "Coin";
             public const string CountLocal = "CountLocal";
+            public const string RangeGlobal = "RangeGlobal";
             public const string RangeLocal = "RangeLocal";
             public const string MinLocal = "MinLocal";
             public const string MaxLocal = "MaxLocal";
@@ -95,7 +96,6 @@ namespace GraphView
             public const string OrderGlobal = "OrderGlobal";
             public const string OrderLocal = "OrderLocal";
             public const string Path2 = "Path2";
-            public const string RangeGlobal = "RangeGlobal";
             public const string Decompose1 = "Decompose1";
             public const string SimplePath = "SimplePath";
             public const string CyclicPath = "CyclicPath";

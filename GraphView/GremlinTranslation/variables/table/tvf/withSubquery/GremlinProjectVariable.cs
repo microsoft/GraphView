@@ -6,30 +6,55 @@ using System.Threading.Tasks;
 
 namespace GraphView
 {
-    internal class GremlinProjectVariable: GremlinScalarTableVariable
+    internal class GremlinProjectVariable: GremlinMapTableVariable
     {
         public List<string> ProjectKeys { get; set; }
         public List<GremlinToSqlContext> ProjectContextList { get; set; }
 
         public GremlinProjectVariable(List<string> projectKeys, List<GremlinToSqlContext> byContexts)
         {
-            ProjectKeys = new List<string>(projectKeys);
-            ProjectContextList = byContexts;
+            this.ProjectKeys = new List<string>(projectKeys);
+            this.ProjectContextList = byContexts;
         }
 
-        internal override void Populate(string property)
+        internal override bool Populate(string property, string label = null)
         {
-            foreach (var context in ProjectContextList)
+            if (base.Populate(property, label))
             {
-                context.Populate(property);
+                foreach (var context in this.ProjectContextList)
+                {
+                    context.Populate(property, null);
+                }
+                return true;
             }
-            base.Populate(property);
+            else if (this.ProjectKeys.Contains(label))
+            {
+                foreach (var context in this.ProjectContextList)
+                {
+                    context.Populate(property, null);
+                }
+                base.Populate(property, null);
+                return true;
+            }
+            else
+            {
+                bool populateSuccess = false;
+                foreach (var context in this.ProjectContextList)
+                {
+                    populateSuccess |= context.Populate(property, label);
+                }
+                if (populateSuccess)
+                {
+                    base.Populate(property, null);
+                }
+                return populateSuccess;
+            }
         }
 
         internal override List<GremlinVariable> FetchAllVars()
         {
             List<GremlinVariable> variableList = new List<GremlinVariable>() { this };
-            foreach (var context in ProjectContextList)
+            foreach (var context in this.ProjectContextList)
             {
                 variableList.AddRange(context.FetchAllVars());
             }
@@ -39,7 +64,7 @@ namespace GraphView
         internal override List<GremlinTableVariable> FetchAllTableVars()
         {
             List<GremlinTableVariable> variableList = new List<GremlinTableVariable> { this };
-            foreach (var context in ProjectContextList)
+            foreach (var context in this.ProjectContextList)
             {
                 variableList.AddRange(context.FetchAllTableVars());
             }
@@ -50,11 +75,11 @@ namespace GraphView
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();
 
-            for (var i = 0; i < ProjectKeys.Count; i++)
+            for (var i = 0; i < this.ProjectKeys.Count; i++)
             {
-                WSelectQueryBlock selectBlock = ProjectContextList[i % ProjectContextList.Count].ToSelectQueryBlock(true);
+                WSelectQueryBlock selectBlock = this.ProjectContextList[i % this.ProjectContextList.Count].ToSelectQueryBlock(true);
                 parameters.Add(SqlUtil.GetScalarSubquery(selectBlock));
-                parameters.Add(SqlUtil.GetValueExpr(ProjectKeys[i]));
+                parameters.Add(SqlUtil.GetValueExpr(this.ProjectKeys[i]));
             }
             var tableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Project, parameters, GetVariableName());
 

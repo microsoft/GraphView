@@ -6,43 +6,55 @@ using System.Threading.Tasks;
 
 namespace GraphView
 {
-    internal class GremlinStoreVariable : GremlinScalarTableVariable
+    internal class GremlinStoreVariable : GremlinListTableVariable
     {
         public string SideEffectKey { get; set; }
         public GremlinToSqlContext ProjectContext { get; set; }
 
         public GremlinStoreVariable(GremlinToSqlContext projectContext, string sideEffectKey)
         {
-            ProjectContext = projectContext;
-            SideEffectKey = sideEffectKey;
+            this.ProjectContext = projectContext;
+            this.SideEffectKey = sideEffectKey;
         }
 
         internal override List<GremlinVariable> FetchAllVars()
         {
             List<GremlinVariable> variableList = new List<GremlinVariable>() { this };
-            variableList.AddRange(ProjectContext.FetchAllVars());
+            variableList.AddRange(this.ProjectContext.FetchAllVars());
             return variableList;
         }
 
         internal override List<GremlinTableVariable> FetchAllTableVars()
         {
             List<GremlinTableVariable> variableList = new List<GremlinTableVariable> { this };
-            variableList.AddRange(ProjectContext.FetchAllTableVars());
+            variableList.AddRange(this.ProjectContext.FetchAllTableVars());
             return variableList;
         }
 
-        internal override void Populate(string property)
+        internal override bool Populate(string property, string label = null)
         {
-            ProjectContext.Populate(property);
-            base.Populate(property);
+            if (base.Populate(property, label))
+            {
+                this.ProjectContext.Populate(property, null);
+                return true;
+            }
+            else if (this.ProjectContext.Populate(property, label))
+            {
+                base.Populate(property, null);
+                return true;
+            }
+            else
+            {
+                return false;
+            }
         }
 
         public override WTableReference ToTableReference()
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();
-            WSelectQueryBlock selectQueryBlock = ProjectContext.ToSelectQueryBlock(true);
+            WSelectQueryBlock selectQueryBlock = this.ProjectContext.ToSelectQueryBlock(true);
             parameters.Add(SqlUtil.GetScalarSubquery(selectQueryBlock));
-            parameters.Add(SqlUtil.GetValueExpr(SideEffectKey));
+            parameters.Add(SqlUtil.GetValueExpr(this.SideEffectKey));
             var tableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Store, parameters, GetVariableName());
             return SqlUtil.GetCrossApplyTableReference(tableRef);
         }

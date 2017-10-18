@@ -9,6 +9,7 @@ using static GraphView.DocumentDBKeywords;
 
 namespace GraphView
 {
+
     partial class WCommitTableReference
     {
         internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewCommand command)
@@ -19,13 +20,13 @@ namespace GraphView
             return commitOp;
         }
     }
-
+    
     partial class WAddVTableReference
     {
         public JObject ConstructNodeJsonDocument(GraphViewCommand command, string vertexLabel, List<WPropertyExpression> vertexProperties, out List<string> projectedFieldList)
         {
-            Debug.Assert(vertexLabel != null);
-            JObject vertexObject = new JObject {
+            JObject vertexObject = new JObject
+            {
                 [KW_VERTEX_LABEL] = vertexLabel,
                 //[KW_VERTEX_VIAGRAPHAPI] = true
             };
@@ -129,8 +130,14 @@ namespace GraphView
             //
 
             WValueExpression labelValue = (WValueExpression)this.Parameters[0];
+            Debug.Assert(labelValue.Value != null, "[WAddVTableReference.Compile] Vertex label should not be null");
 
-            List<WPropertyExpression> vertexProperties = new List<WPropertyExpression>();
+            List<WPropertyExpression> vertexProperties = new List<WPropertyExpression>()
+                {
+                    (WPropertyExpression) (new GremlinProperty(GremlinKeyword.PropertyCardinality.List,
+                        GremlinKeyword.Star, null, null).ToPropertyExpr())
+                };
+
             for (int i = 1; i < this.Parameters.Count; i++) {
                 WPropertyExpression property = (WPropertyExpression)this.Parameters[i];
                 Debug.Assert(property != null, "[WAddVTableReference.Compile] Vertex property should not be null");
@@ -172,15 +179,39 @@ namespace GraphView
 
     partial class WAddETableReference
     {
+        public JObject ConstructEdgeJsonObject(GraphViewCommand command, string edgeLabel, List<WPropertyExpression> edgeProperties, out List<string> projectedFieldList)
+        {
+            JObject edgeObject = new JObject
+            {
+                [KW_EDGE_LABEL] = edgeLabel
+            };
+
+            projectedFieldList = new List<string>(GraphViewReservedProperties.ReservedEdgeProperties);
+            projectedFieldList.Add(GremlinKeyword.Label);
+            
+            // Skip edgeSourceScalarFunction, edgeSinkScalarFunction, otherVTag
+            foreach (WPropertyExpression edgeProperty in edgeProperties)
+            {
+                GraphViewJsonCommand.UpdateProperty(edgeObject, edgeProperty.Key, edgeProperty.Value);
+                if (!projectedFieldList.Contains(edgeProperty.Key.Value))
+                    projectedFieldList.Add(edgeProperty.Key.Value);
+            }
+
+            return edgeObject;
+        }
+
         internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewCommand command)
         {
-            List<string> projectedField;
-            JObject edgeJsonObject = ConstructEdgeJsonObject(out projectedField);  // metadata remains missing
-
             WScalarSubquery srcSubQuery = Parameters[0] as WScalarSubquery;
             WScalarSubquery sinkSubQuery = Parameters[1] as WScalarSubquery;
             if (srcSubQuery == null || sinkSubQuery == null)
                 throw new SyntaxErrorException("The first two parameters of AddE can only be WScalarSubquery.");
+            QueryCompilationContext srcSubContext = new QueryCompilationContext(context);
+            GraphViewExecutionOperator srcSubQueryOp = srcSubQuery.SubQueryExpr.Compile(srcSubContext, command);
+
+            QueryCompilationContext sinkSubContext = new QueryCompilationContext(context);
+            GraphViewExecutionOperator sinkSubQueryOp = sinkSubQuery.SubQueryExpr.Compile(sinkSubContext, command);
+
             WValueExpression otherVTagParameter = Parameters[2] as WValueExpression;
             Debug.Assert(otherVTagParameter != null, "otherVTagParameter != null");
             //
@@ -189,12 +220,27 @@ namespace GraphView
             //
             int otherVTag = int.Parse(otherVTagParameter.Value);
 
-            QueryCompilationContext srcSubContext = new QueryCompilationContext(context);
-            GraphViewExecutionOperator srcSubQueryOp = srcSubQuery.SubQueryExpr.Compile(srcSubContext, command);
+            WValueExpression labelValue = (WValueExpression)this.Parameters[3];
 
-            QueryCompilationContext sinkSubContext = new QueryCompilationContext(context);
-            GraphViewExecutionOperator sinkSubQueryOp = sinkSubQuery.SubQueryExpr.Compile(sinkSubContext, command);
+            List<WPropertyExpression> edgeProperties = new List<WPropertyExpression>()
+            {
+                (WPropertyExpression) (new GremlinProperty(GremlinKeyword.PropertyCardinality.Single,
+                    GremlinKeyword.Star, null, null).ToPropertyExpr())
+            };
 
+            for (int i = 4; i < this.Parameters.Count; i++)
+            {
+                WPropertyExpression property = (WPropertyExpression)this.Parameters[i];
+                Debug.Assert(property != null, "[WAddETableReference.Compile] Edge property should not be null");
+                Debug.Assert(property.Cardinality == GremlinKeyword.PropertyCardinality.Single, "[WAddETableReference.Compile] Edge property should not be append-mode");
+                Debug.Assert(property.Value != null);
+
+                edgeProperties.Add(property);
+            }
+
+            List<string> projectedField;
+            JObject edgeJsonObject = ConstructEdgeJsonObject(command, labelValue.Value, edgeProperties, out projectedField);  // metadata remains missing
+            
             GraphViewExecutionOperator addEOp = new AddEOperator(context.CurrentExecutionOperator, command,
                 srcSubContext.OuterContextOp, srcSubQueryOp, sinkSubContext.OuterContextOp, sinkSubQueryOp, 
                 otherVTag, edgeJsonObject, projectedField);

@@ -11,21 +11,28 @@ namespace GraphView
         public GremlinVariable GremlinVariable { get; set; }
         public string VariableProperty { get; set; }
 
-        public GremlinVariableProperty(GremlinVariable gremlinVariable, string variableProperty): base(GremlinVariableType.Scalar)
+        public GremlinVariableProperty(GremlinVariable gremlinVariable, string variableProperty): base(GremlinVariableType.Property)
         {
-            GremlinVariable = gremlinVariable;
-            VariableProperty = variableProperty;
+            this.GremlinVariable = gremlinVariable;
+            this.VariableProperty = variableProperty;
         }
 
-        internal override void Populate(string property)
+        internal override bool Populate(string property, string label = null)
         {
-            GremlinVariable.Populate(property);
-            base.Populate(property);
+            if (this.GremlinVariable.Populate(property, label))
+            {
+                base.Populate(property, null);
+                return true;
+            }
+            else
+            {
+                return false;
+            }
         }
 
         public WScalarExpression ToScalarExpression()
         {
-            return SqlUtil.GetColumnReferenceExpr(GremlinVariable.GetVariableName(), VariableProperty);
+            return SqlUtil.GetColumnReferenceExpr(this.GremlinVariable.GetVariableName(), this.VariableProperty);
         }
     }
 }

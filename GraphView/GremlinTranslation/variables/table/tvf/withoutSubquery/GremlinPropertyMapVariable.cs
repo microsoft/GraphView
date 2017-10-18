@@ -6,32 +6,40 @@ using System.Threading.Tasks;
 
 namespace GraphView
 {
-    internal class GremlinPropertyMapVariable : GremlinTableVariable
+    internal class GremlinPropertyMapVariable : GremlinMapTableVariable
     {
         public List<string> PropertyKeys { get; set; }
         public GremlinVariable InputVariable { get; set; }
 
-        public GremlinPropertyMapVariable(GremlinVariable inputVariable, List<string> propertyKeys) : base(GremlinVariableType.Table)
+        public GremlinPropertyMapVariable(GremlinVariable inputVariable, List<string> propertyKeys)
         {
-            InputVariable = inputVariable;
-            PropertyKeys = propertyKeys;
+            GremlinVariableType inputVariableType = inputVariable.GetVariableType();
+            if (!(inputVariableType <= GremlinVariableType.Unknown))
+            {
+                throw new SyntaxErrorException("The inputVariable of propertyMap() can not be " + inputVariableType);
+            }
+
+            this.InputVariable = inputVariable;
+            this.PropertyKeys = propertyKeys;
+        }
+
+        internal override bool Populate(string property, string label = null)
+        {
+            return false;
         }
 
         internal override List<GremlinVariable> FetchAllVars()
         {
             List<GremlinVariable> variableList = new List<GremlinVariable>() { this };
-            variableList.AddRange(InputVariable.FetchAllVars());
+            variableList.AddRange(this.InputVariable.FetchAllVars());
             return variableList;
         }
 
         public override WTableReference ToTableReference()
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();
-            parameters.Add(InputVariable.DefaultProjection().ToScalarExpression());
-            foreach (var propertyKey in PropertyKeys)
-            {
-                parameters.Add(SqlUtil.GetValueExpr(propertyKey));
-            }
+            parameters.Add(this.InputVariable.DefaultProjection().ToScalarExpression());
+            parameters.AddRange(this.PropertyKeys.Select(SqlUtil.GetValueExpr));
             var tableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.PropertyMap, parameters, GetVariableName());
             return SqlUtil.GetCrossApplyTableReference(tableRef);
         }

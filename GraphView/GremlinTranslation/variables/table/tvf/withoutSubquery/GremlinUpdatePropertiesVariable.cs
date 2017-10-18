@@ -8,38 +8,40 @@ using GraphView;
 
 namespace GraphView
 {
-    internal class GremlinUpdatePropertiesVariable : GremlinTableVariable
+    internal class GremlinUpdatePropertiesVariable : GremlinNULLTableVariable
     {
         public List<GremlinProperty> PropertyList { get; set; }
         public GremlinVariable UpdateVariable { get; set; }
 
-        public GremlinUpdatePropertiesVariable(GremlinVariable updateVariable, GremlinProperty property): base(GremlinVariableType.NULL)
+        public GremlinUpdatePropertiesVariable(GremlinVariable updateVariable, GremlinProperty property)
         {
-            UpdateVariable = updateVariable;
-            PropertyList = new List<GremlinProperty> { property };
+            this.UpdateVariable = updateVariable;
+            this.PropertyList = new List<GremlinProperty> { property };
         }
 
-        public GremlinUpdatePropertiesVariable(GremlinVariable vertexVariable, List<GremlinProperty> properties) : base(GremlinVariableType.NULL)
+        public GremlinUpdatePropertiesVariable(GremlinVariable vertexVariable, List<GremlinProperty> properties)
         {
-            UpdateVariable = vertexVariable;
-            PropertyList = properties;
+            this.UpdateVariable = vertexVariable;
+            this.PropertyList = properties;
+        }
+
+        internal override bool Populate(string property, string label = null)
+        {
+            return false;
         }
 
         internal override List<GremlinVariable> FetchAllVars()
         {
             List<GremlinVariable> variableList = new List<GremlinVariable>() { this };
-            variableList.AddRange(UpdateVariable.FetchAllVars());
+            variableList.AddRange(this.UpdateVariable.FetchAllVars());
             return variableList;
         }
 
         public override WTableReference ToTableReference()
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();
-            parameters.Add(UpdateVariable.DefaultProjection().ToScalarExpression());
-            foreach (var vertexProperty in PropertyList)
-            {
-                parameters.Add(vertexProperty.ToPropertyExpr());
-            }
+            parameters.Add(this.UpdateVariable.DefaultProjection().ToScalarExpression());
+            parameters.AddRange(this.PropertyList.Select(vertexProperty => vertexProperty.ToPropertyExpr()));
             var tableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.UpdateProperties, parameters, GetVariableName());
             return SqlUtil.GetCrossApplyTableReference(tableRef);
         }

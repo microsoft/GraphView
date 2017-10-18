@@ -1734,7 +1734,7 @@ namespace GraphView
                     {
                         if (traversal.GremlinTranslationOpList.Count != 1)
                         {
-                            throw new QueryCompilationException(
+                            throw new TranslationException(
                                 "It is not allowed to put other steps after the not() step in not()-traversal in match().");
                         }
 
@@ -1742,7 +1742,7 @@ namespace GraphView
                         GremlinAsOp innerAsOperator = notTraversal.GetOp(1) as GremlinAsOp;
                         if (innerAsOperator == null)
                         {
-                            throw new QueryCompilationException("not()-traversal in match() must have a single start label.");
+                            throw new TranslationException("not()-traversal in match() must have a single start label.");
                         }
 
                         // take the inner first 'as' operator out
@@ -1756,7 +1756,7 @@ namespace GraphView
 
                             if (innerEndLabels.Count > 1)
                             {
-                                throw new QueryCompilationException(
+                                throw new TranslationException(
                                     "The end operator of a match()-traversal as not()-subtraversal can have at most one label.");
                             }
 
@@ -1782,7 +1782,7 @@ namespace GraphView
 
                     if (asOperator == null || asOperator.Labels.Count != 1)
                     {
-                        throw new QueryCompilationException("All match()-traversals must have a single start label.");
+                        throw new TranslationException("All match()-traversals must have a single start label.");
                     }
 
                     string startLabel = asOperator.Labels[0], endLabel = null;
@@ -1822,7 +1822,7 @@ namespace GraphView
                         }
                         else
                         {
-                            throw new QueryCompilationException(
+                            throw new TranslationException(
                                 "The end operator of a match()-traversal can have at most one label.");
                         }
                     }

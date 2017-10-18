@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Configuration;
+using System.Diagnostics;
 using System.Linq;
 using GraphView;
 using Microsoft.VisualStudio.TestTools.UnitTesting;

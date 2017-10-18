@@ -6,36 +6,48 @@ using System.Threading.Tasks;
 
 namespace GraphView
 {
-    internal class GremlinTreeSideEffectVariable : GremlinScalarTableVariable
+    internal class GremlinTreeSideEffectVariable : GremlinTableVariable
     {
         public string SideEffectKey { get; set; }
         public GremlinPathVariable PathVariable { get; set; }
 
-        public GremlinTreeSideEffectVariable(string sideEffectKey, GremlinPathVariable pathVariable)
+        public GremlinTreeSideEffectVariable(string sideEffectKey, GremlinPathVariable pathVariable) : base(GremlinVariableType.Tree)
         {
-            SideEffectKey = sideEffectKey;
-            PathVariable = pathVariable;
-            Labels.Add(sideEffectKey);
+            this.SideEffectKey = sideEffectKey;
+            this.PathVariable = pathVariable;
+            this.Labels.Add(sideEffectKey);
         }
 
         internal override List<GremlinVariable> FetchAllVars()
         {
             List<GremlinVariable> variableList = new List<GremlinVariable>() {this};
-            variableList.AddRange(PathVariable.FetchAllVars());
+            variableList.AddRange(this.PathVariable.FetchAllVars());
             return variableList;
         }
 
-        internal override void Populate(string property)
+        internal override bool Populate(string property, string label = null)
         {
-            PathVariable.Populate(property);
-            base.Populate(property);
+            if (base.Populate(property, label))
+            {
+                PathVariable.Populate(property, null);
+                return true;
+            }
+            else if (this.PathVariable.Populate(property, label))
+            {
+                base.Populate(property, null);
+                return true;
+            }
+            else
+            {
+                return false;
+            }
         }
 
         public override WTableReference ToTableReference()
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();
-            parameters.Add(SqlUtil.GetValueExpr(SideEffectKey));
-            parameters.Add(PathVariable.DefaultProjection().ToScalarExpression());
+            parameters.Add(SqlUtil.GetValueExpr(this.SideEffectKey));
+            parameters.Add(this.PathVariable.DefaultProjection().ToScalarExpression());
             var tableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Tree, parameters, GetVariableName());
             return SqlUtil.GetCrossApplyTableReference(tableRef);
         }

@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -9,59 +8,17 @@ namespace GraphView
 {
     internal class GremlinPathVariable : GremlinTableVariable
     {
-        private List<GremlinVariable> StepList { get; set; }
-        private List<List<string>> StepLabelsAtThatMoment { get; set; }
+        public List<GremlinVariable> StepList { get; set; }
+        public List<List<string>> StepLabelsAtThatMoment { get; set; }
+        public List<List<string>> StepLabelsPerhaps { get; set; }
         public List<GremlinToSqlContext> ByContexts { get; set; }
+        public List<Tuple<string, string> > LabelPropertyList { get; set; }
 
-        public GremlinPathVariable(List<GremlinVariable> stepList, List<GremlinToSqlContext> byContexts = null, string fromLabel = null, string toLabel = null)
-            : base(GremlinVariableType.Table)
+        public GremlinPathVariable(List<GremlinVariable> stepList, List<GremlinToSqlContext> byContexts = null,
+            string fromLabel = null, string toLabel = null) : base(GremlinVariableType.Path)
         {
-            this.StepList = new List<GremlinVariable>();
-            this.StepLabelsAtThatMoment = new List<List<string>>();
-            if (toLabel != null)
-            {
-                bool findTo = false;
-                for (int i = stepList.Count - 1; i >= 0; i--)
-                {
-                    var step = stepList[i];
-                    if (!findTo)
-                    {
-                        if (step.Labels.Count != 0 && step.Labels.Contains(toLabel))
-                        {
-                            findTo = true;
-                        }
-                    }
-                    if (findTo)
-                    {
-                        AddStep(step);
-                        if (step.Labels.Count != 0 && step.Labels.Contains(fromLabel))
-                        {
-                            break;
-                        }
-                    }
-                }
-                this.StepList.Reverse();
-                this.StepLabelsAtThatMoment.Reverse();
-            }
-            else if (fromLabel != null)
-            {
-                for (int i = stepList.Count - 1; i >= 0; i--)
-                {
-                    var step = StepList[i];
-                    AddStep(step);
-                    if (step.Labels.Count != 0 && step.Labels.Contains(fromLabel))
-                    {
-                        break;
-                    }
+            NormalizePathAndLabels(stepList, fromLabel, toLabel);
 
-                }
-                this.StepList.Reverse();
-                this.StepLabelsAtThatMoment.Reverse();
-            }
-            else
-            {
-                stepList.ForEach(AddStep);
-            }
             if (byContexts == null)
             {
                 this.ByContexts = new List<GremlinToSqlContext>();
@@ -71,12 +28,90 @@ namespace GraphView
                 this.ByContexts = byContexts;
             }
         }
+        private void NormalizePathAndLabels(List<GremlinVariable> stepList, string fromLabel, string toLabel)
+        {
+            int fromIndex = 0, toIndex = stepList.Count - 1;
+            this.StepList = new List<GremlinVariable>();
+            this.LabelPropertyList = new List<Tuple<string, string>>();
+            this.StepLabelsAtThatMoment = new List<List<string>>();
+            this.StepLabelsPerhaps = new List<List<string>>();
+            
+            this.StepLabelsAtThatMoment.Add(new List<string>());
+
+            for (int index = 0; index < stepList.Count;)
+            {
+                GremlinVariable step = stepList[index];
+                if (step == null)
+                {
+                    throw new TranslationException("The step should not be null.");
+                }
+                else if (step is GremlinContextVariable)
+                {
+                    this.StepList.Add(step);
+                    this.StepLabelsAtThatMoment[this.StepLabelsAtThatMoment.Count - 1].AddRange(step.Labels);
+                    this.StepLabelsAtThatMoment.Add(new List<string>());
+                    ++index;
+                }
+                else
+                {
+                    this.StepLabelsAtThatMoment[this.StepLabelsAtThatMoment.Count - 1].AddRange(step.Labels);
+                    while (++index < stepList.Count)
+                    {
+                        if (stepList[index] is GremlinContextVariable &&
+                            !((stepList[index] is GremlinRepeatContextVariable) ||
+                              (stepList[index] is GremlinUntilContextVariable) ||
+                              (stepList[index] is GremlinEmitContextVariable)))
+                        {
+                            if (step == ((GremlinContextVariable)stepList[index]).RealVariable)
+                            {
+                                this.StepLabelsAtThatMoment[this.StepLabelsAtThatMoment.Count - 1].AddRange(stepList[index].Labels);
+                            }
+                        }
+                        else
+                        {
+                            break;
+                        }
+                    }
+                    this.StepList.Add(step);
+                    this.StepLabelsAtThatMoment.Add(new List<string>());
+                }
+            }
+
+            for (int index = 0; index < this.StepList.Count; index++)
+            {
+                if (this.StepLabelsAtThatMoment[index].Contains(fromLabel))
+                {
+                    fromIndex = index;
+                }
+                if (this.StepLabelsAtThatMoment[index].Contains(toLabel))
+                {
+                    toIndex = index;
+                }
+                this.StepLabelsPerhaps.Add(new List<string>());
+            }
+
+            toIndex = toIndex < this.StepList.Count ? toIndex : this.StepList.Count - 1;
+            this.StepList = this.StepList.GetRange(fromIndex, toIndex - fromIndex + 1);
+            this.StepLabelsAtThatMoment = this.StepLabelsAtThatMoment.GetRange(fromIndex, toIndex - fromIndex + 1);
+            this.StepLabelsPerhaps = this.StepLabelsPerhaps.GetRange(fromIndex, toIndex - fromIndex + 1);
+
+            this.MinPathLength = 0;
+            foreach (GremlinVariable step in this.StepList)
+            {
+                this.MinPathLength += step.MinPathLength;
+            }
+        }
+        
+        internal override WScalarExpression ToStepScalarExpr(List<string> composedProperties = null)
+        {
+            return this.ToCompose1(new List<string>());
+        }
 
         internal override List<GremlinVariable> FetchAllVars()
         {
             List<GremlinVariable> variableList = new List<GremlinVariable>() { this };
             variableList.AddRange(this.GetStepList().FindAll(p => p != null && !(p is GremlinContextVariable)));
-            foreach (var context in ByContexts)
+            foreach (var context in this.ByContexts)
             {
                 variableList.AddRange(context.FetchAllVars());
             }
@@ -86,28 +121,99 @@ namespace GraphView
         internal override List<GremlinTableVariable> FetchAllTableVars()
         {
             List<GremlinTableVariable> variableList = new List<GremlinTableVariable> { this };
-            foreach (var context in ByContexts)
+            foreach (var context in this.ByContexts)
             {
                 variableList.AddRange(context.FetchAllTableVars());
             }
             return variableList;
         }
 
-        internal override void Populate(string property)
+        internal override bool Populate(string property, string label = null)
         {
-            foreach (var context in ByContexts)
+            if (base.Populate(property, label))
             {
-                context.Populate(property);
+                foreach (var context in this.ByContexts)
+                {
+                    context.Populate(property, null);
+                }
+                return true;
             }
-            base.Populate(property);
+            else
+            {
+                bool populateSuccess = false;
+                foreach (var context in this.ByContexts)
+                {
+                    populateSuccess |= context.Populate(property, label);
+                }
+                if (populateSuccess)
+                {
+                    base.Populate(property, null);
+                }
+                return populateSuccess;
+            }
         }
 
-        internal override void PopulateStepProperty(string property)
+        internal override bool PopulateStepProperty(string property, string label = null)
         {
-            foreach (var step in this.GetStepList())
+            if (this.ProjectedProperties.Contains(property))
             {
-                if (step == this) continue;
-                step?.PopulateStepProperty(property);
+                return true;
+            }
+            
+            if (label == null)
+            {
+                this.ProjectedProperties.Add(property);
+
+                foreach (var step in this.StepList)
+                {
+                    step.PopulateStepProperty(property, null);
+                }
+                
+                return true;
+            }
+            else
+            {
+                Tuple<string, string> labelproperty = new Tuple<string, string>(label, property);
+                if (this.LabelPropertyList.Contains(labelproperty))
+                {
+                    return true;
+                }
+
+                bool populateSuccess = false;
+                for (int index = 0; index < this.StepList.Count; index++)
+                {
+                    if (this.StepLabelsAtThatMoment[index].Contains(label) ||
+                        this.StepLabelsPerhaps[index].Contains(label))
+                    {
+                        populateSuccess |= this.StepList[index].PopulateStepProperty(property, null);
+                    }
+                    else if (this.StepList[index].PopulateStepProperty(property, label))
+                    {
+                        populateSuccess = true;
+                        this.StepLabelsPerhaps[index].Add(label);
+                    }
+                    else
+                    {
+                        continue;
+                    }
+
+                    int preIndex = index;
+                    while (preIndex > 0 && this.StepList[preIndex].MinPathLength == 0)
+                    {
+                        preIndex--;
+                        if (!(this.StepLabelsAtThatMoment[preIndex].Contains(label) || this.StepLabelsPerhaps[preIndex].Contains(label)))
+                        {
+                            this.StepLabelsPerhaps[preIndex].Add(label);
+                        }
+                        this.StepList[preIndex].PopulateStepProperty(property, null);
+                    }
+                }
+
+                if (populateSuccess)
+                {
+                    this.LabelPropertyList.Add(labelproperty);
+                }
+                return populateSuccess;
             }
         }
 
@@ -132,40 +238,36 @@ namespace GraphView
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();
             List<WSelectQueryBlock> queryBlocks = new List<WSelectQueryBlock>();
-
+            
             //Must toSelectQueryBlock before toCompose1 of variableList in order to populate needed columns
-            foreach (var byContext in ByContexts)
+            foreach (var byContext in this.ByContexts)
             {
                 queryBlocks.Add(byContext.ToSelectQueryBlock(true));
             }
-
-            for (int i = 0; i < this.StepList.Count; i++)
+            
+            for (int index = 0; index < this.StepList.Count; index++)
             {
-                GremlinVariable step = this.StepList[i];
-                if (step == null)
+                GremlinVariable step = this.StepList[index];
+                if (step is GremlinContextVariable && !((step is GremlinRepeatContextVariable) ||
+                                                               (step is GremlinUntilContextVariable) ||
+                                                               (step is GremlinEmitContextVariable)))
                 {
-                    throw new TranslationException("The step should not be null.");
+                    parameters.AddRange(this.StepLabelsAtThatMoment[index].Select(SqlUtil.GetValueExpr));
+                    continue;
                 }
-                else if (step is GremlinContextVariable)
+                List<string> composedProperties = this.ProjectedProperties.Copy();
+                foreach (var labelproperty in this.LabelPropertyList)
                 {
-                    if ((step is GremlinRepeatContextVariable) || (step is GremlinUntilContextVariable) || (step is GremlinEmitContextVariable))
+                    if (!composedProperties.Contains(labelproperty.Item1) &&
+                        (this.StepLabelsAtThatMoment[index].Contains(labelproperty.Item1) ||
+                        this.StepLabelsPerhaps[index].Contains(labelproperty.Item1)))
                     {
-                        parameters.Add(SqlUtil.GetColumnReferenceExpr(GremlinKeyword.RepeatInitalTableName,
-                            GremlinKeyword.Path));
-                    }
-                    foreach (var label in this.StepLabelsAtThatMoment[i])
-                    {
-                        parameters.Add(SqlUtil.GetValueExpr(label));
-                    }
-                }
-                else
-                {
-                    parameters.Add(step.ToStepScalarExpr());
-                    foreach (var label in this.StepLabelsAtThatMoment[i])
-                    {
-                        parameters.Add(SqlUtil.GetValueExpr(label));
+                        composedProperties.Add(labelproperty.Item2);
                     }
                 }
+                parameters.Add(step.ToStepScalarExpr(composedProperties));
+                parameters.AddRange(this.StepLabelsAtThatMoment[index].Select(SqlUtil.GetValueExpr));
+                
             }
 
             foreach (var block in queryBlocks)
@@ -180,14 +282,80 @@ namespace GraphView
 
     internal class GremlinLocalPathVariable : GremlinPathVariable
     {
-        public GremlinLocalPathVariable(List<GremlinVariable> stepList, List<GremlinToSqlContext> byContexts)
-            : base(stepList, byContexts)
-        {
-        }
+        public GremlinLocalPathVariable(List<GremlinVariable> stepList, List<GremlinToSqlContext> byContexts) : base(stepList, byContexts) {}
 
-        public GremlinLocalPathVariable(List<GremlinVariable> stepList)
-            : base(stepList)
+        public GremlinLocalPathVariable(List<GremlinVariable> stepList) : base(stepList) {}
+
+        internal override bool PopulateStepProperty(string property, string label = null)
         {
+            if (this.ProjectedProperties.Contains(property))
+            {
+                return true;
+            }
+
+            if (label == null)
+            {
+                this.ProjectedProperties.Add(property);
+                this.StepList[0].Populate(property, null);
+                for (int index = 1; index < this.StepList.Count; index++)
+                {
+                    this.StepList[index].PopulateStepProperty(property, null);
+                }
+                return true;
+            }
+            else
+            {
+                Tuple<string, string> labelproperty = new Tuple<string, string>(label, property);
+                if (this.LabelPropertyList.Contains(labelproperty))
+                {
+                    return true;
+                }
+
+                bool populateSuccess = false;
+                if (this.StepLabelsAtThatMoment[0].Contains(label) || this.StepLabelsPerhaps[0].Contains(label))
+                {
+                    populateSuccess |= this.StepList[0].Populate(property, null);
+                }
+                else
+                {
+                    populateSuccess |= this.StepList[0].Populate(property, label);
+                }
+                
+                for (int index = 1; index < this.StepList.Count; index++)
+                {
+                    if (this.StepLabelsAtThatMoment[index].Contains(label) ||
+                        this.StepLabelsPerhaps[index].Contains(label))
+                    {
+                        populateSuccess |= this.StepList[index].PopulateStepProperty(property, null);
+                    }
+                    else if (this.StepList[index].PopulateStepProperty(property, label))
+                    {
+                        populateSuccess = true;
+                        this.StepLabelsPerhaps[index].Add(label);
+                    }
+                    else
+                    {
+                        continue;
+                    }
+
+                    int preIndex = index;
+                    while (preIndex > 0 && this.StepList[preIndex].MinPathLength == 0)
+                    {
+                        preIndex--;
+                        if (!(this.StepLabelsAtThatMoment[preIndex].Contains(label) || this.StepLabelsPerhaps[preIndex].Contains(label)))
+                        {
+                            this.StepLabelsPerhaps[preIndex].Add(label);
+                        }
+                        this.StepList[preIndex].PopulateStepProperty(property, null);
+                    }
+                }
+
+                if (populateSuccess)
+                {
+                    this.LabelPropertyList.Add(labelproperty);
+                }
+                return populateSuccess;
+            }
         }
 
     }
@@ -195,14 +363,9 @@ namespace GraphView
     internal class GremlinGlobalPathVariable : GremlinPathVariable
     {
         public GremlinGlobalPathVariable(List<GremlinVariable> stepList, List<GremlinToSqlContext> byContexts, string fromLabel, string toLabel)
-            : base(stepList, byContexts, fromLabel, toLabel)
-        {
-        }
+            : base(stepList, byContexts, fromLabel, toLabel) {}
 
         public GremlinGlobalPathVariable(List<GremlinVariable> stepList)
-            : base(stepList)
-        {
-        }
-
+            : base(stepList) {}
     }
 }
