@@ -385,7 +385,6 @@ namespace GraphView
                         // Reserved properties for meta-data
                         case KW_EDGE_LABEL:
                         case KW_EDGE_ID:
-                        //case KW_EDGE_OFFSET:
                         case KW_EDGE_SRCV:
                         case KW_EDGE_SINKV:
                         case KW_EDGE_SRCV_LABEL:
@@ -546,7 +545,6 @@ namespace GraphView
                         {
                             // Reserved properties for meta-data
                             case KW_EDGE_ID:
-                            //case KW_EDGE_OFFSET:
                             case KW_EDGE_SRCV:
                             case KW_EDGE_SINKV:
                             case KW_EDGE_SRCV_LABEL:
@@ -709,7 +707,6 @@ namespace GraphView
                         {
                             // Reserved properties for meta-data
                             case KW_EDGE_ID:
-                            //case KW_EDGE_OFFSET:
                             case KW_EDGE_SRCV:
                             case KW_EDGE_SINKV:
                             case KW_EDGE_SRCV_LABEL:
@@ -816,7 +813,6 @@ namespace GraphView
                         // Reserved properties for meta-data
                         case KW_EDGE_ID:
                         case KW_EDGE_LABEL:
-                        //case KW_EDGE_OFFSET:
                         case KW_EDGE_SRCV:
                         case KW_EDGE_SINKV:
                         case KW_EDGE_SRCV_LABEL:

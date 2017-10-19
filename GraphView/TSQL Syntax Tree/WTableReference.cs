@@ -547,7 +547,7 @@ namespace GraphView
 
     public abstract partial class WEdgeToVertexTableReference : WSchemaObjectFunctionTableReference
     {
-        internal abstract TraversalOperator2.TraversalTypeEnum GetTraversalTypeParameter();
+        internal abstract TraversalOperator.TraversalTypeEnum GetTraversalTypeParameter();
     }
 
     public partial class WEdgeToSourceVertexTableReference : WEdgeToVertexTableReference { }
@@ -662,19 +662,7 @@ namespace GraphView
 
     public partial class WDropNodeTableReference : WSchemaObjectFunctionTableReference {}
 
-    //public partial class WDropEdgeTableReference : WSchemaObjectFunctionTableReference {}
-
-    //public partial class WDropTableReference : WSchemaObjectFunctionTableReference { }
-
-    //public partial class WDropPropertiesTableReference : WSchemaObjectFunctionTableReference { }
-
-    //public partial class WUpdateVertexPropertiesTableReference : WSchemaObjectFunctionTableReference {}
-
-    //public partial class WUpdateMetaPropertiesTableReference : WSchemaObjectFunctionTableReference { }
-
     public partial class WUpdatePropertiesTableReference : WSchemaObjectFunctionTableReference { }
-
-    //public partial class WUpdateEdgePropertiesTableReference : WSchemaObjectFunctionTableReference {}
 
     public partial class WStoreTableReference : WSchemaObjectFunctionTableReference {}
 

@@ -14,11 +14,6 @@ namespace GraphView
             return new WColumnReferenceExpression() { MultiPartIdentifier = GetMultiPartIdentifier(parts) };
         }
 
-        internal static WColumnReferenceExpression GetStarColumnReferenceExpr()
-        {
-            return new WColumnReferenceExpression() { ColumnType = ColumnType.Wildcard };
-        }
-
         internal static WMultiPartIdentifier GetMultiPartIdentifier(params string[] parts)
         {
             var multiIdentifierList = new List<Identifier>();

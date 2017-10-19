@@ -120,7 +120,6 @@ namespace GraphView
             RawRecord firstResult = subqueryOp.Next();
             subqueryOp.Close();
 
-            //return firstResult == null ? null : firstResult.RetriveData(0).ToString();
             return firstResult == null ? null : firstResult.RetriveData(0);
         }
     }
@@ -208,8 +207,6 @@ namespace GraphView
 
         public override FieldObject Evaluate(RawRecord record)
         {
-            //string value1 = f1.Evaluate(record);
-            //string value2 = f2.Evaluate(record);
             string value1 = f1.Evaluate(record)?.ToValue;
             string value2 = f2.Evaluate(record)?.ToValue;
             JsonDataType targetType = DataType();
@@ -223,13 +220,10 @@ namespace GraphView
                         switch (binaryType)
                         {
                             case BinaryExpressionType.BitwiseAnd:
-                                //return (bool_value1 ^ bool_value2).ToString();
                                 return new StringField((bool_value1 ^ bool_value2).ToString(), JsonDataType.Boolean);
                             case BinaryExpressionType.BitwiseOr:
-                                //return (bool_value1 | bool_value2).ToString();
                                 return new StringField((bool_value1 | bool_value2).ToString(), JsonDataType.Boolean);
                             case BinaryExpressionType.BitwiseXor:
-                                //return (bool_value1 ^ bool_value2).ToString();
                                 return new StringField((bool_value1 ^ bool_value2).ToString(), JsonDataType.Boolean);
                             default:
                                 throw new QueryCompilationException("Operator " + binaryType.ToString() + " cannot be applied to operands of type \"boolean\".");
@@ -244,7 +238,6 @@ namespace GraphView
                     switch (binaryType)
                     {
                         case BinaryExpressionType.Add:
-                            //return value1 + value2.Substring(2);    // A binary string starts with 0x
                             return new StringField(value1 + value2.Substring(2), JsonDataType.Bytes);
                         default:
                             throw new QueryCompilationException("Operator " + binaryType.ToString() + " cannot be applied to operands of type \"bytes\".");
@@ -256,31 +249,22 @@ namespace GraphView
                         switch (binaryType)
                         {
                             case BinaryExpressionType.Add:
-                                //return (int_value1 + int_value2).ToString();
                                 return new StringField((int_value1 + int_value2).ToString(), JsonDataType.Int);
                             case BinaryExpressionType.BitwiseAnd:
-                                //return (int_value1 & int_value2).ToString();
                                 return new StringField((int_value1 & int_value2).ToString(), JsonDataType.Int);
                             case BinaryExpressionType.BitwiseOr:
-                                //return (int_value1 | int_value2).ToString();
                                 return new StringField((int_value1 | int_value2).ToString(), JsonDataType.Int);
                             case BinaryExpressionType.BitwiseXor:
-                                //return (int_value1 ^ int_value2).ToString();
                                 return new StringField((int_value1 ^ int_value2).ToString(), JsonDataType.Int);
                             case BinaryExpressionType.Divide:
-                                //return (int_value1 / int_value2).ToString();
                                 return new StringField((int_value1 / int_value2).ToString(), JsonDataType.Int);
                             case BinaryExpressionType.Modulo:
-                                //return (int_value1 % int_value2).ToString();
                                 return new StringField((int_value1 % int_value2).ToString(), JsonDataType.Int);
                             case BinaryExpressionType.Multiply:
-                                //return (int_value1 * int_value2).ToString();
                                 return new StringField((int_value1 * int_value2).ToString(), JsonDataType.Int);
                             case BinaryExpressionType.Subtract:
-                                //return (int_value1 - int_value2).ToString();
                                 return new StringField((int_value1 - int_value2).ToString(), JsonDataType.Int);
                             default:
-                                //return "";
                                 return new StringField("");
                         }
                     }
@@ -296,31 +280,22 @@ namespace GraphView
                         switch (binaryType)
                         {
                             case BinaryExpressionType.Add:
-                                //return (long_value1 + long_value2).ToString();
                                 return new StringField((long_value1 + long_value2).ToString(), JsonDataType.Long);
                             case BinaryExpressionType.BitwiseAnd:
-                                //return (long_value1 & long_value2).ToString();
                                 return new StringField((long_value1 & long_value2).ToString(), JsonDataType.Long);
                             case BinaryExpressionType.BitwiseOr:
-                                //return (long_value1 | long_value2).ToString();
                                 return new StringField((long_value1 | long_value2).ToString(), JsonDataType.Long);
                             case BinaryExpressionType.BitwiseXor:
-                                //return (long_value1 ^ long_value2).ToString();
                                 return new StringField((long_value1 ^ long_value2).ToString(), JsonDataType.Long);
                             case BinaryExpressionType.Divide:
-                                //return (long_value1 / long_value2).ToString();
                                 return new StringField((long_value1 / long_value2).ToString(), JsonDataType.Long);
                             case BinaryExpressionType.Modulo:
-                                //return (long_value1 % long_value2).ToString();
                                 return new StringField((long_value1 % long_value2).ToString(), JsonDataType.Long);
                             case BinaryExpressionType.Multiply:
-                                //return (long_value1 * long_value2).ToString();
                                 return new StringField((long_value1 * long_value2).ToString(), JsonDataType.Long);
                             case BinaryExpressionType.Subtract:
-                                //return (long_value1 - long_value2).ToString();
                                 return new StringField((long_value1 - long_value2).ToString(), JsonDataType.Long);
                             default:
-                                //return "";
                                 return new StringField("");
                         }
                     }
@@ -336,19 +311,14 @@ namespace GraphView
                         switch (binaryType)
                         {
                             case BinaryExpressionType.Add:
-                                //return (double_value1 + double_value2).ToString();
                                 return new StringField((double_value1 + double_value2).ToString(), JsonDataType.Double);
                             case BinaryExpressionType.Divide:
-                                //return (double_value1 / double_value2).ToString();
                                 return new StringField((double_value1 / double_value2).ToString(), JsonDataType.Double);
                             case BinaryExpressionType.Modulo:
-                                //return (double_value1 % double_value2).ToString();
                                 return new StringField((double_value1 % double_value2).ToString(), JsonDataType.Double);
                             case BinaryExpressionType.Multiply:
-                                //return (double_value1 * double_value2).ToString();
                                 return new StringField((double_value1 * double_value2).ToString(), JsonDataType.Double);
                             case BinaryExpressionType.Subtract:
-                                //return (double_value1 - double_value2).ToString();
                                 return new StringField((double_value1 - double_value2).ToString(), JsonDataType.Double);
                             default:
                                 throw new QueryCompilationException("Operator " + binaryType.ToString() + " cannot be applied to operands of type 'double'.");
@@ -366,19 +336,14 @@ namespace GraphView
                         switch (binaryType)
                         {
                             case BinaryExpressionType.Add:
-                                //return (float_value1 + float_value2).ToString();
                                 return new StringField((float_value1 + float_value2).ToString(), JsonDataType.Float);
                             case BinaryExpressionType.Divide:
-                                //return (float_value1 / float_value2).ToString();
                                 return new StringField((float_value1 / float_value2).ToString(), JsonDataType.Float);
                             case BinaryExpressionType.Modulo:
-                                //return (float_value1 % float_value2).ToString();
                                 return new StringField((float_value1 % float_value2).ToString(), JsonDataType.Float);
                             case BinaryExpressionType.Multiply:
-                                //return (float_value1 * float_value2).ToString();
                                 return new StringField((float_value1 * float_value2).ToString(), JsonDataType.Float);
                             case BinaryExpressionType.Subtract:
-                                //return (float_value1 - float_value2).ToString();
                                 return new StringField((float_value1 - float_value2).ToString(), JsonDataType.Float);
                             default:
                                 throw new QueryCompilationException("Operator " + binaryType.ToString() + " cannot be applied to operands of type 'float'.");
@@ -393,7 +358,6 @@ namespace GraphView
                     switch (binaryType)
                     {
                         case BinaryExpressionType.Add:
-                            //return value1 + value2;
                             return new StringField(value1 + value2);
                         default:
                             throw new QueryCompilationException("Operator " + binaryType.ToString() + " cannot be applied to operands of type \"string\".");
@@ -446,8 +410,6 @@ namespace GraphView
 
         public override FieldObject Evaluate(RawRecord record)
         {
-            //return new CollectionField(new List<FieldObject>(targetFieldIndexes.Select(e => record[e])));
-
             List<FieldObject> results = new List<FieldObject>();
             foreach (var input in inputOfCompose2)
             {

@@ -94,9 +94,6 @@ namespace GraphView
 
         public override void Visit(WColumnReferenceExpression node) 
         {
-            if (node.ColumnType == ColumnType.Wildcard)
-                return;
-
             string columnName = node.ColumnName;
             string tableAlias = node.TableReference;
 

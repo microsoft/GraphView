@@ -763,15 +763,15 @@ namespace GraphView
         /// <param name="context"></param>
         /// <param name="edge"></param>
         /// <returns></returns>
-        private TraversalOperator2.TraversalTypeEnum GetTraversalType(MatchEdge edge)
+        private TraversalOperator.TraversalTypeEnum GetTraversalType(MatchEdge edge)
         {
             if (edge.EdgeType == WEdgeType.BothEdge) {
-                return TraversalOperator2.TraversalTypeEnum.Other;
+                return TraversalOperator.TraversalTypeEnum.Other;
             }
 
             return IsTraversalThroughPhysicalReverseEdge(edge)
-                ? TraversalOperator2.TraversalTypeEnum.Source
-                : TraversalOperator2.TraversalTypeEnum.Sink;
+                ? TraversalOperator.TraversalTypeEnum.Source
+                : TraversalOperator.TraversalTypeEnum.Sink;
         }
 
         /// <summary>
@@ -1017,7 +1017,7 @@ namespace GraphView
                         GraphViewExecutionOperator startOp = currentNode.IsDummyNode
                             ? (GraphViewExecutionOperator)(new FetchEdgeOperator(command,
                                 currentNode.DanglingEdges[0].AttachedJsonQuery))
-                            : new FetchNodeOperator2(
+                            : new FetchNodeOperator(
                                 command,
                                 currentNode.AttachedJsonQuery
                                 /*currentNode.AttachedJsonQueryOfNodesViaExternalAPI*/);
@@ -1026,12 +1026,12 @@ namespace GraphView
                         // The graph contains more than one component
                         //
                         if (operatorChain.Any())
-                            operatorChain.Add(new CartesianProductOperator2(operatorChain.Last(), startOp));
+                            operatorChain.Add(new CartesianProductOperator(operatorChain.Last(), startOp));
                         //
                         // This WSelectQueryBlock is a sub query
                         //
                         else if (context.OuterContextOp != null)
-                            operatorChain.Add(new CartesianProductOperator2(context.OuterContextOp, startOp));
+                            operatorChain.Add(new CartesianProductOperator(context.OuterContextOp, startOp));
                         else
                             operatorChain.Add(startOp);
 
@@ -1063,7 +1063,7 @@ namespace GraphView
                         // This traversalEdge is the one whose sink is current node, and it has been pushed to server
                         //
                         MatchEdge traversalEdge = tuple.Item2;
-                        operatorChain.Add(new TraversalOperator2(
+                        operatorChain.Add(new TraversalOperator(
                             operatorChain.Last(),
                             command,
                             context.LocateColumnReference(traversalEdge.EdgeAlias, GremlinKeyword.Star),
@@ -1132,7 +1132,7 @@ namespace GraphView
                     var tableHeader = temporaryTableTuple.Item1;
                     var tableOp = temporaryTableTuple.Item2;
                     operatorChain.Add(operatorChain.Any()
-                        ? new CartesianProductOperator2(operatorChain.Last(), tableOp)
+                        ? new CartesianProductOperator(operatorChain.Last(), tableOp)
                         : tableOp);
 
                     // Merge temporary table's header into current context
@@ -1811,7 +1811,7 @@ namespace GraphView
             WSelectQueryBlock.ConstructJsonQueryOnNode(command, matchNode, null, command.Connection.RealPartitionKey);
             //WSelectQueryBlock.ConstructJsonQueryOnNodeViaExternalAPI(matchNode, null);
 
-            FetchNodeOperator2 fetchNodeOp = new FetchNodeOperator2(
+            FetchNodeOperator fetchNodeOp = new FetchNodeOperator(
                 command, 
                 matchNode.AttachedJsonQuery
                 /*matchNode.AttachedJsonQueryOfNodesViaExternalAPI*/);
@@ -1823,7 +1823,7 @@ namespace GraphView
                 context.AddField(nodeAlias, propertyName, columnGraphType);
             }
 
-            return new CartesianProductOperator2(context.CurrentExecutionOperator, fetchNodeOp);
+            return new CartesianProductOperator(context.CurrentExecutionOperator, fetchNodeOp);
         }
     }
 
@@ -1865,7 +1865,7 @@ namespace GraphView
                 //WSelectQueryBlock.ConstructJsonQueryOnNodeViaExternalAPI(matchNode, null);
             }
 
-            TraversalOperator2 traversalOp = new TraversalOperator2(
+            TraversalOperator traversalOp = new TraversalOperator(
                 context.CurrentExecutionOperator, command, 
                 edgeFieldIndex, this.GetTraversalTypeParameter(),
                 matchNode.AttachedJsonQuery/*, matchNode.AttachedJsonQueryOfNodesViaExternalAPI*/, null);
@@ -1890,33 +1890,33 @@ namespace GraphView
 
     partial class WEdgeToSinkVertexTableReference
     {
-        internal override TraversalOperator2.TraversalTypeEnum GetTraversalTypeParameter()
+        internal override TraversalOperator.TraversalTypeEnum GetTraversalTypeParameter()
         {
-            return TraversalOperator2.TraversalTypeEnum.Sink;
+            return TraversalOperator.TraversalTypeEnum.Sink;
         }
     }
 
     partial class WEdgeToSourceVertexTableReference
     {
-        internal override TraversalOperator2.TraversalTypeEnum GetTraversalTypeParameter()
+        internal override TraversalOperator.TraversalTypeEnum GetTraversalTypeParameter()
         {
-            return TraversalOperator2.TraversalTypeEnum.Source;
+            return TraversalOperator.TraversalTypeEnum.Source;
         }
     }
 
     partial class WEdgeToOtherVertexTableReference
     {
-        internal override TraversalOperator2.TraversalTypeEnum GetTraversalTypeParameter()
+        internal override TraversalOperator.TraversalTypeEnum GetTraversalTypeParameter()
         {
-            return TraversalOperator2.TraversalTypeEnum.Other;
+            return TraversalOperator.TraversalTypeEnum.Other;
         }
     }
 
     partial class WEdgeToBothVertexTableReference
     {
-        internal override TraversalOperator2.TraversalTypeEnum GetTraversalTypeParameter()
+        internal override TraversalOperator.TraversalTypeEnum GetTraversalTypeParameter()
         {
-            return TraversalOperator2.TraversalTypeEnum.Both;
+            return TraversalOperator.TraversalTypeEnum.Both;
         }
     }
 

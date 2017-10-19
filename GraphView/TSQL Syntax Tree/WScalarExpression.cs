@@ -287,26 +287,10 @@ namespace GraphView
 
         internal override string ToString(string indent)
         {
-            switch (ColumnType)
-            {
-                case ColumnType.Regular:
-                {
-                    return MultiPartIdentifier != null
-                        ? string.Format(CultureInfo.CurrentCulture, "{0}{1}", indent,
-                            MultiPartIdentifier)
-                        : "";
-                }
-                case ColumnType.Wildcard:
-                    {
-                        return string.Format(CultureInfo.CurrentCulture, "{0}*", indent);
-                    }
-                default:
-                    // throw new GraphViewException("Undefined column type");
-                    return MultiPartIdentifier != null
-                        ? string.Format(CultureInfo.CurrentCulture, "{0}{1}", indent,
-                            MultiPartIdentifier)
-                        : "";
-            }
+            return MultiPartIdentifier != null
+                ? string.Format(CultureInfo.CurrentCulture, "{0}{1}", indent,
+                    MultiPartIdentifier)
+                : "";
         }
 
         public override void Accept(WSqlFragmentVisitor visitor)

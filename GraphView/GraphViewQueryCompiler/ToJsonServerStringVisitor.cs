@@ -171,22 +171,10 @@ namespace GraphView
 
         public override void Visit(WColumnReferenceExpression node)
         {
-            switch (node.ColumnType)
-            {
-                case ColumnType.Wildcard:
-                {
-                    this.dfsStack.Push("*");
-                    break;
-                }
-                default:
-                {
-                    string nodeStr = node.MultiPartIdentifier != null
-                        ? node.MultiPartIdentifier.ToString()
-                        : "";
-                    this.dfsStack.Push(nodeStr);
-                    break;
-                }
-            }
+            string nodeStr = node.MultiPartIdentifier != null
+                ? node.MultiPartIdentifier.ToString()
+                : "";
+            this.dfsStack.Push(nodeStr);
         }
 
         public override void Visit(WFunctionCall node)

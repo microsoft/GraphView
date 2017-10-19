@@ -485,7 +485,6 @@ namespace GraphView
 
         public override void ResetState()
         {
-            //TreeState.Init();
             this.inputOp.ResetState();
             this.Open();
         }
@@ -895,7 +894,6 @@ namespace GraphView
                                     {
                                         case KW_EDGE_ID:
                                         case KW_EDGE_LABEL:
-                                        //case KW_EDGE_OFFSET:
                                         case KW_EDGE_SRCV:
                                         case KW_EDGE_SINKV:
                                         case KW_EDGE_SRCV_LABEL:

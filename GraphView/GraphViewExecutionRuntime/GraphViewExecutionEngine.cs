@@ -747,12 +747,6 @@ namespace GraphView
             this.VertexProperty = rhs.VertexProperty;
         }
 
-        //public void UpdateValue(JValue value)
-        //{
-        //    this.PropertyValue = value.ToString();
-        //    this.JsonDataType = JsonDataTypeHelper.GetJsonDataType(value.Type);
-        //}
-
         public override FieldObject this[string metapropertyName]
         {
             get
@@ -1007,7 +1001,6 @@ namespace GraphView
                     return "";
                 Debug.Assert(false, "Should not get here.");
                 return "";
-                //throw new NotSupportedException("Can't get value on a VertexPropertyField with multiple properties");
             }
             set {
                 // Do nothing
@@ -1022,7 +1015,6 @@ namespace GraphView
                 return "";
             Debug.Assert(false, "Should not get here.");
             return "";
-            //throw new NotSupportedException("Can't get value on a VertexPropertyField with multiple properties");
         }
 
         public override string ToValue {
@@ -1034,7 +1026,6 @@ namespace GraphView
                     return "";
                 Debug.Assert(false, "Should not get here.");
                 return "";
-                //throw new NotSupportedException("Can't get 'ToValue' on a VertexPropertyField");
             }
         }
 
@@ -1051,11 +1042,6 @@ namespace GraphView
                 return JsonDataType.String;
             }
         }
-
-        //public VertexPropertyField(string propertyName, string propertyValue, JsonDataType jsonDataType)
-        //    : base(propertyName, propertyValue, jsonDataType)
-        //{
-        //}
 
         public VertexPropertyField(JProperty multiProperty, VertexField vertexField)
             : base(multiProperty.Name, null, JsonDataType.Array)
@@ -1162,7 +1148,6 @@ namespace GraphView
                     this.Multiples[propId] = new VertexSinglePropertyField(propId, multiProperty.Name, (JValue)multiProperty.Value, this);
                 }
                 else {
-                    //this.Multiples[propId].Replace((JValue)multiProperty.Value);
                     throw new Exception($"BUG: Property '{multiProperty.Name}' should be immutable.");
                 }
 
@@ -1180,7 +1165,6 @@ namespace GraphView
             foreach (JObject vertexPropertyObject in ((JArray)multiProperty.Value).Values<JObject>()) {
                 Debug.Assert(vertexPropertyObject[KW_PROPERTY_VALUE] is JValue);
                 Debug.Assert(vertexPropertyObject[KW_PROPERTY_ID] is JValue);
-                //Debug.Assert(vertexPropertyObject[KW_PROPERTY_META] is JObject);
 
                 string propId = (string) vertexPropertyObject[KW_PROPERTY_ID];
                 if (metaPropIdToRemove.Remove(propId)) {
@@ -1343,7 +1327,6 @@ namespace GraphView
             foreach (string propertyName in this.EdgeProperties.Keys) {
                 switch (propertyName) {
                 case KW_EDGE_LABEL:
-                //case KW_EDGE_OFFSET:
                 case KW_EDGE_SRCV:
                 case KW_EDGE_SRCV_LABEL:
                 case KW_EDGE_SRCV_PARTITION:
@@ -1351,10 +1334,6 @@ namespace GraphView
                 case KW_EDGE_SINKV_LABEL:
                 case KW_EDGE_SINKV_PARTITION:
                 case KW_EDGE_ID:
-
-                //case GremlinKeyword.EdgeSourceV:
-                //case GremlinKeyword.EdgeSinkV:
-                //case GremlinKeyword.EdgeOtherV:
                     continue;
                 default:
                     break;
@@ -1442,7 +1421,6 @@ namespace GraphView
                 InVLabel = inVLabel,
                 InVPartition = inVPartition,
                 EdgeDocID = edgeDocID,
-                //Offset = (long)edgeObject[KW_EDGE_OFFSET],
                 EdgeJObject = edgeObject
             };
 
@@ -1548,8 +1526,6 @@ namespace GraphView
         public void RemoveEdgeField(string edgeId)
         {
             // If the edgeField does not exist, just do nothing!
-            //SyncIfLazy();
-
             this._edges.Remove(edgeId);
         }
 
@@ -1622,8 +1598,6 @@ namespace GraphView
             case KW_DOC_ID:
             case KW_DOC_PARTITION:
             case KW_VERTEX_LABEL:
-            //case KW_VERTEX_VIAGRAPHAPI:
-            //case KW_VERTEX_NEXTOFFSET:
             case KW_VERTEX_EDGE_SPILLED:
             case KW_VERTEX_REVEDGE_SPILLED:
                 return true;
@@ -1718,31 +1692,6 @@ namespace GraphView
                 return propertyField;
             }
         }
-
-        //[Obsolete]
-        //public void ReplaceProperty(JProperty property)
-        //{
-        //    // Replace
-        //    if (IsVertexMetaProperty(property.Name)) {
-        //        ValuePropertyField valueProp;
-        //        bool found = this.VertexMetaProperties.TryGetValue(property.Name, out valueProp);
-        //        Debug.Assert(found && valueProp != null);
-
-        //        valueProp.Replace(property);
-        //    }
-        //    else {
-        //        VertexPropertyField propertyField;
-        //        if (this.VertexProperties.TryGetValue(property.Name, out propertyField)) {
-        //            propertyField.Replace(property);
-        //        }
-        //        else {
-        //            this.VertexProperties.Add(
-        //                property.Name, 
-        //                new VertexPropertyField(property, this));
-        //        }
-        //    }
-        //}
-
         
         public VertexField(GraphViewCommand command, JObject vertexObject)
         {
@@ -1813,7 +1762,6 @@ namespace GraphView
 
             if (this.ViaGraphAPI) {
                 Debug.Assert(this.VertexMetaProperties.ContainsKey(KW_VERTEX_LABEL));
-                //Debug.Assert(this.VertexMetaProperties.ContainsKey(KW_VERTEX_VIAGRAPHAPI));
                 Debug.Assert(this.VertexMetaProperties.ContainsKey(KW_VERTEX_EDGE_SPILLED));
                 Debug.Assert(this.VertexMetaProperties.ContainsKey(KW_VERTEX_REVEDGE_SPILLED));
 
@@ -1920,7 +1868,6 @@ namespace GraphView
                             {
                             case KW_EDGE_ID:
                             case KW_EDGE_LABEL:
-                            //case KW_EDGE_OFFSET:
                             case KW_EDGE_SRCV:
                             case KW_EDGE_SINKV:
                             case KW_EDGE_SRCV_LABEL:
@@ -2016,7 +1963,6 @@ namespace GraphView
                             {
                             case KW_EDGE_ID:
                             case KW_EDGE_LABEL:
-                            //case KW_EDGE_OFFSET:
                             case KW_EDGE_SRCV:
                             case KW_EDGE_SINKV:
                             case KW_EDGE_SRCV_LABEL:
@@ -2199,7 +2145,6 @@ namespace GraphView
 
                 JArray edgesArray = (JArray) edgeDocObject[KW_EDGEDOC_EDGE];
                 Debug.Assert(edgesArray != null, "edgesArray != null");
-                //Debug.Assert(edgesArray.Count > 0, "edgesArray.Count > 0");
                 if (isReverse) {
                     foreach (JObject edgeObject in edgesArray.Children<JObject>()) {
                         string edgeId = (string)edgeObject[KW_EDGE_ID];
@@ -2395,7 +2340,6 @@ namespace GraphView
     public class DeltaAddE : DeltaField
     {
         private VertexField VertexField; 
-        private string Partition;
         private JObject VertexObject;
         private JObject EdgeObject;
         private bool IsReverse;
@@ -2405,7 +2349,6 @@ namespace GraphView
         {
             this.Command = command;
             this.VertexField = vertexField;
-            this.Partition = vertexField.Partition;
             this.VertexObject = vertexObject;
             this.EdgeObject = edgeObject;
             this.IsReverse = isReverse;
@@ -2415,7 +2358,7 @@ namespace GraphView
         {
             string DocId;
             EdgeDocumentHelper.InsertEdgeObjectInternal(this.Command, this.VertexObject, this.VertexField, 
-                this.EdgeObject, this.IsReverse, out DocId, this.Partition);
+                this.EdgeObject, this.IsReverse, out DocId);
         }
 
     }
@@ -2429,16 +2372,15 @@ namespace GraphView
         private JObject SinkVertexObject;
         private bool SinkViaGraphAPI;
 
-        public DeltaDropE(GraphViewCommand command, string srcId, string edgeId, JObject srcVertexObject, bool srcViaGraphAPI, 
-            JObject sinkVertexObject, bool sinkViaGraphAPI)
+        public DeltaDropE(GraphViewCommand command, string srcId, string edgeId, VertexField srcVertexField, VertexField sinkVertexField)
             : base(DeltaType.DropE, command)
         {
             this.SrcId = srcId;
             this.EdgeId = edgeId;
-            this.SrcVertexObject = srcVertexObject;
-            this.SrcViaGraphAPI = srcViaGraphAPI;
-            this.SinkVertexObject = sinkVertexObject;
-            this.SinkViaGraphAPI = sinkViaGraphAPI;
+            this.SrcVertexObject = srcVertexField.VertexJObject;
+            this.SrcViaGraphAPI = srcVertexField.ViaGraphAPI;
+            this.SinkVertexObject = sinkVertexField.VertexJObject;
+            this.SinkViaGraphAPI = sinkVertexField.ViaGraphAPI;
         }
 
         public override void Upload()
@@ -2619,61 +2561,9 @@ namespace GraphView
             }
         }
 
-        //internal int RetriveIndex(string value)
-        //{
-        //    if (fieldValues.IndexOf(value) == -1) return -1;
-        //    else return fieldValues.IndexOf(value);
-        //}
-        //internal String RetriveRow()
-        //{
-        //    String row = "";
-        //    if (fieldValues == null) return row;
-        //    for(int i = 0; i < fieldValues.Count; i++)
-        //    {
-        //        row += fieldValues[i].ToString() + ",";
-        //    }
-        //    return row;
-        //}
         internal List<FieldObject> fieldValues;
     }
 
-    /// <summary>
-    /// Record differs from RawRecord in that the field names of the blob is annotated. 
-    /// It is hence comprehensible to external data readers.  
-    /// </summary>
-    //public class Record
-    //{
-    //    RawRecord rawRecord;
-
-    //    internal Record(RawRecord rhs, List<string> pHeader)
-    //    {
-    //        if (rhs != null)
-    //        {
-    //            rawRecord = rhs;
-    //            header = pHeader;
-    //        }
-    //    }
-    //    internal List<string> header { get; set; }
-    //    public string this[int index]
-    //    {
-    //        get
-    //        {
-    //            if (index >= rawRecord.fieldValues.Count)
-    //                throw new IndexOutOfRangeException("Out of range," + "the Record has only " + rawRecord.fieldValues.Count + " fields");
-    //            else return rawRecord.fieldValues[index].ToString();
-    //        }
-    //    }
-
-    //    public string this[string FieldName]
-    //    {
-    //        get
-    //        {
-    //            if (header == null || header.IndexOf(FieldName) == -1) 
-    //                throw new IndexOutOfRangeException("Out of range," + "the Record has no field \"" + FieldName + "\".");
-    //            else return rawRecord.fieldValues[header.IndexOf(FieldName)].ToString();
-    //        }
-    //    }
-    //}
 
     internal enum GraphViewEdgeTableReferenceEnum
     {

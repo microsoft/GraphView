@@ -27,20 +27,6 @@ namespace GraphView
         }
     }
 
-    //internal abstract class ComparisonBooleanFunction : BooleanFunction
-    //{
-    //    // To be replaced by BooleanComparisonType
-    //    internal enum ComparisonType
-    //    {
-    //        neq,
-    //        eq,
-    //        lt,
-    //        gt,
-    //        gte,
-    //        lte
-    //    }
-    //}
-
     internal class ComparisonFunction : BooleanFunction
     {
         ScalarFunction firstScalarFunction;
@@ -115,8 +101,6 @@ namespace GraphView
                     else
                     {
                         return false;
-                        //throw new QueryCompilationException(string.Format("Cannot cast \"{0}\" or \"{1}\" to values of type \"boolean\"",
-                        //    value1, value2));
                     }
                 case JsonDataType.Bytes:
                     switch (comparisonType)
@@ -128,7 +112,6 @@ namespace GraphView
                             return value1 != value2;
                         default:
                             return false;
-                            //throw new NotImplementedException();
                     }
                 case JsonDataType.Int:
                     int int_value1, int_value2;
@@ -160,8 +143,6 @@ namespace GraphView
                     else
                     {
                         return false;
-                        //throw new QueryCompilationException(string.Format("Cannot cast \"{0}\" or \"{1}\" to values of type \"int\"",
-                        //    value1, value2));
                     }
                 case JsonDataType.Long:
                     long long_value1, long_value2;
@@ -193,8 +174,6 @@ namespace GraphView
                     else
                     {
                         return false;
-                        //throw new QueryCompilationException(string.Format("Cannot cast \"{0}\" or \"{1}\" to values of type \"long\"",
-                        //    value1, value2));
                     }
                 case JsonDataType.Double:
                     double double_value1, double_value2;
@@ -226,8 +205,6 @@ namespace GraphView
                     else
                     {
                         return false;
-                        //throw new QueryCompilationException(string.Format("Cannot cast \"{0}\" or \"{1}\" to values of type \"double\"",
-                        //    value1, value2));
                     }
                 case JsonDataType.Float:
                     float float_value1, float_value2;
@@ -259,8 +236,6 @@ namespace GraphView
                     else
                     {
                         return false;
-                        //throw new QueryCompilationException(string.Format("Cannot cast \"{0}\" or \"{1}\" to values of type \"float\"",
-                        //    value1, value2));
                     }
                 case JsonDataType.String:
                     switch (comparisonType)
@@ -369,52 +344,6 @@ namespace GraphView
             }
         }
     }
-
-    //internal class FieldComparisonFunction : ComparisonBooleanFunction
-    //{
-    //    //internal int LhsFieldIndex;
-    //    //internal int RhsFieldIndex;
-    //    internal string LhsFieldName;
-    //    internal string RhsFieldName;
-    //    internal ComparisonType type;
-
-    //    //internal FieldComparisonFunction(int lhs, int rhs, ComparisonType pType)
-    //    //{
-    //    //    LhsFieldIndex = lhs;
-    //    //    RhsFieldIndex = rhs;
-    //    //    type = pType;
-    //    //}
-
-    //    public FieldComparisonFunction(string lhs, string rhs, ComparisonType pType)
-    //    {
-    //        LhsFieldName = lhs;
-    //        RhsFieldName = rhs;
-    //        type = pType;
-    //    }
-    //    public override bool Evaluate(RawRecord r)
-    //    {
-    //        var lhsIndex = header.IndexOf(LhsFieldName);
-    //        var rhsIndex = header.IndexOf(RhsFieldName);
-    //        switch (type)
-    //        {
-    //            case ComparisonType.eq:
-    //                return r.RetriveData(lhsIndex) == r.RetriveData(rhsIndex);
-    //            case ComparisonType.neq:
-    //                return r.RetriveData(lhsIndex) != r.RetriveData(rhsIndex);
-    //            case ComparisonType.lt:
-    //                return double.Parse(r.RetriveData(lhsIndex).ToString()) < double.Parse(r.RetriveData(rhsIndex).ToString());
-    //            case ComparisonType.gt:
-    //                return double.Parse(r.RetriveData(lhsIndex).ToString()) > double.Parse(r.RetriveData(rhsIndex).ToString());
-    //            case ComparisonType.gte:
-    //                return double.Parse(r.RetriveData(lhsIndex).ToString()) >= double.Parse(r.RetriveData(rhsIndex).ToString());
-    //            case ComparisonType.lte:
-    //                return double.Parse(r.RetriveData(lhsIndex).ToString()) <= double.Parse(r.RetriveData(rhsIndex).ToString());
-    //            default:
-    //                return false;
-    //        }
-
-    //    }
-    //}
 
     internal enum BooleanBinaryFunctionType
     {

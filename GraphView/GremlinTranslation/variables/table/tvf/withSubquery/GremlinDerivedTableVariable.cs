@@ -214,11 +214,6 @@ namespace GraphView
                 populateSuccess |= sideEffectVariable.Populate(property, label);
             }
 
-            //if (SideEffectKeys.Count > 1 && property != GremlinKeyword.TableDefaultColumnName)
-            //{
-            //    throw new TranslationException("Multiple variables can only populate TableDefaultColumnName");
-            //}
-
             if (populateSuccess)
             {
                 base.Populate(property, null);

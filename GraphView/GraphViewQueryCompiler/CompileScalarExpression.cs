@@ -39,8 +39,6 @@ namespace GraphView
     {
         internal override ScalarFunction CompileToFunction(QueryCompilationContext context, GraphViewCommand command)
         {
-            if (ColumnType == ColumnType.Wildcard)
-                return null;
             int fieldIndex = context.LocateColumnReference(this);
             return new FieldValue(fieldIndex);
         }

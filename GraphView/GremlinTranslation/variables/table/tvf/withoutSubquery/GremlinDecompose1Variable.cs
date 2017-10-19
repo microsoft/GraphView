@@ -60,7 +60,6 @@ namespace GraphView
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();
             parameters.Add(SqlUtil.GetColumnReferenceExpr(GremlinKeyword.Compose1TableDefaultName, GremlinKeyword.TableDefaultColumnName));
-            // parameters.Add(SqlUtil.GetValueExpr(this.DefaultProperty()));
             parameters.AddRange(this.ProjectedProperties.Select(SqlUtil.GetValueExpr));
 
             var tableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Decompose1, parameters, GetVariableName());

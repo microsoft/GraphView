@@ -981,7 +981,6 @@ namespace GraphView
 
         public GraphTraversal Match(params GraphTraversal[] matchTraversals)
         {
-            // AddGremlinOperator(new GremlinMatchOp(matchTraversals));
             // Polyfill-Match: Implement Match by `Choose`, `Where` and `Select`, but do not support the Infix-And and Infix-Or.
             (new PolyfillHelper.Match(PolyfillHelper.Match.Connective.AND, matchTraversals)).Polyfill(this);
             return this;

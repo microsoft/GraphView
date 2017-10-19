@@ -75,7 +75,7 @@ namespace GraphView
         }
     }
 
-    internal class FetchNodeOperator2 : GraphViewExecutionOperator
+    internal class FetchNodeOperator : GraphViewExecutionOperator
     {
         private Queue<RawRecord> outputBuffer;
         private readonly JsonQuery vertexQuery;
@@ -83,27 +83,20 @@ namespace GraphView
         private readonly GraphViewCommand command;
 
         private IEnumerator<Tuple<VertexField, RawRecord>> verticesEnumerator;
-        //private IEnumerator<RawRecord> verticesViaExternalAPIEnumerator;
 
-        public FetchNodeOperator2(GraphViewCommand command, JsonQuery vertexQuery/*, JsonQuery vertexViaExternalAPIQuery*/)
+        public FetchNodeOperator(GraphViewCommand command, JsonQuery vertexQuery)
         {
             this.Open();
             this.command = command;
             this.vertexQuery = vertexQuery;
-            //this.vertexViaExternalAPIQuery = vertexViaExternalAPIQuery;
             this.verticesEnumerator = command.Connection.CreateDatabasePortal().GetVerticesAndEdgesViaVertices(vertexQuery, this.command);
-            //this.verticesViaExternalAPIEnumerator = connection.CreateDatabasePortal().GetVerticesViaExternalAPI(vertexViaExternalAPIQuery);
         }
 
         public override RawRecord Next()
         {
-            if (/*this.connection.GraphType != GraphType.CompatibleOnly && */this.verticesEnumerator.MoveNext()) {
+            if (this.verticesEnumerator.MoveNext()) {
                 return this.verticesEnumerator.Current.Item2;
             }
-
-            //if (this.connection.GraphType != GraphType.GraphAPIOnly && this.verticesViaExternalAPIEnumerator.MoveNext()) {
-            //    return this.verticesViaExternalAPIEnumerator.Current;
-            //}
 
             this.Close();
             return null;
@@ -112,7 +105,6 @@ namespace GraphView
         public override void ResetState()
         {
             this.verticesEnumerator = this.command.Connection.CreateDatabasePortal().GetVerticesAndEdgesViaVertices(this.vertexQuery, this.command);
-            //this.verticesViaExternalAPIEnumerator = connection.CreateDatabasePortal().GetVerticesViaExternalAPI(this.vertexViaExternalAPIQuery);
             this.outputBuffer?.Clear();
             this.Open();
         }
@@ -162,7 +154,7 @@ namespace GraphView
     /// 
     /// This operators emulates the nested-loop join algorithm.
     /// </summary>
-    internal class TraversalOperator2 : GraphViewExecutionOperator
+    internal class TraversalOperator : GraphViewExecutionOperator
     {
         private int outputBufferSize;
         private int batchSize = 5000;
@@ -183,7 +175,6 @@ namespace GraphView
         // It is null if the sink vertex has no predicates and no properties other than sink vertex ID
         // are to be returned.  
         private JsonQuery sinkVertexQuery;
-        //private JsonQuery sinkVertexViaExternalAPIQuery;
 
         // Deprecated currently.
         // A list of index pairs, each specifying which field in the source record 
@@ -192,13 +183,12 @@ namespace GraphView
         // to the vertices other than the source vertices in the records by the input operator. 
         private List<Tuple<int, int>> matchingIndexes;
 
-        public TraversalOperator2(
+        public TraversalOperator(
             GraphViewExecutionOperator inputOp,
             GraphViewCommand command,
             int edgeFieldIndex,
             TraversalTypeEnum traversalType,
             JsonQuery sinkVertexQuery,
-            //JsonQuery sinkVertexViaExternalAPIQuery,
             List<Tuple<int, int>> matchingIndexes,
             int outputBufferSize = 10000)
         {
@@ -208,7 +198,6 @@ namespace GraphView
             this.edgeFieldIndex = edgeFieldIndex;
             this.traversalType = traversalType;
             this.sinkVertexQuery = sinkVertexQuery;
-            //this.sinkVertexViaExternalAPIQuery = sinkVertexViaExternalAPIQuery;
             this.matchingIndexes = matchingIndexes;
             this.outputBufferSize = outputBufferSize;
         }
@@ -326,13 +315,8 @@ namespace GraphView
                         {
                             Console.WriteLine(toSendQuery.ToString(DatabaseType.DocumentDB));
                             throw e;
-                        }
-                        
+                        }                        
 
-                        //
-                        // Now no matter whether this graph is CompatibleOnly, we should construct the sink vertices
-                        //
-                        //if (this.connection.GraphType != GraphType.CompatibleOnly) {
                         foreach (Tuple<VertexField, RawRecord> tuple in temp)
                         {
                             VertexField vfield = tuple.Item1;
@@ -341,18 +325,6 @@ namespace GraphView
                             }
                             sinkVertexCollection[vfield.VertexId].Add(tuple.Item2);
                         }
-                        //}
-
-                        //IEnumerator<RawRecord> verticesViaExternalAPIEnumerator =
-                        //    databasePortal.GetVerticesViaExternalAPI(toSendViaExternalAPIQuery);
-
-                        //while (this.connection.GraphType != GraphType.GraphAPIOnly && verticesViaExternalAPIEnumerator.MoveNext()) {
-                        //    RawRecord rec = verticesViaExternalAPIEnumerator.Current;
-                        //    if (!sinkVertexCollection.ContainsKey(rec[0].ToValue)) {
-                        //        sinkVertexCollection.Add(rec[0].ToValue, new List<RawRecord>());
-                        //    }
-                        //    sinkVertexCollection[rec[0].ToValue].Add(rec);
-                        //}
                     }
                 }
 
@@ -375,7 +347,6 @@ namespace GraphView
                                 int sourceMatchIndex = this.matchingIndexes[k].Item1;
                                 int sinkMatchIndex = this.matchingIndexes[k].Item2;
                                 if (!sourceRec[sourceMatchIndex].ToValue.Equals(sinkRec[sinkMatchIndex].ToValue, StringComparison.OrdinalIgnoreCase))
-                                //if (sourceRec[sourceMatchIndex] != sinkRec[sinkMatchIndex])
                                 {
                                     break;
                                 }
@@ -517,13 +488,13 @@ namespace GraphView
         }
     }
 
-    internal class CartesianProductOperator2 : GraphViewExecutionOperator
+    internal class CartesianProductOperator : GraphViewExecutionOperator
     {
         private GraphViewExecutionOperator leftInput;
         private ContainerEnumerator rightInputEnumerator;
         private RawRecord leftRecord;
 
-        public CartesianProductOperator2(
+        public CartesianProductOperator(
             GraphViewExecutionOperator leftInput, 
             GraphViewExecutionOperator rightInput)
         {
@@ -578,163 +549,6 @@ namespace GraphView
             Open();
         }
     }
-
-    //internal class AdjacencyListDecoder : TableValuedFunction
-    //{
-    //    protected List<int> AdjacencyListIndexes;
-    //    protected BooleanFunction EdgePredicate;
-    //    protected List<string> ProjectedFields;
-
-    //    public AdjacencyListDecoder(GraphViewExecutionOperator input, List<int> adjacencyListIndexes,
-    //        BooleanFunction edgePredicate, List<string> projectedFields, int outputBufferSize = 1000)
-    //        : base(input, outputBufferSize)
-    //    {
-    //        this.AdjacencyListIndexes = adjacencyListIndexes;
-    //        this.EdgePredicate = edgePredicate;
-    //        this.ProjectedFields = projectedFields;
-    //    }
-
-    //    internal override IEnumerable<RawRecord> CrossApply(RawRecord record)
-    //    {
-    //        List<RawRecord> results = new List<RawRecord>();
-
-    //        foreach (var adjIndex in AdjacencyListIndexes)
-    //        {
-    //            string jsonArray = record[adjIndex].ToString();
-    //            // Parse the adj list in JSON array
-    //            var adj = JArray.Parse(jsonArray);
-    //            foreach (var edge in adj.Children<JObject>())
-    //            {
-    //                // Construct new record
-    //                var result = new RawRecord(ProjectedFields.Count);
-
-    //                // Fill the field of selected edge's properties
-    //                for (var i = 0; i < ProjectedFields.Count; i++)
-    //                {
-    //                    var projectedField = ProjectedFields[i];
-    //                    var fieldValue = "*".Equals(projectedField, StringComparison.OrdinalIgnoreCase)
-    //                        ? edge
-    //                        : edge[projectedField];
-
-    //                    result.fieldValues[i] = fieldValue != null ? new StringField(fieldValue.ToString()) : null;
-    //                }
-
-    //                results.Add(result);
-    //            }
-    //        }
-
-    //        return results;
-    //    }
-
-    //    public override RawRecord Next()
-    //    {
-    //        if (outputBuffer == null)
-    //            outputBuffer = new Queue<RawRecord>();
-
-    //        while (outputBuffer.Count < outputBufferSize && inputOperator.State())
-    //        {
-    //            RawRecord srcRecord = inputOperator.Next();
-    //            if (srcRecord == null)
-    //                break;
-
-    //            var results = CrossApply(srcRecord);
-    //            foreach (var edgeRecord in results)
-    //            {
-    //                if (edgePredicate != null && !edgePredicate.Evaluate(edgeRecord))
-    //                    continue;
-
-    //                var resultRecord = new RawRecord(srcRecord);
-    //                resultRecord.Append(edgeRecord);
-    //                outputBuffer.Enqueue(resultRecord);
-    //            }
-    //        }
-
-    //        if (outputBuffer.Count == 0)
-    //        {
-    //            if (!inputOperator.State())
-    //                Close();
-    //            return null;
-    //        }
-    //        else if (outputBuffer.Count == 1)
-    //        {
-    //            Close();
-    //            return outputBuffer.Dequeue();
-    //        }
-    //        else
-    //        {
-    //            return outputBuffer.Dequeue();
-    //        }
-    //    }
-
-    //    public override void ResetState()
-    //    {
-    //        inputOperator.ResetState();
-    //        outputBuffer?.Clear();
-    //        Open();
-    //    }
-    //}
-
-    //internal abstract class TableValuedScalarFunction
-    //{
-    //    public abstract IEnumerable<string> Apply(RawRecord record);
-    //}
-
-    //internal class CrossApplyAdjacencyList : TableValuedScalarFunction
-    //{
-    //    private int adjacencyListIndex;
-
-    //    public CrossApplyAdjacencyList(int adjacencyListIndex)
-    //    {
-    //        this.adjacencyListIndex = adjacencyListIndex;
-    //    }
-
-    //    public override IEnumerable<string> Apply(RawRecord record)
-    //    {
-    //        throw new NotImplementedException();
-    //    }
-    //}
-
-    //internal class CrossApplyPath : TableValuedScalarFunction
-    //{
-    //    private GraphViewExecutionOperator referenceOp;
-    //    private ConstantSourceOperator contextScan;
-    //    private ExistsFunction terminateFunction;
-    //    private int iterationUpperBound;
-
-    //    public CrossApplyPath(
-    //        ConstantSourceOperator contextScan, 
-    //        GraphViewExecutionOperator referenceOp,
-    //        int iterationUpperBound)
-    //    {
-    //        this.contextScan = contextScan;
-    //        this.referenceOp = referenceOp;
-    //        this.iterationUpperBound = iterationUpperBound;
-    //    }
-
-    //    public CrossApplyPath(
-    //        ConstantSourceOperator contextScan,
-    //        GraphViewExecutionOperator referenceOp,
-    //        ExistsFunction terminateFunction)
-    //    {
-    //        this.contextScan = contextScan;
-    //        this.referenceOp = referenceOp;
-    //        this.terminateFunction = terminateFunction;
-    //    }
-
-    //    public override IEnumerable<string> Apply(RawRecord record)
-    //    {
-    //        contextScan.ConstantSource = record;
-
-    //        if (terminateFunction != null)
-    //        {
-    //            throw new NotImplementedException();
-    //        }
-    //        else
-    //        {
-    //            throw new NotImplementedException();
-    //        }
-    //    }
-    //}
 
     internal class OrderOperator : GraphViewExecutionOperator
     {
@@ -1059,7 +873,6 @@ namespace GraphView
             foreach (var scalarFunction in selectScalarList)
             {
                 // TODO: Skip * for now, need refactor
-                // if (scalarFunction == null) continue;
                 if (scalarFunction != null)
                 {
                     FieldObject result = scalarFunction.Evaluate(currentRecord);
@@ -1281,14 +1094,12 @@ namespace GraphView
 
         // The traversal inside the map function.
         private GraphViewExecutionOperator mapTraversal;
-//        private ConstantSourceOperator contextOp;
 
 
         private ContainerEnumerator sourceEnumerator;
         private List<RawRecord> inputBatch;
         private int batchSize;
 
-//        private List<RawRecord> outputBuffer;
         private HashSet<int> inputRecordSet;
 
         public MapOperator(
@@ -1298,13 +1109,11 @@ namespace GraphView
         {
             this.inputOp = inputOp;
             this.mapTraversal = mapTraversal;
-//            this.contextOp = contextOp;
 
             this.sourceEnumerator = sourceEnumerator;
             this.inputBatch = new List<RawRecord>();
             this.batchSize = KW_DEFAULT_BATCH_SIZE;
 
-//            this.outputBuffer = new List<RawRecord>();
             this.inputRecordSet = new HashSet<int>();
 
             this.Open();
@@ -1359,7 +1168,6 @@ namespace GraphView
         public override void ResetState()
         {
             this.inputOp.ResetState();
-//            contextOp.ResetState();
             this.mapTraversal.ResetState();
             this.inputBatch.Clear();
             this.inputRecordSet.Clear();
@@ -3042,7 +2850,6 @@ namespace GraphView
 
         public override void ResetState()
         {
-            //aggregateState.Init();
             inputOp.ResetState();
             Open();
         }
@@ -5183,7 +4990,6 @@ namespace GraphView
         public override void ResetState()
         {
             this.outputBuffer.Clear();
-//            this.aggregateState.Init();
             this.inputOp.ResetState();
             this.Open();
         }

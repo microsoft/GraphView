@@ -53,11 +53,7 @@ namespace GraphView
         public override  WTableReference ToTableReference()
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();
-            //List<WSelectQueryBlock> selectQueryBlocks = new List<WSelectQueryBlock>();
-            //selectQueryBlocks.AddRange(this.CoalesceContextList.Select(context => context.ToSelectQueryBlock()));
-            //this.AlignSelectQueryBlocks(selectQueryBlocks);
-            //parameters.AddRange(selectQueryBlocks.Select(SqlUtil.GetScalarSubquery));
-            //parameters.AddRange(this.CoalesceContextList.Select(context => SqlUtil.GetScalarSubquery(context.ToSelectQueryBlock())));
+
             foreach (GremlinToSqlContext context in this.CoalesceContextList)
             {
                 WSelectQueryBlock selectQueryBlock = context.ToSelectQueryBlock();

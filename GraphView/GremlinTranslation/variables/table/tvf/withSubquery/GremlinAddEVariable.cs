@@ -110,19 +110,7 @@ namespace GraphView
 
             parameters.Add(SqlUtil.GetValueExpr(this.OtherVIndex));
 
-            //if (this.EdgeLabel != null)
-            //{
-            //    parameters.Add(SqlUtil.GetValueExpr(GremlinKeyword.Label));
-            //    parameters.Add(SqlUtil.GetValueExpr(this.EdgeLabel));
-            //}
             parameters.Add(SqlUtil.GetValueExpr(this.EdgeLabel));
-            // this.EdgeProperties.Add(new GremlinProperty(GremlinKeyword.PropertyCardinality.List, GremlinKeyword.Star, null, null));
-
-            //foreach (var property in this.EdgeProperties)
-            //{
-            //    parameters.Add(SqlUtil.GetValueExpr(property.Key));
-            //    parameters.Add(SqlUtil.GetValueExpr(property.Value));
-            //}
             parameters.AddRange(this.EdgeProperties.Select(property => property.ToPropertyExpr()));
             var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.AddE, parameters, GetVariableName());
             var crossApplyTableRef = SqlUtil.GetCrossApplyTableReference(secondTableRef);
