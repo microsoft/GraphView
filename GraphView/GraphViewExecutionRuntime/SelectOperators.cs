@@ -693,8 +693,6 @@ namespace GraphView
                     }
                     return ret;
                 });
-
-                continue;
             }
 
             return null;
@@ -4010,11 +4008,11 @@ namespace GraphView
 
         public SampleOperator(
             GraphViewExecutionOperator inputOp,
-            long amoutToSample,
+            long amountToSample,
             ScalarFunction byFunction)
         {
             this.inputOp = inputOp;
-            this.amountToSample = amoutToSample;
+            this.amountToSample = amountToSample;
             this.byFunction = byFunction;  // Can be null if no "by" step
             this.random = new Random();
 
@@ -4153,6 +4151,113 @@ namespace GraphView
             }
 
             return null;
+        }
+    }
+
+    internal class SampleLocalOperator : GraphViewExecutionOperator
+    {
+        private readonly GraphViewExecutionOperator inputOp;
+        private readonly long amountToSample;
+
+        private readonly int inputObjectIndex;
+        private List<string> populateColumns;
+
+        public SampleLocalOperator(GraphViewExecutionOperator inputOp, int inputObjectIndex, long amountToSample, List<string> populateColumns)
+        {
+            this.inputOp = inputOp;
+            this.amountToSample = amountToSample;
+            this.inputObjectIndex = inputObjectIndex;
+
+            this.populateColumns = populateColumns;
+            Open();
+        }
+
+        public override RawRecord Next()
+        {
+            RawRecord srcRecord;
+
+            while (this.inputOp.State() && (srcRecord = this.inputOp.Next()) != null)
+            {
+                RawRecord newRecord = new RawRecord(srcRecord);
+                FieldObject inputObject = srcRecord[this.inputObjectIndex];
+                FieldObject sampleObject;
+                int count = 0;
+
+                if (inputObject is CollectionField)
+                {
+                    CollectionField inputCollection = (CollectionField)inputObject;
+                    CollectionField newCollection = new CollectionField();
+                    foreach (FieldObject item in inputCollection.Collection)
+                    {
+                        if (count++ < this.amountToSample)
+                        {
+                            newCollection.Collection.Add(item);
+                        }
+                        else
+                        {
+                            break;
+                        }
+                    }
+                    sampleObject = newCollection;
+                }
+                else if (inputObject is PathField)
+                {
+                    PathField inputPath = (PathField)inputObject;
+                    CollectionField newCollection = new CollectionField();
+
+                    foreach (FieldObject item in inputPath.Path)
+                    {
+                        if (count++ < this.amountToSample)
+                        {
+                            newCollection.Collection.Add(item);
+                        }
+                        else
+                        {
+                            break;
+                        }
+                    }
+                    sampleObject = newCollection;
+                }
+                else if (inputObject is MapField)
+                {
+                    MapField inputMap = inputObject as MapField;
+                    MapField newMap = new MapField();
+
+                    foreach (EntryField entry in inputMap)
+                    {
+                        if (count++ < this.amountToSample)
+                        {
+                            newMap.Add(entry.Key, entry.Value);
+                        }
+                        else
+                        {
+                            break;
+                        }
+                    }
+                    sampleObject = newMap;
+                }
+                else
+                {
+                    sampleObject = inputObject;
+                }
+
+                if (sampleObject == null)
+                {
+                    continue;
+                }
+                RawRecord flatRawRecord = sampleObject.FlatToRawRecord(this.populateColumns);
+                newRecord.Append(flatRawRecord);
+                return newRecord;
+            }
+
+            this.Close();
+            return null;
+        }
+
+        public override void ResetState()
+        {
+            this.inputOp.ResetState();
+            Open();
         }
     }
 

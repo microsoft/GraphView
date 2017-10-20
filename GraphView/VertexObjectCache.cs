@@ -139,12 +139,12 @@ namespace GraphView
 
         private readonly Queue<DeltaField> DeltaFields = new Queue<DeltaField>();
 
-        public void AddDelta(DeltaField delta)
+        internal void AddDelta(DeltaField delta)
         {
             this.DeltaFields.Enqueue(delta);
         }
 
-        public void UploadDelta()
+        internal void UploadDelta()
         {
             while (this.DeltaFields.Count > 0)
             {

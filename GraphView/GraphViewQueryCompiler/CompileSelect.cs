@@ -1523,9 +1523,7 @@ namespace GraphView
                     Debug.Assert(selectScalar.ColumnName != null, "selectScalar.ColumnName != null");
 
                     WColumnReferenceExpression columnRef = selectScalar.SelectExpr as WColumnReferenceExpression;
-                    //
-                    // TODO: Remove this case
-                    //
+                    
                     context.AddField(Alias.Value, selectScalar.ColumnName, columnRef?.ColumnGraphType ?? ColumnGraphType.Value);
                 }
             }
@@ -2930,6 +2928,36 @@ namespace GraphView
 
             GraphViewExecutionOperator sampleOp = new SampleOperator(inputOp, amountToSample, byFunction);
             context.CurrentExecutionOperator = sampleOp;
+            return sampleOp;
+        }
+    }
+
+    partial class WSampleLocalTableReference
+    {
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewCommand command)
+        {
+            WColumnReferenceExpression inputObject = this.Parameters[0] as WColumnReferenceExpression;
+            Debug.Assert(inputObject != null, "inputObject != null");
+            int inputObjectIndex = context.LocateColumnReference(inputObject);
+
+            long amountToSample = long.Parse(((WValueExpression)this.Parameters[1]).Value);
+
+            List<string> populateColumns = new List<string>() { GremlinKeyword.TableDefaultColumnName };
+
+            for (int i = 1; i < this.Parameters.Count; i++)
+            {
+                WValueExpression populateColumn = this.Parameters[i] as WValueExpression;
+                Debug.Assert(populateColumn != null, "populateColumn != null");
+                populateColumns.Add(populateColumn.Value);
+            }
+
+            GraphViewExecutionOperator sampleOp = new SampleLocalOperator(context.CurrentExecutionOperator, inputObjectIndex, amountToSample, populateColumns);
+            context.CurrentExecutionOperator = sampleOp;
+            foreach (string columnName in populateColumns)
+            {
+                context.AddField(Alias.Value, columnName, ColumnGraphType.Value);
+            }
+
             return sampleOp;
         }
     }

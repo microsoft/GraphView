@@ -1186,6 +1186,10 @@ namespace GraphView
             GremlinSampleVariable newVariable = new GremlinSampleVariable(this, scope, amountToSample, probabilityContext);
             currentContext.VariableList.Add(newVariable);
             currentContext.TableReferencesInFromClause.Add(newVariable);
+            if (scope == GremlinKeyword.Scope.Local)
+            {
+                currentContext.SetPivotVariable(newVariable);
+            }
             //TODO: set pivotVariable when scope is local, need to sync with compilation and physical operator
         }
 

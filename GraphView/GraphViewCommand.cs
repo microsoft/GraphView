@@ -29,7 +29,7 @@ using System.Collections.Generic;
 
 namespace GraphView
 {
-    public partial class GraphViewCommand : IDisposable
+    public class GraphViewCommand : IDisposable
     {
         public GraphViewConnection Connection { get; set; }
 

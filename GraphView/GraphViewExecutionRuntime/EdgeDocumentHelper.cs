@@ -255,9 +255,11 @@ namespace GraphView
                 if (tooLarge) {
                     string existEdgeDocId;
                     // The vertex object is uploaded in SpillVertexEdgesToDocument
-                    SpillVertexEdgesToDocument(command, vertexObject, ref spillReverse, out existEdgeDocId, out newEdgeDocId);
-                    
-                    // Update the in & out edges in vertex field
+                    EdgeDocumentHelper.SpillVertexEdgesToDocument(command, vertexObject, ref spillReverse, out existEdgeDocId, out newEdgeDocId);
+
+                    // the edges are spilled into two ducuments. 
+                    // one stores old edges(docId = existEdgeDocId), the other one stores the new edge.
+                    // Because the new edge is not in the vertexCache, hence we can set all edges' docId as existEdgeDocId
                     Debug.Assert(spillReverse != null);
                     Debug.Assert(vertexField != null);
                     if (spillReverse.Value) {
@@ -596,7 +598,7 @@ namespace GraphView
                     // Handle this situation: The updated edge is too large to be filled into the vertex-document
                     string existEdgeDocId, newEdgeDocId;
                     bool? spillReverse = null;
-                    SpillVertexEdgesToDocument(command, vertexObject, ref spillReverse, out existEdgeDocId, out newEdgeDocId);
+                    EdgeDocumentHelper.SpillVertexEdgesToDocument(command, vertexObject, ref spillReverse, out existEdgeDocId, out newEdgeDocId);
                 }
             }
             else {

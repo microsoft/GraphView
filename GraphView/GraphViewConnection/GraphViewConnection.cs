@@ -85,8 +85,6 @@ namespace GraphView
         public int EdgeSpillThreshold { get; private set; } = 0;
 
 
-//        internal VertexObjectCache VertexCache { get; }
-
         internal string Identifier { get; }
         private bool disposed;
 
@@ -361,9 +359,6 @@ namespace GraphView
                 this.JsonServerClient.DeleteCollection(collectionName);
             }
             EnsureCollectionExist(this.JsonServerClient, collectionName);
-//            string clearQuery = $"FOR md IN ('{collectionName}')\n" +
-//                                $"DELETE md";
-//            this.JsonServerClient.ExecuteNonQuery(clearQuery);
         }
 
 
