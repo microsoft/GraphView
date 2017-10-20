@@ -26,6 +26,7 @@ namespace GraphView
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();
             parameters.Add(this.DroppedVariable.DefaultProjection().ToScalarExpression());
+            parameters.AddRange(this.ProjectedProperties.Select(SqlUtil.GetValueExpr));
             var tableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Drop, parameters, GetVariableName());
             return SqlUtil.GetCrossApplyTableReference(tableRef);
         }

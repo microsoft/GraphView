@@ -268,8 +268,21 @@ namespace GraphView
             var dropTargetParameter = Parameters[0] as WColumnReferenceExpression;
             var dropTargetIndex = context.LocateColumnReference(dropTargetParameter);
 
+            List<string> populateColumns = new List<string>() { GremlinKeyword.TableDefaultColumnName };
+
+            for (int i = 1; i < this.Parameters.Count; i++)
+            {
+                WValueExpression populateColumn = this.Parameters[i] as WValueExpression;
+                Debug.Assert(populateColumn != null, "populateColumn != null");
+                populateColumns.Add(populateColumn.Value);
+            }
+
             var dropOp = new DropOperator(context.CurrentExecutionOperator, command, dropTargetIndex);
             context.CurrentExecutionOperator = dropOp;
+            foreach (string columnName in populateColumns)
+            {
+                context.AddField(Alias.Value, columnName, ColumnGraphType.Value);
+            }
 
             return dropOp;
         }
