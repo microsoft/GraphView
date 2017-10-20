@@ -96,4 +96,12 @@ namespace GraphView
             return SqlUtil.GetCrossApplyTableReference(tableRef);
         }
     }
+
+    internal class GremlinOrderLocalInitVariable : GremlinVariable
+    {
+        public GremlinOrderLocalInitVariable(GremlinVariable inputVariable) : base(inputVariable.GetVariableType())
+        {
+            this.VariableName = GremlinKeyword.Compose1TableDefaultName;
+        }
+    }
 }

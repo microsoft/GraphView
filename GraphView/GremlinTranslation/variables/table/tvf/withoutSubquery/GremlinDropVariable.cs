@@ -15,12 +15,6 @@ namespace GraphView
             this.DroppedVariable = droppedVariable;
         }
 
-        internal override bool Populate(string property, string label = null)
-        {
-            // Because the traversal yields no outgoing objects.
-            return false;
-        }
-
         internal override List<GremlinVariable> FetchAllVars()
         {
             List<GremlinVariable> variableList = new List<GremlinVariable>() { this };

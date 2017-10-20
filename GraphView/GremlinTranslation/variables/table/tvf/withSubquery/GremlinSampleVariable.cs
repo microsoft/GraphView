@@ -8,6 +8,7 @@ namespace GraphView
 {
     internal class GremlinSampleVariable : GremlinTableVariable
     {
+        public GremlinVariable InputVariable;
         public GremlinKeyword.Scope Scope { get; set; }
         public int AmountToSample { get; set; }
         public GremlinToSqlContext ProbabilityContext { get; set; }
@@ -15,6 +16,7 @@ namespace GraphView
         public GremlinSampleVariable(GremlinVariable inputVariable, GremlinKeyword.Scope scope, int amountToSample, 
             GremlinToSqlContext probabilityContext) : base(inputVariable.GetVariableType())
         {
+            this.InputVariable = inputVariable;
             this.Scope = scope;
             this.AmountToSample = amountToSample;
             this.ProbabilityContext = probabilityContext;
@@ -22,7 +24,20 @@ namespace GraphView
 
         internal override bool Populate(string property, string label = null)
         {
-            return false;
+            if (base.Populate(property, label))
+            {
+                this.InputVariable.Populate(property, label);
+                return true;
+            }
+            else if (this.InputVariable.Populate(property, label))
+            {
+                base.Populate(property, null);
+                return true;
+            }
+            else
+            {
+                return false;
+            }
         }
 
         internal override List<GremlinVariable> FetchAllVars()
@@ -42,15 +57,26 @@ namespace GraphView
         public override WTableReference ToTableReference()
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();
-            parameters.Add(SqlUtil.GetValueExpr(this.AmountToSample));
-            if (this.ProbabilityContext != null)
+
+            if (this.Scope == GremlinKeyword.Scope.Local)
             {
-                parameters.Add(SqlUtil.GetScalarSubquery(this.ProbabilityContext.ToSelectQueryBlock()));
+                parameters.Add(this.InputVariable.DefaultProjection().ToScalarExpression());
+                parameters.Add(SqlUtil.GetValueExpr(this.AmountToSample));
+                parameters.AddRange(this.ProjectedProperties.Select(SqlUtil.GetValueExpr));
+                var tableRef =
+                    SqlUtil.GetFunctionTableReference(GremlinKeyword.func.SampleLocal, parameters, GetVariableName());
+                return SqlUtil.GetCrossApplyTableReference(tableRef);
             }
-            var tableRef = this.Scope == GremlinKeyword.Scope.Global
-                ? SqlUtil.GetFunctionTableReference(GremlinKeyword.func.SampleGlobal, parameters, GetVariableName())
-                : SqlUtil.GetFunctionTableReference(GremlinKeyword.func.SampleLocal, parameters, GetVariableName());
-            return SqlUtil.GetCrossApplyTableReference(tableRef);
+            else
+            {
+                parameters.Add(SqlUtil.GetValueExpr(this.AmountToSample));
+                if (this.ProbabilityContext != null)
+                {
+                    parameters.Add(SqlUtil.GetScalarSubquery(this.ProbabilityContext.ToSelectQueryBlock()));
+                }
+                var tableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.SampleGlobal, parameters, GetVariableName());
+                return SqlUtil.GetCrossApplyTableReference(tableRef);
+            }
         }
     }
 }

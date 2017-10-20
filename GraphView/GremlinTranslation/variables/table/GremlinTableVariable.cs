@@ -41,6 +41,7 @@ namespace GraphView
                 case GremlinVariableType.VertexAndEdge:
                 case GremlinVariableType.Mixed:
                 case GremlinVariableType.Unknown:
+                case GremlinVariableType.NULL:
                     break;
                 default:
                     return false;

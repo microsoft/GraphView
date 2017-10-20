@@ -1531,6 +1531,7 @@ namespace GraphView
             }
             else
             {
+                context.AddField(Alias.Value, GremlinKeyword.TableDefaultColumnName, ColumnGraphType.Value);
                 foreach (WScalarExpression parameter in Parameters)
                 {
                     WValueExpression columnName = parameter as WValueExpression;

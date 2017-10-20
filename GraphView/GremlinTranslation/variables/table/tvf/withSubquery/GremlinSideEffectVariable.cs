@@ -10,7 +10,7 @@ namespace GraphView
     {
         public GremlinToSqlContext SideEffectContext { get; set; }
 
-        public GremlinSideEffectVariable(GremlinVariable inputVariable, GremlinToSqlContext sideEffectContext) : base(inputVariable.GetVariableType())
+        public GremlinSideEffectVariable(GremlinVariable inputVariable, GremlinToSqlContext sideEffectContext) : base(sideEffectContext.PivotVariable.GetVariableType())
         {
             this.SideEffectContext = sideEffectContext;
         }
@@ -20,11 +20,6 @@ namespace GraphView
             List<GremlinVariable> variableList = new List<GremlinVariable>() { this };
             variableList.AddRange(this.SideEffectContext.FetchAllVars());
             return variableList;
-        }
-
-        internal override bool Populate(string property, string label = null)
-        {
-            return false;
         }
 
         internal override List<GremlinTableVariable> FetchAllTableVars()

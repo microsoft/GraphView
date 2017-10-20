@@ -22,11 +22,6 @@ namespace GraphView
             this.InputVariable = inputVariable;
         }
 
-        internal override bool Populate(string property, string label = null)
-        {
-            return false;
-        }
-
         internal override List<GremlinVariable> FetchAllVars()
         {
             List<GremlinVariable> variableList = new List<GremlinVariable>() { this };

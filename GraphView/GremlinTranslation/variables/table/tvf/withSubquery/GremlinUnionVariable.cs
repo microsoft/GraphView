@@ -96,7 +96,6 @@ namespace GraphView
             List<WScalarExpression> parameters = new List<WScalarExpression>();
             if (this.UnionContextList.Count == 0)
             {
-                parameters.Add(SqlUtil.GetValueExpr(this.DefaultProperty()));
                 parameters.AddRange(this.ProjectedProperties.Select(SqlUtil.GetValueExpr));
             }
             else
