@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -110,7 +111,7 @@ namespace GraphView
         internal override List<GremlinVariable> FetchAllVars()
         {
             List<GremlinVariable> variableList = new List<GremlinVariable>() { this };
-            variableList.AddRange(this.GetStepList().FindAll(p => p != null && !(p is GremlinContextVariable)));
+            variableList.AddRange(this.StepList.FindAll(p => p != null && !(p is GremlinContextVariable)));
             foreach (var context in this.ByContexts)
             {
                 variableList.AddRange(context.FetchAllVars());
@@ -162,7 +163,10 @@ namespace GraphView
             
             if (label == null)
             {
-                this.ProjectedProperties.Add(property);
+                if (property != null)
+                {
+                    this.ProjectedProperties.Add(property);
+                }
 
                 foreach (var step in this.StepList)
                 {
@@ -215,23 +219,6 @@ namespace GraphView
                 }
                 return populateSuccess;
             }
-        }
-
-        public List<GremlinVariable> GetStepList()
-        {
-            return this.StepList;
-        }
-
-        public void InsertStep(int index, GremlinVariable step)
-        {
-            this.StepList.Insert(index, step);
-            this.StepLabelsAtThatMoment.Insert(index, step?.Labels.Copy());
-        }
-
-        public void AddStep(GremlinVariable step)
-        {
-            this.StepList.Add(step);
-            this.StepLabelsAtThatMoment.Add(step?.Labels.Copy());
         }
 
         public override WTableReference ToTableReference()
@@ -367,5 +354,70 @@ namespace GraphView
 
         public GremlinGlobalPathVariable(List<GremlinVariable> stepList)
             : base(stepList) {}
+    }
+
+    internal class GremlinSelectPathVariable : GremlinPathVariable
+    {
+        
+        public GremlinSelectPathVariable(List<GremlinVariable> stepList)
+            : base(stepList) {}
+
+        public void PopulateStepNULL(List<string> selectKeys)
+        {
+            foreach (string selectKey in selectKeys)
+            {
+                this.PopulateStepProperty(null, selectKey);
+            }
+        }
+
+        public override WTableReference ToTableReference()
+        {
+            List<WScalarExpression> parameters = new List<WScalarExpression>();
+            List<WSelectQueryBlock> queryBlocks = new List<WSelectQueryBlock>();
+
+            //Must toSelectQueryBlock before toCompose1 of variableList in order to populate needed columns
+            foreach (var byContext in this.ByContexts)
+            {
+                queryBlocks.Add(byContext.ToSelectQueryBlock(true));
+            }
+
+            for (int index = 0; index < this.StepList.Count; index++)
+            {
+                GremlinVariable step = this.StepList[index];
+                if (step is GremlinContextVariable && !((step is GremlinRepeatContextVariable) ||
+                                                        (step is GremlinUntilContextVariable) ||
+                                                        (step is GremlinEmitContextVariable)))
+                {
+                    parameters.AddRange(this.StepLabelsAtThatMoment[index].Select(SqlUtil.GetValueExpr));
+                    continue;
+                }
+                List<string> composedProperties = this.ProjectedProperties.Copy();
+                foreach (var labelproperty in this.LabelPropertyList)
+                {
+                    if (!composedProperties.Contains(labelproperty.Item1) &&
+                        (this.StepLabelsAtThatMoment[index].Contains(labelproperty.Item1) ||
+                         this.StepLabelsPerhaps[index].Contains(labelproperty.Item1)))
+                    {
+                        composedProperties.Add(labelproperty.Item2);
+                    }
+                }
+
+                if (composedProperties.Count > this.ProjectedProperties.Count)
+                {
+                    composedProperties.RemoveAll(s => String.IsNullOrEmpty(s));
+                    parameters.Add(step.ToStepScalarExpr(composedProperties));
+                    parameters.AddRange(this.StepLabelsAtThatMoment[index].Select(SqlUtil.GetValueExpr));
+                }
+
+            }
+
+            foreach (var block in queryBlocks)
+            {
+                parameters.Add(SqlUtil.GetScalarSubquery(block));
+            }
+
+            var tableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Path, parameters, GetVariableName());
+            return SqlUtil.GetCrossApplyTableReference(tableRef);
+        }
     }
 }

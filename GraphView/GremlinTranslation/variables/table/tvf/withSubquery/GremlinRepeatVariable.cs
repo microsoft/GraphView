@@ -76,6 +76,18 @@ namespace GraphView
             }
             this.ProjectedProperties.Add(GremlinKeyword.Path);
             this.RepeatContext.PopulateLocalPath();
+
+            if (this.RepeatCondition.EmitContext != null && this.RepeatCondition.EmitContext.VariableList.Count > 0)
+            {
+                GremlinVariable repeatInputVariable = this.RepeatContext.VariableList.First();
+                GremlinVariable emitInputVariable = this.RepeatCondition.EmitContext.VariableList.First();
+
+                if (repeatInputVariable == emitInputVariable)
+                {
+                    this.MinPathLength = 0;
+                }
+                return;
+            }
             this.MinPathLength = this.RepeatContext.MinPathLength;
         }
 

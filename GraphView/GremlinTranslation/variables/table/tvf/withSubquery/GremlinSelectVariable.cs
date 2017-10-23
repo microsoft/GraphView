@@ -9,13 +9,13 @@ namespace GraphView
     internal class GremlinSelectVariable : GremlinTableVariable
     {
         public GremlinVariable InputVariable { get; set; }
-        public GremlinPathVariable PathVariable { get; set; }
+        public GremlinSelectPathVariable PathVariable { get; set; }
         public List<GremlinVariable> SideEffectVariables { get; set; } // Such as aggregate("a")/store("a")..
         public List<GremlinToSqlContext> ByContexts { get; set; }
         public List<string> SelectKeys { get; set; }
         public GremlinKeyword.Pop Pop { get; set; }
 
-        public GremlinSelectVariable(GremlinVariable inputVariable,  GremlinPathVariable pathVariable,  List<GremlinVariable> sideEffectVariables, 
+        public GremlinSelectVariable(GremlinVariable inputVariable, GremlinSelectPathVariable pathVariable,  List<GremlinVariable> sideEffectVariables, 
             GremlinKeyword.Pop pop,  List<string> selectKeys,  List<GremlinToSqlContext> byContexts) : base(GremlinVariableType.Unknown)
         {
             this.InputVariable = inputVariable;
@@ -24,6 +24,7 @@ namespace GraphView
             this.Pop = pop;
             this.SelectKeys = selectKeys;
             this.ByContexts = byContexts;
+            this.PathVariable.PopulateStepNULL(this.SelectKeys);
         }
 
         internal override List<GremlinVariable> FetchAllVars()
@@ -57,7 +58,10 @@ namespace GraphView
             {
                 foreach (string selectKey in this.SelectKeys)
                 {
-                    this.InputVariable.Populate(property, selectKey);
+                    if (GremlinVariableType.NULL <= this.InputVariable.GetVariableType() && this.InputVariable.GetVariableType() <= GremlinVariableType.Map)
+                    {
+                        this.InputVariable.Populate(property, selectKey);
+                    }
                     this.PathVariable.PopulateStepProperty(property, selectKey);
                     foreach (var sideEffectVariable in this.SideEffectVariables)
                     {
@@ -75,7 +79,10 @@ namespace GraphView
             }
             else
             {
-                this.InputVariable.Populate(property, label);
+                if (GremlinVariableType.NULL <= this.InputVariable.GetVariableType() && this.InputVariable.GetVariableType() <= GremlinVariableType.Map)
+                {
+                    this.InputVariable.Populate(property, label);
+                }
                 this.PathVariable.PopulateStepProperty(property, label);
                 foreach (var sideEffectVariable in this.SideEffectVariables)
                 {

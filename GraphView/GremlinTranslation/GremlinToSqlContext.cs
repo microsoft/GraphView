@@ -76,7 +76,7 @@ namespace GraphView
 
         internal bool Populate(string property, string label = null)
         {
-            if (this.ProjectedProperties.Contains(property))
+            if (property == null || this.ProjectedProperties.Contains(property))
             {
                 return true;
             }

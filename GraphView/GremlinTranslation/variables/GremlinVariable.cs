@@ -59,6 +59,11 @@ namespace GraphView
 
         internal virtual bool Populate(string property, string label = null)
         {
+            if (property == null)
+            {
+                return true;
+            }
+
             if (label == null)
             {
                 if (!this.ProjectedProperties.Contains(property))
@@ -1212,14 +1217,14 @@ namespace GraphView
             List<GremlinVariable> steps = currentContext.GetGlobalPathStepList();
             List<GremlinVariable> sideEffectVariables = currentContext.GetSideEffectVariables();
 
-            GremlinGlobalPathVariable pathVariable = new GremlinGlobalPathVariable(steps);
-            currentContext.VariableList.Add(pathVariable);
-            currentContext.TableReferencesInFromClause.Add(pathVariable);
+            GremlinSelectPathVariable selectPathVariabel = new GremlinSelectPathVariable(steps);
+            currentContext.VariableList.Add(selectPathVariabel);
+            currentContext.TableReferencesInFromClause.Add(selectPathVariabel);
 
             foreach (var by in byList)
             {
                 GremlinToSqlContext newContext = new GremlinToSqlContext();
-                GremlinDecompose1Variable decompose1 = new GremlinDecompose1Variable(pathVariable, selectKeys);
+                GremlinDecompose1Variable decompose1 = new GremlinDecompose1Variable(selectPathVariabel, selectKeys);
                 newContext.VariableList.Add(decompose1);
                 newContext.TableReferencesInFromClause.Add(decompose1);
                 newContext.SetPivotVariable(decompose1);
@@ -1228,7 +1233,7 @@ namespace GraphView
                 byContexts.Add(by.GetEndOp().GetContext());
             }
 
-            GremlinSelectVariable newVariable = new GremlinSelectVariable(this, pathVariable, sideEffectVariables, pop, selectKeys, byContexts);
+            GremlinSelectVariable newVariable = new GremlinSelectVariable(this, selectPathVariabel, sideEffectVariables, pop, selectKeys, byContexts);
             currentContext.VariableList.Add(newVariable);
             currentContext.TableReferencesInFromClause.Add(newVariable);
 

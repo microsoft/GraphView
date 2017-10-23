@@ -14,7 +14,7 @@ namespace GraphView
 
         internal override bool Populate(string property, string label = null)
         {
-            if (ProjectedProperties.Contains(property))
+            if (property == null || ProjectedProperties.Contains(property))
             {
                 return true;
             }
