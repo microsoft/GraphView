@@ -76,8 +76,8 @@
     <Compile Include="GraphViewDBPortal\DbPortal.cs" />
     <Compile Include="GraphViewExecutionRuntime\AggregateOperator.cs" />
     <Compile Include="GraphViewExecutionRuntime\EdgeDocumentHelper.cs" />
-    <Compile Include="GraphViewExecutionRuntime\LazyCommit.cs" />
     <Compile Include="GraphViewExecutionRuntime\ModificationOperators.cs" />
+    <Compile Include="GraphViewExecutionRuntime\ModificationLazyCommit.cs" />
     <Compile Include="GraphViewExecutionRuntime\ScriptOperator.cs" />
     <Compile Include="GraphViewExecutionRuntime\SelectOperators.cs" />
     <Compile Include="GraphViewQueryCompiler\AttachWhereClauseVisitor.cs" />

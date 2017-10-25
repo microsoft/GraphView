@@ -107,11 +107,14 @@ namespace GraphView
                 vertexObject[KW_DOC_PARTITION] = partition;
             }
 
+            VertexField vertexField;
+
             if (this.Command.InLazyMode)
             {
                 vertexObject[DocumentDBKeywords.KW_DOC_ETAG] = DateTimeOffset.Now.ToUniversalTime().ToString();
-                DeltaField delta = new DeltaAddV(this.Command, (JObject)vertexObject.DeepClone());
-                this.Command.VertexCache.AddDelta(delta);
+                vertexField = this.Command.VertexCache.AddOrUpdateVertexField(vertexId, vertexObject);
+                DeltaLogAddVertex log = new DeltaLogAddVertex();
+                this.Command.VertexCache.AddOrUpdateVertexDelta(vertexField, log);
             }
             else
             {
@@ -127,10 +130,8 @@ namespace GraphView
                 {
                     throw new GraphViewException("Error when uploading the vertex", ex.InnerException);
                 }
+                vertexField = this.Command.VertexCache.AddOrUpdateVertexField(vertexId, vertexObject);
             }
-
-
-            VertexField vertexField = this.Command.VertexCache.AddOrUpdateVertexField(vertexId, vertexObject);
 
             RawRecord result = new RawRecord();
 
@@ -200,8 +201,8 @@ namespace GraphView
 
             if (this.Command.InLazyMode)
             {
-                DeltaField delta = new DeltaUpdateV(this.Command, vertexField.VertexId, (JObject)vertexObject.DeepClone());
-                this.Command.VertexCache.AddDelta(delta);
+                DeltaLogDropVertexSingleProperty log = new DeltaLogDropVertexSingleProperty(vp.PropertyName, vp.PropertyId);
+                this.Command.VertexCache.AddOrUpdateVertexDelta(vertexField, log);
             }
             else
             {
@@ -231,7 +232,6 @@ namespace GraphView
             }
 #endif
 
-            Debug.Assert(metaProperty.Parent is VertexSinglePropertyField);
             VertexSinglePropertyField vertexSingleProperty = (VertexSinglePropertyField)metaProperty.Parent;
 
             VertexField vertexField = vertexSingleProperty.VertexProperty.Vertex;
@@ -253,8 +253,9 @@ namespace GraphView
 
             if (this.Command.InLazyMode)
             {
-                DeltaField delta = new DeltaUpdateV(this.Command, vertexField.VertexId, (JObject)vertexObject.DeepClone());
-                this.Command.VertexCache.AddDelta(delta);
+                DeltaLogDropVertexMetaProperty log = new DeltaLogDropVertexMetaProperty(metaProperty.PropertyName,
+                    vertexSingleProperty.PropertyName, vertexSingleProperty.PropertyId);
+                this.Command.VertexCache.AddOrUpdateVertexDelta(vertexField, log);
             }
             else
             {
@@ -353,8 +354,7 @@ namespace GraphView
 
             foreach (WPropertyExpression property in this.updateProperties) {
                 Debug.Assert(property.Value != null);
-
-                VertexPropertyField vertexProperty;
+                
                 string name = property.Key.Value;
                 if (name == this.Command.Connection.RealPartitionKey) {
                     throw new GraphViewException("Updating the partition-by property is not supported.");
@@ -367,12 +367,15 @@ namespace GraphView
 
                 // Construct single property
                 JObject meta = new JObject();
+                List<Tuple<string, string>> metaList = new List<Tuple<string, string>>();
                 foreach (KeyValuePair<WValueExpression, WValueExpression> pair in property.MetaProperties) {
                     meta[pair.Key.Value] = pair.Value.ToJValue();
+                    metaList.Add(new Tuple<string, string>(pair.Key.Value, pair.Value.Value));
                 }
+                string propertyId = GraphViewConnection.GenerateDocumentId();
                 JObject singleProperty = new JObject {
                     [KW_PROPERTY_VALUE] = property.Value.ToJValue(),
-                    [KW_PROPERTY_ID] = GraphViewConnection.GenerateDocumentId(),
+                    [KW_PROPERTY_ID] = propertyId,
                 };
                 if (meta.Count > 0) {
                     singleProperty[KW_PROPERTY_META] = meta;
@@ -387,13 +390,21 @@ namespace GraphView
                 else {
                     multiProperty = (JArray)vertexDocument[name];
                 }
-
-                if (property.Cardinality == GremlinKeyword.PropertyCardinality.Single) {
+                bool isMultiProperty = property.Cardinality != GremlinKeyword.PropertyCardinality.Single;
+                if (!isMultiProperty) {
                     multiProperty.Clear();
                 }
                 multiProperty.Add(singleProperty);
 
+                if (this.Command.InLazyMode)
+                {
+                    DeltaLogUpdateVertexSingleProperty log = new DeltaLogUpdateVertexSingleProperty(name,
+                        property.Value.Value, propertyId, isMultiProperty, metaList);
+                    this.Command.VertexCache.AddOrUpdateVertexDelta(vertex, log);
+                }
+
                 // Update vertex field
+                VertexPropertyField vertexProperty;
                 bool existed = vertex.VertexProperties.TryGetValue(name, out vertexProperty);
                 if (!existed) {
                     vertexProperty = new VertexPropertyField(vertexDocument.Property(name), vertex);
@@ -404,12 +415,7 @@ namespace GraphView
                 }
             }
 
-            if (this.Command.InLazyMode)
-            {
-                DeltaField delta = new DeltaUpdateV(this.Command, vertex.VertexId, (JObject)vertexDocument.DeepClone());
-                this.Command.VertexCache.AddDelta(delta);
-            }
-            else
+            if (!this.Command.InLazyMode)
             {
                 // Upload to DB
                 this.Command.Connection.ReplaceOrDeleteDocumentAsync(
@@ -456,7 +462,7 @@ namespace GraphView
                 meta = new JObject();
                 singleProperty[KW_PROPERTY_META] = meta;
             }
-
+            List<Tuple<string, string>> metaList = new List<Tuple<string, string>>();
             foreach (WPropertyExpression property in this.updateProperties) {
                 if (property.Cardinality == GremlinKeyword.PropertyCardinality.List ||
                     property.MetaProperties.Count > 0) {
@@ -464,6 +470,7 @@ namespace GraphView
                 }
 
                 meta[property.Key.Value] = property.Value.ToJValue();
+                metaList.Add(new Tuple<string, string>(property.Key.Value, property.Value.Value));
             }
 
             // Update vertex single property
@@ -471,8 +478,9 @@ namespace GraphView
 
             if (this.Command.InLazyMode)
             {
-                DeltaField delta = new DeltaUpdateV(this.Command, vertexId, (JObject)vertexDocument.DeepClone());
-                this.Command.VertexCache.AddDelta(delta);
+                DeltaLogUpdateVertexMetaPropertyOfSingleProperty log = new DeltaLogUpdateVertexMetaPropertyOfSingleProperty(
+                    vp.PropertyName, vp.PropertyId, metaList);
+                this.Command.VertexCache.AddOrUpdateVertexDelta(vp.VertexProperty.Vertex, log);
             }
             else
             {
@@ -590,8 +598,8 @@ namespace GraphView
 #endif
             if (this.Command.InLazyMode)
             {
-                DeltaField delta = new DeltaDropV(this.Command, vertexId, (JObject)vertexObject.DeepClone());
-                this.Command.VertexCache.AddDelta(delta);
+                DeltaLogDropVertex log = new DeltaLogDropVertex();
+                this.Command.VertexCache.AddOrUpdateVertexDelta(vertex, log);
             }
             else
             {
@@ -680,7 +688,7 @@ namespace GraphView
             //     - If the upload fails with SLE, create a new document to store the edge, and update the vertex document
             //
             JObject outEdgeObject, inEdgeObject;
-            string outEdgeDocID, inEdgeDocID;
+            string outEdgeDocID = null, inEdgeDocID = null;
 
             outEdgeObject = (JObject)this.edgeJsonObject.DeepClone();
             inEdgeObject = (JObject)this.edgeJsonObject.DeepClone();
@@ -693,19 +701,7 @@ namespace GraphView
             GraphViewJsonCommand.UpdateEdgeMetaProperty(outEdgeObject, edgeId, false, sinkId, sinkLabel, sinkVertexField.Partition);
             GraphViewJsonCommand.UpdateEdgeMetaProperty(inEdgeObject, edgeId, true, srcId, srcLabel, srcVertexField.Partition);
 
-            if (this.Command.InLazyMode)
-            {
-                outEdgeDocID = null;
-                inEdgeDocID = null;
-                DeltaField delta = new DeltaAddE(this.Command, srcVertexField, (JObject)srcVertexObject.DeepClone(), (JObject)outEdgeObject.DeepClone(), false);
-                this.Command.VertexCache.AddDelta(delta);
-                if (this.Command.Connection.UseReverseEdges)
-                {
-                    DeltaField deltaRev = new DeltaAddE(this.Command, sinkVertexField, (JObject)sinkVertexObject.DeepClone(), (JObject)inEdgeObject.DeepClone(), true);
-                    this.Command.VertexCache.AddDelta(deltaRev);
-                }
-            }
-            else
+            if (!this.Command.InLazyMode)
             {
                 EdgeDocumentHelper.InsertEdgeObjectInternal(this.Command, srcVertexObject, srcVertexField, outEdgeObject, false, out outEdgeDocID); // srcVertex uploaded
 
@@ -728,6 +724,11 @@ namespace GraphView
                 (string)inEdgeObject[KW_EDGE_ID], 
                 () => EdgeField.ConstructBackwardEdgeField(sinkId, sinkVertexField.VertexLabel, sinkVertexField.Partition, inEdgeDocID, inEdgeObject));
 
+            if (this.Command.InLazyMode)
+            {
+                DeltaLogAddEdge log = new DeltaLogAddEdge();
+                this.Command.VertexCache.AddOrUpdateEdgeDelta(outEdgeField, srcVertexField, inEdgeField, sinkVertexField, log, this.Command.Connection.UseReverseEdges);
+            }
 
             // Construct the newly added edge's RawRecord
             RawRecord result = new RawRecord();
@@ -772,8 +773,9 @@ namespace GraphView
 
             if (this.Command.InLazyMode)
             {
-                DeltaField delta = new DeltaDropE(this.Command, srcId, edgeId, srcVertexField, sinkVertexField);
-                this.Command.VertexCache.AddDelta(delta);
+                DeltaLogDropEdge log = new DeltaLogDropEdge();
+                this.Command.VertexCache.AddOrUpdateEdgeDelta(edgeField, srcVertexField, 
+                    null, sinkVertexField, log, this.Command.Connection.UseReverseEdges);
             }
             else
             {
@@ -814,11 +816,11 @@ namespace GraphView
                 // <docId, <docJson, partition>>
                 Dictionary<string, Tuple<JObject, string>> uploadDocuments = new Dictionary<string, Tuple<JObject, string>>();
                 EdgeDocumentHelper.RemoveEdge(uploadDocuments, this.Command, srcEdgeDocId,
-                    srcVertexField.VertexJObject, srcVertexField.ViaGraphAPI, false, srcId, edgeId);
+                    srcVertexField, false, srcId, edgeId);
                 if (this.Command.Connection.UseReverseEdges)
                 {
                     EdgeDocumentHelper.RemoveEdge(uploadDocuments, this.Command, sinkEdgeDocId,
-                        sinkVertexField.VertexJObject, sinkVertexField.ViaGraphAPI, true, srcId, edgeId);
+                        sinkVertexField, true, srcId, edgeId);
                 }
                 this.Command.Connection.ReplaceOrDeleteDocumentsAsync(uploadDocuments, this.Command).Wait();
 
@@ -939,7 +941,11 @@ namespace GraphView
             }
 
             EdgeField outEdgeField = srcVertexField.AdjacencyList.GetEdgeField(edgeId, true);
-            EdgeField inEdgeField = sinkVertexField?.RevAdjacencyList.GetEdgeField(edgeId, false);
+            EdgeField inEdgeField = null;
+            if (this.Command.Connection.UseReverseEdges)
+            {
+                inEdgeField = sinkVertexField?.RevAdjacencyList.GetEdgeField(edgeId, true);
+            }
 
             JObject outEdgeObject = outEdgeField.EdgeJObject;
             string outEdgeDocId = null;
@@ -968,12 +974,22 @@ namespace GraphView
                     {
                         Debug.Assert(object.ReferenceEquals(sinkVertexField, srcVertexField));
                         Debug.Assert(object.ReferenceEquals(sinkVertexObject, srcVertexObject));
+                        inEdgeDocId = outEdgeDocId;
                     }
-
-                    EdgeDocumentHelper.FindEdgeBySourceAndEdgeId(
-                        this.Command, sinkVertexObject, srcVertexId, edgeId, true,
-                        out inEdgeObject, out inEdgeDocId);
+                    else
+                    {
+                        EdgeDocumentHelper.FindEdgeBySourceAndEdgeId(
+                            this.Command, sinkVertexObject, srcVertexId, edgeId, true,
+                            out inEdgeObject, out inEdgeDocId);
+                    }
                 }
+            }
+
+            List<Tuple<string, EdgeDeltaType, string>> deltaProperties = new List<Tuple<string, EdgeDeltaType, string>>();
+            List<Tuple<string, EdgeDeltaType, string>> RevDeltaProperties = null;
+            if (this.Command.Connection.UseReverseEdges)
+            {
+                RevDeltaProperties = new List<Tuple<string, EdgeDeltaType, string>>();
             }
 
             // Drop all non-reserved properties
@@ -999,9 +1015,23 @@ namespace GraphView
                             outEdgeObject, keyExpression, valueExpression);
                         // Update VertexCache
                         if (updatedProperty == null)
+                        {
                             outEdgeField.EdgeProperties.Remove(keyExpression.Value);
+                            if (this.Command.InLazyMode)
+                            {
+                                deltaProperties.Add(new Tuple<string, EdgeDeltaType, string>(
+                                    keyExpression.Value, EdgeDeltaType.DropProperty, null));
+                            }
+                        }
                         else
+                        {
                             outEdgeField.UpdateEdgeProperty(updatedProperty);
+                            if (this.Command.InLazyMode)
+                            {
+                                deltaProperties.Add(new Tuple<string, EdgeDeltaType, string>(
+                                    keyExpression.Value, EdgeDeltaType.UpdateProperty, valueExpression.Value));
+                            }
+                        }
 
                         if (this.Command.Connection.UseReverseEdges && inEdgeField != null)
                         {
@@ -1014,9 +1044,20 @@ namespace GraphView
                         if (inEdgeField != null)
                         {
                             if (updatedProperty == null)
+                            {
                                 inEdgeField.EdgeProperties.Remove(keyExpression.Value);
+                                if (this.Command.InLazyMode)
+                                {
+                                    RevDeltaProperties.Add(new Tuple<string, EdgeDeltaType, string>(
+                                        keyExpression.Value, EdgeDeltaType.DropProperty, null));
+                                }
+                            }
                             else
+                            {
                                 inEdgeField.UpdateEdgeProperty(updatedProperty);
+                                RevDeltaProperties.Add(new Tuple<string, EdgeDeltaType, string>(
+                                    keyExpression.Value, EdgeDeltaType.UpdateProperty, valueExpression.Value));
+                            }
                         }
                     }
                     else
@@ -1028,10 +1069,9 @@ namespace GraphView
 
             if (this.Command.InLazyMode)
             {
-                DeltaField delta = new DeltaUpdateE(this.Command, srcVertexId, edgeId,
-                    (JObject) srcVertexField.VertexJObject.DeepClone(),
-                    (JObject) sinkVertexField?.VertexJObject.DeepClone());
-                this.Command.VertexCache.AddDelta(delta);
+                DeltaLogUpdateEdgeProperty log = new DeltaLogUpdateEdgeProperty(deltaProperties, RevDeltaProperties);
+                this.Command.VertexCache.AddOrUpdateEdgeDelta(outEdgeField, srcVertexField, 
+                    inEdgeField, sinkVertexField, log, this.Command.Connection.UseReverseEdges);
             }
             else
             {

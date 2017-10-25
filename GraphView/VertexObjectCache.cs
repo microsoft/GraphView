@@ -137,19 +137,56 @@ namespace GraphView
 #endif
         }
 
-        private readonly Queue<DeltaField> DeltaFields = new Queue<DeltaField>();
+        private readonly Dictionary<string, DeltaVertexField> vertexDelta = new Dictionary<string, DeltaVertexField>();
+        private readonly Dictionary<string, DeltaEdgeField> edgeDelta = new Dictionary<string, DeltaEdgeField>();
 
-        internal void AddDelta(DeltaField delta)
+        internal void AddOrUpdateVertexDelta(VertexField vertexField, DeltaLog log)
         {
-            this.DeltaFields.Enqueue(delta);
+            string vertexId = vertexField.VertexId;
+            DeltaVertexField delta;
+            if (vertexDelta.ContainsKey(vertexId))
+            {
+                delta = vertexDelta[vertexId];
+            }
+            else
+            {
+                delta = new DeltaVertexField(vertexField);
+                vertexDelta.Add(vertexId, delta);
+            }
+            delta.AddDeltaLog(log);
+        }
+
+        internal void AddOrUpdateEdgeDelta(EdgeField outEdgeField, VertexField srcVertexField, 
+            EdgeField inEdgeField, VertexField sinkVertexField, DeltaLog log, bool useReverseEdges)
+        {
+            string edgeId = outEdgeField.EdgeId;
+
+            DeltaEdgeField delta;
+            if (edgeDelta.ContainsKey(edgeId))
+            {
+                delta = edgeDelta[edgeId];
+            }
+            else
+            {
+                delta = new DeltaEdgeField(outEdgeField, srcVertexField, inEdgeField, sinkVertexField, useReverseEdges);
+                edgeDelta[edgeId] = delta;
+            }
+            delta.AddDeltaLog(log);
         }
 
         internal void UploadDelta()
         {
-            while (this.DeltaFields.Count > 0)
+            foreach (KeyValuePair<string, DeltaVertexField> pair in vertexDelta)
             {
-                this.DeltaFields.Dequeue().Upload();
+                pair.Value.Upload(this.Command);
             }
+            this.vertexDelta.Clear();
+
+            foreach (KeyValuePair<string, DeltaEdgeField> pair in edgeDelta)
+            {
+                pair.Value.Upload(this.Command);
+            }
+            this.edgeDelta.Clear();
         }
     }
 }

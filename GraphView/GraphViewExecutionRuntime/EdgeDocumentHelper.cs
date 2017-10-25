@@ -472,17 +472,15 @@ namespace GraphView
             Dictionary<string, Tuple<JObject, string>> documentMap,
             GraphViewCommand command,
             string edgeDocId,
-            //VertexField vertexField,
-            JObject vertexObject,
-            bool viaGraphAPI,
+            VertexField vertexField,
             bool isReverse,
             string srcVertexId, string edgeId)
         {
-            //JObject vertexObject = vertexField.VertexJObject;
+            JObject vertexObject = vertexField.VertexJObject;
             JArray edgeContainer = (JArray)vertexObject[isReverse ? KW_VERTEX_REV_EDGE : KW_VERTEX_EDGE];
 
             // Check is this vertex an external vertex?
-            if (!viaGraphAPI) {
+            if (!vertexField.ViaGraphAPI) {
 #if DEBUG
                 JObject edgeDocument = command.Connection.RetrieveDocumentById(edgeDocId, command.Connection.GetDocumentPartition(vertexObject), command);
                 Debug.Assert(command.Connection.GetDocumentPartition(edgeDocument) == command.Connection.GetDocumentPartition(vertexObject));
@@ -501,8 +499,7 @@ namespace GraphView
                 Debug.Assert(edgeDocumentsArray.Count == 1, "edgeDocuments.Count == 1");
 
                 JObject edgeDocument = command.Connection.RetrieveDocumentById(edgeDocId, command.Connection.GetDocumentPartition(vertexObject), command);
-                //Debug.Assert(edgeDocument[KW_DOC_PARTITION] != null);
-                //Debug.Assert(vertexObject[KW_DOC_PARTITION] != null);
+
                 Debug.Assert(((string)edgeDocument[KW_DOC_ID]).Equals(edgeDocId), $"((string)edgeDocument['{KW_DOC_ID}']).Equals(edgeDocId)");
                 Debug.Assert((bool)edgeDocument[KW_EDGEDOC_ISREVERSE] == isReverse, $"(bool)edgeDocument['{KW_EDGEDOC_ISREVERSE}'] == isReverse");
                 Debug.Assert((string)edgeDocument[KW_EDGEDOC_VERTEXID] == (string)vertexObject[KW_DOC_ID], $"(string)edgeDocument['{KW_EDGEDOC_VERTEXID}'] == (string)vertexObject['id']");
@@ -538,8 +535,6 @@ namespace GraphView
                     else {
                         documentMap[edgeDocId] = new Tuple<JObject, string>(edgeDocument, command.Connection.GetDocumentPartition(edgeDocument));
                     }
-                    // The vertex object needn't change
-                    //documentMap[(string)vertexObject[KW_DOC_ID]] = new Tuple<JObject, string>(vertexObject, connection.GetDocumentPartition(vertexObject));
                 }
                 else {
                     documentMap[edgeDocId] = new Tuple<JObject, string>(edgeDocument, command.Connection.GetDocumentPartition(edgeDocument));

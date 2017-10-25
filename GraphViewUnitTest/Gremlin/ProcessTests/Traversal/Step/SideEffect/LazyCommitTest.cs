@@ -103,5 +103,69 @@ namespace GraphViewUnitTest.Gremlin
                 }
             }
         }
+
+        [TestMethod]
+        public void Test_Lazy_Update_Vertex_Properties()
+        {
+            using (GraphViewCommand command = new GraphViewCommand(graphConnection))
+            {
+                var traversal = command.g().Inject(1).AddV()
+                    .Property("name", "testNode")
+                    .Property("grade", "100")
+                    .Property("p1", "v1")
+                    .Property("fatherProperty", "fatherValue", "name1", "value1", "name2", "value2")
+                    .Union(
+                        GraphTraversal.__().Properties("p1").Drop(),
+                        GraphTraversal.__().Properties("fatherProperty").Properties().HasKey("name1").Drop(),
+                        GraphTraversal.__().PropertyMap(),
+                        GraphTraversal.__().Properties("fatherProperty").Properties()).Commit();
+                    ;
+
+                var result = traversal.Next();
+
+                Assert.IsTrue(result.Count == 2);
+                Assert.IsTrue(result[0].Contains("name:[vp[name->testNode]]"));
+                Assert.IsTrue(result[0].Contains("grade:[vp[grade->100]]"));
+                Assert.IsTrue(result[0].Contains("fatherProperty:[vp[fatherProperty->fatherValue]]"));
+                Assert.IsTrue(!result[0].Contains("p1"));
+                Assert.IsTrue(result[1].Contains("p[name2->value2]"));
+
+                foreach (var r in result)
+                {
+                    Console.WriteLine(r);
+                }
+            }
+        }
+
+
+        [TestMethod]
+        public void Test_Lazy_Update_Edge_Properties()
+        {
+            using (GraphViewCommand command = new GraphViewCommand(graphConnection))
+            {
+                var traversal = command.g().V().Has("name", "peter").OutE()
+                    .Property("weight", "1")
+                    .Property("grade", "100")
+                    .Property("p1", "v1")
+                    .Union(
+                        GraphTraversal.__().Properties("p1").Drop(),
+                        GraphTraversal.__().Property("p1", "v2"),
+                        GraphTraversal.__().PropertyMap()).Commit();
+
+                var result = traversal.Next();
+
+                Assert.IsTrue(result.Count == 2);
+                Assert.IsTrue(result[1].Contains("weight:p[weight->1]"));
+                Assert.IsTrue(result[1].Contains("grade:p[grade->100]"));
+                Assert.IsTrue(result[1].Contains("p1:p[p1->v2]"));
+                Assert.IsTrue(!result[1].Contains("p1->v1"));
+
+                foreach (var r in result)
+                {
+                    Console.WriteLine(r);
+                }
+            }
+        }
+
     }
 }
