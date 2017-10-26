@@ -595,12 +595,12 @@ namespace GraphView
         /// <summary>
         /// Property's value
         /// </summary>
-        public WValueExpression Value { get; set; }
+        public WScalarExpression Value { get; set; }
 
         /// <summary>
         /// Only valid for vertex property
         /// </summary>
-        public Dictionary<WValueExpression, WValueExpression> MetaProperties { get; set; }
+        public Dictionary<WValueExpression, WScalarExpression> MetaProperties { get; set; }
 
         public override void Accept(WSqlFragmentVisitor visitor)
         {
@@ -615,7 +615,7 @@ namespace GraphView
 
             if (MetaProperties != null)
             {
-                foreach (KeyValuePair<WValueExpression, WValueExpression> kvp in MetaProperties)
+                foreach (KeyValuePair<WValueExpression, WScalarExpression> kvp in MetaProperties)
                 {
                     kvp.Key.Accept(visitor);
                     kvp.Value.Accept(visitor);

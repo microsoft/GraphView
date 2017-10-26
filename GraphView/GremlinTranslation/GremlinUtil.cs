@@ -157,16 +157,34 @@ namespace GraphView
 
         public WPropertyExpression ToPropertyExpr()
         {
-            Dictionary<WValueExpression, WValueExpression> metaPropertiesExpr = new Dictionary<WValueExpression, WValueExpression>();
+            WScalarExpression valueExpr;
+            if (Value is GremlinToSqlContext)
+            {
+                GremlinToSqlContext valueContext = Value as GremlinToSqlContext;
+                valueExpr = SqlUtil.GetScalarSubquery(valueContext.ToSelectQueryBlock());
+            }
+            else
+            {
+                valueExpr = SqlUtil.GetValueExpr(Value);
+            }
+            Dictionary<WValueExpression, WScalarExpression> metaPropertiesExpr = new Dictionary<WValueExpression, WScalarExpression>();
             foreach (var property in MetaProperties)
             {
-                metaPropertiesExpr[SqlUtil.GetValueExpr(property.Key)] = SqlUtil.GetValueExpr(property.Value);
+                if (property.Value is GremlinToSqlContext)
+                {
+                    GremlinToSqlContext valueContext = property.Value as GremlinToSqlContext;
+                    WScalarExpression propertyExpression = SqlUtil.GetScalarSubquery(valueContext.ToSelectQueryBlock());
+                    metaPropertiesExpr[SqlUtil.GetValueExpr(property.Key)] = propertyExpression;
+                }
+                else{
+                    metaPropertiesExpr[SqlUtil.GetValueExpr(property.Key)] = SqlUtil.GetValueExpr(property.Value);
+                }
             }
             return new WPropertyExpression()
             {
                 Cardinality = Cardinality,
                 Key = SqlUtil.GetValueExpr(Key),
-                Value = SqlUtil.GetValueExpr(Value),
+                Value = valueExpr,
                 MetaProperties = metaPropertiesExpr
             };
         }

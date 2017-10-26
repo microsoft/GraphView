@@ -310,13 +310,25 @@ namespace GraphView
         {
             WColumnReferenceExpression updateParameter = this.Parameters[0] as WColumnReferenceExpression;
             int updateIndex = context.LocateColumnReference(updateParameter);
-            var propertiesList = new List<WPropertyExpression>();
+            // var propertiesList = new List<WPropertyExpression>();
 
             for (int i = 1; i < this.Parameters.Count; ++i) {
-                propertiesList.Add((WPropertyExpression)this.Parameters[i]);
-#if DEBUG
-                ((WPropertyExpression)this.Parameters[i]).Value.ToJValue();
-#endif
+                WPropertyExpression property = this.Parameters[i] as WPropertyExpression;
+                if (property.Value is WValueExpression)
+                {
+                    // GraphViewExecutionOperator valueOperator = new GraphViewExecutionOperator();
+                }
+                else
+                {
+                    WScalarSubquery scalarSubquery = property.Value as WScalarSubquery;
+                    ContainerEnumerator sourceEnumerator = new ContainerEnumerator();
+                    QueryCompilationContext subcontext = new QueryCompilationContext(context);
+                    subcontext.OuterContextOp.SourceEnumerator = sourceEnumerator;
+                    subcontext.InBatchMode = context.InBatchMode;
+                    subcontext.CarryOn = true;
+                    GraphViewExecutionOperator valueOperator = scalarSubquery.SubQueryExpr.Compile(subcontext, command);
+
+                }
             }
 
             UpdatePropertiesOperator updateOp = new UpdatePropertiesOperator(

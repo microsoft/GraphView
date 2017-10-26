@@ -24,12 +24,13 @@ namespace GraphView
                 throw new TranslationException("The PivotVariable of property()-step can't be null.");
             }
 
-            GremlinVariableType pivotType = inputContext.PivotVariable.GetVariableType();
-            if (pivotType != GremlinVariableType.Vertex && pivotType != GremlinVariableType.Unknown && pivotType != GremlinVariableType.Mixed &&
-                (this.property.Cardinality == GremlinKeyword.PropertyCardinality.List || this.property.MetaProperties.Count > 0))
+            if (property.Value is GraphTraversal)
             {
-                throw new TranslationException("Only vertex can use PropertyCardinality.List and have meta properties");
+                GraphTraversal propertyTraversal = property.Value as GraphTraversal;
+                propertyTraversal.GetStartOp().InheritedVariableFromParent(inputContext);
+                property.Value = propertyTraversal.GetEndOp().GetContext();
             }
+
             inputContext.PivotVariable.Property(inputContext, property);
 
             return inputContext;

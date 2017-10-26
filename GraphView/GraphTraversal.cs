@@ -1138,23 +1138,14 @@ namespace GraphView
         {
             if (keyValues.Length % 2 != 0) throw new Exception("The parameter of property should be even");
 
-            var lastOp = this.GetEndOp() as GremlinAddEOp;
-            if (lastOp != null)
+            Dictionary<string, object> metaProperties = new Dictionary<string, object>();
+            for (var i = 0; i < keyValues.Length; i += 2)
             {
-                if (keyValues.Length > 0) throw new SyntaxErrorException("Only vertex can use PropertyCardinality.List and have meta properties");
-                GremlinProperty property = new GremlinProperty(cardinality, key, value, null);
-                lastOp.EdgeProperties.Add(property);
+                metaProperties[keyValues[i] as string] = keyValues[i + 1];
             }
-            else
-            {
-                Dictionary<string, object> metaProperties = new Dictionary<string, object>();
-                for (var i = 0; i < keyValues.Length; i += 2)
-                {
-                    metaProperties[keyValues[i] as string] = keyValues[i + 1];
-                }
-                GremlinProperty property = new GremlinProperty(cardinality, key, value, metaProperties);
-                AddGremlinOperator(new GremlinPropertyOp(property));
-            }
+            GremlinProperty property = new GremlinProperty(cardinality, key, value, metaProperties);
+            AddGremlinOperator(new GremlinPropertyOp(property));
+            
             return this;
         }
 
