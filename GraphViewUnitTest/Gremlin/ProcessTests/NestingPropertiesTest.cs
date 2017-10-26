@@ -189,5 +189,27 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests
                 Assert.AreEqual(0, result.Count);
             }
         }
+
+        [TestMethod]
+        public void Test_AddV_With_MultipleProperty()
+        {
+            using (GraphViewCommand command = new GraphViewCommand(graphConnection))
+            {
+                var traversal = command.g().Inject(1).AddV().Property("name", "testNode")
+                    .Property("grade", "100")
+                    .Property("grade", "60")
+                    .Values("grade");
+
+                var result = traversal.Next();
+                Assert.IsTrue(result.Count == 2);
+                Assert.IsTrue(result[0] == "100");
+                Assert.IsTrue(result[1] == "60");
+                foreach (var r in result)
+                {
+                    Console.WriteLine(r);
+                }
+            }
+        }
+
     }
 }

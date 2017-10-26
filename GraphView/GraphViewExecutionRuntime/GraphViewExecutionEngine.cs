@@ -1033,13 +1033,14 @@ namespace GraphView
         {
             get
             {
-                if (this.Multiples.Count == 1)
+                if (this.Multiples.Count >= 1)
+                {
                     return Multiples.Values.First().JsonDataType;
-                if (this.Multiples.Count == 0)
+                }
+                else
+                {
                     return JsonDataType.Null;
-
-                Debug.Assert(false, "Should not get here.");
-                return JsonDataType.String;
+                }
             }
         }
 
