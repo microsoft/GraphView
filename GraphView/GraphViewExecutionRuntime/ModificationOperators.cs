@@ -161,22 +161,144 @@ namespace GraphView
 
         private void DropVertex(VertexField vertexField)
         {
-            RawRecord record = new RawRecord();
-            record.Append(new StringField(vertexField.VertexId));  // nodeIdIndex
-            DropNodeOperator op = new DropNodeOperator(this.dummyInputOp, this.Command, 0);
-            op.DataModify(record);
+            string vertexId = vertexField.VertexId;
+            VertexField vertex = this.Command.VertexCache.GetVertexField(vertexId);
 
-            // Now VertexCacheObject has been updated (in DataModify)
+            foreach (EdgeField outEdge in vertex.AdjacencyList.AllEdges.ToList())
+            {
+                this.DropEdge(outEdge);
+            }
+
+            foreach (EdgeField inEdge in vertex.RevAdjacencyList.AllEdges.ToList())
+            {
+                this.DropEdge(inEdge);
+            }
+
+            // Delete the vertex-document!
+            JObject vertexObject = vertex.VertexJObject;
+#if DEBUG
+            if (vertex.ViaGraphAPI)
+            {
+                Debug.Assert(vertexObject[KW_VERTEX_EDGE] is JArray);
+                if (!EdgeDocumentHelper.IsSpilledVertex(vertexObject, false))
+                {
+                    Debug.Assert(((JArray)vertexObject[KW_VERTEX_EDGE]).Count == 0);
+                }
+
+                if (this.Command.Connection.UseReverseEdges)
+                {
+                    Debug.Assert(vertexObject[KW_VERTEX_REV_EDGE] is JArray);
+                    if (!EdgeDocumentHelper.IsSpilledVertex(vertexObject, true))
+                    {
+                        Debug.Assert(((JArray)vertexObject[KW_VERTEX_REV_EDGE]).Count == 0);
+                    }
+                }
+            }
+#endif
+            if (this.Command.InLazyMode)
+            {
+                DeltaLogDropVertex log = new DeltaLogDropVertex();
+                this.Command.VertexCache.AddOrUpdateVertexDelta(vertex, log);
+            }
+            else
+            {
+                this.Command.Connection.ReplaceOrDeleteDocumentAsync(vertexId, null,
+                    this.Command.Connection.GetDocumentPartition(vertexObject), this.Command).Wait();
+            }
+
+            // Update VertexCache
+            this.Command.VertexCache.TryRemoveVertexField(vertexId);
         }
 
         private void DropEdge(EdgeField edgeField)
         {
-            RawRecord record = new RawRecord();
-            record.Append(edgeField);
-            DropEdgeOperator op = new DropEdgeOperator(this.dummyInputOp, this.Command, 0);
-            op.DataModify(record);
+            string edgeId = edgeField.EdgeId;
+            string srcId = edgeField.OutV;
+            string sinkId = edgeField.InV;
+            string srcVertexPartition = edgeField.OutVPartition;
+            string sinkVertexPartition = edgeField.InVPartition;
 
-            // Now VertexCacheObject has been updated (in DataModify)
+            VertexField srcVertexField = this.Command.VertexCache.GetVertexField(srcId, srcVertexPartition);
+            VertexField sinkVertexField = this.Command.VertexCache.GetVertexField(sinkId, sinkVertexPartition);
+
+            if (this.Command.InLazyMode)
+            {
+                DeltaLogDropEdge log = new DeltaLogDropEdge();
+                this.Command.VertexCache.AddOrUpdateEdgeDelta(edgeField, srcVertexField,
+                    null, sinkVertexField, log, this.Command.Connection.UseReverseEdges);
+            }
+            else
+            {
+                JObject srcVertexObject = srcVertexField.VertexJObject;
+                JObject srcEdgeObject;
+                string srcEdgeDocId;
+                EdgeDocumentHelper.FindEdgeBySourceAndEdgeId(
+                    this.Command, srcVertexObject, srcId, edgeId, false,
+                    out srcEdgeObject, out srcEdgeDocId);
+
+                if (srcEdgeObject == null)
+                {
+                    return;
+                }
+
+                JObject sinkVertexObject = sinkVertexField.VertexJObject;
+                string sinkEdgeDocId = null;
+
+                if (this.Command.Connection.UseReverseEdges)
+                {
+                    if (!string.Equals(sinkId, srcId))
+                    {
+                        JObject dummySinkEdgeObject;
+                        EdgeDocumentHelper.FindEdgeBySourceAndEdgeId(
+                            this.Command, sinkVertexObject, srcId, edgeId, true,
+                            out dummySinkEdgeObject, out sinkEdgeDocId);
+                    }
+                    else
+                    {
+                        Debug.Assert(object.ReferenceEquals(sinkVertexField, srcVertexField));
+                        Debug.Assert(sinkVertexObject == srcVertexObject);
+                        sinkEdgeDocId = srcEdgeDocId;
+                    }
+                }
+
+                // <docId, <docJson, partition>>
+                Dictionary<string, Tuple<JObject, string>> uploadDocuments = new Dictionary<string, Tuple<JObject, string>>();
+                EdgeDocumentHelper.RemoveEdge(uploadDocuments, this.Command, srcEdgeDocId,
+                    srcVertexField, false, srcId, edgeId);
+                if (this.Command.Connection.UseReverseEdges)
+                {
+                    EdgeDocumentHelper.RemoveEdge(uploadDocuments, this.Command, sinkEdgeDocId,
+                        sinkVertexField, true, srcId, edgeId);
+                }
+                this.Command.Connection.ReplaceOrDeleteDocumentsAsync(uploadDocuments, this.Command).Wait();
+
+#if DEBUG
+                // NOTE: srcVertexObject is excatly the reference of srcVertexField.VertexJObject
+                // NOTE: sinkVertexObject is excatly the reference of sinkVertexField.VertexJObject
+
+                // If source vertex is not spilled, the outgoing edge JArray of srcVertexField.VertexJObject should have been updated
+                if (!EdgeDocumentHelper.IsSpilledVertex(srcVertexField.VertexJObject, false))
+                {
+                    Debug.Assert(
+                        srcVertexField.VertexJObject[KW_VERTEX_EDGE].Cast<JObject>().All(
+                            edgeObj => (string)edgeObj[KW_EDGE_ID] != edgeId));
+                }
+
+                if (this.Command.Connection.UseReverseEdges)
+                {
+                    // If sink vertex is not spilled, the incoming edge JArray of sinkVertexField.VertexJObject should have been updated
+                    if (!EdgeDocumentHelper.IsSpilledVertex(srcVertexField.VertexJObject, true))
+                    {
+                        Debug.Assert(
+                            sinkVertexField.VertexJObject[KW_VERTEX_REV_EDGE].Cast<JObject>().All(
+                                edgeObj => (string)edgeObj[KW_EDGE_ID] != edgeId));
+                    }
+                }
+#endif
+            }
+
+            srcVertexField.AdjacencyList.RemoveEdgeField(edgeId);
+            sinkVertexField.RevAdjacencyList.RemoveEdgeField(edgeId);
         }
 
         private void DropVertexSingleProperty(VertexSinglePropertyField vp)
@@ -226,9 +348,9 @@ namespace GraphView
 #if DEBUG
             VertexSinglePropertyField vsp = (VertexSinglePropertyField)metaProperty.Parent;
             VertexField vertex = vsp.VertexProperty.Vertex;
-            if (!vertex.ViaGraphAPI) {
+            if (!vertex.ViaGraphAPI)
+            {
                 Debug.Assert(vertex.VertexJObject[vsp.PropertyName] is JArray);
-                ////throw new GraphViewException("BUG: Compatible vertices should not have meta properties.");
             }
 #endif
 
@@ -244,9 +366,11 @@ namespace GraphView
 
             JObject metaPropertyJObject = (JObject) propertyJToken?[KW_PROPERTY_META];
 
-            if (metaPropertyJObject != null) {
+            if (metaPropertyJObject != null)
+            {
                 metaPropertyJObject.Property(metaProperty.PropertyName)?.Remove();
-                if (metaPropertyJObject.Count == 0) {
+                if (metaPropertyJObject.Count == 0)
+                {
                     ((JObject)propertyJToken).Remove(KW_PROPERTY_META);
                 }
             }
@@ -270,24 +394,108 @@ namespace GraphView
 
         private void DropEdgeProperty(EdgePropertyField ep)
         {
-            List<Tuple<WValueExpression, WValueExpression, int>> propertyList = new List<Tuple<WValueExpression, WValueExpression, int>>();
-            propertyList.Add(
-                new Tuple<WValueExpression, WValueExpression, int>(
-                    new WValueExpression(ep.PropertyName, true), 
-                    new WValueExpression("null", false), 
-                    0));
-            UpdateEdgePropertiesOperator op = new UpdateEdgePropertiesOperator(
-                this.dummyInputOp, 
-                this.Command,
-                0, 
-                propertyList
-                );
-            RawRecord record = new RawRecord();
-            record.Append(ep.Edge);
-            op.DataModify(record);
+            string propertyName = ep.PropertyName;
+            EdgeField edgeField = ep.Edge;
+            string edgeId = edgeField.EdgeId;
 
-            // Now VertexCacheObject has been updated (in DataModify)
-            Debug.Assert(!ep.Edge.EdgeProperties.ContainsKey(ep.PropertyName));
+            string srcVertexId = edgeField.OutV;
+            string srcVertexPartition = edgeField.OutVPartition;
+            VertexField srcVertexField = this.Command.VertexCache.GetVertexField(srcVertexId, srcVertexPartition);
+            JObject srcVertexObject = srcVertexField.VertexJObject;
+
+            VertexField sinkVertexField;
+            JObject sinkVertexObject;
+            string sinkVertexId = edgeField.InV;
+            string sinkVertexPartition = edgeField.InVPartition;
+
+            bool foundSink;
+            if (this.Command.Connection.UseReverseEdges)
+            {
+                sinkVertexField = this.Command.VertexCache.GetVertexField(sinkVertexId, sinkVertexPartition);
+                sinkVertexObject = sinkVertexField.VertexJObject;
+                foundSink = true;
+            }
+            else
+            {
+                foundSink = this.Command.VertexCache.TryGetVertexField(sinkVertexId, out sinkVertexField);
+                sinkVertexObject = sinkVertexField?.VertexJObject;
+            }
+
+            EdgeField outEdgeField = srcVertexField.AdjacencyList.GetEdgeField(edgeId, true);
+            EdgeField inEdgeField = null;
+            if (this.Command.Connection.UseReverseEdges)
+            {
+                inEdgeField = sinkVertexField?.RevAdjacencyList.GetEdgeField(edgeId, true);
+            }
+
+            JObject outEdgeObject = outEdgeField.EdgeJObject;
+            string outEdgeDocId = null;
+
+            JObject inEdgeObject = inEdgeField?.EdgeJObject;
+            string inEdgeDocId = null;
+
+            if (!this.Command.InLazyMode)
+            {
+                EdgeDocumentHelper.FindEdgeBySourceAndEdgeId(
+                    this.Command, srcVertexObject, srcVertexId, edgeId, false,
+                    out outEdgeObject, out outEdgeDocId);
+
+                if (outEdgeObject == null)
+                {
+                    Debug.WriteLine(
+                        $"[DropEdgeProperty] The edge does not exist: vertexId = {srcVertexId}, edgeId = {edgeId}");
+                    return;
+                }
+
+                if (this.Command.Connection.UseReverseEdges)
+                {
+                    Debug.Assert(foundSink);
+
+                    if (sinkVertexId.Equals(srcVertexId))
+                    {
+                        Debug.Assert(object.ReferenceEquals(sinkVertexField, srcVertexField));
+                        Debug.Assert(object.ReferenceEquals(sinkVertexObject, srcVertexObject));
+                        inEdgeDocId = outEdgeDocId;
+                    }
+                    else
+                    {
+                        EdgeDocumentHelper.FindEdgeBySourceAndEdgeId(
+                            this.Command, sinkVertexObject, srcVertexId, edgeId, true,
+                            out inEdgeObject, out inEdgeDocId);
+                    }
+                }
+            }
+
+            // Modify edgeObject (drop the edge property)
+            GraphViewJsonCommand.DropProperty(outEdgeObject, propertyName);
+            // Update VertexCache
+            outEdgeField.EdgeProperties.Remove(propertyName);
+
+            if (this.Command.Connection.UseReverseEdges && inEdgeField != null)
+            {
+                // Modify edgeObject (drop the edge property)
+                GraphViewJsonCommand.DropProperty(inEdgeObject, propertyName);
+                // Update VertexCache
+                inEdgeField.EdgeProperties.Remove(propertyName);
+            }
+
+            if (this.Command.InLazyMode)
+            {
+                DeltaLogDropEdgeProperty log = new DeltaLogDropEdgeProperty(propertyName);
+                this.Command.VertexCache.AddOrUpdateEdgeDelta(outEdgeField, srcVertexField,
+                    inEdgeField, sinkVertexField, log, this.Command.Connection.UseReverseEdges);
+            }
+            else
+            {
+                // Interact with DocDB to update the property 
+                EdgeDocumentHelper.UpdateEdgeProperty(this.Command, srcVertexObject, outEdgeDocId, false,
+                    outEdgeObject);
+                if (this.Command.Connection.UseReverseEdges)
+                {
+                    EdgeDocumentHelper.UpdateEdgeProperty(this.Command, sinkVertexObject, inEdgeDocId, true,
+                        inEdgeObject);
+                }
+            }
         }
 
         internal override RawRecord DataModify(RawRecord record)
@@ -352,15 +560,18 @@ namespace GraphView
         {
             JObject vertexDocument = vertex.VertexJObject;
 
-            foreach (WPropertyExpression property in this.updateProperties) {
+            foreach (WPropertyExpression property in this.updateProperties)
+            {
                 Debug.Assert(property.Value != null);
                 
                 string name = property.Key.Value;
-                if (name == this.Command.Connection.RealPartitionKey) {
+                if (name == this.Command.Connection.RealPartitionKey)
+                {
                     throw new GraphViewException("Updating the partition-by property is not supported.");
                 }
 
-                if (!vertex.ViaGraphAPI && vertexDocument[name] is JValue) {
+                if (!vertex.ViaGraphAPI && vertexDocument[name] is JValue)
+                {
                     // Add/Update an existing flat vertex property
                     throw new GraphViewException($"The adding/updating property '{name}' already exists as flat.");
                 }
@@ -368,7 +579,8 @@ namespace GraphView
                 // Construct single property
                 JObject meta = new JObject();
                 List<Tuple<string, string>> metaList = new List<Tuple<string, string>>();
-                foreach (KeyValuePair<WValueExpression, WValueExpression> pair in property.MetaProperties) {
+                foreach (KeyValuePair<WValueExpression, WValueExpression> pair in property.MetaProperties)
+                {
                     meta[pair.Key.Value] = pair.Value.ToJValue();
                     metaList.Add(new Tuple<string, string>(pair.Key.Value, pair.Value.Value));
                 }
@@ -377,21 +589,25 @@ namespace GraphView
                     [KW_PROPERTY_VALUE] = property.Value.ToJValue(),
                     [KW_PROPERTY_ID] = propertyId,
                 };
-                if (meta.Count > 0) {
+                if (meta.Count > 0)
+                {
                     singleProperty[KW_PROPERTY_META] = meta;
                 }
 
                 // Set / Append to multiProperty
                 JArray multiProperty;
-                if (vertexDocument[name] == null) {
+                if (vertexDocument[name] == null)
+                {
                     multiProperty = new JArray();
                     vertexDocument[name] = multiProperty;
                 }
-                else {
+                else
+                {
                     multiProperty = (JArray)vertexDocument[name];
                 }
                 bool isMultiProperty = property.Cardinality != GremlinKeyword.PropertyCardinality.Single;
-                if (!isMultiProperty) {
+                if (!isMultiProperty)
+                {
                     multiProperty.Clear();
                 }
                 multiProperty.Add(singleProperty);
@@ -406,11 +622,13 @@ namespace GraphView
                 // Update vertex field
                 VertexPropertyField vertexProperty;
                 bool existed = vertex.VertexProperties.TryGetValue(name, out vertexProperty);
-                if (!existed) {
+                if (!existed)
+                {
                     vertexProperty = new VertexPropertyField(vertexDocument.Property(name), vertex);
                     vertex.VertexProperties.Add(name, vertexProperty);
                 }
-                else {
+                else
+                {
                     vertexProperty.Replace(vertexDocument.Property(name));
                 }
             }
@@ -425,28 +643,148 @@ namespace GraphView
             
         }
 
-        private void UpdatePropertiesOfEdge(EdgeField edge)
+        private void UpdatePropertiesOfEdge(EdgeField edgeField)
         {
-            List<Tuple<WValueExpression, WValueExpression, int>> propertyList =
-                new List<Tuple<WValueExpression, WValueExpression, int>>();
-            foreach (WPropertyExpression property in this.updateProperties) {
-                if (property.Cardinality == GremlinKeyword.PropertyCardinality.List ||
-                    property.MetaProperties.Count > 0) {
+            List<Tuple<WValueExpression, WValueExpression>> propertyList = new List<Tuple<WValueExpression, WValueExpression>>();
+            foreach (WPropertyExpression property in this.updateProperties)
+            {
+                if (property.Cardinality == GremlinKeyword.PropertyCardinality.List || property.MetaProperties.Count > 0)
+                {
                     throw new Exception("Can't create meta property or duplicated property on edges");
                 }
 
-                propertyList.Add(new Tuple<WValueExpression, WValueExpression, int>(property.Key, property.Value, 0));
+                propertyList.Add(new Tuple<WValueExpression, WValueExpression>(property.Key, property.Value));
             }
 
-            RawRecord record = new RawRecord();
-            record.Append(edge);
-            UpdateEdgePropertiesOperator op = new UpdateEdgePropertiesOperator(this.InputOperator, this.Command, 0, propertyList);
-            op.DataModify(record);
+            string edgeId = edgeField.EdgeId;
+
+            string srcVertexId = edgeField.OutV;
+            string srcVertexPartition = edgeField.OutVPartition;
+            VertexField srcVertexField = this.Command.VertexCache.GetVertexField(srcVertexId, srcVertexPartition);
+            JObject srcVertexObject = srcVertexField.VertexJObject;
+
+            VertexField sinkVertexField;
+            JObject sinkVertexObject;
+            string sinkVertexId = edgeField.InV;
+            string sinkVertexPartition = edgeField.InVPartition;
+
+            bool foundSink;
+            if (this.Command.Connection.UseReverseEdges)
+            {
+                sinkVertexField = this.Command.VertexCache.GetVertexField(sinkVertexId, sinkVertexPartition);
+                sinkVertexObject = sinkVertexField.VertexJObject;
+                foundSink = true;
+            }
+            else
+            {
+                foundSink = this.Command.VertexCache.TryGetVertexField(sinkVertexId, out sinkVertexField);
+                sinkVertexObject = sinkVertexField?.VertexJObject;
+            }
+
+            EdgeField outEdgeField = srcVertexField.AdjacencyList.GetEdgeField(edgeId, true);
+            EdgeField inEdgeField = null;
+            if (this.Command.Connection.UseReverseEdges)
+            {
+                inEdgeField = sinkVertexField?.RevAdjacencyList.GetEdgeField(edgeId, true);
+            }
+
+            JObject outEdgeObject = outEdgeField.EdgeJObject;
+            string outEdgeDocId = null;
+
+            JObject inEdgeObject = inEdgeField?.EdgeJObject;
+            string inEdgeDocId = null;
+
+            if (!this.Command.InLazyMode)
+            {
+                EdgeDocumentHelper.FindEdgeBySourceAndEdgeId(
+                    this.Command, srcVertexObject, srcVertexId, edgeId, false,
+                    out outEdgeObject, out outEdgeDocId);
+
+                if (outEdgeObject == null)
+                {
+                    Debug.WriteLine($"[UpdateEdgeProperties] The edge does not exist: vertexId = {srcVertexId}, edgeId = {edgeId}");
+                    return;
+                }
+
+                if (this.Command.Connection.UseReverseEdges)
+                {
+                    Debug.Assert(foundSink);
+
+                    if (sinkVertexId.Equals(srcVertexId))
+                    {
+                        Debug.Assert(object.ReferenceEquals(sinkVertexField, srcVertexField));
+                        Debug.Assert(object.ReferenceEquals(sinkVertexObject, srcVertexObject));
+                        inEdgeDocId = outEdgeDocId;
+                    }
+                    else
+                    {
+                        EdgeDocumentHelper.FindEdgeBySourceAndEdgeId(
+                            this.Command, sinkVertexObject, srcVertexId, edgeId, true,
+                            out inEdgeObject, out inEdgeDocId);
+                    }
+                }
+            }
+
+            List<Tuple<string, string>> deltaProperties = new List<Tuple<string, string>>();
+
+            // Drop all non-reserved properties
+            if (propertyList.Count == 1 &&
+                !propertyList[0].Item1.SingleQuoted &&
+                propertyList[0].Item1.Value.Equals("*", StringComparison.OrdinalIgnoreCase) &&
+                !propertyList[0].Item2.SingleQuoted &&
+                propertyList[0].Item2.Value.Equals("null", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new Exception("BUG: This condition is obsolete. Code should not reach here now!");
+            }
+            else
+            {
+                foreach (Tuple<WValueExpression, WValueExpression> tuple in propertyList)
+                {
+                    WValueExpression keyExpression = tuple.Item1;
+                    WValueExpression valueExpression = tuple.Item2;
+
+                    // Modify edgeObject (update the edge property)
+                    JProperty updatedProperty = GraphViewJsonCommand.UpdateProperty(outEdgeObject, keyExpression, valueExpression);
+                    // Update VertexCache
+                    outEdgeField.UpdateEdgeProperty(updatedProperty);
+                    if (this.Command.InLazyMode)
+                    {
+                        deltaProperties.Add(new Tuple<string, string>(keyExpression.Value, valueExpression.Value));
+                    }
+
+                    if (this.Command.Connection.UseReverseEdges && inEdgeField != null)
+                    {
+                        // Modify edgeObject (update the edge property)
+                        updatedProperty = GraphViewJsonCommand.UpdateProperty(inEdgeObject, keyExpression, valueExpression);
+                        // Update VertexCache
+                        inEdgeField.UpdateEdgeProperty(updatedProperty);
+                    }
+                }
+            }
+
+            if (this.Command.InLazyMode)
+            {
+                DeltaLogUpdateEdgeProperties log = new DeltaLogUpdateEdgeProperties(deltaProperties);
+                this.Command.VertexCache.AddOrUpdateEdgeDelta(outEdgeField, srcVertexField,
+                    inEdgeField, sinkVertexField, log, this.Command.Connection.UseReverseEdges);
+            }
+            else
+            {
+                // Interact with DocDB to update the property 
+                EdgeDocumentHelper.UpdateEdgeProperty(this.Command, srcVertexObject, outEdgeDocId, false,
+                    outEdgeObject);
+                if (this.Command.Connection.UseReverseEdges)
+                {
+                    EdgeDocumentHelper.UpdateEdgeProperty(this.Command, sinkVertexObject, inEdgeDocId, true,
+                        inEdgeObject);
+                }
+            }
         }
 
         private void UpdateMetaPropertiesOfSingleVertexProperty(VertexSinglePropertyField vp)
         {
-            if (!vp.VertexProperty.Vertex.ViaGraphAPI) {
+            if (!vp.VertexProperty.Vertex.ViaGraphAPI)
+            {
                 // We know this property must be added via GraphAPI (if exist)
                 JToken prop = vp.VertexProperty.Vertex.VertexJObject[vp.PropertyName];
                 Debug.Assert(prop == null || prop is JObject);
@@ -458,14 +796,16 @@ namespace GraphView
                 .First(single => (string) single[KW_PROPERTY_ID] == vp.PropertyId);
             JObject meta = (JObject)singleProperty[KW_PROPERTY_META];
 
-            if (meta == null && this.updateProperties.Count > 0) {
+            if (meta == null && this.updateProperties.Count > 0)
+            {
                 meta = new JObject();
                 singleProperty[KW_PROPERTY_META] = meta;
             }
             List<Tuple<string, string>> metaList = new List<Tuple<string, string>>();
-            foreach (WPropertyExpression property in this.updateProperties) {
-                if (property.Cardinality == GremlinKeyword.PropertyCardinality.List ||
-                    property.MetaProperties.Count > 0) {
+            foreach (WPropertyExpression property in this.updateProperties)
+            {
+                if (property.Cardinality == GremlinKeyword.PropertyCardinality.List || property.MetaProperties.Count > 0)
+                {
                     throw new Exception("Can't create meta property or duplicated property on vertex-property's meta property");
                 }
 
@@ -548,72 +888,6 @@ namespace GraphView
         }
     }
 
-    internal class DropNodeOperator : ModificationBaseOperator
-    {
-        private int _nodeIdIndex;
-
-        public DropNodeOperator(GraphViewExecutionOperator dummyInputOp, GraphViewCommand command, int pNodeIdIndex)
-            : base(dummyInputOp, command)
-        {
-            _nodeIdIndex = pNodeIdIndex;
-        }
-
-        // TODO: Batch upload for the DropEdge part
-        internal override RawRecord DataModify(RawRecord record)
-        {
-            string vertexId = record[this._nodeIdIndex].ToValue;
-
-            // Temporarily change
-            DropEdgeOperator dropEdgeOp = new DropEdgeOperator(null, this.Command, 0);
-            RawRecord temp = new RawRecord(2);
-
-            VertexField vertex = this.Command.VertexCache.GetVertexField(vertexId);
-
-            foreach (EdgeField outEdge in vertex.AdjacencyList.AllEdges.ToList()) {
-                temp.fieldValues[0] = outEdge;
-                dropEdgeOp.DataModify(temp);
-            }
-
-            foreach (EdgeField inEdge in vertex.RevAdjacencyList.AllEdges.ToList()) {
-                temp.fieldValues[0] = inEdge;
-                dropEdgeOp.DataModify(temp);
-            }
-
-            // Delete the vertex-document!
-            JObject vertexObject = vertex.VertexJObject;
-#if DEBUG
-            if (vertex.ViaGraphAPI) {
-                Debug.Assert(vertexObject[KW_VERTEX_EDGE] is JArray);
-                if (!EdgeDocumentHelper.IsSpilledVertex(vertexObject, false)) {
-                    Debug.Assert(((JArray)vertexObject[KW_VERTEX_EDGE]).Count == 0);
-                }
-
-                if (this.Command.Connection.UseReverseEdges) {
-                    Debug.Assert(vertexObject[KW_VERTEX_REV_EDGE] is JArray);
-                    if (!EdgeDocumentHelper.IsSpilledVertex(vertexObject, true)) {
-                        Debug.Assert(((JArray)vertexObject[KW_VERTEX_REV_EDGE]).Count == 0);
-                    }
-                }
-            }
-#endif
-            if (this.Command.InLazyMode)
-            {
-                DeltaLogDropVertex log = new DeltaLogDropVertex();
-                this.Command.VertexCache.AddOrUpdateVertexDelta(vertex, log);
-            }
-            else
-            {
-                this.Command.Connection.ReplaceOrDeleteDocumentAsync(vertexId, null,
-                    this.Command.Connection.GetDocumentPartition(vertexObject), this.Command).Wait();
-            }
-
-            // Update VertexCache
-            this.Command.VertexCache.TryRemoveVertexField(vertexId);
-
-            return null;
-        }
-    }
-
     internal class AddEOperator : ModificationBaseOperator
     {
         //
@@ -665,28 +939,22 @@ namespace GraphView
             VertexField srcVertexField = srcRecord[0] as VertexField;
             VertexField sinkVertexField = sinkRecord[0] as VertexField;
 
-            if (srcVertexField == null || sinkVertexField == null) return null;
+            if (srcVertexField == null || sinkVertexField == null)
+            {
+                return null;
+            }
 
             string srcId = srcVertexField[KW_DOC_ID].ToValue;
             string sinkId = sinkVertexField[KW_DOC_ID].ToValue;
 
             JObject srcVertexObject = srcVertexField.VertexJObject;
             JObject sinkVertexObject = sinkVertexField.VertexJObject;
-            if (srcId.Equals(sinkId)) {
+            if (srcId.Equals(sinkId))
+            {
                 Debug.Assert(ReferenceEquals(sinkVertexObject, srcVertexObject));
                 Debug.Assert(ReferenceEquals(sinkVertexField, srcVertexField));
             }
 
-
-            //
-            // Interact with DocDB and add the edge
-            // - For a small-degree vertex (now filled into one document), insert the edge in-place
-            //     - If the upload succeeds, done!
-            //     - If the upload fails with size-limit-exceeded(SLE), put either incoming or outgoing edges into a seperate document
-            // - For a large-degree vertex (already spilled)
-            //     - Update either incoming or outgoing edges in the seperate edge-document
-            //     - If the upload fails with SLE, create a new document to store the edge, and update the vertex document
-            //
             JObject outEdgeObject, inEdgeObject;
             string outEdgeDocID = null, inEdgeDocID = null;
 
@@ -703,6 +971,13 @@ namespace GraphView
 
             if (!this.Command.InLazyMode)
             {
+                // Interact with DocDB and add the edge
+                // - For a small-degree vertex (now filled into one document), insert the edge in-place
+                //     - If the upload succeeds, done!
+                //     - If the upload fails with size-limit-exceeded(SLE), put either incoming or outgoing edges into a seperate document
+                // - For a large-degree vertex (already spilled)
+                //     - Update either incoming or outgoing edges in the seperate edge-document
+                //     - If the upload fails with SLE, create a new document to store the edge, and update the vertex document
                 EdgeDocumentHelper.InsertEdgeObjectInternal(this.Command, srcVertexObject, srcVertexField, outEdgeObject, false, out outEdgeDocID); // srcVertex uploaded
 
                 if (this.Command.Connection.UseReverseEdges)
@@ -740,7 +1015,8 @@ namespace GraphView
             result.Append(new StringField(outEdgeField.EdgeId));
             result.Append(outEdgeField);
 
-            for (int i = GraphViewReservedProperties.ReservedEdgeProperties.Count; i < edgeProperties.Count; i++) {
+            for (int i = GraphViewReservedProperties.ReservedEdgeProperties.Count; i < edgeProperties.Count; i++)
+            {
                 FieldObject fieldValue = outEdgeField[edgeProperties[i]];
                 result.Append(fieldValue);
             }
@@ -749,361 +1025,18 @@ namespace GraphView
         }
     }
 
-    internal class DropEdgeOperator : ModificationBaseOperator
-    {
-        private readonly int edgeFieldIndex;
-
-        public DropEdgeOperator(GraphViewExecutionOperator inputOp, GraphViewCommand command, int edgeFieldIndex)
-            : base(inputOp, command)
-        {
-            this.edgeFieldIndex = edgeFieldIndex;
-        }
-
-        internal override RawRecord DataModify(RawRecord record)
-        {
-            EdgeField edgeField = (EdgeField)record[this.edgeFieldIndex];
-            string edgeId = edgeField.EdgeId;
-            string srcId = edgeField.OutV;
-            string sinkId = edgeField.InV;
-            string srcVertexPartition = edgeField.OutVPartition;
-            string sinkVertexPartition = edgeField.InVPartition;
-
-            VertexField srcVertexField = this.Command.VertexCache.GetVertexField(srcId, srcVertexPartition);
-            VertexField sinkVertexField = this.Command.VertexCache.GetVertexField(sinkId, sinkVertexPartition);
-
-            if (this.Command.InLazyMode)
-            {
-                DeltaLogDropEdge log = new DeltaLogDropEdge();
-                this.Command.VertexCache.AddOrUpdateEdgeDelta(edgeField, srcVertexField, 
-                    null, sinkVertexField, log, this.Command.Connection.UseReverseEdges);
-            }
-            else
-            {
-                JObject srcVertexObject = srcVertexField.VertexJObject;
-                JObject srcEdgeObject;
-                string srcEdgeDocId;
-
-                EdgeDocumentHelper.FindEdgeBySourceAndEdgeId(
-                    this.Command, srcVertexObject, srcId, edgeId, false,
-                    out srcEdgeObject, out srcEdgeDocId);
-
-                if (srcEdgeObject == null)
-                {
-                    //TODO: Check is this condition alright?
-                    return null;
-                }
-
-                JObject sinkVertexObject = sinkVertexField.VertexJObject;
-                string sinkEdgeDocId = null;
-
-                if (this.Command.Connection.UseReverseEdges)
-                {
-                    if (!string.Equals(sinkId, srcId))
-                    {
-                        JObject dummySinkEdgeObject;
-                        EdgeDocumentHelper.FindEdgeBySourceAndEdgeId(
-                            this.Command, sinkVertexObject, srcId, edgeId, true,
-                            out dummySinkEdgeObject, out sinkEdgeDocId);
-                    }
-                    else
-                    {
-                        Debug.Assert(object.ReferenceEquals(sinkVertexField, srcVertexField));
-                        Debug.Assert(sinkVertexObject == srcVertexObject);
-                        sinkEdgeDocId = srcEdgeDocId;
-                    }
-                }
-
-                // <docId, <docJson, partition>>
-                Dictionary<string, Tuple<JObject, string>> uploadDocuments = new Dictionary<string, Tuple<JObject, string>>();
-                EdgeDocumentHelper.RemoveEdge(uploadDocuments, this.Command, srcEdgeDocId,
-                    srcVertexField, false, srcId, edgeId);
-                if (this.Command.Connection.UseReverseEdges)
-                {
-                    EdgeDocumentHelper.RemoveEdge(uploadDocuments, this.Command, sinkEdgeDocId,
-                        sinkVertexField, true, srcId, edgeId);
-                }
-                this.Command.Connection.ReplaceOrDeleteDocumentsAsync(uploadDocuments, this.Command).Wait();
-
-#if DEBUG
-                // NOTE: srcVertexObject is excatly the reference of srcVertexField.VertexJObject
-                // NOTE: sinkVertexObject is excatly the reference of sinkVertexField.VertexJObject
-
-                // If source vertex is not spilled, the outgoing edge JArray of srcVertexField.VertexJObject should have been updated
-                if (!EdgeDocumentHelper.IsSpilledVertex(srcVertexField.VertexJObject, false))
-                {
-                    Debug.Assert(
-                        srcVertexField.VertexJObject[KW_VERTEX_EDGE].Cast<JObject>().All(
-                            edgeObj => (string)edgeObj[KW_EDGE_ID] != edgeId));
-                }
-
-                if (this.Command.Connection.UseReverseEdges)
-                {
-                    // If sink vertex is not spilled, the incoming edge JArray of sinkVertexField.VertexJObject should have been updated
-                    if (!EdgeDocumentHelper.IsSpilledVertex(srcVertexField.VertexJObject, true))
-                    {
-                        Debug.Assert(
-                            sinkVertexField.VertexJObject[KW_VERTEX_REV_EDGE].Cast<JObject>().All(
-                                edgeObj => (string)edgeObj[KW_EDGE_ID] != edgeId));
-                    }
-                }
-#endif
-            }
-
-            srcVertexField.AdjacencyList.RemoveEdgeField(edgeId);
-            sinkVertexField.RevAdjacencyList.RemoveEdgeField(edgeId);
-
-            return null;
-        }
-    }
-
-    internal abstract class UpdatePropertiesBaseOperator : ModificationBaseOperator
-    {
-        internal enum UpdatePropertyMode
-        {
-            Set,
-            Append
-        };
-
-        protected UpdatePropertyMode Mode;
-        /// <summary>
-        /// Item1 is property key.
-        /// Item2 is property value. If it is null, then delete the property
-        /// Item3 is property's index in the input record. If it is -1, then the input record doesn't contain this property.
-        /// </summary>
-        // TODO: Now the item3 is useless
-        protected List<Tuple<WValueExpression, WValueExpression, int>> PropertiesToBeUpdated;
-
-        protected UpdatePropertiesBaseOperator(GraphViewExecutionOperator inputOp, GraphViewCommand command,
-            List<Tuple<WValueExpression, WValueExpression, int>> pPropertiesToBeUpdated, UpdatePropertyMode pMode = UpdatePropertyMode.Set)
-            : base(inputOp, command)
-        {
-            PropertiesToBeUpdated = pPropertiesToBeUpdated;
-            Mode = pMode;
-        }
-
-        public override RawRecord Next()
-        {
-            RawRecord srcRecord = null;
-
-            while (InputOperator.State() && (srcRecord = InputOperator.Next()) != null)
-            {
-                RawRecord result = DataModify(srcRecord);
-                if (result == null) continue;
-
-                return srcRecord;
-            }
-
-            Close();
-            return null;
-        }
-    }
-
-    internal class UpdateEdgePropertiesOperator : UpdatePropertiesBaseOperator
-    {
-        private readonly int edgeFieldIndex;
-
-        public UpdateEdgePropertiesOperator(
-            GraphViewExecutionOperator inputOp, GraphViewCommand command,
-            int edgeFieldIndex,
-            List<Tuple<WValueExpression, WValueExpression, int>> propertiesList,
-            UpdatePropertyMode pMode = UpdatePropertyMode.Set)
-            : base(inputOp, command, propertiesList, pMode)
-        {
-            this.edgeFieldIndex = edgeFieldIndex;
-        }
-
-        internal override RawRecord DataModify(RawRecord record)
-        {
-            EdgeField edgeField = (EdgeField) record[this.edgeFieldIndex];
-            string edgeId = edgeField.EdgeId;
-
-            string srcVertexId = edgeField.OutV;
-            string srcVertexPartition = edgeField.OutVPartition;
-            VertexField srcVertexField = this.Command.VertexCache.GetVertexField(srcVertexId, srcVertexPartition);
-            JObject srcVertexObject = srcVertexField.VertexJObject;
-
-            VertexField sinkVertexField;
-            JObject sinkVertexObject;
-            string sinkVertexId = edgeField.InV;
-            string sinkVertexPartition = edgeField.InVPartition;
-
-            bool foundSink;
-            if (this.Command.Connection.UseReverseEdges)
-            {
-                sinkVertexField = this.Command.VertexCache.GetVertexField(sinkVertexId, sinkVertexPartition);
-                sinkVertexObject = sinkVertexField.VertexJObject;
-                foundSink = true;
-            }
-            else
-            {
-                foundSink = this.Command.VertexCache.TryGetVertexField(sinkVertexId, out sinkVertexField);
-                sinkVertexObject = sinkVertexField?.VertexJObject;
-            }
-
-            EdgeField outEdgeField = srcVertexField.AdjacencyList.GetEdgeField(edgeId, true);
-            EdgeField inEdgeField = null;
-            if (this.Command.Connection.UseReverseEdges)
-            {
-                inEdgeField = sinkVertexField?.RevAdjacencyList.GetEdgeField(edgeId, true);
-            }
-
-            JObject outEdgeObject = outEdgeField.EdgeJObject;
-            string outEdgeDocId = null;
-
-            JObject inEdgeObject = inEdgeField?.EdgeJObject;
-            string inEdgeDocId = null;
-
-            if (!this.Command.InLazyMode)
-            {
-                EdgeDocumentHelper.FindEdgeBySourceAndEdgeId(
-                    this.Command, srcVertexObject, srcVertexId, edgeId, false,
-                    out outEdgeObject, out outEdgeDocId);
-
-                if (outEdgeObject == null)
-                {
-                    Debug.WriteLine(
-                        $"[UpdateEdgePropertiesOperator] The edge does not exist: vertexId = {srcVertexId}, edgeId = {edgeId}");
-                    return null;
-                }
-
-                if (this.Command.Connection.UseReverseEdges)
-                {
-                    Debug.Assert(foundSink);
-
-                    if (sinkVertexId.Equals(srcVertexId))
-                    {
-                        Debug.Assert(object.ReferenceEquals(sinkVertexField, srcVertexField));
-                        Debug.Assert(object.ReferenceEquals(sinkVertexObject, srcVertexObject));
-                        inEdgeDocId = outEdgeDocId;
-                    }
-                    else
-                    {
-                        EdgeDocumentHelper.FindEdgeBySourceAndEdgeId(
-                            this.Command, sinkVertexObject, srcVertexId, edgeId, true,
-                            out inEdgeObject, out inEdgeDocId);
-                    }
-                }
-            }
-
-            List<Tuple<string, EdgeDeltaType, string>> deltaProperties = new List<Tuple<string, EdgeDeltaType, string>>();
-            List<Tuple<string, EdgeDeltaType, string>> RevDeltaProperties = null;
-            if (this.Command.Connection.UseReverseEdges)
-            {
-                RevDeltaProperties = new List<Tuple<string, EdgeDeltaType, string>>();
-            }
-
-            // Drop all non-reserved properties
-            if (this.PropertiesToBeUpdated.Count == 1 &&
-                !this.PropertiesToBeUpdated[0].Item1.SingleQuoted &&
-                this.PropertiesToBeUpdated[0].Item1.Value.Equals("*", StringComparison.OrdinalIgnoreCase) &&
-                !this.PropertiesToBeUpdated[0].Item2.SingleQuoted &&
-                this.PropertiesToBeUpdated[0].Item2.Value.Equals("null", StringComparison.OrdinalIgnoreCase))
-            {
-                throw new Exception("BUG: This condition is obsolete. Code should not reach here now!");
-            }
-            else
-            {
-                foreach (Tuple<WValueExpression, WValueExpression, int> tuple in this.PropertiesToBeUpdated)
-                {
-                    WValueExpression keyExpression = tuple.Item1;
-                    WValueExpression valueExpression = tuple.Item2;
-
-                    if (this.Mode == UpdatePropertyMode.Set)
-                    {
-                        // Modify edgeObject (update the edge property)
-                        JProperty updatedProperty = GraphViewJsonCommand.UpdateProperty(
-                            outEdgeObject, keyExpression, valueExpression);
-                        // Update VertexCache
-                        if (updatedProperty == null)
-                        {
-                            outEdgeField.EdgeProperties.Remove(keyExpression.Value);
-                            if (this.Command.InLazyMode)
-                            {
-                                deltaProperties.Add(new Tuple<string, EdgeDeltaType, string>(
-                                    keyExpression.Value, EdgeDeltaType.DropProperty, null));
-                            }
-                        }
-                        else
-                        {
-                            outEdgeField.UpdateEdgeProperty(updatedProperty);
-                            if (this.Command.InLazyMode)
-                            {
-                                deltaProperties.Add(new Tuple<string, EdgeDeltaType, string>(
-                                    keyExpression.Value, EdgeDeltaType.UpdateProperty, valueExpression.Value));
-                            }
-                        }
-
-                        if (this.Command.Connection.UseReverseEdges && inEdgeField != null)
-                        {
-                            // Modify edgeObject (update the edge property)
-                            updatedProperty = GraphViewJsonCommand.UpdateProperty(
-                                inEdgeObject, keyExpression, valueExpression);
-                        }
-
-                        // Update VertexCache (if found)
-                        if (inEdgeField != null)
-                        {
-                            if (updatedProperty == null)
-                            {
-                                inEdgeField.EdgeProperties.Remove(keyExpression.Value);
-                                if (this.Command.InLazyMode)
-                                {
-                                    RevDeltaProperties.Add(new Tuple<string, EdgeDeltaType, string>(
-                                        keyExpression.Value, EdgeDeltaType.DropProperty, null));
-                                }
-                            }
-                            else
-                            {
-                                inEdgeField.UpdateEdgeProperty(updatedProperty);
-                                RevDeltaProperties.Add(new Tuple<string, EdgeDeltaType, string>(
-                                    keyExpression.Value, EdgeDeltaType.UpdateProperty, valueExpression.Value));
-                            }
-                        }
-                    }
-                    else
-                    {
-                        throw new GraphViewException("Edges can't have duplicated-name properties.");
-                    }
-                }
-            }
-
-            if (this.Command.InLazyMode)
-            {
-                DeltaLogUpdateEdgeProperty log = new DeltaLogUpdateEdgeProperty(deltaProperties, RevDeltaProperties);
-                this.Command.VertexCache.AddOrUpdateEdgeDelta(outEdgeField, srcVertexField, 
-                    inEdgeField, sinkVertexField, log, this.Command.Connection.UseReverseEdges);
-            }
-            else
-            {
-                // Interact with DocDB to update the property 
-                EdgeDocumentHelper.UpdateEdgeProperty(this.Command, srcVertexObject, outEdgeDocId, false,
-                    outEdgeObject);
-                if (this.Command.Connection.UseReverseEdges)
-                {
-                    EdgeDocumentHelper.UpdateEdgeProperty(this.Command, sinkVertexObject, inEdgeDocId, true,
-                        inEdgeObject);
-                }
-            }
-
-            // Drop edge property
-            if (this.PropertiesToBeUpdated.Any(t => t.Item2 == null)) return null;
-            return record;
-        }
-
-    }
-
     internal class CommitOperator : GraphViewExecutionOperator
     {
-        private GraphViewCommand Command;
-        private GraphViewExecutionOperator InputOp;
-        private Queue<RawRecord> OutputBuffer;
+        private GraphViewCommand command;
+        private GraphViewExecutionOperator inputOp;
+        private Queue<RawRecord> outputBuffer;
 
         public CommitOperator(GraphViewCommand command, GraphViewExecutionOperator inputOp)
         {
-            this.Command = command;
-            this.Command.InLazyMode = true;
-            this.InputOp = inputOp;
-            this.OutputBuffer = new Queue<RawRecord>();
+            this.command = command;
+            this.command.InLazyMode = true;
+            this.inputOp = inputOp;
+            this.outputBuffer = new Queue<RawRecord>();
 
             this.Open();
         }
@@ -1111,21 +1044,21 @@ namespace GraphView
         public override RawRecord Next()
         {
             RawRecord r = null;
-            while (InputOp.State() && (r = InputOp.Next()) != null)
+            while (this.inputOp.State() && (r = this.inputOp.Next()) != null)
             {
-                OutputBuffer.Enqueue(new RawRecord(r));
+                this.outputBuffer.Enqueue(new RawRecord(r));
             }
 
-            Command.VertexCache.UploadDelta();
+            this.command.VertexCache.UploadDelta();
 
-            if (OutputBuffer.Count <= 1) Close();
-            if (OutputBuffer.Count != 0) return OutputBuffer.Dequeue();
+            if (this.outputBuffer.Count <= 1) this.Close();
+            if (this.outputBuffer.Count != 0) return this.outputBuffer.Dequeue();
             return null;
         }
 
         public override void ResetState()
         {
-            this.InputOp.ResetState();
+            this.inputOp.ResetState();
             this.Open();
         }
     }

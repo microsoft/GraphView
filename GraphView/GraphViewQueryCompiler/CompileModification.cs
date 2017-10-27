@@ -289,21 +289,6 @@ namespace GraphView
     }
 
 
-    partial class WDropNodeTableReference
-    {
-        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewCommand command)
-        {
-            var nodeIdParameter = Parameters[0] as WColumnReferenceExpression;
-            var nodeIdIndex = context.LocateColumnReference(nodeIdParameter);
-
-            var dropNodeOp = new DropNodeOperator(context.CurrentExecutionOperator, command, nodeIdIndex);
-            context.CurrentExecutionOperator = dropNodeOp;
-
-            return dropNodeOp;
-        }
-    }
-
-
     partial class WUpdatePropertiesTableReference
     {
         internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewCommand command)

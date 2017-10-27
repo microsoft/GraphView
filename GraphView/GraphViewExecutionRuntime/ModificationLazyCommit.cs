@@ -1,9 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Newtonsoft.Json.Linq;
 
 namespace GraphView
@@ -13,7 +10,7 @@ namespace GraphView
         DropSingleProperty,
         DropPropertyMetaProperty,
         UpdateSingleProperty,
-        UpdateMultiProperty,
+        UpdateMultiProperty, // updateSingleProperty and isMutiple = true
         UpdateMetaPropertiesOfSingleProperty
     };
 
@@ -286,7 +283,6 @@ namespace GraphView
         private bool isDropE = false;
 
         private Dictionary<string, Tuple<EdgeDeltaType, string>> deltaProperties;
-        private Dictionary<string, Tuple<EdgeDeltaType, string>> revDeltaProperties; // revEdge
 
         public DeltaEdgeField(EdgeField outEdgeField, VertexField srcVertexField, EdgeField inEdgeField, VertexField sinkVertexField, bool useReverseEdges)
         {
@@ -296,7 +292,6 @@ namespace GraphView
             this.sinkVertexField = sinkVertexField;
             this.UseReverseEdges = useReverseEdges;
             this.deltaProperties = new Dictionary<string, Tuple<EdgeDeltaType, string>>();
-            this.revDeltaProperties = new Dictionary<string, Tuple<EdgeDeltaType, string>>();
         }
 
         public void AddDeltaLog(DeltaLog log)
@@ -310,37 +305,20 @@ namespace GraphView
                 this.isDropE = true;
                 this.deltaProperties.Clear();
             }
-            else if (log is DeltaLogUpdateEdgeProperty)
+            else if (log is DeltaLogUpdateEdgeProperties)
             {
-                DeltaLogUpdateEdgeProperty deltaLog = log as DeltaLogUpdateEdgeProperty;
-                foreach (Tuple<string, EdgeDeltaType, string> property in deltaLog.edgeProperties)
+                DeltaLogUpdateEdgeProperties deltaLog = log as DeltaLogUpdateEdgeProperties;
+                foreach (Tuple<string, string> property in deltaLog.edgeProperties)
                 {
                     string name = property.Item1;
-                    if (property.Item2 == EdgeDeltaType.DropProperty)
-                    {
-                        this.deltaProperties[name] = new Tuple<EdgeDeltaType, string>(EdgeDeltaType.DropProperty, null);
-                    }
-                    else if (property.Item2 == EdgeDeltaType.UpdateProperty)
-                    {
-                        this.deltaProperties[name] = new Tuple<EdgeDeltaType, string>(EdgeDeltaType.UpdateProperty, property.Item3);
-                    }
+                    this.deltaProperties[name] = new Tuple<EdgeDeltaType, string>(EdgeDeltaType.UpdateProperty, property.Item2);
                 }
-
-                if (this.UseReverseEdges && deltaLog.revEdgeProperties != null)
-                {
-                    foreach (Tuple<string, EdgeDeltaType, string> property in deltaLog.revEdgeProperties)
-                    {
-                        string name = property.Item1;
-                        if (property.Item2 == EdgeDeltaType.DropProperty)
-                        {
-                            this.revDeltaProperties[name] = new Tuple<EdgeDeltaType, string>(EdgeDeltaType.DropProperty, null);
-                        }
-                        else if (property.Item2 == EdgeDeltaType.UpdateProperty)
-                        {
-                            this.revDeltaProperties[name] = new Tuple<EdgeDeltaType, string>(EdgeDeltaType.UpdateProperty, property.Item3);
-                        }
-                    }
-                }
+            }
+            else if (log is DeltaLogDropEdgeProperty)
+            {
+                DeltaLogDropEdgeProperty deltaLog = log as DeltaLogDropEdgeProperty;
+                string name = deltaLog.propertyName;
+                this.deltaProperties[name] = new Tuple<EdgeDeltaType, string>(EdgeDeltaType.DropProperty, null);
             }
         }
 
@@ -464,16 +442,23 @@ namespace GraphView
 
     internal class DeltaLogDropEdge : DeltaLog { }
 
-    internal class DeltaLogUpdateEdgeProperty : DeltaLog
+    internal class DeltaLogUpdateEdgeProperties : DeltaLog
     {
-        public List<Tuple<string, EdgeDeltaType, string>> edgeProperties;
-        public List<Tuple<string, EdgeDeltaType, string>> revEdgeProperties;
+        public List<Tuple<string, string>> edgeProperties;
 
-        public DeltaLogUpdateEdgeProperty(List<Tuple<string, EdgeDeltaType, string>> edgeProperties,
-            List<Tuple<string, EdgeDeltaType, string>> revEdgeProperties)
+        public DeltaLogUpdateEdgeProperties(List<Tuple<string, string>> edgeProperties)
         {
             this.edgeProperties = edgeProperties;
-            this.revEdgeProperties = revEdgeProperties;
+        }
+    }
+
+    internal class DeltaLogDropEdgeProperty : DeltaLog
+    {
+        public string propertyName;
+
+        public DeltaLogDropEdgeProperty(string propertyName)
+        {
+            this.propertyName = propertyName;
         }
     }
 }

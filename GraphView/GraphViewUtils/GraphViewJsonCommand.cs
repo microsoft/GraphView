@@ -65,7 +65,12 @@ namespace GraphView
             }
             return jsonObject.Property(key);
         }
-        
+
+        public static void DropProperty(JObject jsonObject, string propertyName)
+        {
+            jsonObject.Property(propertyName)?.Remove();
+        }
+
 
         [DebuggerStepThrough]
         public static void UpdateEdgeMetaProperty(
