@@ -1,5 +1,6 @@
 #define TEST_ON_DOCUMENT_DB
 //#define TEST_ON_JSONSERVER
+//#define TEST_LAZY_COMMIT
 
 // !!! Important, change the same define in AbstractGremlinTest.cs at the same time.
 
@@ -199,6 +200,9 @@ namespace GraphView
         {
             GremlinUtil.ClearCounters();
             this.Command.InLazyMode = false;
+#if TEST_LAZY_COMMIT
+            this.Command.InLazyMode = true;
+#endif
             var sqlScript = GetEndOp().ToSqlScript();
             SqlScript = sqlScript.ToString();
             it = new GraphTraversalIterator(sqlScript.Batches[0].Compile(null, this.Command), this.Command, outputFormat);
@@ -240,6 +244,9 @@ namespace GraphView
         {
             GremlinUtil.ClearCounters();
             this.Command.InLazyMode = false;
+#if TEST_LAZY_COMMIT
+            this.Command.InLazyMode = true;
+#endif
             WSqlScript sqlScript = GetEndOp().ToSqlScript();
             SqlScript = sqlScript.ToString();
 
