@@ -268,7 +268,6 @@ namespace GraphView
 
                 HashSet<string> sinkReferenceSet = new HashSet<string>();
                 HashSet<string> sinkPartitionSet = new HashSet<string>();
-                StringBuilder sinkReferenceList = new StringBuilder();
 
                 // Given a list of sink references, sends queries to the underlying system
                 // to retrieve the sink vertices. To reduce the number of queries to send,
@@ -4003,6 +4002,7 @@ namespace GraphView
         protected readonly Random random;
 
         protected readonly List<RawRecord> inputRecords;
+        protected List<RawRecord> sampleRecords;
         protected readonly List<double> inputProperties;
         protected int nextIndex;
 
@@ -4024,38 +4024,30 @@ namespace GraphView
 
         public override RawRecord Next()
         {
-            if (this.nextIndex == 0) {
-                while (this.inputOp.State()) {
-                    RawRecord current = this.inputOp.Next();
-                    if (current == null) break;
-
+            if (this.nextIndex == 0)
+            {
+                RawRecord current;
+                while (this.inputOp.State() && (current = this.inputOp.Next()) != null)
+                {
                     this.inputRecords.Add(current);
-                    if (this.byFunction != null) {
+                    if (this.byFunction != null)
+                    {
                         this.inputProperties.Add(double.Parse(this.byFunction.Evaluate(current).ToValue));
                     }
                 }
-            }
 
-            // Return nothing if sample amount <= 0
-            if (this.amountToSample <= 0) {
-                Close();
-                return null;
-            }
-
-            // Return all if sample amount > amount of inputs
-            if (this.amountToSample >= this.inputRecords.Count) {
-                if (this.nextIndex == this.inputRecords.Count) {
-                    this.Close();
-                    return null;
+                if (this.byFunction != null)
+                {
+                    SamplingAlgorithm.WeightedReservoirSample(this.inputRecords, this.inputProperties, (int)amountToSample, random, out sampleRecords);
                 }
-                return this.inputRecords[this.nextIndex++];
+                else
+                {
+                    SamplingAlgorithm.ReservoirSample(this.inputRecords, (int)amountToSample, random, out this.sampleRecords);
+                }
             }
 
-            // Sample!
-            if (this.nextIndex < this.amountToSample) {
-                
-                // TODO: Implement the sampling algorithm!
-                return this.inputRecords[this.nextIndex++];
+            if (this.nextIndex < this.amountToSample && this.nextIndex < this.sampleRecords.Count) {
+                return this.sampleRecords[this.nextIndex++];
             }
 
             Close();
@@ -4085,36 +4077,25 @@ namespace GraphView
 
         public override RawRecord Next()
         {
-            // Return nothing if sample amount <= 0
-            if (this.amountToSample <= 0)
-            {
-                this.Close();
-                return null;
-            }
-
             while (this.State())
             {
-                if (this.inputRecords.Any())
+                if (this.sampleRecords.Any())
                 {
-                    // Return all if sample amount > amount of inputs
-                    if (this.amountToSample >= this.inputRecords.Count)
+                    if (this.nextIndex < this.amountToSample && this.nextIndex < this.sampleRecords.Count)
                     {
-                        while (this.nextIndex < this.inputRecords.Count)
-                        {
-                            return this.inputRecords[this.nextIndex++];
-                        }
+                        return this.sampleRecords[this.nextIndex++];
                     }
-                    // Sample!
-                    else if (this.nextIndex < this.amountToSample)
+                    else
                     {
-                        // TODO: Implement the sampling algorithm!
-                        return this.inputRecords[this.nextIndex++];
+                        this.Close();
+                        return null;
                     }
                 }
 
                 this.nextIndex = 0;
                 this.inputRecords.Clear();
                 this.inputProperties.Clear();
+                this.sampleRecords.Clear();
 
                 if (this.firstRecordInGroup == null && this.inputOp.State())
                 {
@@ -4145,9 +4126,17 @@ namespace GraphView
                     }
                 }
 
+                if (this.byFunction != null)
+                {
+                    SamplingAlgorithm.WeightedReservoirSample(this.inputRecords, this.inputProperties, (int)amountToSample, random, out sampleRecords);
+                }
+                else
+                {
+                    SamplingAlgorithm.ReservoirSample(this.inputRecords, (int)amountToSample, random, out this.sampleRecords);
+                }
+
                 // Passes the current group. Reaches a new group. Resets the index.
                 this.firstRecordInGroup = rec;
-                continue;
             }
 
             return null;
@@ -4158,7 +4147,7 @@ namespace GraphView
     {
         private readonly GraphViewExecutionOperator inputOp;
         private readonly long amountToSample;
-
+        private readonly Random random;
         private readonly int inputObjectIndex;
         private List<string> populateColumns;
 
@@ -4167,7 +4156,7 @@ namespace GraphView
             this.inputOp = inputOp;
             this.amountToSample = amountToSample;
             this.inputObjectIndex = inputObjectIndex;
-
+            this.random = new Random();
             this.populateColumns = populateColumns;
             Open();
         }
@@ -4186,53 +4175,35 @@ namespace GraphView
                 if (inputObject is CollectionField)
                 {
                     CollectionField inputCollection = (CollectionField)inputObject;
-                    CollectionField newCollection = new CollectionField();
-                    foreach (FieldObject item in inputCollection.Collection)
-                    {
-                        if (count++ < this.amountToSample)
-                        {
-                            newCollection.Collection.Add(item);
-                        }
-                        else
-                        {
-                            break;
-                        }
-                    }
+                    List<FieldObject> sampleList;
+                    SamplingAlgorithm.ReservoirSample(inputCollection.Collection, (int)amountToSample, random, out sampleList);
+                    CollectionField newCollection = new CollectionField() { Collection = sampleList };
                     sampleObject = newCollection;
                 }
                 else if (inputObject is PathField)
                 {
                     PathField inputPath = (PathField)inputObject;
-                    CollectionField newCollection = new CollectionField();
-
-                    foreach (FieldObject item in inputPath.Path)
-                    {
-                        if (count++ < this.amountToSample)
-                        {
-                            newCollection.Collection.Add(item);
-                        }
-                        else
-                        {
-                            break;
-                        }
-                    }
+                    List<FieldObject> sampleList;
+                    SamplingAlgorithm.ReservoirSample(inputPath.Path, (int)amountToSample, random, out sampleList);
+                    CollectionField newCollection = new CollectionField() { Collection = sampleList };
                     sampleObject = newCollection;
                 }
                 else if (inputObject is MapField)
                 {
                     MapField inputMap = inputObject as MapField;
-                    MapField newMap = new MapField();
-
+                    List<FieldObject> keys = new List<FieldObject>();
                     foreach (EntryField entry in inputMap)
                     {
-                        if (count++ < this.amountToSample)
-                        {
-                            newMap.Add(entry.Key, entry.Value);
-                        }
-                        else
-                        {
-                            break;
-                        }
+                        keys.Add(entry.Key);
+                    }
+
+                    List<FieldObject> sampleList;
+                    SamplingAlgorithm.ReservoirSample(keys, (int)amountToSample, random, out sampleList);
+
+                    MapField newMap = new MapField();
+                    foreach (FieldObject key in sampleList)
+                    {
+                        newMap.Add(key, inputMap[key]);
                     }
                     sampleObject = newMap;
                 }
