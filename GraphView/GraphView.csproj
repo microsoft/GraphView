@@ -92,6 +92,7 @@
     <Compile Include="DocDBScript.cs" />
     <Compile Include="GraphViewExecutionRuntime\ScalarFunction.cs" />
     <Compile Include="GraphViewQueryCompiler\CompilerVisitors.cs" />
+    <Compile Include="GraphViewUtils\SamplingAlgorithm.cs" />
     <Compile Include="GremlinTranslation\operators\barrier\GremlinBarrierOp.cs" />
     <Compile Include="GremlinTranslation\operators\barrier\GremlinCapOp.cs" />
     <Compile Include="GremlinTranslation\operators\barrier\GremlinCommitOp.cs" />
