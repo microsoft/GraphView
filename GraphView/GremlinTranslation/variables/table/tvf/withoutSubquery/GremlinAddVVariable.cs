@@ -8,6 +8,7 @@ namespace GraphView
 {
     internal class GremlinAddVVariable: GremlinVertexTableVariable
     {
+        public GremlinToSqlContext InputContext { get; set; }
         public List<GremlinProperty> VertexProperties { get; set; }
         public string VertexLabel { get; set; }
         public bool IsFirstTableReference { get; set; }
@@ -18,8 +19,9 @@ namespace GraphView
         /// </summary>
         public Dictionary<string, List<GremlinProperty>> PropertyFromAddVParameters { get; set; }
 
-        public GremlinAddVVariable(string vertexLabel, List<GremlinProperty> vertexProperties, bool isFirstTableReference = false)
+        public GremlinAddVVariable(GremlinToSqlContext inputContext, string vertexLabel, List<GremlinProperty> vertexProperties, bool isFirstTableReference = false)
         {
+            this.InputContext = inputContext.Duplicate();
             this.VertexProperties = new List<GremlinProperty>(vertexProperties);
             this.VertexLabel = vertexLabel;
             this.IsFirstTableReference = isFirstTableReference;

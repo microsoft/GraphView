@@ -8,7 +8,7 @@ namespace GraphView
 {
     internal class GremlinAddETableVariable: GremlinEdgeTableVariable
     {
-        public GremlinVariable InputVariable { get; set; }
+        public GremlinToSqlContext InputContext { get; set; }
         public GremlinToSqlContext FromVertexContext { get; set; }
         public GremlinToSqlContext ToVertexContext { get; set; }
         public List<GremlinProperty> EdgeProperties { get; set; }
@@ -16,13 +16,13 @@ namespace GraphView
         public bool IsFirstTableReference { get; set; }
         private int OtherVIndex;
 
-        public GremlinAddETableVariable(GremlinVariable inputVariable, string edgeLabel,
+        public GremlinAddETableVariable(GremlinToSqlContext inputContext, string edgeLabel,
             List<GremlinProperty> edgeProperties, GremlinToSqlContext fromContext, GremlinToSqlContext toContext,
             bool isFirstTableReference = false)
         {
             this.EdgeProperties = edgeProperties;
             this.EdgeLabel = edgeLabel;
-            this.InputVariable = inputVariable;
+            this.InputContext = inputContext.Duplicate();
             this.EdgeType = WEdgeType.OutEdge;
             this.OtherVIndex = 1;
             this.ProjectedProperties.Add(GremlinKeyword.Label);
@@ -60,9 +60,9 @@ namespace GraphView
         internal override List<GremlinVariable> FetchAllVars()
         {
             List<GremlinVariable> variableList = new List<GremlinVariable>() {this};
-            if (this.InputVariable != null)
+            if (this.InputContext != null && InputContext.PivotVariable != null)
             {
-                variableList.Add(this.InputVariable);
+                variableList.Add(this.InputContext.PivotVariable);
             }
             if (this.FromVertexContext != null)
             {
@@ -124,7 +124,7 @@ namespace GraphView
             if (context == null)
             {
                 var queryBlock = new WSelectQueryBlock();
-                queryBlock.SelectElements.Add(SqlUtil.GetSelectScalarExpr(this.InputVariable.DefaultProjection().ToScalarExpression()));
+                queryBlock.SelectElements.Add(SqlUtil.GetSelectScalarExpr(this.InputContext.PivotVariable.DefaultProjection().ToScalarExpression()));
                 return queryBlock;
             }
             else

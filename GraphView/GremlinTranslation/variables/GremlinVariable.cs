@@ -245,7 +245,7 @@ namespace GraphView
         internal virtual void AddE(GremlinToSqlContext currentContext, string edgeLabel, List<GremlinProperty> edgeProperties, GremlinToSqlContext fromContext, GremlinToSqlContext toContext)
         {
             this.NeedFilter = true;
-            GremlinAddETableVariable newTableVariable = new GremlinAddETableVariable(this, edgeLabel, edgeProperties, fromContext, toContext);
+            GremlinAddETableVariable newTableVariable = new GremlinAddETableVariable(currentContext, edgeLabel, edgeProperties, fromContext, toContext);
             currentContext.VariableList.Add(newTableVariable);
             currentContext.TableReferencesInFromClause.Add(newTableVariable);
             currentContext.SetPivotVariable(newTableVariable);
@@ -254,7 +254,7 @@ namespace GraphView
         internal virtual void AddV(GremlinToSqlContext currentContext, string vertexLabel, List<GremlinProperty> propertyKeyValues)
         {
             this.NeedFilter = true;
-            GremlinAddVVariable newVariable = new GremlinAddVVariable(vertexLabel, propertyKeyValues);
+            GremlinAddVVariable newVariable = new GremlinAddVVariable(currentContext, vertexLabel, propertyKeyValues);
             currentContext.VariableList.Add(newVariable);
             currentContext.TableReferencesInFromClause.Add(newVariable);
             currentContext.SetPivotVariable(newVariable);

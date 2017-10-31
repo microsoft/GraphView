@@ -563,7 +563,7 @@ namespace GraphView
             foreach (WPropertyExpression property in this.updateProperties)
             {
                 Debug.Assert(property.Value != null);
-                
+
                 string name = property.Key.Value;
                 if (name == this.Command.Connection.RealPartitionKey)
                 {
@@ -585,7 +585,8 @@ namespace GraphView
                     metaList.Add(new Tuple<string, string>(pair.Key.Value, pair.Value.Value));
                 }
                 string propertyId = GraphViewConnection.GenerateDocumentId();
-                JObject singleProperty = new JObject {
+                JObject singleProperty = new JObject
+                {
                     [KW_PROPERTY_VALUE] = property.Value.ToJValue(),
                     [KW_PROPERTY_ID] = propertyId,
                 };
@@ -640,7 +641,7 @@ namespace GraphView
                     vertex.VertexId, vertexDocument,
                     this.Command.Connection.GetDocumentPartition(vertexDocument), this.Command).Wait();
             }
-            
+
         }
 
         private void UpdatePropertiesOfEdge(EdgeField edgeField)

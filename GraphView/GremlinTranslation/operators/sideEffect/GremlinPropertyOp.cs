@@ -27,7 +27,30 @@ namespace GraphView
             if (property.Value is GraphTraversal)
             {
                 GraphTraversal propertyTraversal = property.Value as GraphTraversal;
-                propertyTraversal.GetStartOp().InheritedVariableFromParent(inputContext);
+                if (inputContext.PivotVariable is GremlinAddVVariable)
+                {
+                    GremlinAddVVariable addVVariable = inputContext.PivotVariable as GremlinAddVVariable;
+                    if (addVVariable.InputContext == null)
+                    {
+                        throw new TranslationException(
+                            "The PivotVariable before addV()-step can't be null when there is a traversal in property-step()");
+                    }
+                    propertyTraversal.GetStartOp().InheritedVariableFromParent(addVVariable.InputContext);
+                }
+                else if (inputContext.PivotVariable is GremlinAddETableVariable)
+                {
+                    GremlinAddETableVariable addEVariable = inputContext.PivotVariable as GremlinAddETableVariable;
+                    if (addEVariable.InputContext == null)
+                    {
+                        throw new TranslationException(
+                            "The PivotVariable before addE()-step can't be null when there is a traversal in property-step()");
+                    }
+                    propertyTraversal.GetStartOp().InheritedVariableFromParent(addEVariable.InputContext);
+                }
+                else
+                {
+                    propertyTraversal.GetStartOp().InheritedVariableFromParent(inputContext);
+                }
                 property.Value = propertyTraversal.GetEndOp().GetContext();
             }
 

@@ -33,29 +33,36 @@ namespace GraphView
             projectedFieldList = new List<string>(GraphViewReservedProperties.InitialPopulateNodeProperties);
             projectedFieldList.Add(GremlinKeyword.Label);
 
-            foreach (WPropertyExpression vertexProperty in vertexProperties) {
+            foreach (WPropertyExpression vertexProperty in vertexProperties)
+            {
                 Debug.Assert(vertexProperty.Cardinality == GremlinKeyword.PropertyCardinality.List);
 
                 if (!projectedFieldList.Contains(vertexProperty.Key.Value))
                     projectedFieldList.Add(vertexProperty.Key.Value);
 
-                if (vertexProperty.Value.ToJValue() == null) {
+                if (vertexProperty.Value.ToJValue() == null)
+                {
                     continue;
                 }
 
                 // Special treat the partition key
-                if (command.Connection.CollectionType == CollectionType.PARTITIONED) {
+                if (command.Connection.CollectionType == CollectionType.PARTITIONED)
+                {
                     Debug.Assert(command.Connection.RealPartitionKey != null);
-                    if (vertexProperty.Key.Value == command.Connection.RealPartitionKey) {
-                        if (vertexProperty.MetaProperties.Count > 0) {
+                    if (vertexProperty.Key.Value == command.Connection.RealPartitionKey)
+                    {
+                        if (vertexProperty.MetaProperties.Count > 0)
+                        {
                             throw new GraphViewException("Partition value must not have meta properties");
                         }
 
-                        if (vertexObject[command.Connection.RealPartitionKey] == null) {
+                        if (vertexObject[command.Connection.RealPartitionKey] == null)
+                        {
                             JValue value = vertexProperty.Value.ToJValue();
                             vertexObject[command.Connection.RealPartitionKey] = value;
                         }
-                        else {
+                        else
+                        {
                             throw new GraphViewException("Partition value must not be a list");
                         }
                         continue;
@@ -63,25 +70,31 @@ namespace GraphView
                 }
 
                 // Special treat the "id" property
-                if (vertexProperty.Key.Value == KW_DOC_ID) {
-                    if (vertexObject[KW_DOC_ID] == null) {
+                if (vertexProperty.Key.Value == KW_DOC_ID)
+                {
+                    if (vertexObject[KW_DOC_ID] == null)
+                    {
                         JValue value = vertexProperty.Value.ToJValue();
-                        if (value.Type != JTokenType.String) {
+                        if (value.Type != JTokenType.String)
+                        {
                             throw new GraphViewException("Vertex's ID must be a string");
                         }
-                        if (string.IsNullOrEmpty((string)value)) {
+                        if (string.IsNullOrEmpty((string)value))
+                        {
                             throw new GraphViewException("Vertex's ID must not be null or empty");
                         }
                         vertexObject[KW_DOC_ID] = (string)value;
                     }
-                    else {
+                    else
+                    {
                         throw new GraphViewException("Vertex's ID must not be specified more than once");
                     }
                     continue;
                 }
 
                 JObject meta = new JObject();
-                foreach (KeyValuePair<WValueExpression, WValueExpression> pair in vertexProperty.MetaProperties) {
+                foreach (KeyValuePair<WValueExpression, WValueExpression> pair in vertexProperty.MetaProperties)
+                {
                     WValueExpression metaName = pair.Key;
                     WValueExpression metaValue = pair.Value;
                     meta[metaName.Value] = metaValue.ToJValue();
@@ -89,16 +102,19 @@ namespace GraphView
 
                 string name = vertexProperty.Key.Value;
                 JArray propArray = (JArray)vertexObject[name];
-                if (propArray == null) {
+                if (propArray == null)
+                {
                     propArray = new JArray();
                     vertexObject[name] = propArray;
                 }
 
-                JObject prop = new JObject {
+                JObject prop = new JObject
+                {
                     [KW_PROPERTY_VALUE] = vertexProperty.Value.ToJValue(),
                     [KW_PROPERTY_ID] = GraphViewConnection.GenerateDocumentId(),
                 };
-                if (meta.Count >0) {
+                if (meta.Count > 0)
+                {
                     prop[KW_PROPERTY_META] = meta;
                 }
                 propArray.Add(prop);
@@ -187,7 +203,7 @@ namespace GraphView
 
             projectedFieldList = new List<string>(GraphViewReservedProperties.ReservedEdgeProperties);
             projectedFieldList.Add(GremlinKeyword.Label);
-            
+
             // Skip edgeSourceScalarFunction, edgeSinkScalarFunction, otherVTag
             foreach (WPropertyExpression edgeProperty in edgeProperties)
             {
@@ -319,7 +335,7 @@ namespace GraphView
             UpdatePropertiesOperator updateOp = new UpdatePropertiesOperator(
                 context.CurrentExecutionOperator,
                 command,
-                updateIndex, 
+                updateIndex,
                 propertiesList);
             context.CurrentExecutionOperator = updateOp;
 
