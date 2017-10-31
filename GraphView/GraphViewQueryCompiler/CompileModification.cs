@@ -9,7 +9,6 @@ using static GraphView.DocumentDBKeywords;
 
 namespace GraphView
 {
-
     partial class WCommitTableReference
     {
         internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewCommand command)

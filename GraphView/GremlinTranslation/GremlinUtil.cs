@@ -155,31 +155,25 @@ namespace GraphView
             MetaProperties = metaProperties ?? new Dictionary<string, object>();
         }
 
+        internal WScalarExpression ReplaceContextToScalerExpr(object value)
+        {
+            if (value is GremlinToSqlContext)
+            {
+                GremlinToSqlContext valueContext = value as GremlinToSqlContext;
+                return SqlUtil.GetScalarSubquery(valueContext.ToSelectQueryBlock());
+            }
+            return SqlUtil.GetValueExpr(value);
+        }
+
         public WPropertyExpression ToPropertyExpr()
         {
-            WScalarExpression valueExpr;
-            if (Value is GremlinToSqlContext)
-            {
-                GremlinToSqlContext valueContext = Value as GremlinToSqlContext;
-                valueExpr = SqlUtil.GetScalarSubquery(valueContext.ToSelectQueryBlock());
-            }
-            else
-            {
-                valueExpr = SqlUtil.GetValueExpr(Value);
-            }
+            WScalarExpression valueExpr = ReplaceContextToScalerExpr(this.Value);
             Dictionary<WValueExpression, WScalarExpression> metaPropertiesExpr = new Dictionary<WValueExpression, WScalarExpression>();
-            foreach (var property in MetaProperties)
+            foreach (string metaKey in MetaProperties.Keys)
             {
-                if (property.Value is GremlinToSqlContext)
-                {
-                    GremlinToSqlContext valueContext = property.Value as GremlinToSqlContext;
-                    WScalarExpression propertyExpression = SqlUtil.GetScalarSubquery(valueContext.ToSelectQueryBlock());
-                    metaPropertiesExpr[SqlUtil.GetValueExpr(property.Key)] = propertyExpression;
-                }
-                else{
-                    metaPropertiesExpr[SqlUtil.GetValueExpr(property.Key)] = SqlUtil.GetValueExpr(property.Value);
-                }
+                metaPropertiesExpr[SqlUtil.GetValueExpr(metaKey)] = ReplaceContextToScalerExpr(MetaProperties[metaKey]);
             }
+
             return new WPropertyExpression()
             {
                 Cardinality = Cardinality,

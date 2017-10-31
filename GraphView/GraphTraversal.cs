@@ -1150,9 +1150,8 @@ namespace GraphView
             {
                 metaProperties[keyValues[i] as string] = keyValues[i + 1];
             }
-            GremlinProperty property = new GremlinProperty(cardinality, key, value, metaProperties);
-            AddGremlinOperator(new GremlinPropertyOp(property));
-            
+
+            AddGremlinOperator(new GremlinPropertyOp(cardinality, key, value, metaProperties));
             return this;
         }
 
