@@ -122,6 +122,7 @@ namespace GraphView
                     if (node.Predicates == null)
                         node.Predicates = new List<WBooleanExpression>();
                     node.Predicates.Add(predicate);
+                    AttachProperties(graphPattern, new Dictionary<string, HashSet<string>> { {tableName, properties}} );
                     attachFlag = true;
                 }
             }
@@ -244,7 +245,8 @@ namespace GraphView
                         }
 
                         string partitionKey = command.Connection.RealPartitionKey;
-                        ConstructJsonQueryOnNode(command, currentNode, pushedToServerEdge, partitionKey);
+                        //ConstructJsonQueryOnNode(command, currentNode, pushedToServerEdge, partitionKey);
+                        ConstructJsonQueryOnNode(command, currentNode, null, partitionKey);
                         //ConstructJsonQueryOnNodeViaExternalAPI(currentNode, null);
                         processedNodes.Add(currentNode.NodeAlias);
                         isFirstNodeInTheComponent = false;

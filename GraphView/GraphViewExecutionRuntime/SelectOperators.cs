@@ -269,6 +269,8 @@ namespace GraphView
                 HashSet<string> sinkReferenceSet = new HashSet<string>();
                 HashSet<string> sinkPartitionSet = new HashSet<string>();
                 StringBuilder sinkReferenceList = new StringBuilder();
+                
+                Dictionary<string, VertexField> hitSinkReferenceDictionary = new Dictionary<string, VertexField>();
 
                 // Given a list of sink references, sends queries to the underlying system
                 // to retrieve the sink vertices. To reduce the number of queries to send,
@@ -287,43 +289,97 @@ namespace GraphView
                     {
                         string sinkReferenceId = inputSequence[j].Item2;
                         string sinkPartitionKey = inputSequence[j].Item3;
+
+                        VertexField vertexField = null;
+                        if (command.VertexCache.TryGetVertexField(sinkReferenceId, out vertexField))
+                        {
+                            hitSinkReferenceDictionary[sinkReferenceId] = vertexField;
+                            j++;
+                            continue;
+                        }
+
                         sinkReferenceSet.Add(sinkReferenceId);
                         if (!string.IsNullOrEmpty(sinkPartitionKey))
                             sinkPartitionSet.Add(sinkPartitionKey);
                         j++;
                     }
 
-                    var toSendQuery = new JsonQuery(this.sinkVertexQuery);
-                    toSendQuery.WhereConjunction(new WInPredicate(new WColumnReferenceExpression(toSendQuery.NodeAlias, KW_DOC_ID), sinkReferenceSet.ToList()),
-                        BooleanBinaryExpressionType.And);
+                    List<string> nodeProperties = new List<string>(sinkVertexQuery.NodeProperties);
+                    QueryCompilationContext queryCompilationContext = new QueryCompilationContext();
 
-                    using (DbPortal databasePortal = this.command.Connection.CreateDatabasePortal())
+                    nodeProperties.RemoveAt(0);
+                    foreach (string propertyName in nodeProperties)
                     {
-                        IEnumerator<Tuple<VertexField, RawRecord>> verticesEnumerator = databasePortal.GetVerticesAndEdgesViaVertices(toSendQuery, this.command);
+                        ColumnGraphType columnGraphType = GraphViewReservedProperties.IsNodeReservedProperty(propertyName)
+                            ? GraphViewReservedProperties.ReservedNodePropertiesColumnGraphTypes[propertyName]
+                            : ColumnGraphType.Value;
+                        queryCompilationContext.AddField(sinkVertexQuery.NodeAlias, propertyName, columnGraphType);
+                    }
 
-                        // The following lines are added for debugging convenience
-                        // It nearly does no harm to performance
-                        List<Tuple<VertexField, RawRecord>> temp = new List<Tuple<VertexField, RawRecord>>();
-                        try
+                    BooleanFunction booleanFunction = null;
+                    if (sinkVertexQuery.RawWhereClause is WBooleanBinaryExpression)
+                    {
+                        WBooleanBinaryExpression binaryExpression = sinkVertexQuery.RawWhereClause as WBooleanBinaryExpression;
+                        booleanFunction = binaryExpression.SecondExpr.CompileToFunction(queryCompilationContext, command);
+                    }
+                    
+                    foreach (var pair in hitSinkReferenceDictionary)
+                    {
+                        VertexField vertexField = pair.Value;
+                        RawRecord rawRecord = new RawRecord();
+
+                        foreach (string propertyName in nodeProperties)
                         {
-                            while (verticesEnumerator.MoveNext())
-                            {
-                                temp.Add(verticesEnumerator.Current);
-                            }
+                            FieldObject propertyValue = vertexField[propertyName];
+                            rawRecord.Append(propertyValue);
                         }
-                        catch (Exception e)
+                        
+                        if (booleanFunction == null || booleanFunction.Evaluate(rawRecord))
                         {
-                            Console.WriteLine(toSendQuery.ToString(DatabaseType.DocumentDB));
-                            throw e;
-                        }                        
-
-                        foreach (Tuple<VertexField, RawRecord> tuple in temp)
-                        {
-                            VertexField vfield = tuple.Item1;
-                            if (!sinkVertexCollection.ContainsKey(vfield.VertexId)) {
-                                sinkVertexCollection.Add(vfield.VertexId, new List<RawRecord>());
+                            if (!sinkVertexCollection.ContainsKey(pair.Key))
+                            {
+                                sinkVertexCollection.Add(pair.Key, new List<RawRecord>());
                             }
-                            sinkVertexCollection[vfield.VertexId].Add(tuple.Item2);
+                            sinkVertexCollection[pair.Key].Add(rawRecord);
+                        }
+                    }
+
+                    if (sinkReferenceSet.Any())
+                    {
+                        var toSendQuery = new JsonQuery(this.sinkVertexQuery);
+                        toSendQuery.WhereConjunction(new WInPredicate(new WColumnReferenceExpression(toSendQuery.NodeAlias, KW_DOC_ID), sinkReferenceSet.ToList()),
+                            BooleanBinaryExpressionType.And);
+
+                        using (DbPortal databasePortal = this.command.Connection.CreateDatabasePortal())
+                        {
+                            IEnumerator<Tuple<VertexField, RawRecord>> verticesEnumerator = databasePortal.GetVerticesAndEdgesViaVertices(toSendQuery, this.command);
+
+                            // The following lines are added for debugging convenience
+                            // It nearly does no harm to performance
+                            List<Tuple<VertexField, RawRecord>> temp = new List<Tuple<VertexField, RawRecord>>();
+                            try
+                            {
+                                while (verticesEnumerator.MoveNext())
+                                {
+                                    temp.Add(verticesEnumerator.Current);
+                                }
+                            }
+                            catch (Exception e)
+                            {
+                                Console.WriteLine(toSendQuery.ToString(DatabaseType.DocumentDB));
+                                throw e;
+                            }
+
+                            foreach (Tuple<VertexField, RawRecord> tuple in temp)
+                            {
+                                VertexField vfield = tuple.Item1;
+                                if (!sinkVertexCollection.ContainsKey(vfield.VertexId))
+                                {
+                                    sinkVertexCollection.Add(vfield.VertexId, new List<RawRecord>());
+                                }
+                                
+                                sinkVertexCollection[vfield.VertexId].Add(tuple.Item2);
+                            }
                         }
                     }
                 }
