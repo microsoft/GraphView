@@ -11,12 +11,12 @@ namespace GraphView
         internal string EdgeLabel { get; set; }
         public GraphTraversal FromVertexTraversal { get; set; }
         public GraphTraversal ToVertexTraversal { get; set; }
-        public List<GremlinProperty> EdgeProperties { get; set; }
+        public List<GremlinPropertyOp> EdgePropertyOps { get; set; }
 
         public GremlinAddEOp(string label)
         {
             EdgeLabel = label;
-            EdgeProperties = new List<GremlinProperty>();
+            EdgePropertyOps = new List<GremlinPropertyOp>();
         }
 
         internal override GremlinToSqlContext GetContext()
@@ -28,6 +28,9 @@ namespace GraphView
 
             ToVertexTraversal?.GetStartOp().InheritedVariableFromParent(inputContext);
             GremlinToSqlContext toVertexContext = ToVertexTraversal?.GetEndOp().GetContext();
+            
+            List<GremlinProperty> edgeProperties = new List<GremlinProperty>();
+            edgeProperties.AddRange(EdgePropertyOps.Select(propertyOp => propertyOp.ToGremlinProperty(inputContext)));
 
             if (inputContext.PivotVariable == null)
             {
@@ -36,14 +39,14 @@ namespace GraphView
                     throw new SyntaxErrorException("The PivotVariable of addE()-step and fromTraversal( or toTraversal) can't be null at the same time.");
                 }
 
-                GremlinAddETableVariable newTableVariable = new GremlinAddETableVariable(null, EdgeLabel, EdgeProperties, fromVertexContext, toVertexContext, true);
+                GremlinAddETableVariable newTableVariable = new GremlinAddETableVariable(null, EdgeLabel, edgeProperties, fromVertexContext, toVertexContext, true);
                 inputContext.VariableList.Add(newTableVariable);
                 inputContext.TableReferencesInFromClause.Add(newTableVariable);
                 inputContext.SetPivotVariable(newTableVariable);
             }
             else
             {
-                inputContext.PivotVariable.AddE(inputContext, EdgeLabel, EdgeProperties, fromVertexContext, toVertexContext);
+                inputContext.PivotVariable.AddE(inputContext, EdgeLabel, edgeProperties, fromVertexContext, toVertexContext);
             }
             
             return inputContext;

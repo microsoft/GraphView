@@ -22,7 +22,7 @@ namespace GraphView
         {
             this.EdgeProperties = edgeProperties;
             this.EdgeLabel = edgeLabel;
-            this.InputContext = inputContext.Duplicate();
+            this.InputContext = inputContext?.Duplicate();
             this.EdgeType = WEdgeType.OutEdge;
             this.OtherVIndex = 1;
             this.ProjectedProperties.Add(GremlinKeyword.Label);
@@ -38,23 +38,7 @@ namespace GraphView
 
         internal override bool Populate(string property, string label = null)
         {
-            if (this.ProjectedProperties.Contains(property))
-            {
-                return true;
-            }
-            else
-            {
-                if (base.Populate(property, label))
-                {
-                    this.EdgeProperties.Add(new GremlinProperty(GremlinKeyword.PropertyCardinality.Single, property, null, null));
-                    return true;
-                }
-                else
-                {
-                    return false;
-                }
-            }
-            
+            return this.ProjectedProperties.Contains(property);
         }
 
         internal override List<GremlinVariable> FetchAllVars()

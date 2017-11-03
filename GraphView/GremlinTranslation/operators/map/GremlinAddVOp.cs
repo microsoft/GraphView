@@ -9,25 +9,26 @@ namespace GraphView
     internal class GremlinAddVOp: GremlinTranslationOperator
     {
         public string VertexLabel { get; set; }
-        public List<GremlinProperty> PropertyKeyValues { get; set; }
+        public List<GremlinPropertyOp> PropertyOps { get; set; }
 
         public GremlinAddVOp()
         {
-            PropertyKeyValues = new List<GremlinProperty>();
+            PropertyOps = new List<GremlinPropertyOp>();
             VertexLabel = "vertex";
         }
 
         public GremlinAddVOp(params object[] propertyKeyValues)
         {
-            if (propertyKeyValues.Length > 1 && propertyKeyValues.Length % 2 != 0)
+            PropertyOps = new List<GremlinPropertyOp>();
+
+            if (propertyKeyValues.Length % 2 != 0)
             {
                 throw new Exception("The parameter of property should be even");
             }
 
-            PropertyKeyValues = new List<GremlinProperty>();
             for (var i = 0; i < propertyKeyValues.Length; i += 2)
             {
-                PropertyKeyValues.Add(new GremlinProperty(GremlinKeyword.PropertyCardinality.List, 
+                PropertyOps.Add(new GremlinPropertyOp(GremlinKeyword.PropertyCardinality.List, 
                                                                 propertyKeyValues[i] as string,
                                                                 propertyKeyValues[i+1], null));
             }
@@ -37,23 +38,31 @@ namespace GraphView
         public GremlinAddVOp(string vertexLabel)
         {
             VertexLabel = vertexLabel;
-            PropertyKeyValues = new List<GremlinProperty>();
+            PropertyOps = new List<GremlinPropertyOp>();
         }
 
         internal override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = GetInputContext();
 
+            List<GremlinProperty> properties = new List<GremlinProperty>();
+            foreach (GremlinPropertyOp propertyOp in PropertyOps)
+            {
+                GremlinProperty property = propertyOp.ToGremlinProperty(inputContext);
+                property.Cardinality = GremlinKeyword.PropertyCardinality.List;
+                properties.Add(property);
+            }
+
             if (inputContext.PivotVariable == null)
             {
-                GremlinAddVVariable newVariable = new GremlinAddVVariable(null, VertexLabel, PropertyKeyValues, true);
+                GremlinAddVVariable newVariable = new GremlinAddVVariable(null, VertexLabel, properties, true);
                 inputContext.VariableList.Add(newVariable);
                 inputContext.TableReferencesInFromClause.Add(newVariable);
                 inputContext.SetPivotVariable(newVariable);
             }
             else
             {
-                inputContext.PivotVariable.AddV(inputContext, VertexLabel, PropertyKeyValues);
+                inputContext.PivotVariable.AddV(inputContext, VertexLabel, properties);
             }
 
             return inputContext;

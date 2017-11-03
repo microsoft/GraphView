@@ -20,7 +20,7 @@ namespace GraphView
             this.Cardinality = cardinality;
             this.Key = key;
             this.Value = value;
-            this.MetaProperties = metaProperties;
+            this.MetaProperties = metaProperties ?? new Dictionary<string, object>();
         }
 
         internal object ReplaceTraversalToContext(object value, GremlinToSqlContext propertyInputContext)
@@ -28,9 +28,23 @@ namespace GraphView
             if (value is GraphTraversal)
             {
                 GraphTraversal propertyTraversal = value as GraphTraversal;
+                propertyTraversal.GetStartOp().InheritedVariableFromParent(propertyInputContext);
                 return propertyTraversal.GetEndOp().GetContext();
             }
             return value;
+        }
+
+        internal GremlinProperty ToGremlinProperty(GremlinToSqlContext inputContext)
+        {
+            object value = this.ReplaceTraversalToContext(this.Value, inputContext);
+            Dictionary<string, object> metaProperties = new Dictionary<string, object>();
+
+            foreach (string metaKey in this.MetaProperties.Keys)
+            {
+                metaProperties[metaKey] = this.ReplaceTraversalToContext(this.MetaProperties[metaKey], inputContext);
+            }
+
+            return new GremlinProperty(this.Cardinality, this.Key, value, metaProperties);
         }
 
         internal override GremlinToSqlContext GetContext()
@@ -41,27 +55,7 @@ namespace GraphView
                 throw new TranslationException("The PivotVariable of property()-step can't be null.");
             }
 
-            GremlinToSqlContext propertyInputContext = inputContext;
-            if (inputContext.PivotVariable is GremlinAddVVariable)
-            {
-                GremlinAddVVariable addVVariable = inputContext.PivotVariable as GremlinAddVVariable;
-                propertyInputContext = addVVariable.InputContext;
-            }
-            else if (inputContext.PivotVariable is GremlinAddETableVariable)
-            {
-                GremlinAddETableVariable addEVariable = inputContext.PivotVariable as GremlinAddETableVariable;
-                propertyInputContext = addEVariable.InputContext;
-            }
-
-            object value = this.ReplaceTraversalToContext(this.Value, propertyInputContext);
-            Dictionary <string, object> metaProperties = new Dictionary<string, object>();
-
-            foreach (string metaKey in this.MetaProperties.Keys)
-            {
-                metaProperties[metaKey] = this.ReplaceTraversalToContext(this.MetaProperties[metaKey], propertyInputContext);
-            }
-
-            inputContext.PivotVariable.Property(inputContext, new GremlinProperty(this.Cardinality, this.Key, value, metaProperties));
+            inputContext.PivotVariable.Property(inputContext, ToGremlinProperty(inputContext));
 
             return inputContext;
         }

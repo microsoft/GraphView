@@ -18,14 +18,6 @@ namespace GraphView
         public static JValue ToJValue(this WValueExpression expr)
         {
             //
-            // Special treat when fieldValue indicates null (that is, to remove a property)
-            // NOTE: fieldValue itself != null
-            //
-            if (!expr.SingleQuoted && expr.Value.Equals("null", StringComparison.OrdinalIgnoreCase)) {
-                return null;
-            }
-
-            //
             // JSON requires a lower case string if it is a boolean value
             //
             bool boolValue;
@@ -37,6 +29,22 @@ namespace GraphView
             }
             else {
                 return (JValue)JToken.Parse(expr.ToString());
+            }
+        }
+
+        internal static JValue ToJValue(this StringField field)
+        {
+            if (field.JsonDataType == JsonDataType.Boolean)
+            {
+                return (JValue)bool.Parse(field.Value);
+            }
+            else if (field.JsonDataType == JsonDataType.String)
+            {
+                return (JValue)field.Value;
+            }
+            else
+            {
+                return (JValue)JToken.Parse(field.Value);
             }
         }
 
@@ -64,6 +72,12 @@ namespace GraphView
                 jsonObject[key] = JToken.Parse(fieldValue.ToString());
             }
             return jsonObject.Property(key);
+        }
+
+        public static JProperty UpdateProperty(JObject jsonObject, string name, JValue value)
+        {
+            jsonObject[name] = value;
+            return jsonObject.Property(name);
         }
 
         public static void DropProperty(JObject jsonObject, string propertyName)

@@ -55,26 +55,111 @@ namespace GraphView
 
     internal class AddVOperator : ModificationBaseOperator
     {
-        private readonly JObject _vertexDocument;
-        private readonly List<string> _projectedFieldList; 
+        private readonly JObject vertexDocument;
+        private readonly List<string> projectedFieldList;
+        private readonly List<PropertyTuple> properties;
 
-        public AddVOperator(GraphViewExecutionOperator inputOp, GraphViewCommand command, JObject vertexDocument, List<string> projectedFieldList)
+        public AddVOperator(GraphViewExecutionOperator inputOp, GraphViewCommand command, JObject vertexDocument, 
+            List<string> projectedFieldList, List<PropertyTuple> properties)
             : base(inputOp, command)
         {
-            this._vertexDocument = vertexDocument;
-            this._projectedFieldList = projectedFieldList;
+            this.vertexDocument = vertexDocument;
+            this.projectedFieldList = projectedFieldList;
+            this.properties = properties;
+        }
+
+        private void AddPropertiesToVertexObject(JObject vertexJObject, RawRecord record)
+        {
+            foreach (PropertyTuple property in this.properties)
+            {
+                JValue propertyValue = property.GetPropertyJValue(record);
+                Debug.Assert(propertyValue != null);
+
+                // Special treat the partition key
+                if (this.Command.Connection.CollectionType == CollectionType.PARTITIONED)
+                {
+                    Debug.Assert(this.Command.Connection.RealPartitionKey != null);
+                    if (property.Name == this.Command.Connection.RealPartitionKey)
+                    {
+                        if (property.MetaProperties.Count > 0)
+                        {
+                            throw new GraphViewException("Partition value must not have meta properties");
+                        }
+
+                        if (vertexJObject[this.Command.Connection.RealPartitionKey] == null)
+                        {
+                            vertexJObject[this.Command.Connection.RealPartitionKey] = propertyValue;
+                        }
+                        else
+                        {
+                            throw new GraphViewException("Partition value must not be a list");
+                        }
+                        continue;
+                    }
+                }
+
+                // Special treat the "id" property
+                if (property.Name == KW_DOC_ID)
+                {
+                    if (vertexJObject[KW_DOC_ID] == null)
+                    {
+                        if (propertyValue.Type != JTokenType.String)
+                        {
+                            throw new GraphViewException("Vertex's ID must be a string");
+                        }
+                        if (string.IsNullOrEmpty((string)propertyValue))
+                        {
+                            throw new GraphViewException("Vertex's ID must not be null or empty");
+                        }
+                        vertexJObject[KW_DOC_ID] = (string)propertyValue;
+                    }
+                    else
+                    {
+                        throw new GraphViewException("Vertex's ID must not be specified more than once");
+                    }
+                    continue;
+                }
+
+                JObject meta = new JObject();
+                foreach (KeyValuePair<string, Tuple<JValue, ScalarSubqueryFunction>> pair in property.MetaProperties)
+                {
+                    meta[pair.Key] = property.GetMetaPropertyJValue(pair.Key, record);
+                }
+
+                string name = property.Name;
+                JArray propArray = (JArray)vertexJObject[name];
+                if (propArray == null)
+                {
+                    propArray = new JArray();
+                    vertexJObject[name] = propArray;
+                }
+
+                JObject prop = new JObject
+                {
+                    [KW_PROPERTY_VALUE] = propertyValue,
+                    [KW_PROPERTY_ID] = GraphViewConnection.GenerateDocumentId(),
+                };
+                if (meta.Count > 0)
+                {
+                    prop[KW_PROPERTY_META] = meta;
+                }
+                propArray.Add(prop);
+            }
         }
 
         internal override RawRecord DataModify(RawRecord record)
         {
-            JObject vertexObject = (JObject)this._vertexDocument.DeepClone();
+            JObject vertexObject = (JObject)this.vertexDocument.DeepClone();
+            this.AddPropertiesToVertexObject(vertexObject, record);
 
             string vertexId;
-            if (vertexObject[KW_DOC_ID] == null) {
+            if (vertexObject[KW_DOC_ID] == null)
+            {
                 vertexId = GraphViewConnection.GenerateDocumentId();
                 vertexObject[KW_DOC_ID] = vertexId;
             }
-            else {
+            else
+            {
                 // Only string id is supported!
                 // Assume user will not specify duplicated ids
                 Debug.Assert(vertexObject[KW_DOC_ID] is JValue);
@@ -84,11 +169,12 @@ namespace GraphView
             }
 
             Debug.Assert(vertexObject[KW_DOC_PARTITION] == null);
-            if (this.Command.Connection.PartitionPathTopLevel == KW_DOC_PARTITION) {
-
+            if (this.Command.Connection.PartitionPathTopLevel == KW_DOC_PARTITION)
+            {
                 // Now the collection is created via GraphAPI
 
-                if (vertexObject[this.Command.Connection.RealPartitionKey] == null) {
+                if (vertexObject[this.Command.Connection.RealPartitionKey] == null)
+                {
                     throw new GraphViewException($"AddV: Parition key '{this.Command.Connection.RealPartitionKey}' must be provided.");
                 }
 
@@ -135,7 +221,7 @@ namespace GraphView
 
             RawRecord result = new RawRecord();
 
-            foreach (string fieldName in _projectedFieldList)
+            foreach (string fieldName in projectedFieldList)
             {
                 FieldObject fieldValue = vertexField[fieldName];
 
@@ -150,13 +236,11 @@ namespace GraphView
     internal class DropOperator : ModificationBaseOperator
     {
         private readonly int dropTargetIndex;
-        private readonly GraphViewExecutionOperator dummyInputOp;
 
-        public DropOperator(GraphViewExecutionOperator dummyInputOp, GraphViewCommand command, int dropTargetIndex)
-            : base(dummyInputOp, command)
+        public DropOperator(GraphViewExecutionOperator inputOp, GraphViewCommand command, int dropTargetIndex)
+            : base(inputOp, command)
         {
             this.dropTargetIndex = dropTargetIndex;
-            this.dummyInputOp = dummyInputOp;
         }
 
         private void DropVertex(VertexField vertexField)
@@ -536,35 +620,32 @@ namespace GraphView
 
             // Should not reach here
             throw new GraphViewException("The incoming object is not removable");
-            return null;
         }
     }
 
     internal class UpdatePropertiesOperator : ModificationBaseOperator
     {
         private readonly int updateTargetIndex;
-        private readonly List<WPropertyExpression> updateProperties;
+        private readonly List<PropertyTuple> updateProperties;
 
         public UpdatePropertiesOperator(
             GraphViewExecutionOperator dummyInputOp,
             GraphViewCommand command,
             int updateTargetIndex,
-            List<WPropertyExpression> updateProperties)
+            List<PropertyTuple> updateProperties)
             : base(dummyInputOp, command)
         {
             this.updateTargetIndex = updateTargetIndex;
             this.updateProperties = updateProperties;
         }
 
-        private void UpdatePropertiesOfVertex(VertexField vertex)
+        private void UpdatePropertiesOfVertex(VertexField vertex, RawRecord record)
         {
             JObject vertexDocument = vertex.VertexJObject;
 
-            foreach (WPropertyExpression property in this.updateProperties)
+            foreach (PropertyTuple property in this.updateProperties)
             {
-                Debug.Assert(property.Value != null);
-
-                string name = property.Key.Value;
+                string name = property.Name;
                 if (name == this.Command.Connection.RealPartitionKey)
                 {
                     throw new GraphViewException("Updating the partition-by property is not supported.");
@@ -578,16 +659,20 @@ namespace GraphView
 
                 // Construct single property
                 JObject meta = new JObject();
-                List<Tuple<string, string>> metaList = new List<Tuple<string, string>>();
-                foreach (KeyValuePair<WValueExpression, WValueExpression> pair in property.MetaProperties)
+                List<Tuple<string, JValue>> metaList = new List<Tuple<string, JValue>>();
+                foreach (KeyValuePair<string, Tuple<JValue, ScalarSubqueryFunction>> pair in property.MetaProperties)
                 {
-                    meta[pair.Key.Value] = pair.Value.ToJValue();
-                    metaList.Add(new Tuple<string, string>(pair.Key.Value, pair.Value.Value));
+                    JValue metaValue = property.GetMetaPropertyJValue(pair.Key, record);
+                    meta[pair.Key] = metaValue;
+                    metaList.Add(new Tuple<string, JValue>(pair.Key, metaValue));
                 }
+
                 string propertyId = GraphViewConnection.GenerateDocumentId();
+                JValue value = property.GetPropertyJValue(record);
+                Debug.Assert(value != null);
                 JObject singleProperty = new JObject
                 {
-                    [KW_PROPERTY_VALUE] = property.Value.ToJValue(),
+                    [KW_PROPERTY_VALUE] = value,
                     [KW_PROPERTY_ID] = propertyId,
                 };
                 if (meta.Count > 0)
@@ -616,7 +701,7 @@ namespace GraphView
                 if (this.Command.InLazyMode)
                 {
                     DeltaLogUpdateVertexSingleProperty log = new DeltaLogUpdateVertexSingleProperty(name,
-                        property.Value.Value, propertyId, isMultiProperty, metaList);
+                        value, propertyId, isMultiProperty, metaList);
                     this.Command.VertexCache.AddOrUpdateVertexDelta(vertex, log);
                 }
 
@@ -644,17 +729,17 @@ namespace GraphView
 
         }
 
-        private void UpdatePropertiesOfEdge(EdgeField edgeField)
+        private void UpdatePropertiesOfEdge(EdgeField edgeField, RawRecord record)
         {
-            List<Tuple<WValueExpression, WValueExpression>> propertyList = new List<Tuple<WValueExpression, WValueExpression>>();
-            foreach (WPropertyExpression property in this.updateProperties)
+            List<Tuple<string, JValue>> propertyList = new List<Tuple<string, JValue>>();
+            foreach (PropertyTuple property in this.updateProperties)
             {
                 if (property.Cardinality == GremlinKeyword.PropertyCardinality.List || property.MetaProperties.Count > 0)
                 {
                     throw new Exception("Can't create meta property or duplicated property on edges");
                 }
 
-                propertyList.Add(new Tuple<WValueExpression, WValueExpression>(property.Key, property.Value));
+                propertyList.Add(new Tuple<string, JValue>(property.Name, property.GetPropertyJValue(record)));
             }
 
             string edgeId = edgeField.EdgeId;
@@ -726,40 +811,28 @@ namespace GraphView
                 }
             }
 
-            List<Tuple<string, string>> deltaProperties = new List<Tuple<string, string>>();
+            List<Tuple<string, JValue>> deltaProperties = new List<Tuple<string, JValue>>();
 
-            // Drop all non-reserved properties
-            if (propertyList.Count == 1 &&
-                !propertyList[0].Item1.SingleQuoted &&
-                propertyList[0].Item1.Value.Equals("*", StringComparison.OrdinalIgnoreCase) &&
-                !propertyList[0].Item2.SingleQuoted &&
-                propertyList[0].Item2.Value.Equals("null", StringComparison.OrdinalIgnoreCase))
+            foreach (Tuple<string, JValue> tuple in propertyList)
             {
-                throw new Exception("BUG: This condition is obsolete. Code should not reach here now!");
-            }
-            else
-            {
-                foreach (Tuple<WValueExpression, WValueExpression> tuple in propertyList)
+                string name = tuple.Item1;
+                JValue value = tuple.Item2;
+
+                // Modify edgeObject (update the edge property)
+                JProperty updatedProperty = GraphViewJsonCommand.UpdateProperty(outEdgeObject, name, value);
+                // Update VertexCache
+                outEdgeField.UpdateEdgeProperty(updatedProperty);
+                if (this.Command.InLazyMode)
                 {
-                    WValueExpression keyExpression = tuple.Item1;
-                    WValueExpression valueExpression = tuple.Item2;
+                    deltaProperties.Add(new Tuple<string, JValue>(name, value));
+                }
 
+                if (this.Command.Connection.UseReverseEdges && inEdgeField != null)
+                {
                     // Modify edgeObject (update the edge property)
-                    JProperty updatedProperty = GraphViewJsonCommand.UpdateProperty(outEdgeObject, keyExpression, valueExpression);
+                    updatedProperty = GraphViewJsonCommand.UpdateProperty(inEdgeObject, name, value);
                     // Update VertexCache
-                    outEdgeField.UpdateEdgeProperty(updatedProperty);
-                    if (this.Command.InLazyMode)
-                    {
-                        deltaProperties.Add(new Tuple<string, string>(keyExpression.Value, valueExpression.Value));
-                    }
-
-                    if (this.Command.Connection.UseReverseEdges && inEdgeField != null)
-                    {
-                        // Modify edgeObject (update the edge property)
-                        updatedProperty = GraphViewJsonCommand.UpdateProperty(inEdgeObject, keyExpression, valueExpression);
-                        // Update VertexCache
-                        inEdgeField.UpdateEdgeProperty(updatedProperty);
-                    }
+                    inEdgeField.UpdateEdgeProperty(updatedProperty);
                 }
             }
 
@@ -782,7 +855,7 @@ namespace GraphView
             }
         }
 
-        private void UpdateMetaPropertiesOfSingleVertexProperty(VertexSinglePropertyField vp)
+        private void UpdateMetaPropertiesOfSingleVertexProperty(VertexSinglePropertyField vp, RawRecord record)
         {
             if (!vp.VertexProperty.Vertex.ViaGraphAPI)
             {
@@ -802,16 +875,16 @@ namespace GraphView
                 meta = new JObject();
                 singleProperty[KW_PROPERTY_META] = meta;
             }
-            List<Tuple<string, string>> metaList = new List<Tuple<string, string>>();
-            foreach (WPropertyExpression property in this.updateProperties)
+            List<Tuple<string, JValue>> metaList = new List<Tuple<string, JValue>>();
+            foreach (PropertyTuple property in this.updateProperties)
             {
                 if (property.Cardinality == GremlinKeyword.PropertyCardinality.List || property.MetaProperties.Count > 0)
                 {
                     throw new Exception("Can't create meta property or duplicated property on vertex-property's meta property");
                 }
-
-                meta[property.Key.Value] = property.Value.ToJValue();
-                metaList.Add(new Tuple<string, string>(property.Key.Value, property.Value.Value));
+                JValue value = property.GetPropertyJValue(record);
+                meta[property.Name] = value;
+                metaList.Add(new Tuple<string, JValue>(property.Name, value));
             }
 
             // Update vertex single property
@@ -839,7 +912,7 @@ namespace GraphView
             VertexField vertex = updateTarget as VertexField; ;
             if (vertex != null)
             {
-                this.UpdatePropertiesOfVertex(vertex);
+                this.UpdatePropertiesOfVertex(vertex, record);
 
                 return record;
             }
@@ -847,7 +920,7 @@ namespace GraphView
             EdgeField edge = updateTarget as EdgeField;
             if (edge != null)
             {
-                this.UpdatePropertiesOfEdge(edge);
+                this.UpdatePropertiesOfEdge(edge, record);
 
                 return record;
             }
@@ -857,7 +930,7 @@ namespace GraphView
             {
                 if (property is VertexSinglePropertyField)
                 {
-                    this.UpdateMetaPropertiesOfSingleVertexProperty((VertexSinglePropertyField) property);
+                    this.UpdateMetaPropertiesOfSingleVertexProperty((VertexSinglePropertyField) property, record);
                 }
                 else
                 {
@@ -908,11 +981,12 @@ namespace GraphView
         //
         private JObject edgeJsonObject;
         private List<string> edgeProperties;
+        private List<PropertyTuple> subtraversalProperties;
 
         public AddEOperator(GraphViewExecutionOperator inputOp, GraphViewCommand command,
             ConstantSourceOperator srcSubQuerySourceOp, GraphViewExecutionOperator srcSubQueryOp,
             ConstantSourceOperator sinkSubQuerySouceOp, GraphViewExecutionOperator sinkSubQueryOp,
-            int otherVTag, JObject edgeJsonObject, List<string> projectedFieldList)
+            int otherVTag, JObject edgeJsonObject, List<string> projectedFieldList, List<PropertyTuple> subtraversalProperties)
             : base(inputOp, command)
         {
             this.srcSubQuerySourceOp = srcSubQuerySourceOp;
@@ -922,10 +996,16 @@ namespace GraphView
             this.otherVTag = otherVTag;
             this.edgeJsonObject = edgeJsonObject;
             this.edgeProperties = projectedFieldList;
+            this.subtraversalProperties = subtraversalProperties;
         }
 
         internal override RawRecord DataModify(RawRecord record)
         {
+            foreach (PropertyTuple property in this.subtraversalProperties)
+            {
+                GraphViewJsonCommand.UpdateProperty(this.edgeJsonObject, property.Name, property.GetPropertyJValue(record));
+            }
+
             srcSubQuerySourceOp.ConstantSource = record;
             srcSubQueryOp.ResetState();
             sinkSubQuerySouceOp.ConstantSource = record;

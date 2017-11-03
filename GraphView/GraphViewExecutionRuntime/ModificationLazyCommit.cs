@@ -28,12 +28,12 @@ namespace GraphView
         private bool isDropV = false;
 
         //                  name               id                            value            meta-name                      meta-value
-        private Dictionary<string, Dictionary<string, Tuple<VertexDeltaType, string, Dictionary<string, Tuple<VertexDeltaType, string>>>>> deltaProperties;
+        private Dictionary<string, Dictionary<string, Tuple<VertexDeltaType, JValue, Dictionary<string, Tuple<VertexDeltaType, JValue>>>>> deltaProperties;
 
         public DeltaVertexField(VertexField vertexField)
         {
             this.vertexField = vertexField;
-            this.deltaProperties = new Dictionary<string, Dictionary<string, Tuple<VertexDeltaType, string, Dictionary<string, Tuple<VertexDeltaType, string>>>>>();
+            this.deltaProperties = new Dictionary<string, Dictionary<string, Tuple<VertexDeltaType, JValue, Dictionary<string, Tuple<VertexDeltaType, JValue>>>>>();
         }
 
         public void AddDeltaLog(DeltaLog log)
@@ -55,10 +55,10 @@ namespace GraphView
 
                 if (!this.deltaProperties.ContainsKey(name))
                 {
-                    this.deltaProperties[name] = new Dictionary<string, Tuple<VertexDeltaType, string, Dictionary<string, Tuple<VertexDeltaType, string>>>>();
+                    this.deltaProperties[name] = new Dictionary<string, Tuple<VertexDeltaType, JValue, Dictionary<string, Tuple<VertexDeltaType, JValue>>>>();
                 }
 
-                this.deltaProperties[name][id] = new Tuple<VertexDeltaType, string, Dictionary<string, Tuple<VertexDeltaType, string>>>(
+                this.deltaProperties[name][id] = new Tuple<VertexDeltaType, JValue, Dictionary<string, Tuple<VertexDeltaType, JValue>>>(
                     VertexDeltaType.DropSingleProperty, null, null);
             }
             else if (log is DeltaLogDropVertexMetaProperty)
@@ -69,12 +69,12 @@ namespace GraphView
 
                 if (!this.deltaProperties.ContainsKey(parentName))
                 {
-                    this.deltaProperties[parentName] = new Dictionary<string, Tuple<VertexDeltaType, string, Dictionary<string, Tuple<VertexDeltaType, string>>>>();
+                    this.deltaProperties[parentName] = new Dictionary<string, Tuple<VertexDeltaType, JValue, Dictionary<string, Tuple<VertexDeltaType, JValue>>>>();
                 }
 
                 if (this.deltaProperties[parentName].ContainsKey(parentId))
                 {
-                    Tuple<VertexDeltaType, string, Dictionary<string, Tuple<VertexDeltaType, string>>> singleProperty =
+                    Tuple<VertexDeltaType, JValue, Dictionary<string, Tuple<VertexDeltaType, JValue>>> singleProperty =
                         this.deltaProperties[parentName][parentId];
 
                     if (singleProperty.Item1 == VertexDeltaType.DropSingleProperty)
@@ -83,13 +83,13 @@ namespace GraphView
                         return;
                     }
 
-                    Dictionary<string, Tuple<VertexDeltaType, string>> metaProperties = singleProperty.Item3;
+                    Dictionary<string, Tuple<VertexDeltaType, JValue>> metaProperties = singleProperty.Item3;
 
                     if (metaProperties.ContainsKey(deltaLog.propertyName))
                     {
                         if (metaProperties[deltaLog.propertyName].Item1 == VertexDeltaType.UpdateMetaPropertiesOfSingleProperty)
                         {
-                            metaProperties[deltaLog.propertyName] = new Tuple<VertexDeltaType, string>(VertexDeltaType.DropPropertyMetaProperty, null);
+                            metaProperties[deltaLog.propertyName] = new Tuple<VertexDeltaType, JValue>(VertexDeltaType.DropPropertyMetaProperty, null);
                         }
                         else if (metaProperties[deltaLog.propertyName].Item1 == VertexDeltaType.UpdateSingleProperty)
                         {
@@ -102,16 +102,16 @@ namespace GraphView
                     }
                     else
                     {
-                        metaProperties[deltaLog.propertyName] = new Tuple<VertexDeltaType, string>(VertexDeltaType.DropPropertyMetaProperty, null);
+                        metaProperties[deltaLog.propertyName] = new Tuple<VertexDeltaType, JValue>(VertexDeltaType.DropPropertyMetaProperty, null);
                     }
                 }
                 else
                 {
-                    this.deltaProperties[parentName][parentId] = new Tuple<VertexDeltaType, string, Dictionary<string, Tuple<VertexDeltaType, string>>>(
+                    this.deltaProperties[parentName][parentId] = new Tuple<VertexDeltaType, JValue, Dictionary<string, Tuple<VertexDeltaType, JValue>>>(
                         VertexDeltaType.DropPropertyMetaProperty,
                         null,
-                        new Dictionary<string, Tuple<VertexDeltaType, string>>());
-                    this.deltaProperties[parentName][parentId].Item3[deltaLog.propertyName] = new Tuple<VertexDeltaType, string>(
+                        new Dictionary<string, Tuple<VertexDeltaType, JValue>>());
+                    this.deltaProperties[parentName][parentId].Item3[deltaLog.propertyName] = new Tuple<VertexDeltaType, JValue>(
                         VertexDeltaType.DropPropertyMetaProperty, null);
                 }
             }
@@ -123,7 +123,7 @@ namespace GraphView
 
                 if (!this.deltaProperties.ContainsKey(name))
                 {
-                    this.deltaProperties[name] = new Dictionary<string, Tuple<VertexDeltaType, string, Dictionary<string, Tuple<VertexDeltaType, string>>>>();
+                    this.deltaProperties[name] = new Dictionary<string, Tuple<VertexDeltaType, JValue, Dictionary<string, Tuple<VertexDeltaType, JValue>>>>();
                 }
 
                 if (!deltaLog.isMultiProperty)
@@ -139,18 +139,18 @@ namespace GraphView
 
                 if (deltaLog.metaProperties.Count > 0)
                 {
-                    this.deltaProperties[name][id] = new Tuple<VertexDeltaType, string, Dictionary<string, Tuple<VertexDeltaType, string>>>(
-                        deltaType, deltaLog.propertyValue, new Dictionary<string, Tuple<VertexDeltaType, string>>());
+                    this.deltaProperties[name][id] = new Tuple<VertexDeltaType, JValue, Dictionary<string, Tuple<VertexDeltaType, JValue>>>(
+                        deltaType, deltaLog.propertyValue, new Dictionary<string, Tuple<VertexDeltaType, JValue>>());
 
-                    foreach (Tuple<string, string> meta in deltaLog.metaProperties)
+                    foreach (Tuple<string, JValue> meta in deltaLog.metaProperties)
                     {
-                        this.deltaProperties[name][id].Item3[meta.Item1] = new Tuple<VertexDeltaType, string>(
+                        this.deltaProperties[name][id].Item3[meta.Item1] = new Tuple<VertexDeltaType, JValue>(
                             VertexDeltaType.UpdateSingleProperty, meta.Item2);
                     }
                 }
                 else
                 {
-                    this.deltaProperties[name][id] = new Tuple<VertexDeltaType, string, Dictionary<string, Tuple<VertexDeltaType, string>>>(
+                    this.deltaProperties[name][id] = new Tuple<VertexDeltaType, JValue, Dictionary<string, Tuple<VertexDeltaType, JValue>>>(
                         deltaType, deltaLog.propertyValue, null);
                 }
             }
@@ -162,21 +162,21 @@ namespace GraphView
 
                 if (!this.deltaProperties.ContainsKey(name))
                 {
-                    this.deltaProperties[name] = new Dictionary<string, Tuple<VertexDeltaType, string, Dictionary<string, Tuple<VertexDeltaType, string>>>>();
+                    this.deltaProperties[name] = new Dictionary<string, Tuple<VertexDeltaType, JValue, Dictionary<string, Tuple<VertexDeltaType, JValue>>>>();
                 }
 
                 if (!this.deltaProperties[name].ContainsKey(id))
                 {
-                    this.deltaProperties[name][id] = new Tuple<VertexDeltaType, string, Dictionary<string, Tuple<VertexDeltaType, string>>>(
-                        VertexDeltaType.UpdateMetaPropertiesOfSingleProperty, null, new Dictionary<string, Tuple<VertexDeltaType, string>>());
+                    this.deltaProperties[name][id] = new Tuple<VertexDeltaType, JValue, Dictionary<string, Tuple<VertexDeltaType, JValue>>>(
+                        VertexDeltaType.UpdateMetaPropertiesOfSingleProperty, null, new Dictionary<string, Tuple<VertexDeltaType, JValue>>());
                 }
 
                 Debug.Assert(this.deltaProperties[name][id].Item1 != VertexDeltaType.DropSingleProperty);
                 Debug.Assert(this.deltaProperties[name][id].Item3 != null);
 
-                foreach (Tuple<string, string> meta in deltaLog.metaProperties)
+                foreach (Tuple<string, JValue> meta in deltaLog.metaProperties)
                 {
-                    this.deltaProperties[name][id].Item3[meta.Item1] = new Tuple<VertexDeltaType, string>(
+                    this.deltaProperties[name][id].Item3[meta.Item1] = new Tuple<VertexDeltaType, JValue>(
                         VertexDeltaType.UpdateMetaPropertiesOfSingleProperty, meta.Item2);
                 }
             }
@@ -240,13 +240,13 @@ namespace GraphView
     internal class DeltaLogUpdateVertexSingleProperty : DeltaLog
     {
         public string propertyName;
-        public string propertyValue;
+        public JValue propertyValue;
         public string propertyId;
         public bool isMultiProperty;
-        public List<Tuple<string, string>> metaProperties;
+        public List<Tuple<string, JValue>> metaProperties;
 
-        public DeltaLogUpdateVertexSingleProperty(string propertyName, string propertyValue, string propertyId,
-            bool isMultiProperty, List<Tuple<string, string>> metaProperties)
+        public DeltaLogUpdateVertexSingleProperty(string propertyName, JValue propertyValue, string propertyId,
+            bool isMultiProperty, List<Tuple<string, JValue>> metaProperties)
         {
             this.propertyName = propertyName;
             this.propertyValue = propertyValue;
@@ -260,10 +260,10 @@ namespace GraphView
     {
         public string propertyName;
         public string propertyId;
-        public List<Tuple<string, string>> metaProperties;
+        public List<Tuple<string, JValue>> metaProperties;
 
         public DeltaLogUpdateVertexMetaPropertyOfSingleProperty(string propertyName, string propertyId,
-            List<Tuple<string, string>> metaProperties)
+            List<Tuple<string, JValue>> metaProperties)
         {
             this.propertyName = propertyName;
             this.propertyId = propertyId;
@@ -282,7 +282,7 @@ namespace GraphView
         private bool isAddE = false;
         private bool isDropE = false;
 
-        private Dictionary<string, Tuple<EdgeDeltaType, string>> deltaProperties;
+        private Dictionary<string, Tuple<EdgeDeltaType, JValue>> deltaProperties;
 
         public DeltaEdgeField(EdgeField outEdgeField, VertexField srcVertexField, EdgeField inEdgeField, VertexField sinkVertexField, bool useReverseEdges)
         {
@@ -291,7 +291,7 @@ namespace GraphView
             this.srcVertexField = srcVertexField;
             this.sinkVertexField = sinkVertexField;
             this.UseReverseEdges = useReverseEdges;
-            this.deltaProperties = new Dictionary<string, Tuple<EdgeDeltaType, string>>();
+            this.deltaProperties = new Dictionary<string, Tuple<EdgeDeltaType, JValue>>();
         }
 
         public void AddDeltaLog(DeltaLog log)
@@ -308,17 +308,17 @@ namespace GraphView
             else if (log is DeltaLogUpdateEdgeProperties)
             {
                 DeltaLogUpdateEdgeProperties deltaLog = log as DeltaLogUpdateEdgeProperties;
-                foreach (Tuple<string, string> property in deltaLog.edgeProperties)
+                foreach (Tuple<string, JValue> property in deltaLog.edgeProperties)
                 {
                     string name = property.Item1;
-                    this.deltaProperties[name] = new Tuple<EdgeDeltaType, string>(EdgeDeltaType.UpdateProperty, property.Item2);
+                    this.deltaProperties[name] = new Tuple<EdgeDeltaType, JValue>(EdgeDeltaType.UpdateProperty, property.Item2);
                 }
             }
             else if (log is DeltaLogDropEdgeProperty)
             {
                 DeltaLogDropEdgeProperty deltaLog = log as DeltaLogDropEdgeProperty;
                 string name = deltaLog.propertyName;
-                this.deltaProperties[name] = new Tuple<EdgeDeltaType, string>(EdgeDeltaType.DropProperty, null);
+                this.deltaProperties[name] = new Tuple<EdgeDeltaType, JValue>(EdgeDeltaType.DropProperty, null);
             }
         }
 
@@ -444,9 +444,9 @@ namespace GraphView
 
     internal class DeltaLogUpdateEdgeProperties : DeltaLog
     {
-        public List<Tuple<string, string>> edgeProperties;
+        public List<Tuple<string, JValue>> edgeProperties;
 
-        public DeltaLogUpdateEdgeProperties(List<Tuple<string, string>> edgeProperties)
+        public DeltaLogUpdateEdgeProperties(List<Tuple<string, JValue>> edgeProperties)
         {
             this.edgeProperties = edgeProperties;
         }

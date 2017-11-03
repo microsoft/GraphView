@@ -21,7 +21,7 @@ namespace GraphView
 
         public GremlinAddVVariable(GremlinToSqlContext inputContext, string vertexLabel, List<GremlinProperty> vertexProperties, bool isFirstTableReference = false)
         {
-            this.InputContext = inputContext.Duplicate();
+            this.InputContext = inputContext?.Duplicate();
             this.VertexProperties = new List<GremlinProperty>(vertexProperties);
             this.VertexLabel = vertexLabel;
             this.IsFirstTableReference = isFirstTableReference;
@@ -44,22 +44,7 @@ namespace GraphView
 
         internal override bool Populate(string property, string label = null)
         {
-            if (this.ProjectedProperties.Contains(property))
-            {
-                return true;
-            }
-            else
-            {
-                if (base.Populate(property, label))
-                {
-                    this.VertexProperties.Add(new GremlinProperty(GremlinKeyword.PropertyCardinality.List, property, null, null));
-                    return true;
-                }
-                else
-                {
-                    return false;
-                }
-            }
+            return this.ProjectedProperties.Contains(property);
         }
 
         public override WTableReference ToTableReference()

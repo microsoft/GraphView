@@ -613,13 +613,10 @@ namespace GraphView
             Key?.Accept(visitor);
             Value?.Accept(visitor);
 
-            if (MetaProperties != null)
+            foreach (KeyValuePair<WValueExpression, WScalarExpression> kvp in MetaProperties)
             {
-                foreach (KeyValuePair<WValueExpression, WScalarExpression> kvp in MetaProperties)
-                {
-                    kvp.Key.Accept(visitor);
-                    kvp.Value.Accept(visitor);
-                }
+                kvp.Key.Accept(visitor);
+                kvp.Value.Accept(visitor);
             }
 
             base.AcceptChildren(visitor);

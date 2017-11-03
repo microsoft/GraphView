@@ -1143,7 +1143,10 @@ namespace GraphView
         public GraphTraversal Property(GremlinKeyword.PropertyCardinality cardinality, string key, object value,
             params object[] keyValues)
         {
-            if (keyValues.Length % 2 != 0) throw new Exception("The parameter of property should be even");
+            if (keyValues.Length % 2 != 0)
+            {
+                throw new Exception("The parameter of property should be even");
+            }
 
             Dictionary<string, object> metaProperties = new Dictionary<string, object>();
             for (var i = 0; i < keyValues.Length; i += 2)
@@ -1151,7 +1154,22 @@ namespace GraphView
                 metaProperties[keyValues[i] as string] = keyValues[i + 1];
             }
 
-            AddGremlinOperator(new GremlinPropertyOp(cardinality, key, value, metaProperties));
+            GremlinAddVOp addVOp = this.GetEndOp() as GremlinAddVOp;
+            GremlinAddEOp addEOp = this.GetEndOp() as GremlinAddEOp;
+            GremlinPropertyOp propertyOp = new GremlinPropertyOp(cardinality, key, value, metaProperties);
+            if (addVOp != null)
+            {
+                addVOp.PropertyOps.Add(propertyOp);
+            }
+            else if (addEOp != null)
+            {
+                addEOp.EdgePropertyOps.Add(propertyOp);
+            }
+            else
+            {
+                AddGremlinOperator(propertyOp);
+            }
+
             return this;
         }
 

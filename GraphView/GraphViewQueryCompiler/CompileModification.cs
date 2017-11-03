@@ -22,102 +22,12 @@ namespace GraphView
     
     partial class WAddVTableReference
     {
-        public JObject ConstructNodeJsonDocument(GraphViewCommand command, string vertexLabel, List<WPropertyExpression> vertexProperties, out List<string> projectedFieldList)
+        public JObject ConstructNodeJsonDocument(GraphViewCommand command, string vertexLabel)
         {
             JObject vertexObject = new JObject
             {
                 [KW_VERTEX_LABEL] = vertexLabel,
             };
-
-            projectedFieldList = new List<string>(GraphViewReservedProperties.InitialPopulateNodeProperties);
-            projectedFieldList.Add(GremlinKeyword.Label);
-
-            foreach (WPropertyExpression vertexProperty in vertexProperties)
-            {
-                Debug.Assert(vertexProperty.Cardinality == GremlinKeyword.PropertyCardinality.List);
-
-                if (!projectedFieldList.Contains(vertexProperty.Key.Value))
-                    projectedFieldList.Add(vertexProperty.Key.Value);
-
-                if (vertexProperty.Value.ToJValue() == null)
-                {
-                    continue;
-                }
-
-                // Special treat the partition key
-                if (command.Connection.CollectionType == CollectionType.PARTITIONED)
-                {
-                    Debug.Assert(command.Connection.RealPartitionKey != null);
-                    if (vertexProperty.Key.Value == command.Connection.RealPartitionKey)
-                    {
-                        if (vertexProperty.MetaProperties.Count > 0)
-                        {
-                            throw new GraphViewException("Partition value must not have meta properties");
-                        }
-
-                        if (vertexObject[command.Connection.RealPartitionKey] == null)
-                        {
-                            JValue value = vertexProperty.Value.ToJValue();
-                            vertexObject[command.Connection.RealPartitionKey] = value;
-                        }
-                        else
-                        {
-                            throw new GraphViewException("Partition value must not be a list");
-                        }
-                        continue;
-                    }
-                }
-
-                // Special treat the "id" property
-                if (vertexProperty.Key.Value == KW_DOC_ID)
-                {
-                    if (vertexObject[KW_DOC_ID] == null)
-                    {
-                        JValue value = vertexProperty.Value.ToJValue();
-                        if (value.Type != JTokenType.String)
-                        {
-                            throw new GraphViewException("Vertex's ID must be a string");
-                        }
-                        if (string.IsNullOrEmpty((string)value))
-                        {
-                            throw new GraphViewException("Vertex's ID must not be null or empty");
-                        }
-                        vertexObject[KW_DOC_ID] = (string)value;
-                    }
-                    else
-                    {
-                        throw new GraphViewException("Vertex's ID must not be specified more than once");
-                    }
-                    continue;
-                }
-
-                JObject meta = new JObject();
-                foreach (KeyValuePair<WValueExpression, WValueExpression> pair in vertexProperty.MetaProperties)
-                {
-                    WValueExpression metaName = pair.Key;
-                    WValueExpression metaValue = pair.Value;
-                    meta[metaName.Value] = metaValue.ToJValue();
-                }
-
-                string name = vertexProperty.Key.Value;
-                JArray propArray = (JArray)vertexObject[name];
-                if (propArray == null)
-                {
-                    propArray = new JArray();
-                    vertexObject[name] = propArray;
-                }
-
-                JObject prop = new JObject
-                {
-                    [KW_PROPERTY_VALUE] = vertexProperty.Value.ToJValue(),
-                    [KW_PROPERTY_ID] = GraphViewConnection.GenerateDocumentId(),
-                };
-                if (meta.Count > 0)
-                {
-                    prop[KW_PROPERTY_META] = meta;
-                }
-                propArray.Add(prop);
-            }
 
             if (command.Connection.EdgeSpillThreshold == 1) {
                 vertexObject[KW_VERTEX_EDGE] = new JArray { KW_VERTEX_DUMMY_EDGE };
@@ -146,11 +56,12 @@ namespace GraphView
             WValueExpression labelValue = (WValueExpression)this.Parameters[0];
             Debug.Assert(labelValue.Value != null, "[WAddVTableReference.Compile] Vertex label should not be null");
 
-            List<WPropertyExpression> vertexProperties = new List<WPropertyExpression>()
-                {
-                    (WPropertyExpression) (new GremlinProperty(GremlinKeyword.PropertyCardinality.List,
-                        GremlinKeyword.Star, null, null).ToPropertyExpr())
-                };
+            List<PropertyTuple> vertexProperties = new List<PropertyTuple>();
+
+            List<string> projectedField = new List<string>(GraphViewReservedProperties.InitialPopulateNodeProperties);
+            projectedField.Add(GremlinKeyword.Star);
+            projectedField.Add(GremlinKeyword.Label);
+            
 
             for (int i = 1; i < this.Parameters.Count; i++) {
                 WPropertyExpression property = (WPropertyExpression)this.Parameters[i];
@@ -158,18 +69,69 @@ namespace GraphView
                 Debug.Assert(property.Cardinality == GremlinKeyword.PropertyCardinality.List, "[WAddVTableReference.Compile] Vertex property should be append-mode");
                 Debug.Assert(property.Value != null);
 
-                vertexProperties.Add(property);
+                if (!projectedField.Contains(property.Key.Value))
+                {
+                    projectedField.Add(property.Key.Value);
+                }
+
+                if (property.Value is WValueExpression)
+                {
+                    WValueExpression value = property.Value as WValueExpression;
+                    Dictionary<string, Tuple<JValue, ScalarSubqueryFunction>> meta = new Dictionary<string, Tuple<JValue, ScalarSubqueryFunction>>();
+                    foreach (KeyValuePair<WValueExpression, WScalarExpression> pair in property.MetaProperties)
+                    {
+                        string name = pair.Key.Value;
+                        if (pair.Value is WValueExpression)
+                        {
+                            WValueExpression metaValue = pair.Value as WValueExpression;
+                            meta.Add(name, new Tuple<JValue, ScalarSubqueryFunction>(metaValue.ToJValue(), null));
+                        }
+                        else
+                        {
+                            WScalarSubquery metaScalarSubquery = pair.Value as WScalarSubquery;
+                            ScalarSubqueryFunction metaValueFunction = (ScalarSubqueryFunction)metaScalarSubquery.CompileToFunction(context, command);
+                            meta.Add(name, new Tuple<JValue, ScalarSubqueryFunction>(null, metaValueFunction));
+                        }
+                    }
+
+                    PropertyTuple valueProperty = new PropertyTuple(property.Cardinality, property.Key.Value, value.ToJValue(), meta);
+                    vertexProperties.Add(valueProperty);
+                }
+                else
+                {
+                    WScalarSubquery scalarSubquery = property.Value as WScalarSubquery;
+                    ScalarSubqueryFunction valueFunction = (ScalarSubqueryFunction)scalarSubquery.CompileToFunction(context, command);
+
+                    Dictionary<string, Tuple<JValue, ScalarSubqueryFunction>> meta = new Dictionary<string, Tuple<JValue, ScalarSubqueryFunction>>();
+                    foreach (KeyValuePair<WValueExpression, WScalarExpression> pair in property.MetaProperties)
+                    {
+                        string name = pair.Key.Value;
+                        if (pair.Value is WValueExpression)
+                        {
+                            WValueExpression metaValue = pair.Value as WValueExpression;
+                            meta.Add(name, new Tuple<JValue, ScalarSubqueryFunction>(metaValue.ToJValue(), null));
+                        }
+                        else
+                        {
+                            WScalarSubquery metaScalarSubquery = pair.Value as WScalarSubquery;
+                            ScalarSubqueryFunction metaValueFunction = (ScalarSubqueryFunction)metaScalarSubquery.CompileToFunction(context, command);
+                            meta.Add(name, new Tuple<JValue, ScalarSubqueryFunction>(null, metaValueFunction));
+                        }
+                    }
+
+                    PropertyTuple valueProperty = new PropertyTuple(property.Cardinality, property.Key.Value, valueFunction, meta);
+                    vertexProperties.Add(valueProperty);
+                }
             }
 
-            List<string> projectedField;
-
-            JObject nodeJsonDocument = ConstructNodeJsonDocument(command, labelValue.Value, vertexProperties, out projectedField);
+            JObject nodeJsonDocument = ConstructNodeJsonDocument(command, labelValue.Value);
 
             AddVOperator addVOp = new AddVOperator(
                 context.CurrentExecutionOperator,
                 command,
                 nodeJsonDocument,
-                projectedField);
+                projectedField,
+                vertexProperties);
             context.CurrentExecutionOperator = addVOp;
 
             for (int i = 0; i < projectedField.Count; i++)
@@ -193,22 +155,24 @@ namespace GraphView
 
     partial class WAddETableReference
     {
-        public JObject ConstructEdgeJsonObject(GraphViewCommand command, string edgeLabel, List<WPropertyExpression> edgeProperties, out List<string> projectedFieldList)
+        /// <summary>
+        /// </summary>
+        /// <param name="command"></param>
+        /// <param name="edgeLabel"></param>
+        /// <param name="edgeProperties">All propertyValue is WValueExpression!</param>
+        /// <returns></returns>
+        public JObject ConstructEdgeJsonObject(GraphViewCommand command, string edgeLabel, List<WPropertyExpression> edgeProperties)
         {
             JObject edgeObject = new JObject
             {
                 [KW_EDGE_LABEL] = edgeLabel
             };
 
-            projectedFieldList = new List<string>(GraphViewReservedProperties.ReservedEdgeProperties);
-            projectedFieldList.Add(GremlinKeyword.Label);
-
             // Skip edgeSourceScalarFunction, edgeSinkScalarFunction, otherVTag
             foreach (WPropertyExpression edgeProperty in edgeProperties)
             {
-                GraphViewJsonCommand.UpdateProperty(edgeObject, edgeProperty.Key, edgeProperty.Value);
-                if (!projectedFieldList.Contains(edgeProperty.Key.Value))
-                    projectedFieldList.Add(edgeProperty.Key.Value);
+                WValueExpression propertyValue = edgeProperty.Value as WValueExpression;
+                GraphViewJsonCommand.UpdateProperty(edgeObject, edgeProperty.Key, propertyValue);
             }
 
             return edgeObject;
@@ -236,11 +200,11 @@ namespace GraphView
 
             WValueExpression labelValue = (WValueExpression)this.Parameters[3];
 
-            List<WPropertyExpression> edgeProperties = new List<WPropertyExpression>()
-            {
-                (WPropertyExpression) (new GremlinProperty(GremlinKeyword.PropertyCardinality.Single,
-                    GremlinKeyword.Star, null, null).ToPropertyExpr())
-            };
+            List<WPropertyExpression> edgeProperties = new List<WPropertyExpression>();
+            List<PropertyTuple> subtraversalProperties = new List<PropertyTuple>();
+
+            List<string> projectedField = new List<string>(GraphViewReservedProperties.ReservedEdgeProperties);
+            projectedField.Add(GremlinKeyword.Label);
 
             for (int i = 4; i < this.Parameters.Count; i++)
             {
@@ -249,15 +213,28 @@ namespace GraphView
                 Debug.Assert(property.Cardinality == GremlinKeyword.PropertyCardinality.Single, "[WAddETableReference.Compile] Edge property should not be append-mode");
                 Debug.Assert(property.Value != null);
 
-                edgeProperties.Add(property);
+                if (!projectedField.Contains(property.Key.Value))
+                {
+                    projectedField.Add(property.Key.Value);
+                }
+
+                if (property.Value is WValueExpression)
+                {
+                    edgeProperties.Add(property);
+                }
+                else
+                {
+                    WScalarSubquery scalarSubquery = property.Value as WScalarSubquery;
+                    ScalarSubqueryFunction valueFunction = (ScalarSubqueryFunction)scalarSubquery.CompileToFunction(context, command);
+                    subtraversalProperties.Add(new PropertyTuple(property.Cardinality, property.Key.Value, valueFunction));
+                }
             }
 
-            List<string> projectedField;
-            JObject edgeJsonObject = ConstructEdgeJsonObject(command, labelValue.Value, edgeProperties, out projectedField);  // metadata remains missing
-            
+            JObject edgeJsonObject = ConstructEdgeJsonObject(command, labelValue.Value, edgeProperties);  // metadata remains missing
+
             GraphViewExecutionOperator addEOp = new AddEOperator(context.CurrentExecutionOperator, command,
                 srcSubContext.OuterContextOp, srcSubQueryOp, sinkSubContext.OuterContextOp, sinkSubQueryOp, 
-                otherVTag, edgeJsonObject, projectedField);
+                otherVTag, edgeJsonObject, projectedField, subtraversalProperties);
             context.CurrentExecutionOperator = addEOp;
 
             // Update context's record layout
@@ -310,24 +287,59 @@ namespace GraphView
         {
             WColumnReferenceExpression updateParameter = this.Parameters[0] as WColumnReferenceExpression;
             int updateIndex = context.LocateColumnReference(updateParameter);
-            // var propertiesList = new List<WPropertyExpression>();
+            List<PropertyTuple> propertiesList = new List<PropertyTuple>();
 
-            for (int i = 1; i < this.Parameters.Count; ++i) {
+            for (int i = 1; i < this.Parameters.Count; ++i)
+            {
                 WPropertyExpression property = this.Parameters[i] as WPropertyExpression;
                 if (property.Value is WValueExpression)
                 {
-                    // GraphViewExecutionOperator valueOperator = new GraphViewExecutionOperator();
+                    WValueExpression value = property.Value as WValueExpression;
+                    Dictionary<string, Tuple<JValue, ScalarSubqueryFunction>> meta = new Dictionary<string, Tuple<JValue, ScalarSubqueryFunction>>();
+
+                    foreach (KeyValuePair<WValueExpression, WScalarExpression> pair in property.MetaProperties)
+                    {
+                        string name = pair.Key.Value;
+                        if (pair.Value is WValueExpression)
+                        {
+                            WValueExpression metaValue = pair.Value as WValueExpression;
+                            meta.Add(name, new Tuple<JValue, ScalarSubqueryFunction>(metaValue.ToJValue(), null));
+                        }
+                        else
+                        {
+                            WScalarSubquery metaScalarSubquery = pair.Value as WScalarSubquery;
+                            ScalarSubqueryFunction metaValueFunction = (ScalarSubqueryFunction)metaScalarSubquery.CompileToFunction(context, command);
+                            meta.Add(name, new Tuple<JValue, ScalarSubqueryFunction>(null, metaValueFunction));
+                        }
+                    }
+
+                    PropertyTuple valueProperty = new PropertyTuple(property.Cardinality, property.Key.Value, value.ToJValue(), meta);
+                    propertiesList.Add(valueProperty);
                 }
                 else
                 {
                     WScalarSubquery scalarSubquery = property.Value as WScalarSubquery;
-                    ContainerEnumerator sourceEnumerator = new ContainerEnumerator();
-                    QueryCompilationContext subcontext = new QueryCompilationContext(context);
-                    subcontext.OuterContextOp.SourceEnumerator = sourceEnumerator;
-                    subcontext.InBatchMode = context.InBatchMode;
-                    subcontext.CarryOn = true;
-                    GraphViewExecutionOperator valueOperator = scalarSubquery.SubQueryExpr.Compile(subcontext, command);
+                    ScalarSubqueryFunction valueFunction = (ScalarSubqueryFunction)scalarSubquery.CompileToFunction(context, command);
 
+                    Dictionary<string, Tuple<JValue, ScalarSubqueryFunction>> meta = new Dictionary<string, Tuple<JValue, ScalarSubqueryFunction>>();
+                    foreach (KeyValuePair<WValueExpression, WScalarExpression> pair in property.MetaProperties)
+                    {
+                        string name = pair.Key.Value;
+                        if (pair.Value is WValueExpression)
+                        {
+                            WValueExpression metaValue = pair.Value as WValueExpression;
+                            meta.Add(name, new Tuple<JValue, ScalarSubqueryFunction>(metaValue.ToJValue(), null));
+                        }
+                        else
+                        {
+                            WScalarSubquery metaScalarSubquery = pair.Value as WScalarSubquery;
+                            ScalarSubqueryFunction metaValueFunction = (ScalarSubqueryFunction)metaScalarSubquery.CompileToFunction(context, command);
+                            meta.Add(name, new Tuple<JValue, ScalarSubqueryFunction>(null, metaValueFunction));
+                        }
+                    }
+
+                    PropertyTuple valueProperty = new PropertyTuple(property.Cardinality, property.Key.Value, valueFunction, meta);
+                    propertiesList.Add(valueProperty);
                 }
             }
 
