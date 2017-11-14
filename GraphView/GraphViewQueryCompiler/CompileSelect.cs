@@ -1065,6 +1065,26 @@ namespace GraphView
                         // This traversalEdge is the one whose sink is current node, and it has been pushed to server
                         //
                         MatchEdge traversalEdge = tuple.Item2;
+
+                        BooleanFunction booleanFunction = null;
+                        List<string> nodeProperties = new List<string>(currentNode.AttachedJsonQuery.NodeProperties);
+                        QueryCompilationContext queryCompilationContext = new QueryCompilationContext();
+
+                        nodeProperties.RemoveAt(0);
+                        foreach (string propertyName in nodeProperties)
+                        {
+                            ColumnGraphType columnGraphType = GraphViewReservedProperties.IsNodeReservedProperty(propertyName)
+                                ? GraphViewReservedProperties.ReservedNodePropertiesColumnGraphTypes[propertyName]
+                                : ColumnGraphType.Value;
+                            queryCompilationContext.AddField(currentNode.AttachedJsonQuery.NodeAlias, propertyName, columnGraphType);
+                        }
+
+                        if (currentNode.AttachedJsonQuery.RawWhereClause is WBooleanBinaryExpression)
+                        {
+                            WBooleanBinaryExpression binaryExpression = currentNode.AttachedJsonQuery.RawWhereClause as WBooleanBinaryExpression;
+                            booleanFunction = binaryExpression.SecondExpr.CompileToFunction(queryCompilationContext, command);
+                        }
+
                         operatorChain.Add(new TraversalOperator(
                             operatorChain.Last(),
                             command,
@@ -1072,7 +1092,7 @@ namespace GraphView
                             this.GetTraversalType(traversalEdge),
                             currentNode.AttachedJsonQuery,
                             //currentNode.AttachedJsonQueryOfNodesViaExternalAPI, 
-                            null));
+                            null, booleanFunction));
                         context.CurrentExecutionOperator = operatorChain.Last();
                         //
                         // Update current node's context info
@@ -1866,10 +1886,29 @@ namespace GraphView
                 //WSelectQueryBlock.ConstructJsonQueryOnNodeViaExternalAPI(matchNode, null);
             }
 
+            BooleanFunction booleanFunction = null;
+            List<string> nodeProperties = new List<string>(matchNode.AttachedJsonQuery.NodeProperties);
+            QueryCompilationContext queryCompilationContext = new QueryCompilationContext();
+
+            nodeProperties.RemoveAt(0);
+            foreach (string propertyName in nodeProperties)
+            {
+                ColumnGraphType columnGraphType = GraphViewReservedProperties.IsNodeReservedProperty(propertyName)
+                    ? GraphViewReservedProperties.ReservedNodePropertiesColumnGraphTypes[propertyName]
+                    : ColumnGraphType.Value;
+                queryCompilationContext.AddField(matchNode.AttachedJsonQuery.NodeAlias, propertyName, columnGraphType);
+            }
+
+            if (matchNode.AttachedJsonQuery.RawWhereClause is WBooleanBinaryExpression)
+            {
+                WBooleanBinaryExpression binaryExpression = matchNode.AttachedJsonQuery.RawWhereClause as WBooleanBinaryExpression;
+                booleanFunction = binaryExpression.SecondExpr.CompileToFunction(queryCompilationContext, command);
+            }
+
             TraversalOperator traversalOp = new TraversalOperator(
                 context.CurrentExecutionOperator, command, 
                 edgeFieldIndex, this.GetTraversalTypeParameter(),
-                matchNode.AttachedJsonQuery/*, matchNode.AttachedJsonQueryOfNodesViaExternalAPI*/, null);
+                matchNode.AttachedJsonQuery/*, matchNode.AttachedJsonQueryOfNodesViaExternalAPI*/, null, booleanFunction);
             context.CurrentExecutionOperator = traversalOp;
 
             // Update context's record layout
