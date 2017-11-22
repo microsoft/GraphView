@@ -506,7 +506,7 @@ namespace GraphView
 
         internal virtual void CyclicPath(GremlinToSqlContext currentContext, string fromLabel = null, string toLabel = null)
         {
-            GremlinCyclicPathVariable newVariable = new GremlinCyclicPathVariable(this, GeneratePath(currentContext, fromLabel, toLabel));
+            GremlinCyclicPathVariable newVariable = new GremlinCyclicPathVariable(GeneratePath(currentContext, fromLabel, toLabel));
             currentContext.VariableList.Add(newVariable);
             currentContext.TableReferencesInFromClause.Add(newVariable);
         }
@@ -1256,7 +1256,7 @@ namespace GraphView
 
         internal virtual void SimplePath(GremlinToSqlContext currentContext, string fromLabel, string toLabel)
         {
-            GremlinSimplePathVariable newVariable = new GremlinSimplePathVariable(this, GeneratePath(currentContext, fromLabel, toLabel));
+            GremlinSimplePathVariable newVariable = new GremlinSimplePathVariable(GeneratePath(currentContext, fromLabel, toLabel));
             currentContext.VariableList.Add(newVariable);
             currentContext.TableReferencesInFromClause.Add(newVariable);
         }
