@@ -11,6 +11,13 @@ using static GraphView.DocumentDBKeywords;
 
 namespace GraphView
 {
+    internal interface IAggregateFunction
+    {
+        void Init();
+        void Accumulate(params FieldObject[] values);
+        FieldObject Terminate();
+    }
+
     internal class FoldFunction : IAggregateFunction
     {
         private List<FieldObject> buffer;

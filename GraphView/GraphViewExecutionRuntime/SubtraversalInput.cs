@@ -1,9 +1,76 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 
+// These classes are used as input of subtraversal.
 namespace GraphView
 {
+    internal class ConstantSourceOperator : GraphViewExecutionOperator
+    {
+        private RawRecord _constantSource;
+        ContainerEnumerator sourceEnumerator;
+
+        public RawRecord ConstantSource
+        {
+            get { return _constantSource; }
+            set { _constantSource = value; this.Open(); }
+        }
+
+        public ContainerEnumerator SourceEnumerator
+        {
+            get { return sourceEnumerator; }
+            set
+            {
+                sourceEnumerator = value;
+                Open();
+            }
+        }
+
+        public ConstantSourceOperator()
+        {
+            Open();
+        }
+
+        public override RawRecord Next()
+        {
+            if (sourceEnumerator != null)
+            {
+                if (sourceEnumerator.MoveNext())
+                {
+                    return sourceEnumerator.Current;
+                }
+                else
+                {
+                    Close();
+                    return null;
+                }
+            }
+            else
+            {
+                if (!State())
+                    return null;
+
+                Close();
+                return _constantSource;
+            }
+        }
+
+        public override void ResetState()
+        {
+            if (sourceEnumerator != null)
+            {
+                sourceEnumerator.Reset();
+                Open();
+            }
+            else
+            {
+                Open();
+            }
+        }
+    }
+
     internal class ContainerEnumerator
     {
         private List<RawRecord> tableCache;
