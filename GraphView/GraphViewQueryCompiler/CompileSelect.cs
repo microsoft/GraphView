@@ -245,8 +245,7 @@ namespace GraphView
                         }
 
                         string partitionKey = command.Connection.RealPartitionKey;
-                        //ConstructJsonQueryOnNode(command, currentNode, pushedToServerEdge, partitionKey);
-                        ConstructJsonQueryOnNode(command, currentNode, null, partitionKey);
+                        ConstructJsonQueryOnNode(command, currentNode, pushedToServerEdge, partitionKey);
                         //ConstructJsonQueryOnNodeViaExternalAPI(currentNode, null);
                         processedNodes.Add(currentNode.NodeAlias);
                         isFirstNodeInTheComponent = false;
@@ -1066,6 +1065,31 @@ namespace GraphView
                         //
                         MatchEdge traversalEdge = tuple.Item2;
 
+
+                        JsonQuery vertexQuery = new JsonQuery
+                        {
+                            NodeAlias = currentNode.NodeAlias
+                        };
+
+                        vertexQuery.RawWhereClause = new WBooleanComparisonExpression
+                        {
+                            ComparisonType = BooleanComparisonType.Equals,
+                            FirstExpr = new WColumnReferenceExpression(currentNode.NodeAlias, DocumentDBKeywords.KW_EDGEDOC_IDENTIFIER),
+                            SecondExpr = new WValueExpression("null")
+                        };
+
+                        WBooleanExpression nodeCondition = null;
+                        foreach (WBooleanExpression predicate in currentNode.Predicates)
+                        {
+                            nodeCondition = WBooleanBinaryExpression.Conjunction(nodeCondition, predicate);
+                        }
+
+                        if (nodeCondition != null)
+                        {
+                            vertexQuery.WhereConjunction(nodeCondition, BooleanBinaryExpressionType.And);
+                        }
+
+
                         BooleanFunction booleanFunction = null;
                         List<string> nodeProperties = new List<string>(currentNode.AttachedJsonQuery.NodeProperties);
                         QueryCompilationContext queryCompilationContext = new QueryCompilationContext();
@@ -1079,9 +1103,10 @@ namespace GraphView
                             queryCompilationContext.AddField(currentNode.AttachedJsonQuery.NodeAlias, propertyName, columnGraphType);
                         }
 
-                        if (currentNode.AttachedJsonQuery.RawWhereClause is WBooleanBinaryExpression)
+                        
+                        if (vertexQuery.RawWhereClause is WBooleanBinaryExpression)
                         {
-                            WBooleanBinaryExpression binaryExpression = currentNode.AttachedJsonQuery.RawWhereClause as WBooleanBinaryExpression;
+                            WBooleanBinaryExpression binaryExpression = vertexQuery.RawWhereClause as WBooleanBinaryExpression;
                             booleanFunction = binaryExpression.SecondExpr.CompileToFunction(queryCompilationContext, command);
                         }
 
@@ -1886,6 +1911,30 @@ namespace GraphView
                 //WSelectQueryBlock.ConstructJsonQueryOnNodeViaExternalAPI(matchNode, null);
             }
 
+            JsonQuery vertexQuery = new JsonQuery
+            {
+                NodeAlias = matchNode.NodeAlias
+            };
+
+            vertexQuery.RawWhereClause = new WBooleanComparisonExpression
+            {
+                ComparisonType = BooleanComparisonType.Equals,
+                FirstExpr = new WColumnReferenceExpression(matchNode.NodeAlias, DocumentDBKeywords.KW_EDGEDOC_IDENTIFIER),
+                SecondExpr = new WValueExpression("null")
+            };
+
+            WBooleanExpression nodeCondition = null;
+            foreach (WBooleanExpression predicate in matchNode.Predicates)
+            {
+                nodeCondition = WBooleanBinaryExpression.Conjunction(nodeCondition, predicate);
+            }
+
+            if (nodeCondition != null)
+            {
+                vertexQuery.WhereConjunction(nodeCondition, BooleanBinaryExpressionType.And);
+            }
+
+
             BooleanFunction booleanFunction = null;
             List<string> nodeProperties = new List<string>(matchNode.AttachedJsonQuery.NodeProperties);
             QueryCompilationContext queryCompilationContext = new QueryCompilationContext();
@@ -1899,9 +1948,9 @@ namespace GraphView
                 queryCompilationContext.AddField(matchNode.AttachedJsonQuery.NodeAlias, propertyName, columnGraphType);
             }
 
-            if (matchNode.AttachedJsonQuery.RawWhereClause is WBooleanBinaryExpression)
+            if (vertexQuery.RawWhereClause is WBooleanBinaryExpression)
             {
-                WBooleanBinaryExpression binaryExpression = matchNode.AttachedJsonQuery.RawWhereClause as WBooleanBinaryExpression;
+                WBooleanBinaryExpression binaryExpression = vertexQuery.RawWhereClause as WBooleanBinaryExpression;
                 booleanFunction = binaryExpression.SecondExpr.CompileToFunction(queryCompilationContext, command);
             }
 

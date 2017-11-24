@@ -184,12 +184,6 @@ namespace GraphView
         // to the vertices other than the source vertices in the records by the input operator. 
         private List<Tuple<int, int>> matchingIndexes;
 
-        // Groups records returned by sinkVertexQuery by sink vertices' references
-        private Dictionary<string, List<RawRecord>> sinkVertexCollection = new Dictionary<string, List<RawRecord>>(GraphViewConnection.InClauseLimit);
-
-        // <RawRecord, id, partition key>
-        List<Tuple<RawRecord, string, string>> inputSequence = new List<Tuple<RawRecord, string, string>>();
-
 
         public TraversalOperator(
             GraphViewExecutionOperator inputOp,
@@ -211,25 +205,13 @@ namespace GraphView
             this.booleanFunction = booleanFunction;
             this.outputBufferSize = outputBufferSize;
         }
-
-        public RawRecord TryGetResultRecord(RawRecord rawRecord, string vertexId, string vertexPartition)
+        
+        public bool TryGetRawRecordInCache(string vertexId, out RawRecord record)
         {
-            if (sinkVertexCollection.ContainsKey(vertexId))
-            {
-                List<RawRecord> sinkRecList = sinkVertexCollection[vertexId];
-                foreach (RawRecord sinkRec in sinkRecList)
-                {
-                    RawRecord resultRecord = new RawRecord(rawRecord);
-                    resultRecord.Append(sinkRec);
-                    this.outputBuffer.Enqueue(resultRecord);
-                }
-                return this.outputBuffer.Dequeue();
-            }
-
             VertexField vertexField = null;
             if (command.VertexCache.TryGetVertexField(vertexId, out vertexField))
             {
-                RawRecord record = new RawRecord();
+                record = new RawRecord();
                 List<string> nodeProperties = new List<string>(sinkVertexQuery.NodeProperties);
                 nodeProperties.RemoveAt(0);
                 foreach (string propertyName in nodeProperties)
@@ -240,19 +222,37 @@ namespace GraphView
 
                 if (booleanFunction == null || booleanFunction.Evaluate(record))
                 {
-                    if (!sinkVertexCollection.ContainsKey(vertexId))
-                    {
-                        sinkVertexCollection.Add(vertexId, new List<RawRecord>());
-                    }
-                    sinkVertexCollection[vertexId].Add(record);
-
-                    RawRecord resultRecord = new RawRecord(rawRecord);
-                    resultRecord.Append(record);
-                    return resultRecord;
+                    return true;
                 }
             }
 
-            return null;
+            record = null;
+            return false;
+        }
+
+        public bool TryGetResultRecord(Dictionary<string, List<RawRecord>> sinkVertexCollection, RawRecord inputRawRecord, string vertexId)
+        {
+            if (sinkVertexCollection.ContainsKey(vertexId))
+            {
+                List<RawRecord> sinkRecList = sinkVertexCollection[vertexId];
+                foreach (RawRecord sinkRec in sinkRecList)
+                {
+                    RawRecord resultRecord = new RawRecord(inputRawRecord);
+                    resultRecord.Append(sinkRec);
+                    this.outputBuffer.Enqueue(resultRecord);
+                }
+                return true;
+            }
+
+            RawRecord record = null;
+            if (TryGetRawRecordInCache(vertexId, out record))
+            {
+                RawRecord resultRecord = new RawRecord(inputRawRecord);
+                resultRecord.Append(record);
+                this.outputBuffer.Enqueue(resultRecord);
+                return true;
+            }
+            return false;
         }
 
 
@@ -267,9 +267,14 @@ namespace GraphView
                 return this.outputBuffer.Dequeue();
             }
 
+            // Groups records returned by sinkVertexQuery by sink vertices' references
+            Dictionary<string, List<RawRecord>> sinkVertexCollection = new Dictionary<string, List<RawRecord>>(GraphViewConnection.InClauseLimit);
 
-            while (this.outputBuffer.Count == 0 && this.inputOp.State())
+            while (!this.outputBuffer.Any() && this.inputOp.State())
             {
+                // <RawRecord, id, partition key>
+                List<Tuple<RawRecord, string, string>> inputSequence = new List<Tuple<RawRecord, string, string>>(this.batchSize);
+                
                 // Loads a batch of source records
                 for (int i = 0; i < this.batchSize && this.inputOp.State(); i++)
                 {
@@ -283,30 +288,31 @@ namespace GraphView
 
                     if (!inputSequence.Any())
                     {
-                        RawRecord resultRecord = null;
+                        bool getResultRecord = false;
                         switch (this.traversalType)
                         {
                             case TraversalTypeEnum.Source:
-                                resultRecord = TryGetResultRecord(record, edgeField.OutV, edgeField.OutVPartition);
+                                getResultRecord = TryGetResultRecord(sinkVertexCollection, record, edgeField.OutV);
                                 break;
                             case TraversalTypeEnum.Sink:
-                                resultRecord = TryGetResultRecord(record, edgeField.InV, edgeField.InVPartition);
+                                getResultRecord = TryGetResultRecord(sinkVertexCollection, record, edgeField.InV);
                                 break;
                             case TraversalTypeEnum.Other:
-                                resultRecord = TryGetResultRecord(record, edgeField.OtherV, edgeField.OtherVPartition);
+                                getResultRecord = TryGetResultRecord(sinkVertexCollection, record, edgeField.OtherV);
                                 break;
                             case TraversalTypeEnum.Both:
-                                resultRecord = TryGetResultRecord(record, edgeField.InV, edgeField.InVPartition);
-                                if (resultRecord != null)
+                                getResultRecord = TryGetResultRecord(sinkVertexCollection, record, edgeField.InV);
+                                if (getResultRecord)
                                 {
-                                    RawRecord resultRecord2 = TryGetResultRecord(record, edgeField.OutV, edgeField.OutVPartition);
-                                    if (resultRecord2 != null)
+                                    bool getResultRecord2 = TryGetResultRecord(sinkVertexCollection, record, edgeField.OutV);
+                                    if (getResultRecord2)
                                     {
-                                        this.outputBuffer.Enqueue(resultRecord2);
+                                        return this.outputBuffer.Dequeue();
                                     }
                                     else
                                     {
                                         inputSequence.Add(new Tuple<RawRecord, string, string>(record, edgeField.OutV, edgeField.OutVPartition));
+                                        continue;
                                     }
                                 }
                                 break;
@@ -314,9 +320,9 @@ namespace GraphView
                                 throw new ArgumentOutOfRangeException();
                         }
 
-                        if (resultRecord != null)
+                        if (getResultRecord)
                         {
-                            return resultRecord;
+                            return this.outputBuffer.Dequeue();
                         }
                     }
                     
@@ -386,25 +392,14 @@ namespace GraphView
                             continue;
                         }
 
-                        VertexField vertexField = null;
-                        if (command.VertexCache.TryGetVertexField(sinkReferenceId, out vertexField))
+                        RawRecord rawRecord = null;
+                        if (TryGetRawRecordInCache(sinkReferenceId, out rawRecord))
                         {
-                            RawRecord rawRecord = new RawRecord();
-
-                            foreach (string propertyName in nodeProperties)
+                            if (!sinkVertexCollection.ContainsKey(sinkReferenceId))
                             {
-                                FieldObject propertyValue = vertexField[propertyName];
-                                rawRecord.Append(propertyValue);
+                                sinkVertexCollection.Add(sinkReferenceId, new List<RawRecord>());
                             }
-
-                            if (booleanFunction == null || booleanFunction.Evaluate(rawRecord))
-                            {
-                                if (!sinkVertexCollection.ContainsKey(sinkReferenceId))
-                                {
-                                    sinkVertexCollection.Add(sinkReferenceId, new List<RawRecord>());
-                                }
-                                sinkVertexCollection[sinkReferenceId].Add(rawRecord);
-                            }
+                            sinkVertexCollection[sinkReferenceId].Add(rawRecord);
                             j++;
                             continue;
                         }
@@ -492,7 +487,6 @@ namespace GraphView
                         this.outputBuffer.Enqueue(resultRec);
                     }
                 }
-                inputSequence.Clear();
             }
 
             if (this.outputBuffer.Count == 0) {
@@ -507,8 +501,6 @@ namespace GraphView
         public override void ResetState()
         {
             inputOp.ResetState();
-            sinkVertexCollection?.Clear();
-            inputSequence?.Clear();
             outputBuffer?.Clear();
             Open();
         }
