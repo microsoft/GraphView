@@ -242,7 +242,7 @@ namespace GraphView
                     parameters.AddRange(this.StepLabelsAtThatMoment[index].Select(SqlUtil.GetValueExpr));
                     continue;
                 }
-                List<string> composedProperties = this.ProjectedProperties.Copy();
+                List<string> composedProperties = new List<string>(this.ProjectedProperties);
                 foreach (var labelproperty in this.LabelPropertyList)
                 {
                     if (!composedProperties.Contains(labelproperty.Item1) &&
@@ -391,7 +391,7 @@ namespace GraphView
                     parameters.AddRange(this.StepLabelsAtThatMoment[index].Select(SqlUtil.GetValueExpr));
                     continue;
                 }
-                List<string> composedProperties = this.ProjectedProperties.Copy();
+                List<string> composedProperties = new List<string>(this.ProjectedProperties);
                 foreach (var labelproperty in this.LabelPropertyList)
                 {
                     if (!composedProperties.Contains(labelproperty.Item1) &&

@@ -104,7 +104,7 @@ namespace GraphView
                 {
                     WSelectQueryBlock selectQueryBlock = context.ToSelectQueryBlock();
                     Dictionary<string, WSelectElement> projectionMap = new Dictionary<string, WSelectElement>();
-                    WSelectElement value = selectQueryBlock.SelectElements[0].Copy();
+                    WSelectElement value = selectQueryBlock.SelectElements[0];
                     foreach (WSelectElement selectElement in selectQueryBlock.SelectElements)
                     {
                         projectionMap[(selectElement as WSelectScalarExpression).ColumnName] = selectElement;
