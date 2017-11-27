@@ -19,8 +19,10 @@ namespace GraphView
         internal override ScalarFunction CompileToFunction(QueryCompilationContext context, GraphViewCommand command)
         {
             QueryCompilationContext subContext = new QueryCompilationContext(context);
+            Container container = new Container();
+            subContext.OuterContextOp.Container = container;
             GraphViewExecutionOperator subQueryOp = SubQueryExpr.Compile(subContext, command);
-            return new ScalarSubqueryFunction(subQueryOp, subContext.OuterContextOp);
+            return new ScalarSubqueryFunction(subQueryOp, container);
         }
     }
 

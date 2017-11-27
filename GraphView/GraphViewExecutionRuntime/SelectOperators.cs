@@ -427,22 +427,44 @@ namespace GraphView
     internal class CartesianProductOperator : GraphViewExecutionOperator
     {
         private GraphViewExecutionOperator leftInput;
-        private ContainerEnumerator rightInputEnumerator;
+        private GraphViewExecutionOperator rightInput;
+
+        private EnumeratorOperator rightEnumerator;
+        private Container container;
         private RawRecord leftRecord;
+
+        private bool needInitialize;
 
         public CartesianProductOperator(
             GraphViewExecutionOperator leftInput, 
             GraphViewExecutionOperator rightInput)
         {
             this.leftInput = leftInput;
-            ContainerOperator rightInputContainer = new ContainerOperator(rightInput);
-            rightInputEnumerator = rightInputContainer.GetEnumerator();
+            this.rightInput = rightInput;
+
+            this.container = new Container();
+            this.rightEnumerator = new EnumeratorOperator(this.container);
+
+            this.needInitialize = true;
             leftRecord = null;
             Open();
         }
 
         public override RawRecord Next()
         {
+            if (this.needInitialize)
+            {
+                List<RawRecord> inputBuffer = new List<RawRecord>();
+                RawRecord inputRecord;
+                while (this.rightInput.State() && (inputRecord = this.rightInput.Next()) != null)
+                {
+                    inputBuffer.Add(inputRecord);
+                }
+
+                this.container.ResetTableCache(inputBuffer);
+                this.needInitialize = false;
+            }
+
             RawRecord cartesianRecord = null;
 
             while (cartesianRecord == null && State())
@@ -459,9 +481,9 @@ namespace GraphView
                 }
                 else
                 {
-                    if (rightInputEnumerator.MoveNext())
+                    if (rightEnumerator.MoveNext())
                     {
-                        RawRecord rightRecord = rightInputEnumerator.Current;
+                        RawRecord rightRecord = rightEnumerator.Current;
                         cartesianRecord = new RawRecord(leftRecord);
                         cartesianRecord.Append(rightRecord);
                     }
@@ -469,7 +491,7 @@ namespace GraphView
                     {
                         // For the current left record, the enumerator on the right input has reached the end.
                         // Moves to the next left record and resets the enumerator.
-                        rightInputEnumerator.Reset();
+                        rightEnumerator.ResetState();
                         leftRecord = null;
                     }
                 }
@@ -480,8 +502,11 @@ namespace GraphView
 
         public override void ResetState()
         {
-            leftInput.ResetState();
-            rightInputEnumerator.ResetState();
+            this.leftInput.ResetState();
+            this.rightInput.ResetState();
+            this.container.Clear();
+            this.rightEnumerator.ResetState();
+            this.needInitialize = true;
             Open();
         }
     }

@@ -105,7 +105,7 @@ namespace GraphView
 
         public GraphViewExecutionOperator CurrentExecutionOperator { get; set; }
 
-        public ConstantSourceOperator OuterContextOp { get; set; }
+        public EnumeratorOperator OuterContextOp { get; set; }
 
         public HashSet<string> TableReferences { get; private set; }
 
@@ -138,7 +138,7 @@ namespace GraphView
             RawRecordLayout = new Dictionary<WColumnReferenceExpression, int>(parentContext.RawRecordLayout,
                 new WColumnReferenceExpressionComparer());
             TableReferences = new HashSet<string>(parentContext.TableReferences);
-            OuterContextOp = new ConstantSourceOperator();
+            OuterContextOp = new EnumeratorOperator();
             SideEffectStates = parentContext.SideEffectStates;
 
             CarryOn = false;

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -7,205 +8,225 @@ using System.Threading.Tasks;
 // These classes are used as input of subtraversal.
 namespace GraphView
 {
-    internal class ConstantSourceOperator : GraphViewExecutionOperator
+
+    internal class Container
     {
-        private RawRecord _constantSource;
-        ContainerEnumerator sourceEnumerator;
+        protected List<RawRecord> tableCache;
+        public int Count => this.tableCache.Count;
 
-        public RawRecord ConstantSource
+        public Container()
         {
-            get { return _constantSource; }
-            set { _constantSource = value; this.Open(); }
+            this.tableCache = new List<RawRecord>();
         }
 
-        public ContainerEnumerator SourceEnumerator
+        public virtual RawRecord GetRawRecord(int offset, out int dummy)
         {
-            get { return sourceEnumerator; }
-            set
+            dummy = offset;
+            if (offset < 0 || offset >= this.tableCache.Count)
             {
-                sourceEnumerator = value;
-                Open();
-            }
-        }
-
-        public ConstantSourceOperator()
-        {
-            Open();
-        }
-
-        public override RawRecord Next()
-        {
-            if (sourceEnumerator != null)
-            {
-                if (sourceEnumerator.MoveNext())
-                {
-                    return sourceEnumerator.Current;
-                }
-                else
-                {
-                    Close();
-                    return null;
-                }
+                return null;
             }
             else
             {
-                if (!State())
-                    return null;
-
-                Close();
-                return _constantSource;
+                return this.tableCache[offset];
             }
         }
 
-        public override void ResetState()
+        public virtual void Add(RawRecord record)
         {
-            if (sourceEnumerator != null)
+            this.tableCache.Add(record);
+        }
+
+        internal virtual RawRecord this[int index] => tableCache[index];
+
+        public virtual void Clear()
+        {
+            this.tableCache.Clear();
+        }
+
+        public virtual void ResetTableCache(List<RawRecord> records)
+        {
+            foreach (RawRecord record in records)
             {
-                sourceEnumerator.Reset();
-                Open();
+                Debug.Assert(record != null);
             }
-            else
-            {
-                Open();
-            }
+
+            this.tableCache = records;
+        }
+
+        public virtual void ResetTableCache(RawRecord record)
+        {
+            Debug.Assert(record != null);
+
+            this.tableCache = new List<RawRecord> { record };
         }
     }
 
-    internal class ContainerEnumerator
+    internal class ContainerWithFlag : Container
     {
-        private List<RawRecord> tableCache;
-        private ContainerOperator containerOp;
-        private int offset;
+        private List<bool> flags;
+        public new int Count;
 
-        public ContainerEnumerator(List<RawRecord> tableCache, ContainerOperator containerOp)
+        public ContainerWithFlag()
         {
-            this.offset = -1;
-            this.tableCache = tableCache;
-            this.containerOp = containerOp;
+            this.tableCache = new List<RawRecord>();
+            this.flags = new List<bool>();
+            this.Count = 0;
         }
 
-        public ContainerEnumerator()
+        public override RawRecord GetRawRecord(int offset, out int realOffset)
         {
-            this.offset = -1;
+            if (offset < 0 || offset >= this.tableCache.Count)
+            {
+                realOffset = offset;
+                return null;
+            }
+            else
+            {
+                while (offset < this.flags.Count && this.flags[offset] != true)
+                {
+                    offset++;
+                }
+                if (offset >= this.flags.Count)
+                {
+                    realOffset = offset;
+                    return null;
+                }
+                else
+                {
+                    realOffset = offset;
+                    return this.tableCache[offset];
+                }
+            }
         }
 
-        public void ResetTableCache(List<RawRecord> tableCache)
+        public override void Add(RawRecord record)
         {
-            this.offset = -1;
-            this.tableCache = tableCache;
+            this.tableCache.Add(record);
+            this.flags.Add(true);
+            this.Count++;
         }
 
-        public RawRecord Current
+        public void Delete(List<int> indexs)
+        {
+            foreach (int index in indexs)
+            {
+                Debug.Assert(this.flags[index] == true);
+                this.flags[index] = false;
+                this.Count--;
+            }
+        }
+
+        internal override RawRecord this[int index]
         {
             get
             {
-                if (this.offset >= 0 && this.offset < this.tableCache.Count)
+                if (this.flags[index])
                 {
-                    return this.tableCache[this.offset];
+                    return this.tableCache[index];
                 }
                 else
                 {
-                    return null;
+                    throw new ArgumentException();
                 }
             }
         }
 
-        public bool MoveNext()
+        public override void Clear()
         {
-            if (this.offset + 1 >= this.tableCache.Count)
+            this.tableCache.Clear();
+            this.flags.Clear();
+            this.Count = 0;
+        }
+
+        public override void ResetTableCache(List<RawRecord> records)
+        {
+            foreach (RawRecord record in records)
             {
-                this.containerOp?.Next();
-                if (this.offset + 1 < this.tableCache.Count)
-                {
-                    this.offset++;
-                    return true;
-                }
-                else
-                {
-                    return false;
-                }
+                Debug.Assert(record != null);
             }
 
-            this.offset++;
-            return true;
+            this.tableCache = records;
+            this.flags = Enumerable.Repeat(true, this.tableCache.Count).ToList();
+            this.Count = this.tableCache.Count;
         }
 
-        public void ResetState()
+        public override void ResetTableCache(RawRecord record)
         {
-            this.offset = -1;
-            this.tableCache?.Clear();
-            this.containerOp?.ResetState();
-        }
+            Debug.Assert(record != null);
 
-        public void Reset()
-        {
-            this.offset = -1;
+            this.tableCache = new List<RawRecord> { record };
+            this.flags = new List<bool> { true };
+            this.Count = this.tableCache.Count;
         }
     }
 
-    internal class ContainerOperator : GraphViewExecutionOperator
+    internal class EnumeratorOperator : GraphViewExecutionOperator
     {
-        List<RawRecord> tableCache;
-        GraphViewExecutionOperator TableInput;
+        public Container Container { get; set; }
+        private int offset;
 
-        public ContainerOperator(GraphViewExecutionOperator input)
+        public EnumeratorOperator()
         {
-            this.TableInput = input;
-            this.tableCache = new List<RawRecord>();
+            this.offset = -1;
+            this.Open();
+        }
+
+        public EnumeratorOperator(Container container)
+        {
+            this.Container = container;
+            this.offset = -1;
             this.Open();
         }
 
         public override RawRecord Next()
         {
-            if (this.TableInput.State())
+            if (this.Container != null)
             {
-                RawRecord rec = this.TableInput.Next();
-                if (rec != null)
+                if (this.MoveNext())
                 {
-                    this.tableCache.Add(rec);
+                    return this.Current;
                 }
                 else
                 {
-                    this.TableInput.Close();
+                    this.Close();
                     return null;
                 }
             }
-
-            return this.tableCache.Count > 0 ? this.tableCache[this.tableCache.Count - 1] : null;
+            else
+            {
+                if (this.State())
+                {
+                    this.Close();
+                    return new RawRecord();
+                }
+                else
+                {
+                    return null;
+                }
+            }
         }
 
-        public ContainerEnumerator GetEnumerator()
+        public RawRecord Current => this.Container.GetRawRecord(this.offset, out this.offset);
+
+        public bool MoveNext()
         {
-            return new ContainerEnumerator(tableCache, this);
+            this.offset++;
+            RawRecord rec = this.Container.GetRawRecord(this.offset, out this.offset);
+            if (rec != null)
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
         }
 
         public override void ResetState()
         {
-            Open();
-            tableCache.Clear();
-            TableInput.ResetState();
-        }
-    }
-
-    internal class ContainerScanOperator : GraphViewExecutionOperator
-    {
-        ContainerEnumerator containerEnumerator;
-
-        public ContainerScanOperator(ContainerEnumerator enumerator)
-        {
-            containerEnumerator = enumerator;
-        }
-
-        public override RawRecord Next()
-        {
-            if (containerEnumerator.MoveNext())
-            {
-                return containerEnumerator.Current;
-            }
-            else
-            {
-                return null;
-            }
+            this.offset = -1;
+            this.Open();
         }
     }
 }

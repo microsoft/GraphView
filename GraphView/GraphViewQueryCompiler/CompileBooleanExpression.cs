@@ -121,8 +121,10 @@ namespace GraphView
         internal override BooleanFunction CompileToFunction(QueryCompilationContext context, GraphViewCommand command)
         {
             QueryCompilationContext subContext = new QueryCompilationContext(context);
+            Container container = new Container();
+            subContext.OuterContextOp.Container = container;
             GraphViewExecutionOperator subQueryOp = Subquery.SubQueryExpr.Compile(subContext, command);
-            ExistsFunction existsFunc = new ExistsFunction(subQueryOp, subContext.OuterContextOp);
+            ExistsFunction existsFunc = new ExistsFunction(subQueryOp, container);
 
             return existsFunc;
         }
@@ -130,14 +132,13 @@ namespace GraphView
         internal override BooleanFunction CompileToBatchFunction(QueryCompilationContext context, GraphViewCommand command)
         {
             QueryCompilationContext subContext = new QueryCompilationContext(context);
+            Container container = new Container();
+            subContext.OuterContextOp.Container = container;
             subContext.AddField(GremlinKeyword.IndexTableName, command.IndexColumnName, ColumnGraphType.Value, true);
             subContext.InBatchMode = true;
 
-            ContainerEnumerator sourceEnumerator = new ContainerEnumerator();
             GraphViewExecutionOperator subQueryOp = this.Subquery.SubQueryExpr.Compile(subContext, command);
-            subContext.OuterContextOp.SourceEnumerator = sourceEnumerator;
-
-            ExistsFunction existsFunc = new ExistsFunction(subQueryOp, sourceEnumerator);
+            ExistsFunction existsFunc = new ExistsFunction(subQueryOp, container);
 
             return existsFunc;
         }

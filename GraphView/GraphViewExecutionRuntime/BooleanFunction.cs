@@ -396,25 +396,17 @@ namespace GraphView
         // is injected into the subquery through a constant-source scan, 
         // which is in a Cartesian product with the operators compiled from the query. 
         private GraphViewExecutionOperator subqueryOp;
-        private ConstantSourceOperator constantSourceOp;
+        private Container container;
 
-        private ContainerEnumerator sourceEnumerator;
-
-        public ExistsFunction(GraphViewExecutionOperator subqueryOp, ConstantSourceOperator constantSourceOp)
+        public ExistsFunction(GraphViewExecutionOperator subqueryOp, Container container)
         {
             this.subqueryOp = subqueryOp;
-            this.constantSourceOp = constantSourceOp;
-        }
-
-        public ExistsFunction(GraphViewExecutionOperator subqueryOp, ContainerEnumerator sourceEnumerator)
-        {
-            this.subqueryOp = subqueryOp;
-            this.sourceEnumerator = sourceEnumerator;
+            this.container = container;
         }
 
         public override bool Evaluate(RawRecord r)
         {
-            constantSourceOp.ConstantSource = r;
+            this.container.ResetTableCache(r);
             subqueryOp.ResetState();
             RawRecord firstResult = subqueryOp.Next();
             subqueryOp.Close();
@@ -424,8 +416,8 @@ namespace GraphView
 
         public override HashSet<int> EvaluateInBatch(List<RawRecord> records)
         {
+            this.container.ResetTableCache(records);
             this.subqueryOp.ResetState();
-            this.sourceEnumerator.ResetTableCache(records);
 
             HashSet<int> returnIndexes = new HashSet<int>();
             RawRecord rec = null;

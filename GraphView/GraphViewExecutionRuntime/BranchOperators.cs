@@ -18,41 +18,39 @@ namespace GraphView
 
         // use this target traversal to determine which input records will have output
         // and put them together into optionalTraversal
-        private ContainerEnumerator targetSource;
-
         private GraphViewExecutionOperator targetSubQueryOp;
+        private Container targetContainer;
 
-        private ContainerEnumerator sourceEnumerator;
         // The traversal inside the optional function. 
         // The records returned by this operator should have the same number of fields
         // as the records produced by the input operator, i.e., inputIndexes.Count 
-        private readonly GraphViewExecutionOperator optionalTraversal;
+        private GraphViewExecutionOperator optionalTraversal;
+        private Container optionalContainer;
 
-        private List<RawRecord> evaluatedTrueRecords;
-        private Queue<RawRecord> evaluatedFalseRecords;
+        private HashSet<int> haveOutput;
+        private int currentIndex;
 
         private bool needInitialize;
 
         public OptionalOperator(
             GraphViewExecutionOperator inputOp,
             List<int> inputIndexes,
-            ContainerEnumerator targetSource,
+            Container targetContainer,
             GraphViewExecutionOperator targetSubQueryOp,
-            ContainerEnumerator sourceEnumerator,
-            GraphViewExecutionOperator optionalTraversalOp)
+            Container optionalContainer,
+            GraphViewExecutionOperator optionalTraversal)
         {
             this.inputOp = inputOp;
             this.inputIndexes = inputIndexes;
 
-            this.targetSource = targetSource;
+            this.targetContainer = targetContainer;
             this.targetSubQueryOp = targetSubQueryOp;
 
-            this.optionalTraversal = optionalTraversalOp;
-            this.sourceEnumerator = sourceEnumerator;
+            this.optionalContainer = optionalContainer;
+            this.optionalTraversal = optionalTraversal;
 
-            this.evaluatedTrueRecords = new List<RawRecord>();
-            this.evaluatedFalseRecords = new Queue<RawRecord>();
-
+            this.currentIndex = 0;
+            this.haveOutput = new HashSet<int>();
             this.needInitialize = true;
 
             this.Open();
@@ -98,44 +96,43 @@ namespace GraphView
                     return null;
                 }
 
-                // only send one query
-                this.targetSource.ResetTableCache(inputBuffer);
+                this.targetContainer.ResetTableCache(inputBuffer);
                 this.targetSubQueryOp.ResetState();
-                HashSet<int> haveOutput = new HashSet<int>();
-                RawRecord targetOutput;
-                while (this.targetSubQueryOp.State() && (targetOutput = this.targetSubQueryOp.Next()) != null)
+
+                RawRecord rec;
+                while (this.targetSubQueryOp.State() && (rec = this.targetSubQueryOp.Next()) != null)
                 {
-                    haveOutput.Add(int.Parse(targetOutput.RetriveData(0).ToValue));
+                    this.haveOutput.Add(int.Parse(rec.RetriveData(0).ToValue));
                 }
 
-                // determine which branch should the records apply
+                List<RawRecord> optionalInputs = new List<RawRecord>();
                 foreach (RawRecord record in inputBuffer)
                 {
-                    if (haveOutput.Contains(int.Parse(record.RetriveData(0).ToValue)))
+                    if (this.haveOutput.Contains(int.Parse(record.RetriveData(0).ToValue)))
                     {
-                        this.evaluatedTrueRecords.Add(record.GetRange(1));
-                    }
-                    else
-                    {
-                        this.evaluatedFalseRecords.Enqueue(record.GetRange(1));
+                        optionalInputs.Add(record.GetRange(1));
                     }
                 }
-
-                this.sourceEnumerator.ResetTableCache(this.evaluatedTrueRecords);
-                this.optionalTraversal.ResetState();
+                this.optionalContainer.ResetTableCache(optionalInputs);
 
                 this.needInitialize = false;
             }
 
-            RawRecord subOutput;
-            if (this.optionalTraversal.State() && (subOutput = this.optionalTraversal.Next()) != null)
+            while (this.currentIndex < this.targetContainer.Count)
             {
-                return subOutput;
-            }
-
-            if (this.evaluatedFalseRecords.Any())
-            {
-                return this.ConstructForwardingRecord(this.evaluatedFalseRecords.Dequeue());
+                if (this.haveOutput.Contains(this.currentIndex))
+                {
+                    RawRecord record;
+                    if (this.optionalTraversal.State() && (record = this.optionalTraversal.Next()) != null)
+                    {
+                        return record;
+                    }
+                    this.currentIndex++;
+                }
+                else
+                {
+                    return this.ConstructForwardingRecord(this.targetContainer[this.currentIndex++].GetRange(1));
+                }
             }
 
             this.Close();
@@ -145,15 +142,15 @@ namespace GraphView
         public override void ResetState()
         {
             this.inputOp.ResetState();
-            this.targetSource.Reset();
+
+            this.targetContainer.Clear();
             this.targetSubQueryOp.ResetState();
 
-            this.sourceEnumerator.ResetState();
+            this.optionalContainer.Clear();
             this.optionalTraversal.ResetState();
 
-            this.evaluatedTrueRecords.Clear();
-            this.evaluatedFalseRecords.Clear();
-
+            this.currentIndex = 0;
+            this.haveOutput.Clear();
             this.needInitialize = true;
             this.Open();
         }
@@ -161,30 +158,27 @@ namespace GraphView
 
     internal class UnionOperator : GraphViewExecutionOperator
     {
-        // traversal Op and hasAggregate flag.
-        private List<Tuple<GraphViewExecutionOperator, ContainerEnumerator>> traversalList;
+        // traversalOp and its enumerator.
+        private List<GraphViewExecutionOperator> traversalList;
+        private Container container;
 
-
-        private List<RawRecord> inputBuffer;
         private GraphViewExecutionOperator inputOp;
 
         private bool needInitialize;
 
-        public UnionOperator(
-            GraphViewExecutionOperator inputOp)
+        public UnionOperator(GraphViewExecutionOperator inputOp, Container container)
         {
             this.inputOp = inputOp;
-
-            this.inputBuffer = new List<RawRecord>();
-            this.traversalList = new List<Tuple<GraphViewExecutionOperator, ContainerEnumerator>>();
+            this.traversalList = new List<GraphViewExecutionOperator>();
+            this.container = container;
 
             this.needInitialize = true;
             this.Open();
         }
 
-        public void AddTraversal(GraphViewExecutionOperator traversal, ContainerEnumerator sourceEnumerator)
+        public void AddTraversal(GraphViewExecutionOperator traversal)
         {
-            traversalList.Add(new Tuple<GraphViewExecutionOperator, ContainerEnumerator>(traversal, sourceEnumerator));
+            traversalList.Add(traversal);
         }
 
         public override RawRecord Next()
@@ -192,25 +186,25 @@ namespace GraphView
             if (this.needInitialize)
             {
                 // read inputs
+                List<RawRecord> inputBuffer = new List<RawRecord>();
                 RawRecord inputRecord;
                 while (this.inputOp.State() && (inputRecord = this.inputOp.Next()) != null)
                 {
-                    this.inputBuffer.Add(inputRecord);
+                    inputBuffer.Add(inputRecord);
                 }
 
-                foreach (Tuple<GraphViewExecutionOperator, ContainerEnumerator> tuple in this.traversalList)
+                foreach (GraphViewExecutionOperator traversal in this.traversalList)
                 {
-                    tuple.Item1.ResetState();
-                    tuple.Item2.ResetTableCache(inputBuffer);
+                    traversal.ResetState();
                 }
-
+                this.container.ResetTableCache(inputBuffer);
                 this.needInitialize = false;
             }
 
-            foreach (Tuple<GraphViewExecutionOperator, ContainerEnumerator> tuple in this.traversalList)
+            foreach (GraphViewExecutionOperator traversal in this.traversalList)
             {
                 RawRecord result;
-                if (tuple.Item1.State() && (result = tuple.Item1.Next()) != null)
+                if (traversal.State() && (result = traversal.Next()) != null)
                 {
                     return result;
                 }
@@ -224,12 +218,12 @@ namespace GraphView
         {
             this.inputOp.ResetState();
 
-            foreach (Tuple<GraphViewExecutionOperator, ContainerEnumerator> tuple in this.traversalList)
+            foreach (GraphViewExecutionOperator traversal in this.traversalList)
             {
-                tuple.Item1.ResetState();
-                tuple.Item2.ResetState(); // or reset?
+                traversal.ResetState();
             }
 
+            this.container.Clear();
             this.needInitialize = true;
 
             this.Open();
@@ -264,12 +258,12 @@ namespace GraphView
 
         // initialOp recieves records from the input operator
         // and extracts needed columns to generate records that are fed as the initial input into the inner operator.
-        private readonly ContainerEnumerator initialSource;
         private readonly GraphViewExecutionOperator initialOp;
+        private Container initialContainer;
 
         // loop body
-        private readonly ContainerEnumerator repeatTraversalSource;
         private readonly GraphViewExecutionOperator repeatTraversalOp;
+        private Container repeatTraversalContainer;
 
         // After initialization, input records will become repeat rocords,
         // For each loop, this records will be the inputs of repeatTraversalOp(the loop body),
@@ -282,9 +276,9 @@ namespace GraphView
 
         public RepeatOperator(
             GraphViewExecutionOperator inputOp,
-            ContainerEnumerator initialSource,
+            Container initialContainer,
             GraphViewExecutionOperator initialOp,
-            ContainerEnumerator repeatTraversalSource,
+            Container repeatTraversalContainer,
             GraphViewExecutionOperator repeatTraversalOp,
             BooleanFunction emitCondition,
             bool isEmitFront,
@@ -293,10 +287,10 @@ namespace GraphView
             int repeatTimes = -1)
         {
             this.inputOp = inputOp;
-            this.initialSource = initialSource;
+            this.initialContainer = initialContainer;
             this.initialOp = initialOp;
 
-            this.repeatTraversalSource = repeatTraversalSource;
+            this.repeatTraversalContainer = repeatTraversalContainer;
             this.repeatTraversalOp = repeatTraversalOp;
 
             this.emitCondition = emitCondition;
@@ -376,7 +370,7 @@ namespace GraphView
         // apply inputs records to repeatTraversal, and return the results of it
         private List<RawRecord> RepeatOnce(List<RawRecord> records)
         {
-            this.repeatTraversalSource.ResetTableCache(records);
+            this.repeatTraversalContainer.ResetTableCache(records);
             this.repeatTraversalOp.ResetState();
 
             List<RawRecord> result = new List<RawRecord>();
@@ -411,7 +405,7 @@ namespace GraphView
                 }
 
                 // Project to same length
-                this.initialSource.ResetTableCache(inputs);
+                this.initialContainer.ResetTableCache(inputs);
                 while (this.initialOp.State() && (inputRecord = this.initialOp.Next()) != null)
                 {
                     this.repeatRecords.Add(inputRecord);
@@ -480,9 +474,9 @@ namespace GraphView
         {
             this.inputOp.ResetState();
             this.currentRepeatTimes = 0;
-            this.initialSource.Reset();
+            this.initialContainer.Clear();
             this.initialOp.ResetState();
-            this.repeatTraversalSource.Reset();
+            this.repeatTraversalContainer.Clear();
             this.repeatTraversalOp.ResetState();
             this.repeatRecords.Clear();
             this.repeatResultBuffer.Clear();
@@ -495,42 +489,40 @@ namespace GraphView
     {
         private GraphViewExecutionOperator inputOp;
 
-        private ContainerEnumerator targetSource;
+        private Container container;
         private GraphViewExecutionOperator targetSubQueryOp;
 
-        private ContainerEnumerator trueBranchSource;
-        private ContainerEnumerator falseBranchSource;
-
-        private List<RawRecord> evaluatedTrueRecords;
-        private List<RawRecord> evaluatedFalseRecords;
-
+        private Container trueBranchContainer;
         private GraphViewExecutionOperator trueBranchTraversalOp;
+        private Container falseBranchContainer;
         private GraphViewExecutionOperator falseBranchTraversalOp;
+
+        private List<bool> chooseBranch;
+        private int currentIndex;
 
         private bool needInitialize;
 
         public ChooseOperator(
             GraphViewExecutionOperator inputOp,
-            ContainerEnumerator targetSource,
+            Container container,
             GraphViewExecutionOperator targetSubQueryOp,
-            ContainerEnumerator trueBranchSource,
+            Container trueBranchContainer,
             GraphViewExecutionOperator trueBranchTraversalOp,
-            ContainerEnumerator falseBranchSource,
+            Container falseBranchContainer,
             GraphViewExecutionOperator falseBranchTraversalOp
         )
         {
             this.inputOp = inputOp;
-            this.targetSource = targetSource;
+            this.container = container;
             this.targetSubQueryOp = targetSubQueryOp;
 
-            this.trueBranchSource = trueBranchSource;
+            this.trueBranchContainer = trueBranchContainer;
             this.trueBranchTraversalOp = trueBranchTraversalOp;
-            this.falseBranchSource = falseBranchSource;
+
+            this.falseBranchContainer = falseBranchContainer;
             this.falseBranchTraversalOp = falseBranchTraversalOp;
 
-            this.evaluatedTrueRecords = new List<RawRecord>();
-            this.evaluatedFalseRecords = new List<RawRecord>();
-
+            this.chooseBranch = new List<bool>();
             this.needInitialize = true;
             this.Open();
         }
@@ -548,6 +540,7 @@ namespace GraphView
                     batchRawRecord.Append(new StringField(inputBuffer.Count.ToString(), JsonDataType.Int));
                     batchRawRecord.Append(currentRecord);
                     inputBuffer.Add(batchRawRecord);
+                    this.chooseBranch.Add(false);
                 }
 
                 if (!inputBuffer.Any())
@@ -558,48 +551,66 @@ namespace GraphView
                 }
 
                 // only send one query
-                this.targetSource.ResetTableCache(inputBuffer);
+                this.container.ResetTableCache(inputBuffer);
                 this.targetSubQueryOp.ResetState();
-                HashSet<int> haveOutput = new HashSet<int>();
                 RawRecord targetOutput;
                 while (this.targetSubQueryOp.State() && (targetOutput = this.targetSubQueryOp.Next()) != null)
                 {
-                    haveOutput.Add(int.Parse(targetOutput.RetriveData(0).ToValue));
+                    this.chooseBranch[int.Parse(targetOutput.RetriveData(0).ToValue)] = true;
                 }
 
                 // determine which branch should the records apply
+                List<RawRecord> trueRawRecords = new List<RawRecord>();
+                List<RawRecord> falseRawRecords = new List<RawRecord>();
                 foreach (RawRecord record in inputBuffer)
                 {
-                    if (haveOutput.Contains(int.Parse(record.RetriveData(0).ToValue)))
+                    if (this.chooseBranch[int.Parse(record.RetriveData(0).ToValue)])
                     {
-                        this.evaluatedTrueRecords.Add(record.GetRange(1));
+                        trueRawRecords.Add(record.GetRange(1));
                     }
                     else
                     {
-                        this.evaluatedFalseRecords.Add(record.GetRange(1));
+                        falseRawRecords.Add(record.GetRange(1));
                     }
                 }
 
 
-                this.trueBranchSource.ResetTableCache(this.evaluatedTrueRecords);
+                this.trueBranchContainer.ResetTableCache(trueRawRecords);
                 this.trueBranchTraversalOp.ResetState();
 
-                this.falseBranchSource.ResetTableCache(this.evaluatedFalseRecords);
+                this.falseBranchContainer.ResetTableCache(falseRawRecords);
                 this.falseBranchTraversalOp.ResetState();
 
+                this.currentIndex = 0;
                 this.needInitialize = false;
             }
 
-            RawRecord trueBranchTraversalRecord;
-            if (this.trueBranchTraversalOp.State() && (trueBranchTraversalRecord = this.trueBranchTraversalOp.Next()) != null)
+            while (this.currentIndex < this.container.Count)
             {
-                return trueBranchTraversalRecord;
-            }
-
-            RawRecord falseBranchTraversalRecord;
-            if (this.falseBranchTraversalOp.State() && (falseBranchTraversalRecord = this.falseBranchTraversalOp.Next()) != null)
-            {
-                return falseBranchTraversalRecord;
+                if (this.chooseBranch[this.currentIndex])
+                {
+                    RawRecord record;
+                    if (this.trueBranchTraversalOp.State() && (record = this.trueBranchTraversalOp.Next()) != null)
+                    {
+                        return record;
+                    }
+                    else
+                    {
+                        this.currentIndex++;
+                    }
+                }
+                else
+                {
+                    RawRecord record;
+                    if (this.falseBranchTraversalOp.State() && (record = this.falseBranchTraversalOp.Next()) != null)
+                    {
+                        return record;
+                    }
+                    else
+                    {
+                        this.currentIndex++;
+                    }
+                }
             }
 
             this.Close();
@@ -610,16 +621,15 @@ namespace GraphView
         {
             this.inputOp.ResetState();
 
-            this.targetSource.Reset();
+            this.container.Clear();
             this.targetSubQueryOp.ResetState();
 
-            this.evaluatedTrueRecords.Clear();
-            this.evaluatedFalseRecords.Clear();
-            this.trueBranchSource.ResetState();
-            this.falseBranchSource.ResetState();
+            this.trueBranchContainer.Clear();
+            this.falseBranchContainer.Clear();
             this.trueBranchTraversalOp.ResetState();
             this.falseBranchTraversalOp.ResetState();
 
+            this.chooseBranch.Clear();
             this.needInitialize = true;
 
             this.Open();
@@ -630,135 +640,148 @@ namespace GraphView
     {
         private readonly GraphViewExecutionOperator inputOp;
 
-        private readonly ContainerEnumerator targetSource;
+        private readonly Container container;
         private readonly GraphViewExecutionOperator targetSubOp;
 
-        private readonly ContainerEnumerator optionSource;
+        private readonly List<Tuple<FieldObject, Container, GraphViewExecutionOperator>> traversalList;
 
-        private int currentOptionTraversalIndex;
-        private readonly List<Tuple<FieldObject, List<RawRecord>, GraphViewExecutionOperator>> traversalList;
-
-        private readonly List<RawRecord> noneRawRecords;
+        private Container optionNoneContainer;
         private GraphViewExecutionOperator optionNoneTraversalOp;
 
+        private List<int> selectOption;
+        private int currentIndex;
         private readonly Queue<RawRecord> outputBuffer;
         private bool needInitialize;
 
         public ChooseWithOptionsOperator(
             GraphViewExecutionOperator inputOp,
-            ContainerEnumerator targetSource,
-            GraphViewExecutionOperator targetSubOp,
-            ContainerEnumerator optionSource
+            Container container,
+            GraphViewExecutionOperator targetSubOp
         )
         {
             this.inputOp = inputOp;
-            this.targetSource = targetSource;
+            this.container = container;
             this.targetSubOp = targetSubOp;
-            this.optionSource = optionSource;
 
-            this.noneRawRecords = new List<RawRecord>();
             this.optionNoneTraversalOp = null;
 
-            this.traversalList = new List<Tuple<FieldObject, List<RawRecord>, GraphViewExecutionOperator>>();
-            this.outputBuffer = new Queue<RawRecord>();
+            this.traversalList = new List<Tuple<FieldObject, Container, GraphViewExecutionOperator>>();
 
-            this.currentOptionTraversalIndex = 0;
+            this.selectOption = new List<int>();
+            this.currentIndex = 0;
+            this.outputBuffer = new Queue<RawRecord>();
             this.needInitialize = true;
 
             this.Open();
         }
 
-        public void AddOptionTraversal(ScalarFunction value, GraphViewExecutionOperator optionTraversalOp)
+        public void AddOptionTraversal(ScalarFunction value, Container container, GraphViewExecutionOperator optionTraversalOp)
         {
             if (value == null)
             {
                 this.optionNoneTraversalOp = optionTraversalOp;
+                this.optionNoneContainer = container;
                 return;
             }
 
-            this.traversalList.Add(new Tuple<FieldObject, List<RawRecord>, GraphViewExecutionOperator>(
+            this.traversalList.Add(new Tuple<FieldObject, Container, GraphViewExecutionOperator>(
                 value.Evaluate(null),
-                new List<RawRecord>(),
+                container,
                 optionTraversalOp));
         }
-
-
-        private void ChooseOptionBranch(RawRecord input, FieldObject value)
-        {
-            foreach (Tuple<FieldObject, List<RawRecord>, GraphViewExecutionOperator> tuple in this.traversalList)
-            {
-                if (tuple.Item1.Equals(value))
-                {
-                    tuple.Item2.Add(input);
-                    return;
-                }
-            }
-
-            if (this.optionNoneTraversalOp != null)
-            {
-                this.noneRawRecords.Add(input);
-            }
-        }
-
 
         public override RawRecord Next()
         {
             if (this.needInitialize)
             {
-                Queue<RawRecord> inputs = new Queue<RawRecord>();
+                List<RawRecord> inputs = new List<RawRecord>();
                 RawRecord inputRecord;
                 while (this.inputOp.State() && (inputRecord = this.inputOp.Next()) != null)
                 {
                     RawRecord batchRawRecord = new RawRecord();
                     batchRawRecord.Append(new StringField(inputs.Count.ToString(), JsonDataType.Int));
                     batchRawRecord.Append(inputRecord);
-                    inputs.Enqueue(batchRawRecord);
+                    inputs.Add(batchRawRecord);
                 }
 
-                this.targetSource.ResetTableCache(inputs.ToList());
+                if (!inputs.Any())
+                {
+                    this.Close();
+                    return null;
+                }
+
+                this.container.ResetTableCache(inputs);
                 this.targetSubOp.ResetState();
 
+                this.selectOption = Enumerable.Repeat(-1, this.container.Count).ToList();
+                int index = 0;
                 RawRecord targetRecord;
                 while (this.targetSubOp.State() && (targetRecord = this.targetSubOp.Next()) != null)
                 {
-                    Debug.Assert(inputs.Peek().RetriveData(0).ToValue == targetRecord.RetriveData(0).ToValue,
+                    // one input, one output. must one to one
+                    Debug.Assert(this.container[index][0].ToValue == targetRecord[0].ToValue,
                         "The provided traversal of choose() does not map to a value.");
-                    this.ChooseOptionBranch(inputs.Dequeue().GetRange(1), targetRecord[1]);
-                }
 
-                Debug.Assert(!inputs.Any(), "The provided traversal of choose() does not map to a value.");
+                    FieldObject value = targetRecord[1];
+                    RawRecord input = this.container[index].GetRange(1);
+                    for (int i = 0; i < this.traversalList.Count; i++)
+                    {
+                        if (this.traversalList[i].Item1.Equals(value))
+                        {
+                            this.traversalList[i].Item2.Add(input);
+                            this.selectOption[index] = i;
+                            break;
+                        }
 
-                // put none option branch to the last of traversal list
-                if (this.optionNoneTraversalOp != null)
-                {
-                    this.traversalList.Add(new Tuple<FieldObject, List<RawRecord>, GraphViewExecutionOperator>(
-                        null,
-                        this.noneRawRecords,
-                        this.optionNoneTraversalOp));
+                        if (i == this.traversalList.Count - 1 && this.optionNoneTraversalOp != null)
+                        {
+                            this.optionNoneContainer.Add(input);
+                        }
+                    }
+
+                    index++;
                 }
 
                 this.needInitialize = false;
             }
 
-            while (this.State())
+            if (this.State())
             {
                 if (this.outputBuffer.Any())
                 {
                     return this.outputBuffer.Dequeue();
                 }
 
-                if (this.currentOptionTraversalIndex < this.traversalList.Count)
+                while (this.currentIndex < this.container.Count)
                 {
-                    this.optionSource.ResetTableCache(this.traversalList[this.currentOptionTraversalIndex].Item2);
-                    GraphViewExecutionOperator op = this.traversalList[this.currentOptionTraversalIndex].Item3;
-                    RawRecord record;
-                    while (op.State() && (record = op.Next()) != null)
+                    int select = this.selectOption[this.currentIndex];
+                    if (select != -1)
                     {
-                        this.outputBuffer.Enqueue(record);
+                        GraphViewExecutionOperator op = this.traversalList[select].Item3;
+                        RawRecord record;
+                        while (op.State() && (record = op.Next()) != null)
+                        {
+                            this.outputBuffer.Enqueue(record);
+                        }
                     }
-                    this.currentOptionTraversalIndex++;
+                    else if (this.optionNoneTraversalOp != null)
+                    {
+                        RawRecord record;
+                        while (this.optionNoneTraversalOp.State() && (record = this.optionNoneTraversalOp.Next()) != null)
+                        {
+                            this.outputBuffer.Enqueue(record);
+                        }
+                    }
+
+                    this.currentIndex++;
+
+                    if (this.outputBuffer.Any())
+                    {
+                        return this.outputBuffer.Dequeue();
+                    }
                 }
-                else if (!this.outputBuffer.Any())
+
+                if (!this.outputBuffer.Any())
                 {
                     this.Close();
                     return null;
@@ -770,24 +793,20 @@ namespace GraphView
         public override void ResetState()
         {
             this.inputOp.ResetState();
-            this.targetSource.ResetState();
+            this.targetSubOp.ResetState();
+            this.container.Clear();
 
-            this.currentOptionTraversalIndex = 0;
-
-            this.noneRawRecords.Clear();
             this.optionNoneTraversalOp?.ResetState();
+            this.optionNoneContainer?.Clear();
 
-            this.optionSource.ResetState();
-            foreach (Tuple<FieldObject, List<RawRecord>, GraphViewExecutionOperator> tuple in this.traversalList)
+            foreach (Tuple<FieldObject, Container, GraphViewExecutionOperator> tuple in this.traversalList)
             {
                 tuple.Item2.Clear();
                 tuple.Item3.ResetState();
             }
-            if (this.optionNoneTraversalOp != null)
-            {
-                this.traversalList.RemoveAt(-1);
-            }
 
+            this.selectOption.Clear();
+            this.currentIndex = 0;
             this.outputBuffer.Clear();
             this.needInitialize = true;
 
@@ -799,21 +818,19 @@ namespace GraphView
     {
         protected GraphViewExecutionOperator inputOp;
         protected GraphViewExecutionOperator derivedQueryOp;
-        protected ContainerEnumerator sourceEnumerator;
-        protected List<RawRecord> inputRecords;
+        protected Container container;
 
         protected int carryOnCount;
 
         public QueryDerivedTableOperator(
             GraphViewExecutionOperator inputOp,
             GraphViewExecutionOperator derivedQueryOp,
-            ContainerEnumerator sourceEnumerator,
+            Container container,
             int carryOnCount)
         {
             this.inputOp = inputOp;
             this.derivedQueryOp = derivedQueryOp;
-            this.inputRecords = new List<RawRecord>();
-            this.sourceEnumerator = sourceEnumerator;
+            this.container = container;
             this.carryOnCount = carryOnCount;
 
             this.Open();
@@ -823,13 +840,14 @@ namespace GraphView
         {
             if (this.inputOp != null && this.inputOp.State())
             {
+                List<RawRecord> inputRecords = new List<RawRecord>();
                 RawRecord inputRec;
                 while (this.inputOp.State() && (inputRec = this.inputOp.Next()) != null)
                 {
-                    this.inputRecords.Add(inputRec);
+                    inputRecords.Add(inputRec);
                 }
 
-                this.sourceEnumerator.ResetTableCache(this.inputRecords);
+                this.container.ResetTableCache(inputRecords);
             }
 
             RawRecord derivedRecord;
@@ -853,8 +871,7 @@ namespace GraphView
         {
             this.inputOp?.ResetState();
             this.derivedQueryOp.ResetState();
-            this.inputRecords.Clear();
-            this.sourceEnumerator.ResetState();
+            this.container.Clear();
 
             this.Open();
         }
@@ -868,10 +885,10 @@ namespace GraphView
         public QueryDerivedInBatchOperator(
             GraphViewExecutionOperator inputOp,
             GraphViewExecutionOperator derivedQueryOp,
-            ContainerEnumerator sourceEnumerator,
+            Container container,
             ProjectAggregationInBatch projectAggregationInBatchOp,
             int carryOnCount)
-            : base(inputOp, derivedQueryOp, sourceEnumerator, carryOnCount)
+            : base(inputOp, derivedQueryOp, container, carryOnCount)
         {
             this.projectAggregationInBatchOp = projectAggregationInBatchOp;
             this.outputBuffer = new SortedDictionary<int, RawRecord>();
@@ -881,14 +898,15 @@ namespace GraphView
         {
             if (this.inputOp != null && this.inputOp.State())
             {
+                List<RawRecord> inputRecords = new List<RawRecord>();
                 RawRecord inputRec;
                 while (this.inputOp.State() && (inputRec = this.inputOp.Next()) != null)
                 {
-                    this.inputRecords.Add(inputRec);
+                    inputRecords.Add(inputRec);
                     this.outputBuffer[int.Parse(inputRec[0].ToValue)] = null;
                 }
 
-                this.sourceEnumerator.ResetTableCache(this.inputRecords);
+                this.container.ResetTableCache(inputRecords);
             }
 
             RawRecord derivedRecord;

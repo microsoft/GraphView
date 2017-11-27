@@ -13,9 +13,8 @@ namespace GraphView
 
         // The traversal inside the map function.
         private GraphViewExecutionOperator mapTraversal;
+        private Container container;
 
-
-        private ContainerEnumerator sourceEnumerator;
         private List<RawRecord> inputBatch;
         private int batchSize;
 
@@ -24,12 +23,12 @@ namespace GraphView
         public MapOperator(
             GraphViewExecutionOperator inputOp,
             GraphViewExecutionOperator mapTraversal,
-            ContainerEnumerator sourceEnumerator)
+            Container container)
         {
             this.inputOp = inputOp;
             this.mapTraversal = mapTraversal;
+            this.container = container;
 
-            this.sourceEnumerator = sourceEnumerator;
             this.inputBatch = new List<RawRecord>();
             this.batchSize = KW_DEFAULT_BATCH_SIZE;
 
@@ -77,7 +76,7 @@ namespace GraphView
                     return null;
                 }
 
-                this.sourceEnumerator.ResetTableCache(inputBatch);
+                this.container.ResetTableCache(inputBatch);
                 this.mapTraversal.ResetState();
             }
 
@@ -88,6 +87,8 @@ namespace GraphView
         {
             this.inputOp.ResetState();
             this.mapTraversal.ResetState();
+            this.container.Clear();
+
             this.inputBatch.Clear();
             this.inputRecordSet.Clear();
             this.Open();
@@ -100,7 +101,7 @@ namespace GraphView
 
         // The traversal inside the flatMap function.
         private GraphViewExecutionOperator flatMapTraversal;
-        private ContainerEnumerator sourceEnumerator;
+        private Container container;
 
         private List<RawRecord> inputBatch;
 
@@ -109,12 +110,13 @@ namespace GraphView
         public FlatMapOperator(
             GraphViewExecutionOperator inputOp,
             GraphViewExecutionOperator flatMapTraversal,
-            ContainerEnumerator sourceEnumerator,
+            Container container,
             int batchSize = KW_DEFAULT_BATCH_SIZE)
         {
             this.inputOp = inputOp;
             this.flatMapTraversal = flatMapTraversal;
-            this.sourceEnumerator = sourceEnumerator;
+            this.container = container;
+
             this.batchSize = batchSize;
 
             this.inputBatch = new List<RawRecord>();
@@ -155,7 +157,7 @@ namespace GraphView
                     return null;
                 }
 
-                sourceEnumerator.ResetTableCache(inputBatch);
+                this.container.ResetTableCache(inputBatch);
                 flatMapTraversal.ResetState();
             }
 
@@ -164,7 +166,7 @@ namespace GraphView
 
         public override void ResetState()
         {
-            this.sourceEnumerator.ResetState();
+            this.container.Clear();
             this.inputBatch.Clear();
             this.inputOp.ResetState();
             this.flatMapTraversal.ResetState();
@@ -186,7 +188,7 @@ namespace GraphView
 
         // The traversal inside the local function.
         private GraphViewExecutionOperator localTraversal;
-        private ContainerEnumerator sourceEnumerator;
+        private Container container;
 
         private List<RawRecord> inputBatch;
 
@@ -195,12 +197,13 @@ namespace GraphView
         public LocalOperator(
             GraphViewExecutionOperator inputOp,
             GraphViewExecutionOperator localTraversal,
-            ContainerEnumerator sourceEnumerator,
+            Container container,
             int batchSize = KW_DEFAULT_BATCH_SIZE)
         {
             this.inputOp = inputOp;
             this.localTraversal = localTraversal;
-            this.sourceEnumerator = sourceEnumerator;
+            this.container = container;
+
             this.batchSize = batchSize;
 
             this.inputBatch = new List<RawRecord>();
@@ -241,7 +244,7 @@ namespace GraphView
                     return null;
                 }
 
-                this.sourceEnumerator.ResetTableCache(inputBatch);
+                this.container.ResetTableCache(inputBatch);
                 this.localTraversal.ResetState();
             }
 
@@ -250,7 +253,7 @@ namespace GraphView
 
         public override void ResetState()
         {
-            this.sourceEnumerator.ResetState();
+            this.container.Clear();
             this.inputBatch.Clear();
             this.inputOp.ResetState();
             this.localTraversal.ResetState();
@@ -260,23 +263,24 @@ namespace GraphView
 
     internal class CoalesceOperator : GraphViewExecutionOperator
     {
+        private ContainerWithFlag container;
         private List<GraphViewExecutionOperator> traversalList;
         private GraphViewExecutionOperator inputOp;
 
         // In batch mode, each RawRacord has an index,
         // so in this buffer dict, the keys are the indexes,
         // but in the Queue<RawRecord>, the indexes of RawRacords was already removed for output.
-        private Dictionary<int, Queue<RawRecord>> traversalOutputBuffer;
+        private SortedDictionary<int, Queue<RawRecord>> outputBuffer;
 
-        private ContainerEnumerator sourceEnumerator;
         private int batchSize;
 
-        public CoalesceOperator(GraphViewExecutionOperator inputOp, ContainerEnumerator sourceEnumerator)
+        public CoalesceOperator(GraphViewExecutionOperator inputOp, ContainerWithFlag container)
         {
             this.inputOp = inputOp;
+            this.container = container;
             this.traversalList = new List<GraphViewExecutionOperator>();
-            this.traversalOutputBuffer = new Dictionary<int, Queue<RawRecord>>();
-            this.sourceEnumerator = sourceEnumerator;
+            this.outputBuffer = new SortedDictionary<int, Queue<RawRecord>>();
+
             this.batchSize = KW_DEFAULT_BATCH_SIZE;
             this.Open();
         }
@@ -290,19 +294,19 @@ namespace GraphView
         {
             while (this.State())
             {
-                if (this.traversalOutputBuffer.Any())
+                if (this.outputBuffer.Any())
                 {
                     // Output in order
-                    for (int i = 0; i < this.traversalOutputBuffer.Count; i++)
+                    foreach (Queue<RawRecord> queue in this.outputBuffer.Values)
                     {
-                        if (this.traversalOutputBuffer[i].Any())
+                        if (queue.Any())
                         {
-                            return this.traversalOutputBuffer[i].Dequeue();
+                            return queue.Dequeue();
                         }
                     }
 
                     // nothing in any queue
-                    this.traversalOutputBuffer.Clear();
+                    this.outputBuffer.Clear();
                 }
 
                 List<RawRecord> inputBatch = new List<RawRecord>();
@@ -311,16 +315,11 @@ namespace GraphView
 
                 // Indexes of Racords that will be transfered to next sub-traversal.
                 // This set will be updated each time a sub-traversal finish.
-                // TODO: RENAME IT
-                HashSet<int> availableSrcSet = new HashSet<int>();
                 while (inputBatch.Count < this.batchSize && this.inputOp.State() && (inputRecord = inputOp.Next()) != null)
                 {
                     RawRecord batchRawRecord = new RawRecord();
                     batchRawRecord.Append(new StringField(inputBatch.Count.ToString(), JsonDataType.Int));
                     batchRawRecord.Append(inputRecord);
-
-                    availableSrcSet.Add(inputBatch.Count);
-                    this.traversalOutputBuffer[inputBatch.Count] = new Queue<RawRecord>();
 
                     inputBatch.Add(batchRawRecord);
                 }
@@ -331,27 +330,33 @@ namespace GraphView
                     return null;
                 }
 
+                this.container.ResetTableCache(inputBatch);
+                int finishedCount = 0;
+
                 foreach (GraphViewExecutionOperator subTraversal in this.traversalList)
                 {
-                    HashSet<int> subOutputIndexSet = new HashSet<int>();
-                    List<RawRecord> subTraversalSrc = availableSrcSet.Select(i => inputBatch[i]).ToList();
-
                     subTraversal.ResetState();
-                    this.sourceEnumerator.ResetTableCache(subTraversalSrc);
 
                     RawRecord subTraversalRecord;
+                    List<int> deleteIndex = new List<int>();
                     while (subTraversal.State() && (subTraversalRecord = subTraversal.Next()) != null)
                     {
                         int subTraversalRecordIndex = int.Parse(subTraversalRecord[0].ToValue);
-                        RawRecord resultRecord = inputBatch[subTraversalRecordIndex].GetRange(1);
+                        RawRecord resultRecord = this.container[subTraversalRecordIndex].GetRange(1);
                         resultRecord.Append(subTraversalRecord.GetRange(1));
-                        this.traversalOutputBuffer[subTraversalRecordIndex].Enqueue(resultRecord);
-                        subOutputIndexSet.Add(subTraversalRecordIndex);
+
+                        if (!this.outputBuffer.ContainsKey(subTraversalRecordIndex))
+                        {
+                            this.outputBuffer[subTraversalRecordIndex] = new Queue<RawRecord>();
+                            deleteIndex.Add(subTraversalRecordIndex);
+                            finishedCount++;
+                        }
+                        this.outputBuffer[subTraversalRecordIndex].Enqueue(resultRecord);
                     }
 
-                    // Remove the racords that have output already.
-                    availableSrcSet.ExceptWith(subOutputIndexSet);
-                    if (!availableSrcSet.Any())
+                    this.container.Delete(deleteIndex);
+
+                    if (finishedCount == this.container.Count)
                     {
                         break;
                     }
@@ -366,7 +371,12 @@ namespace GraphView
         public override void ResetState()
         {
             this.inputOp.ResetState();
-            this.traversalOutputBuffer?.Clear();
+            this.container.Clear();
+            foreach (GraphViewExecutionOperator traversal in this.traversalList)
+            {
+                traversal.ResetState();
+            }
+            this.outputBuffer.Clear();
             this.Open();
         }
     }
@@ -377,7 +387,7 @@ namespace GraphView
         private GraphViewExecutionOperator inputOp;
 
         private GraphViewExecutionOperator sideEffectTraversal;
-        private ContainerEnumerator sourceEnumerator;
+        private Container container;
 
         private List<RawRecord> inputBatch;
         private Queue<RawRecord> outputBuffer;
@@ -387,12 +397,12 @@ namespace GraphView
         public SideEffectOperator(
             GraphViewExecutionOperator inputOp,
             GraphViewExecutionOperator sideEffectTraversal,
-            ContainerEnumerator sourceEnumerator,
+            Container container,
             int batchSize = KW_DEFAULT_BATCH_SIZE)
         {
             this.inputOp = inputOp;
             this.sideEffectTraversal = sideEffectTraversal;
-            this.sourceEnumerator = sourceEnumerator;
+            this.container = container;
 
             this.inputBatch = new List<RawRecord>();
             this.batchSize = batchSize;
@@ -428,7 +438,7 @@ namespace GraphView
                     return null;
                 }
 
-                this.sourceEnumerator.ResetTableCache(this.inputBatch);
+                this.container.ResetTableCache(this.inputBatch);
                 this.sideEffectTraversal.ResetState();
                 while (this.sideEffectTraversal.State())
                 {
@@ -442,7 +452,7 @@ namespace GraphView
 
         public override void ResetState()
         {
-            this.sourceEnumerator.ResetState();
+            this.container.Clear();
             this.inputBatch.Clear();
             this.inputOp.ResetState();
             this.sideEffectTraversal.ResetState();

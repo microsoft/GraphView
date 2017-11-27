@@ -235,21 +235,16 @@ namespace GraphView
 
     internal class GroupFunction : IAggregateFunction
     {
-        Dictionary<FieldObject, List<RawRecord>> groupedStates;
-        GraphViewExecutionOperator aggregateOp;
-        ConstantSourceOperator tempSourceOp;
-        ContainerOperator groupedSourceOp;
+        private Dictionary<FieldObject, List<RawRecord>> groupedStates;
+        private GraphViewExecutionOperator aggregateOp;
+        private Container container;
         bool isProjectingACollection;
 
-        public GroupFunction(ConstantSourceOperator tempSourceOp,
-            ContainerOperator groupedSourceOp,
-            GraphViewExecutionOperator aggregateOp,
-            bool isProjectingACollection)
+        public GroupFunction(GraphViewExecutionOperator aggregateOp, Container container, bool isProjectingACollection)
         {
             this.groupedStates = new Dictionary<FieldObject, List<RawRecord>>();
-            this.tempSourceOp = tempSourceOp;
-            this.groupedSourceOp = groupedSourceOp;
             this.aggregateOp = aggregateOp;
+            this.container = container;
             this.isProjectingACollection = isProjectingACollection;
         }
 
@@ -284,17 +279,16 @@ namespace GraphView
                 foreach (FieldObject key in groupedStates.Keys)
                 {
                     List<FieldObject> projectFields = new List<FieldObject>();
-                    foreach (RawRecord rawRecord in groupedStates[key])
-                    {
-                        this.groupedSourceOp.ResetState();
-                        this.aggregateOp.ResetState();
-                        this.tempSourceOp.ConstantSource = rawRecord;
-                        this.groupedSourceOp.Next();
+                    this.container.ResetTableCache(groupedStates[key]);
+                    this.aggregateOp.ResetState();
 
+                    for (int i = 0; i < groupedStates[key].Count; i++)
+                    {
                         RawRecord aggregateTraversalRecord = this.aggregateOp.Next();
                         FieldObject projectResult = aggregateTraversalRecord?.RetriveData(0);
 
-                        if (projectResult == null) {
+                        if (projectResult == null)
+                        {
                             throw new GraphViewException("The property does not exist for some of the elements having been grouped.");
                         }
 
@@ -312,21 +306,14 @@ namespace GraphView
                 foreach (KeyValuePair<FieldObject, List<RawRecord>> pair in this.groupedStates)
                 {
                     FieldObject key = pair.Key;
-                    List<RawRecord> aggregatedRecords = pair.Value;
-                    this.groupedSourceOp.ResetState();
                     this.aggregateOp.ResetState();
-
-                    foreach (RawRecord record in aggregatedRecords)
-                    {
-                        this.tempSourceOp.ConstantSource = record;
-                        this.groupedSourceOp.Next();
-                    }
+                    this.container.ResetTableCache(pair.Value);
 
                     RawRecord aggregateTraversalRecord = null;
                     FieldObject aggregateResult = null;
                     while (this.aggregateOp.State() && (aggregateTraversalRecord = this.aggregateOp.Next()) != null)
                     {
-                        aggregateResult = aggregateTraversalRecord.RetriveData(0);
+                        aggregateResult = aggregateTraversalRecord.RetriveData(0) ?? aggregateResult;
                     }
 
                     if (aggregateResult == null) {
@@ -428,19 +415,15 @@ namespace GraphView
                 }
 
                 this.GroupState.Accumulate(new Object[]{ groupByKey, r });
-
-                if (!this.inputOp.State()) {
-                    this.Close();
-                }
                 return r;
             }
 
+            this.Close();
             return null;
         }
 
         public override void ResetState()
         {
-            //GroupState.Init();
             this.inputOp.ResetState();
             this.Open();
         }
@@ -504,8 +487,7 @@ namespace GraphView
         protected ScalarFunction groupByKeyFunction;
 
         protected GraphViewExecutionOperator aggregateOp;
-        protected ConstantSourceOperator tempSourceOp;
-        protected ContainerOperator groupedSourceOp;
+        protected Container container;
 
         protected bool isProjectingACollection;
         protected int carryOnCount;
@@ -515,8 +497,7 @@ namespace GraphView
         public GroupOperator(
             GraphViewExecutionOperator inputOp,
             ScalarFunction groupByKeyFunction,
-            ConstantSourceOperator tempSourceOp,
-            ContainerOperator groupedSourceOp,
+            Container container,
             GraphViewExecutionOperator aggregateOp,
             bool isProjectingACollection,
             int carryOnCount)
@@ -525,8 +506,7 @@ namespace GraphView
 
             this.groupByKeyFunction = groupByKeyFunction;
 
-            this.tempSourceOp = tempSourceOp;
-            this.groupedSourceOp = groupedSourceOp;
+            this.container = container;
             this.aggregateOp = aggregateOp;
 
             this.isProjectingACollection = isProjectingACollection;
@@ -538,7 +518,10 @@ namespace GraphView
 
         public override RawRecord Next()
         {
-            if (!this.State()) return null;
+            if (!this.State())
+            {
+                return null;
+            }
 
             RawRecord r = null;
             while (this.inputOp.State() && (r = this.inputOp.Next()) != null)
@@ -549,7 +532,8 @@ namespace GraphView
                     throw new GraphViewException("The provided property name or traversal does not map to a value for some elements.");
                 }
 
-                if (!this.groupedStates.ContainsKey(groupByKey)) {
+                if (!this.groupedStates.ContainsKey(groupByKey))
+                {
                     this.groupedStates.Add(groupByKey, new List<RawRecord>());
                 }
                 this.groupedStates[groupByKey].Add(r);
@@ -559,20 +543,19 @@ namespace GraphView
 
             if (this.isProjectingACollection)
             {
-                foreach (FieldObject key in this.groupedStates.Keys)
+                foreach (FieldObject key in groupedStates.Keys)
                 {
                     List<FieldObject> projectFields = new List<FieldObject>();
-                    foreach (RawRecord rawRecord in this.groupedStates[key])
-                    {
-                        this.groupedSourceOp.ResetState();
-                        this.aggregateOp.ResetState();
-                        this.tempSourceOp.ConstantSource = rawRecord;
-                        this.groupedSourceOp.Next();
+                    this.container.ResetTableCache(groupedStates[key]);
+                    this.aggregateOp.ResetState();
 
+                    for (int i = 0; i < groupedStates[key].Count; i++)
+                    {
                         RawRecord aggregateTraversalRecord = this.aggregateOp.Next();
                         FieldObject projectResult = aggregateTraversalRecord?.RetriveData(0);
 
-                        if (projectResult == null) {
+                        if (projectResult == null)
+                        {
                             throw new GraphViewException("The property does not exist for some of the elements having been grouped.");
                         }
 
@@ -589,21 +572,14 @@ namespace GraphView
                 foreach (KeyValuePair<FieldObject, List<RawRecord>> pair in this.groupedStates)
                 {
                     FieldObject key = pair.Key;
-                    List<RawRecord> aggregatedRecords = pair.Value;
-                    this.groupedSourceOp.ResetState();
                     this.aggregateOp.ResetState();
-
-                    foreach (RawRecord record in aggregatedRecords)
-                    {
-                        this.tempSourceOp.ConstantSource = record;
-                        this.groupedSourceOp.Next();
-                    }
+                    this.container.ResetTableCache(pair.Value);
 
                     RawRecord aggregateTraversalRecord = null;
                     FieldObject aggregateResult = null;
                     while (this.aggregateOp.State() && (aggregateTraversalRecord = this.aggregateOp.Next()) != null)
                     {
-                        aggregateResult = aggregateTraversalRecord.RetriveData(0);
+                        aggregateResult = aggregateTraversalRecord.RetriveData(0) ?? aggregateResult;
                     }
 
                     if (aggregateResult == null)
@@ -631,6 +607,8 @@ namespace GraphView
         {
             this.inputOp.ResetState();
             this.groupedStates.Clear();
+            this.container.Clear();
+            this.aggregateOp.ResetState();
             this.Open();
         }
     }
@@ -643,12 +621,11 @@ namespace GraphView
         public GroupInBatchOperator(
             GraphViewExecutionOperator inputOp,
             ScalarFunction groupByKeyFunction,
-            ConstantSourceOperator tempSourceOp,
-            ContainerOperator groupedSourceOp,
+            Container container,
             GraphViewExecutionOperator aggregateOp,
             bool isProjectingACollection,
             int carryOnCount)
-            : base(inputOp, groupByKeyFunction, tempSourceOp, groupedSourceOp, aggregateOp,
+            : base(inputOp, groupByKeyFunction, container, aggregateOp,
                 isProjectingACollection, carryOnCount)
         {
             this.processedGroupIndex = 0;
@@ -719,16 +696,14 @@ namespace GraphView
 
             if (this.isProjectingACollection)
             {
-                foreach (FieldObject key in this.groupedStates.Keys)
+                foreach (FieldObject key in groupedStates.Keys)
                 {
                     List<FieldObject> projectFields = new List<FieldObject>();
-                    foreach (RawRecord rawRecord in this.groupedStates[key])
-                    {
-                        this.groupedSourceOp.ResetState();
-                        this.aggregateOp.ResetState();
-                        this.tempSourceOp.ConstantSource = rawRecord;
-                        this.groupedSourceOp.Next();
+                    this.container.ResetTableCache(groupedStates[key]);
+                    this.aggregateOp.ResetState();
 
+                    for (int i = 0; i < groupedStates[key].Count; i++)
+                    {
                         RawRecord aggregateTraversalRecord = this.aggregateOp.Next();
                         FieldObject projectResult = aggregateTraversalRecord?.RetriveData(0);
 
@@ -750,21 +725,14 @@ namespace GraphView
                 foreach (KeyValuePair<FieldObject, List<RawRecord>> pair in this.groupedStates)
                 {
                     FieldObject key = pair.Key;
-                    List<RawRecord> aggregatedRecords = pair.Value;
-                    this.groupedSourceOp.ResetState();
                     this.aggregateOp.ResetState();
-
-                    foreach (RawRecord record in aggregatedRecords)
-                    {
-                        this.tempSourceOp.ConstantSource = record;
-                        this.groupedSourceOp.Next();
-                    }
+                    this.container.ResetTableCache(pair.Value);
 
                     RawRecord aggregateTraversalRecord = null;
                     FieldObject aggregateResult = null;
                     while (this.aggregateOp.State() && (aggregateTraversalRecord = this.aggregateOp.Next()) != null)
                     {
-                        aggregateResult = aggregateTraversalRecord.RetriveData(0);
+                        aggregateResult = aggregateTraversalRecord.RetriveData(0) ?? aggregateResult;
                     }
 
                     if (aggregateResult == null)

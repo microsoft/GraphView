@@ -105,17 +105,17 @@ namespace GraphView
         // is injected into the subquery through a constant-source scan, 
         // which is in a Cartesian product with the operators compiled from the query. 
         private GraphViewExecutionOperator subqueryOp;
-        private ConstantSourceOperator constantSourceOp;
+        private Container container;
 
-        public ScalarSubqueryFunction(GraphViewExecutionOperator subqueryOp, ConstantSourceOperator constantSourceOp)
+        public ScalarSubqueryFunction(GraphViewExecutionOperator subqueryOp, Container container)
         {
             this.subqueryOp = subqueryOp;
-            this.constantSourceOp = constantSourceOp;
+            this.container = container;
         }
 
         public override FieldObject Evaluate(RawRecord record)
         {
-            constantSourceOp.ConstantSource = record;
+            this.container.ResetTableCache(record);
             subqueryOp.ResetState();
             RawRecord firstResult = subqueryOp.Next();
             subqueryOp.Close();
