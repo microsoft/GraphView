@@ -27,7 +27,8 @@ namespace GraphView
         Date,
         Null,
         Object,
-        Array
+        Array,
+        Unknown
     }
 
     internal class JsonDataTypeHelper

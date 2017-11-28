@@ -77,24 +77,24 @@ namespace GraphView
                 if (property.Value is WValueExpression)
                 {
                     WValueExpression value = property.Value as WValueExpression;
-                    Dictionary<string, Tuple<JValue, ScalarSubqueryFunction>> meta = new Dictionary<string, Tuple<JValue, ScalarSubqueryFunction>>();
+                    Dictionary<string, Tuple<StringField, ScalarSubqueryFunction>> meta = new Dictionary<string, Tuple<StringField, ScalarSubqueryFunction>>();
                     foreach (KeyValuePair<WValueExpression, WScalarExpression> pair in property.MetaProperties)
                     {
                         string name = pair.Key.Value;
                         if (pair.Value is WValueExpression)
                         {
                             WValueExpression metaValue = pair.Value as WValueExpression;
-                            meta.Add(name, new Tuple<JValue, ScalarSubqueryFunction>(metaValue.ToJValue(), null));
+                            meta.Add(name, new Tuple<StringField, ScalarSubqueryFunction>(metaValue.ToStringField(), null));
                         }
                         else
                         {
                             WScalarSubquery metaScalarSubquery = pair.Value as WScalarSubquery;
                             ScalarSubqueryFunction metaValueFunction = (ScalarSubqueryFunction)metaScalarSubquery.CompileToFunction(context, command);
-                            meta.Add(name, new Tuple<JValue, ScalarSubqueryFunction>(null, metaValueFunction));
+                            meta.Add(name, new Tuple<StringField, ScalarSubqueryFunction>(null, metaValueFunction));
                         }
                     }
 
-                    PropertyTuple valueProperty = new PropertyTuple(property.Cardinality, property.Key.Value, value.ToJValue(), meta);
+                    PropertyTuple valueProperty = new PropertyTuple(property.Cardinality, property.Key.Value, value.ToStringField(), meta);
                     vertexProperties.Add(valueProperty);
                 }
                 else
@@ -102,20 +102,20 @@ namespace GraphView
                     WScalarSubquery scalarSubquery = property.Value as WScalarSubquery;
                     ScalarSubqueryFunction valueFunction = (ScalarSubqueryFunction)scalarSubquery.CompileToFunction(context, command);
 
-                    Dictionary<string, Tuple<JValue, ScalarSubqueryFunction>> meta = new Dictionary<string, Tuple<JValue, ScalarSubqueryFunction>>();
+                    Dictionary<string, Tuple<StringField, ScalarSubqueryFunction>> meta = new Dictionary<string, Tuple<StringField, ScalarSubqueryFunction>>();
                     foreach (KeyValuePair<WValueExpression, WScalarExpression> pair in property.MetaProperties)
                     {
                         string name = pair.Key.Value;
                         if (pair.Value is WValueExpression)
                         {
                             WValueExpression metaValue = pair.Value as WValueExpression;
-                            meta.Add(name, new Tuple<JValue, ScalarSubqueryFunction>(metaValue.ToJValue(), null));
+                            meta.Add(name, new Tuple<StringField, ScalarSubqueryFunction>(metaValue.ToStringField(), null));
                         }
                         else
                         {
                             WScalarSubquery metaScalarSubquery = pair.Value as WScalarSubquery;
                             ScalarSubqueryFunction metaValueFunction = (ScalarSubqueryFunction)metaScalarSubquery.CompileToFunction(context, command);
-                            meta.Add(name, new Tuple<JValue, ScalarSubqueryFunction>(null, metaValueFunction));
+                            meta.Add(name, new Tuple<StringField, ScalarSubqueryFunction>(null, metaValueFunction));
                         }
                     }
 
@@ -298,7 +298,7 @@ namespace GraphView
                 if (property.Value is WValueExpression)
                 {
                     WValueExpression value = property.Value as WValueExpression;
-                    Dictionary<string, Tuple<JValue, ScalarSubqueryFunction>> meta = new Dictionary<string, Tuple<JValue, ScalarSubqueryFunction>>();
+                    Dictionary<string, Tuple<StringField, ScalarSubqueryFunction>> meta = new Dictionary<string, Tuple<StringField, ScalarSubqueryFunction>>();
 
                     foreach (KeyValuePair<WValueExpression, WScalarExpression> pair in property.MetaProperties)
                     {
@@ -306,17 +306,17 @@ namespace GraphView
                         if (pair.Value is WValueExpression)
                         {
                             WValueExpression metaValue = pair.Value as WValueExpression;
-                            meta.Add(name, new Tuple<JValue, ScalarSubqueryFunction>(metaValue.ToJValue(), null));
+                            meta.Add(name, new Tuple<StringField, ScalarSubqueryFunction>(metaValue.ToStringField(), null));
                         }
                         else
                         {
                             WScalarSubquery metaScalarSubquery = pair.Value as WScalarSubquery;
                             ScalarSubqueryFunction metaValueFunction = (ScalarSubqueryFunction)metaScalarSubquery.CompileToFunction(context, command);
-                            meta.Add(name, new Tuple<JValue, ScalarSubqueryFunction>(null, metaValueFunction));
+                            meta.Add(name, new Tuple<StringField, ScalarSubqueryFunction>(null, metaValueFunction));
                         }
                     }
 
-                    PropertyTuple valueProperty = new PropertyTuple(property.Cardinality, property.Key.Value, value.ToJValue(), meta);
+                    PropertyTuple valueProperty = new PropertyTuple(property.Cardinality, property.Key.Value, value.ToStringField(), meta);
                     propertiesList.Add(valueProperty);
                 }
                 else
@@ -324,20 +324,20 @@ namespace GraphView
                     WScalarSubquery scalarSubquery = property.Value as WScalarSubquery;
                     ScalarSubqueryFunction valueFunction = (ScalarSubqueryFunction)scalarSubquery.CompileToFunction(context, command);
 
-                    Dictionary<string, Tuple<JValue, ScalarSubqueryFunction>> meta = new Dictionary<string, Tuple<JValue, ScalarSubqueryFunction>>();
+                    Dictionary<string, Tuple<StringField, ScalarSubqueryFunction>> meta = new Dictionary<string, Tuple<StringField, ScalarSubqueryFunction>>();
                     foreach (KeyValuePair<WValueExpression, WScalarExpression> pair in property.MetaProperties)
                     {
                         string name = pair.Key.Value;
                         if (pair.Value is WValueExpression)
                         {
                             WValueExpression metaValue = pair.Value as WValueExpression;
-                            meta.Add(name, new Tuple<JValue, ScalarSubqueryFunction>(metaValue.ToJValue(), null));
+                            meta.Add(name, new Tuple<StringField, ScalarSubqueryFunction>(metaValue.ToStringField(), null));
                         }
                         else
                         {
                             WScalarSubquery metaScalarSubquery = pair.Value as WScalarSubquery;
                             ScalarSubqueryFunction metaValueFunction = (ScalarSubqueryFunction)metaScalarSubquery.CompileToFunction(context, command);
-                            meta.Add(name, new Tuple<JValue, ScalarSubqueryFunction>(null, metaValueFunction));
+                            meta.Add(name, new Tuple<StringField, ScalarSubqueryFunction>(null, metaValueFunction));
                         }
                     }
 

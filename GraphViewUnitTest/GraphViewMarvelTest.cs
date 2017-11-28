@@ -228,6 +228,7 @@ namespace GraphViewUnitTest
             }
         }
 
+        [Ignore]
         [TestMethod]
         public void GraphViewMarvelInsertDeleteTest()
         {
@@ -246,6 +247,7 @@ namespace GraphViewUnitTest
             graph.g().V().As("v").Has("name", "WOODGOD").AddE("appeared").To(graph.g().V().Has("name", "AVF 4")).Next();
         }
 
+        [Ignore]
         [TestMethod]
         public void GraphViewMarvelInsertTest()
         {

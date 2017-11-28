@@ -121,7 +121,7 @@ namespace GraphView
                 }
 
                 JObject meta = new JObject();
-                foreach (KeyValuePair<string, Tuple<JValue, ScalarSubqueryFunction>> pair in property.MetaProperties)
+                foreach (KeyValuePair<string, Tuple<StringField, ScalarSubqueryFunction>> pair in property.MetaProperties)
                 {
                     meta[pair.Key] = property.GetMetaPropertyJValue(pair.Key, record);
                 }
@@ -660,7 +660,7 @@ namespace GraphView
                 // Construct single property
                 JObject meta = new JObject();
                 List<Tuple<string, JValue>> metaList = new List<Tuple<string, JValue>>();
-                foreach (KeyValuePair<string, Tuple<JValue, ScalarSubqueryFunction>> pair in property.MetaProperties)
+                foreach (KeyValuePair<string, Tuple<StringField, ScalarSubqueryFunction>> pair in property.MetaProperties)
                 {
                     JValue metaValue = property.GetMetaPropertyJValue(pair.Key, record);
                     meta[pair.Key] = metaValue;

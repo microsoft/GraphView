@@ -466,6 +466,22 @@ namespace GraphView
             return string.Format(CultureInfo.CurrentCulture, SingleQuoted ? "{0}'{1}'" : "{0}{1}", indent, Value);
         }
 
+        internal StringField ToStringField()
+        {
+            if (this.SingleQuoted)
+            {
+                return new StringField(this.Value, JsonDataType.String);
+            }
+
+            bool boolValue;
+            if (bool.TryParse(this.Value, out boolValue))
+            {
+                return new StringField(this.Value, JsonDataType.Boolean);
+            }
+
+            return new StringField(this.Value, JsonDataType.Unknown);
+        }
+
         public override void Accept(WSqlFragmentVisitor visitor)
         {
             if (visitor != null)
