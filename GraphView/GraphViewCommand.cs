@@ -25,15 +25,17 @@
 // 
 using System;
 using System.Collections.Generic;
+using System.Runtime.Serialization;
 
 
 namespace GraphView
 {
-    public class GraphViewCommand : IDisposable
+    [Serializable]
+    public class GraphViewCommand : IDisposable, ISerializable
     {
         public GraphViewConnection Connection { get; set; }
 
-        public VertexObjectCache VertexCache { get; }
+        public VertexObjectCache VertexCache { get; private set; }
 
         public bool InLazyMode { get; set; } = false;
         
@@ -60,6 +62,33 @@ namespace GraphView
         {
             CommandText = commandText;
             this.Connection = connection;
+        }
+
+        protected GraphViewCommand(SerializationInfo info, StreamingContext context)
+        {
+            this.Connection = (GraphViewConnection)info.GetValue("Connection", typeof(GraphViewConnection));
+            this.InLazyMode = info.GetBoolean("InLazyMode");
+            this.OutputFormat = (OutputFormat)info.GetValue("OutputFormat", typeof(OutputFormat));
+            this.VertexCache = new VertexObjectCache(this);
+            // CommandText and indexColumnCount don't need be serialized and deserialized.
+        }
+
+        public void GetObjectData(SerializationInfo info, StreamingContext context)
+        {
+            info.AddValue("Connection", this.Connection, typeof(GraphViewConnection));
+            info.AddValue("InLazyMode", this.InLazyMode, typeof(bool));
+            info.AddValue("OutputFormat", this.OutputFormat, typeof(OutputFormat));
+        }
+
+        // we need this method to test command-serialization.
+        public void SetCommand(GraphViewCommand command)
+        {
+            this.Connection = command.Connection;
+            this.VertexCache = command.VertexCache;
+            this.InLazyMode = command.InLazyMode;
+            this.OutputFormat = command.OutputFormat;
+            this.CommandText = command.CommandText;
+            this.indexColumnCount = command.indexColumnCount;
         }
 
         public IEnumerable<string> Execute()

@@ -38,6 +38,7 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Reflection;
+using System.Runtime.Serialization;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Azure.Documents;
@@ -61,7 +62,8 @@ namespace GraphView
     /// Connector to a graph database. The class inherits most functions of SqlConnection,
     /// and provides a number of GraphView-specific functions.
     /// </summary>
-    public class GraphViewConnection : IDisposable 
+    [Serializable]
+    public class GraphViewConnection : IDisposable, ISerializable
     {
         internal static int InClauseLimit { get; } = 1000;
 
@@ -70,6 +72,9 @@ namespace GraphView
         public string DocDBPrimaryKey { get; }
         public string DocDBDatabaseId { get; }
         public string DocDBCollectionId { get; }
+
+        // store parameter. it will be used when serialize
+        private string partitionByKeyIfViaGraphAPI;
 
         public GraphType GraphType { get; internal set; }
 
@@ -206,6 +211,8 @@ namespace GraphView
             this.DocDBDatabaseId = docDBDatabaseID;
             this.DocDBCollectionId = docDBCollectionID;
             this.UseReverseEdges = useReverseEdges;
+            // store parameter
+            this.partitionByKeyIfViaGraphAPI = partitionByKeyIfViaGraphAPI;
 
             this.GraphType = graphType;
 
@@ -309,6 +316,8 @@ namespace GraphView
             this.UseReverseEdges = useReverseEdges;
             this.Identifier = jsonServerConnectionString;
             this.EdgeSpillThreshold = edgeSpillThreshold ?? 0;
+            // store parameter
+            this.partitionByKeyIfViaGraphAPI = partitionByKeyIfViaGraphApi;
 
             this.jsonServerCollectionName = collectionName;
             EnsureCollectionExist(this.JsonServerClient, this.jsonServerCollectionName);
@@ -348,6 +357,44 @@ namespace GraphView
             if (graphType != GraphType.GraphAPIOnly)
             {
                 Debug.Assert(edgeSpillThreshold == 1);
+            }
+        }
+
+        // deserialize for DocumentDB
+        protected GraphViewConnection(SerializationInfo info, StreamingContext context)
+            : this(info.GetString("docDBEndpointUrl"),
+                 info.GetString("docDBAuthorizationKey"),
+                 info.GetString("docDBDatabaseID"),
+                 info.GetString("docDBCollectionID"),
+                 (GraphType)info.GetValue("graphType", typeof(GraphType)),
+                 info.GetBoolean("useReverseEdges"),
+                 info.GetInt32("edgeSpillThreshold"),
+                 info.GetString("partitionByKeyIfViaGraphAPI"),
+                 info.GetString("preferredLocation"))
+        { }
+
+        // serialize for DocumentDB
+        public void GetObjectData(SerializationInfo info, StreamingContext context)
+        {
+            if (this.DocDBClient != null)
+            {
+                info.AddValue("docDBEndpointUrl", this.DocDBUrl, typeof(string));
+                info.AddValue("docDBAuthorizationKey", this.DocDBPrimaryKey, typeof(string));
+                info.AddValue("docDBDatabaseID", this.DocDBDatabaseId, typeof(string));
+                info.AddValue("docDBCollectionID", this.DocDBCollectionId, typeof(string));
+                info.AddValue("graphType", this.GraphType, typeof(GraphType));
+                info.AddValue("useReverseEdges", this.UseReverseEdges, typeof(bool));
+                info.AddValue("edgeSpillThreshold", this.EdgeSpillThreshold, typeof(int));
+                info.AddValue("partitionByKeyIfViaGraphAPI", this.partitionByKeyIfViaGraphAPI, typeof(string));
+                ConnectionPolicy connectionPolicy = this.DocDBClient.ConnectionPolicy;
+                if (connectionPolicy.PreferredLocations.Count == 1)
+                {
+                    info.AddValue("preferredLocation", connectionPolicy.PreferredLocations[0], typeof(string));
+                }
+                else
+                {
+                    info.AddValue("preferredLocation", null, typeof(string));
+                }
             }
         }
 

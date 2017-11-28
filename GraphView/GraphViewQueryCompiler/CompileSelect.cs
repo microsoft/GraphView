@@ -1,4 +1,5 @@
-﻿using System;
+﻿#define USE_SERIALIZE
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Data;
@@ -1447,6 +1448,12 @@ namespace GraphView
                 op = st.Compile(statementContext, command);
                 priorContext = statementContext;
             }
+
+#if USE_SERIALIZE
+            GraphViewSerializer.SerializeCommand(command);
+            // because the command is used in test-case later, we can only set fields and properties of the command.
+            command.SetCommand(GraphViewSerializer.DeserializeCommand());
+#endif
 
             // Returns the last execution operator
             // To consider: prior execution operators that have no links to the last operator will not be executed.
