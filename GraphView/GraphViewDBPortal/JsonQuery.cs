@@ -1,32 +1,44 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
+using System.Runtime.Serialization;
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.SqlServer.TransactSql.ScriptDom;
 
 namespace GraphView.GraphViewDBPortal
 {
-
+    [DataContract]
     internal class JsonQuery
     {
+        [DataMember]
         public List<string> NodeProperties { get; set; }
-
+        [DataMember]
         public List<string> EdgeProperties { get; set; }
+
         public WBooleanExpression RawWhereClause;
 
+        [DataMember]
         public string NodeAlias;
+        [DataMember]
         public string EdgeAlias;
 
         // Note: this Dict is used to contruct select clause.
-        private readonly Dictionary<string, List<WPrimaryExpression>> selectDictionary;
-
+        [DataMember]
+        private Dictionary<string, List<WPrimaryExpression>> selectDictionary;
+        [DataMember]
         public HashSet<string> FlatProperties;
-
+        [DataMember]
         public Dictionary<string, string> JoinDictionary;
 
         // Only JsonServer needs it, given by JsonServerDbPortal
+        [DataMember]
         public string JsonServerCollectionName;
+
+        [DataMember]
+        private string dummyQueryString;
 
         public JsonQuery()
         {
@@ -288,5 +300,25 @@ namespace GraphView.GraphViewDBPortal
                     throw new NotImplementedException();
             }
         }
+
+        [OnSerializing]
+        private void ConstructQueryString(StreamingContext context)
+        {
+            JsonQueryConfig.useSquareBracket = true;
+            this.dummyQueryString = "SELECT *\nFROM T\n" + $"WHERE {this.RawWhereClause}";
+            JsonQueryConfig.useSquareBracket = false;
+        }
+
+        [OnDeserialized]
+        private void ConstructWhereClause(StreamingContext context)
+        {
+            this.RawWhereClause = new WSqlParser().ParseWhereClauseFromSelect(this.dummyQueryString);
+        }
+
+    }
+
+    internal static class JsonQueryConfig
+    {
+        public static bool useSquareBracket = false;
     }
 }

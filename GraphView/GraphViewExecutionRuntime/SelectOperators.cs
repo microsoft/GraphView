@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
+using System.Runtime.Serialization;
 using System.Text;
 using GraphView.GraphViewDBPortal;
 using Microsoft.Azure.Documents.Partitioning;
@@ -11,13 +12,13 @@ using static GraphView.DocumentDBKeywords;
 
 namespace GraphView
 {
-
+    [DataContract]
     internal class FetchNodeOperator : GraphViewExecutionOperator
     {
-        private Queue<RawRecord> outputBuffer;
+        [DataMember]
         private readonly JsonQuery vertexQuery;
 
-        private readonly GraphViewCommand command;
+        private GraphViewCommand command;
 
         private IEnumerator<Tuple<VertexField, RawRecord>> verticesEnumerator;
 
@@ -42,13 +43,21 @@ namespace GraphView
         public override void ResetState()
         {
             this.verticesEnumerator = this.command.Connection.CreateDatabasePortal().GetVerticesAndEdgesViaVertices(this.vertexQuery, this.command);
-            this.outputBuffer?.Clear();
             this.Open();
+        }
+
+        [OnDeserialized]
+        private void Reconstruct(StreamingContext context)
+        {
+            this.command = SerializationData.Command;
+            this.verticesEnumerator = this.command.Connection.CreateDatabasePortal().GetVerticesAndEdgesViaVertices(this.vertexQuery, this.command);
         }
     }
 
+    [DataContract]
     internal class FetchEdgeOperator : GraphViewExecutionOperator
     {
+        [DataMember]
         private JsonQuery edgeQuery;
         private GraphViewCommand command;
 
@@ -78,6 +87,13 @@ namespace GraphView
             this.verticesAndEdgesEnumerator = this.command.Connection.CreateDatabasePortal().GetVerticesAndEdgesViaEdges(this.edgeQuery, this.command);
             this.Open();
         }
+
+        [OnDeserialized]
+        private void Reconstruct(StreamingContext context)
+        {
+            this.command = SerializationData.Command;
+            this.verticesAndEdgesEnumerator = this.command.Connection.CreateDatabasePortal().GetVerticesAndEdgesViaEdges(this.edgeQuery, this.command);
+        }
     }
 
 
@@ -91,26 +107,33 @@ namespace GraphView
     /// 
     /// This operators emulates the nested-loop join algorithm.
     /// </summary>
+    [DataContract]
     internal class TraversalOperator : GraphViewExecutionOperator
     {
+        [DataMember]
         private int outputBufferSize;
+        [DataMember]
         private int batchSize = 5000;
         private Queue<RawRecord> outputBuffer;
         private GraphViewCommand command;
+        [DataMember]
         private GraphViewExecutionOperator inputOp;
         
         internal enum TraversalTypeEnum
         { Source, Sink, Other, Both }
 
+        [DataMember]
         private int edgeFieldIndex;
         //
         // traversal type indicates which vertexId of the EdgeField would be used as the traversal destination 
         //
+        [DataMember]
         private TraversalTypeEnum traversalType;
 
         // The query that describes predicates on the sink vertices and its properties to return.
         // It is null if the sink vertex has no predicates and no properties other than sink vertex ID
         // are to be returned.  
+        [DataMember]
         private JsonQuery sinkVertexQuery;
 
         // Deprecated currently.
@@ -118,6 +141,7 @@ namespace GraphView
         // must match the field in the sink record. 
         // This list is not null when sink vertices have edges pointing back 
         // to the vertices other than the source vertices in the records by the input operator. 
+        [DataMember]
         private List<Tuple<int, int>> matchingIndexes;
 
         public TraversalOperator(
@@ -318,11 +342,20 @@ namespace GraphView
             outputBuffer?.Clear();
             Open();
         }
+
+        [OnDeserialized]
+        private void Reconstruct(StreamingContext context)
+        {
+            this.command = SerializationData.Command;
+        }
     }
 
+    [DataContract]
     internal class FilterOperator : GraphViewExecutionOperator
     {
+        [DataMember]
         public GraphViewExecutionOperator Input { get; private set; }
+        [DataMember]
         public BooleanFunction Func { get; private set; }
 
         public FilterOperator(GraphViewExecutionOperator input, BooleanFunction func)
@@ -356,10 +389,14 @@ namespace GraphView
         }
     }
 
+    [DataContract]
     internal class FilterInBatchOperator : GraphViewExecutionOperator
     {
+        [DataMember]
         private readonly GraphViewExecutionOperator input;
+        [DataMember]
         private readonly BooleanFunction func;
+        [DataMember]
         private readonly int batchSize;
 
         private int index;
@@ -422,11 +459,22 @@ namespace GraphView
             this.returnIndexes.Clear();
             this.Open();
         }
+
+        [OnDeserialized]
+        private void Reconstruct(StreamingContext context)
+        {
+            this.index = 0;
+            this.inputBatch = new List<RawRecord>();
+            this.returnIndexes = new HashSet<int>();
+        }
     }
 
+    [DataContract]
     internal class CartesianProductOperator : GraphViewExecutionOperator
     {
+        [DataMember]
         private GraphViewExecutionOperator leftInput;
+        [DataMember]
         private GraphViewExecutionOperator rightInput;
 
         private EnumeratorOperator rightEnumerator;
@@ -443,7 +491,8 @@ namespace GraphView
             this.rightInput = rightInput;
 
             this.container = new Container();
-            this.rightEnumerator = new EnumeratorOperator(this.container);
+            int containerIndex = SerializationData.AddContainers(this.container);
+            this.rightEnumerator = new EnumeratorOperator(this.container, containerIndex);
 
             this.needInitialize = true;
             leftRecord = null;
@@ -509,14 +558,29 @@ namespace GraphView
             this.needInitialize = true;
             Open();
         }
+
+        [OnDeserialized]
+        private void Reconstruct(StreamingContext context)
+        {
+            this.container = new Container();
+            int containerIndex = SerializationData.AddContainers(this.container);
+            this.rightEnumerator = new EnumeratorOperator(this.container, containerIndex);
+
+            this.needInitialize = true;
+            leftRecord = null;
+        }
     }
 
+    [DataContract]
+    [KnownType(typeof(OrderInBatchOperator))]
     internal class OrderOperator : GraphViewExecutionOperator
     {
+        [DataMember]
         protected GraphViewExecutionOperator inputOp;
         protected List<RawRecord> inputBuffer;
         protected int returnIndex;
 
+        [DataMember]
         protected List<Tuple<ScalarFunction, IComparer>> orderByElements;
 
         public OrderOperator(GraphViewExecutionOperator inputOp, List<Tuple<ScalarFunction, IComparer>> orderByElements)
@@ -582,6 +646,7 @@ namespace GraphView
         }
     }
 
+    [DataContract]
     internal class OrderInBatchOperator : OrderOperator
     {
         private RawRecord firstRecordInGroup;
@@ -664,14 +729,25 @@ namespace GraphView
             base.ResetState();
             this.inputBuffer = new List<RawRecord>();
         }
+
+        [OnDeserialized]
+        private void Reconstruct(StreamingContext context)
+        {
+            this.inputBuffer = new List<RawRecord>();
+        }
     }
 
+    [DataContract]
     internal class OrderLocalOperator : GraphViewExecutionOperator
     {
+        [DataMember]
         private GraphViewExecutionOperator inputOp;
+        [DataMember]
         private int inputObjectIndex;
+        [DataMember]
         private List<Tuple<ScalarFunction, IComparer>> orderByElements;
 
+        [DataMember]
         private List<string> populateColumns;
 
         public OrderLocalOperator(
@@ -792,9 +868,12 @@ namespace GraphView
         }
     }
 
+    [DataContract]
     internal class ProjectOperator : GraphViewExecutionOperator
     {
+        [DataMember]
         private List<ScalarFunction> selectScalarList;
+        [DataMember]
         private GraphViewExecutionOperator inputOp;
 
         private RawRecord currentRecord;
@@ -847,9 +926,13 @@ namespace GraphView
         }
     }
 
+    [DataContract]
+    [KnownType(typeof(ProjectAggregationInBatch))]
     internal class ProjectAggregation : GraphViewExecutionOperator
     {
+        [DataMember]
         protected List<Tuple<IAggregateFunction, List<ScalarFunction>>> aggregationSpecs;
+        [DataMember]
         protected GraphViewExecutionOperator inputOp;
 
         public ProjectAggregation(GraphViewExecutionOperator inputOp)
@@ -931,6 +1014,7 @@ namespace GraphView
         }
     }
 
+    [DataContract]
     internal class ProjectAggregationInBatch : ProjectAggregation
     {
         private RawRecord firstRecordInGroup = null;
@@ -1040,10 +1124,14 @@ namespace GraphView
         }
     }
     
+    [DataContract]
+    [KnownType(typeof(DeduplicateInBatchOperator))]
     internal class DeduplicateOperator : GraphViewExecutionOperator
     {
+        [DataMember]
         protected GraphViewExecutionOperator inputOp;
         protected HashSet<CollectionField> compositeDedupKeySet;
+        [DataMember]
         protected List<ScalarFunction> compositeDedupKeyFuncList;
 
         internal DeduplicateOperator(GraphViewExecutionOperator inputOperator, List<ScalarFunction> compositeDedupKeyFuncList)
@@ -1093,11 +1181,19 @@ namespace GraphView
 
             this.Open();
         }
+
+        [OnDeserialized]
+        private void Reconstruct(StreamingContext context)
+        {
+            this.compositeDedupKeySet = new HashSet<CollectionField>();
+        }
     }
 
+    [DataContract]
     internal class DeduplicateInBatchOperator : DeduplicateOperator
     {
         private RawRecord firstRecordInGroup;
+        [DataMember]
         private bool newGroup;
 
         internal DeduplicateInBatchOperator(
@@ -1181,9 +1277,12 @@ namespace GraphView
         }
     }
 
+    [DataContract]
     internal class DeduplicateLocalOperator : GraphViewExecutionOperator
     {
+        [DataMember]
         private GraphViewExecutionOperator inputOp;
+        [DataMember]
         private ScalarFunction getInputObjectionFunc;
         
         internal DeduplicateLocalOperator(
@@ -1255,13 +1354,18 @@ namespace GraphView
         }
     }
 
+    [DataContract]
+    [KnownType(typeof(RangeInBatchOperator))]
     internal class RangeOperator : GraphViewExecutionOperator
     {
+        [DataMember]
         protected GraphViewExecutionOperator inputOp;
+        [DataMember]
         protected int startIndex;
         //
         // if count is -1, return all the records starting from startIndex
         //
+        [DataMember]
         protected int highEnd;
         protected int index;
 
@@ -1307,8 +1411,16 @@ namespace GraphView
             this.index = 0;
             this.Open();
         }
+
+        [OnDeserialized]
+        private void Reconstruct(StreamingContext context)
+        {
+            this.index = 0;
+            this.Open();
+        }
     }
 
+    [DataContract]
     internal class RangeInBatchOperator : RangeOperator
     {
         private RawRecord firstRecordInGroup;
@@ -1374,17 +1486,24 @@ namespace GraphView
         }
     }
 
+    [DataContract]
     internal class RangeLocalOperator : GraphViewExecutionOperator
     {
+        [DataMember]
         private GraphViewExecutionOperator inputOp;
+        [DataMember]
         private int startIndex;
         //
         // if count is -1, return all the records starting from startIndex
         //
+        [DataMember]
         private int count;
+        [DataMember]
         private int inputCollectionIndex;
 
+        [DataMember]
         private List<string> populateColumns;
+        [DataMember]
         private bool wantSingleObject;
 
         internal RangeLocalOperator(
@@ -1502,9 +1621,13 @@ namespace GraphView
         }
     }
 
+    [DataContract]
+    [KnownType(typeof(TailInBatchOperator))]
     internal class TailOperator : GraphViewExecutionOperator
     {
+        [DataMember]
         protected GraphViewExecutionOperator inputOp;
+        [DataMember]
         protected int lastN;
         protected int count;
         protected List<RawRecord> buffer; 
@@ -1549,8 +1672,18 @@ namespace GraphView
             this.buffer.Clear();
             this.Open();
         }
+
+        [OnDeserialized]
+        private void Reconstruct(StreamingContext context)
+        {
+            this.count = 0;
+            this.buffer = new List<RawRecord>();
+
+            this.Open();
+        }
     }
 
+    [DataContract]
     internal class TailInBatchOperator : TailOperator
     {
         private RawRecord firstRecordInGroup;
@@ -1602,13 +1735,19 @@ namespace GraphView
         }
     }
 
+    [DataContract]
     internal class TailLocalOperator : GraphViewExecutionOperator
     {
+        [DataMember]
         private GraphViewExecutionOperator inputOp;
+        [DataMember]
         private int lastN;
+        [DataMember]
         private int inputCollectionIndex;
 
+        [DataMember]
         private List<string> populateColumns;
+        [DataMember]
         private bool wantSingleObject;
 
         internal TailLocalOperator(
@@ -1720,16 +1859,23 @@ namespace GraphView
         }
     }
 
+    [DataContract]
     internal class InjectOperator : GraphViewExecutionOperator
     {
+        [DataMember]
         private GraphViewExecutionOperator inputOp;
 
+        [DataMember]
         private readonly int inputRecordColumnsCount;
+        [DataMember]
         private readonly int injectColumnIndex;
 
+        [DataMember]
         private readonly bool isList;
+        [DataMember]
         private readonly string defaultProjectionKey;
 
+        [DataMember]
         private readonly List<ScalarFunction> injectValues;
 
         private bool hasInjected;
@@ -1829,25 +1975,39 @@ namespace GraphView
 
         public override void ResetState()
         {
+            this.inputOp?.ResetState();
             this.hasInjected = false;
             this.Open();
         }
+
+        [OnDeserialized]
+        private void Reconstruct(StreamingContext context)
+        {
+            this.hasInjected = false;
+        }
     }
 
+    [DataContract]
     internal class AggregateOperator : GraphViewExecutionOperator
     {
-        CollectionFunction aggregateState;
-        GraphViewExecutionOperator inputOp;
-        ScalarFunction getAggregateObjectFunction;
-        Queue<RawRecord> outputBuffer;
+        private CollectionFunction aggregateState;
+        [DataMember]
+        private GraphViewExecutionOperator inputOp;
+        [DataMember]
+        private ScalarFunction getAggregateObjectFunction;
 
-        public AggregateOperator(GraphViewExecutionOperator inputOp, ScalarFunction getTargetFieldFunction, CollectionFunction aggregateState)
+        private Queue<RawRecord> outputBuffer;
+        [DataMember]
+        private readonly string storedName;
+
+        public AggregateOperator(GraphViewExecutionOperator inputOp, ScalarFunction getTargetFieldFunction, 
+            CollectionFunction aggregateState, string storedName)
         {
             this.aggregateState = aggregateState;
             this.inputOp = inputOp;
             this.getAggregateObjectFunction = getTargetFieldFunction;
             this.outputBuffer = new Queue<RawRecord>();
-
+            this.storedName = storedName;
             Open();
         }
 
@@ -1880,19 +2040,33 @@ namespace GraphView
             inputOp.ResetState();
             Open();
         }
+
+        [OnDeserialized]
+        private void Reconstruct(StreamingContext context)
+        {
+            this.outputBuffer = new Queue<RawRecord>();
+            this.aggregateState = (CollectionFunction)SerializationData.SideEffectStates[this.storedName];
+        }
     }
 
+    [DataContract]
     internal class StoreOperator : GraphViewExecutionOperator
     {
-        CollectionFunction storeState;
-        GraphViewExecutionOperator inputOp;
-        ScalarFunction getStoreObjectFunction;
+        private CollectionFunction storeState;
+        [DataMember]
+        private GraphViewExecutionOperator inputOp;
+        [DataMember]
+        private ScalarFunction getStoreObjectFunction;
+        [DataMember]
+        private readonly string storedName;
 
-        public StoreOperator(GraphViewExecutionOperator inputOp, ScalarFunction getTargetFieldFunction, CollectionFunction storeState)
+        public StoreOperator(GraphViewExecutionOperator inputOp, ScalarFunction getTargetFieldFunction, 
+            CollectionFunction storeState, string storedName)
         {
             this.storeState = storeState;
             this.inputOp = inputOp;
             this.getStoreObjectFunction = getTargetFieldFunction;
+            this.storedName = storedName;
             Open();
         }
 
@@ -1933,16 +2107,25 @@ namespace GraphView
             inputOp.ResetState();
             Open();
         }
+
+        [OnDeserialized]
+        private void Reconstruct(StreamingContext context)
+        {
+            this.storeState = (CollectionFunction)SerializationData.SideEffectStates[this.storedName];
+        }
     }
 
 
     //
     // Note: our BarrierOperator's semantics is not the same the one's in Gremlin
     //
+    [DataContract]
     internal class BarrierOperator : GraphViewExecutionOperator
     {
+        [DataMember]
         private GraphViewExecutionOperator _inputOp;
         private Queue<RawRecord> _outputBuffer;
+        [DataMember]
         private int _outputBufferSize;
 
         public BarrierOperator(GraphViewExecutionOperator inputOp, int outputBufferSize = -1)
@@ -1978,11 +2161,20 @@ namespace GraphView
             _outputBuffer.Clear();
             Open();
         }
+
+        [OnDeserialized]
+        private void Reconstruct(StreamingContext context)
+        {
+            this._outputBuffer = new Queue<RawRecord>();
+        }
     }
 
+    [DataContract]
     internal class ProjectByOperator : GraphViewExecutionOperator
     {
+        [DataMember]
         private GraphViewExecutionOperator inputOp;
+        [DataMember]
         private List<Tuple<string, ScalarFunction>> projectList;
 
         internal ProjectByOperator(GraphViewExecutionOperator pInputOperator)
@@ -2035,9 +2227,12 @@ namespace GraphView
         }
     }
 
+    [DataContract]
     internal class PropertyKeyOperator : GraphViewExecutionOperator
     {
+        [DataMember]
         private GraphViewExecutionOperator inputOp;
+        [DataMember]
         private int propertyFieldIndex;
 
         public PropertyKeyOperator(GraphViewExecutionOperator inputOp, int propertyFieldIndex)
@@ -2075,9 +2270,12 @@ namespace GraphView
         }
     }
 
+    [DataContract]
     internal class PropertyValueOperator : GraphViewExecutionOperator
     {
+        [DataMember]
         private GraphViewExecutionOperator inputOp;
+        [DataMember]
         private int propertyFieldIndex;
 
         public PropertyValueOperator(GraphViewExecutionOperator inputOp, int propertyFieldIndex)
@@ -2114,9 +2312,12 @@ namespace GraphView
         }
     }
 
+    [DataContract]
     internal class CountLocalOperator : GraphViewExecutionOperator
     {
+        [DataMember]
         private GraphViewExecutionOperator inputOp;
+        [DataMember]
         private int objectIndex;
 
         public CountLocalOperator(GraphViewExecutionOperator inputOp, int objectIndex)
@@ -2161,9 +2362,12 @@ namespace GraphView
         }
     }
 
+    [DataContract]
     internal class SumLocalOperator : GraphViewExecutionOperator
     {
+        [DataMember]
         private GraphViewExecutionOperator inputOp;
+        [DataMember]
         private int objectIndex;
 
         public SumLocalOperator(GraphViewExecutionOperator inputOp, int objectIndex)
@@ -2226,9 +2430,12 @@ namespace GraphView
         }
     }
 
+    [DataContract]
     internal class MaxLocalOperator : GraphViewExecutionOperator
     {
+        [DataMember]
         private GraphViewExecutionOperator inputOp;
+        [DataMember]
         private int objectIndex;
 
         public MaxLocalOperator(GraphViewExecutionOperator inputOp, int objectIndex)
@@ -2293,9 +2500,12 @@ namespace GraphView
         }
     }
 
+    [DataContract]
     internal class MinLocalOperator : GraphViewExecutionOperator
     {
+        [DataMember]
         private GraphViewExecutionOperator inputOp;
+        [DataMember]
         private int objectIndex;
 
         public MinLocalOperator(GraphViewExecutionOperator inputOp, int objectIndex)
@@ -2360,9 +2570,12 @@ namespace GraphView
         }
     }
 
+    [DataContract]
     internal class MeanLocalOperator : GraphViewExecutionOperator
     {
+        [DataMember]
         private GraphViewExecutionOperator inputOp;
+        [DataMember]
         private int objectIndex;
 
         public MeanLocalOperator(GraphViewExecutionOperator inputOp, int objectIndex)
@@ -2430,9 +2643,12 @@ namespace GraphView
         }
     }
 
+    [DataContract]
     internal class SimplePathOperator : GraphViewExecutionOperator
     {
+        [DataMember]
         private GraphViewExecutionOperator inputOp;
+        [DataMember]
         private int pathIndex;
 
         public SimplePathOperator(GraphViewExecutionOperator inputOp, int pathIndex)
@@ -2484,9 +2700,12 @@ namespace GraphView
         }
     }
 
+    [DataContract]
     internal class CyclicPathOperator : GraphViewExecutionOperator
     {
+        [DataMember]
         private GraphViewExecutionOperator inputOp;
+        [DataMember]
         private int pathIndex;
 
         public CyclicPathOperator(GraphViewExecutionOperator inputOp, int pathIndex)
@@ -2538,11 +2757,14 @@ namespace GraphView
         }
     }
 
+    [DataContract]
     internal class CoinOperator : GraphViewExecutionOperator
     {
+        [DataMember]
         private readonly double _probability;
+        [DataMember]
         private readonly GraphViewExecutionOperator _inputOp;
-        private readonly Random _random;
+        private Random _random;
 
         public CoinOperator(
             GraphViewExecutionOperator inputOp,
@@ -2573,18 +2795,30 @@ namespace GraphView
             this._inputOp.ResetState();
             Open();
         }
+
+        [OnDeserialized]
+        private void Reconstruct(StreamingContext context)
+        {
+            this._random = new Random();
+        }
     }
 
+    [DataContract]
+    [KnownType(typeof(SampleInBatchOperator))]
     internal class SampleOperator : GraphViewExecutionOperator
     {
+        [DataMember]
         protected readonly GraphViewExecutionOperator inputOp;
+        [DataMember]
         protected readonly long amountToSample;
+        [DataMember]
         protected readonly ScalarFunction byFunction;  // Can be null if no "by" step
-        protected readonly Random random;
 
-        protected readonly List<RawRecord> inputRecords;
+        protected Random random;
+
+        protected List<RawRecord> inputRecords;
         protected List<RawRecord> sampleRecords;
-        protected readonly List<double> inputProperties;
+        protected List<double> inputProperties;
         protected int nextIndex;
 
         public SampleOperator(
@@ -2644,8 +2878,18 @@ namespace GraphView
             this.nextIndex = 0;
             Open();
         }
+
+        [OnDeserialized]
+        private void Reconstruct(StreamingContext context)
+        {
+            this.random = new Random();
+            this.inputRecords = new List<RawRecord>();
+            this.inputProperties = new List<double>();
+            this.nextIndex = 0;
+        }
     }
 
+    [DataContract]
     internal class SampleInBatchOperator : SampleOperator
     {
         private RawRecord firstRecordInGroup;
@@ -2724,12 +2968,19 @@ namespace GraphView
         }
     }
 
+    [DataContract]
     internal class SampleLocalOperator : GraphViewExecutionOperator
     {
+        [DataMember]
         private readonly GraphViewExecutionOperator inputOp;
+        [DataMember]
         private readonly long amountToSample;
-        private readonly Random random;
+
+        private Random random;
+
+        [DataMember]
         private readonly int inputObjectIndex;
+        [DataMember]
         private List<string> populateColumns;
 
         public SampleLocalOperator(GraphViewExecutionOperator inputOp, int inputObjectIndex, long amountToSample, List<string> populateColumns)
@@ -2811,13 +3062,24 @@ namespace GraphView
             this.inputOp.ResetState();
             Open();
         }
+
+        [OnDeserialized]
+        private void Reconstruct(StreamingContext context)
+        {
+            this.random = new Random();
+        }
     }
 
+    [DataContract]
     internal class Decompose1Operator : GraphViewExecutionOperator
     {
+        [DataMember]
         private readonly GraphViewExecutionOperator inputOp;
+        [DataMember]
         private readonly int decomposeTargetIndex;
+        [DataMember]
         private readonly List<string> populateColumns;
+        [DataMember]
         private readonly string tableDefaultColumnName;
 
         public Decompose1Operator(
@@ -2874,16 +3136,21 @@ namespace GraphView
         }
     }
 
+    [DataContract]
     internal class SelectColumnOperator : GraphViewExecutionOperator
     {
+        [DataMember]
         private readonly GraphViewExecutionOperator inputOp;
+        [DataMember]
         private readonly int inputTargetIndex;
+        [DataMember]
         private readonly List<string> populateColumns;
 
         //
         // true, select(keys)
         // false, select(values)
         //
+        [DataMember]
         private readonly bool isSelectKeys;
 
         public SelectColumnOperator(
@@ -3020,14 +3287,24 @@ namespace GraphView
         }
     }
 
+    [DataContract]
+    [KnownType(typeof(SelectOperator))]
+    [KnownType(typeof(SelectOneOperator))]
     internal abstract class SelectBaseOperator : GraphViewExecutionOperator
     {
+        [DataMember]
         protected readonly GraphViewExecutionOperator inputOp;
-        protected readonly Dictionary<string, IAggregateFunction> sideEffectStates;
+
+        protected Dictionary<string, IAggregateFunction> sideEffectStates;
+
+        [DataMember]
         protected readonly int inputObjectIndex;
+        [DataMember]
         protected readonly int pathIndex;
 
+        [DataMember]
         protected readonly GremlinKeyword.Pop pop;
+        [DataMember]
         protected readonly string tableDefaultColumnName;
 
         protected SelectBaseOperator(
@@ -3118,12 +3395,20 @@ namespace GraphView
             this.inputOp.ResetState();
             this.Open();
         }
+
+        [OnDeserialized]
+        private void Reconstruct(StreamingContext context)
+        {
+            this.sideEffectStates = SerializationData.SideEffectStates;
+        }
     }
 
-
+    [DataContract]
     internal class SelectOperator : SelectBaseOperator
     {
+        [DataMember]
         private readonly List<string> selectLabels;
+        [DataMember]
         private readonly List<ScalarFunction> byFuncList;
 
         public SelectOperator(
@@ -3201,11 +3486,15 @@ namespace GraphView
         }
     }
 
+    [DataContract]
     internal class SelectOneOperator : SelectBaseOperator
     {
+        [DataMember]
         private readonly string selectLabel;
+        [DataMember]
         private readonly ScalarFunction byFunc;
 
+        [DataMember]
         private readonly List<string> populateColumns;
 
         public SelectOneOperator(
@@ -3269,28 +3558,37 @@ namespace GraphView
         }
     }
 
+    [DataContract]
     internal class AdjacencyListDecoder : GraphViewExecutionOperator
     {
+        [DataMember]
         private readonly GraphViewExecutionOperator inputOp;
+        [DataMember]
         private readonly int startVertexIndex;
 
+        [DataMember]
         private readonly bool crossApplyForwardAdjacencyList;
+        [DataMember]
         private readonly bool crossApplyBackwardAdjacencyList;
 
+        [DataMember]
         private readonly BooleanFunction edgePredicate;
+        [DataMember]
         private readonly List<string> projectedFields;
 
+        [DataMember]
         private readonly bool isStartVertexTheOriginVertex;
 
-        private readonly Queue<RawRecord> outputBuffer;
-        private readonly GraphViewCommand command;
+        private Queue<RawRecord> outputBuffer;
+        private GraphViewCommand command;
 
+        [DataMember]
         private readonly int batchSize;
         // RawRecord: the input record with the lazy adjacency list
         // string: the Id of the vertex of the adjacency list to be decoded
-        private readonly Queue<Tuple<RawRecord, string>> lazyAdjacencyListBatch;
+        private Queue<Tuple<RawRecord, string>> lazyAdjacencyListBatch;
 
-        private readonly Queue<RawRecord> inputRecordsBuffer;
+        private Queue<RawRecord> inputRecordsBuffer;
 
         /// <summary>
         /// The length of a record produced by this decoder operator.
@@ -3298,6 +3596,7 @@ namespace GraphView
         /// been decoded by a prior operator, i.e., FetchNodeOp or TraversalOp,
         /// it is bypassed to the next operator.
         /// </summary>
+        [DataMember]
         private readonly int outputRecordLength;
 
         public AdjacencyListDecoder(
@@ -3586,22 +3885,40 @@ namespace GraphView
             this.inputRecordsBuffer.Clear();
             this.Open();
         }
+
+        [OnDeserialized]
+        private void Reconstruct(StreamingContext context)
+        {
+            this.outputBuffer = new Queue<RawRecord>();
+            this.lazyAdjacencyListBatch = new Queue<Tuple<RawRecord, string>>();
+            this.inputRecordsBuffer = new Queue<RawRecord>();
+
+            this.command = SerializationData.Command;
+        }
     }
 
+    [DataContract]
     internal class SubgraphOperator : GraphViewExecutionOperator
     {
+        [DataMember]
         private readonly GraphViewExecutionOperator inputOp;
-        private readonly SubgraphFunction aggregateState;
-        private readonly ScalarFunction getSubgraphEdgeFunction;
-        private readonly Queue<RawRecord> outputBuffer;
 
-        public SubgraphOperator(GraphViewExecutionOperator inputOp, ScalarFunction getTargetFieldFunction, SubgraphFunction aggregateState)
+        private SubgraphFunction aggregateState;
+        [DataMember]
+        private readonly ScalarFunction getSubgraphEdgeFunction;
+
+        private Queue<RawRecord> outputBuffer;
+        [DataMember]
+        private readonly string sideEffectKey;
+
+        public SubgraphOperator(GraphViewExecutionOperator inputOp, ScalarFunction getTargetFieldFunction, 
+            SubgraphFunction aggregateState, string sideEffectKey)
         {
             this.inputOp = inputOp;
             this.aggregateState = aggregateState;
             this.getSubgraphEdgeFunction = getTargetFieldFunction;
             this.outputBuffer = new Queue<RawRecord>();
-
+            this.sideEffectKey = sideEffectKey;
             this.Open();
         }
 
@@ -3649,6 +3966,13 @@ namespace GraphView
             this.outputBuffer.Clear();
             this.inputOp.ResetState();
             this.Open();
+        }
+
+        [OnDeserialized]
+        private void Reconstruct(StreamingContext context)
+        {
+            this.outputBuffer = new Queue<RawRecord>();
+            this.aggregateState = (SubgraphFunction)SerializationData.SideEffectStates[this.sideEffectKey];
         }
     }
 }

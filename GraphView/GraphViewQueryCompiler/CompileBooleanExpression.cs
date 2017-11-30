@@ -122,9 +122,10 @@ namespace GraphView
         {
             QueryCompilationContext subContext = new QueryCompilationContext(context);
             Container container = new Container();
-            subContext.OuterContextOp.Container = container;
+            int containerIndex = SerializationData.AddContainers(container);
+            subContext.OuterContextOp.SetContainer(container, containerIndex);
             GraphViewExecutionOperator subQueryOp = Subquery.SubQueryExpr.Compile(subContext, command);
-            ExistsFunction existsFunc = new ExistsFunction(subQueryOp, container);
+            ExistsFunction existsFunc = new ExistsFunction(subQueryOp, container, containerIndex);
 
             return existsFunc;
         }
@@ -133,12 +134,13 @@ namespace GraphView
         {
             QueryCompilationContext subContext = new QueryCompilationContext(context);
             Container container = new Container();
-            subContext.OuterContextOp.Container = container;
+            int containerIndex = SerializationData.AddContainers(container);
+            subContext.OuterContextOp.SetContainer(container, containerIndex);
             subContext.AddField(GremlinKeyword.IndexTableName, command.IndexColumnName, ColumnGraphType.Value, true);
             subContext.InBatchMode = true;
 
             GraphViewExecutionOperator subQueryOp = this.Subquery.SubQueryExpr.Compile(subContext, command);
-            ExistsFunction existsFunc = new ExistsFunction(subQueryOp, container);
+            ExistsFunction existsFunc = new ExistsFunction(subQueryOp, container, containerIndex);
 
             return existsFunc;
         }

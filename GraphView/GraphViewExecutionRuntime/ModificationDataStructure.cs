@@ -2,20 +2,27 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Runtime.Serialization;
 using System.Text;
 using System.Threading.Tasks;
 using Newtonsoft.Json.Linq;
 
 namespace GraphView
 {
+    [DataContract]
     internal sealed class PropertyTuple
     {
+        [DataMember]
         internal GremlinKeyword.PropertyCardinality Cardinality { get; private set; }
 
+        [DataMember]
         internal string Name { get; private set; }
+        [DataMember]
         internal StringField Value { get; private set; }
+        [DataMember]
         internal ScalarSubqueryFunction TraversalOp { get; private set; }
 
+        [DataMember]
         internal Dictionary<string, Tuple<StringField, ScalarSubqueryFunction>> MetaProperties { get; private set; }
 
         internal PropertyTuple(

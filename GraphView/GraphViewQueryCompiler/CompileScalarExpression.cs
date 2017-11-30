@@ -20,9 +20,10 @@ namespace GraphView
         {
             QueryCompilationContext subContext = new QueryCompilationContext(context);
             Container container = new Container();
-            subContext.OuterContextOp.Container = container;
+            int containerIndex = SerializationData.AddContainers(container);
+            subContext.OuterContextOp.SetContainer(container, containerIndex);
             GraphViewExecutionOperator subQueryOp = SubQueryExpr.Compile(subContext, command);
-            return new ScalarSubqueryFunction(subQueryOp, container);
+            return new ScalarSubqueryFunction(subQueryOp, container, containerIndex);
         }
     }
 

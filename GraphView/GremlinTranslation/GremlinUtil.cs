@@ -2,6 +2,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.Serialization;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -223,6 +224,7 @@ namespace GraphView
         }
     }
 
+    [DataContract]
     public class IncrOrder : IComparer
     {
         public int Compare(object x, object y)
@@ -235,6 +237,7 @@ namespace GraphView
         }
     }
 
+    [DataContract]
     public class DecrOrder : IComparer
     {
         public int Compare(object x, object y)
@@ -247,6 +250,7 @@ namespace GraphView
         }
     }
 
+    [DataContract]
     public class ShuffleOrder : IComparer
     {
         private Random random = new Random();
@@ -254,5 +258,12 @@ namespace GraphView
         {
             return random.NextDouble() > 0.5 ? 1 : -1;
         }
+
+        [OnDeserialized]
+        private void Reconstruct(StreamingContext context)
+        {
+            this.random = new Random();
+        }
+
     }
 }

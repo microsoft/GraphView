@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
+using System.Runtime.Serialization;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Azure.Documents;
@@ -12,9 +13,15 @@ using static GraphView.DocumentDBKeywords;
 
 namespace GraphView
 {
+    [DataContract]
+    [KnownType(typeof(AddVOperator))]
+    [KnownType(typeof(DropOperator))]
+    [KnownType(typeof(UpdatePropertiesOperator))]
+    [KnownType(typeof(AddEOperator))]
     internal abstract class ModificationBaseOperator : GraphViewExecutionOperator
     {
         protected GraphViewCommand Command;
+        [DataMember]
         protected GraphViewExecutionOperator InputOperator;
 
         protected ModificationBaseOperator(GraphViewExecutionOperator inputOp, GraphViewCommand command)
@@ -51,13 +58,23 @@ namespace GraphView
             Open();
         }
 
+        [OnDeserialized]
+        private void Reconstruct(StreamingContext context)
+        {
+            this.Command = SerializationData.Command;
+        }
     }
 
+    [DataContract]
     internal class AddVOperator : ModificationBaseOperator
     {
-        private readonly JObject vertexDocument;
+        private JObject vertexDocument;
+        [DataMember]
         private readonly List<string> projectedFieldList;
+        [DataMember]
         private readonly List<PropertyTuple> properties;
+        [DataMember]
+        private string jsonString;
 
         public AddVOperator(GraphViewExecutionOperator inputOp, GraphViewCommand command, JObject vertexDocument, 
             List<string> projectedFieldList, List<PropertyTuple> properties)
@@ -66,6 +83,7 @@ namespace GraphView
             this.vertexDocument = vertexDocument;
             this.projectedFieldList = projectedFieldList;
             this.properties = properties;
+            this.jsonString = this.vertexDocument.ToString();
         }
 
         private void AddPropertiesToVertexObject(JObject vertexJObject, RawRecord record)
@@ -231,10 +249,18 @@ namespace GraphView
             return result;
         }
 
+        [OnDeserialized]
+        private void Reconstruct(StreamingContext context)
+        {
+            this.vertexDocument = JObject.Parse(this.jsonString);
+        }
+
     }
 
+    [DataContract]
     internal class DropOperator : ModificationBaseOperator
     {
+        [DataMember]
         private readonly int dropTargetIndex;
 
         public DropOperator(GraphViewExecutionOperator inputOp, GraphViewCommand command, int dropTargetIndex)
@@ -623,9 +649,12 @@ namespace GraphView
         }
     }
 
+    [DataContract]
     internal class UpdatePropertiesOperator : ModificationBaseOperator
     {
+        [DataMember]
         private readonly int updateTargetIndex;
+        [DataMember]
         private readonly List<PropertyTuple> updateProperties;
 
         public UpdatePropertiesOperator(
@@ -960,38 +989,51 @@ namespace GraphView
             Close();
             return null;
         }
+
     }
 
+    [DataContract]
     internal class AddEOperator : ModificationBaseOperator
     {
         //
         // if otherVTag == 0, this newly added edge's otherV() is the src vertex.
         // Otherwise, it's the sink vertex
         //
+        [DataMember]
         private int otherVTag;
         //
         // The subquery operator select the vertex ID of source and sink of the edge to be added or deleted
         //
         private Container container;
+        [DataMember]
+        private int containerIndex;
+        [DataMember]
         private GraphViewExecutionOperator srcSubQueryOp;
+        [DataMember]
         private GraphViewExecutionOperator sinkSubQueryOp;
         //
         // The initial json object string of to-be-inserted edge, waiting to update the edgeOffset field
         //
         private JObject edgeJsonObject;
+        [DataMember]
+        private string jsonString;
+        [DataMember]
         private List<string> edgeProperties;
+        [DataMember]
         private List<PropertyTuple> subtraversalProperties;
 
         public AddEOperator(GraphViewExecutionOperator inputOp, GraphViewCommand command, Container container,
-            GraphViewExecutionOperator srcSubQueryOp, GraphViewExecutionOperator sinkSubQueryOp,
+            int containerIndex, GraphViewExecutionOperator srcSubQueryOp, GraphViewExecutionOperator sinkSubQueryOp,
             int otherVTag, JObject edgeJsonObject, List<string> projectedFieldList, List<PropertyTuple> subtraversalProperties)
             : base(inputOp, command)
         {
             this.container = container;
+            this.containerIndex = containerIndex;
             this.srcSubQueryOp = srcSubQueryOp;
             this.sinkSubQueryOp = sinkSubQueryOp;
             this.otherVTag = otherVTag;
             this.edgeJsonObject = edgeJsonObject;
+            this.jsonString = this.edgeJsonObject.ToString();
             this.edgeProperties = projectedFieldList;
             this.subtraversalProperties = subtraversalProperties;
         }
@@ -1100,11 +1142,21 @@ namespace GraphView
 
             return result;
         }
+
+        [OnDeserialized]
+        private void Reconstruct(StreamingContext context)
+        {
+            this.edgeJsonObject = JObject.Parse(this.jsonString);
+            this.container = SerializationData.Containers[this.containerIndex];
+        }
+
     }
 
+    [DataContract]
     internal class CommitOperator : GraphViewExecutionOperator
     {
         private GraphViewCommand command;
+        [DataMember]
         private GraphViewExecutionOperator inputOp;
         private Queue<RawRecord> outputBuffer;
 
@@ -1131,6 +1183,13 @@ namespace GraphView
             if (this.outputBuffer.Count <= 1) this.Close();
             if (this.outputBuffer.Count != 0) return this.outputBuffer.Dequeue();
             return null;
+        }
+
+        [OnDeserialized]
+        private void Reconstruct(StreamingContext context)
+        {
+            this.outputBuffer = new Queue<RawRecord>();
+            this.command = SerializationData.Command;
         }
 
         public override void ResetState()

@@ -2,30 +2,39 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Runtime.Serialization;
 using System.Text;
 using System.Threading.Tasks;
 
 namespace GraphView
 {
+    [DataContract]
     internal class OptionalOperator : GraphViewExecutionOperator
     {
         // A list of record fields (identified by field indexes) from the input 
         // operator are to be returned when the optional traversal produces no results.
         // When a field index is less than 0, it means that this field value is always null. 
+        [DataMember]
         private readonly List<int> inputIndexes;
-
+        [DataMember]
         private readonly GraphViewExecutionOperator inputOp;
 
         // use this target traversal to determine which input records will have output
         // and put them together into optionalTraversal
+        [DataMember]
         private GraphViewExecutionOperator targetSubQueryOp;
         private Container targetContainer;
+        [DataMember]
+        private int targetContainerIndex;
 
         // The traversal inside the optional function. 
         // The records returned by this operator should have the same number of fields
         // as the records produced by the input operator, i.e., inputIndexes.Count 
+        [DataMember]
         private GraphViewExecutionOperator optionalTraversal;
         private Container optionalContainer;
+        [DataMember]
+        private int optionalContainerIndex;
 
         private HashSet<int> haveOutput;
         private int currentIndex;
@@ -36,17 +45,21 @@ namespace GraphView
             GraphViewExecutionOperator inputOp,
             List<int> inputIndexes,
             Container targetContainer,
+            int targetContainerIndex,
             GraphViewExecutionOperator targetSubQueryOp,
             Container optionalContainer,
+            int optionalContainerIndex,
             GraphViewExecutionOperator optionalTraversal)
         {
             this.inputOp = inputOp;
             this.inputIndexes = inputIndexes;
 
             this.targetContainer = targetContainer;
+            this.targetContainerIndex = targetContainerIndex;
             this.targetSubQueryOp = targetSubQueryOp;
 
             this.optionalContainer = optionalContainer;
+            this.optionalContainerIndex = optionalContainerIndex;
             this.optionalTraversal = optionalTraversal;
 
             this.currentIndex = 0;
@@ -154,23 +167,39 @@ namespace GraphView
             this.needInitialize = true;
             this.Open();
         }
+
+        [OnDeserialized]
+        private void Reconstruct(StreamingContext context)
+        {
+            this.currentIndex = 0;
+            this.haveOutput = new HashSet<int>();
+            this.needInitialize = true;
+            this.targetContainer = SerializationData.Containers[this.targetContainerIndex];
+            this.optionalContainer = SerializationData.Containers[this.optionalContainerIndex];
+        }
     }
 
+    [DataContract]
     internal class UnionOperator : GraphViewExecutionOperator
     {
         // traversalOp and its enumerator.
+        [DataMember]
         private List<GraphViewExecutionOperator> traversalList;
         private Container container;
+        [DataMember]
+        private int containerIndex;
 
+        [DataMember]
         private GraphViewExecutionOperator inputOp;
 
         private bool needInitialize;
 
-        public UnionOperator(GraphViewExecutionOperator inputOp, Container container)
+        public UnionOperator(GraphViewExecutionOperator inputOp, Container container, int containerIndex)
         {
             this.inputOp = inputOp;
             this.traversalList = new List<GraphViewExecutionOperator>();
             this.container = container;
+            this.containerIndex = containerIndex;
 
             this.needInitialize = true;
             this.Open();
@@ -228,57 +257,79 @@ namespace GraphView
 
             this.Open();
         }
+
+        [OnDeserialized]
+        private void Reconstruct(StreamingContext context)
+        {
+            this.needInitialize = true;
+            this.container = SerializationData.Containers[this.containerIndex];
+        }
     }
 
+    [DataContract]
     internal class RepeatOperator : GraphViewExecutionOperator
     {
+        [DataMember]
         private readonly GraphViewExecutionOperator inputOp;
 
         // Number of times the inner operator repeats itself.
         // If this number is less than 0, the termination condition 
         // is specified by a boolean function. 
+        [DataMember]
         private readonly int repeatTimes;
         private int currentRepeatTimes;
 
         // The termination condition of iterations
+        [DataMember]
         private readonly BooleanFunction untilCondition;
         // If this variable is true, the iteration starts with the context record. 
         // This corresponds to the while-do loop semantics. 
         // Otherwise, the iteration starts with the the output of the first execution of the inner operator,
         // which corresponds to the do-while loop semantics.
         // i.e. .until().repeat()
+        [DataMember]
         private readonly bool isUntilFront;
 
         // The condition determining whether or not an intermediate state is emitted
+        [DataMember]
         private readonly BooleanFunction emitCondition;
         // This variable specifies whether or not the context record is considered 
         // to be emitted when the iteration does not start with the context record,
         // i.e., .emit().repeat()
+        [DataMember]
         private readonly bool isEmitFront;
 
         // initialOp recieves records from the input operator
         // and extracts needed columns to generate records that are fed as the initial input into the inner operator.
+        [DataMember]
         private readonly GraphViewExecutionOperator initialOp;
         private Container initialContainer;
+        [DataMember]
+        private int initialContainerIndex;
 
         // loop body
+        [DataMember]
         private readonly GraphViewExecutionOperator repeatTraversalOp;
         private Container repeatTraversalContainer;
+        [DataMember]
+        private int repeatTraversalContainerIndex;
 
         // After initialization, input records will become repeat rocords,
         // For each loop, this records will be the inputs of repeatTraversalOp(the loop body),
         // and the output of the loop body will replace this, to be new repeat records.
         private List<RawRecord> repeatRecords;
 
-        private readonly Queue<RawRecord> repeatResultBuffer;
+        private Queue<RawRecord> repeatResultBuffer;
 
         private bool needInitialize;
 
         public RepeatOperator(
             GraphViewExecutionOperator inputOp,
             Container initialContainer,
+            int initialContainerIndex,
             GraphViewExecutionOperator initialOp,
             Container repeatTraversalContainer,
+            int repeatTraversalContainerIndex,
             GraphViewExecutionOperator repeatTraversalOp,
             BooleanFunction emitCondition,
             bool isEmitFront,
@@ -288,9 +339,11 @@ namespace GraphView
         {
             this.inputOp = inputOp;
             this.initialContainer = initialContainer;
+            this.initialContainerIndex = initialContainerIndex;
             this.initialOp = initialOp;
 
             this.repeatTraversalContainer = repeatTraversalContainer;
+            this.repeatTraversalContainerIndex = repeatTraversalContainerIndex;
             this.repeatTraversalOp = repeatTraversalOp;
 
             this.emitCondition = emitCondition;
@@ -483,18 +536,42 @@ namespace GraphView
             this.needInitialize = true;
             this.Open();
         }
+
+        [OnDeserialized]
+        private void Reconstruct(StreamingContext context)
+        {
+            this.currentRepeatTimes = 0;
+            this.repeatRecords = new List<RawRecord>();
+            this.repeatResultBuffer = new Queue<RawRecord>();
+            this.needInitialize = true;
+
+            this.initialContainer = SerializationData.Containers[this.initialContainerIndex];
+            this.repeatTraversalContainer = SerializationData.Containers[this.repeatTraversalContainerIndex];
+        }
     }
 
+    [DataContract]
     internal class ChooseOperator : GraphViewExecutionOperator
     {
+        [DataMember]
         private GraphViewExecutionOperator inputOp;
 
         private Container container;
+        [DataMember]
+        private int containerIndex;
+        [DataMember]
         private GraphViewExecutionOperator targetSubQueryOp;
 
         private Container trueBranchContainer;
+        [DataMember]
+        private int trueBranchContainerIndex;
+        [DataMember]
         private GraphViewExecutionOperator trueBranchTraversalOp;
+
         private Container falseBranchContainer;
+        [DataMember]
+        private int falseBranchContainerIndex;
+        [DataMember]
         private GraphViewExecutionOperator falseBranchTraversalOp;
 
         private List<bool> chooseBranch;
@@ -505,21 +582,27 @@ namespace GraphView
         public ChooseOperator(
             GraphViewExecutionOperator inputOp,
             Container container,
+            int containerIndex,
             GraphViewExecutionOperator targetSubQueryOp,
             Container trueBranchContainer,
+            int trueBranchContainerIndex,
             GraphViewExecutionOperator trueBranchTraversalOp,
             Container falseBranchContainer,
+            int falseBranchContainerIndex,
             GraphViewExecutionOperator falseBranchTraversalOp
         )
         {
             this.inputOp = inputOp;
             this.container = container;
+            this.containerIndex = containerIndex;
             this.targetSubQueryOp = targetSubQueryOp;
 
             this.trueBranchContainer = trueBranchContainer;
+            this.trueBranchContainerIndex = trueBranchContainerIndex;
             this.trueBranchTraversalOp = trueBranchTraversalOp;
 
             this.falseBranchContainer = falseBranchContainer;
+            this.falseBranchContainerIndex = falseBranchContainerIndex;
             this.falseBranchTraversalOp = falseBranchTraversalOp;
 
             this.chooseBranch = new List<bool>();
@@ -634,38 +717,60 @@ namespace GraphView
 
             this.Open();
         }
+
+        [OnDeserialized]
+        private void Reconstruct(StreamingContext context)
+        {
+            this.chooseBranch = new List<bool>();
+            this.needInitialize = true;
+
+            this.container = SerializationData.Containers[this.containerIndex];
+            this.trueBranchContainer = SerializationData.Containers[this.trueBranchContainerIndex];
+            this.falseBranchContainer = SerializationData.Containers[this.falseBranchContainerIndex];
+        }
     }
 
+    [DataContract]
     internal class ChooseWithOptionsOperator : GraphViewExecutionOperator
     {
+        [DataMember]
         private readonly GraphViewExecutionOperator inputOp;
 
-        private readonly Container container;
+        private Container container;
+        [DataMember]
+        private int containerIndex;
+        [DataMember]
         private readonly GraphViewExecutionOperator targetSubOp;
 
-        private readonly List<Tuple<FieldObject, Container, GraphViewExecutionOperator>> traversalList;
+        [DataMember]
+        private List<Tuple<FieldObject, Container, GraphViewExecutionOperator, int>> traversalList;
 
         private Container optionNoneContainer;
+        [DataMember]
+        private int optionNoneContainerIndex;
+        [DataMember]
         private GraphViewExecutionOperator optionNoneTraversalOp;
 
         private List<int> selectOption;
         private int currentIndex;
-        private readonly Queue<RawRecord> outputBuffer;
+        private Queue<RawRecord> outputBuffer;
         private bool needInitialize;
 
         public ChooseWithOptionsOperator(
             GraphViewExecutionOperator inputOp,
             Container container,
+            int containerIndex,
             GraphViewExecutionOperator targetSubOp
         )
         {
             this.inputOp = inputOp;
             this.container = container;
+            this.containerIndex = containerIndex;
             this.targetSubOp = targetSubOp;
 
             this.optionNoneTraversalOp = null;
 
-            this.traversalList = new List<Tuple<FieldObject, Container, GraphViewExecutionOperator>>();
+            this.traversalList = new List<Tuple<FieldObject, Container, GraphViewExecutionOperator, int>>();
 
             this.selectOption = new List<int>();
             this.currentIndex = 0;
@@ -675,19 +780,21 @@ namespace GraphView
             this.Open();
         }
 
-        public void AddOptionTraversal(ScalarFunction value, Container container, GraphViewExecutionOperator optionTraversalOp)
+        public void AddOptionTraversal(ScalarFunction value, Container container, GraphViewExecutionOperator optionTraversalOp, int containerIndex)
         {
             if (value == null)
             {
                 this.optionNoneTraversalOp = optionTraversalOp;
                 this.optionNoneContainer = container;
+                this.optionNoneContainerIndex = containerIndex;
                 return;
             }
 
-            this.traversalList.Add(new Tuple<FieldObject, Container, GraphViewExecutionOperator>(
+            this.traversalList.Add(new Tuple<FieldObject, Container, GraphViewExecutionOperator, int>(
                 value.Evaluate(null),
                 container,
-                optionTraversalOp));
+                optionTraversalOp,
+                containerIndex));
         }
 
         public override RawRecord Next()
@@ -799,7 +906,7 @@ namespace GraphView
             this.optionNoneTraversalOp?.ResetState();
             this.optionNoneContainer?.Clear();
 
-            foreach (Tuple<FieldObject, Container, GraphViewExecutionOperator> tuple in this.traversalList)
+            foreach (Tuple<FieldObject, Container, GraphViewExecutionOperator, int> tuple in this.traversalList)
             {
                 tuple.Item2.Clear();
                 tuple.Item3.ResetState();
@@ -812,25 +919,59 @@ namespace GraphView
 
             this.Open();
         }
+
+        [OnDeserialized]
+        private void Reconstruct(StreamingContext context)
+        {
+            this.selectOption = new List<int>();
+            this.currentIndex = 0;
+            this.outputBuffer = new Queue<RawRecord>();
+            this.needInitialize = true;
+
+            this.container = SerializationData.Containers[this.containerIndex];
+
+            if (this.optionNoneTraversalOp != null)
+            {
+                this.optionNoneContainer = SerializationData.Containers[this.optionNoneContainerIndex];
+            }
+
+            List<Tuple<FieldObject, Container, GraphViewExecutionOperator, int>> traversals = 
+                new List<Tuple<FieldObject, Container, GraphViewExecutionOperator, int>>();
+            foreach (Tuple<FieldObject, Container, GraphViewExecutionOperator, int> tuple in this.traversalList)
+            {
+                traversals.Add(new Tuple<FieldObject, Container, GraphViewExecutionOperator, int>(
+                    tuple.Item1, SerializationData.Containers[tuple.Item4], tuple.Item3, tuple.Item4));
+            }
+            this.traversalList = traversals;
+        }
     }
 
+    [DataContract]
+    [KnownType(typeof(QueryDerivedInBatchOperator))]
     internal class QueryDerivedTableOperator : GraphViewExecutionOperator
     {
+        [DataMember]
         protected GraphViewExecutionOperator inputOp;
+        [DataMember]
         protected GraphViewExecutionOperator derivedQueryOp;
         protected Container container;
+        [DataMember]
+        protected int containerIndex;
 
+        [DataMember]
         protected int carryOnCount;
 
         public QueryDerivedTableOperator(
             GraphViewExecutionOperator inputOp,
             GraphViewExecutionOperator derivedQueryOp,
             Container container,
+            int containerIndex,
             int carryOnCount)
         {
             this.inputOp = inputOp;
             this.derivedQueryOp = derivedQueryOp;
             this.container = container;
+            this.containerIndex = containerIndex;
             this.carryOnCount = carryOnCount;
 
             this.Open();
@@ -875,8 +1016,15 @@ namespace GraphView
 
             this.Open();
         }
+
+        [OnDeserialized]
+        private void Reconstruct(StreamingContext context)
+        {
+            this.container = SerializationData.Containers[this.containerIndex];
+        }
     }
 
+    [DataContract]
     internal class QueryDerivedInBatchOperator : QueryDerivedTableOperator
     {
         private ProjectAggregationInBatch projectAggregationInBatchOp;
@@ -886,9 +1034,10 @@ namespace GraphView
             GraphViewExecutionOperator inputOp,
             GraphViewExecutionOperator derivedQueryOp,
             Container container,
+            int containerIndex,
             ProjectAggregationInBatch projectAggregationInBatchOp,
             int carryOnCount)
-            : base(inputOp, derivedQueryOp, container, carryOnCount)
+            : base(inputOp, derivedQueryOp, container, containerIndex, carryOnCount)
         {
             this.projectAggregationInBatchOp = projectAggregationInBatchOp;
             this.outputBuffer = new SortedDictionary<int, RawRecord>();
@@ -953,6 +1102,13 @@ namespace GraphView
         {
             this.outputBuffer.Clear();
             base.ResetState();
+        }
+
+        [OnDeserialized]
+        private void Reconstruct(StreamingContext context)
+        {
+            this.outputBuffer = new SortedDictionary<int, RawRecord>();
+            this.projectAggregationInBatchOp = this.derivedQueryOp as ProjectAggregationInBatch;
         }
     }
 }

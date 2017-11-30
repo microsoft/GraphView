@@ -2,13 +2,16 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Runtime.Serialization;
 using System.Text;
 using System.Threading.Tasks;
 
 // These classes are used as input of subtraversal.
 namespace GraphView
 {
-
+    // only serialize in ChooseWithOptionsOperator
+    [DataContract]
+    [KnownType(typeof(ContainerWithFlag))]
     internal class Container
     {
         protected List<RawRecord> tableCache;
@@ -60,8 +63,15 @@ namespace GraphView
 
             this.tableCache = new List<RawRecord> { record };
         }
+
+        [OnDeserialized]
+        private void Reconstruct(StreamingContext context)
+        {
+            this.tableCache = new List<RawRecord>();
+        }
     }
 
+    [DataContract]
     internal class ContainerWithFlag : Container
     {
         private List<bool> flags;
@@ -69,7 +79,6 @@ namespace GraphView
 
         public ContainerWithFlag()
         {
-            this.tableCache = new List<RawRecord>();
             this.flags = new List<bool>();
             this.Count = 0;
         }
@@ -159,29 +168,49 @@ namespace GraphView
             this.flags = new List<bool> { true };
             this.Count = this.tableCache.Count;
         }
+
+        [OnDeserialized]
+        private void Reconstruct(StreamingContext context)
+        {
+            this.flags = new List<bool>();
+            this.Count = 0;
+        }
     }
 
+
+    [DataContract]
     internal class EnumeratorOperator : GraphViewExecutionOperator
     {
-        public Container Container { get; set; }
+        public Container container;
+        [DataMember]
+        private int containerIndex;
+
         private int offset;
 
         public EnumeratorOperator()
         {
             this.offset = -1;
+            this.containerIndex = -1;
             this.Open();
         }
 
-        public EnumeratorOperator(Container container)
+        public EnumeratorOperator(Container container, int containerIndex)
         {
-            this.Container = container;
+            this.container = container;
+            this.containerIndex = containerIndex;
             this.offset = -1;
             this.Open();
         }
 
+        public void SetContainer(Container aContainer, int aContainerIndex)
+        {
+            this.container = aContainer;
+            this.containerIndex = aContainerIndex;
+        }
+
         public override RawRecord Next()
         {
-            if (this.Container != null)
+            if (this.container != null)
             {
                 if (this.MoveNext())
                 {
@@ -207,12 +236,12 @@ namespace GraphView
             }
         }
 
-        public RawRecord Current => this.Container.GetRawRecord(this.offset, out this.offset);
+        public RawRecord Current => this.container.GetRawRecord(this.offset, out this.offset);
 
         public bool MoveNext()
         {
             this.offset++;
-            RawRecord rec = this.Container.GetRawRecord(this.offset, out this.offset);
+            RawRecord rec = this.container.GetRawRecord(this.offset, out this.offset);
             if (rec != null)
             {
                 return true;
@@ -227,6 +256,16 @@ namespace GraphView
         {
             this.offset = -1;
             this.Open();
+        }
+
+        [OnDeserialized]
+        private void Reconstruct(StreamingContext context)
+        {
+            this.offset = -1;
+            if (this.containerIndex != -1)
+            {
+                this.container = SerializationData.Containers[this.containerIndex];
+            }
         }
     }
 }

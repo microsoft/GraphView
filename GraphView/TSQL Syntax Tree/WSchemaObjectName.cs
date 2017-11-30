@@ -25,14 +25,19 @@
 // 
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.Serialization;
 using System.Text;
+using GraphView.GraphViewDBPortal;
 using Microsoft.SqlServer.TransactSql.ScriptDom;
 
 namespace GraphView
 {
+    [DataContract]
     public partial class WMultiPartIdentifier : WSqlFragment
     {
+        [DataMember]
         public IList<Identifier> Identifiers { get; set; }
+
         public WMultiPartIdentifier(params Identifier[] identifiers)
         {
             Identifiers = identifiers.ToList();
@@ -64,7 +69,14 @@ namespace GraphView
                 {
                     sb.Append('.');
                 }
-                sb.Append(Identifiers[i].Value);
+                if (JsonQueryConfig.useSquareBracket)
+                {
+                    sb.Append("[" + Identifiers[i].Value + "]");
+                }
+                else
+                {
+                    sb.Append(Identifiers[i].Value);
+                }
             }
 
             return sb.ToString();

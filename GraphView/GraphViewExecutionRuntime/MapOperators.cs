@@ -1,19 +1,25 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.Serialization;
 using System.Text;
 using System.Threading.Tasks;
 using static GraphView.DocumentDBKeywords;
 
 namespace GraphView
 {
+    [DataContract]
     internal class MapOperator : GraphViewExecutionOperator
     {
+        [DataMember]
         private GraphViewExecutionOperator inputOp;
 
         // The traversal inside the map function.
+        [DataMember]
         private GraphViewExecutionOperator mapTraversal;
         private Container container;
+        [DataMember]
+        private int containerIndex;
 
         private List<RawRecord> inputBatch;
         private int batchSize;
@@ -23,11 +29,13 @@ namespace GraphView
         public MapOperator(
             GraphViewExecutionOperator inputOp,
             GraphViewExecutionOperator mapTraversal,
-            Container container)
+            Container container,
+            int containerIndex)
         {
             this.inputOp = inputOp;
             this.mapTraversal = mapTraversal;
             this.container = container;
+            this.containerIndex = containerIndex;
 
             this.inputBatch = new List<RawRecord>();
             this.batchSize = KW_DEFAULT_BATCH_SIZE;
@@ -93,29 +101,46 @@ namespace GraphView
             this.inputRecordSet.Clear();
             this.Open();
         }
+
+        [OnDeserialized]
+        private void Reconstruct(StreamingContext context)
+        {
+            this.inputBatch = new List<RawRecord>();
+            this.batchSize = KW_DEFAULT_BATCH_SIZE;
+            this.inputRecordSet = new HashSet<int>();
+            this.container = SerializationData.Containers[this.containerIndex];
+        }
     }
 
+    [DataContract]
     internal class FlatMapOperator : GraphViewExecutionOperator
     {
+        [DataMember]
         private GraphViewExecutionOperator inputOp;
 
         // The traversal inside the flatMap function.
+        [DataMember]
         private GraphViewExecutionOperator flatMapTraversal;
         private Container container;
+        [DataMember]
+        private int containerIndex;
 
         private List<RawRecord> inputBatch;
 
+        [DataMember]
         private int batchSize;
 
         public FlatMapOperator(
             GraphViewExecutionOperator inputOp,
             GraphViewExecutionOperator flatMapTraversal,
             Container container,
+            int containerIndex,
             int batchSize = KW_DEFAULT_BATCH_SIZE)
         {
             this.inputOp = inputOp;
             this.flatMapTraversal = flatMapTraversal;
             this.container = container;
+            this.containerIndex = containerIndex;
 
             this.batchSize = batchSize;
 
@@ -172,6 +197,13 @@ namespace GraphView
             this.flatMapTraversal.ResetState();
             this.Open();
         }
+
+        [OnDeserialized]
+        private void Reconstruct(StreamingContext context)
+        {
+            this.inputBatch = new List<RawRecord>();
+            this.container = SerializationData.Containers[this.containerIndex];
+        }
     }
 
     /// <summary>
@@ -182,27 +214,35 @@ namespace GraphView
     /// g.V().both().local(__.count()) : 3,1,3,3,1,1
     /// now the implementation is a map type.
     /// </summary>
+    [DataContract]
     internal class LocalOperator : GraphViewExecutionOperator
     {
+        [DataMember]
         private GraphViewExecutionOperator inputOp;
 
         // The traversal inside the local function.
+        [DataMember]
         private GraphViewExecutionOperator localTraversal;
         private Container container;
+        [DataMember]
+        private int containerIndex;
 
         private List<RawRecord> inputBatch;
 
+        [DataMember]
         private int batchSize;
 
         public LocalOperator(
             GraphViewExecutionOperator inputOp,
             GraphViewExecutionOperator localTraversal,
             Container container,
+            int containerIndex,
             int batchSize = KW_DEFAULT_BATCH_SIZE)
         {
             this.inputOp = inputOp;
             this.localTraversal = localTraversal;
             this.container = container;
+            this.containerIndex = containerIndex;
 
             this.batchSize = batchSize;
 
@@ -259,25 +299,39 @@ namespace GraphView
             this.localTraversal.ResetState();
             this.Open();
         }
+
+        [OnDeserialized]
+        private void Reconstruct(StreamingContext context)
+        {
+            this.inputBatch = new List<RawRecord>();
+            this.container = SerializationData.Containers[this.containerIndex];
+        }
     }
 
+    [DataContract]
     internal class CoalesceOperator : GraphViewExecutionOperator
     {
         private ContainerWithFlag container;
+        [DataMember]
+        private int containerIndex;
+        [DataMember]
         private List<GraphViewExecutionOperator> traversalList;
+        [DataMember]
         private GraphViewExecutionOperator inputOp;
 
         // In batch mode, each RawRacord has an index,
         // so in this buffer dict, the keys are the indexes,
         // but in the Queue<RawRecord>, the indexes of RawRacords was already removed for output.
+        [DataMember]
         private SortedDictionary<int, Queue<RawRecord>> outputBuffer;
 
         private int batchSize;
 
-        public CoalesceOperator(GraphViewExecutionOperator inputOp, ContainerWithFlag container)
+        public CoalesceOperator(GraphViewExecutionOperator inputOp, ContainerWithFlag container, int containerIndex)
         {
             this.inputOp = inputOp;
             this.container = container;
+            this.containerIndex = containerIndex;
             this.traversalList = new List<GraphViewExecutionOperator>();
             this.outputBuffer = new SortedDictionary<int, Queue<RawRecord>>();
 
@@ -379,30 +433,44 @@ namespace GraphView
             this.outputBuffer.Clear();
             this.Open();
         }
+
+        [OnDeserialized]
+        private void Reconstruct(StreamingContext context)
+        {
+            this.outputBuffer = new SortedDictionary<int, Queue<RawRecord>>();
+            this.batchSize = KW_DEFAULT_BATCH_SIZE;
+            this.container = (ContainerWithFlag)SerializationData.Containers[this.containerIndex];
+        }
     }
 
     // sideEffect type && map type
+    [DataContract]
     internal class SideEffectOperator : GraphViewExecutionOperator
     {
+        [DataMember]
         private GraphViewExecutionOperator inputOp;
-
+        [DataMember]
         private GraphViewExecutionOperator sideEffectTraversal;
         private Container container;
+        [DataMember]
+        private int containerIndex;
 
         private List<RawRecord> inputBatch;
         private Queue<RawRecord> outputBuffer;
-
+        [DataMember]
         private int batchSize;
 
         public SideEffectOperator(
             GraphViewExecutionOperator inputOp,
             GraphViewExecutionOperator sideEffectTraversal,
             Container container,
+            int containerIndex,
             int batchSize = KW_DEFAULT_BATCH_SIZE)
         {
             this.inputOp = inputOp;
             this.sideEffectTraversal = sideEffectTraversal;
             this.container = container;
+            this.containerIndex = containerIndex;
 
             this.inputBatch = new List<RawRecord>();
             this.batchSize = batchSize;
@@ -457,6 +525,14 @@ namespace GraphView
             this.inputOp.ResetState();
             this.sideEffectTraversal.ResetState();
             this.Open();
+        }
+
+        [OnDeserialized]
+        private void Reconstruct(StreamingContext context)
+        {
+            this.inputBatch = new List<RawRecord>();
+            this.outputBuffer = new Queue<RawRecord>();
+            this.container = SerializationData.Containers[this.containerIndex];
         }
     }
 }

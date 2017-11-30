@@ -26,6 +26,7 @@
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Runtime.Serialization;
 using System.Text;
 using GraphView.TSQL_Syntax_Tree;
 
@@ -65,6 +66,7 @@ namespace GraphView
         Wildcard
     }
 
+    [DataContract]
     public abstract partial class WScalarExpression : WSqlFragment 
     {
     }
@@ -154,6 +156,9 @@ namespace GraphView
         }
     }
 
+    [DataContract]
+    [KnownType(typeof(WValueExpression))]
+    [KnownType(typeof(WColumnReferenceExpression))]
     public abstract partial class WPrimaryExpression : WScalarExpression { }
 
     public partial class WEdgeColumnReferenceExpression : WColumnReferenceExpression
@@ -215,10 +220,14 @@ namespace GraphView
     /// This class represents columns as scalar expressions.
     /// In particular, when WColumnReferenceExpression is of type *, it appears in function calls such as COUNT(*)
     /// </summary>
+    [DataContract]
     public partial class WColumnReferenceExpression : WPrimaryExpression
     {
+        [DataMember]
         internal WMultiPartIdentifier MultiPartIdentifier { get; set; }
+        [DataMember]
         internal ColumnType ColumnType { get; set; }
+        [DataMember]
         internal ColumnGraphType ColumnGraphType { get; set; }
 
         public WColumnReferenceExpression() { }
@@ -444,9 +453,12 @@ namespace GraphView
     /// <summary>
     /// A value expression can be a variable or a literal. 
     /// </summary>
+    [DataContract]
     public partial class WValueExpression : WPrimaryExpression 
     {
+        [DataMember]
         internal string Value { get; set; }
+        [DataMember]
         internal bool SingleQuoted { get; set; }
 
         public WValueExpression(string value, bool quoted = false)
@@ -779,10 +791,12 @@ namespace GraphView
         SquareBracket
     }
 
+    [DataContract]
     public class Identifier : WSqlFragment
     {
+        [DataMember]
         public string Value { get; set; }
-
+        [DataMember]
         public QuoteType QuoteType { get; set; }
 
         internal override bool OneLine()

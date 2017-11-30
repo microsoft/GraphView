@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Runtime.InteropServices.WindowsRuntime;
+using System.Runtime.Serialization;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.SqlServer.TransactSql.ScriptDom;
@@ -91,6 +92,17 @@ namespace GraphView
     /// <summary>
     /// A scalar function takes input as a raw record and outputs a scalar value.
     /// </summary>
+    [DataContract]
+    [KnownType(typeof(ScalarSubqueryFunction))]
+    [KnownType(typeof(ScalarValue))]
+    [KnownType(typeof(FieldValue))]
+    [KnownType(typeof(BinaryScalarFunction))]
+    [KnownType(typeof(ComposeCompositeField))]
+    [KnownType(typeof(Compose2))]
+    [KnownType(typeof(WithOutArray))]
+    [KnownType(typeof(WithInArray))]
+    [KnownType(typeof(HasProperty))]
+    [KnownType(typeof(Path))]
     internal abstract class ScalarFunction
     {
         public abstract FieldObject Evaluate(RawRecord record);
@@ -100,18 +112,23 @@ namespace GraphView
         }
     }
 
+    [DataContract]
     internal class ScalarSubqueryFunction : ScalarFunction
     {
         // When a subquery is compiled, the tuple from the outer context
         // is injected into the subquery through a constant-source scan, 
         // which is in a Cartesian product with the operators compiled from the query. 
+        [DataMember]
         private GraphViewExecutionOperator subqueryOp;
         private Container container;
+        [DataMember]
+        private int containerIndex;
 
-        public ScalarSubqueryFunction(GraphViewExecutionOperator subqueryOp, Container container)
+        public ScalarSubqueryFunction(GraphViewExecutionOperator subqueryOp, Container container, int containerIndex)
         {
             this.subqueryOp = subqueryOp;
             this.container = container;
+            this.containerIndex = containerIndex;
         }
 
         public override FieldObject Evaluate(RawRecord record)
@@ -123,11 +140,20 @@ namespace GraphView
 
             return firstResult == null ? null : firstResult.RetriveData(0);
         }
+
+        [OnDeserialized]
+        private void Reconstruct(StreamingContext context)
+        {
+            this.container = SerializationData.Containers[this.containerIndex];
+        }
     }
 
+    [DataContract]
     internal class ScalarValue : ScalarFunction
     {
+        [DataMember]
         private string value;
+        [DataMember]
         private JsonDataType dataType;
 
         public ScalarValue(string value, JsonDataType dataType)
@@ -148,9 +174,12 @@ namespace GraphView
         }
     }
 
+    [DataContract]
     internal class FieldValue : ScalarFunction
     {
+        [DataMember]
         private int fieldIndex;
+        [DataMember]
         private JsonDataType dataType;
 
         public FieldValue(int fieldIndex)
@@ -186,10 +215,14 @@ namespace GraphView
         }
     }
 
+    [DataContract]
     internal class BinaryScalarFunction : ScalarFunction
     {
+        [DataMember]
         ScalarFunction f1;
+        [DataMember]
         ScalarFunction f2;
+        [DataMember]
         BinaryExpressionType binaryType;
 
         public BinaryScalarFunction(ScalarFunction f1, ScalarFunction f2, BinaryExpressionType binaryType)
@@ -371,11 +404,15 @@ namespace GraphView
                     throw new QueryCompilationException("Unsupported data type.");
             }
         }
+
     }
 
+    [DataContract]
     internal class ComposeCompositeField : ScalarFunction
     {
+        [DataMember]
         List<Tuple<string, int>> targetFieldsAndTheirNames;
+        [DataMember]
         string defaultProjectionKey;
         
         public ComposeCompositeField(List<Tuple<string, int>> targetFieldsAndTheirNames, string defaultProjectionKey)
@@ -400,8 +437,10 @@ namespace GraphView
         }
     }
 
+    [DataContract]
     internal class Compose2 : ScalarFunction
     {
+        [DataMember]
         List<ScalarFunction> inputOfCompose2;
 
         public Compose2(List<ScalarFunction> inputOfCompose2)
@@ -446,11 +485,15 @@ namespace GraphView
         {
             return JsonDataType.Array;
         }
+
     }
 
+    [DataContract]
     internal class WithOutArray : ScalarFunction
     {
+        [DataMember]
         private int checkFieldIndex;
+        [DataMember]
         private int arrayFieldIndex;
 
         public WithOutArray(int checkFieldIndex, int arrayFieldIndex)
@@ -495,9 +538,12 @@ namespace GraphView
         }
     }
 
+    [DataContract]
     internal class WithInArray : ScalarFunction
     {
+        [DataMember]
         private int checkFieldIndex;
+        [DataMember]
         private int arrayFieldIndex;
 
         public WithInArray(int checkFieldIndex, int arrayFieldIndex)
@@ -542,9 +588,12 @@ namespace GraphView
         }
     }
 
+    [DataContract]
     internal class HasProperty : ScalarFunction
     {
+        [DataMember]
         private int _checkFieldIndex;
+        [DataMember]
         private string _propertyName;
 
         public HasProperty(int checkFieldIndex, string propertyName)
@@ -588,11 +637,13 @@ namespace GraphView
         }
     }
 
+    [DataContract]
     internal class Path : ScalarFunction
     {
         //
         // If the boolean value is true, then it's a subPath to be unfolded
         //
+        [DataMember]
         private List<Tuple<ScalarFunction, bool, HashSet<string>>> pathStepList;
 
         public Path(List<Tuple<ScalarFunction, bool, HashSet<string>>> pathStepList)

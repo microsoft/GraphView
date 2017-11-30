@@ -98,6 +98,7 @@
     <Compile Include="GraphViewQueryCompiler\CompilerVisitors.cs" />
     <Compile Include="GraphViewUtils\SamplingAlgorithm.cs" />
     <Compile Include="GraphViewUtils\GraphViewSerializer.cs" />
+    <Compile Include="GraphViewUtils\WSqlParser.cs" />
     <Compile Include="GremlinTranslation\operators\barrier\GremlinBarrierOp.cs" />
     <Compile Include="GremlinTranslation\operators\barrier\GremlinCapOp.cs" />
     <Compile Include="GremlinTranslation\operators\barrier\GremlinCommitOp.cs" />

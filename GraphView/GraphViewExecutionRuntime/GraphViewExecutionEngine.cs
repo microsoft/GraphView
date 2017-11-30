@@ -9,6 +9,7 @@ using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.Diagnostics;
 using System.Globalization;
+using System.Runtime.Serialization;
 using Newtonsoft.Json;
 using static GraphView.DocumentDBKeywords;
 
@@ -16,6 +17,14 @@ using static GraphView.DocumentDBKeywords;
 
 namespace GraphView
 {
+    [DataContract]
+    [KnownType(typeof(StringField))]
+    [KnownType(typeof(PathStepField))]
+    [KnownType(typeof(PathField))]
+    [KnownType(typeof(CollectionField))]
+    [KnownType(typeof(MapField))]
+    [KnownType(typeof(EntryField))]
+    [KnownType(typeof(CompositeField))]
     public abstract class FieldObject
     {
         public virtual string ToGraphSON() => ToString();
@@ -49,9 +58,12 @@ namespace GraphView
         }
     }
 
+    [DataContract]
     internal class StringField : FieldObject
     {
+        [DataMember]
         public string Value { get; set; }
+        [DataMember]
         public JsonDataType JsonDataType { get; set; }
 
         public StringField(string value, JsonDataType jsonDataType = JsonDataType.String)
@@ -125,9 +137,12 @@ namespace GraphView
         }
     }
 
+    [DataContract]
     internal class PathStepField : FieldObject
     {
+        [DataMember]
         private FieldObject step { get; set; }
+        [DataMember]
         private HashSet<string> labels { get; set; }
 
         public FieldObject StepFieldObject
@@ -190,8 +205,10 @@ namespace GraphView
         public override string ToValue => this.step.ToValue;
     }
 
+    [DataContract]
     internal class PathField : FieldObject
     {
+        [DataMember]
         public List<FieldObject> Path { get; set; }
 
         public PathField(List<FieldObject> path)
@@ -290,8 +307,10 @@ namespace GraphView
         }
     }
 
+    [DataContract]
     internal class CollectionField : FieldObject
     {
+        [DataMember]
         public List<FieldObject> Collection { get; set; }
 
         public CollectionField()
@@ -370,9 +389,12 @@ namespace GraphView
         }
     }
 
+    [DataContract]
     internal class MapField : FieldObject, IEnumerable<EntryField>
     {
+        [DataMember]
         private Dictionary<FieldObject, FieldObject> map;
+        [DataMember]
         public List<FieldObject> Order { get; set; } 
 
         public int Count { get { return map.Count; } }
@@ -550,8 +572,10 @@ namespace GraphView
         }
     }
 
+    [DataContract]
     internal class EntryField : FieldObject
     {
+        [DataMember]
         private KeyValuePair<FieldObject, FieldObject> entry;
 
         public EntryField(KeyValuePair<FieldObject, FieldObject> entry)
@@ -590,9 +614,12 @@ namespace GraphView
         }
     }
 
+    [DataContract]
     internal class CompositeField : FieldObject
     {
+        [DataMember]
         private Dictionary<string, FieldObject> compositeFieldObject { get; set; }
+        [DataMember]
         public string DefaultProjectionKey { get; set; }
 
         public CompositeField(Dictionary<string, FieldObject> compositeFieldObject, string defaultProjectionKey)
@@ -2425,6 +2452,81 @@ namespace GraphView
     /// The class implements the execution interface and specifies the field names of 
     /// the raw records produced by this operator. 
     /// </summary>
+    [DataContract]
+    [KnownType(typeof(ModificationBaseOperator))]
+    [KnownType(typeof(CommitOperator))]
+    [KnownType(typeof(MapOperator))]
+    [KnownType(typeof(FlatMapOperator))]
+    [KnownType(typeof(LocalOperator))]
+    [KnownType(typeof(CoalesceOperator))]
+    [KnownType(typeof(SideEffectOperator))]
+    [KnownType(typeof(OptionalOperator))]
+    [KnownType(typeof(UnionOperator))]
+    [KnownType(typeof(RepeatOperator))]
+    [KnownType(typeof(ChooseOperator))]
+    [KnownType(typeof(ChooseWithOptionsOperator))]
+    [KnownType(typeof(QueryDerivedTableOperator))]
+    [KnownType(typeof(TableValuedFunction))]
+    [KnownType(typeof(PathOperator))]
+    [KnownType(typeof(PathOperator2))]
+    [KnownType(typeof(GroupSideEffectOperator))]
+    [KnownType(typeof(TreeSideEffectOperator))]
+    [KnownType(typeof(GroupOperator))]
+    [KnownType(typeof(EnumeratorOperator))]
+    [KnownType(typeof(FetchNodeOperator))]
+    [KnownType(typeof(FetchEdgeOperator))]
+    [KnownType(typeof(TraversalOperator))]
+    [KnownType(typeof(FilterOperator))]
+    [KnownType(typeof(FilterInBatchOperator))]
+    [KnownType(typeof(CartesianProductOperator))]
+    [KnownType(typeof(OrderOperator))]
+    [KnownType(typeof(OrderLocalOperator))]
+    [KnownType(typeof(ProjectOperator))]
+    [KnownType(typeof(ProjectAggregation))]
+    [KnownType(typeof(DeduplicateOperator))]
+    [KnownType(typeof(DeduplicateLocalOperator))]
+    [KnownType(typeof(RangeOperator))]
+    [KnownType(typeof(RangeLocalOperator))]
+    [KnownType(typeof(TailOperator))]
+    [KnownType(typeof(TailLocalOperator))]
+    [KnownType(typeof(InjectOperator))]
+    [KnownType(typeof(AggregateOperator))]
+    [KnownType(typeof(StoreOperator))]
+    [KnownType(typeof(BarrierOperator))]
+    [KnownType(typeof(ProjectByOperator))]
+    [KnownType(typeof(PropertyKeyOperator))]
+    [KnownType(typeof(PropertyValueOperator))]
+    [KnownType(typeof(CountLocalOperator))]
+    [KnownType(typeof(SumLocalOperator))]
+    [KnownType(typeof(MaxLocalOperator))]
+    [KnownType(typeof(MinLocalOperator))]
+    [KnownType(typeof(MeanLocalOperator))]
+    [KnownType(typeof(SimplePathOperator))]
+    [KnownType(typeof(CyclicPathOperator))]
+    [KnownType(typeof(CoinOperator))]
+    [KnownType(typeof(SampleOperator))]
+    [KnownType(typeof(SampleLocalOperator))]
+    [KnownType(typeof(Decompose1Operator))]
+    [KnownType(typeof(SelectColumnOperator))]
+    [KnownType(typeof(SelectBaseOperator))]
+    [KnownType(typeof(AdjacencyListDecoder))]
+    [KnownType(typeof(SubgraphOperator))]
+    // IAggregateFunction
+    [KnownType(typeof(FoldFunction))]
+    [KnownType(typeof(CountFunction))]
+    [KnownType(typeof(SumFunction))]
+    [KnownType(typeof(MaxFunction))]
+    [KnownType(typeof(MinFunction))]
+    [KnownType(typeof(MeanFunction))]
+    [KnownType(typeof(TreeFunction))]
+    [KnownType(typeof(CollectionFunction))]
+    [KnownType(typeof(GroupFunction))]
+    [KnownType(typeof(CapAggregate))]
+    [KnownType(typeof(SubgraphFunction))]
+    // order
+    [KnownType(typeof(IncrOrder))]
+    [KnownType(typeof(DecrOrder))]
+    [KnownType(typeof(ShuffleOrder))]
     internal abstract class GraphViewExecutionOperator : IGraphViewExecution
     {
         private bool state;

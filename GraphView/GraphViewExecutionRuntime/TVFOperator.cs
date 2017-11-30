@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Runtime.Serialization;
 using System.Text;
 using System.Threading.Tasks;
 using Newtonsoft.Json.Linq;
@@ -9,8 +10,20 @@ using static GraphView.DocumentDBKeywords;
 
 namespace GraphView
 {
+    [DataContract]
+    [KnownType(typeof(PropertiesOperator))]
+    [KnownType(typeof(ValuesOperator))]
+    [KnownType(typeof(LabelOperator))]
+    [KnownType(typeof(IdOperator))]
+    [KnownType(typeof(AllPropertiesOperator))]
+    [KnownType(typeof(ValueMapOperator))]
+    [KnownType(typeof(PropertyMapOperator))]
+    [KnownType(typeof(AllValuesOperator))]
+    [KnownType(typeof(ConstantOperator))]
+    [KnownType(typeof(UnfoldOperator))]
     internal abstract class TableValuedFunction : GraphViewExecutionOperator
     {
+        [DataMember]
         protected GraphViewExecutionOperator inputOperator;
         protected Queue<RawRecord> outputBuffer;
 
@@ -71,11 +84,20 @@ namespace GraphView
             outputBuffer.Clear();
             this.Open();
         }
+
+        [OnDeserialized]
+        private void Reconstruct(StreamingContext context)
+        {
+            this.outputBuffer = new Queue<RawRecord>();
+        }
     }
 
+    [DataContract]
     internal class PropertiesOperator : TableValuedFunction
     {
+        [DataMember]
         List<int> propertiesIndex;
+        [DataMember]
         List<string> populateMetaproperties; 
 
         public PropertiesOperator(
@@ -159,8 +181,10 @@ namespace GraphView
         }
     }
 
+    [DataContract]
     internal class ValuesOperator : TableValuedFunction
     {
+        [DataMember]
         List<int> propertiesIndex;
 
         public ValuesOperator(GraphViewExecutionOperator inputOp, List<int> propertiesIndex) : base(inputOp)
@@ -234,8 +258,10 @@ namespace GraphView
         }
     }
 
+    [DataContract]
     internal class LabelOperator : TableValuedFunction
     {
+        [DataMember]
         private readonly int _targetIndex;
 
         public LabelOperator(GraphViewExecutionOperator inputOp, int targetIndex)
@@ -277,8 +303,10 @@ namespace GraphView
         }
     }
 
+    [DataContract]
     internal class IdOperator : TableValuedFunction
     {
+        [DataMember]
         private readonly int _targetIndex;
 
         public IdOperator(GraphViewExecutionOperator inputOp, int targetIndex)
@@ -320,9 +348,12 @@ namespace GraphView
         }
     }
 
+    [DataContract]
     internal class AllPropertiesOperator : TableValuedFunction
     {
+        [DataMember]
         private readonly int inputTargetIndex;
+        [DataMember]
         private readonly List<string> populateMetaProperties;
 
         internal AllPropertiesOperator(
@@ -426,10 +457,14 @@ namespace GraphView
         }
     }
 
+    [DataContract]
     internal class ValueMapOperator : TableValuedFunction
     {
+        [DataMember]
         private readonly int inputTargetIndex;
+        [DataMember]
         private readonly bool includingMetaValue;
+        [DataMember]
         private readonly List<string> propertyNameList;
 
         internal ValueMapOperator(
@@ -603,9 +638,12 @@ namespace GraphView
         }
     }
 
+    [DataContract]
     internal class PropertyMapOperator : TableValuedFunction
     {
+        [DataMember]
         private readonly int inputTargetIndex;
+        [DataMember]
         private readonly List<string> propertyNameList;
 
         internal PropertyMapOperator(
@@ -755,8 +793,10 @@ namespace GraphView
         }
     }
 
+    [DataContract]
     internal class AllValuesOperator : TableValuedFunction
     {
+        [DataMember]
         private readonly int inputTargetIndex;
 
         internal AllValuesOperator(GraphViewExecutionOperator inputOp, int inputTargetIndex) : base(inputOp)
@@ -846,10 +886,14 @@ namespace GraphView
         }
     }
 
+    [DataContract]
     internal class ConstantOperator : TableValuedFunction
     {
+        [DataMember]
         private List<ScalarFunction> constantValues;
+        [DataMember]
         private bool isList;
+        [DataMember]
         private readonly string defaultProjectionKey;
 
         internal ConstantOperator(
@@ -889,17 +933,22 @@ namespace GraphView
 
             return new List<RawRecord> { result };
         }
+
     }
 
+    [DataContract]
     internal class PathOperator : GraphViewExecutionOperator
     {
+        [DataMember]
         private GraphViewExecutionOperator inputOp;
         // The scalar function in a path step is either a ComposeCompositeField function 
         // or a column reference. The former wrapps all fields of a single step into one column 
         // that are needed by the By functions. The latter refers to a sub-path produced by a 
         // Gremlin step (or TVF) that has one or more steps.  
         // The boolean value indicates a path step is a sub-path or not. 
+        [DataMember]
         private List<Tuple<ScalarFunction, bool, HashSet<string>>> pathStepList;
+        [DataMember]
         private List<ScalarFunction> byFuncList;
 
         public PathOperator(GraphViewExecutionOperator inputOp,
@@ -1050,13 +1099,17 @@ namespace GraphView
         }
     }
 
+    [DataContract]
     internal class PathOperator2 : GraphViewExecutionOperator
     {
+        [DataMember]
         private GraphViewExecutionOperator inputOp;
         //
         // If the boolean value is true, then it's a subPath to be unfolded
         //
+        [DataMember]
         private List<Tuple<ScalarFunction, bool>> pathStepList;
+        [DataMember]
         private List<ScalarFunction> byFuncList;
 
         public PathOperator2(GraphViewExecutionOperator inputOp,
@@ -1137,9 +1190,12 @@ namespace GraphView
         }
     }
 
+    [DataContract]
     internal class UnfoldOperator : TableValuedFunction
     {
+        [DataMember]
         private ScalarFunction getUnfoldTargetFunc;
+        [DataMember]
         private List<string> populateColumns;
 
         internal UnfoldOperator(
@@ -1222,5 +1278,6 @@ namespace GraphView
 
             return results;
         }
+
     }
 }

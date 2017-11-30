@@ -25,6 +25,7 @@
 // 
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.Serialization;
 using System.Text;
 using System.Threading.Tasks;
 using GraphView.TSQL_Syntax_Tree;
@@ -32,9 +33,14 @@ using Microsoft.SqlServer.TransactSql.ScriptDom;
 
 namespace GraphView
 {
+    [DataContract]
+    [KnownType(typeof(Identifier))]
+    [KnownType(typeof(WMultiPartIdentifier))]
     public abstract partial class WSqlFragment 
     {
+        [DataMember]
         public int FirstTokenIndex { get; set; }
+        [DataMember]
         public int LastTokenIndex { get; set; }
 
         internal void UpdateTokenInfo(WSqlFragment fragment)
