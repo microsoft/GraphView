@@ -1066,27 +1066,10 @@ namespace GraphView
                         MatchEdge traversalEdge = tuple.Item2;
 
 
-                        JsonQuery vertexQuery = new JsonQuery
-                        {
-                            NodeAlias = currentNode.NodeAlias
-                        };
-
-                        vertexQuery.RawWhereClause = new WBooleanComparisonExpression
-                        {
-                            ComparisonType = BooleanComparisonType.Equals,
-                            FirstExpr = new WColumnReferenceExpression(currentNode.NodeAlias, DocumentDBKeywords.KW_EDGEDOC_IDENTIFIER),
-                            SecondExpr = new WValueExpression("null")
-                        };
-
                         WBooleanExpression nodeCondition = null;
                         foreach (WBooleanExpression predicate in currentNode.Predicates)
                         {
                             nodeCondition = WBooleanBinaryExpression.Conjunction(nodeCondition, predicate);
-                        }
-
-                        if (nodeCondition != null)
-                        {
-                            vertexQuery.WhereConjunction(nodeCondition, BooleanBinaryExpressionType.And);
                         }
 
 
@@ -1104,10 +1087,9 @@ namespace GraphView
                         }
 
                         
-                        if (vertexQuery.RawWhereClause is WBooleanBinaryExpression)
+                        if (nodeCondition != null)
                         {
-                            WBooleanBinaryExpression binaryExpression = vertexQuery.RawWhereClause as WBooleanBinaryExpression;
-                            booleanFunction = binaryExpression.SecondExpr.CompileToFunction(queryCompilationContext, command);
+                            booleanFunction = nodeCondition.CompileToFunction(queryCompilationContext, command);
                         }
 
                         operatorChain.Add(new TraversalOperator(
@@ -1911,29 +1893,11 @@ namespace GraphView
                 //WSelectQueryBlock.ConstructJsonQueryOnNodeViaExternalAPI(matchNode, null);
             }
 
-            JsonQuery vertexQuery = new JsonQuery
-            {
-                NodeAlias = matchNode.NodeAlias
-            };
-
-            vertexQuery.RawWhereClause = new WBooleanComparisonExpression
-            {
-                ComparisonType = BooleanComparisonType.Equals,
-                FirstExpr = new WColumnReferenceExpression(matchNode.NodeAlias, DocumentDBKeywords.KW_EDGEDOC_IDENTIFIER),
-                SecondExpr = new WValueExpression("null")
-            };
-
             WBooleanExpression nodeCondition = null;
             foreach (WBooleanExpression predicate in matchNode.Predicates)
             {
                 nodeCondition = WBooleanBinaryExpression.Conjunction(nodeCondition, predicate);
             }
-
-            if (nodeCondition != null)
-            {
-                vertexQuery.WhereConjunction(nodeCondition, BooleanBinaryExpressionType.And);
-            }
-
 
             BooleanFunction booleanFunction = null;
             List<string> nodeProperties = new List<string>(matchNode.AttachedJsonQuery.NodeProperties);
@@ -1948,10 +1912,9 @@ namespace GraphView
                 queryCompilationContext.AddField(matchNode.AttachedJsonQuery.NodeAlias, propertyName, columnGraphType);
             }
 
-            if (vertexQuery.RawWhereClause is WBooleanBinaryExpression)
+            if (nodeCondition != null)
             {
-                WBooleanBinaryExpression binaryExpression = vertexQuery.RawWhereClause as WBooleanBinaryExpression;
-                booleanFunction = binaryExpression.SecondExpr.CompileToFunction(queryCompilationContext, command);
+                booleanFunction = nodeCondition.CompileToFunction(queryCompilationContext, command);
             }
 
             TraversalOperator traversalOp = new TraversalOperator(

@@ -205,13 +205,14 @@ namespace GraphView
             this.booleanFunction = booleanFunction;
             this.outputBufferSize = outputBufferSize;
         }
-        
-        public bool TryGetRawRecordInCache(string vertexId, out RawRecord record)
+
+
+        public RawRecord TryGetRawRecordInCache(string vertexId)
         {
             VertexField vertexField = null;
             if (command.VertexCache.TryGetVertexField(vertexId, out vertexField))
             {
-                record = new RawRecord();
+                RawRecord record = new RawRecord();
                 List<string> nodeProperties = new List<string>(sinkVertexQuery.NodeProperties);
                 nodeProperties.RemoveAt(0);
                 foreach (string propertyName in nodeProperties)
@@ -222,39 +223,12 @@ namespace GraphView
 
                 if (booleanFunction == null || booleanFunction.Evaluate(record))
                 {
-                    return true;
+                    return record;
                 }
             }
-
-            record = null;
-            return false;
+            return null;
         }
-
-        public bool TryGetResultRecord(Dictionary<string, List<RawRecord>> sinkVertexCollection, RawRecord inputRawRecord, string vertexId)
-        {
-            if (sinkVertexCollection.ContainsKey(vertexId))
-            {
-                List<RawRecord> sinkRecList = sinkVertexCollection[vertexId];
-                foreach (RawRecord sinkRec in sinkRecList)
-                {
-                    RawRecord resultRecord = new RawRecord(inputRawRecord);
-                    resultRecord.Append(sinkRec);
-                    this.outputBuffer.Enqueue(resultRecord);
-                }
-                return true;
-            }
-
-            RawRecord record = null;
-            if (TryGetRawRecordInCache(vertexId, out record))
-            {
-                RawRecord resultRecord = new RawRecord(inputRawRecord);
-                resultRecord.Append(record);
-                this.outputBuffer.Enqueue(resultRecord);
-                return true;
-            }
-            return false;
-        }
-
+        
 
         public override RawRecord Next()
         {
@@ -266,14 +240,14 @@ namespace GraphView
             {
                 return this.outputBuffer.Dequeue();
             }
-
-            // Groups records returned by sinkVertexQuery by sink vertices' references
-            Dictionary<string, List<RawRecord>> sinkVertexCollection = new Dictionary<string, List<RawRecord>>(GraphViewConnection.InClauseLimit);
-
+            
             while (!this.outputBuffer.Any() && this.inputOp.State())
             {
                 // <RawRecord, id, partition key>
                 List<Tuple<RawRecord, string, string>> inputSequence = new List<Tuple<RawRecord, string, string>>(this.batchSize);
+               
+                // Groups records returned by sinkVertexQuery by sink vertices' references
+                Dictionary<string, List<RawRecord>> sinkVertexCollection = new Dictionary<string, List<RawRecord>>(GraphViewConnection.InClauseLimit);
                 
                 // Loads a batch of source records
                 for (int i = 0; i < this.batchSize && this.inputOp.State(); i++)
@@ -286,31 +260,72 @@ namespace GraphView
                     EdgeField edgeField = record[this.edgeFieldIndex] as EdgeField;
                     Debug.Assert(edgeField != null, "edgeField != null");
 
-                    if (!inputSequence.Any())
+                    // When sinkVertexQuery is null, only sink vertices' IDs are to be returned. 
+                    // As a result, there is no need to send queries the underlying system to retrieve 
+                    // the sink vertices.  
+                    if (sinkVertexQuery == null)
                     {
-                        bool getResultRecord = false;
+                        RawRecord resultRecord = new RawRecord {fieldValues = new List<FieldObject>()};
+                        resultRecord.Append(record);
                         switch (this.traversalType)
                         {
                             case TraversalTypeEnum.Source:
-                                getResultRecord = TryGetResultRecord(sinkVertexCollection, record, edgeField.OutV);
+                                resultRecord.Append(new ValuePropertyField(DocumentDBKeywords.KW_DOC_ID, edgeField.OutV, JsonDataType.String, (VertexField) null));
+                                return resultRecord;
+                            case TraversalTypeEnum.Sink:
+                                resultRecord.Append(new ValuePropertyField(DocumentDBKeywords.KW_DOC_ID, edgeField.InV, JsonDataType.String, (VertexField) null));
+                                return resultRecord;
+                            case TraversalTypeEnum.Other:
+                                resultRecord.Append(new ValuePropertyField(DocumentDBKeywords.KW_DOC_ID, edgeField.OtherV, JsonDataType.String, (VertexField) null));
+                                return resultRecord;
+                            case TraversalTypeEnum.Both:
+                                resultRecord.Append(new ValuePropertyField(DocumentDBKeywords.KW_DOC_ID, edgeField.InV, JsonDataType.String, (VertexField) null));
+
+                                RawRecord resultRecord2 = new RawRecord { fieldValues = new List<FieldObject>() };
+                                resultRecord2.Append(record);
+                                resultRecord2.Append(new ValuePropertyField(DocumentDBKeywords.KW_DOC_ID, edgeField.OutV, JsonDataType.String, (VertexField)null));
+                                this.outputBuffer.Enqueue(resultRecord2);
+
+                                return resultRecord;
+                        }
+                    }
+
+
+                    if (!inputSequence.Any())
+                    {
+                        RawRecord rawRecord = null;
+                        switch (this.traversalType)
+                        {
+                            case TraversalTypeEnum.Source:
+                                rawRecord = TryGetRawRecordInCache(edgeField.OutV);
                                 break;
                             case TraversalTypeEnum.Sink:
-                                getResultRecord = TryGetResultRecord(sinkVertexCollection, record, edgeField.InV);
+                                rawRecord = TryGetRawRecordInCache(edgeField.InV);
                                 break;
                             case TraversalTypeEnum.Other:
-                                getResultRecord = TryGetResultRecord(sinkVertexCollection, record, edgeField.OtherV);
+                                rawRecord = TryGetRawRecordInCache(edgeField.OtherV);
                                 break;
                             case TraversalTypeEnum.Both:
-                                getResultRecord = TryGetResultRecord(sinkVertexCollection, record, edgeField.InV);
-                                if (getResultRecord)
+                                rawRecord = TryGetRawRecordInCache(edgeField.InV);
+                                if (rawRecord != null)
                                 {
-                                    bool getResultRecord2 = TryGetResultRecord(sinkVertexCollection, record, edgeField.OutV);
-                                    if (getResultRecord2)
+                                    RawRecord rawRecord2 = TryGetRawRecordInCache(edgeField.OutV);
+                                    if (rawRecord2 != null)
                                     {
-                                        return this.outputBuffer.Dequeue();
+                                        RawRecord resultRecord2 = new RawRecord(record);
+                                        resultRecord2.Append(rawRecord2);
+                                        this.outputBuffer.Enqueue(resultRecord2);
+
+                                        RawRecord resultRecord = new RawRecord(record);
+                                        resultRecord.Append(rawRecord);
+                                        return resultRecord;
                                     }
                                     else
                                     {
+                                        RawRecord resultRecord = new RawRecord(record);
+                                        resultRecord.Append(rawRecord);
+                                        this.outputBuffer.Enqueue(resultRecord);
+
                                         inputSequence.Add(new Tuple<RawRecord, string, string>(record, edgeField.OutV, edgeField.OutVPartition));
                                         continue;
                                     }
@@ -320,12 +335,14 @@ namespace GraphView
                                 throw new ArgumentOutOfRangeException();
                         }
 
-                        if (getResultRecord)
+                        if (rawRecord != null)
                         {
-                            return this.outputBuffer.Dequeue();
+                            RawRecord resultRecord = new RawRecord(record);
+                            resultRecord.Append(rawRecord);
+                            return resultRecord;
                         }
                     }
-                    
+
                     switch (this.traversalType)
                     {
                         case TraversalTypeEnum.Source:
@@ -345,28 +362,9 @@ namespace GraphView
                             throw new ArgumentOutOfRangeException();
                     }
                 }
-
-                // When sinkVertexQuery is null, only sink vertices' IDs are to be returned. 
-                // As a result, there is no need to send queries the underlying system to retrieve 
-                // the sink vertices.  
-                if (sinkVertexQuery == null)
-                {
-                    foreach (Tuple<RawRecord, string, string> pair in inputSequence)
-                    {
-                        RawRecord resultRecord = new RawRecord { fieldValues = new List<FieldObject>() };
-                        resultRecord.Append(pair.Item1);
-                        resultRecord.Append(new ValuePropertyField(DocumentDBKeywords.KW_DOC_ID, pair.Item2,
-                            JsonDataType.String, (VertexField) null));
-                        this.outputBuffer.Enqueue(resultRecord);
-                    }
-
-                    continue;
-                }
                 
                 HashSet<string> sinkReferenceSet = new HashSet<string>();
                 HashSet<string> sinkPartitionSet = new HashSet<string>();
-                List<string> nodeProperties = new List<string>(sinkVertexQuery.NodeProperties);
-                nodeProperties.RemoveAt(0);
 
                 // Given a list of sink references, sends queries to the underlying system
                 // to retrieve the sink vertices. To reduce the number of queries to send,
@@ -392,8 +390,8 @@ namespace GraphView
                             continue;
                         }
 
-                        RawRecord rawRecord = null;
-                        if (TryGetRawRecordInCache(sinkReferenceId, out rawRecord))
+                        RawRecord rawRecord = TryGetRawRecordInCache(sinkReferenceId);
+                        if (rawRecord != null)
                         {
                             if (!sinkVertexCollection.ContainsKey(sinkReferenceId))
                             {
