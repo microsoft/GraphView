@@ -293,37 +293,37 @@ namespace GraphView
 
                     if (!inputSequence.Any())
                     {
-                        RawRecord rawRecord = null;
+                        RawRecord vertexRecord = null;
                         switch (this.traversalType)
                         {
                             case TraversalTypeEnum.Source:
-                                rawRecord = TryGetRawRecordInCache(edgeField.OutV);
+                                vertexRecord = this.TryGetRawRecordInCache(edgeField.OutV);
                                 break;
                             case TraversalTypeEnum.Sink:
-                                rawRecord = TryGetRawRecordInCache(edgeField.InV);
+                                vertexRecord = this.TryGetRawRecordInCache(edgeField.InV);
                                 break;
                             case TraversalTypeEnum.Other:
-                                rawRecord = TryGetRawRecordInCache(edgeField.OtherV);
+                                vertexRecord = this.TryGetRawRecordInCache(edgeField.OtherV);
                                 break;
                             case TraversalTypeEnum.Both:
-                                rawRecord = TryGetRawRecordInCache(edgeField.InV);
-                                if (rawRecord != null)
+                                vertexRecord = this.TryGetRawRecordInCache(edgeField.InV);
+                                if (vertexRecord != null)
                                 {
-                                    RawRecord rawRecord2 = TryGetRawRecordInCache(edgeField.OutV);
-                                    if (rawRecord2 != null)
+                                    RawRecord vertexRecord2 = this.TryGetRawRecordInCache(edgeField.OutV);
+                                    if (vertexRecord2 != null)
                                     {
                                         RawRecord resultRecord2 = new RawRecord(record);
-                                        resultRecord2.Append(rawRecord2);
+                                        resultRecord2.Append(vertexRecord2);
                                         this.outputBuffer.Enqueue(resultRecord2);
 
                                         RawRecord resultRecord = new RawRecord(record);
-                                        resultRecord.Append(rawRecord);
+                                        resultRecord.Append(vertexRecord);
                                         return resultRecord;
                                     }
                                     else
                                     {
                                         RawRecord resultRecord = new RawRecord(record);
-                                        resultRecord.Append(rawRecord);
+                                        resultRecord.Append(vertexRecord);
                                         this.outputBuffer.Enqueue(resultRecord);
 
                                         inputSequence.Add(new Tuple<RawRecord, string, string>(record, edgeField.OutV, edgeField.OutVPartition));
@@ -335,10 +335,10 @@ namespace GraphView
                                 throw new ArgumentOutOfRangeException();
                         }
 
-                        if (rawRecord != null)
+                        if (vertexRecord != null)
                         {
                             RawRecord resultRecord = new RawRecord(record);
-                            resultRecord.Append(rawRecord);
+                            resultRecord.Append(vertexRecord);
                             return resultRecord;
                         }
                     }
@@ -390,14 +390,14 @@ namespace GraphView
                             continue;
                         }
 
-                        RawRecord rawRecord = TryGetRawRecordInCache(sinkReferenceId);
-                        if (rawRecord != null)
+                        RawRecord vertexRecord = this.TryGetRawRecordInCache(sinkReferenceId);
+                        if (vertexRecord != null)
                         {
                             if (!sinkVertexCollection.ContainsKey(sinkReferenceId))
                             {
                                 sinkVertexCollection.Add(sinkReferenceId, new List<RawRecord>());
                             }
-                            sinkVertexCollection[sinkReferenceId].Add(rawRecord);
+                            sinkVertexCollection[sinkReferenceId].Add(vertexRecord);
                             j++;
                             continue;
                         }
