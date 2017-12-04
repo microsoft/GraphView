@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace GraphView
 {
-    internal class GremlinAddVVariable: GremlinVertexTableVariable
+    internal class GremlinAddVVariable : GremlinVertexTableVariable
     {
         public GremlinToSqlContext InputContext { get; set; }
         public List<GremlinProperty> VertexProperties { get; set; }
@@ -25,9 +25,9 @@ namespace GraphView
             this.VertexProperties = new List<GremlinProperty>(vertexProperties);
             this.VertexLabel = vertexLabel;
             this.IsFirstTableReference = isFirstTableReference;
-            this.ProjectedProperties.Add(GremlinKeyword.Label);
-
             this.PropertyFromAddVParameters = new Dictionary<string, List<GremlinProperty>>();
+            this.ProjectedProperties.Add(GremlinKeyword.NodeID);
+            this.ProjectedProperties.Add(GremlinKeyword.Label);
             foreach (var property in vertexProperties)
             {
                 this.ProjectedProperties.Add(property.Key);

@@ -17,6 +17,16 @@ namespace GraphView
             this.EdgeType = edgeType;
         }
 
+        public override WTableReference ToTableReference()
+        {
+            return new WNamedTableReference()
+            {
+                Alias = SqlUtil.GetIdentifier(GetVariableName()),
+                TableObjectString = "edge",
+                TableObjectName = SqlUtil.GetSchemaObjectName("edge"),
+            }; ;
+        }
+
         internal override void InV(GremlinToSqlContext currentContext)
         {
             if (this.IsTraversalToBound)
@@ -24,16 +34,24 @@ namespace GraphView
                 base.InV(currentContext);
                 return;
             }
+
             GremlinFreeVertexVariable inVertex = new GremlinFreeVertexVariable();
             currentContext.VariableList.Add(inVertex);
             currentContext.TableReferencesInFromClause.Add(inVertex);
-
-            GremlinVariableProperty edgeSinkVProperty = this.GetVariableProperty(GremlinKeyword.EdgeSinkV);
-            GremlinVariableProperty vNodeIDProperty = inVertex.GetVariableProperty(GremlinKeyword.NodeID);
-            WBooleanExpression edgeToSinkVertexExp = SqlUtil.GetEqualBooleanComparisonExpr(edgeSinkVProperty.ToScalarExpression(), vNodeIDProperty.ToScalarExpression());
-            currentContext.AddPredicate(edgeToSinkVertexExp);
-
             currentContext.SetPivotVariable(inVertex);
+
+            for (int index = currentContext.MatchPathList.Count - 1; index >= 0; --index)
+            {
+                if (currentContext.MatchPathList[index].EdgeVariable == this &&
+                    currentContext.MatchPathList[index].SinkVariable == null &&
+                    !currentContext.MatchPathList[index].IsReversed)
+                {
+                    currentContext.MatchPathList[index].SinkVariable = inVertex;
+                    return;
+                }
+            }
+
+            currentContext.MatchPathList.Add(new GremlinMatchPath(null, this, inVertex, true));
         }
 
         internal override void OutV(GremlinToSqlContext currentContext)
@@ -43,44 +61,69 @@ namespace GraphView
                 base.OutV(currentContext);
                 return;
             }
+
             GremlinFreeVertexVariable outVertex = new GremlinFreeVertexVariable();
             currentContext.VariableList.Add(outVertex);
             currentContext.TableReferencesInFromClause.Add(outVertex);
-
-            GremlinVariableProperty edgeSourceVProperty = this.GetVariableProperty(GremlinKeyword.EdgeSourceV);
-            GremlinVariableProperty vNodeIDProperty = outVertex.GetVariableProperty(GremlinKeyword.NodeID);
-            WBooleanExpression edgeToSinkVertexExpr = SqlUtil.GetEqualBooleanComparisonExpr(edgeSourceVProperty.ToScalarExpression(), vNodeIDProperty.ToScalarExpression());
-            currentContext.AddPredicate(edgeToSinkVertexExpr);
-
             currentContext.SetPivotVariable(outVertex);
+
+            for (int index = currentContext.MatchPathList.Count - 1; index >= 0; --index)
+            {
+                if (currentContext.MatchPathList[index].EdgeVariable == this &&
+                    currentContext.MatchPathList[index].SourceVariable == null &&
+                    !currentContext.MatchPathList[index].IsReversed)
+                {
+                    currentContext.MatchPathList[index].SourceVariable = outVertex;
+                    return;
+                }
+            }
+
+            currentContext.MatchPathList.Add(new GremlinMatchPath(outVertex, this, null, true));
         }
 
-        internal override void BothV1(GremlinToSqlContext currentContext)
+        internal override void OtherV(GremlinToSqlContext currentContext)
         {
             if (this.IsTraversalToBound)
             {
-                base.BothV(currentContext);
+                base.OtherV(currentContext);
                 return;
             }
-            GremlinFreeVertexVariable bothSourceVertex = new GremlinFreeVertexVariable();
-            currentContext.VariableList.Add(bothSourceVertex);
-            currentContext.TableReferencesInFromClause.Add(bothSourceVertex);
 
-            GremlinVariableProperty edgeSinkVProperty = this.GetVariableProperty(GremlinKeyword.EdgeSinkV);
-            GremlinVariableProperty edgeSourceVProperty = this.GetVariableProperty(GremlinKeyword.EdgeSourceV);
-            GremlinVariableProperty vNodeIDProperty = bothSourceVertex.GetVariableProperty(GremlinKeyword.NodeID);
-
-            WBooleanExpression edgeToSinkVertexExpr =
-                SqlUtil.GetEqualBooleanComparisonExpr(edgeSinkVProperty.ToScalarExpression(),
-                    vNodeIDProperty.ToScalarExpression());
-            WBooleanExpression edgeToSourceVertexExpr =
-                SqlUtil.GetEqualBooleanComparisonExpr(edgeSourceVProperty.ToScalarExpression(),
-                    vNodeIDProperty.ToScalarExpression());
-            WBooleanBinaryExpression edgeToBothVertexExpr =
-                SqlUtil.GetOrBooleanBinaryExpr(edgeToSinkVertexExpr, edgeToSourceVertexExpr);
-
-            currentContext.AddPredicate(edgeToBothVertexExpr);
-            currentContext.SetPivotVariable(bothSourceVertex);
+            if (this.EdgeType == WEdgeType.OutEdge || this.EdgeType == WEdgeType.BothEdge)
+            {
+                for (int index = currentContext.MatchPathList.Count - 1; index >= 0; --index)
+                {
+                    if (currentContext.MatchPathList[index].EdgeVariable == this &&
+                        currentContext.MatchPathList[index].SinkVariable == null &&
+                        !currentContext.MatchPathList[index].IsReversed)
+                    {
+                        GremlinFreeVertexVariable otherVertex = new GremlinFreeVertexVariable();
+                        currentContext.VariableList.Add(otherVertex);
+                        currentContext.TableReferencesInFromClause.Add(otherVertex);
+                        currentContext.SetPivotVariable(otherVertex);
+                        currentContext.MatchPathList[index].SinkVariable = otherVertex;
+                        return;
+                    }
+                }
+            }
+            else if (this.EdgeType == WEdgeType.InEdge)
+            {
+                for (int index = currentContext.MatchPathList.Count - 1; index >= 0; --index)
+                {
+                    if (currentContext.MatchPathList[index].EdgeVariable == this &&
+                        currentContext.MatchPathList[index].SourceVariable == null &&
+                        !currentContext.MatchPathList[index].IsReversed)
+                    {
+                        GremlinFreeVertexVariable otherVertex = new GremlinFreeVertexVariable();
+                        currentContext.VariableList.Add(otherVertex);
+                        currentContext.TableReferencesInFromClause.Add(otherVertex);
+                        currentContext.SetPivotVariable(otherVertex);
+                        currentContext.MatchPathList[index].SourceVariable = otherVertex;
+                        return;
+                    }
+                }
+            }
+            base.OtherV(currentContext);
         }
 
         internal override void Aggregate(GremlinToSqlContext currentContext, string sideEffectKey, GremlinToSqlContext projectContext)
@@ -165,6 +208,12 @@ namespace GraphView
         {
             this.IsTraversalToBound = true;
             base.SimplePath(currentContext, fromLabel, toLabel);
+        }
+
+        internal override void Subgraph(GremlinToSqlContext currentContext, string sideEffectKey, GremlinToSqlContext dummyContext)
+        {
+            this.IsTraversalToBound = true;
+            base.Subgraph(currentContext, sideEffectKey, dummyContext);
         }
 
         internal override void Store(GremlinToSqlContext currentContext, string sideEffectKey, GremlinToSqlContext projectContext)

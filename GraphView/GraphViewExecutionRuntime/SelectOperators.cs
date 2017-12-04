@@ -479,20 +479,23 @@ namespace GraphView
 
         private EnumeratorOperator rightEnumerator;
         private Container container;
+        [DataMember]
+        private int containerIndex;
         private RawRecord leftRecord;
 
         private bool needInitialize;
 
         public CartesianProductOperator(
             GraphViewExecutionOperator leftInput, 
-            GraphViewExecutionOperator rightInput)
+            GraphViewExecutionOperator rightInput,
+            Container container, int containerIndex)
         {
             this.leftInput = leftInput;
             this.rightInput = rightInput;
-
-            this.container = new Container();
-            int containerIndex = SerializationData.AddContainers(this.container);
-            this.rightEnumerator = new EnumeratorOperator(this.container, containerIndex);
+            this.container = container;
+            this.containerIndex = containerIndex;
+            // int containerIndex = SerializationData.AddContainers(this.container);
+            this.rightEnumerator = new EnumeratorOperator(this.container, this.containerIndex);
 
             this.needInitialize = true;
             leftRecord = null;
@@ -563,8 +566,8 @@ namespace GraphView
         private void Reconstruct(StreamingContext context)
         {
             this.container = new Container();
-            int containerIndex = SerializationData.AddContainers(this.container);
-            this.rightEnumerator = new EnumeratorOperator(this.container, containerIndex);
+
+            this.rightEnumerator = new EnumeratorOperator(this.container, this.containerIndex);
 
             this.needInitialize = true;
             leftRecord = null;
@@ -1990,7 +1993,7 @@ namespace GraphView
     [DataContract]
     internal class AggregateOperator : GraphViewExecutionOperator
     {
-        private CollectionFunction aggregateState;
+        private CollectionFunction aggregateFunction;
         [DataMember]
         private GraphViewExecutionOperator inputOp;
         [DataMember]
@@ -2001,9 +2004,9 @@ namespace GraphView
         private readonly string storedName;
 
         public AggregateOperator(GraphViewExecutionOperator inputOp, ScalarFunction getTargetFieldFunction, 
-            CollectionFunction aggregateState, string storedName)
+            CollectionFunction aggregateFunction, string storedName)
         {
-            this.aggregateState = aggregateState;
+            this.aggregateFunction = aggregateFunction;
             this.inputOp = inputOp;
             this.getAggregateObjectFunction = getTargetFieldFunction;
             this.outputBuffer = new Queue<RawRecord>();
@@ -2023,9 +2026,9 @@ namespace GraphView
                 if (aggregateObject == null)
                     throw new GraphViewException("The provided traversal or property name in Aggregate does not map to a value.");
 
-                aggregateState.Accumulate(aggregateObject);
+                aggregateFunction.Accumulate(aggregateObject);
 
-                result.Append(aggregateState.CollectionField);
+                result.Append(aggregateFunction.collectionState.collectionField);
 
                 outputBuffer.Enqueue(result);
             }
@@ -2045,14 +2048,14 @@ namespace GraphView
         private void Reconstruct(StreamingContext context)
         {
             this.outputBuffer = new Queue<RawRecord>();
-            this.aggregateState = (CollectionFunction)SerializationData.SideEffectStates[this.storedName];
+            this.aggregateFunction = (CollectionFunction)SerializationData.SideEffectStates[this.storedName];
         }
     }
 
     [DataContract]
     internal class StoreOperator : GraphViewExecutionOperator
     {
-        private CollectionFunction storeState;
+        private CollectionFunction storeFunction;
         [DataMember]
         private GraphViewExecutionOperator inputOp;
         [DataMember]
@@ -2061,9 +2064,9 @@ namespace GraphView
         private readonly string storedName;
 
         public StoreOperator(GraphViewExecutionOperator inputOp, ScalarFunction getTargetFieldFunction, 
-            CollectionFunction storeState, string storedName)
+            CollectionFunction storeFunction, string storedName)
         {
-            this.storeState = storeState;
+            this.storeFunction = storeFunction;
             this.inputOp = inputOp;
             this.getStoreObjectFunction = getTargetFieldFunction;
             this.storedName = storedName;
@@ -2088,9 +2091,9 @@ namespace GraphView
                 if (storeObject == null)
                     throw new GraphViewException("The provided traversal or property name in Store does not map to a value.");
 
-                storeState.Accumulate(storeObject);
+                storeFunction.Accumulate(storeObject);
 
-                result.Append(storeState.CollectionField);
+                result.Append(storeFunction.collectionState.collectionField);
 
                 if (!inputOp.State())
                 {
@@ -2111,7 +2114,7 @@ namespace GraphView
         [OnDeserialized]
         private void Reconstruct(StreamingContext context)
         {
-            this.storeState = (CollectionFunction)SerializationData.SideEffectStates[this.storedName];
+            this.storeFunction = (CollectionFunction)SerializationData.SideEffectStates[this.storedName];
         }
     }
 
@@ -3295,7 +3298,7 @@ namespace GraphView
         [DataMember]
         protected readonly GraphViewExecutionOperator inputOp;
 
-        protected Dictionary<string, IAggregateFunction> sideEffectStates;
+        public Dictionary<string, IAggregateFunction> sideEffectFunctions;
 
         [DataMember]
         protected readonly int inputObjectIndex;
@@ -3309,14 +3312,12 @@ namespace GraphView
 
         protected SelectBaseOperator(
             GraphViewExecutionOperator inputOp,
-            Dictionary<string, IAggregateFunction> sideEffectStates,
             int inputObjectIndex,
             int pathIndex,
             GremlinKeyword.Pop pop,
             string tableDefaultColumnName)
         {
             this.inputOp = inputOp;
-            this.sideEffectStates = sideEffectStates;
             this.inputObjectIndex = inputObjectIndex;
             this.pathIndex = pathIndex;
 
@@ -3334,7 +3335,7 @@ namespace GraphView
             IAggregateFunction globalSideEffectObject;
             FieldObject selectObject = null;
 
-            if (this.sideEffectStates.TryGetValue(label, out globalSideEffectObject))
+            if (this.sideEffectFunctions.TryGetValue(label, out globalSideEffectObject))
             {
                 Dictionary<string, FieldObject> compositeFieldObject = new Dictionary<string, FieldObject>();
                 compositeFieldObject.Add(this.tableDefaultColumnName, globalSideEffectObject.Terminate());
@@ -3399,7 +3400,7 @@ namespace GraphView
         [OnDeserialized]
         private void Reconstruct(StreamingContext context)
         {
-            this.sideEffectStates = SerializationData.SideEffectStates;
+            this.sideEffectFunctions = SerializationData.SideEffectStates;
         }
     }
 
@@ -3413,14 +3414,13 @@ namespace GraphView
 
         public SelectOperator(
             GraphViewExecutionOperator inputOp,
-            Dictionary<string, IAggregateFunction> sideEffectStates,
             int inputObjectIndex,
             int pathIndex,
             GremlinKeyword.Pop pop,
             List<string> selectLabels,
             List<ScalarFunction> byFuncList,
             string tableDefaultColumnName)
-            : base(inputOp, sideEffectStates, inputObjectIndex, pathIndex, pop, tableDefaultColumnName)
+            : base(inputOp, inputObjectIndex, pathIndex, pop, tableDefaultColumnName)
         {
             this.selectLabels = selectLabels;
             this.byFuncList = byFuncList;
@@ -3499,7 +3499,6 @@ namespace GraphView
 
         public SelectOneOperator(
             GraphViewExecutionOperator inputOp,
-            Dictionary<string, IAggregateFunction> sideEffectStates,
             int inputObjectIndex,
             int pathIndex,
             GremlinKeyword.Pop pop,
@@ -3507,7 +3506,7 @@ namespace GraphView
             ScalarFunction byFunc,
             List<string> populateColumns,
             string tableDefaultColumnName)
-            : base(inputOp, sideEffectStates, inputObjectIndex, pathIndex, pop, tableDefaultColumnName)
+            : base(inputOp, inputObjectIndex, pathIndex, pop, tableDefaultColumnName)
         {
             this.selectLabel = selectLabel;
             this.byFunc = byFunc;

@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace GraphView
 {
-    internal class GremlinAddETableVariable: GremlinEdgeTableVariable
+    internal class GremlinAddETableVariable : GremlinEdgeTableVariable
     {
         public GremlinToSqlContext InputContext { get; set; }
         public GremlinToSqlContext FromVertexContext { get; set; }
@@ -29,7 +29,10 @@ namespace GraphView
             this.FromVertexContext = fromContext;
             this.ToVertexContext = toContext;
             this.IsFirstTableReference = isFirstTableReference;
-
+            this.ProjectedProperties.Add(GremlinKeyword.EdgeID);
+            this.ProjectedProperties.Add(GremlinKeyword.EdgeSourceV);
+            this.ProjectedProperties.Add(GremlinKeyword.EdgeSinkV);
+            this.ProjectedProperties.Add(GremlinKeyword.EdgeOtherV);
             foreach (var edgeProperty in this.EdgeProperties)
             {
                 this.ProjectedProperties.Add(edgeProperty.Key);
@@ -43,7 +46,7 @@ namespace GraphView
 
         internal override List<GremlinVariable> FetchAllVars()
         {
-            List<GremlinVariable> variableList = new List<GremlinVariable>() {this};
+            List<GremlinVariable> variableList = new List<GremlinVariable>() { this };
             if (this.InputContext != null && InputContext.PivotVariable != null)
             {
                 variableList.Add(this.InputContext.PivotVariable);
@@ -114,7 +117,7 @@ namespace GraphView
             else
             {
                 return context.ToSelectQueryBlock();
-            } 
+            }
         }
 
         internal override void Property(GremlinToSqlContext currentContext, GremlinProperty property)

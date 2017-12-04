@@ -197,7 +197,8 @@ namespace GraphViewUnitTest
             Assert.AreEqual("test-app", (string)GetVertexPropertyValue(results, "__id"));
             Assert.AreEqual(1, (int)GetVertexPropertyValue(results, "_provisioningState"));
             Assert.AreEqual(false, (bool)GetVertexPropertyValue(results, "_deleted"));
-
+            Assert.AreEqual(1, GetVertexCount());
+            Assert.AreEqual(0, GetEdgeCount());
             //===========================================
             output = Get_IoT_test_2();
             results = JsonConvert.DeserializeObject<List<IdTypeEtag>>(output.FirstOrDefault());
@@ -224,7 +225,8 @@ namespace GraphViewUnitTest
                 }
             }
             Assert.AreEqual(4, matchCount);
-
+            Assert.AreEqual(26, GetVertexCount());
+            Assert.AreEqual(27, GetEdgeCount());
             //===========================================
             output = Get_IoT_test_3_prefetch();
 
@@ -272,21 +274,25 @@ namespace GraphViewUnitTest
                 }
             }
             Assert.AreEqual(16, matchCount);
-
+            Assert.AreEqual(42, GetVertexCount());
+            Assert.AreEqual(56, GetEdgeCount());
             //===========================================
             output = Get_IoT_test_4();
 
-            //foreach (var result in results)
-            //{
-            //    Console.WriteLine(result);
-            //}
+            Assert.AreEqual(42, GetVertexCount());
+            Assert.AreEqual(56, GetEdgeCount());
             //===========================================
             output = Get_IoT_test_5();
+            Assert.AreEqual(42, GetVertexCount());
+            Assert.AreEqual(56, GetEdgeCount());
             //===========================================
             output = Get_IoT_test_6();
+            Assert.AreEqual(42, GetVertexCount());
+            Assert.AreEqual(56, GetEdgeCount());
             //===========================================
             output = Get_IoT_test_7();
-
+            Assert.AreEqual(42, GetVertexCount());
+            Assert.AreEqual(56, GetEdgeCount());
             //===========================================
             output = Get_IoT_test_8();
             results = JsonConvert.DeserializeObject<List<IdTypeEtag>>(output.FirstOrDefault());
@@ -310,7 +316,8 @@ namespace GraphViewUnitTest
                 }
             }
             Assert.AreEqual(2, matchCount);
-
+            Assert.AreEqual(44, GetVertexCount());
+            Assert.AreEqual(59, GetEdgeCount());
             //===========================================
             output = Get_IoT_test_9_prefetch();
 
@@ -337,7 +344,8 @@ namespace GraphViewUnitTest
                 }
             }
             Assert.AreEqual(2, matchCount);
-
+            Assert.AreEqual(44, GetVertexCount());
+            Assert.AreEqual(60, GetEdgeCount());
             //===========================================
             output = Get_IoT_test_10_prefetch();
 
@@ -364,7 +372,8 @@ namespace GraphViewUnitTest
                 }
             }
             Assert.AreEqual(1, matchCount);
-
+            Assert.AreEqual(44, GetVertexCount());
+            Assert.AreEqual(60, GetEdgeCount());
             //===========================================
             output = Get_IoT_test_11_prefetch();
 
@@ -394,26 +403,32 @@ namespace GraphViewUnitTest
                 }
             }
             Assert.AreEqual(6, matchCount);
-
+            Assert.AreEqual(50, GetVertexCount());
+            Assert.AreEqual(66, GetEdgeCount());
             //===========================================
             output = Get_IoT_test_12();
+            Assert.AreEqual(50, GetVertexCount());
+            Assert.AreEqual(66, GetEdgeCount());
             //===========================================
             output = Get_IoT_test_13();
-            //results = graph.g().E().Count().Next();
+            Assert.AreEqual(50, GetVertexCount());
+            Assert.AreEqual(66, GetEdgeCount());
             //===========================================
             output = Get_IoT_test_14();
-            //Assert.AreEqual(49, GetVertexCount());
-            //Assert.AreEqual(63, GetEdgeCount());
-
+            Assert.AreEqual(49, GetVertexCount());
+            Assert.AreEqual(63, GetEdgeCount());
             //===========================================
             output = Get_IoT_test_15();
             Assert.AreEqual(41, GetVertexCount());
             Assert.AreEqual(53, GetEdgeCount());
-
             ////===========================================
             output = Get_IoT_test_16();
+            Assert.AreEqual(41, GetVertexCount());
+            Assert.AreEqual(53, GetEdgeCount());
             ////===========================================
             output = Get_IoT_test_17();
+            Assert.AreEqual(0, GetVertexCount());
+            Assert.AreEqual(0, GetEdgeCount());
             //===========================================
         }
 
@@ -432,13 +447,15 @@ namespace GraphViewUnitTest
         public List<string> Get_IoT_test_2()
         {
             graph.CommandText = "g.inject(0).coalesce(__.union(__.not(__.V().has('_app','test-app').has('__id','test-app').hasLabel('application')).constant('~0'),__.V().has('_app','test-app').has('__id','test-app').hasLabel('application').has('_provisioningState',0).constant('~1'),__.V().has('_app','test-app').has('__id','test-app').hasLabel('application').has('_provisioningState',2).constant('~2'),__.V().has('_app','test-app').has('__id','test-app').hasLabel('application').has('_deleted',true).constant('~3'),__.V().has('_app','test-app').has('__id','product:soda-machine').hasLabel('product-model').constant('~4'),__.V().has('_app','test-app').has('__id','uber-product:soda-machine').hasLabel('product-model').constant('~5'),__.V().has('_app','test-app').has('__id','device:ice-machine').hasLabel('device-model').constant('~6'),__.V().has('_app','test-app').has('__id','device:soda-mixer').hasLabel('device-model').constant('~7')),__.project('#v0','#v1','#v2','#v3').by(__.addV('product-model').property('_app','test-app').property('__id','product:soda-machine').property('__etag','B0vDw1xnS/agXzX9F7wxHg==').sideEffect(__.union(__.property('_name','Soda Machine'),__.sideEffect(__.addE('_val').to(__.addV('_val').property('_app','test-app')).property('_key','_properties').property('_ary',true).inV().sideEffect(__.addE('_val').to(__.addV('_val').property('_app','test-app')).property('_key','0').property('_ary',false).inV().property('_id','location').property('name','Soda machine location').property('kind','property').property('type','string')).sideEffect(__.addE('_val').to(__.addV('_val').property('_app','test-app')).property('_key','1').property('_ary',false).inV().property('_id','installer').property('name','Soda machine installer').property('kind','property').property('type','string')).sideEffect(__.addE('_val').to(__.addV('_val').property('_app','test-app')).property('_key','2').property('_ary',false).inV().property('_id','syrup_level').property('name','Syrup level').property('kind','reference').sideEffect(__.addE('_val').to(__.addV('_val').property('_app','test-app')).property('_key','target').property('_ary',false).inV().property('_id','device:soda-mixer').property('type','device'))).sideEffect(__.addE('_val').to(__.addV('_val').property('_app','test-app')).property('_key','3').property('_ary',false).inV().property('_id','ice_level').property('name','Ice level').property('kind','reference').sideEffect(__.addE('_val').to(__.addV('_val').property('_app','test-app')).property('_key','target').property('_ary',false).inV().property('_id','device:ice-machine').property('type','device'))))))).by(__.addV('product-model').property('_app','test-app').property('__id','uber-product:soda-machine').property('__etag','SkYTpr1hSkCL4NkpsfNwvQ==').sideEffect(__.union(__.property('_name','Uber Soda Machine'),__.sideEffect(__.addE('_val').to(__.addV('_val').property('_app','test-app')).property('_key','_properties').property('_ary',true).inV().sideEffect(__.addE('_val').to(__.addV('_val').property('_app','test-app')).property('_key','0').property('_ary',false).inV().property('_id','location').property('name','Soda machine location').property('kind','property').property('type','string')).sideEffect(__.addE('_val').to(__.addV('_val').property('_app','test-app')).property('_key','1').property('_ary',false).inV().property('_id','installer').property('name','Soda machine installer').property('kind','property').property('type','string')).sideEffect(__.addE('_val').to(__.addV('_val').property('_app','test-app')).property('_key','2').property('_ary',false).inV().property('_id','syrup_level').property('name','Syrup Level').property('kind','reference').sideEffect(__.addE('_val').to(__.addV('_val').property('_app','test-app')).property('_key','target').property('_ary',false).inV().property('_id','product:soda-machine').property('type','product'))))))).by(__.addV('device-model').property('_app','test-app').property('__id','device:ice-machine').property('__etag','SWnFiMWDTVGOWUJvcqCbtg==').sideEffect(__.union(__.property('_name','Ice Machine'),__.sideEffect(__.addE('_val').to(__.addV('_val').property('_app','test-app')).property('_key','_properties').property('_ary',true).inV().sideEffect(__.addE('_val').to(__.addV('_val').property('_app','test-app')).property('_key','0').property('_ary',false).inV().property('_id','firmware_version').property('name','Firmware Version').property('kind','desired').property('type','string').property('path','/firmware_version')).sideEffect(__.addE('_val').to(__.addV('_val').property('_app','test-app')).property('_key','1').property('_ary',false).inV().property('_id','serial_number').property('name','Serial Number').property('kind','desired').property('type','string').property('path','/serial_number')).sideEffect(__.addE('_val').to(__.addV('_val').property('_app','test-app')).property('_key','2').property('_ary',false).inV().property('_id','ice_level').property('name','Ice Level').property('kind','reported').property('type','number').property('path','/ice_level')))))).by(__.addV('device-model').property('_app','test-app').property('__id','device:soda-mixer').property('__etag','lsRrd7JWSBqW9kiBVPS7aQ==').sideEffect(__.union(__.property('_name','Soda Mixer'),__.sideEffect(__.addE('_val').to(__.addV('_val').property('_app','test-app')).property('_key','_properties').property('_ary',true).inV().sideEffect(__.addE('_val').to(__.addV('_val').property('_app','test-app')).property('_key','0').property('_ary',false).inV().property('_id','firmware_version').property('name','Firmware Version').property('kind','desired').property('type','string').property('path','/firmware_version')).sideEffect(__.addE('_val').to(__.addV('_val').property('_app','test-app')).property('_key','1').property('_ary',false).inV().property('_id','serial_number').property('name','Serial Number').property('kind','desired').property('type','string').property('path','/serial_number')).sideEffect(__.addE('_val').to(__.addV('_val').property('_app','test-app')).property('_key','2').property('_ary',false).inV().property('_id','co2_level').property('name','CO2 Level').property('kind','reported').property('type','number').property('path','/co2_level')).sideEffect(__.addE('_val').to(__.addV('_val').property('_app','test-app')).property('_key','3').property('_ary',false).inV().property('_id','syrup_level').property('name','Syrup Level').property('kind','reported').property('type','number').property('path','/syrup_level')))))).as('#v').project('#e0','#e1','#e2','#e3','#e4','#e5').by(__.select('#v2').addE('device-product').to(__.select('#v').select('#v0'))).by(__.select('#v3').addE('device-product').to(__.select('#v').select('#v0'))).by(__.select('#v0').addE('product-product').to(__.select('#v').select('#v1'))).by(__.select('#v0').addE('ref').to(__.select('#v').select('#v3')).property('_key','syrup_level').property('_ref','syrup_level')).by(__.select('#v0').addE('ref').to(__.select('#v').select('#v2')).property('_key','ice_level').property('_ref','ice_level')).by(__.select('#v1').addE('ref').to(__.select('#v').select('#v0')).property('_key','syrup_level').property('_ref','syrup_level')).as('#e').union(__.select('#v').union(__.select('#v0').as('#a').constant(['_name','_properties']),__.select('#v1').as('#a').constant(['_name','_properties']),__.select('#v2').as('#a').constant(['_name','_properties']),__.select('#v3').as('#a').constant(['_name','_properties'])).as('#p'),__.select('#e').union(__.select('#e0'),__.select('#e1'),__.select('#e2'),__.select('#e3'),__.select('#e4'),__.select('#e5')).as('#f').union(__.inV().as('#a').select('#f').outV(),__.outV().as('#a').select('#f').inV()).map(__.optional(__.out('mdl')).as('#m').select('#a').optional(__.out('mdl')).inE('ref').and(__.outV().where(eq('#m'))).values('_key').fold()).as('#p')).select('#a').union(__.identity(),__.as('@v').flatMap(__.optional(__.out('mdl')).inE('ref').and(__.values('_key').where(within('#p')))).repeat(__.as('@e').flatMap(__.outV().as('mdl').select(last,'@v').both().dedup().and(__.optional(__.out('mdl')).where(eq('mdl')))).as('@v').optional(__.flatMap(__.select(last,'@e').values('_key').as('key').select(last,'@v').optional(__.out('mdl')).inE('ref').and(__.values('_ref').where(eq('key')))))).until(__.flatMap(__.as('res').select(last,'@v').where(eq('res')))).select('@v').unfold()).dedup().project('_id','type','_etag').by(__.values('__id')).by(__.label()).by(__.values('__etag')))";
+            // graph.CommandText =
+            //    "g.inject(0).coalesce(__.project('#v0').by(__.addV('product-model').property('_app','test-app').property('__id','product:soda-machine').property('__etag','B0vDw1xnS/agXzX9F7wxHg==').sideEffect(__.union(__.property('_name','SodaMachine'),__.sideEffect(__.addE('_val').to(__.addV('_val').property('_app','test-app')).property('_key','_properties').property('_ary',true).inV().sideEffect(__.constant(0)))))))";
             return graph.ExecuteAndGetResults();
         }
 
         public List<string> Get_IoT_test_3_prefetch()
         {
             graph.CommandText =
-                "g.V().has('_app','test-app').has('__id','test-app').hasLabel('application').coalesce(__.union(__.not(__.V().has('_app','test-app').has('__id','test-app').hasLabel('application')).constant('~0'),__.V().has('_app','test-app').has('__id','test-app').hasLabel('application').has('_provisioningState',0).constant('~1'),__.V().has('_app','test-app').has('__id','test-app').hasLabel('application').has('_provisioningState',2).constant('~2'),__.V().has('_app','test-app').has('__id','test-app').hasLabel('application').has('_deleted',true).constant('~3')),__.flatMap(__.project('nodes','edges').by(__.union(__.V().has('_app','test-app').has('__id','product:soda-machine').hasLabel('product-model'),__.V().has('_app','test-app').has('__id','uber-product:soda-machine').hasLabel('product-model'),__.V().has('_app','test-app').has('__id','device:ice-machine').hasLabel('device-model'),__.V().has('_app','test-app').has('__id','device:soda-mixer').hasLabel('device-model')).fold()).by(__.union(__.V().has('_app','test-app').has('__id','device:ice-machine').hasLabel('device-model').flatMap(__.as('src').flatMap(__.V().has('_app','test-app').has('__id','product:soda-machine').hasLabel('product-model')).as('tgt').select('src').outE('device-product').and(__.inV().where(eq('tgt')))),__.V().has('_app','test-app').has('__id','device:soda-mixer').hasLabel('device-model').flatMap(__.as('src').flatMap(__.V().has('_app','test-app').has('__id','product:soda-machine').hasLabel('product-model')).as('tgt').select('src').outE('device-product').and(__.inV().where(eq('tgt')))),__.V().has('_app','test-app').has('__id','product:soda-machine').hasLabel('product-model').flatMap(__.as('src').flatMap(__.V().has('_app','test-app').has('__id','uber-product:soda-machine').hasLabel('product-model')).as('tgt').select('src').outE('product-product').and(__.inV().where(eq('tgt'))))).fold()).sideEffect(__.select('edges').unfold().project('name','source','target','properties').by(__.label()).by(__.outV().project('_id','type','_etag').by(__.values('__id')).by(__.label()).by(__.values('__etag'))).by(__.inV().project('_id','type','_etag').by(__.values('__id')).by(__.label()).by(__.values('__etag'))).by(__.properties().group().by(__.key()).by(__.value())).store('^edges')).select('nodes').unfold().union(__.identity().sideEffect(__.id().store('^ids')),__.as('@v').flatMap(__.optional(__.out('mdl')).outE('ref')).repeat(__.as('@e').flatMap(__.inV().as('mdl').select(last,'@v').both().dedup().and(__.optional(__.out('mdl')).where(eq('mdl')))).as('@v').optional(__.flatMap(__.select(last,'@e').values('_ref').as('key').select(last,'@v').optional(__.out('mdl')).outE('ref').and(__.values('_key').where(eq('key')))))).until(__.flatMap(__.as('res').select(last,'@v').where(eq('res')))).sideEffect(__.project('data','info').by(__.select('@e').unfold().project('key','ref').by(__.values('_key')).by(__.values('_ref')).fold()).by(__.select('@v').unfold().project('_id','type','_etag').by(__.values('__id')).by(__.label()).by(__.values('__etag')).fold()).store('^refs'))).dedup().union(__.identity().sideEffect(__.group('^mdls').by(__.id()).by(__.coalesce(__.out('mdl').values('__id'),__.constant('')))),__.out('mdl')).dedup()).union(__.emit().repeat(__.outE('_val').as('_').inV()).tree(),__.cap('^ids'),__.cap('^mdls'),__.cap('^refs')).fold().union(__.identity(),__.cap('^edges')))"; 
+                "g.V().has('_app','test-app').has('__id','test-app').hasLabel('application').coalesce(__.union(__.not(__.V().has('_app','test-app').has('__id','test-app').hasLabel('application')).constant('~0'),__.V().has('_app','test-app').has('__id','test-app').hasLabel('application').has('_provisioningState',0).constant('~1'),__.V().has('_app','test-app').has('__id','test-app').hasLabel('application').has('_provisioningState',2).constant('~2'),__.V().has('_app','test-app').has('__id','test-app').hasLabel('application').has('_deleted',true).constant('~3')),__.flatMap(__.project('nodes','edges').by(__.union(__.V().has('_app','test-app').has('__id','product:soda-machine').hasLabel('product-model'),__.V().has('_app','test-app').has('__id','uber-product:soda-machine').hasLabel('product-model'),__.V().has('_app','test-app').has('__id','device:ice-machine').hasLabel('device-model'),__.V().has('_app','test-app').has('__id','device:soda-mixer').hasLabel('device-model')).fold()).by(__.union(__.V().has('_app','test-app').has('__id','device:ice-machine').hasLabel('device-model').flatMap(__.as('src').flatMap(__.V().has('_app','test-app').has('__id','product:soda-machine').hasLabel('product-model')).as('tgt').select('src').outE('device-product').and(__.inV().where(eq('tgt')))),__.V().has('_app','test-app').has('__id','device:soda-mixer').hasLabel('device-model').flatMap(__.as('src').flatMap(__.V().has('_app','test-app').has('__id','product:soda-machine').hasLabel('product-model')).as('tgt').select('src').outE('device-product').and(__.inV().where(eq('tgt')))),__.V().has('_app','test-app').has('__id','product:soda-machine').hasLabel('product-model').flatMap(__.as('src').flatMap(__.V().has('_app','test-app').has('__id','uber-product:soda-machine').hasLabel('product-model')).as('tgt').select('src').outE('product-product').and(__.inV().where(eq('tgt'))))).fold()).sideEffect(__.select('edges').unfold().project('name','source','target','properties').by(__.label()).by(__.outV().project('_id','type','_etag').by(__.values('__id')).by(__.label()).by(__.values('__etag'))).by(__.inV().project('_id','type','_etag').by(__.values('__id')).by(__.label()).by(__.values('__etag'))).by(__.properties().group().by(__.key()).by(__.value())).store('^edges')).select('nodes').unfold().union(__.identity().sideEffect(__.id().store('^ids')),__.as('@v').flatMap(__.optional(__.out('mdl')).outE('ref')).repeat(__.as('@e').flatMap(__.inV().as('mdl').select(last,'@v').both().dedup().and(__.optional(__.out('mdl')).where(eq('mdl')))).as('@v').optional(__.flatMap(__.select(last,'@e').values('_ref').as('key').select(last,'@v').optional(__.out('mdl')).outE('ref').and(__.values('_key').where(eq('key')))))).until(__.flatMap(__.as('res').select(last,'@v').where(eq('res')))).sideEffect(__.project('data','info').by(__.select('@e').unfold().project('key','ref').by(__.values('_key')).by(__.values('_ref')).fold()).by(__.select('@v').unfold().project('_id','type','_etag').by(__.values('__id')).by(__.label()).by(__.values('__etag')).fold()).store('^refs'))).dedup().union(__.identity().sideEffect(__.group('^mdls').by(__.id()).by(__.coalesce(__.out('mdl').values('__id'),__.constant('')))),__.out('mdl')).dedup()).union(__.emit().repeat(__.outE('_val').as('_').inV()).tree(),__.cap('^ids'),__.cap('^mdls'),__.cap('^refs')).fold().union(__.identity(),__.cap('^edges')))";
             return graph.ExecuteAndGetResults();
         }
 
@@ -487,7 +504,7 @@ namespace GraphViewUnitTest
         public List<string> Get_IoT_test_9_prefetch()
         {
             graph.CommandText =
-                "g.V().has('_app','test-app').has('__id','test-app').hasLabel('application').coalesce(__.union(__.not(__.V().has('_app','test-app').has('__id','test-app').hasLabel('application')).constant('~0'),__.V().has('_app','test-app').has('__id','test-app').hasLabel('application').has('_provisioningState',0).constant('~1'),__.V().has('_app','test-app').has('__id','test-app').hasLabel('application').has('_provisioningState',2).constant('~2'),__.V().has('_app','test-app').has('__id','test-app').hasLabel('application').has('_deleted',true).constant('~3')),__.flatMap(__.project('nodes','edges').by(__.union(__.V().has('_app','test-app').has('__id','device:soda-mixer:shop-1').hasLabel('device'),__.V().has('_app','test-app').has('__id','product:soda-machine:shop-2').hasLabel('product')).fold()).by(__.union(__.V().has('_app','test-app').has('__id','device:soda-mixer:shop-1').hasLabel('device').out('mdl').flatMap(__.as('src').flatMap(__.V().has('_app','test-app').has('__id','product:soda-machine:shop-2').hasLabel('product').out('mdl')).as('tgt').select('src').outE('device-product').and(__.inV().where(eq('tgt'))))).fold()).sideEffect(__.select('edges').unfold().project('name','source','target','properties').by(__.label()).by(__.outV().project('_id','type','_etag').by(__.values('__id')).by(__.label()).by(__.values('__etag'))).by(__.inV().project('_id','type','_etag').by(__.values('__id')).by(__.label()).by(__.values('__etag'))).by(__.properties().group().by(__.key()).by(__.value())).store('^edges')).select('nodes').unfold().union(__.identity().sideEffect(__.id().store('^ids')),__.as('@v').flatMap(__.optional(__.out('mdl')).outE('ref')).repeat(__.as('@e').flatMap(__.inV().as('mdl').select(last,'@v').both().dedup().and(__.optional(__.out('mdl')).where(eq('mdl')))).as('@v').optional(__.flatMap(__.select(last,'@e').values('_ref').as('key').select(last,'@v').optional(__.out('mdl')).outE('ref').and(__.values('_key').where(eq('key')))))).until(__.flatMap(__.as('res').select(last,'@v').where(eq('res')))).sideEffect(__.project('data','info').by(__.select('@e').unfold().project('key','ref').by(__.values('_key')).by(__.values('_ref')).fold()).by(__.select('@v').unfold().project('_id','type','_etag').by(__.values('__id')).by(__.label()).by(__.values('__etag')).fold()).store('^refs'))).dedup().union(__.identity().sideEffect(__.group('^mdls').by(__.id()).by(__.coalesce(__.out('mdl').values('__id'),__.constant('')))),__.out('mdl')).dedup()).union(__.emit().repeat(__.outE('_val').as('_').inV()).tree(),__.cap('^ids'),__.cap('^mdls'),__.cap('^refs')).fold().union(__.identity(),__.cap('^edges')))";    
+                "g.V().has('_app','test-app').has('__id','test-app').hasLabel('application').coalesce(__.union(__.not(__.V().has('_app','test-app').has('__id','test-app').hasLabel('application')).constant('~0'),__.V().has('_app','test-app').has('__id','test-app').hasLabel('application').has('_provisioningState',0).constant('~1'),__.V().has('_app','test-app').has('__id','test-app').hasLabel('application').has('_provisioningState',2).constant('~2'),__.V().has('_app','test-app').has('__id','test-app').hasLabel('application').has('_deleted',true).constant('~3')),__.flatMap(__.project('nodes','edges').by(__.union(__.V().has('_app','test-app').has('__id','device:soda-mixer:shop-1').hasLabel('device'),__.V().has('_app','test-app').has('__id','product:soda-machine:shop-2').hasLabel('product')).fold()).by(__.union(__.V().has('_app','test-app').has('__id','device:soda-mixer:shop-1').hasLabel('device').out('mdl').flatMap(__.as('src').flatMap(__.V().has('_app','test-app').has('__id','product:soda-machine:shop-2').hasLabel('product').out('mdl')).as('tgt').select('src').outE('device-product').and(__.inV().where(eq('tgt'))))).fold()).sideEffect(__.select('edges').unfold().project('name','source','target','properties').by(__.label()).by(__.outV().project('_id','type','_etag').by(__.values('__id')).by(__.label()).by(__.values('__etag'))).by(__.inV().project('_id','type','_etag').by(__.values('__id')).by(__.label()).by(__.values('__etag'))).by(__.properties().group().by(__.key()).by(__.value())).store('^edges')).select('nodes').unfold().union(__.identity().sideEffect(__.id().store('^ids')),__.as('@v').flatMap(__.optional(__.out('mdl')).outE('ref')).repeat(__.as('@e').flatMap(__.inV().as('mdl').select(last,'@v').both().dedup().and(__.optional(__.out('mdl')).where(eq('mdl')))).as('@v').optional(__.flatMap(__.select(last,'@e').values('_ref').as('key').select(last,'@v').optional(__.out('mdl')).outE('ref').and(__.values('_key').where(eq('key')))))).until(__.flatMap(__.as('res').select(last,'@v').where(eq('res')))).sideEffect(__.project('data','info').by(__.select('@e').unfold().project('key','ref').by(__.values('_key')).by(__.values('_ref')).fold()).by(__.select('@v').unfold().project('_id','type','_etag').by(__.values('__id')).by(__.label()).by(__.values('__etag')).fold()).store('^refs'))).dedup().union(__.identity().sideEffect(__.group('^mdls').by(__.id()).by(__.coalesce(__.out('mdl').values('__id'),__.constant('')))),__.out('mdl')).dedup()).union(__.emit().repeat(__.outE('_val').as('_').inV()).tree(),__.cap('^ids'),__.cap('^mdls'),__.cap('^refs')).fold().union(__.identity(),__.cap('^edges')))";
             return graph.ExecuteAndGetResults();
         }
 
@@ -536,7 +553,7 @@ namespace GraphViewUnitTest
         public List<string> Get_IoT_test_13()
         {
             graph.CommandText =
-                "g.V().has('_app','test-app').has('__id','test-app').hasLabel('application').coalesce(__.union(__.not(__.V().has('_app','test-app').has('__id','test-app').hasLabel('application')).constant('~0'),__.V().has('_app','test-app').has('__id','test-app').hasLabel('application').has('_provisioningState',0).constant('~1'),__.V().has('_app','test-app').has('__id','test-app').hasLabel('application').has('_provisioningState',2).constant('~2'),__.V().has('_app','test-app').has('__id','test-app').hasLabel('application').has('_deleted',true).constant('~3')),__.flatMap(__.V().has('_app','test-app').has('__id','uber-product:soda-machine:shop-3').hasLabel('product').range(0,100).union(__.identity().sideEffect(__.id().store('^ids')),__.as('@v').flatMap(__.optional(__.out('mdl')).outE('ref')).repeat(__.as('@e').flatMap(__.inV().as('mdl').select(last,'@v').both().dedup().and(__.optional(__.out('mdl')).where(eq('mdl')))).as('@v').optional(__.flatMap(__.select(last,'@e').values('_ref').as('key').select(last,'@v').optional(__.out('mdl')).outE('ref').and(__.values('_key').where(eq('key')))))).until(__.flatMap(__.as('res').select(last,'@v').where(eq('res')))).sideEffect(__.project('data','info').by(__.select('@e').unfold().project('key','ref').by(__.values('_key')).by(__.values('_ref')).fold()).by(__.select('@v').unfold().project('_id','type','_etag').by(__.values('__id')).by(__.label()).by(__.values('__etag')).fold()).store('^refs'))).dedup().union(__.identity().sideEffect(__.group('^mdls').by(__.id()).by(__.coalesce(__.out('mdl').values('__id'),__.constant('')))),__.out('mdl')).dedup()).union(__.emit().repeat(__.outE('_val').as('_').inV()).tree(),__.cap('^ids'),__.cap('^mdls'),__.cap('^refs')).fold())";    
+                "g.V().has('_app','test-app').has('__id','test-app').hasLabel('application').coalesce(__.union(__.not(__.V().has('_app','test-app').has('__id','test-app').hasLabel('application')).constant('~0'),__.V().has('_app','test-app').has('__id','test-app').hasLabel('application').has('_provisioningState',0).constant('~1'),__.V().has('_app','test-app').has('__id','test-app').hasLabel('application').has('_provisioningState',2).constant('~2'),__.V().has('_app','test-app').has('__id','test-app').hasLabel('application').has('_deleted',true).constant('~3')),__.flatMap(__.V().has('_app','test-app').has('__id','uber-product:soda-machine:shop-3').hasLabel('product').range(0,100).union(__.identity().sideEffect(__.id().store('^ids')),__.as('@v').flatMap(__.optional(__.out('mdl')).outE('ref')).repeat(__.as('@e').flatMap(__.inV().as('mdl').select(last,'@v').both().dedup().and(__.optional(__.out('mdl')).where(eq('mdl')))).as('@v').optional(__.flatMap(__.select(last,'@e').values('_ref').as('key').select(last,'@v').optional(__.out('mdl')).outE('ref').and(__.values('_key').where(eq('key')))))).until(__.flatMap(__.as('res').select(last,'@v').where(eq('res')))).sideEffect(__.project('data','info').by(__.select('@e').unfold().project('key','ref').by(__.values('_key')).by(__.values('_ref')).fold()).by(__.select('@v').unfold().project('_id','type','_etag').by(__.values('__id')).by(__.label()).by(__.values('__etag')).fold()).store('^refs'))).dedup().union(__.identity().sideEffect(__.group('^mdls').by(__.id()).by(__.coalesce(__.out('mdl').values('__id'),__.constant('')))),__.out('mdl')).dedup()).union(__.emit().repeat(__.outE('_val').as('_').inV()).tree(),__.cap('^ids'),__.cap('^mdls'),__.cap('^refs')).fold())";
             return graph.ExecuteAndGetResults();
         }
 

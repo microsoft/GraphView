@@ -190,12 +190,14 @@ namespace GraphView
         public GremlinFreeVertexVariable SourceVariable { get; set; }
         public GremlinFreeEdgeVariable EdgeVariable { get; set; }
         public GremlinFreeVertexVariable SinkVariable { get; set; }
+        public bool IsReversed { get; set; }
 
-        public GremlinMatchPath(GremlinFreeVertexVariable sourceVariable, GremlinFreeEdgeVariable edgeVariable, GremlinFreeVertexVariable sinkVariable)
+        public GremlinMatchPath(GremlinFreeVertexVariable sourceVariable, GremlinFreeEdgeVariable edgeVariable, GremlinFreeVertexVariable sinkVariable, bool isReversed)
         {
             SourceVariable = sourceVariable;
             EdgeVariable = edgeVariable;
             SinkVariable = sinkVariable;
+            IsReversed = isReversed;
         }
     }
 

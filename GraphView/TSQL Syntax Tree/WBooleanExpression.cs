@@ -182,6 +182,8 @@ namespace GraphView
         }
     }
 
+    public partial class WEdgeVertexBridgeExpression : WBooleanComparisonExpression { }
+
     public partial class WBooleanIsNullExpression : WBooleanExpression
     {
         internal bool IsNot { get; set; }

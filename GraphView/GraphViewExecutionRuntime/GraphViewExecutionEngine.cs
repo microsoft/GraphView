@@ -2521,7 +2521,7 @@ namespace GraphView
     [KnownType(typeof(TreeFunction))]
     [KnownType(typeof(CollectionFunction))]
     [KnownType(typeof(GroupFunction))]
-    [KnownType(typeof(CapAggregate))]
+    [KnownType(typeof(CapFunction))]
     [KnownType(typeof(SubgraphFunction))]
     // order
     [KnownType(typeof(IncrOrder))]

@@ -84,6 +84,7 @@
     <Compile Include="GraphViewExecutionRuntime\ModificationLazyCommit.cs" />
     <Compile Include="GraphViewExecutionRuntime\SelectOperators.cs" />
     <Compile Include="GraphViewExecutionRuntime\SubtraversalInput.cs" />
+    <Compile Include="GraphViewQueryCompiler\AggregationBlock.cs" />
     <Compile Include="GraphViewQueryCompiler\AttachWhereClauseVisitor.cs" />
     <Compile Include="GraphViewExecutionRuntime\BooleanFunction.cs" />
     <Compile Include="GraphViewQueryCompiler\ToDocDBStringVisitor.cs" />
@@ -92,7 +93,6 @@
     <Compile Include="GraphViewQueryCompiler\CompileBooleanExpression.cs" />
     <Compile Include="GraphViewQueryCompiler\CompileModification.cs" />
     <Compile Include="GraphViewQueryCompiler\CompileScalarExpression.cs" />
-    <Compile Include="GraphViewQueryCompiler\DocDBGraphOptimizer.cs" />
     <Compile Include="DocDBScript.cs" />
     <Compile Include="GraphViewExecutionRuntime\ScalarFunction.cs" />
     <Compile Include="GraphViewQueryCompiler\CompilerVisitors.cs" />

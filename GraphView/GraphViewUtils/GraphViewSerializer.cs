@@ -85,20 +85,9 @@ namespace GraphView
             SerializationData.SideEffectStates = sideEffectStates;
         }
 
-        public static void AddSideEffectState(string key, IAggregateFunction value)
-        {
-            SerializationData.SideEffectStates[key] = value;
-        }
-
         public static void SetContainers(List<Container> containers)
         {
             SerializationData.Containers = containers;
-        }
-
-        public static int AddContainers(Container container)
-        {
-            SerializationData.Containers.Add(container);
-            return SerializationData.index++;
         }
 
         public static void SetCommand(GraphViewCommand command)

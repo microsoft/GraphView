@@ -24,6 +24,9 @@ namespace GraphView
         public const string ReverseEdgeAdj = "_reverse_edge";
         public const string Path = "_path";
         public const string Star = "*";
+        public const string VertexTablePrefix = "N_";
+        public const string EdgeTablePrefix = "E_";
+        public const string TablePrefix = "R_";
         public const string Compose1TableDefaultName = "C";
         public const string RepeatInitalTableName = "R";
         public const string RepeatColumnPrefix = "key_";

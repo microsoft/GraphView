@@ -16,7 +16,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests
         {
             using (GraphViewCommand command = new GraphViewCommand(graphConnection))
             {
-                var traversal = command.g().V().As("a").Out().As("b").Path();
+                var traversal = command.g().Inject(0).AddV("123").Property("name", "456").SideEffect(GraphTraversal.__().AddE("789").To(GraphTraversal.__()));
                 var result = traversal.Next();
                 foreach (var r in result)
                 {

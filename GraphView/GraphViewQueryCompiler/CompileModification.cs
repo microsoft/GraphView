@@ -186,7 +186,7 @@ namespace GraphView
                 throw new SyntaxErrorException("The first two parameters of AddE can only be WScalarSubquery.");
 
             Container container = new Container();
-            int containerIndex = SerializationData.AddContainers(container);
+            int containerIndex = context.AddContainers(container);
             QueryCompilationContext srcSubContext = new QueryCompilationContext(context);
             srcSubContext.OuterContextOp.SetContainer(container, containerIndex);
             GraphViewExecutionOperator srcSubQueryOp = srcSubQuery.SubQueryExpr.Compile(srcSubContext, command);

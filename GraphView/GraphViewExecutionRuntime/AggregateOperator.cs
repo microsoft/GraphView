@@ -12,6 +12,19 @@ using static GraphView.DocumentDBKeywords;
 
 namespace GraphView
 {
+    [DataContract]
+    public abstract class AggregateState
+    {
+        [DataMember]
+        internal readonly string tableAlias;
+
+        protected AggregateState(string tableAlias)
+        {
+            this.tableAlias = tableAlias;
+        }
+
+        public virtual void Init() { }
+    }
 
     internal interface IAggregateFunction
     {
@@ -168,11 +181,81 @@ namespace GraphView
     }
 
     [DataContract]
+    internal class CapFunction : IAggregateFunction
+    {
+        [DataMember]
+        private List<Tuple<string, IAggregateFunction>> sideEffectFunction;
+
+        public CapFunction()
+        {
+            sideEffectFunction = new List<Tuple<string, IAggregateFunction>>();
+        }
+
+        public void AddCapatureSideEffectState(string key, IAggregateFunction sideEffectState)
+        {
+            sideEffectFunction.Add(new Tuple<string, IAggregateFunction>(key, sideEffectState));
+        }
+
+        public void Accumulate(params FieldObject[] values)
+        {
+            return;
+        }
+
+        public void Init()
+        {
+            return;
+        }
+
+        public FieldObject Terminate()
+        {
+            if (sideEffectFunction.Count == 1)
+            {
+                Tuple<string, IAggregateFunction> tuple = sideEffectFunction[0];
+                IAggregateFunction sideEffectState = tuple.Item2;
+
+                return sideEffectState.Terminate();
+            }
+            else
+            {
+                MapField map = new MapField();
+
+                foreach (Tuple<string, IAggregateFunction> tuple in sideEffectFunction)
+                {
+                    string key = tuple.Item1;
+                    IAggregateFunction sideEffectState = tuple.Item2;
+
+                    map.Add(new StringField(key), sideEffectState.Terminate());
+                }
+
+                return map;
+            }
+        }
+
+        [OnDeserialized]
+        private void ReconstructFunction(StreamingContext context)
+        {
+            List<Tuple<string, IAggregateFunction>> states = new List<Tuple<string, IAggregateFunction>>();
+
+            foreach (Tuple<string, IAggregateFunction> tuple in this.sideEffectFunction)
+            {
+                states.Add(new Tuple<string, IAggregateFunction>(tuple.Item1, SerializationData.SideEffectStates[tuple.Item1]));
+            }
+
+            this.sideEffectFunction = states;
+        }
+    }
+
+    [DataContract]
     internal class TreeFunction : IAggregateFunction
     {
+        internal TreeState treeState;
+
         private static void ConstructTree(TreeField root, int index, PathField pathField)
         {
-            if (index >= pathField.Path.Count) return;
+            if (index >= pathField.Path.Count)
+            {
+                return;
+            }
             PathStepField pathStepField = pathField.Path[index++] as PathStepField;
             Debug.Assert(pathStepField != null, "pathStepField != null");
             CompositeField compose1PathStep = pathStepField.StepFieldObject as CompositeField;
@@ -189,11 +272,9 @@ namespace GraphView
             ConstructTree(child, index, pathField);
         }
 
-        private TreeField _root;
-
-        public TreeFunction()
+        public TreeFunction(TreeState treeState)
         {
-            _root = new TreeField(new StringField("root"));
+            this.treeState = treeState;
         }
 
         public void Accumulate(params FieldObject[] values)
@@ -203,62 +284,364 @@ namespace GraphView
                 return;
             }
 
-            ConstructTree(_root, 0, values[0] as PathField);
+            ConstructTree(this.treeState.root, 0, values[0] as PathField);
         }
 
         public void Init()
         {
-            _root = new TreeField(new StringField("root"));
+            this.treeState.Init();
         }
 
         public FieldObject Terminate()
         {
-            return _root;
+            return this.treeState.root;
         }
 
         [OnDeserialized]
         private void Reconstruct(StreamingContext context)
         {
-            this.Init();
+            this.treeState = new TreeState("");
+        }
+    }
+
+    internal class TreeState : AggregateState
+    {
+        internal TreeField root;
+
+        public TreeState(string tableAlias) : base(tableAlias)
+        {
+            this.root = new TreeField(new StringField("root"));
+        }
+
+        public override void Init()
+        {
+            this.root = new TreeField(new StringField("root"));
+        }
+    }
+
+    [DataContract]
+    internal class SubgraphFunction : IAggregateFunction
+    {
+        internal SubgraphState subgraphState;
+
+        public SubgraphFunction(SubgraphState subgraphState)
+        {
+            this.subgraphState = subgraphState;
+        }
+
+        public void Init()
+        {
+            this.subgraphState.Init();
+        }
+
+        public void Accumulate(params FieldObject[] values)
+        {
+            EdgeField edge = values[0] as EdgeField;
+            if (edge == null)
+            {
+                throw new QueryExecutionException("Only edge can be an subgraph() input.");
+            }
+
+            this.subgraphState.edgeIds.Add(edge.EdgeId);
+
+            this.subgraphState.vertexIds.Add(edge.InV);
+            this.subgraphState.vertexIds.Add(edge.OutV);
+
+            this.subgraphState.graph = null;
+        }
+
+        public FieldObject Terminate()
+        {
+            if (this.subgraphState.graph != null)
+            {
+                return this.subgraphState.graph;
+            }
+
+
+            if (this.subgraphState.vertexIds.Any())
+            {
+                // this API would modify the parameter, so deep copy it first.
+                List<VertexField> vertices = this.subgraphState.command.Connection.CreateDatabasePortal()
+                    .GetVerticesByIds(new HashSet<string>(this.subgraphState.vertexIds), this.subgraphState.command, null, true);
+
+                List<string> vertexGraphSON = new List<string>();
+
+                foreach (VertexField vertexField in vertices)
+                {
+                    JObject vertex = new JObject
+                    {
+                        new JProperty("type", "vertex"),
+                        new JProperty("id", vertexField.VertexMetaProperties[KW_DOC_ID].PropertyValue)
+                    };
+
+                    Debug.Assert(vertexField.VertexMetaProperties.ContainsKey(KW_VERTEX_LABEL));
+                    if (vertexField.VertexMetaProperties[KW_VERTEX_LABEL] != null)
+                    {
+                        vertex.Add(new JProperty("label", vertexField.VertexMetaProperties[KW_VERTEX_LABEL].PropertyValue));
+                    }
+
+                    // Add in Edges
+                    JObject inE = new JObject();
+                    if (vertexField.RevAdjacencyList != null && vertexField.RevAdjacencyList.AllEdges.Any())
+                    {
+                        var groupByLabel = vertexField.RevAdjacencyList.AllEdges.GroupBy(e => e.Label);
+                        foreach (var g in groupByLabel)
+                        {
+                            string edgelLabel = g.Key;
+                            JArray group = new JArray();
+
+                            foreach (EdgeField edgeField in g)
+                            {
+                                string edgeId = edgeField.EdgeProperties[KW_EDGE_ID].ToValue;
+                                if (!this.subgraphState.edgeIds.Contains(edgeId))
+                                {
+                                    continue;
+                                }
+                                JObject edge = new JObject
+                                {
+                                    new JProperty("id", edgeField.EdgeProperties[KW_EDGE_ID].ToValue),
+                                    new JProperty("outV", edgeField.OutV)
+                                };
+
+                                // Add edge properties
+                                JObject properties = new JObject();
+                                foreach (string propertyName in edgeField.EdgeProperties.Keys)
+                                {
+                                    switch (propertyName)
+                                    {
+                                        case KW_EDGE_ID:
+                                        case KW_EDGE_LABEL:
+                                        case KW_EDGE_SRCV:
+                                        case KW_EDGE_SINKV:
+                                        case KW_EDGE_SRCV_LABEL:
+                                        case KW_EDGE_SINKV_LABEL:
+                                        case KW_EDGE_SRCV_PARTITION:
+                                        case KW_EDGE_SINKV_PARTITION:
+                                            continue;
+                                        default:
+                                            break;
+                                    }
+
+                                    properties.Add(new JProperty(propertyName,
+                                        JsonDataTypeHelper.GetStringFieldData(edgeField.EdgeProperties[propertyName].PropertyValue,
+                                            edgeField.EdgeProperties[propertyName].JsonDataType)));
+                                }
+                                edge.Add(new JProperty("properties", properties));
+                                group.Add(edge);
+                            }
+
+                            if (group.Count != 0)
+                            {
+                                inE.Add(edgelLabel, group);
+                            }
+                        }
+                    }
+                    if (inE.Count != 0)
+                    {
+                        vertex.Add(new JProperty("inE", inE));
+                    }
+
+
+
+                    // Add out Edges
+                    JObject outE = new JObject();
+                    if (vertexField.AdjacencyList != null && vertexField.AdjacencyList.AllEdges.Any())
+                    {
+
+                        var groupByLabel = vertexField.AdjacencyList.AllEdges.GroupBy(e => e.Label);
+                        foreach (var g in groupByLabel)
+                        {
+                            string edgelLabel = g.Key;
+                            JArray group = new JArray();
+
+                            foreach (EdgeField edgeField in g)
+                            {
+                                string edgeId = edgeField.EdgeProperties[KW_EDGE_ID].ToValue;
+                                if (!this.subgraphState.edgeIds.Contains(edgeId))
+                                {
+                                    continue;
+                                }
+                                JObject edge = new JObject
+                                {
+                                    new JProperty("id", edgeField.EdgeProperties[KW_EDGE_ID].ToValue),
+                                    new JProperty("inV", edgeField.InV)
+                                };
+
+                                // Add edge properties
+                                JObject properties = new JObject();
+                                foreach (string propertyName in edgeField.EdgeProperties.Keys)
+                                {
+                                    switch (propertyName)
+                                    {
+                                        case KW_EDGE_ID:
+                                        case KW_EDGE_LABEL:
+                                        //case KW_EDGE_OFFSET:
+                                        case KW_EDGE_SRCV:
+                                        case KW_EDGE_SINKV:
+                                        case KW_EDGE_SRCV_LABEL:
+                                        case KW_EDGE_SINKV_LABEL:
+                                        case KW_EDGE_SRCV_PARTITION:
+                                        case KW_EDGE_SINKV_PARTITION:
+                                            continue;
+                                        default:
+                                            break;
+                                    }
+
+                                    properties.Add(new JProperty(propertyName,
+                                        JsonDataTypeHelper.GetStringFieldData(edgeField.EdgeProperties[propertyName].PropertyValue,
+                                            edgeField.EdgeProperties[propertyName].JsonDataType)));
+                                }
+                                edge.Add(new JProperty("properties", properties));
+                                group.Add(edge);
+                            }
+
+                            if (group.Count != 0)
+                            {
+                                outE.Add(edgelLabel, group);
+                            }
+                        }
+                    }
+                    if (outE.Count != 0)
+                    {
+                        vertex.Add(new JProperty("outE", outE));
+                    }
+
+
+                    // Add vertex properties
+                    JObject vertexProperties = new JObject();
+                    foreach (KeyValuePair<string, VertexPropertyField> kvp in vertexField.VertexProperties)
+                    {
+                        string propertyName = kvp.Key;
+
+                        Debug.Assert(!VertexField.IsVertexMetaProperty(propertyName), "Bug!");
+                        Debug.Assert(!(propertyName == KW_VERTEX_EDGE || propertyName == KW_VERTEX_REV_EDGE), "Bug!");
+
+                        JArray propertyArray = new JArray();
+                        foreach (VertexSinglePropertyField vsp in kvp.Value.Multiples.Values)
+                        {
+                            JObject property = new JObject
+                            {
+                                new JProperty("id", vsp.PropertyId),
+                                new JProperty("value",
+                                    JsonDataTypeHelper.GetStringFieldData(vsp.PropertyValue, vsp.JsonDataType))
+                            };
+
+                            if (vsp.MetaProperties.Count > 0)
+                            {
+                                JObject metaProperties = new JObject();
+
+                                foreach (KeyValuePair<string, ValuePropertyField> metaKvp in vsp.MetaProperties)
+                                {
+                                    string key = metaKvp.Key;
+                                    ValuePropertyField value = metaKvp.Value;
+
+                                    metaProperties.Add(new JProperty(key, JsonDataTypeHelper.GetStringFieldData(value.PropertyValue, value.JsonDataType)));
+                                }
+                                property.Add(new JProperty("properties", metaProperties));
+                            }
+
+                            propertyArray.Add(property);
+                        }
+                        vertexProperties.Add(new JProperty(propertyName, propertyArray));
+
+                    }
+
+                    vertex.Add(new JProperty("properties", vertexProperties));
+
+                    vertexGraphSON.Add(vertex.ToString(Formatting.None));
+                }
+
+                this.subgraphState.graph = new StringField("[" + string.Join(", ", vertexGraphSON) + "]");
+            }
+            else
+            {
+                this.subgraphState.graph = new StringField("[]");
+            }
+
+            return this.subgraphState.graph;
+        }
+
+        [OnDeserialized]
+        private void Reconstruct(StreamingContext context)
+        {
+            this.subgraphState = new SubgraphState(SerializationData.Command, "");
+        }
+    }
+
+    internal class SubgraphState : AggregateState
+    {
+        internal HashSet<string> edgeIds;
+        internal HashSet<string> vertexIds;
+        internal GraphViewCommand command;
+        internal FieldObject graph;
+
+        public SubgraphState(GraphViewCommand command, string tableAlias) : base(tableAlias)
+        {
+            this.edgeIds = new HashSet<string>();
+            this.vertexIds = new HashSet<string>();
+            this.graph = null;
+            this.command = command;
+        }
+
+        public override void Init()
+        {
+            this.edgeIds = new HashSet<string>();
+            this.vertexIds = new HashSet<string>();
+            this.graph = null;
         }
     }
 
     [DataContract]
     internal class CollectionFunction : IAggregateFunction
     {
-        public CollectionField CollectionField { get; private set; }
+        internal CollectionState collectionState;
 
-        public CollectionFunction()
+        public CollectionFunction(CollectionState collectionState)
         {
-            CollectionField = new CollectionField();
+            this.collectionState = collectionState;
         }
 
         public void Init()
         {
-            CollectionField = new CollectionField();
+            this.collectionState.Init();
         }
 
         public void Accumulate(params FieldObject[] values)
         {
-            CollectionField.Collection.Add(values[0]);
+            this.collectionState.collectionField.Collection.Add(values[0]);
         }
 
         public FieldObject Terminate()
         {
-            return CollectionField;
+            return this.collectionState.collectionField;
         }
 
         [OnDeserialized]
         private void Reconstruct(StreamingContext context)
         {
-            this.Init();
+            this.collectionState = new CollectionState("");
+        }
+    }
+
+    internal class CollectionState : AggregateState
+    {
+        internal CollectionField collectionField;
+
+        public CollectionState(string tableAlias) : base(tableAlias)
+        {
+            this.collectionField = new CollectionField();
+        }
+
+        public override void Init()
+        {
+            this.collectionField = new CollectionField();
         }
     }
 
     [DataContract]
     internal class GroupFunction : IAggregateFunction
     {
-        private Dictionary<FieldObject, List<RawRecord>> groupedStates;
+        internal GroupState groupState;
 
         [DataMember]
         private GraphViewExecutionOperator aggregateOp;
@@ -269,9 +652,9 @@ namespace GraphView
         [DataMember]
         bool isProjectingACollection;
 
-        public GroupFunction(GraphViewExecutionOperator aggregateOp, Container container, int containerIndex, bool isProjectingACollection)
+        public GroupFunction(GroupState groupState, GraphViewExecutionOperator aggregateOp, Container container, int containerIndex, bool isProjectingACollection)
         {
-            this.groupedStates = new Dictionary<FieldObject, List<RawRecord>>();
+            this.groupState = groupState;
             this.aggregateOp = aggregateOp;
             this.container = container;
             this.containerIndex = containerIndex;
@@ -280,7 +663,7 @@ namespace GraphView
 
         public void Init()
         {
-            this.groupedStates = new Dictionary<FieldObject, List<RawRecord>>();
+            this.groupState.Init();
         }
 
         public void Accumulate(params FieldObject[] values)
@@ -293,11 +676,11 @@ namespace GraphView
             FieldObject groupByKey = values[0] as FieldObject;
             RawRecord groupByValue = values[1] as RawRecord;
 
-            if (!this.groupedStates.ContainsKey(groupByKey)) {
-                this.groupedStates.Add(groupByKey, new List<RawRecord>());
+            if (!this.groupState.groupedStates.ContainsKey(groupByKey)) {
+                this.groupState.groupedStates.Add(groupByKey, new List<RawRecord>());
             }
 
-            this.groupedStates[groupByKey].Add(groupByValue);
+            this.groupState.groupedStates[groupByKey].Add(groupByValue);
         }
 
         public FieldObject Terminate()
@@ -306,13 +689,13 @@ namespace GraphView
 
             if (this.isProjectingACollection)
             {
-                foreach (FieldObject key in groupedStates.Keys)
+                foreach (FieldObject key in this.groupState.groupedStates.Keys)
                 {
                     List<FieldObject> projectFields = new List<FieldObject>();
-                    this.container.ResetTableCache(groupedStates[key]);
+                    this.container.ResetTableCache(this.groupState.groupedStates[key]);
                     this.aggregateOp.ResetState();
 
-                    for (int i = 0; i < groupedStates[key].Count; i++)
+                    for (int i = 0; i < this.groupState.groupedStates[key].Count; i++)
                     {
                         RawRecord aggregateTraversalRecord = this.aggregateOp.Next();
                         FieldObject projectResult = aggregateTraversalRecord?.RetriveData(0);
@@ -333,7 +716,7 @@ namespace GraphView
             }
             else
             {
-                foreach (KeyValuePair<FieldObject, List<RawRecord>> pair in this.groupedStates)
+                foreach (KeyValuePair<FieldObject, List<RawRecord>> pair in this.groupState.groupedStates)
                 {
                     FieldObject key = pair.Key;
                     this.aggregateOp.ResetState();
@@ -360,80 +743,31 @@ namespace GraphView
         [OnDeserialized]
         private void Reconstruct(StreamingContext context)
         {
-            this.Init();
+            this.groupState = new GroupState("");
             this.container = SerializationData.Containers[this.containerIndex];
         }
     }
 
-    [DataContract]
-    internal class CapAggregate : IAggregateFunction
+    internal class GroupState : AggregateState
     {
-        [DataMember]
-        private List<Tuple<string, IAggregateFunction>> sideEffectStates;
+        internal Dictionary<FieldObject, List<RawRecord>> groupedStates;
 
-        public CapAggregate()
+        public GroupState(string tableAlias) : base(tableAlias)
         {
-            sideEffectStates = new List<Tuple<string, IAggregateFunction>>();
+            this.groupedStates = new Dictionary<FieldObject, List<RawRecord>>();
         }
 
-        public void AddCapatureSideEffectState(string key, IAggregateFunction sideEffectState)
+        public override void Init()
         {
-            sideEffectStates.Add(new Tuple<string, IAggregateFunction>(key, sideEffectState));
-        }
-
-        public void Accumulate(params FieldObject[] values)
-        {
-            return;
-        }
-
-        public void Init()
-        {
-            return;
-        }
-
-        public FieldObject Terminate()
-        {
-            if (sideEffectStates.Count == 1)
-            {
-                Tuple<string, IAggregateFunction> tuple = sideEffectStates[0];
-                IAggregateFunction sideEffectState = tuple.Item2;
-
-                return sideEffectState.Terminate();
-            }
-            else
-            {
-                MapField map = new MapField();
-
-                foreach (Tuple<string, IAggregateFunction> tuple in sideEffectStates)
-                {
-                    string key = tuple.Item1;
-                    IAggregateFunction sideEffectState = tuple.Item2;
-
-                    map.Add(new StringField(key), sideEffectState.Terminate());
-                }
-
-                return map;
-            }
-        }
-
-        [OnDeserialized]
-        private void ReconstructFunction(StreamingContext context)
-        {
-            List<Tuple<string, IAggregateFunction>> states = new List<Tuple<string, IAggregateFunction>>();
-
-            foreach (Tuple<string, IAggregateFunction> tuple in this.sideEffectStates)
-            {
-                states.Add(new Tuple<string, IAggregateFunction>(tuple.Item1, SerializationData.SideEffectStates[tuple.Item1]));
-            }
-
-            this.sideEffectStates = states;
+            this.groupedStates = new Dictionary<FieldObject, List<RawRecord>>();
         }
     }
+
 
     [DataContract]
     internal class GroupSideEffectOperator : GraphViewExecutionOperator
     {
-        public GroupFunction GroupState { get; private set; }
+        public GroupFunction groupFunction;
         [DataMember]
         private GraphViewExecutionOperator inputOp;
         [DataMember]
@@ -443,12 +777,12 @@ namespace GraphView
 
         public GroupSideEffectOperator(
             GraphViewExecutionOperator inputOp,
-            GroupFunction groupState,
+            GroupFunction groupFunction,
             string sideEffectKey,
             ScalarFunction groupByKeyFunction)
         {
             this.inputOp = inputOp;
-            this.GroupState = groupState;
+            this.groupFunction = groupFunction;
             this.groupByKeyFunction = groupByKeyFunction;
             this.sideEffectKey = sideEffectKey;
             this.Open();
@@ -471,7 +805,7 @@ namespace GraphView
                     throw new GraphViewException("The provided property name or traversal does not map to a value for some elements.");
                 }
 
-                this.GroupState.Accumulate(new Object[]{ groupByKey, r });
+                this.groupFunction.Accumulate(new Object[]{ groupByKey, r });
                 return r;
             }
 
@@ -488,14 +822,14 @@ namespace GraphView
         [OnDeserialized]
         private void Reconstruct(StreamingContext context)
         {
-            this.GroupState = (GroupFunction)SerializationData.SideEffectStates[this.sideEffectKey];
+            this.groupFunction = (GroupFunction)SerializationData.SideEffectStates[this.sideEffectKey];
         }
     }
 
     [DataContract]
     internal class TreeSideEffectOperator : GraphViewExecutionOperator
     {
-        public TreeFunction TreeState { get; private set; }
+        public TreeFunction treeFunction;
         [DataMember]
         private GraphViewExecutionOperator inputOp;
         [DataMember]
@@ -505,12 +839,12 @@ namespace GraphView
 
         public TreeSideEffectOperator(
             GraphViewExecutionOperator inputOp,
-            TreeFunction treeState,
+            TreeFunction treeFunction,
             string sideEffectKey,
             int pathIndex)
         {
             this.inputOp = inputOp;
-            this.TreeState = treeState;
+            this.treeFunction = treeFunction;
             this.pathIndex = pathIndex;
             this.sideEffectKey = sideEffectKey;
             this.Open();
@@ -531,7 +865,7 @@ namespace GraphView
 
                 Debug.Assert(path != null);
 
-                this.TreeState.Accumulate(path);
+                this.treeFunction.Accumulate(path);
 
                 if (!this.inputOp.State()) {
                     this.Close();
@@ -551,7 +885,7 @@ namespace GraphView
         [OnDeserialized]
         private void ReconstructOperator(StreamingContext context)
         {
-            this.TreeState = (TreeFunction)SerializationData.SideEffectStates[this.sideEffectKey];
+            this.treeFunction = (TreeFunction)SerializationData.SideEffectStates[this.sideEffectKey];
         }
     }
 
@@ -707,7 +1041,7 @@ namespace GraphView
     [DataContract]
     internal class GroupInBatchOperator : GroupOperator
     {
-        private RawRecord firstRecordInGroup = null;
+        private RawRecord firstRecordInGroup;
         private int processedGroupIndex;
 
         public GroupInBatchOperator(
@@ -866,264 +1200,6 @@ namespace GraphView
         }
     }
 
-    [DataContract]
-    internal class SubgraphFunction : IAggregateFunction
-    {
-        private HashSet<string> edgeIds;
-        private HashSet<string> vertexIds;
 
-        private GraphViewCommand command;
-
-        public FieldObject Graph;
-
-        public SubgraphFunction(GraphViewCommand command)
-        {
-            this.edgeIds = new HashSet<string>();
-            this.vertexIds = new HashSet<string>();
-
-            this.command = command;
-        }
-
-        public void Init()
-        {
-            this.edgeIds = new HashSet<string>();
-            this.vertexIds = new HashSet<string>();
-            this.Graph = null;
-        }
-
-        public void Accumulate(params FieldObject[] values)
-        {
-            EdgeField edge = values[0] as EdgeField;
-            if (edge == null)
-            {
-                throw new QueryExecutionException("Only edge can be an subgraph() input.");
-            }
-
-            this.edgeIds.Add(edge.EdgeId);
-
-            this.vertexIds.Add(edge.InV);
-            this.vertexIds.Add(edge.OutV);
-
-            this.Graph = null;
-        }
-
-        public FieldObject Terminate()
-        {
-            if (this.Graph != null)
-            {
-                return this.Graph;
-            }
-
-
-            if (this.vertexIds.Any())
-            {
-                // this API would modify the parameter, so deep copy it first.
-                List<VertexField> vertices = this.command.Connection.CreateDatabasePortal().GetVerticesByIds(new HashSet<string>(this.vertexIds), this.command, null, true);
-
-                List<string> vertexGraphSON = new List<string>();
-
-                foreach (VertexField vertexField in vertices)
-                {
-                    JObject vertex = new JObject
-                    {
-                        new JProperty("type", "vertex"),
-                        new JProperty("id",
-                            vertexField.VertexMetaProperties[KW_DOC_ID].PropertyValue)
-                    };
-
-                    Debug.Assert(vertexField.VertexMetaProperties.ContainsKey(KW_VERTEX_LABEL));
-                    if (vertexField.VertexMetaProperties[KW_VERTEX_LABEL] != null)
-                    {
-                        vertex.Add(new JProperty("label", vertexField.VertexMetaProperties[KW_VERTEX_LABEL].PropertyValue));
-                    }
-
-                    // Add in Edges
-                    JObject inE = new JObject();
-                    if (vertexField.RevAdjacencyList != null && vertexField.RevAdjacencyList.AllEdges.Any())
-                    {
-                        var groupByLabel = vertexField.RevAdjacencyList.AllEdges.GroupBy(e => e.Label);
-                        foreach (var g in groupByLabel)
-                        {
-                            string edgelLabel = g.Key;
-                            JArray group = new JArray();
-                            
-                            foreach (EdgeField edgeField in g)
-                            {
-                                string edgeId = edgeField.EdgeProperties[KW_EDGE_ID].ToValue;
-                                if (!this.edgeIds.Contains(edgeId))
-                                {
-                                    continue;
-                                }
-                                JObject edge = new JObject
-                                {
-                                    new JProperty("id", edgeField.EdgeProperties[KW_EDGE_ID].ToValue),
-                                    new JProperty("outV", edgeField.OutV)
-                                };
-
-                                // Add edge properties
-                                JObject properties = new JObject();
-                                foreach (string propertyName in edgeField.EdgeProperties.Keys)
-                                {
-                                    switch (propertyName)
-                                    {
-                                        case KW_EDGE_ID:
-                                        case KW_EDGE_LABEL:
-                                        case KW_EDGE_SRCV:
-                                        case KW_EDGE_SINKV:
-                                        case KW_EDGE_SRCV_LABEL:
-                                        case KW_EDGE_SINKV_LABEL:
-                                        case KW_EDGE_SRCV_PARTITION:
-                                        case KW_EDGE_SINKV_PARTITION:
-                                            continue;
-                                        default:
-                                            break;
-                                    }
-
-                                    properties.Add(new JProperty(propertyName,
-                                        JsonDataTypeHelper.GetStringFieldData(edgeField.EdgeProperties[propertyName].PropertyValue,
-                                            edgeField.EdgeProperties[propertyName].JsonDataType)));
-                                }
-                                edge.Add(new JProperty("properties", properties));
-                                group.Add(edge);
-                            }
-
-                            if (group.Count != 0)
-                            {
-                                inE.Add(edgelLabel, group);
-                            }
-                        }
-                    }
-                    if (inE.Count != 0)
-                    {
-                        vertex.Add(new JProperty("inE", inE));
-                    }
-                    
-
-
-                    // Add out Edges
-                    JObject outE = new JObject();
-                    if (vertexField.AdjacencyList != null && vertexField.AdjacencyList.AllEdges.Any())
-                    {
-                        
-                        var groupByLabel = vertexField.AdjacencyList.AllEdges.GroupBy(e => e.Label);
-                        foreach (var g in groupByLabel)
-                        {
-                            string edgelLabel = g.Key;
-                            JArray group = new JArray();
-
-                            foreach (EdgeField edgeField in g)
-                            {
-                                string edgeId = edgeField.EdgeProperties[KW_EDGE_ID].ToValue;
-                                if (!this.edgeIds.Contains(edgeId))
-                                {
-                                    continue;
-                                }
-                                JObject edge = new JObject
-                                {
-                                    new JProperty("id", edgeField.EdgeProperties[KW_EDGE_ID].ToValue),
-                                    new JProperty("inV", edgeField.InV)
-                                };
-
-                                // Add edge properties
-                                JObject properties = new JObject();
-                                foreach (string propertyName in edgeField.EdgeProperties.Keys)
-                                {
-                                    switch (propertyName)
-                                    {
-                                        case KW_EDGE_ID:
-                                        case KW_EDGE_LABEL:
-                                        //case KW_EDGE_OFFSET:
-                                        case KW_EDGE_SRCV:
-                                        case KW_EDGE_SINKV:
-                                        case KW_EDGE_SRCV_LABEL:
-                                        case KW_EDGE_SINKV_LABEL:
-                                        case KW_EDGE_SRCV_PARTITION:
-                                        case KW_EDGE_SINKV_PARTITION:
-                                            continue;
-                                        default:
-                                            break;
-                                    }
-
-                                    properties.Add(new JProperty(propertyName,
-                                        JsonDataTypeHelper.GetStringFieldData(edgeField.EdgeProperties[propertyName].PropertyValue,
-                                            edgeField.EdgeProperties[propertyName].JsonDataType)));
-                                }
-                                edge.Add(new JProperty("properties", properties));
-                                group.Add(edge);
-                            }
-
-                            if (group.Count != 0)
-                            {
-                                outE.Add(edgelLabel, group);
-                            }
-                        }
-                    }
-                    if (outE.Count != 0)
-                    {
-                        vertex.Add(new JProperty("outE", outE));
-                    }
-                    
-
-                    // Add vertex properties
-                    JObject vertexProperties = new JObject();
-                    foreach (KeyValuePair<string, VertexPropertyField> kvp in vertexField.VertexProperties)
-                    {
-                        string propertyName = kvp.Key;
-                        
-                        Debug.Assert(!VertexField.IsVertexMetaProperty(propertyName), "Bug!");
-                        Debug.Assert(!(propertyName == KW_VERTEX_EDGE || propertyName == KW_VERTEX_REV_EDGE), "Bug!");
-
-                        JArray propertyArray = new JArray();
-                        foreach (VertexSinglePropertyField vsp in kvp.Value.Multiples.Values)
-                        {
-                            JObject property = new JObject
-                            {
-                                new JProperty("id", vsp.PropertyId),
-                                new JProperty("value",
-                                    JsonDataTypeHelper.GetStringFieldData(vsp.PropertyValue, vsp.JsonDataType))
-                            };
-
-                            if (vsp.MetaProperties.Count > 0)
-                            {
-                                JObject metaProperties = new JObject();
-
-                                foreach (KeyValuePair<string, ValuePropertyField> metaKvp in vsp.MetaProperties)
-                                {
-                                    string key = metaKvp.Key;
-                                    ValuePropertyField value = metaKvp.Value;
-
-                                    metaProperties.Add(new JProperty(key, JsonDataTypeHelper.GetStringFieldData(value.PropertyValue, value.JsonDataType)));
-                                }
-                                property.Add(new JProperty("properties", metaProperties));
-                            }
-
-                            propertyArray.Add(property);
-                        }
-                        vertexProperties.Add(new JProperty(propertyName, propertyArray));
-
-                    }
-
-                    vertex.Add(new JProperty("properties", vertexProperties));
-
-                    vertexGraphSON.Add(vertex.ToString(Formatting.None));
-                }
-
-                this.Graph = new StringField("[" + string.Join(", ", vertexGraphSON) + "]");
-            }
-            else
-            {
-                this.Graph = new StringField("[]");
-            }
-            
-            return Graph;
-        }
-
-        [OnDeserialized]
-        private void Reconstruct(StreamingContext context)
-        {
-            this.Init();
-            this.command = SerializationData.Command;
-        }
-    }
 
 }

@@ -89,7 +89,7 @@ namespace GraphView
         /// False, path information can be neglected
         /// </summary>
         public bool ReferencePathInfo { get; set; }
-        
+
         // Predicates associated with the path constructs in the current context. 
         // Note that path predicates are defined as a part of path constructs, rather than
         // defined in the WHERE clause. The current supported predicates are only equality comparison,
@@ -115,10 +115,10 @@ namespace GraphView
                             new WColumnReferenceExpression
                             {
                                 MultiPartIdentifier =
-                                    new WMultiPartIdentifier(new Identifier {Value = EdgeAlias},
-                                        new Identifier {Value = tuple.Key})
+                                    new WMultiPartIdentifier(new Identifier { Value = EdgeAlias },
+                                        new Identifier { Value = tuple.Key })
                             },
-                        SecondExpr = new WValueExpression {Value = tuple.Value}
+                        SecondExpr = new WValueExpression { Value = tuple.Value }
                     });
                 }
                 return res;
@@ -133,20 +133,18 @@ namespace GraphView
         public WSchemaObjectName NodeTableObjectName { get; set; }
         public IList<MatchEdge> Neighbors { get; set; }
         public IList<MatchEdge> ReverseNeighbors { get; set; }
-        public IList<MatchEdge> DanglingEdges { get; set; } 
+        public IList<MatchEdge> DanglingEdges { get; set; }
         public double EstimatedRows { get; set; }
         public int TableRowCount { get; set; }
         internal JsonQuery AttachedJsonQuery { get; set; }
         //internal JsonQuery AttachedJsonQueryOfNodesViaExternalAPI { get; set; }
         public HashSet<string> Properties { get; set; }
-        // For the g.E() case
-        public bool IsDummyNode { get; set; }
 
         /// <summary>
         /// The density value of the GlobalNodeId Column of the corresponding node table.
         /// This value is used to estimate the join selectivity of A-->B. 
         /// </summary>
-        public double GlobalNodeIdDensity { get;set; }
+        public double GlobalNodeIdDensity { get; set; }
 
         /// <summary>
         /// Conjunctive predicates from the WHERE clause that 
@@ -159,7 +157,8 @@ namespace GraphView
             if (Object.ReferenceEquals(this, obj)) return true;
 
             MatchNode rhs = obj as MatchNode;
-            if (rhs == null) {
+            if (rhs == null)
+            {
                 return false;
             }
 
@@ -185,7 +184,6 @@ namespace GraphView
             this.AttachedJsonQuery = rhs.AttachedJsonQuery;
             //this.AttachedJsonQueryOfNodesViaExternalAPI = rhs.AttachedJsonQueryOfNodesViaExternalAPI;
             this.Properties = new HashSet<string>(rhs.Properties);
-            this.IsDummyNode = rhs.IsDummyNode;
             this.GlobalNodeIdDensity = rhs.GlobalNodeIdDensity;
             this.Predicates = rhs.Predicates;
         }
@@ -196,14 +194,6 @@ namespace GraphView
         public Dictionary<string, MatchNode> Nodes { get; set; }
         public Dictionary<string, MatchEdge> Edges { get; set; }
         public Dictionary<MatchNode, bool> IsTailNode { get; set; }
-
-        /// Item1: current node. A query will be sent to the server to fetch this node if this is the first time it appears in the whole list.
-        /// Item2: the traversalEdge whose sink is current node.
-        /// Item3: traversalEdges whose source is currentNode. 
-        ///        This list will either contain 0 or 1 traversal edge in the current version, and it will be pushed to server if possible.
-        /// Item4: backwardMatchingEdges.
-        /// Item5: forwardMatchingEdges.
-        public List<Tuple<MatchNode, MatchEdge, List<MatchEdge>, List<MatchEdge>, List<MatchEdge>>> TraversalOrder { get; set; }
 
         public ConnectedComponent()
         {
@@ -227,9 +217,7 @@ namespace GraphView
     {
         // Fully-connected components in the graph pattern 
         public IList<ConnectedComponent> ConnectedSubGraphs { get; set; }
-        public ConnectedComponent MainSubGraph;
-        // Mapping between an original edge and its corresponding reversed edge
-        public Dictionary<string, MatchEdge> ReversedEdgeDict { get; set; }
+
         public bool ContainsNode(string key)
         {
             return ConnectedSubGraphs.Any(e => e.Nodes.ContainsKey(key) && !e.IsTailNode[e.Nodes[key]]);
@@ -261,5 +249,75 @@ namespace GraphView
             return false;
         }
 
+        public void AttachProperties(Dictionary<string, HashSet<string>> tableColumnReferences)
+        {
+            MatchEdge edge;
+            MatchNode node;
+
+            foreach (var tableColumnReference in tableColumnReferences)
+            {
+                var tableName = tableColumnReference.Key;
+                var properties = tableColumnReference.Value;
+
+                if (TryGetEdge(tableName, out edge))
+                {
+                    if (edge.Properties == null)
+                        edge.Properties = new List<string>();
+                    foreach (var property in properties)
+                    {
+                        if (!edge.Properties.Contains(property))
+                            edge.Properties.Add(property);
+                    }
+                }
+                else if (TryGetNode(tableName, out node))
+                {
+                    if (node.Properties == null)
+                        node.Properties = new HashSet<string>();
+                    foreach (var property in properties)
+                    {
+                        node.Properties.Add(property);
+                    }
+                }
+            }
+        }
+
+        public bool TryAttachPredicate(WBooleanExpression predicate, Dictionary<string, HashSet<string>> tableColumnReferences)
+        {
+            // Attach fail if it is a cross-table predicate
+            if (tableColumnReferences.Count > 1)
+            {
+                return false;
+            }
+
+            MatchEdge edge;
+            MatchNode node;
+            bool attachFlag = false;
+
+            foreach (var tableColumnReference in tableColumnReferences)
+            {
+                var tableName = tableColumnReference.Key;
+                var properties = tableColumnReference.Value;
+
+                if (TryGetEdge(tableName, out edge))
+                {
+                    if (edge.Predicates == null)
+                        edge.Predicates = new List<WBooleanExpression>();
+                    edge.Predicates.Add(predicate);
+                    // Attach edge's propeties for later runtime evaluation
+                    AttachProperties(new Dictionary<string, HashSet<string>> { { tableName, properties } });
+                    attachFlag = true;
+                }
+                else if (TryGetNode(tableName, out node))
+                {
+                    if (node.Predicates == null)
+                        node.Predicates = new List<WBooleanExpression>();
+                    node.Predicates.Add(predicate);
+                    AttachProperties(new Dictionary<string, HashSet<string>> { { tableName, properties } });
+                    attachFlag = true;
+                }
+            }
+
+            return attachFlag;
+        }
     }
 }

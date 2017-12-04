@@ -58,6 +58,17 @@ namespace GraphView
             };
         }
 
+        internal static WEdgeVertexBridgeExpression GetEdgeVertexBridgeExpression(WScalarExpression firstExpr,
+            WScalarExpression secondExpr)
+        {
+            return new WEdgeVertexBridgeExpression()
+            {
+                ComparisonType = BooleanComparisonType.Equals,
+                FirstExpr = firstExpr.Copy(),
+                SecondExpr = secondExpr.Copy()
+            };
+        }
+
         internal static WBooleanExpression GetBooleanComparisonExpr(WScalarExpression firstExpr, WScalarExpression secondExpr, Predicate predicate)
         {
             List<WBooleanExpression> booleanExprList = new List<WBooleanExpression>();
