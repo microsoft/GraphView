@@ -20,7 +20,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
             {
-                var traversal = graphCommand.g().V().Store("a").By("name").Out().Cap("a");
+                var traversal = graphCommand.g().V().Store("a").By("name").Out().OutE().Cap("a");
 
                 var result = traversal.Next().First().Trim('[', ']').Split(',').Select(r => r.Trim(' '));
                 var expectedResult = new List<string> { "marko", "josh", "peter", "lop", "ripple", "vadas" };

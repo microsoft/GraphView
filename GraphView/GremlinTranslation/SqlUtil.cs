@@ -58,6 +58,17 @@ namespace GraphView
             };
         }
 
+        internal static WEdgeVertexBridgeExpression GetEdgeVertexBridgeExpression(WScalarExpression firstExpr,
+            WScalarExpression secondExpr)
+        {
+            return new WEdgeVertexBridgeExpression()
+            {
+                ComparisonType = BooleanComparisonType.Equals,
+                FirstExpr = firstExpr.Copy(),
+                SecondExpr = secondExpr.Copy()
+            };
+        }
+
         internal static WBooleanExpression GetBooleanComparisonExpr(WScalarExpression firstExpr, WScalarExpression secondExpr, Predicate predicate)
         {
             List<WBooleanExpression> booleanExprList = new List<WBooleanExpression>();
@@ -273,7 +284,8 @@ namespace GraphView
             return new WMatchPath()
             {
                 PathEdgeList = GetPathEdgeList(path),
-                Tail = GetPathTail(path)
+                Tail = GetPathTail(path),
+                IsReversed = path.IsReversed
             };
         }
 
@@ -281,18 +293,26 @@ namespace GraphView
         {
             var edge = path.EdgeVariable;
             if (edge.EdgeType == WEdgeType.InEdge)
+            {
                 return path.SourceVariable == null ? null : GetSchemaObjectName(path.SourceVariable?.GetVariableName());
+            }
             else
+            {
                 return path.SinkVariable == null ? null : GetSchemaObjectName(path.SinkVariable?.GetVariableName());
+            }
         }
 
         internal static WSchemaObjectName GetPathSource(GremlinMatchPath path)
         {
             var edge = path.EdgeVariable;
             if (edge.EdgeType == WEdgeType.InEdge)
+            {
                 return GetSchemaObjectName(path.SinkVariable.GetVariableName());
+            }
             else
+            {
                 return GetSchemaObjectName(path.SourceVariable?.GetVariableName());
+            }
         }
 
         internal static List<Tuple<WSchemaObjectName, WEdgeColumnReferenceExpression>> GetPathEdgeList(GremlinMatchPath path)

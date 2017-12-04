@@ -1,5 +1,6 @@
 #define TEST_ON_DOCUMENT_DB
 //#define TEST_ON_JSONSERVER
+//#define TEST_LAZY_COMMIT
 
 // !!! Important, change the same define in AbstractGremlinTest.cs at the same time.
 
@@ -199,6 +200,9 @@ namespace GraphView
         {
             GremlinUtil.ClearCounters();
             this.Command.InLazyMode = false;
+#if TEST_LAZY_COMMIT
+            this.Command.InLazyMode = true;
+#endif
             var sqlScript = GetEndOp().ToSqlScript();
             SqlScript = sqlScript.ToString();
             it = new GraphTraversalIterator(sqlScript.Batches[0].Compile(null, this.Command), this.Command, outputFormat);
@@ -240,6 +244,9 @@ namespace GraphView
         {
             GremlinUtil.ClearCounters();
             this.Command.InLazyMode = false;
+#if TEST_LAZY_COMMIT
+            this.Command.InLazyMode = true;
+#endif
             WSqlScript sqlScript = GetEndOp().ToSqlScript();
             SqlScript = sqlScript.ToString();
 
@@ -1136,25 +1143,33 @@ namespace GraphView
         public GraphTraversal Property(GremlinKeyword.PropertyCardinality cardinality, string key, object value,
             params object[] keyValues)
         {
-            if (keyValues.Length % 2 != 0) throw new Exception("The parameter of property should be even");
-
-            var lastOp = this.GetEndOp() as GremlinAddEOp;
-            if (lastOp != null)
+            if (keyValues.Length % 2 != 0)
             {
-                if (keyValues.Length > 0) throw new SyntaxErrorException("Only vertex can use PropertyCardinality.List and have meta properties");
-                GremlinProperty property = new GremlinProperty(cardinality, key, value, null);
-                lastOp.EdgeProperties.Add(property);
+                throw new Exception("The parameter of property should be even");
+            }
+
+            Dictionary<string, object> metaProperties = new Dictionary<string, object>();
+            for (var i = 0; i < keyValues.Length; i += 2)
+            {
+                metaProperties[keyValues[i] as string] = keyValues[i + 1];
+            }
+
+            GremlinAddVOp addVOp = this.GetEndOp() as GremlinAddVOp;
+            GremlinAddEOp addEOp = this.GetEndOp() as GremlinAddEOp;
+            GremlinPropertyOp propertyOp = new GremlinPropertyOp(cardinality, key, value, metaProperties);
+            if (addVOp != null)
+            {
+                addVOp.PropertyOps.Add(propertyOp);
+            }
+            else if (addEOp != null)
+            {
+                addEOp.EdgePropertyOps.Add(propertyOp);
             }
             else
             {
-                Dictionary<string, object> metaProperties = new Dictionary<string, object>();
-                for (var i = 0; i < keyValues.Length; i += 2)
-                {
-                    metaProperties[keyValues[i] as string] = keyValues[i + 1];
-                }
-                GremlinProperty property = new GremlinProperty(cardinality, key, value, metaProperties);
-                AddGremlinOperator(new GremlinPropertyOp(property));
+                AddGremlinOperator(propertyOp);
             }
+
             return this;
         }
 

@@ -55,6 +55,113 @@ namespace GraphView
         }
     }
 
+    internal class GlobalDependencyVisitor : WSqlFragmentVisitor
+    {
+        public List<AggregationBlock> blocks;
+
+        public void Invoke(WFromClause fromClause)
+        {
+            blocks = new List<AggregationBlock>()
+            {
+                new AggregationBlock()
+            };
+
+            if (fromClause == null)
+            {
+                return;
+            }
+
+            foreach (WTableReference tabRef in fromClause.TableReferences)
+            {
+                tabRef.Accept(this);
+            }
+            for (int index = blocks.Count - 1; index >= 1; --index)
+            {
+                if (blocks[index].AggregationAlias == "dummy" && !blocks[index].TableList.Any())
+                {
+                    blocks.RemoveAt(index);
+                }
+            }
+        }
+
+        public override void Visit(WNamedTableReference node)
+        {
+            blocks.Last().AddTable(node);
+        }
+
+        public override void Visit(WQueryDerivedTable node)
+        {
+            blocks.Add(new AggregationBlock(node));
+        }
+
+        public override void Visit(WSchemaObjectFunctionTableReference node)
+        {
+            if (node is WAggregateTableReference ||
+                node is WBarrierTableReference ||
+                node is WBoundNodeTableReference ||
+                node is WCoinTableReference ||
+                node is WConstantReference ||
+                node is WDedupGlobalTableReference ||
+                node is WGroupTableReference ||
+                node is WInjectTableReference ||
+                node is WOrderGlobalTableReference ||
+                node is WRangeGlobalTableReference ||
+                node is WSampleGlobalTableReference ||
+                node is WSelectOneTableReference ||
+                node is WSelectColumnTableReference ||
+                node is WStoreTableReference ||
+                node is WSubgraphTableReference ||
+                node is WTreeTableReference)
+            {
+                blocks.Add(new AggregationBlock(node));
+            }
+            else if (new ModificationVisitor().Invoke(node))
+            {
+                blocks.Add(new AggregationBlock(node));
+            }
+            else
+            {
+                blocks.Last().AddTable(node);
+            }
+        }
+
+        public override void Visit(WVariableTableReference node)
+        {
+            blocks.Last().AddTable(node);
+        }
+}
+
+    internal class ModificationVisitor : WSqlFragmentVisitor
+    {
+        public bool hasModification;
+
+        public bool Invoke(WSqlFragment sqlFragment)
+        {
+            hasModification = false;
+            if (sqlFragment != null)
+            {
+                sqlFragment.Accept(this);
+            }
+            return hasModification;
+        }
+
+        public override void Visit(WSchemaObjectFunctionTableReference node)
+        {
+            if (node is WAddETableReference ||
+                node is WAddVTableReference ||
+                node is WCommitTableReference ||
+                node is WDropTableReference ||
+                node is WUpdatePropertiesTableReference)
+            {
+                hasModification = true;
+            }
+            else
+            {
+                base.Visit(node);
+            }
+        }
+    }
+
     /// <summary>
     /// The visitor that traverses the syntax tree and returns the columns 
     /// accessed in current query fragment for each provided table alias. 
@@ -68,23 +175,27 @@ namespace GraphView
         Dictionary<string, HashSet<string>> accessedColumns;
         private bool _isOnlyTargetTableReferenced;
 
-        public Dictionary<string, HashSet<string>> Invoke(WSqlFragment sqlFragment, List<string> targetTableReferences, 
+        public Dictionary<string, HashSet<string>> Invoke(WSqlFragment sqlFragment, HashSet<string> targetTableReferences, 
             out bool isOnlyTargetTableReferecend)
         {
             _isOnlyTargetTableReferenced = true;
             accessedColumns = new Dictionary<string, HashSet<string>>(targetTableReferences.Count);
-            foreach (string tabAlias in targetTableReferences)
-            {
-                accessedColumns.Add(tabAlias, new HashSet<string>());
-            }
 
-            sqlFragment.Accept(this);
-
-            foreach (string tableRef in targetTableReferences)
+            if (sqlFragment != null)
             {
-                if (accessedColumns[tableRef].Count == 0)
+                foreach (string tabAlias in targetTableReferences)
                 {
-                    accessedColumns.Remove(tableRef);
+                    accessedColumns.Add(tabAlias, new HashSet<string>());
+                }
+
+                sqlFragment.Accept(this);
+
+                foreach (string tableRef in targetTableReferences)
+                {
+                    if (accessedColumns[tableRef].Count == 0)
+                    {
+                        accessedColumns.Remove(tableRef);
+                    }
                 }
             }
 

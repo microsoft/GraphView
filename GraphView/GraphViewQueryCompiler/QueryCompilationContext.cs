@@ -24,6 +24,7 @@
 // CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
@@ -111,24 +112,23 @@ namespace GraphView
 
         public bool InBatchMode { get; set; }
 
-        /// <summary>
-        /// A collection of states of side effect functions. A function's state
-        /// implements interfaces of aggregation functions, as each record passes through
-        /// the function, the function's state is updated.
-        /// </summary>
-        public Dictionary<string, IAggregateFunction> SideEffectStates { get; private set; }
-
         public bool CarryOn { get; set; }
         public Dictionary<WColumnReferenceExpression, int> ParentContextRawRecordLayout { get; private set; }
+        public Dictionary<string, AggregateState> SideEffectStates { get; private set; }
+        public Dictionary<string, IAggregateFunction> SideEffectFunctions { get; private set; }
+        public List<SelectBaseOperator> SelectOperators { get; set; }
+        public Dictionary<int, List<string>> OptimalSolutions { get; set; }
 
         public QueryCompilationContext()
         {
             TemporaryTableCollection = new Dictionary<string, Tuple<TemporaryTableHeader, GraphViewExecutionOperator>>();
             RawRecordLayout = new Dictionary<WColumnReferenceExpression, int>(new WColumnReferenceExpressionComparer());
             TableReferences = new HashSet<string>();
-            SideEffectStates = new Dictionary<string, IAggregateFunction>();
-
+            SideEffectStates = new Dictionary<string, AggregateState>();
+            SideEffectFunctions = new Dictionary<string, IAggregateFunction>();
+            SelectOperators = new List<SelectBaseOperator>();
             CarryOn = false;
+            OptimalSolutions = new Dictionary<int, List<string>>();
         }
 
         public QueryCompilationContext(QueryCompilationContext parentContext)
@@ -139,20 +139,106 @@ namespace GraphView
                 new WColumnReferenceExpressionComparer());
             TableReferences = new HashSet<string>(parentContext.TableReferences);
             OuterContextOp = new ConstantSourceOperator();
-            SideEffectStates = parentContext.SideEffectStates;
 
             CarryOn = false;
             ParentContextRawRecordLayout = new Dictionary<WColumnReferenceExpression, int>(
                 parentContext.RawRecordLayout, new WColumnReferenceExpressionComparer());
+            SideEffectStates = parentContext.SideEffectStates;
+            SideEffectFunctions = parentContext.SideEffectFunctions;
+            SelectOperators = parentContext.SelectOperators;
+            OptimalSolutions = parentContext.OptimalSolutions;
+        }
+
+        public QueryCompilationContext Duplicate()
+        {
+            return new QueryCompilationContext()
+            {
+                CurrentExecutionOperator = this.CurrentExecutionOperator,
+                TemporaryTableCollection = new Dictionary<string, Tuple<TemporaryTableHeader, GraphViewExecutionOperator>>(this.TemporaryTableCollection),
+                RawRecordLayout = new Dictionary<WColumnReferenceExpression, int>(this.RawRecordLayout,
+                    new WColumnReferenceExpressionComparer()),
+                TableReferences = new HashSet<string>(this.TableReferences),
+                OuterContextOp = this.OuterContextOp,
+                CarryOn = this.CarryOn,
+                ParentContextRawRecordLayout = this.ParentContextRawRecordLayout == null
+                    ? null
+                    : new Dictionary<WColumnReferenceExpression, int>(this.ParentContextRawRecordLayout, new WColumnReferenceExpressionComparer()),
+                InBatchMode = this.InBatchMode,
+                SideEffectStates = this.SideEffectStates,
+                SideEffectFunctions = new Dictionary<string, IAggregateFunction>(this.SideEffectFunctions),
+                SelectOperators = new List<SelectBaseOperator>(this.SelectOperators),
+                OptimalSolutions = this.OptimalSolutions,
+            };
         }
 
         public QueryCompilationContext(Dictionary<string, Tuple<TemporaryTableHeader, GraphViewExecutionOperator>> priorTemporaryTables,
-             Dictionary<string, IAggregateFunction> priorSideEffectStates)
+             Dictionary<string, IAggregateFunction> priorSideEffectFunctions, Dictionary<string, AggregateState> priorSideEffectStates,
+             List<SelectBaseOperator> priorSelectOperators,  Dictionary<int, List<string>> priorOptimalSolutions)
         {
             TemporaryTableCollection = priorTemporaryTables;
             RawRecordLayout = new Dictionary<WColumnReferenceExpression, int>(new WColumnReferenceExpressionComparer());
             TableReferences = new HashSet<string>();
+            SideEffectFunctions = priorSideEffectFunctions;
             SideEffectStates = priorSideEffectStates;
+            SelectOperators = priorSelectOperators;
+            OptimalSolutions = priorOptimalSolutions;
+        }
+
+        public void Update(QueryCompilationContext rhs)
+        {
+            if (this == rhs)
+            {
+                foreach (var selectOperator in this.SelectOperators)
+                {
+                    selectOperator.sideEffectFunctions = this.SideEffectFunctions;
+                }
+                return;
+            }
+
+            CurrentExecutionOperator = rhs.CurrentExecutionOperator;
+            OuterContextOp = rhs.OuterContextOp;
+            InBatchMode = rhs.InBatchMode;
+            CarryOn = rhs.CarryOn;
+
+            TemporaryTableCollection.Clear();
+            foreach (var tableReference in rhs.TemporaryTableCollection)
+            {
+                TemporaryTableCollection.Add(tableReference.Key, tableReference.Value);
+            }
+            
+            RawRecordLayout.Clear();
+            foreach (var layout in rhs.RawRecordLayout)
+            {
+                RawRecordLayout.Add(layout.Key, layout.Value);
+            }
+            
+            TableReferences.Clear();
+            foreach (var tableReference in rhs.TableReferences)
+            {
+                TableReferences.Add(tableReference);
+            }
+
+            if (ParentContextRawRecordLayout != null)
+            {
+                ParentContextRawRecordLayout.Clear();
+                foreach (var layout in rhs.ParentContextRawRecordLayout)
+                {
+                    ParentContextRawRecordLayout.Add(layout.Key, layout.Value);
+                }
+            }
+            
+            SideEffectFunctions.Clear();
+            foreach (var sideEffectFunction in rhs.SideEffectFunctions)
+            {
+                SideEffectFunctions.Add(sideEffectFunction.Key, sideEffectFunction.Value);
+            }
+
+            SelectOperators.Clear();
+            foreach (var selectOperator in rhs.SelectOperators)
+            {
+                SelectOperators.Add(selectOperator);
+                selectOperator.sideEffectFunctions = SideEffectFunctions;
+            }
         }
 
         /// <summary>

@@ -25,6 +25,7 @@
 // 
 using System;
 using System.Collections.Generic;
+using System.Security.Cryptography;
 
 
 namespace GraphView
@@ -41,8 +42,8 @@ namespace GraphView
 
         public OutputFormat OutputFormat { get; set; }
 
-
         private int indexColumnCount;
+
         public string IndexColumnName => (indexColumnCount++).ToString();
 
         public GraphViewCommand(GraphViewConnection connection)
@@ -53,28 +54,28 @@ namespace GraphView
 
         public GraphViewCommand(string commandText)
         {
-            CommandText = commandText;
+            this.CommandText = commandText;
         }
 
         public GraphViewCommand(string commandText, GraphViewConnection connection)
         {
-            CommandText = commandText;
+            this.CommandText = commandText;
             this.Connection = connection;
         }
 
         public IEnumerable<string> Execute()
         {
-            if (CommandText == null)
+            if (this.CommandText == null)
             {
                 throw new QueryExecutionException("CommandText of GraphViewCommand is not set.");
             }
-            return g().EvalGremlinTraversal(CommandText);
+            return g().EvalGremlinTraversal(this.CommandText);
         }
 
         public List<string> ExecuteAndGetResults()
         {
             List<string> results = new List<string>();
-            foreach (var result in Execute())
+            foreach (var result in this.Execute())
             {
                 results.Add(result);
             }

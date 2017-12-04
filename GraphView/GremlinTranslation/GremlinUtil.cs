@@ -30,11 +30,11 @@ namespace GraphView
             switch (variableType)
             {
                 case GremlinVariableType.Vertex:
-                    return "N_" + _vertexCount++;
+                    return GremlinKeyword.VertexTablePrefix + _vertexCount++;
                 case GremlinVariableType.Edge:
-                    return "E_" + _edgeCount++;
+                    return GremlinKeyword.EdgeTablePrefix + _edgeCount++;
             }
-            return "R_" + _tableCount++;
+            return GremlinKeyword.TablePrefix + _tableCount++;
         }
 
         public static void ClearCounters()
@@ -155,18 +155,30 @@ namespace GraphView
             MetaProperties = metaProperties ?? new Dictionary<string, object>();
         }
 
+        internal WScalarExpression ReplaceContextToScalerExpr(object value)
+        {
+            if (value is GremlinToSqlContext)
+            {
+                GremlinToSqlContext valueContext = value as GremlinToSqlContext;
+                return SqlUtil.GetScalarSubquery(valueContext.ToSelectQueryBlock());
+            }
+            return SqlUtil.GetValueExpr(value);
+        }
+
         public WPropertyExpression ToPropertyExpr()
         {
-            Dictionary<WValueExpression, WValueExpression> metaPropertiesExpr = new Dictionary<WValueExpression, WValueExpression>();
-            foreach (var property in MetaProperties)
+            WScalarExpression valueExpr = ReplaceContextToScalerExpr(this.Value);
+            Dictionary<WValueExpression, WScalarExpression> metaPropertiesExpr = new Dictionary<WValueExpression, WScalarExpression>();
+            foreach (string metaKey in MetaProperties.Keys)
             {
-                metaPropertiesExpr[SqlUtil.GetValueExpr(property.Key)] = SqlUtil.GetValueExpr(property.Value);
+                metaPropertiesExpr[SqlUtil.GetValueExpr(metaKey)] = ReplaceContextToScalerExpr(MetaProperties[metaKey]);
             }
+
             return new WPropertyExpression()
             {
                 Cardinality = Cardinality,
                 Key = SqlUtil.GetValueExpr(Key),
-                Value = SqlUtil.GetValueExpr(Value),
+                Value = valueExpr,
                 MetaProperties = metaPropertiesExpr
             };
         }
@@ -177,12 +189,14 @@ namespace GraphView
         public GremlinFreeVertexVariable SourceVariable { get; set; }
         public GremlinFreeEdgeVariable EdgeVariable { get; set; }
         public GremlinFreeVertexVariable SinkVariable { get; set; }
+        public bool IsReversed { get; set; }
 
-        public GremlinMatchPath(GremlinFreeVertexVariable sourceVariable, GremlinFreeEdgeVariable edgeVariable, GremlinFreeVertexVariable sinkVariable)
+        public GremlinMatchPath(GremlinFreeVertexVariable sourceVariable, GremlinFreeEdgeVariable edgeVariable, GremlinFreeVertexVariable sinkVariable, bool isReversed)
         {
             SourceVariable = sourceVariable;
             EdgeVariable = edgeVariable;
             SinkVariable = sinkVariable;
+            IsReversed = isReversed;
         }
     }
 

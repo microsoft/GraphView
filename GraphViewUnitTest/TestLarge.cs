@@ -251,7 +251,7 @@ namespace GraphViewUnitTest
 
             for (int i = 0; i < EDGE_COUNT; i++) {
                 if (i % 2 == 1) {
-                    graph.g().V().OutE().HasLabel($"E{i}").Property($"E{i} Property", null).Next();
+                    graph.g().V().OutE().HasLabel($"E{i}").Properties($"E{i} Property").Drop().Next();
                     graph.g().V().OutE().HasLabel($"E{i}").Property($"E{i} Another Property", "Dummy!").Next();
                 }
             }
@@ -273,7 +273,7 @@ namespace GraphViewUnitTest
 
             for (int i = 0; i < EDGE_COUNT; i++) {
                 if (i % 2 == 1) {
-                    graph.g().V().OutE().HasLabel($"E{i}{suffix}").Property($"E{i} Property", null).Next();
+                    graph.g().V().OutE().HasLabel($"E{i}{suffix}").Properties($"E{i} Property").Drop().Next();
                     graph.g().V().OutE().HasLabel($"E{i}{suffix}").Property($"E{i} Another Property", "Dummy!").Next();
                 }
             }
@@ -297,7 +297,7 @@ namespace GraphViewUnitTest
 
             // Drop all added properties
             for (int i = 0; i < EDGE_COUNT; i++) {
-                graph.g().V().OutE().HasLabel($"E{i}{suffix}").Property($"E{i} Property", null).Next();
+                graph.g().V().OutE().HasLabel($"E{i}{suffix}").Properties($"E{i} Property").Drop().Next();
             }
 
             // Add new property

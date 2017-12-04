@@ -58,6 +58,10 @@
       <HintPath>..\packages\Newtonsoft.Json.6.0.8\lib\net45\Newtonsoft.Json.dll</HintPath>
       <Private>True</Private>
     </Reference>
+    <Reference Include="Priority Queue, Version=4.1.1.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\OptimizedPriorityQueue.4.1.1\lib\net45\Priority Queue.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Windows.Forms" />
@@ -76,10 +80,12 @@
     <Compile Include="GraphViewDBPortal\DbPortal.cs" />
     <Compile Include="GraphViewExecutionRuntime\AggregateOperator.cs" />
     <Compile Include="GraphViewExecutionRuntime\EdgeDocumentHelper.cs" />
+    <Compile Include="GraphViewExecutionRuntime\ModificationDataStructure.cs" />
     <Compile Include="GraphViewExecutionRuntime\ModificationOperators.cs" />
     <Compile Include="GraphViewExecutionRuntime\ModificationLazyCommit.cs" />
     <Compile Include="GraphViewExecutionRuntime\ScriptOperator.cs" />
     <Compile Include="GraphViewExecutionRuntime\SelectOperators.cs" />
+    <Compile Include="GraphViewQueryCompiler\AggregationBlock.cs" />
     <Compile Include="GraphViewQueryCompiler\AttachWhereClauseVisitor.cs" />
     <Compile Include="GraphViewExecutionRuntime\BooleanFunction.cs" />
     <Compile Include="GraphViewQueryCompiler\ToDocDBStringVisitor.cs" />
@@ -88,10 +94,10 @@
     <Compile Include="GraphViewQueryCompiler\CompileBooleanExpression.cs" />
     <Compile Include="GraphViewQueryCompiler\CompileModification.cs" />
     <Compile Include="GraphViewQueryCompiler\CompileScalarExpression.cs" />
-    <Compile Include="GraphViewQueryCompiler\DocDBGraphOptimizer.cs" />
     <Compile Include="DocDBScript.cs" />
     <Compile Include="GraphViewExecutionRuntime\ScalarFunction.cs" />
     <Compile Include="GraphViewQueryCompiler\CompilerVisitors.cs" />
+    <Compile Include="GraphViewUtils\SamplingAlgorithm.cs" />
     <Compile Include="GremlinTranslation\operators\barrier\GremlinBarrierOp.cs" />
     <Compile Include="GremlinTranslation\operators\barrier\GremlinCapOp.cs" />
     <Compile Include="GremlinTranslation\operators\barrier\GremlinCommitOp.cs" />

@@ -102,5 +102,25 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
                 }
             }
         }
+
+        [TestMethod]
+        public void Test_Sample_By()
+        {
+            using (GraphViewCommand command = new GraphViewCommand(graphConnection))
+            {
+                var traversal = command.g().V().OutE("knows").Property("weight", "20");
+                var result = traversal.Next();
+
+                traversal = command.g().V().OutE().Sample(2).By("weight");
+                result = traversal.Next();
+                Assert.IsTrue(result.Count == 2);
+
+
+                foreach (var r in result)
+                {
+                    Console.WriteLine(r);
+                }
+            }
+        }
     }
 }

@@ -369,6 +369,11 @@ namespace GraphView
         {
             throw new NotImplementedException();
         }
+
+        internal virtual List<WColumnReferenceExpression> GetInputRefExprs()
+        {
+            throw new NotImplementedException();
+        }
     }
 
     public partial class WOptionalTableReference : WSchemaObjectFunctionTableReference
@@ -595,12 +600,12 @@ namespace GraphView
         /// <summary>
         /// Property's value
         /// </summary>
-        public WValueExpression Value { get; set; }
+        public WScalarExpression Value { get; set; }
 
         /// <summary>
         /// Only valid for vertex property
         /// </summary>
-        public Dictionary<WValueExpression, WValueExpression> MetaProperties { get; set; }
+        public Dictionary<WValueExpression, WScalarExpression> MetaProperties { get; set; }
 
         public override void Accept(WSqlFragmentVisitor visitor)
         {
@@ -613,13 +618,10 @@ namespace GraphView
             Key?.Accept(visitor);
             Value?.Accept(visitor);
 
-            if (MetaProperties != null)
+            foreach (KeyValuePair<WValueExpression, WScalarExpression> kvp in MetaProperties)
             {
-                foreach (KeyValuePair<WValueExpression, WValueExpression> kvp in MetaProperties)
-                {
-                    kvp.Key.Accept(visitor);
-                    kvp.Value.Accept(visitor);
-                }
+                kvp.Key.Accept(visitor);
+                kvp.Value.Accept(visitor);
             }
 
             base.AcceptChildren(visitor);
@@ -659,8 +661,6 @@ namespace GraphView
     public partial class WDedupLocalTableReference : WSchemaObjectFunctionTableReference {}
 
     public partial class WDropTableReference : WSchemaObjectFunctionTableReference { }
-
-    public partial class WDropNodeTableReference : WSchemaObjectFunctionTableReference {}
 
     public partial class WUpdatePropertiesTableReference : WSchemaObjectFunctionTableReference { }
 

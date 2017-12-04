@@ -10,7 +10,7 @@ namespace GraphView
     {
         public GremlinPathVariable PathVariable { get; set; }
 
-        public GremlinSimplePathVariable(GremlinVariable inputVariable, GremlinPathVariable pathVariable) : base(inputVariable.GetVariableType())
+        public GremlinSimplePathVariable(GremlinPathVariable pathVariable) : base(pathVariable.GetVariableType())
         {
             this.PathVariable = pathVariable;
         }

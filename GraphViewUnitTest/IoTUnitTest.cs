@@ -197,7 +197,8 @@ namespace GraphViewUnitTest
             Assert.AreEqual("test-app", (string)GetVertexPropertyValue(results, "__id"));
             Assert.AreEqual(1, (int)GetVertexPropertyValue(results, "_provisioningState"));
             Assert.AreEqual(false, (bool)GetVertexPropertyValue(results, "_deleted"));
-
+            Assert.AreEqual(1, GetVertexCount());
+            Assert.AreEqual(0, GetEdgeCount());
             //===========================================
             output = Get_IoT_test_2();
             results = JsonConvert.DeserializeObject<List<IdTypeEtag>>(output.FirstOrDefault());
@@ -224,7 +225,8 @@ namespace GraphViewUnitTest
                 }
             }
             Assert.AreEqual(4, matchCount);
-
+            Assert.AreEqual(26, GetVertexCount());
+            Assert.AreEqual(27, GetEdgeCount());
             //===========================================
             output = Get_IoT_test_3_prefetch();
 
@@ -272,21 +274,25 @@ namespace GraphViewUnitTest
                 }
             }
             Assert.AreEqual(16, matchCount);
-
+            Assert.AreEqual(42, GetVertexCount());
+            Assert.AreEqual(56, GetEdgeCount());
             //===========================================
             output = Get_IoT_test_4();
 
-            //foreach (var result in results)
-            //{
-            //    Console.WriteLine(result);
-            //}
+            Assert.AreEqual(42, GetVertexCount());
+            Assert.AreEqual(56, GetEdgeCount());
             //===========================================
             output = Get_IoT_test_5();
+            Assert.AreEqual(42, GetVertexCount());
+            Assert.AreEqual(56, GetEdgeCount());
             //===========================================
             output = Get_IoT_test_6();
+            Assert.AreEqual(42, GetVertexCount());
+            Assert.AreEqual(56, GetEdgeCount());
             //===========================================
             output = Get_IoT_test_7();
-
+            Assert.AreEqual(42, GetVertexCount());
+            Assert.AreEqual(56, GetEdgeCount());
             //===========================================
             output = Get_IoT_test_8();
             results = JsonConvert.DeserializeObject<List<IdTypeEtag>>(output.FirstOrDefault());
@@ -310,7 +316,8 @@ namespace GraphViewUnitTest
                 }
             }
             Assert.AreEqual(2, matchCount);
-
+            Assert.AreEqual(44, GetVertexCount());
+            Assert.AreEqual(59, GetEdgeCount());
             //===========================================
             output = Get_IoT_test_9_prefetch();
 
@@ -337,7 +344,8 @@ namespace GraphViewUnitTest
                 }
             }
             Assert.AreEqual(2, matchCount);
-
+            Assert.AreEqual(44, GetVertexCount());
+            Assert.AreEqual(60, GetEdgeCount());
             //===========================================
             output = Get_IoT_test_10_prefetch();
 
@@ -364,7 +372,8 @@ namespace GraphViewUnitTest
                 }
             }
             Assert.AreEqual(1, matchCount);
-
+            Assert.AreEqual(44, GetVertexCount());
+            Assert.AreEqual(60, GetEdgeCount());
             //===========================================
             output = Get_IoT_test_11_prefetch();
 
@@ -394,26 +403,32 @@ namespace GraphViewUnitTest
                 }
             }
             Assert.AreEqual(6, matchCount);
-
+            Assert.AreEqual(50, GetVertexCount());
+            Assert.AreEqual(66, GetEdgeCount());
             //===========================================
             output = Get_IoT_test_12();
+            Assert.AreEqual(50, GetVertexCount());
+            Assert.AreEqual(66, GetEdgeCount());
             //===========================================
             output = Get_IoT_test_13();
-            //results = graph.g().E().Count().Next();
+            Assert.AreEqual(50, GetVertexCount());
+            Assert.AreEqual(66, GetEdgeCount());
             //===========================================
             output = Get_IoT_test_14();
-            //Assert.AreEqual(49, GetVertexCount());
-            //Assert.AreEqual(63, GetEdgeCount());
-
+            Assert.AreEqual(49, GetVertexCount());
+            Assert.AreEqual(63, GetEdgeCount());
             //===========================================
             output = Get_IoT_test_15();
             Assert.AreEqual(41, GetVertexCount());
             Assert.AreEqual(53, GetEdgeCount());
-
             ////===========================================
             output = Get_IoT_test_16();
+            Assert.AreEqual(41, GetVertexCount());
+            Assert.AreEqual(53, GetEdgeCount());
             ////===========================================
             output = Get_IoT_test_17();
+            Assert.AreEqual(0, GetVertexCount());
+            Assert.AreEqual(0, GetEdgeCount());
             //===========================================
         }
 

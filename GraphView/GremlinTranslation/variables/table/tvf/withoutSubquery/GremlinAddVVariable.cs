@@ -8,6 +8,7 @@ namespace GraphView
 {
     internal class GremlinAddVVariable: GremlinVertexTableVariable
     {
+        public GremlinToSqlContext InputContext { get; set; }
         public List<GremlinProperty> VertexProperties { get; set; }
         public string VertexLabel { get; set; }
         public bool IsFirstTableReference { get; set; }
@@ -18,14 +19,15 @@ namespace GraphView
         /// </summary>
         public Dictionary<string, List<GremlinProperty>> PropertyFromAddVParameters { get; set; }
 
-        public GremlinAddVVariable(string vertexLabel, List<GremlinProperty> vertexProperties, bool isFirstTableReference = false)
+        public GremlinAddVVariable(GremlinToSqlContext inputContext, string vertexLabel, List<GremlinProperty> vertexProperties, bool isFirstTableReference = false)
         {
+            this.InputContext = inputContext?.Duplicate();
             this.VertexProperties = new List<GremlinProperty>(vertexProperties);
             this.VertexLabel = vertexLabel;
             this.IsFirstTableReference = isFirstTableReference;
-            this.ProjectedProperties.Add(GremlinKeyword.Label);
-
             this.PropertyFromAddVParameters = new Dictionary<string, List<GremlinProperty>>();
+            this.ProjectedProperties.Add(GremlinKeyword.NodeID);
+            this.ProjectedProperties.Add(GremlinKeyword.Label);
             foreach (var property in vertexProperties)
             {
                 this.ProjectedProperties.Add(property.Key);
@@ -42,22 +44,7 @@ namespace GraphView
 
         internal override bool Populate(string property, string label = null)
         {
-            if (this.ProjectedProperties.Contains(property))
-            {
-                return true;
-            }
-            else
-            {
-                if (base.Populate(property, label))
-                {
-                    this.VertexProperties.Add(new GremlinProperty(GremlinKeyword.PropertyCardinality.List, property, null, null));
-                    return true;
-                }
-                else
-                {
-                    return false;
-                }
-            }
+            return this.ProjectedProperties.Contains(property);
         }
 
         public override WTableReference ToTableReference()

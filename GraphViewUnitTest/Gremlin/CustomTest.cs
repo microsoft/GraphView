@@ -12,11 +12,12 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests
     public class CustomTest : AbstractGremlinTest
     {
         [TestMethod]
+        [TestModernCompatible]
         public void AddVWithNestingProperties()
         {
             using (GraphViewCommand command = new GraphViewCommand(graphConnection))
             {
-                var traversal = command.g().V().As("a").Out().As("b").Path();
+                var traversal = command.g().V().Out().Optional(GraphTraversal.__().In()).OutE().Aggregate("a").OutV();
                 var result = traversal.Next();
                 foreach (var r in result)
                 {
@@ -64,7 +65,8 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests
         {
             using (GraphViewCommand command = new GraphViewCommand(graphConnection))
             {
-                var traversal = command.g().V().Optional(GraphTraversal.__().OutE()).Union().Out();
+                var traversal = command.g().V().Out();
+                
                 var result = traversal.Next();
                 foreach (var r in result)
                 {

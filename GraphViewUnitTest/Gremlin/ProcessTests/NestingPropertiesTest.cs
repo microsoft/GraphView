@@ -211,5 +211,71 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests
             }
         }
 
+
+        [TestMethod]
+        public void Test_Vertex_Property_With_Subtraversal()
+        {
+            using (GraphViewCommand command = new GraphViewCommand(graphConnection))
+            {
+                var traversal = command.g().V().Has("name", "marko").Property("boolproperty", false);
+                traversal.Next();
+
+                traversal = command.g().V().Has("name", "marko")
+                    .Property("p1", "v1")
+                    .Property("outDegree", GraphTraversal.__().Out().Count())
+                    .Property("p2", "v2", "meta1", GraphTraversal.__().V().Count(), "meta2", "meta2value")
+                    .Property("p3", GraphTraversal.__().Values("label"), "meta3", GraphTraversal.__().V().OutE("knows").Count())
+                    .Property("p4", GraphTraversal.__().Values("boolproperty"))
+                    .Property("p5", GraphTraversal.__().OutE("created").Values("weight"))
+                    .Union(
+                        GraphTraversal.__().Properties("boolproperty").Drop(),
+                        GraphTraversal.__().Properties().Value(),
+                        GraphTraversal.__().Properties().HasKey("p2").Properties().Value(),
+                        GraphTraversal.__().Properties().HasKey("p3").Properties().Value());
+
+                var result = traversal.Next();
+                Assert.IsTrue(result.Count == 11);
+                Assert.IsTrue(result.Contains("3"));//outDegree
+                Assert.IsTrue(result.Contains("6"));//meta1
+                Assert.IsTrue(result.Contains("person"));//p3
+                Assert.IsTrue(result.Contains("2"));//meta3
+                Assert.IsTrue(result.Contains("False"));//p4
+                Assert.IsTrue(result.Contains("0.4"));//p5
+
+                foreach (var r in result)
+                {
+                    Console.WriteLine(r);
+                }
+            }
+        }
+
+        [TestMethod]
+        public void Test_Edge_Property_With_Subtraversal()
+        {
+            using (GraphViewCommand command = new GraphViewCommand(graphConnection))
+            {
+                var traversal = command.g().V().Has("name", "marko").Property("bool", false);
+                traversal.Next();
+
+                traversal = command.g().V().Has("name", "marko").OutE("created")
+                    .Property("p1", "v1")
+                    .Property("inName", GraphTraversal.__().InV().Values("name"))
+                    .Property("maxWeight", GraphTraversal.__().V().OutE().Values("weight").Max())
+                    .Property("p2", GraphTraversal.__().OutV().Values("bool"))
+                    .Properties().Value();
+
+                var result = traversal.Next();
+                Assert.IsTrue(result.Count == 5);
+                Assert.IsTrue(result.Contains("v1"));//p1
+                Assert.IsTrue(result.Contains("lop"));//inName
+                Assert.IsTrue(result.Contains("1"));//maxWeight
+                Assert.IsTrue(result.Contains("False"));//p2
+                foreach (var r in result)
+                {
+                    Console.WriteLine(r);
+                }
+            }
+        }
+
     }
 }

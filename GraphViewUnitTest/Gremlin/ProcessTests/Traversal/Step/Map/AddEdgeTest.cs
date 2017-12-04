@@ -241,5 +241,29 @@ namespace GraphViewUnitTest.Gremlin
                 Assert.AreEqual("createdBy", result.FirstOrDefault());
             }
         }
+
+        [TestMethod]
+        public void AddEdgeWithSubtraversal()
+        {
+            using (GraphViewCommand command = new GraphViewCommand(graphConnection))
+            {
+                var traversal = command.g().V()
+                    .Has("name", "marko")
+                    .AddE("marko->peter")
+                    .To(GraphTraversal.__().V().Has("name", "peter"))
+                    .Property("weight", GraphTraversal.__().V().OutE().Values("weight").Max())
+                    .Property("p1", "v1")
+                    .Properties().Value();
+                var result = traversal.Next();
+
+                Assert.IsTrue(result.Count == 2);
+                Assert.IsTrue(result.Contains("v1"));
+                Assert.IsTrue(result.Contains("1"));
+                foreach (var row in result)
+                {
+                    Console.WriteLine(row);
+                }
+            }
+        }
     }
 }

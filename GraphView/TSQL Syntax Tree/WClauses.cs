@@ -524,8 +524,7 @@ namespace GraphView
                         arrowSink = "->";
                         break;
                 }
-                sb.AppendFormat("{0}{1}", PathEdgeList[i].Item1.BaseIdentifier.Value, arrowSource);
-                sb.AppendFormat("[{0}]", PathEdgeList[i].Item2);
+                sb.AppendFormat("{0}{1}{2}", PathEdgeList[i].Item1.BaseIdentifier.Value, arrowSource, PathEdgeList[i].Item2.Alias);
                 if (Tail != null)
                 {
                     sb.Append(arrowSink);

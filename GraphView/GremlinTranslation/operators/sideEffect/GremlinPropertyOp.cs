@@ -9,11 +9,42 @@ namespace GraphView
 {
     internal class GremlinPropertyOp: GremlinTranslationOperator
     {
-        private GremlinProperty property;
+        public GremlinKeyword.PropertyCardinality Cardinality;
+        public string Key;
+        public object Value;
+        public Dictionary<string, object> MetaProperties;
 
-        public GremlinPropertyOp(GremlinProperty property)
+        public GremlinPropertyOp(GremlinKeyword.PropertyCardinality cardinality, string key, object value,
+            Dictionary<string, object> metaProperties)
         {
-            this.property = property;
+            this.Cardinality = cardinality;
+            this.Key = key;
+            this.Value = value;
+            this.MetaProperties = metaProperties ?? new Dictionary<string, object>();
+        }
+
+        internal object ReplaceTraversalToContext(object value, GremlinToSqlContext propertyInputContext)
+        {
+            if (value is GraphTraversal)
+            {
+                GraphTraversal propertyTraversal = value as GraphTraversal;
+                propertyTraversal.GetStartOp().InheritedVariableFromParent(propertyInputContext);
+                return propertyTraversal.GetEndOp().GetContext();
+            }
+            return value;
+        }
+
+        internal GremlinProperty ToGremlinProperty(GremlinToSqlContext inputContext)
+        {
+            object value = this.ReplaceTraversalToContext(this.Value, inputContext);
+            Dictionary<string, object> metaProperties = new Dictionary<string, object>();
+
+            foreach (string metaKey in this.MetaProperties.Keys)
+            {
+                metaProperties[metaKey] = this.ReplaceTraversalToContext(this.MetaProperties[metaKey], inputContext);
+            }
+
+            return new GremlinProperty(this.Cardinality, this.Key, value, metaProperties);
         }
 
         internal override GremlinToSqlContext GetContext()
@@ -24,13 +55,7 @@ namespace GraphView
                 throw new TranslationException("The PivotVariable of property()-step can't be null.");
             }
 
-            GremlinVariableType pivotType = inputContext.PivotVariable.GetVariableType();
-            if (pivotType != GremlinVariableType.Vertex && pivotType != GremlinVariableType.Unknown && pivotType != GremlinVariableType.Mixed &&
-                (this.property.Cardinality == GremlinKeyword.PropertyCardinality.List || this.property.MetaProperties.Count > 0))
-            {
-                throw new TranslationException("Only vertex can use PropertyCardinality.List and have meta properties");
-            }
-            inputContext.PivotVariable.Property(inputContext, property);
+            inputContext.PivotVariable.Property(inputContext, ToGremlinProperty(inputContext));
 
             return inputContext;
         }

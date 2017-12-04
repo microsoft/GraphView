@@ -245,7 +245,7 @@ namespace GraphView
         internal virtual void AddE(GremlinToSqlContext currentContext, string edgeLabel, List<GremlinProperty> edgeProperties, GremlinToSqlContext fromContext, GremlinToSqlContext toContext)
         {
             this.NeedFilter = true;
-            GremlinAddETableVariable newTableVariable = new GremlinAddETableVariable(this, edgeLabel, edgeProperties, fromContext, toContext);
+            GremlinAddETableVariable newTableVariable = new GremlinAddETableVariable(currentContext, edgeLabel, edgeProperties, fromContext, toContext);
             currentContext.VariableList.Add(newTableVariable);
             currentContext.TableReferencesInFromClause.Add(newTableVariable);
             currentContext.SetPivotVariable(newTableVariable);
@@ -254,7 +254,7 @@ namespace GraphView
         internal virtual void AddV(GremlinToSqlContext currentContext, string vertexLabel, List<GremlinProperty> propertyKeyValues)
         {
             this.NeedFilter = true;
-            GremlinAddVVariable newVariable = new GremlinAddVVariable(vertexLabel, propertyKeyValues);
+            GremlinAddVVariable newVariable = new GremlinAddVVariable(currentContext, vertexLabel, propertyKeyValues);
             currentContext.VariableList.Add(newVariable);
             currentContext.TableReferencesInFromClause.Add(newVariable);
             currentContext.SetPivotVariable(newVariable);
@@ -321,54 +321,7 @@ namespace GraphView
             currentContext.TableReferencesInFromClause.Add(otherSourceVertex);
             currentContext.SetPivotVariable(otherSourceVertex);
         }
-
-        internal virtual void Both1(GremlinToSqlContext currentContext, List<string> edgeLabels)
-        {
-            if (this.GetVariableType() == GremlinVariableType.Vertex)
-            {
-                GremlinVertexToBothEdgeVariable bothEdgeTable = new GremlinVertexToBothEdgeVariable(this);
-                currentContext.VariableList.Add(bothEdgeTable);
-                currentContext.TableReferencesInFromClause.Add(bothEdgeTable);
-                currentContext.AddLabelPredicateForEdge(bothEdgeTable, edgeLabels);
-
-                GremlinFreeVertexVariable otherSourceVertex = new GremlinFreeVertexVariable();
-                currentContext.VariableList.Add(otherSourceVertex);
-                currentContext.TableReferencesInFromClause.Add(otherSourceVertex);
-
-                GremlinVariableProperty edgeSinkVProperty = bothEdgeTable.GetVariableProperty(GremlinKeyword.EdgeSinkV);
-                GremlinVariableProperty edgeSourceVProperty = bothEdgeTable.GetVariableProperty(GremlinKeyword.EdgeSourceV);
-                GremlinVariableProperty v1NodeIDProperty = this.GetVariableProperty(GremlinKeyword.NodeID);
-                GremlinVariableProperty v2NodeIDProperty = otherSourceVertex.GetVariableProperty(GremlinKeyword.NodeID);
-
-                WBooleanExpression edgeToSinkVertexExpr1 = SqlUtil.GetEqualBooleanComparisonExpr(edgeSinkVProperty.ToScalarExpression(), v1NodeIDProperty.ToScalarExpression());
-                WBooleanExpression edgeToSourceVertexExpr1 = SqlUtil.GetEqualBooleanComparisonExpr(edgeSourceVProperty.ToScalarExpression(), v2NodeIDProperty.ToScalarExpression());
-                WBooleanExpression edgeToSinkVertexExpr2 = SqlUtil.GetEqualBooleanComparisonExpr(edgeSinkVProperty.ToScalarExpression(), v2NodeIDProperty.ToScalarExpression());
-                WBooleanExpression edgeToSourceVertexExpr2 = SqlUtil.GetEqualBooleanComparisonExpr(edgeSourceVProperty.ToScalarExpression(), v1NodeIDProperty.ToScalarExpression());
-
-                WBooleanBinaryExpression expr1 =
-                    SqlUtil.GetAndBooleanBinaryExpr(edgeToSinkVertexExpr1, edgeToSourceVertexExpr1);
-                WBooleanBinaryExpression expr2 =
-                    SqlUtil.GetAndBooleanBinaryExpr(edgeToSinkVertexExpr2, edgeToSourceVertexExpr2);
-
-                currentContext.AddPredicate(SqlUtil.GetOrBooleanBinaryExpr(expr1, expr2));
-
-                currentContext.SetPivotVariable(otherSourceVertex);
-            }
-            else
-            {
-                GremlinVertexToBothEdgeVariable bothEdgeTable = new GremlinVertexToBothEdgeVariable(this);
-                currentContext.VariableList.Add(bothEdgeTable);
-                currentContext.TableReferencesInFromClause.Add(bothEdgeTable);
-                currentContext.AddLabelPredicateForEdge(bothEdgeTable, edgeLabels);
-
-                GremlinEdgeToOtherVertexVariable otherSourceVertex = new GremlinEdgeToOtherVertexVariable(bothEdgeTable);
-                currentContext.VariableList.Add(otherSourceVertex);
-                currentContext.TableReferencesInFromClause.Add(otherSourceVertex);
-                currentContext.SetPivotVariable(otherSourceVertex);
-            }
-
-        }
-
+        
         internal virtual void BothE(GremlinToSqlContext currentContext, List<string> edgeLabels)
         {
             GremlinVertexToBothEdgeVariable bothEdgeTable = new GremlinVertexToBothEdgeVariable(this);
@@ -386,43 +339,6 @@ namespace GraphView
             currentContext.VariableList.Add(bothSourceVertex);
             currentContext.TableReferencesInFromClause.Add(bothSourceVertex);
             currentContext.SetPivotVariable(bothSourceVertex);
-        }
-
-        internal virtual void BothV1(GremlinToSqlContext currentContext)
-        {
-            if (this.GetVariableType() == GremlinVariableType.Edge)
-            {
-                GremlinFreeVertexVariable bothSourceVertex = new GremlinFreeVertexVariable();
-
-                currentContext.VariableList.Add(bothSourceVertex);
-                currentContext.TableReferencesInFromClause.Add(bothSourceVertex);
-
-                GremlinVariableProperty edgeSinkVProperty = this.GetVariableProperty(GremlinKeyword.EdgeSinkV);
-                GremlinVariableProperty edgeSourceVProperty = this.GetVariableProperty(GremlinKeyword.EdgeSourceV);
-                GremlinVariableProperty vNodeIDProperty = bothSourceVertex.GetVariableProperty(GremlinKeyword.NodeID);
-
-                WBooleanExpression edgeToSinkVertexExpr =
-                    SqlUtil.GetEqualBooleanComparisonExpr(edgeSinkVProperty.ToScalarExpression(),
-                        vNodeIDProperty.ToScalarExpression());
-                WBooleanExpression edgeToSourceVertexExpr =
-                    SqlUtil.GetEqualBooleanComparisonExpr(edgeSourceVProperty.ToScalarExpression(),
-                        vNodeIDProperty.ToScalarExpression());
-                WBooleanBinaryExpression edgeToBothVertexExpr =
-                    SqlUtil.GetOrBooleanBinaryExpr(edgeToSinkVertexExpr, edgeToSourceVertexExpr);
-
-                currentContext.AddPredicate(edgeToBothVertexExpr);
-
-                currentContext.SetPivotVariable(bothSourceVertex);
-            }
-            else
-            {
-                GremlinEdgeToBothVertexVariable bothSourceVertex = new GremlinEdgeToBothVertexVariable(this);
-
-                currentContext.VariableList.Add(bothSourceVertex);
-                currentContext.TableReferencesInFromClause.Add(bothSourceVertex);
-                currentContext.SetPivotVariable(bothSourceVertex);
-            }
-
         }
 
         internal virtual void Cap(GremlinToSqlContext currentContext, List<string> sideEffectKeys)
@@ -506,7 +422,7 @@ namespace GraphView
 
         internal virtual void CyclicPath(GremlinToSqlContext currentContext, string fromLabel = null, string toLabel = null)
         {
-            GremlinCyclicPathVariable newVariable = new GremlinCyclicPathVariable(this, GeneratePath(currentContext, fromLabel, toLabel));
+            GremlinCyclicPathVariable newVariable = new GremlinCyclicPathVariable(GeneratePath(currentContext, fromLabel, toLabel));
             currentContext.VariableList.Add(newVariable);
             currentContext.TableReferencesInFromClause.Add(newVariable);
         }
@@ -688,7 +604,7 @@ namespace GraphView
             currentContext.SetPivotVariable(newVariable);
         }
 
-        internal virtual void In(GremlinToSqlContext currentContext, List<string> edgeLabels)
+        internal virtual void In1(GremlinToSqlContext currentContext, List<string> edgeLabels)
         {
             GremlinVertexToBackwardEdgeVariable inEdgeTable = new GremlinVertexToBackwardEdgeVariable(this);
             currentContext.VariableList.Add(inEdgeTable);
@@ -702,7 +618,7 @@ namespace GraphView
             currentContext.SetPivotVariable(outSourceVertex);
         }
 
-        internal virtual void In1(GremlinToSqlContext currentContext, List<string> edgeLabels)
+        internal virtual void In(GremlinToSqlContext currentContext, List<string> edgeLabels)
         {
             if (this.GetVariableType() == GremlinVariableType.Vertex)
             {
@@ -719,8 +635,7 @@ namespace GraphView
                     inEdgeTable.GetVariableProperty(GremlinKeyword.EdgeSourceV);
                 GremlinVariableProperty vNodeIDProperty = outSourceVertex.GetVariableProperty(GremlinKeyword.NodeID);
                 WBooleanExpression edgeToSourceVertexExpr =
-                    SqlUtil.GetEqualBooleanComparisonExpr(edgeSourceVProperty.ToScalarExpression(),
-                        vNodeIDProperty.ToScalarExpression());
+                    SqlUtil.GetEdgeVertexBridgeExpression(edgeSourceVProperty.ToScalarExpression(), vNodeIDProperty.ToScalarExpression());
                 currentContext.AddPredicate(edgeToSourceVertexExpr);
 
                 currentContext.SetPivotVariable(outSourceVertex);
@@ -758,7 +673,7 @@ namespace GraphView
             currentContext.TableReferencesInFromClause.Add(injectVar);
         }
 
-        internal virtual void InV(GremlinToSqlContext currentContext)
+        internal virtual void InV1(GremlinToSqlContext currentContext)
         {
             GremlinEdgeToSinkVertexVariable inVertex = new GremlinEdgeToSinkVertexVariable(this);
             currentContext.VariableList.Add(inVertex);
@@ -766,9 +681,13 @@ namespace GraphView
             currentContext.SetPivotVariable(inVertex);
         }
 
-        internal virtual void InV1(GremlinToSqlContext currentContext)
+        internal virtual void InV(GremlinToSqlContext currentContext)
         {
-            if (this.GetVariableType() == GremlinVariableType.Edge)
+            bool isEdge = this.GetVariableType() == GremlinVariableType.Edge;
+            GremlinContextVariable variable = this as GremlinContextVariable;
+            isEdge &= (variable == null || !(variable.RealVariable is GremlinRepeatContextVariable));
+
+            if (isEdge)
             {
                 GremlinFreeVertexVariable inVertex = new GremlinFreeVertexVariable();
                 currentContext.VariableList.Add(inVertex);
@@ -776,7 +695,7 @@ namespace GraphView
 
                 GremlinVariableProperty edgeSinkVProperty = this.GetVariableProperty(GremlinKeyword.EdgeSinkV);
                 GremlinVariableProperty vNodeIDProperty = inVertex.GetVariableProperty(GremlinKeyword.NodeID);
-                WBooleanExpression edgeToSinkVertexExp = SqlUtil.GetEqualBooleanComparisonExpr(edgeSinkVProperty.ToScalarExpression(), vNodeIDProperty.ToScalarExpression());
+                WBooleanExpression edgeToSinkVertexExp = SqlUtil.GetEdgeVertexBridgeExpression(edgeSinkVProperty.ToScalarExpression(), vNodeIDProperty.ToScalarExpression());
                 currentContext.AddPredicate(edgeToSinkVertexExp);
 
                 currentContext.SetPivotVariable(inVertex);
@@ -978,7 +897,7 @@ namespace GraphView
             currentContext.SetPivotVariable(otherSourceVertex);
         }
 
-        internal virtual void Out(GremlinToSqlContext currentContext, List<string> edgeLabels)
+        internal virtual void Out1(GremlinToSqlContext currentContext, List<string> edgeLabels)
         {
             GremlinVertexToForwardEdgeVariable outEdgeTable = new GremlinVertexToForwardEdgeVariable(this);
             currentContext.VariableList.Add(outEdgeTable);
@@ -992,7 +911,7 @@ namespace GraphView
             currentContext.SetPivotVariable(inSourceVertex);
         }
 
-        internal virtual void Out1(GremlinToSqlContext currentContext, List<string> edgeLabels)
+        internal virtual void Out(GremlinToSqlContext currentContext, List<string> edgeLabels)
         {
             if (this.GetVariableType() == GremlinVariableType.Vertex)
             {
@@ -1007,7 +926,8 @@ namespace GraphView
 
                 GremlinVariableProperty edgeSinkVProperty = outEdgeTable.GetVariableProperty(GremlinKeyword.EdgeSinkV);
                 GremlinVariableProperty vNodeIDProperty = inSourceVertex.GetVariableProperty(GremlinKeyword.NodeID);
-                WBooleanExpression edgeToSinkVertexExpr = SqlUtil.GetEqualBooleanComparisonExpr(edgeSinkVProperty.ToScalarExpression(), vNodeIDProperty.ToScalarExpression());
+                WBooleanExpression edgeToSinkVertexExpr =
+                    SqlUtil.GetEdgeVertexBridgeExpression(edgeSinkVProperty.ToScalarExpression(), vNodeIDProperty.ToScalarExpression());
                 currentContext.AddPredicate(edgeToSinkVertexExpr);
 
                 currentContext.SetPivotVariable(inSourceVertex);
@@ -1038,7 +958,7 @@ namespace GraphView
             currentContext.SetPivotVariable(outEdgeTable);
         }
 
-        internal virtual void OutV(GremlinToSqlContext currentContext)
+        internal virtual void OutV1(GremlinToSqlContext currentContext)
         {
             GremlinEdgeToSourceVertexVariable outVertex = new GremlinEdgeToSourceVertexVariable(this);
             currentContext.VariableList.Add(outVertex);
@@ -1046,9 +966,13 @@ namespace GraphView
             currentContext.SetPivotVariable(outVertex);
         }
 
-        internal virtual void OutV1(GremlinToSqlContext currentContext)
+        internal virtual void OutV(GremlinToSqlContext currentContext)
         {
-            if (this.GetVariableType() == GremlinVariableType.Edge)
+            bool isEdge = this.GetVariableType() == GremlinVariableType.Edge;
+            GremlinContextVariable variable = this as GremlinContextVariable;
+            isEdge &= (variable == null || !(variable.RealVariable is GremlinRepeatContextVariable));
+
+            if (isEdge)
             {
                 GremlinFreeVertexVariable outVertex = new GremlinFreeVertexVariable();
                 currentContext.VariableList.Add(outVertex);
@@ -1056,7 +980,7 @@ namespace GraphView
 
                 GremlinVariableProperty edgeSourceVProperty = this.GetVariableProperty(GremlinKeyword.EdgeSourceV);
                 GremlinVariableProperty vNodeIDProperty = outVertex.GetVariableProperty(GremlinKeyword.NodeID);
-                WBooleanExpression edgeToSinkVertexExpr = SqlUtil.GetEqualBooleanComparisonExpr(edgeSourceVProperty.ToScalarExpression(), vNodeIDProperty.ToScalarExpression());
+                WBooleanExpression edgeToSinkVertexExpr = SqlUtil.GetEdgeVertexBridgeExpression(edgeSourceVProperty.ToScalarExpression(), vNodeIDProperty.ToScalarExpression());
                 currentContext.AddPredicate(edgeToSinkVertexExpr);
 
                 currentContext.SetPivotVariable(outVertex);
@@ -1256,7 +1180,7 @@ namespace GraphView
 
         internal virtual void SimplePath(GremlinToSqlContext currentContext, string fromLabel, string toLabel)
         {
-            GremlinSimplePathVariable newVariable = new GremlinSimplePathVariable(this, GeneratePath(currentContext, fromLabel, toLabel));
+            GremlinSimplePathVariable newVariable = new GremlinSimplePathVariable(GeneratePath(currentContext, fromLabel, toLabel));
             currentContext.VariableList.Add(newVariable);
             currentContext.TableReferencesInFromClause.Add(newVariable);
         }
