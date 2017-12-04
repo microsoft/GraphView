@@ -32,7 +32,8 @@ namespace GraphView
 
         public override RawRecord Next()
         {
-            if (this.verticesEnumerator.MoveNext()) {
+            if (this.verticesEnumerator.MoveNext())
+            {
                 return this.verticesEnumerator.Current.Item2;
             }
 
@@ -165,7 +166,8 @@ namespace GraphView
 
         public override RawRecord Next()
         {
-            if (this.outputBuffer == null) {
+            if (this.outputBuffer == null)
+            {
                 this.outputBuffer = new Queue<RawRecord>(this.outputBufferSize);
             }
 
@@ -180,7 +182,8 @@ namespace GraphView
                 for (int i = 0; i < this.batchSize && this.inputOp.State(); i++)
                 {
                     RawRecord record = this.inputOp.Next();
-                    if (record == null) {
+                    if (record == null)
+                    {
                         break;
                     }
 
@@ -280,7 +283,8 @@ namespace GraphView
                         foreach (Tuple<VertexField, RawRecord> tuple in temp)
                         {
                             VertexField vfield = tuple.Item1;
-                            if (!sinkVertexCollection.ContainsKey(vfield.VertexId)) {
+                            if (!sinkVertexCollection.ContainsKey(vfield.VertexId))
+                            {
                                 sinkVertexCollection.Add(vfield.VertexId, new List<RawRecord>());
                             }
                             sinkVertexCollection[vfield.VertexId].Add(tuple.Item2);
@@ -290,7 +294,8 @@ namespace GraphView
 
                 foreach (Tuple<RawRecord, string, string> pair in inputSequence)
                 {
-                    if (!sinkVertexCollection.ContainsKey(pair.Item2)) {
+                    if (!sinkVertexCollection.ContainsKey(pair.Item2))
+                    {
                         continue;
                     }
 
@@ -327,11 +332,13 @@ namespace GraphView
                 }
             }
 
-            if (this.outputBuffer.Count == 0) {
+            if (this.outputBuffer.Count == 0)
+            {
                 this.Close();
                 return null;
             }
-            else {
+            else
+            {
                 return this.outputBuffer.Dequeue();
             }
         }
@@ -601,7 +608,8 @@ namespace GraphView
                 this.inputBuffer = new List<RawRecord>();
 
                 RawRecord inputRec = null;
-                while (this.inputOp.State() && (inputRec = this.inputOp.Next()) != null) {
+                while (this.inputOp.State() && (inputRec = this.inputOp.Next()) != null)
+                {
                     this.inputBuffer.Add(inputRec);
                 }
 
@@ -613,25 +621,31 @@ namespace GraphView
                         ScalarFunction byFunction = orderByElement.Item1;
 
                         FieldObject xKey = byFunction.Evaluate(x);
-                        if (xKey == null) {
+                        if (xKey == null)
+                        {
                             throw new GraphViewException("The provided traversal or property name of Order does not map to a value.");
                         }
 
                         FieldObject yKey = byFunction.Evaluate(y);
-                        if (yKey == null) {
+                        if (yKey == null)
+                        {
                             throw new GraphViewException("The provided traversal or property name of Order does not map to a value.");
                         }
 
                         IComparer comparer = orderByElement.Item2;
                         ret = comparer.Compare(xKey.ToObject(), yKey.ToObject());
 
-                        if (ret != 0) break;
+                        if (ret != 0)
+                        {
+                            break;
+                        }
                     }
                     return ret;
                 });
             }
 
-            while (this.returnIndex < this.inputBuffer.Count) {
+            while (this.returnIndex < this.inputBuffer.Count)
+            {
                 return this.inputBuffer[this.returnIndex++];
             }
 
@@ -718,7 +732,10 @@ namespace GraphView
                         IComparer comparer = orderByElement.Item2;
                         ret = comparer.Compare(xKey.ToObject(), yKey.ToObject());
 
-                        if (ret != 0) break;
+                        if (ret != 0)
+                        {
+                            break;
+                        }
                     }
                     return ret;
                 });
@@ -791,14 +808,16 @@ namespace GraphView
                             RawRecord initCompose1RecordOfX = new RawRecord();
                             initCompose1RecordOfX.Append(x);
                             FieldObject xKey = byFunction.Evaluate(initCompose1RecordOfX);
-                            if (xKey == null) {
+                            if (xKey == null)
+                            {
                                 throw new GraphViewException("The provided traversal or property name of Order(local) does not map to a value.");
                             }
 
                             RawRecord initCompose1RecordOfY = new RawRecord();
                             initCompose1RecordOfY.Append(y);
                             FieldObject yKey = byFunction.Evaluate(initCompose1RecordOfY);
-                            if (yKey == null) {
+                            if (yKey == null)
+                            {
                                 throw new GraphViewException("The provided traversal or property name of Order(local) does not map to a value.");
                             }
 
@@ -826,32 +845,39 @@ namespace GraphView
                             RawRecord initKeyValuePairRecordOfX = new RawRecord();
                             initKeyValuePairRecordOfX.Append(x);
                             FieldObject xKey = byFunction.Evaluate(initKeyValuePairRecordOfX);
-                            if (xKey == null) {
+                            if (xKey == null)
+                            {
                                 throw new GraphViewException("The provided traversal or property name of Order(local) does not map to a value.");
                             }
                             
                             RawRecord initKeyValuePairRecordOfY = new RawRecord();
                             initKeyValuePairRecordOfY.Append(y);
                             FieldObject yKey = byFunction.Evaluate(initKeyValuePairRecordOfY);
-                            if (yKey == null) {
+                            if (yKey == null)
+                            {
                                 throw new GraphViewException("The provided traversal or property name of Order(local) does not map to a value.");
                             }
                             
                             IComparer comparer = tuple.Item2;
                             ret = comparer.Compare(xKey.ToObject(), yKey.ToObject());
 
-                            if (ret != 0) break;
+                            if (ret != 0)
+                            {
+                                break;
+                            }
                         }
                         return ret;
                     });
 
                     MapField orderedMapField = new MapField();
-                    foreach (EntryField entry in entries) {
+                    foreach (EntryField entry in entries)
+                    {
                         orderedMapField.Add(entry.Key, entry.Value);
                     }
                     orderedObject = orderedMapField;
                 }
-                else {
+                else
+                {
                     orderedObject = inputObject;
                 }
 
@@ -966,7 +992,9 @@ namespace GraphView
         public override RawRecord Next()
         {
             if (!State())
+            {
                 return null;
+            }
 
             foreach (var aggr in aggregationSpecs)
             {
@@ -1157,7 +1185,8 @@ namespace GraphView
                 {
                     ScalarFunction getDedupKeyFunc = compositeDedupKeyFuncList[dedupKeyIndex];
                     FieldObject key = getDedupKeyFunc.Evaluate(srcRecord);
-                    if (key == null) {
+                    if (key == null)
+                    {
                         throw new GraphViewException("The provided traversal or property name of Dedup does not map to a value.");
                     }
 
@@ -1338,7 +1367,8 @@ namespace GraphView
                         }
                     }
                 }
-                else {
+                else
+                {
                     throw new GraphViewException("Dedup(local) can only be applied to a list.");
                 }
 
@@ -1544,15 +1574,18 @@ namespace GraphView
 
                     int runtimeStartIndex = startIndex > inputCollection.Collection.Count ? inputCollection.Collection.Count : startIndex;
                     int runtimeCount = this.count == -1 ? inputCollection.Collection.Count - runtimeStartIndex : this.count;
-                    if (runtimeStartIndex + runtimeCount > inputCollection.Collection.Count) {
+                    if (runtimeStartIndex + runtimeCount > inputCollection.Collection.Count)
+                    {
                         runtimeCount = inputCollection.Collection.Count - runtimeStartIndex;
                     }
 
                     newCollectionField.Collection = inputCollection.Collection.GetRange(runtimeStartIndex, runtimeCount);
-                    if (wantSingleObject) {
+                    if (wantSingleObject)
+                    {
                         filteredObject = newCollectionField.Collection.Any() ? newCollectionField.Collection[0] : null;
                     }
-                    else {
+                    else
+                    {
                         filteredObject = newCollectionField;
                     }
                 }
@@ -1563,7 +1596,8 @@ namespace GraphView
 
                     int runtimeStartIndex = startIndex > inputPath.Path.Count ? inputPath.Path.Count : startIndex;
                     int runtimeCount = this.count == -1 ? inputPath.Path.Count - runtimeStartIndex : this.count;
-                    if (runtimeStartIndex + runtimeCount > inputPath.Path.Count) {
+                    if (runtimeStartIndex + runtimeCount > inputPath.Path.Count)
+                    {
                         runtimeCount = inputPath.Path.Count - runtimeStartIndex;
                     }
 
@@ -1572,10 +1606,12 @@ namespace GraphView
                             .Cast<PathStepField>()
                             .Select(p => p.StepFieldObject)
                             .ToList();
-                    if (wantSingleObject) {
+                    if (wantSingleObject)
+                    {
                         filteredObject = newCollectionField.Collection.Any() ? newCollectionField.Collection[0] : null;
                     }
-                    else {
+                    else
+                    {
                         filteredObject = newCollectionField;
                     }
                 }
@@ -1591,21 +1627,26 @@ namespace GraphView
                     int high = this.count == -1 ? inputMap.Count : low + this.count;
 
                     int index = 0;
-                    foreach (EntryField entry in inputMap) {
-                        if (index >= low && index < high) {
+                    foreach (EntryField entry in inputMap)
+                    {
+                        if (index >= low && index < high)
+                        {
                             newMap.Add(entry.Key, entry.Value);
                         }
-                        if (++index >= high) {
+                        if (++index >= high)
+                        {
                             break;
                         }
                     }
                     filteredObject = newMap;
                 }
-                else {
+                else
+                {
                     filteredObject = inputObject;
                 }
 
-                if (filteredObject == null) {
+                if (filteredObject == null)
+                {
                     continue;
                 }
                 RawRecord flatRawRecord = filteredObject.FlatToRawRecord(this.populateColumns);
@@ -1649,7 +1690,8 @@ namespace GraphView
         {
             RawRecord srcRecord = null;
 
-            while (this.inputOp.State() && (srcRecord = this.inputOp.Next()) != null) {
+            while (this.inputOp.State() && (srcRecord = this.inputOp.Next()) != null)
+            {
                 buffer.Add(srcRecord);
             }
 
@@ -1659,7 +1701,8 @@ namespace GraphView
 
             int startIndex = buffer.Count < lastN ? 0 : buffer.Count - lastN;
             int index = startIndex + this.count++;
-            while (index < buffer.Count) {
+            while (index < buffer.Count)
+            {
                 return buffer[index];
             } 
 
@@ -1792,10 +1835,12 @@ namespace GraphView
                                      : lastN;
 
                     newCollection.Collection = inputCollection.Collection.GetRange(startIndex, count);
-                    if (wantSingleObject) {
+                    if (wantSingleObject)
+                    {
                         filteredObject = newCollection.Collection.Any() ? newCollection.Collection[0] : null;
                     }
-                    else {
+                    else
+                    {
                         filteredObject = newCollection;
                     }
                 }
@@ -1816,10 +1861,12 @@ namespace GraphView
                             .Cast<PathStepField>()
                             .Select(p => p.StepFieldObject)
                             .ToList();
-                    if (wantSingleObject) {
+                    if (wantSingleObject)
+                    {
                         filteredObject = newCollection.Collection.Any() ? newCollection.Collection[0] : null;
                     }
-                    else {
+                    else
+                    {
                         filteredObject = newCollection;
                     }
                 }
@@ -1833,17 +1880,20 @@ namespace GraphView
                     int low = inputMap.Count - lastN;
 
                     int index = 0;
-                    foreach (EntryField entry in inputMap) {
+                    foreach (EntryField entry in inputMap)
+                    {
                         if (index++ >= low)
                             newMap.Add(entry.Key, entry.Value);
                     }
                     filteredObject = newMap;
                 }
-                else {
+                else
+                {
                     filteredObject = inputObject;
                 }
 
-                if (filteredObject == null) {
+                if (filteredObject == null)
+                {
                     continue;
                 }
                 RawRecord flatRawRecord = filteredObject.FlatToRawRecord(this.populateColumns);
@@ -1923,16 +1973,22 @@ namespace GraphView
                     //
                     // g.Inject()
                     //
-                    if (this.inputRecordColumnsCount == 0) {
+                    if (this.inputRecordColumnsCount == 0)
+                    {
                         result.Append(new CollectionField(collection));
                     }
                     else
                     {
-                        for (int columnIndex = 0; columnIndex < this.inputRecordColumnsCount; columnIndex++) {
+                        for (int columnIndex = 0; columnIndex < this.inputRecordColumnsCount; columnIndex++)
+                        {
                             if (columnIndex == this.injectColumnIndex)
+                            {
                                 result.Append(new CollectionField(collection));
+                            }
                             else
+                            {
                                 result.Append((FieldObject)null);
+                            }
                         }
                     }
 
@@ -1943,16 +1999,22 @@ namespace GraphView
                     //
                     // g.Inject()
                     //
-                    if (this.inputRecordColumnsCount == 0) {
+                    if (this.inputRecordColumnsCount == 0)
+                    {
                         result.Append(this.injectValues[0].Evaluate(null));
                     }
                     else
                     {
-                        for (int columnIndex = 0; columnIndex < this.inputRecordColumnsCount; columnIndex++) {
+                        for (int columnIndex = 0; columnIndex < this.inputRecordColumnsCount; columnIndex++)
+                        {
                             if (columnIndex == this.injectColumnIndex)
+                            {
                                 result.Append(this.injectValues[0].Evaluate(null));
+                            }
                             else
+                            {
                                 result.Append((FieldObject)null);
+                            }
                         }
                     }
 
@@ -1965,11 +2027,13 @@ namespace GraphView
             //
             // For the g.Inject() case, Inject operator itself is the first operator, and its inputOp is null
             //
-            if (this.inputOp != null) {
+            if (this.inputOp != null)
+            {
                 r = this.inputOp.State() ? this.inputOp.Next() : null;
             }
 
-            if (r == null) {
+            if (r == null)
+            {
                 this.Close();
             }
 
@@ -2024,17 +2088,25 @@ namespace GraphView
                 FieldObject aggregateObject = getAggregateObjectFunction.Evaluate(r);
 
                 if (aggregateObject == null)
+                {
                     throw new GraphViewException("The provided traversal or property name in Aggregate does not map to a value.");
+                }
 
                 aggregateFunction.Accumulate(aggregateObject);
 
-                result.Append(aggregateFunction.collectionState.collectionField);
+                result.Append(aggregateFunction.CollectionState.collectionField);
 
                 outputBuffer.Enqueue(result);
             }
 
-            if (outputBuffer.Count <= 1) Close();
-            if (outputBuffer.Count != 0) return outputBuffer.Dequeue();
+            if (outputBuffer.Count <= 1)
+            {
+               this.Close();
+            }
+            if (outputBuffer.Count != 0)
+            {
+                return this.outputBuffer.Dequeue();
+            }
             return null;
         }
 
@@ -2070,7 +2142,7 @@ namespace GraphView
             this.inputOp = inputOp;
             this.getStoreObjectFunction = getTargetFieldFunction;
             this.storedName = storedName;
-            Open();
+            this.Open();
         }
 
         public override RawRecord Next()
@@ -2080,7 +2152,7 @@ namespace GraphView
                 RawRecord r = inputOp.Next();
                 if (r == null)
                 {
-                    Close();
+                    this.Close();
                     return null;
                 }
 
@@ -2089,15 +2161,17 @@ namespace GraphView
                 FieldObject storeObject = getStoreObjectFunction.Evaluate(r);
 
                 if (storeObject == null)
+                {
                     throw new GraphViewException("The provided traversal or property name in Store does not map to a value.");
+                }
 
                 storeFunction.Accumulate(storeObject);
 
-                result.Append(storeFunction.collectionState.collectionField);
+                result.Append(storeFunction.CollectionState.collectionField);
 
                 if (!inputOp.State())
                 {
-                    Close();
+                    this.Close();
                 }
                 return result;
             }
@@ -2107,8 +2181,8 @@ namespace GraphView
 
         public override void ResetState()
         {
-            inputOp.ResetState();
-            Open();
+            this.inputOp.ResetState();
+            this.Open();
         }
 
         [OnDeserialized]
@@ -2126,49 +2200,56 @@ namespace GraphView
     internal class BarrierOperator : GraphViewExecutionOperator
     {
         [DataMember]
-        private GraphViewExecutionOperator _inputOp;
-        private Queue<RawRecord> _outputBuffer;
+        private GraphViewExecutionOperator inputOp;
+        private Queue<RawRecord> outputBuffer;
         [DataMember]
-        private int _outputBufferSize;
+        private int outputBufferSize;
 
         public BarrierOperator(GraphViewExecutionOperator inputOp, int outputBufferSize = -1)
         {
-            _inputOp = inputOp;
-            _outputBuffer = new Queue<RawRecord>();
-            _outputBufferSize = outputBufferSize;
-            Open();
+            this.inputOp = inputOp;
+            this.outputBuffer = new Queue<RawRecord>();
+            this.outputBufferSize = outputBufferSize;
+            this.Open();
         }
           
         public override RawRecord Next()
         {
-            while (_outputBuffer.Any()) {
-                return _outputBuffer.Dequeue();
+            while (outputBuffer.Any())
+            {
+                return this.outputBuffer.Dequeue();
             }
 
             RawRecord record;
-            while ((_outputBufferSize == -1 || _outputBuffer.Count <= _outputBufferSize) 
-                    && _inputOp.State() 
-                    && (record = _inputOp.Next()) != null)
+            while ((outputBufferSize == -1 || outputBuffer.Count <= outputBufferSize) 
+                    && inputOp.State() 
+                    && (record = inputOp.Next()) != null)
             {
-                _outputBuffer.Enqueue(record);
+                this.outputBuffer.Enqueue(record);
             }
 
-            if (_outputBuffer.Count <= 1) Close();
-            if (_outputBuffer.Count != 0) return _outputBuffer.Dequeue();
+            if (outputBuffer.Count <= 1)
+            {
+                this.Close();
+            }
+            if (outputBuffer.Count != 0)
+            {
+                return outputBuffer.Dequeue();
+            }
             return null;
         }
 
         public override void ResetState()
         {
-            _inputOp.ResetState();
-            _outputBuffer.Clear();
-            Open();
+            this.inputOp.ResetState();
+            this.outputBuffer.Clear();
+            this.Open();
         }
 
         [OnDeserialized]
         private void Reconstruct(StreamingContext context)
         {
-            this._outputBuffer = new Queue<RawRecord>();
+            this.outputBuffer = new Queue<RawRecord>();
         }
     }
 
@@ -2207,8 +2288,9 @@ namespace GraphView
                     FieldObject projectValue = byFunction.Evaluate(currentRecord);
 
                     if (projectValue == null)
-                        throw new GraphViewException(
-                            $"The provided traverser of key \"{projectKey}\" does not map to a value.");
+                    {
+                        throw new GraphViewException($"The provided traverser of key \"{projectKey}\" does not map to a value.");
+                    }
 
                     projectMap.Add(new StringField(projectKey), projectValue);
                 }
@@ -2254,7 +2336,9 @@ namespace GraphView
             {
                 PropertyField p = currentRecord[this.propertyFieldIndex] as PropertyField;
                 if (p == null)
+                {
                     continue;
+                }
 
                 RawRecord result = new RawRecord(currentRecord);
                 result.Append(new StringField(p.PropertyName));
@@ -2296,7 +2380,9 @@ namespace GraphView
             {
                 PropertyField p = currentRecord[this.propertyFieldIndex] as PropertyField;
                 if (p == null)
+                {
                     continue;
+                }
 
                 RawRecord result = new RawRecord(currentRecord);
                 result.Append(new StringField(p.PropertyValue, p.JsonDataType));
@@ -2341,15 +2427,25 @@ namespace GraphView
                 Debug.Assert(obj != null, "The input of the CountLocalOperator should not be null.");
 
                 if (obj is CollectionField)
+                {
                     result.Append(new StringField(((CollectionField)obj).Collection.Count.ToString(), JsonDataType.Long));
+                }
                 else if (obj is PathField)
+                {
                     result.Append(new StringField(((PathField)obj).Path.Count.ToString(), JsonDataType.Long));
+                }
                 else if (obj is MapField)
+                {
                     result.Append(new StringField(((MapField)obj).Count.ToString(), JsonDataType.Long));
+                }
                 else if (obj is TreeField)
-                    result.Append(new StringField(((TreeField)obj).Children.Count.ToString(), JsonDataType.Long));
+                {
+                    result.Append(new StringField(((TreeField) obj).Children.Count.ToString(), JsonDataType.Long));
+                }
                 else
+                {
                     result.Append(new StringField("1", JsonDataType.Long));
+                }
 
                 return result;
             }
@@ -2397,7 +2493,9 @@ namespace GraphView
                     foreach (FieldObject fieldObject in ((CollectionField)obj).Collection)
                     {
                         if (!double.TryParse(fieldObject.ToValue, out current))
+                        {
                             throw new GraphViewException("The element of the local object cannot be cast to a number");
+                        }
 
                         sum += current;
                     }
@@ -2407,12 +2505,15 @@ namespace GraphView
                     foreach (FieldObject fieldObject in ((PathField)obj).Path)
                     {
                         if (!double.TryParse(fieldObject.ToValue, out current))
+                        {
                             throw new GraphViewException("The element of the local object cannot be cast to a number");
+                        }
 
                         sum += current;
                     }
                 }
-                else {
+                else
+                {
                     sum = double.TryParse(obj.ToValue, out current) ? current : double.NaN;
                 }
 
@@ -2465,10 +2566,14 @@ namespace GraphView
                     foreach (FieldObject fieldObject in ((CollectionField)obj).Collection)
                     {
                         if (!double.TryParse(fieldObject.ToValue, out current))
+                        {
                             throw new GraphViewException("The element of the local object cannot be cast to a number");
+                        }
 
                         if (max < current)
+                        {
                             max = current;
+                        }
                     }
                 }
                 else if (obj is PathField)
@@ -2476,13 +2581,18 @@ namespace GraphView
                     foreach (PathStepField fieldObject in ((PathField)obj).Path.Cast<PathStepField>())
                     {
                         if (!double.TryParse(fieldObject.ToValue, out current))
+                        {
                             throw new GraphViewException("The element of the local object cannot be cast to a number");
+                        }
 
                         if (max < current)
+                        {
                             max = current;
+                        }
                     }
                 }
-                else {
+                else
+                {
                     max = double.TryParse(obj.ToValue, out current) ? current : double.NaN;
                 }
 
@@ -2535,10 +2645,14 @@ namespace GraphView
                     foreach (FieldObject fieldObject in ((CollectionField)obj).Collection)
                     {
                         if (!double.TryParse(fieldObject.ToValue, out current))
+                        {
                             throw new GraphViewException("The element of the local object cannot be cast to a number");
+                        }
 
                         if (current < min)
+                        {
                             min = current;
+                        }
                     }
                 }
                 else if (obj is PathField)
@@ -2546,13 +2660,18 @@ namespace GraphView
                     foreach (PathStepField fieldObject in ((PathField)obj).Path.Cast<PathStepField>())
                     {
                         if (!double.TryParse(fieldObject.ToValue, out current))
+                        {
                             throw new GraphViewException("The element of the local object cannot be cast to a number");
+                        }
 
                         if (current < min)
+                        {
                             min = current;
+                        }
                     }
                 }
-                else {
+                else
+                {
                     min = double.TryParse(obj.ToValue, out current) ? current : double.NaN;
                 }
 
@@ -2606,7 +2725,9 @@ namespace GraphView
                     foreach (FieldObject fieldObject in ((CollectionField)obj).Collection)
                     {
                         if (!double.TryParse(fieldObject.ToValue, out current))
+                        {
                             throw new GraphViewException("The element of the local object cannot be cast to a number");
+                        }
 
                         sum += current;
                         count++;
@@ -2617,7 +2738,9 @@ namespace GraphView
                     foreach (PathStepField fieldObject in ((PathField)obj).Path.Cast<PathStepField>())
                     {
                         if (!double.TryParse(fieldObject.ToValue, out current))
+                        {
                             throw new GraphViewException("The element of the local object cannot be cast to a number");
+                        }
 
                         sum += current;
                         count++;
@@ -2764,45 +2887,47 @@ namespace GraphView
     internal class CoinOperator : GraphViewExecutionOperator
     {
         [DataMember]
-        private readonly double _probability;
+        private readonly double probability;
         [DataMember]
-        private readonly GraphViewExecutionOperator _inputOp;
-        private Random _random;
+        private readonly GraphViewExecutionOperator inputOp;
+        private Random random;
 
         public CoinOperator(
             GraphViewExecutionOperator inputOp,
             double probability)
         {
-            this._inputOp = inputOp;
-            this._probability = probability;
-            this._random = new Random();
+            this.inputOp = inputOp;
+            this.probability = probability;
+            this.random = new Random();
 
-            Open();
+            this.Open();
         }
 
         public override RawRecord Next()
         {
             RawRecord current = null;
-            while (this._inputOp.State() && (current = this._inputOp.Next()) != null) {
-                if (this._random.NextDouble() <= this._probability) {
+            while (this.inputOp.State() && (current = this.inputOp.Next()) != null)
+            {
+                if (this.random.NextDouble() <= this.probability)
+                {
                     return current;
                 }
             }
 
-            Close();
+            this.Close();
             return null;
         }
 
         public override void ResetState()
         {
-            this._inputOp.ResetState();
-            Open();
+            this.inputOp.ResetState();
+            this.Open();
         }
 
         [OnDeserialized]
         private void Reconstruct(StreamingContext context)
         {
-            this._random = new Random();
+            this.random = new Random();
         }
     }
 
@@ -2837,7 +2962,7 @@ namespace GraphView
             this.inputRecords = new List<RawRecord>();
             this.inputProperties = new List<double>();
             this.nextIndex = 0;
-            Open();
+            this.Open();
         }
 
         public override RawRecord Next()
@@ -2868,7 +2993,7 @@ namespace GraphView
                 return this.sampleRecords[this.nextIndex++];
             }
 
-            Close();
+            this.Close();
             return null;
         }
 
@@ -2879,7 +3004,7 @@ namespace GraphView
             this.inputRecords.Clear();
             this.inputProperties.Clear();
             this.nextIndex = 0;
-            Open();
+            this.Open();
         }
 
         [OnDeserialized]
@@ -2993,7 +3118,7 @@ namespace GraphView
             this.inputObjectIndex = inputObjectIndex;
             this.random = new Random();
             this.populateColumns = populateColumns;
-            Open();
+            this.Open();
         }
 
         public override RawRecord Next()
@@ -3063,7 +3188,7 @@ namespace GraphView
         public override void ResetState()
         {
             this.inputOp.ResetState();
-            Open();
+            this.Open();
         }
 
         [OnDeserialized]
@@ -3110,16 +3235,21 @@ namespace GraphView
                 RawRecord r = new RawRecord(inputRecord);
                 if (compose1Obj != null)
                 {
-                    foreach (string populateColumn in this.populateColumns) {
+                    foreach (string populateColumn in this.populateColumns)
+                    {
                         r.Append(compose1Obj[populateColumn]);
                     }
                 }
-                else {
-                    foreach (string columnName in this.populateColumns) {
-                        if (columnName.Equals(this.tableDefaultColumnName)) {
+                else
+                {
+                    foreach (string columnName in this.populateColumns)
+                    {
+                        if (columnName.Equals(this.tableDefaultColumnName))
+                        {
                             r.Append(inputObj);
                         }
-                        else {
+                        else
+                        {
                             r.Append((FieldObject)null);
                         }
                     }
@@ -3183,7 +3313,8 @@ namespace GraphView
                     MapField inputMap = (MapField)selectObj;
                     List<FieldObject> columns = new List<FieldObject>();
 
-                    foreach (EntryField entry in inputMap) {
+                    foreach (EntryField entry in inputMap)
+                    {
                         columns.Add(this.isSelectKeys ? entry.Key : entry.Value);
                     }
 
@@ -3221,11 +3352,14 @@ namespace GraphView
                         if (this.isSelectKeys)
                         {
                             List<FieldObject> labels = new List<FieldObject>();
-                            foreach (string label in pathStep.Labels) {
+                            foreach (string label in pathStep.Labels)
+                            {
                                 labels.Add(new StringField(label));
                             }
                             columns.Add(new CollectionField(labels));
-                        } else {
+                        }
+                        else
+                        {
                             columns.Add(pathStep.StepFieldObject);
                         }
                     }
@@ -3341,7 +3475,8 @@ namespace GraphView
                 compositeFieldObject.Add(this.tableDefaultColumnName, globalSideEffectObject.Terminate());
                 selectObject = new CompositeField(compositeFieldObject, this.tableDefaultColumnName);
             }
-            else if (inputMap != null && inputMap.ContainsKey(labelStringField)) {
+            else if (inputMap != null && inputMap.ContainsKey(labelStringField))
+            {
                 selectObject = inputMap[labelStringField];
             }
             else
@@ -3357,10 +3492,13 @@ namespace GraphView
                         }
                     }
                 }
-                else if (this.pop == GremlinKeyword.Pop.Last) {
-                    for (int reverseIndex = path.Path.Count - 1; reverseIndex >= 0; reverseIndex--) {
+                else if (this.pop == GremlinKeyword.Pop.Last)
+                {
+                    for (int reverseIndex = path.Path.Count - 1; reverseIndex >= 0; reverseIndex--)
+                    {
                         PathStepField step = (PathStepField)path.Path[reverseIndex];
-                        if (step.Labels.Contains(label)) {
+                        if (step.Labels.Contains(label))
+                        {
                             selectObjects.Add(step.StepFieldObject);
                             break;
                         }
@@ -3369,15 +3507,19 @@ namespace GraphView
                 //
                 // this.pop == Pop.All
                 //
-                else {
-                    foreach (PathStepField step in path.Path.Cast<PathStepField>()) {
-                        if (step.Labels.Contains(label)) {
+                else
+                {
+                    foreach (PathStepField step in path.Path.Cast<PathStepField>())
+                    {
+                        if (step.Labels.Contains(label))
+                        {
                             selectObjects.Add(step.StepFieldObject);
                         }
                     }
                 }
 
-                if (selectObjects.Count == 1) {
+                if (selectObjects.Count == 1)
+                {
                     selectObject = selectObjects[0];
                 }
                 else if (selectObjects.Count > 1)
@@ -3432,7 +3574,8 @@ namespace GraphView
         {
             FieldObject projectionResult;
 
-            if (this.byFuncList.Count == 0) {
+            if (this.byFuncList.Count == 0)
+            {
                 projectionResult = selectObject;
             }
             else
@@ -3441,7 +3584,8 @@ namespace GraphView
                 initCompose1Record.Append(selectObject);
                 projectionResult = this.byFuncList[activeByFuncIndex++ % this.byFuncList.Count].Evaluate(initCompose1Record);
 
-                if (projectionResult == null) {
+                if (projectionResult == null)
+                {
                     throw new GraphViewException("The provided traversal or property name of path() does not map to a value.");
                 }
             }
@@ -3472,7 +3616,8 @@ namespace GraphView
                     selectMap.Add(new StringField(label), this.GetProjectionResult(selectObject, ref activeByFuncIndex));
                 }
 
-                if (!allLabelCanBeSelected) {
+                if (!allLabelCanBeSelected)
+                {
                     continue;
                 }
 
@@ -3523,7 +3668,8 @@ namespace GraphView
             initCompose1Record.Append(selectObject);
             projectionResult = this.byFunc.Evaluate(initCompose1Record);
 
-            if (projectionResult == null) {
+            if (projectionResult == null)
+            {
                 throw new GraphViewException("The provided traversal or property name of path() does not map to a value.");
             }
 
@@ -3537,7 +3683,8 @@ namespace GraphView
             {
                 FieldObject selectObject = this.GetSelectObject(inputRec, this.selectLabel);
 
-                if (selectObject == null) {
+                if (selectObject == null)
+                {
                     continue;
                 }
 
@@ -3545,7 +3692,8 @@ namespace GraphView
                 Debug.Assert(projectionResult != null, "projectionResult is Compose1Field.");
 
                 RawRecord r = new RawRecord(inputRec);
-                foreach (string columnName in this.populateColumns) {
+                foreach (string columnName in this.populateColumns)
+                {
                     r.Append(projectionResult[columnName]);
                 }
 
@@ -3640,17 +3788,21 @@ namespace GraphView
             string startVertexId, string startVertexPartition, bool isStartVertexTheOriginVertex, bool isReversedAdjList)
         {
             string otherValue, otherVPartition;
-            if (isStartVertexTheOriginVertex) {
-                if (isReversedAdjList) {
+            if (isStartVertexTheOriginVertex)
+            {
+                if (isReversedAdjList)
+                {
                     otherValue = edge.OutV;
                     otherVPartition = edge.OutVPartition;
                 }
-                else {
+                else
+                {
                     otherValue = edge.InV;
                     otherVPartition = edge.InVPartition;
                 }
             }
-            else {
+            else
+            {
                 otherValue = startVertexId;
                 otherVPartition = startVertexPartition;
             }
@@ -3670,7 +3822,8 @@ namespace GraphView
         /// <param name="projectedFields"></param>
         internal static void FillPropertyField(RawRecord record, EdgeField edge, List<string> projectedFields)
         {
-            for (int i = GraphViewReservedProperties.ReservedEdgeProperties.Count; i < projectedFields.Count; i++) {
+            for (int i = GraphViewReservedProperties.ReservedEdgeProperties.Count; i < projectedFields.Count; i++)
+            {
                 record.fieldValues[i] = edge[projectedFields[i]];
             }
         }
@@ -3686,14 +3839,16 @@ namespace GraphView
         {
             List<RawRecord> edgeRecordCollection = new List<RawRecord>();
 
-            foreach (EdgeField edge in adjacencyList.AllEdges) {
+            foreach (EdgeField edge in adjacencyList.AllEdges)
+            {
                 // Construct new record
                 RawRecord edgeRecord = new RawRecord(this.projectedFields.Count);
 
                 AdjacencyListDecoder.FillMetaField(edgeRecord, edge, startVertexId, startVertexPartition, this.isStartVertexTheOriginVertex, isReverse);
                 AdjacencyListDecoder.FillPropertyField(edgeRecord, edge, this.projectedFields);
 
-                if (this.edgePredicate != null && !this.edgePredicate.Evaluate(edgeRecord)) {
+                if (this.edgePredicate != null && !this.edgePredicate.Evaluate(edgeRecord))
+                {
                     continue;
                 }
 
@@ -3713,18 +3868,21 @@ namespace GraphView
         {
             List<RawRecord> results = new List<RawRecord>();
             VertexField startVertex = record[this.startVertexIndex] as VertexField;
-            if (startVertex == null) {
+            if (startVertex == null)
+            {
                 throw new GraphViewException($"{record[this.startVertexIndex].ToString()} cannot be cast to a vertex.");
             }
             string startVertexId = startVertex.VertexId;
 
-            if (this.crossApplyForwardAdjacencyList) {
+            if (this.crossApplyForwardAdjacencyList)
+            {
                 AdjacencyListField adj = ((VertexField)record[this.startVertexIndex]).AdjacencyList;
                 Debug.Assert(adj.HasBeenFetched);
                 results.AddRange(this.DecodeAdjacencyList(adj, startVertexId, startVertex.Partition, false));
             }
 
-            if (this.crossApplyBackwardAdjacencyList) {
+            if (this.crossApplyBackwardAdjacencyList)
+            {
                 AdjacencyListField revAdj = ((VertexField)record[this.startVertexIndex]).RevAdjacencyList;
                 Debug.Assert(revAdj.HasBeenFetched);
                 results.AddRange(this.DecodeAdjacencyList(revAdj, startVertexId, startVertex.Partition, true));
@@ -3742,7 +3900,8 @@ namespace GraphView
         {
             List<RawRecord> results = new List<RawRecord>();
 
-            foreach (RawRecord edgeRecord in this.Decode(record)) {
+            foreach (RawRecord edgeRecord in this.Decode(record))
+            {
                 RawRecord r = new RawRecord(record);
                 r.Append(edgeRecord);
 
@@ -3761,7 +3920,8 @@ namespace GraphView
             HashSet<string> vertexPartitionKeyCollection = new HashSet<string>();
             EdgeType edgeType = 0;
 
-            foreach (Tuple<RawRecord, string> tuple in this.lazyAdjacencyListBatch) {
+            foreach (Tuple<RawRecord, string> tuple in this.lazyAdjacencyListBatch)
+            {
                 string vertexId = tuple.Item2;
                 VertexField vertexField = (VertexField)(tuple.Item1[this.startVertexIndex]);
 
@@ -3771,24 +3931,29 @@ namespace GraphView
                 Debug.Assert(revAdj != null, "revAdj != null");
 
                 bool addThisEdge = false;
-                if (this.crossApplyForwardAdjacencyList && !adj.HasBeenFetched) {
+                if (this.crossApplyForwardAdjacencyList && !adj.HasBeenFetched)
+                {
                     edgeType |= EdgeType.Outgoing;
                     addThisEdge = true;
                 }
-                if (this.crossApplyBackwardAdjacencyList && !revAdj.HasBeenFetched) {
+                if (this.crossApplyBackwardAdjacencyList && !revAdj.HasBeenFetched)
+                {
                     edgeType |= EdgeType.Incoming;
                     addThisEdge = true;
                 }
 
-                if (addThisEdge) {
+                if (addThisEdge)
+                {
                     vertexIdCollection.Add(vertexId);
-                    if (vertexField.Partition != null) {
+                    if (vertexField.Partition != null)
+                    {
                         vertexPartitionKeyCollection.Add(vertexField.Partition);
                     }
                 }
             }
 
-            if (vertexIdCollection.Count > 0) {
+            if (vertexIdCollection.Count > 0)
+            {
                 Debug.Assert(edgeType != 0);
                 EdgeDocumentHelper.ConstructLazyAdjacencyList(this.command, edgeType, vertexIdCollection, vertexPartitionKeyCollection);
             }
@@ -3943,11 +4108,13 @@ namespace GraphView
                     FieldObject aggregateObject = getSubgraphEdgeFunction.Evaluate(r);
 
                     if (aggregateObject == null)
+                    {
                         throw new GraphViewException("The provided traversal or property name in Subgraph does not map to a value.");
+                    }
 
-                    aggregateState.Accumulate(aggregateObject);
+                    this.aggregateState.Accumulate(aggregateObject);
 
-                    outputBuffer.Enqueue(result);
+                    this.outputBuffer.Enqueue(result);
                 }
 
                 if (!this.outputBuffer.Any())

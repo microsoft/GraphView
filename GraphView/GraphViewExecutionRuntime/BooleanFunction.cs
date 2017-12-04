@@ -54,7 +54,8 @@ namespace GraphView
             FieldObject lhs = firstScalarFunction.Evaluate(record);
             FieldObject rhs = secondScalarFunction.Evaluate(record);
 
-            if (lhs == null || rhs == null) {
+            if (lhs == null || rhs == null)
+            {
                 return false;
             }
 
@@ -68,7 +69,8 @@ namespace GraphView
 
                     JsonDataType targetType = type1 > type2 ? type1 : type2;
 
-                    if (Compare(vsp.ToValue, rhs.ToValue, targetType, this.comparisonType)) {
+                    if (Compare(vsp.ToValue, rhs.ToValue, targetType, this.comparisonType))
+                    {
                         return true;
                     }
                 }
@@ -296,12 +298,14 @@ namespace GraphView
 
         private static bool In(string lhsValue, JsonDataType lhsDataType, RawRecord record, List<ScalarFunction> values)
         {
-            foreach (ScalarFunction valueFunction in values) {
+            foreach (ScalarFunction valueFunction in values)
+            {
                 JsonDataType rhsDataType = valueFunction.DataType();
                 JsonDataType targetType = lhsDataType > rhsDataType ? lhsDataType : rhsDataType;
                 string rhsValue = valueFunction.Evaluate(record)?.ToValue;
 
-                if (ComparisonFunction.Compare(lhsValue, rhsValue, targetType, BooleanComparisonType.Equals)) {
+                if (ComparisonFunction.Compare(lhsValue, rhsValue, targetType, BooleanComparisonType.Equals))
+                {
                     return true;
                 }
             }
@@ -310,12 +314,14 @@ namespace GraphView
 
         private static bool NotIn(string lhsValue, JsonDataType lhsDataType, RawRecord record, List<ScalarFunction> values)
         {
-            foreach (ScalarFunction valueFunction in values) {
+            foreach (ScalarFunction valueFunction in values)
+            {
                 JsonDataType rhsDataType = valueFunction.DataType();
                 JsonDataType targetType = lhsDataType > rhsDataType ? lhsDataType : rhsDataType;
                 string rhsValue = valueFunction.Evaluate(record)?.ToValue;
 
-                if (ComparisonFunction.Compare(lhsValue, rhsValue, targetType, BooleanComparisonType.Equals)) {
+                if (ComparisonFunction.Compare(lhsValue, rhsValue, targetType, BooleanComparisonType.Equals))
+                {
                     return false;
                 }
             }
@@ -326,21 +332,28 @@ namespace GraphView
         {
             FieldObject lhs = this.lhsFunction.Evaluate(record);
 
-            if (lhs == null) {
+            if (lhs == null)
+            {
                 return false;
             }
 
-            if (lhs is VertexPropertyField) {
+            if (lhs is VertexPropertyField)
+            {
                 VertexPropertyField vp = (VertexPropertyField) lhs;
-                foreach (VertexSinglePropertyField vsp in vp.Multiples.Values) {
+                foreach (VertexSinglePropertyField vsp in vp.Multiples.Values)
+                {
                     JsonDataType lhsDataType = vsp.JsonDataType;
-                    if (this.notDefined) {
-                        if (NotIn(vsp.ToValue, lhsDataType, record, this.values)) {
+                    if (this.notDefined)
+                    {
+                        if (NotIn(vsp.ToValue, lhsDataType, record, this.values))
+                        {
                             return true;
                         }
                     }
-                    else {
-                        if (In(vsp.ToValue, lhsDataType, record, this.values)) {
+                    else
+                    {
+                        if (In(vsp.ToValue, lhsDataType, record, this.values))
+                        {
                             return true;
                         }
                     }
@@ -348,7 +361,8 @@ namespace GraphView
 
                 return false;
             }
-            else {
+            else
+            {
                 string lhsValue = lhs.ToValue;
                 JsonDataType lhsDataType = this.lhsFunction.DataType();
                 return this.notDefined
@@ -383,8 +397,14 @@ namespace GraphView
 
         public override bool Evaluate(RawRecord r)
         {
-            if (type == BooleanBinaryFunctionType.And) return lhs.Evaluate(r) && rhs.Evaluate(r);
-            if (type == BooleanBinaryFunctionType.Or) return lhs.Evaluate(r) || rhs.Evaluate(r);
+            if (type == BooleanBinaryFunctionType.And)
+            {
+                return lhs.Evaluate(r) && rhs.Evaluate(r);
+            }
+            if (type == BooleanBinaryFunctionType.Or)
+            {
+                return lhs.Evaluate(r) || rhs.Evaluate(r);
+            }
             return false;
         }
 

@@ -182,7 +182,7 @@ namespace GraphView
     [DataContract]
     internal class UnionOperator : GraphViewExecutionOperator
     {
-        // traversalOp and its enumerator.
+        // subtraversal operators.
         [DataMember]
         private List<GraphViewExecutionOperator> traversalList;
         private Container container;
@@ -207,7 +207,7 @@ namespace GraphView
 
         public void AddTraversal(GraphViewExecutionOperator traversal)
         {
-            traversalList.Add(traversal);
+            this.traversalList.Add(traversal);
         }
 
         public override RawRecord Next()
@@ -589,8 +589,7 @@ namespace GraphView
             GraphViewExecutionOperator trueBranchTraversalOp,
             Container falseBranchContainer,
             int falseBranchContainerIndex,
-            GraphViewExecutionOperator falseBranchTraversalOp
-        )
+            GraphViewExecutionOperator falseBranchTraversalOp)
         {
             this.inputOp = inputOp;
             this.container = container;

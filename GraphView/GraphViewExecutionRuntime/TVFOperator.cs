@@ -61,7 +61,9 @@ namespace GraphView
                 List<RawRecord> results = CrossApply(currentRecord);
 
                 foreach (RawRecord rec in results)
+                {
                     outputBuffer.Enqueue(rec);
+                }
 
                 if (outputBuffer.Count > 0)
                 {
@@ -116,7 +118,8 @@ namespace GraphView
             foreach (int propertyIndex in this.propertiesIndex)
             {
                 FieldObject propertyObject = record[propertyIndex];
-                if (propertyObject == null) {
+                if (propertyObject == null)
+                {
                     continue;
                 }
 
@@ -127,7 +130,8 @@ namespace GraphView
                     {
                         RawRecord r = new RawRecord();
                         r.Append(new VertexSinglePropertyField(vsp));
-                        foreach (string metapropertyName in this.populateMetaproperties) {
+                        foreach (string metapropertyName in this.populateMetaproperties)
+                        {
                             r.Append(vsp[metapropertyName]);
                         }
 
@@ -141,7 +145,8 @@ namespace GraphView
                 {
                     RawRecord r = new RawRecord();
                     r.Append(new VertexSinglePropertyField(singleVp));
-                    foreach (string metapropertyName in this.populateMetaproperties) {
+                    foreach (string metapropertyName in this.populateMetaproperties)
+                    {
                         r.Append(singleVp[metapropertyName]);
                     }
                     results.Add(r);
@@ -151,7 +156,8 @@ namespace GraphView
                 EdgePropertyField edgePf = propertyObject as EdgePropertyField;
                 if (edgePf != null)
                 {
-                    if (this.populateMetaproperties.Count > 0) {
+                    if (this.populateMetaproperties.Count > 0)
+                    {
                         throw new GraphViewException("An edge property cannot contain meta properties.");
                     }
 
@@ -164,7 +170,8 @@ namespace GraphView
                 ValuePropertyField metaPf = propertyObject as ValuePropertyField;
                 if (metaPf != null)
                 {
-                    if (this.populateMetaproperties.Count > 0) {
+                    if (this.populateMetaproperties.Count > 0)
+                    {
                         throw new GraphViewException("A meta property cannot contain meta properties.");
                     }
 
@@ -199,7 +206,8 @@ namespace GraphView
             foreach (int propertyIndex in this.propertiesIndex)
             {
                 FieldObject propertyObject = record[propertyIndex];
-                if (propertyObject == null) {
+                if (propertyObject == null)
+                {
                     continue;
                 }
 
@@ -275,23 +283,27 @@ namespace GraphView
             List<RawRecord> results = new List<RawRecord>();
 
             FieldObject target = record[this._targetIndex];
-            if (target != null) {
+            if (target != null)
+            {
                 VertexField vertex = target as VertexField;
-                if (vertex != null) {
+                if (vertex != null)
+                {
                     RawRecord r = new RawRecord();
                     r.Append(new StringField(vertex.VertexMetaProperties[KW_VERTEX_LABEL].ToValue));
                     results.Add(r);
                 }
 
                 VertexSinglePropertyField vertexSingleProperty = target as VertexSinglePropertyField;
-                if (vertexSingleProperty != null) {
+                if (vertexSingleProperty != null)
+                {
                     RawRecord r = new RawRecord();
                     r.Append(new StringField(vertexSingleProperty.PropertyName));
                     results.Add(r);
                 }
 
                 EdgeField edge = target as EdgeField;
-                if (edge != null) {
+                if (edge != null)
+                {
                     RawRecord r = new RawRecord();
                     r.Append(new StringField(edge.Label));
                     results.Add(r);
@@ -320,23 +332,27 @@ namespace GraphView
             List<RawRecord> results = new List<RawRecord>();
 
             FieldObject target = record[this._targetIndex];
-            if (target != null) {
+            if (target != null)
+            {
                 VertexField vertex = target as VertexField;
-                if (vertex != null) {
+                if (vertex != null)
+                {
                     RawRecord r = new RawRecord();
                     r.Append(new StringField(vertex.VertexMetaProperties[KW_DOC_ID].ToValue));
                     results.Add(r);
                 }
 
                 VertexSinglePropertyField vertexSingleProperty = target as VertexSinglePropertyField;
-                if (vertexSingleProperty != null) {
+                if (vertexSingleProperty != null)
+                {
                     RawRecord r = new RawRecord();
                     r.Append(new StringField(vertexSingleProperty.PropertyId));
                     results.Add(r);
                 }
 
                 EdgeField edge = target as EdgeField;
-                if (edge != null) {
+                if (edge != null)
+                {
                     RawRecord r = new RawRecord();
                     r.Append(new StringField(edge.EdgeId));
                     results.Add(r);
@@ -394,7 +410,8 @@ namespace GraphView
                             {
                                 RawRecord r = new RawRecord();
                                 r.Append(new VertexSinglePropertyField(singleVp));
-                                foreach (string metaPropertyName in this.populateMetaProperties) {
+                                foreach (string metaPropertyName in this.populateMetaProperties)
+                                {
                                     r.Append(singleVp[metaPropertyName]);
                                 }
                                 results.Add(r);
@@ -431,7 +448,8 @@ namespace GraphView
                     }
                 }
 
-                if (this.populateMetaProperties.Count > 0 && results.Count > 0) {
+                if (this.populateMetaProperties.Count > 0 && results.Count > 0)
+                {
                     throw new GraphViewException("An edge property cannot contain meta properties.");
                 }
             }
@@ -446,11 +464,13 @@ namespace GraphView
                     results.Add(r);
                 }
 
-                if (this.populateMetaProperties.Count > 0 && results.Count > 0) {
+                if (this.populateMetaProperties.Count > 0 && results.Count > 0)
+                {
                     throw new GraphViewException("An edge property cannot contain meta properties.");
                 }
             }
-            else {
+            else
+            {
                 throw new GraphViewException("The input of properties() cannot be a meta or edge property.");
             }
             return results;
@@ -499,14 +519,17 @@ namespace GraphView
                     foreach (string propertyName in this.propertyNameList)
                     {
                         FieldObject property = vertexField[propertyName];
-                        if (property == null) {
+                        if (property == null)
+                        {
                             continue;
                         }
 
                         List<FieldObject> values = new List<FieldObject>();
                         VertexPropertyField vp = property as VertexPropertyField;
-                        if (vp != null) {
-                            foreach (VertexSinglePropertyField vsp in vp.Multiples.Values) {
+                        if (vp != null)
+                        {
+                            foreach (VertexSinglePropertyField vsp in vp.Multiples.Values)
+                            {
                                 values.Add(new StringField(vsp.PropertyValue, vsp.JsonDataType));
                             }
                         }
@@ -533,7 +556,8 @@ namespace GraphView
                                 continue;
                             default:
                                 List<FieldObject> values = new List<FieldObject>();
-                                foreach (VertexSinglePropertyField singleVp in property.Multiples.Values) {
+                                foreach (VertexSinglePropertyField singleVp in property.Multiples.Values)
+                                {
                                     values.Add(new StringField(singleVp.PropertyValue, singleVp.JsonDataType));
                                 }
                                 valueMap.Add(new StringField(propertyName), new CollectionField(values));
@@ -557,7 +581,8 @@ namespace GraphView
                     foreach (string propertyName in this.propertyNameList)
                     {
                         FieldObject property = edgeField[propertyName];
-                        if (property == null) {
+                        if (property == null)
+                        {
                             continue;
                         }
 
@@ -611,7 +636,8 @@ namespace GraphView
                     foreach (string propertyName in this.propertyNameList)
                     {
                         FieldObject property = singleVp[propertyName];
-                        if (property == null) {
+                        if (property == null)
+                        {
                             continue;
                         }
 
@@ -622,13 +648,17 @@ namespace GraphView
                                 new StringField(metaPf.PropertyValue, metaPf.JsonDataType));
                         }
                     }
-                } else {
-                    foreach (KeyValuePair<string, ValuePropertyField> kvp in singleVp.MetaProperties) {
+                }
+                else
+                {
+                    foreach (KeyValuePair<string, ValuePropertyField> kvp in singleVp.MetaProperties)
+                    {
                         valueMap.Add(new StringField(kvp.Key), new StringField(kvp.Value.PropertyValue, kvp.Value.JsonDataType));
                     }
                 }
             }
-            else {
+            else
+            {
                 throw new GraphViewException("The input of valueMap() cannot be a meta or edge property.");
             }
 
@@ -671,14 +701,17 @@ namespace GraphView
                     foreach (string propertyName in this.propertyNameList)
                     {
                         FieldObject property = vertexField[propertyName];
-                        if (property == null) {
+                        if (property == null)
+                        {
                             continue;
                         }
 
                         List<FieldObject> values = new List<FieldObject>();
                         VertexPropertyField vp = property as VertexPropertyField;
-                        if (vp != null) {
-                            foreach (VertexSinglePropertyField vsp in vp.Multiples.Values) {
+                        if (vp != null)
+                        {
+                            foreach (VertexSinglePropertyField vsp in vp.Multiples.Values)
+                            {
                                 values.Add(vsp);
                             }
                         }
@@ -705,7 +738,8 @@ namespace GraphView
                                 continue;
                             default:
                                 List<FieldObject> values = new List<FieldObject>();
-                                foreach (VertexSinglePropertyField singleVp in property.Multiples.Values) {
+                                foreach (VertexSinglePropertyField singleVp in property.Multiples.Values)
+                                {
                                     values.Add(singleVp);
                                 }
                                 valueMap.Add(new StringField(propertyName), new CollectionField(values));
@@ -723,7 +757,8 @@ namespace GraphView
                     foreach (string propertyName in this.propertyNameList)
                     {
                         FieldObject property = edgeField[propertyName];
-                        if (property == null) {
+                        if (property == null)
+                        {
                             continue;
                         }
 
@@ -768,22 +803,28 @@ namespace GraphView
                     foreach (string propertyName in this.propertyNameList)
                     {
                         FieldObject property = singleVp[propertyName];
-                        if (property == null) {
+                        if (property == null)
+                        {
                             continue;
                         }
 
                         ValuePropertyField metaPf = property as ValuePropertyField;
-                        if (metaPf != null) {
+                        if (metaPf != null)
+                        {
                             valueMap.Add(new StringField(propertyName), metaPf);
                         }
                     }
-                } else {
-                    foreach (KeyValuePair<string, ValuePropertyField> kvp in singleVp.MetaProperties) {
+                }
+                else
+                {
+                    foreach (KeyValuePair<string, ValuePropertyField> kvp in singleVp.MetaProperties)
+                    {
                         valueMap.Add(new StringField(kvp.Key), kvp.Value);
                     }
                 }
             }
-            else {
+            else
+            {
                 throw new GraphViewException("The input of valueMap() cannot be a meta or edge property.");
             }
 
@@ -879,7 +920,8 @@ namespace GraphView
                     results.Add(r);
                 }
             }
-            else {
+            else
+            {
                 throw new GraphViewException("The input of values() cannot be a meta or edge property.");
             }
             return results;
@@ -912,7 +954,8 @@ namespace GraphView
         {
             RawRecord result = new RawRecord();
 
-            if (this.constantValues.Count == 0 && !this.isList) {
+            if (this.constantValues.Count == 0 && !this.isList)
+            {
                 return new List<RawRecord>();
             }
 
@@ -927,7 +970,8 @@ namespace GraphView
                 }
                 result.Append(new CollectionField(collection));
             }
-            else {
+            else
+            {
                 result.Append(this.constantValues[0].Evaluate(null));
             }
 
@@ -966,7 +1010,8 @@ namespace GraphView
         {
             FieldObject stepProjectionResult;
 
-            if (this.byFuncList.Count == 0) {
+            if (this.byFuncList.Count == 0)
+            {
                 stepProjectionResult = step;
             }
             else
@@ -975,7 +1020,8 @@ namespace GraphView
                 initCompose1Record.Append(step);
                 stepProjectionResult = this.byFuncList[activeByFuncIndex++ % this.byFuncList.Count].Evaluate(initCompose1Record);
 
-                if (stepProjectionResult == null) {
+                if (stepProjectionResult == null)
+                {
                     throw new GraphViewException("The provided traversal or property name of path() does not map to a value.");
                 }
             }
@@ -1000,9 +1046,11 @@ namespace GraphView
                     // g.V().FlatMap(__.As('a'))
                     // For a path starting from a context variable (__), the first step is null. 
                     // The labels of the first step will be passed to whatever proceeds the context variable.
-                    if (accessPathStepFunc == null) {
+                    if (accessPathStepFunc == null)
+                    {
                         PathStepField pathStepField = new PathStepField(null);
-                        foreach (string label in stepLabels) {
+                        foreach (string label in stepLabels)
+                        {
                             pathStepField.AddLabel(label);
                         }
                         path.Add(pathStepField);
@@ -1010,18 +1058,22 @@ namespace GraphView
                     }
 
                     FieldObject step = accessPathStepFunc.Evaluate(inputRec);
-                    if (step == null) {
+                    if (step == null)
+                    {
                         PathStepField lastPathStep;
 
-                        if (path.Any()) {
+                        if (path.Any())
+                        {
                             lastPathStep = (PathStepField)path[path.Count - 1];
                         }
-                        else {
+                        else
+                        {
                             lastPathStep = new PathStepField(null);
                             path.Add(lastPathStep);
                         }
 
-                        foreach (string label in stepLabels) {
+                        foreach (string label in stepLabels)
+                        {
                             lastPathStep.AddLabel(label);
                         }
                         continue;
@@ -1034,13 +1086,18 @@ namespace GraphView
 
                         foreach (PathStepField subPathStep in subPath.Path.Cast<PathStepField>())
                         {
-                            if (subPathStep.StepFieldObject == null) {
-                                if (path.Any()) {
+                            if (subPathStep.StepFieldObject == null)
+                            {
+                                if (path.Any())
+                                {
                                     PathStepField lastPathStep = (PathStepField) path[path.Count - 1];
-                                    foreach (string label in subPathStep.Labels) {
+                                    foreach (string label in subPathStep.Labels)
+                                    {
                                         lastPathStep.AddLabel(label);
                                     }
-                                } else {
+                                }
+                                else
+                                {
                                     path.Add(subPathStep);
                                 }
                                 continue;
@@ -1048,14 +1105,16 @@ namespace GraphView
 
                             FieldObject pathStep = this.GetStepProjectionResult(subPathStep.StepFieldObject, ref activeByFuncIndex);
                             PathStepField pathStepField = new PathStepField(pathStep);
-                            foreach (string label in subPathStep.Labels) {
+                            foreach (string label in subPathStep.Labels)
+                            {
                                 pathStepField.AddLabel(label);
                             }
                             path.Add(pathStepField);
                         }
 
                         PathStepField lastSubPathStep = (PathStepField)path.Last();
-                        foreach (string label in stepLabels) {
+                        foreach (string label in stepLabels)
+                        {
                             lastSubPathStep.AddLabel(label);
                         }
                     }
@@ -1069,14 +1128,16 @@ namespace GraphView
                         // this operator produces only record and resets all the fields populated 
                         // by prior steps to null. By path() semantics, all prior steps do not
                         // appear in the path expression either.   
-                        if (basicStep[basicStep.DefaultProjectionKey] == null) {
+                        if (basicStep[basicStep.DefaultProjectionKey] == null)
+                        {
                             continue;
                         }
 
                         FieldObject pathStep = this.GetStepProjectionResult(step, ref activeByFuncIndex);
 
                         PathStepField pathStepField = new PathStepField(pathStep);
-                        foreach (string label in stepLabels) {
+                        foreach (string label in stepLabels)
+                        {
                             pathStepField.AddLabel(label);
                         }
                         path.Add(pathStepField);
@@ -1127,7 +1188,8 @@ namespace GraphView
         {
             FieldObject stepProjectionResult;
 
-            if (this.byFuncList.Count == 0) {
+            if (this.byFuncList.Count == 0)
+            {
                 stepProjectionResult = step;
             }
             else
@@ -1136,7 +1198,8 @@ namespace GraphView
                 initCompose1Record.Append(step);
                 stepProjectionResult = this.byFuncList[activeByFuncIndex++ % this.byFuncList.Count].Evaluate(initCompose1Record);
 
-                if (stepProjectionResult == null) {
+                if (stepProjectionResult == null)
+                {
                     throw new GraphViewException("The provided traversal or property name of path() does not map to a value.");
                 }
             }
@@ -1165,11 +1228,13 @@ namespace GraphView
                         CollectionField subPath = step as CollectionField;
                         Debug.Assert(subPath != null, "(subPath as CollectionField) != null");
 
-                        foreach (FieldObject subPathStep in subPath.Collection) {
+                        foreach (FieldObject subPathStep in subPath.Collection)
+                        {
                             path.Add(GetStepProjectionResult(subPathStep, ref activeByFuncIndex));
                         }
                     }
-                    else {
+                    else
+                    {
                         path.Add(GetStepProjectionResult(step, ref activeByFuncIndex));
                     }
                 }
@@ -1227,7 +1292,8 @@ namespace GraphView
                     //
                     // Extract only needed columns from Compose1Field
                     //
-                    foreach (string unfoldColumn in populateColumns) {
+                    foreach (string unfoldColumn in populateColumns)
+                    {
                         flatRecord.Append(compose1StepField[unfoldColumn]);
                     }
 
@@ -1239,7 +1305,10 @@ namespace GraphView
                 CollectionField inputCollection = (CollectionField)unfoldTarget;
                 foreach (FieldObject singleObj in inputCollection.Collection)
                 {
-                    if (singleObj == null) continue;
+                    if (singleObj == null)
+                    {
+                        continue;
+                    }
                     RawRecord flatRecord = new RawRecord();
 
                     CompositeField compose1ObjField = singleObj as CompositeField;
@@ -1247,7 +1316,8 @@ namespace GraphView
                     //
                     // Extract only needed columns from Compose1Field
                     //
-                    foreach (string unfoldColumn in populateColumns) {
+                    foreach (string unfoldColumn in populateColumns)
+                    {
                         flatRecord.Append(compose1ObjField[unfoldColumn]);
                     }
 
@@ -1261,7 +1331,8 @@ namespace GraphView
                 {
                     RawRecord entryRecord = new RawRecord();
 
-                    foreach (string columnName in this.populateColumns) {
+                    foreach (string columnName in this.populateColumns)
+                    {
                         entryRecord.Append(columnName.Equals(DocumentDBKeywords.KW_TABLE_DEFAULT_COLUMN_NAME)
                             ? entry
                             : (FieldObject) null);

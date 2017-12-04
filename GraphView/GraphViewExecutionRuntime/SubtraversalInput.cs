@@ -40,7 +40,7 @@ namespace GraphView
             this.tableCache.Add(record);
         }
 
-        internal virtual RawRecord this[int index] => tableCache[index];
+        internal virtual RawRecord this[int index] => this.tableCache[index];
 
         public virtual void Clear()
         {
@@ -181,7 +181,7 @@ namespace GraphView
     [DataContract]
     internal class EnumeratorOperator : GraphViewExecutionOperator
     {
-        public Container container;
+        private Container container;
         [DataMember]
         private int containerIndex;
 

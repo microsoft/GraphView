@@ -661,9 +661,11 @@ namespace GraphView
                 bool needsUnfold = tuple.Item2;
                 HashSet<string> stepLabels = tuple.Item3;
 
-                if (accessPathStepFunc == null) {
+                if (accessPathStepFunc == null)
+                {
                     PathStepField pathStepField = new PathStepField(null);
-                    foreach (string label in stepLabels) {
+                    foreach (string label in stepLabels)
+                    {
                         pathStepField.AddLabel(label);
                     }
                     path.Add(pathStepField);
@@ -671,18 +673,22 @@ namespace GraphView
                 }
 
                 FieldObject step = accessPathStepFunc.Evaluate(record);
-                if (step == null) {
+                if (step == null)
+                {
                     PathStepField lastPathStep;
 
-                    if (path.Any()) {
+                    if (path.Any())
+                    {
                         lastPathStep = (PathStepField)path[path.Count - 1];
                     }
-                    else {
+                    else
+                    {
                         lastPathStep = new PathStepField(null);
                         path.Add(lastPathStep);
                     }
 
-                    foreach (string label in stepLabels) {
+                    foreach (string label in stepLabels)
+                    {
                         lastPathStep.AddLabel(label);
                     }
                     continue;
@@ -700,32 +706,37 @@ namespace GraphView
                             if (path.Any())
                             {
                                 PathStepField lastPathStep = (PathStepField) path[path.Count - 1];
-                                foreach (string label in subPathStep.Labels) {
+                                foreach (string label in subPathStep.Labels)
+                                {
                                     lastPathStep.AddLabel(label);
                                 }
                             }
-                            else {
+                            else
+                            {
                                 path.Add(subPathStep);
                             }
                             continue;
                         }
 
                         PathStepField pathStepField = new PathStepField(subPathStep.StepFieldObject);
-                        foreach (string label in subPathStep.Labels) {
+                        foreach (string label in subPathStep.Labels)
+                        {
                             pathStepField.AddLabel(label);
                         }
                         path.Add(pathStepField);
                     }
 
                     PathStepField lastSubPathStep = (PathStepField) path.Last();
-                    foreach (string label in stepLabels) {
+                    foreach (string label in stepLabels)
+                    {
                         lastSubPathStep.AddLabel(label);
                     }
                 }
                 else
                 {
                     PathStepField pathStepField = new PathStepField(step);
-                    foreach (string label in stepLabels) {
+                    foreach (string label in stepLabels)
+                    {
                         pathStepField.AddLabel(label);
                     }
                     path.Add(pathStepField);

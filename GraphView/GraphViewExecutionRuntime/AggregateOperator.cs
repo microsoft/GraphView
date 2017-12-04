@@ -40,17 +40,17 @@ namespace GraphView
 
         public void Accumulate(params FieldObject[] values)
         {
-            buffer.Add(values[0]);
+            this.buffer.Add(values[0]);
         }
 
         public void Init()
         {
-            buffer = new List<FieldObject>();
+            this.buffer = new List<FieldObject>();
         }
 
         public FieldObject Terminate()
         {
-            return new CollectionField(buffer);
+            return new CollectionField(this.buffer);
         }
     }
 
@@ -61,17 +61,17 @@ namespace GraphView
 
         public void Accumulate(params FieldObject[] values)
         {
-            count++;
+            this.count++;
         }
 
         public void Init()
         {
-            count = 0;
+            this.count = 0;
         }
 
         public FieldObject Terminate()
         {
-            return new StringField(count.ToString(), JsonDataType.Long);
+            return new StringField(this.count.ToString(), JsonDataType.Long);
         }
     }
 
@@ -86,17 +86,17 @@ namespace GraphView
             if (!double.TryParse(values[0].ToValue, out current))
                 throw new GraphViewException("The input of Sum cannot be cast to a number");
 
-            sum += current;
+            this.sum += current;
         }
 
         public void Init()
         {
-            sum = 0.0;
+            this.sum = 0.0;
         }
 
         public FieldObject Terminate()
         {
-            return new StringField(sum.ToString(CultureInfo.InvariantCulture), JsonDataType.Double);
+            return new StringField(this.sum.ToString(CultureInfo.InvariantCulture), JsonDataType.Double);
         }
     }
 
@@ -109,20 +109,24 @@ namespace GraphView
         {
             double current;
             if (!double.TryParse(values[0].ToValue, out current))
+            {
                 throw new GraphViewException("The input of Max cannot be cast to a number");
+            }
 
-            if (max.Equals(double.NaN) || max < current)
-                max = current;
+            if (this.max.Equals(double.NaN) || this.max < current)
+            {
+                this.max = current;
+            }
         }
 
         public void Init()
         {
-            max = double.NaN;
+            this.max = double.NaN;
         }
 
         public FieldObject Terminate()
         {
-            return new StringField(max.ToString(CultureInfo.InvariantCulture), JsonDataType.Double);
+            return new StringField(this.max.ToString(CultureInfo.InvariantCulture), JsonDataType.Double);
         }
     }
 
@@ -135,20 +139,24 @@ namespace GraphView
         {
             double current;
             if (!double.TryParse(values[0].ToValue, out current))
+            {
                 throw new GraphViewException("The input of Min cannot be cast to a number");
+            }
 
-            if (min.Equals(double.NaN) || current < min)
-                min = current;
+            if (this.min.Equals(double.NaN) || current < this.min)
+            {
+                this.min = current;
+            }
         }
 
         public void Init()
         {
-            min = double.NaN;
+            this.min = double.NaN;
         }
 
         public FieldObject Terminate()
         {
-            return new StringField(min.ToString(CultureInfo.InvariantCulture), JsonDataType.Double);
+            return new StringField(this.min.ToString(CultureInfo.InvariantCulture), JsonDataType.Double);
         }
     }
 
@@ -162,21 +170,23 @@ namespace GraphView
         {
             double current;
             if (!double.TryParse(values[0].ToValue, out current))
+            {
                 throw new GraphViewException("The input of Mean cannot be cast to a number");
+            }
 
-            sum += current;
-            count++;
+            this.sum += current;
+            this.count++;
         }
 
         public void Init()
         {
-            sum = 0.0;
-            count = 0;
+            this.sum = 0.0;
+            this.count = 0;
         }
 
         public FieldObject Terminate()
         {
-            return new StringField((sum / count).ToString(CultureInfo.InvariantCulture), JsonDataType.Double);
+            return new StringField((this.sum / this.count).ToString(CultureInfo.InvariantCulture), JsonDataType.Double);
         }
     }
 
@@ -188,12 +198,12 @@ namespace GraphView
 
         public CapFunction()
         {
-            sideEffectFunction = new List<Tuple<string, IAggregateFunction>>();
+            this.sideEffectFunction = new List<Tuple<string, IAggregateFunction>>();
         }
 
         public void AddCapatureSideEffectState(string key, IAggregateFunction sideEffectState)
         {
-            sideEffectFunction.Add(new Tuple<string, IAggregateFunction>(key, sideEffectState));
+            this.sideEffectFunction.Add(new Tuple<string, IAggregateFunction>(key, sideEffectState));
         }
 
         public void Accumulate(params FieldObject[] values)
@@ -208,9 +218,9 @@ namespace GraphView
 
         public FieldObject Terminate()
         {
-            if (sideEffectFunction.Count == 1)
+            if (this.sideEffectFunction.Count == 1)
             {
-                Tuple<string, IAggregateFunction> tuple = sideEffectFunction[0];
+                Tuple<string, IAggregateFunction> tuple = this.sideEffectFunction[0];
                 IAggregateFunction sideEffectState = tuple.Item2;
 
                 return sideEffectState.Terminate();
@@ -219,7 +229,7 @@ namespace GraphView
             {
                 MapField map = new MapField();
 
-                foreach (Tuple<string, IAggregateFunction> tuple in sideEffectFunction)
+                foreach (Tuple<string, IAggregateFunction> tuple in this.sideEffectFunction)
                 {
                     string key = tuple.Item1;
                     IAggregateFunction sideEffectState = tuple.Item2;
@@ -232,7 +242,7 @@ namespace GraphView
         }
 
         [OnDeserialized]
-        private void ReconstructFunction(StreamingContext context)
+        private void Reconstruct(StreamingContext context)
         {
             List<Tuple<string, IAggregateFunction>> states = new List<Tuple<string, IAggregateFunction>>();
 
@@ -248,7 +258,7 @@ namespace GraphView
     [DataContract]
     internal class TreeFunction : IAggregateFunction
     {
-        internal TreeState treeState;
+        private TreeState treeState;
 
         private static void ConstructTree(TreeField root, int index, PathField pathField)
         {
@@ -322,7 +332,7 @@ namespace GraphView
     [DataContract]
     internal class SubgraphFunction : IAggregateFunction
     {
-        internal SubgraphState subgraphState;
+        private SubgraphState subgraphState;
 
         public SubgraphFunction(SubgraphState subgraphState)
         {
@@ -594,32 +604,32 @@ namespace GraphView
     [DataContract]
     internal class CollectionFunction : IAggregateFunction
     {
-        internal CollectionState collectionState;
+        public CollectionState CollectionState { get; private set; }
 
         public CollectionFunction(CollectionState collectionState)
         {
-            this.collectionState = collectionState;
+            this.CollectionState = collectionState;
         }
 
         public void Init()
         {
-            this.collectionState.Init();
+            this.CollectionState.Init();
         }
 
         public void Accumulate(params FieldObject[] values)
         {
-            this.collectionState.collectionField.Collection.Add(values[0]);
+            this.CollectionState.collectionField.Collection.Add(values[0]);
         }
 
         public FieldObject Terminate()
         {
-            return this.collectionState.collectionField;
+            return this.CollectionState.collectionField;
         }
 
         [OnDeserialized]
         private void Reconstruct(StreamingContext context)
         {
-            this.collectionState = new CollectionState("");
+            this.CollectionState = new CollectionState("");
         }
     }
 
@@ -641,7 +651,7 @@ namespace GraphView
     [DataContract]
     internal class GroupFunction : IAggregateFunction
     {
-        internal GroupState groupState;
+        private GroupState groupState;
 
         [DataMember]
         private GraphViewExecutionOperator aggregateOp;
@@ -650,7 +660,7 @@ namespace GraphView
         private int containerIndex;
 
         [DataMember]
-        bool isProjectingACollection;
+        private bool isProjectingACollection;
 
         public GroupFunction(GroupState groupState, GraphViewExecutionOperator aggregateOp, Container container, int containerIndex, bool isProjectingACollection)
         {
@@ -676,7 +686,8 @@ namespace GraphView
             FieldObject groupByKey = values[0] as FieldObject;
             RawRecord groupByValue = values[1] as RawRecord;
 
-            if (!this.groupState.groupedStates.ContainsKey(groupByKey)) {
+            if (!this.groupState.groupedStates.ContainsKey(groupByKey))
+            {
                 this.groupState.groupedStates.Add(groupByKey, new List<RawRecord>());
             }
 
@@ -767,7 +778,7 @@ namespace GraphView
     [DataContract]
     internal class GroupSideEffectOperator : GraphViewExecutionOperator
     {
-        public GroupFunction groupFunction;
+        private GroupFunction groupFunction;
         [DataMember]
         private GraphViewExecutionOperator inputOp;
         [DataMember]
@@ -801,7 +812,8 @@ namespace GraphView
 
                 FieldObject groupByKey = this.groupByKeyFunction.Evaluate(r);
 
-                if (groupByKey == null) {
+                if (groupByKey == null)
+                {
                     throw new GraphViewException("The provided property name or traversal does not map to a value for some elements.");
                 }
 
@@ -829,7 +841,7 @@ namespace GraphView
     [DataContract]
     internal class TreeSideEffectOperator : GraphViewExecutionOperator
     {
-        public TreeFunction treeFunction;
+        private TreeFunction treeFunction;
         [DataMember]
         private GraphViewExecutionOperator inputOp;
         [DataMember]
@@ -867,7 +879,8 @@ namespace GraphView
 
                 this.treeFunction.Accumulate(path);
 
-                if (!this.inputOp.State()) {
+                if (!this.inputOp.State())
+                {
                     this.Close();
                 }
                 return r;
@@ -946,7 +959,8 @@ namespace GraphView
             {
                 FieldObject groupByKey = groupByKeyFunction.Evaluate(r);
 
-                if (groupByKey == null) {
+                if (groupByKey == null)
+                {
                     throw new GraphViewException("The provided property name or traversal does not map to a value for some elements.");
                 }
 

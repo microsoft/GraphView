@@ -34,7 +34,7 @@ namespace GraphView
             this.Cardinality = cardinality;
             this.Name = name;
             this.Value = value;
-            this.MetaProperties = metaProperties != null ? metaProperties : new Dictionary<string, Tuple<StringField, ScalarSubqueryFunction>>();
+            this.MetaProperties = metaProperties ?? new Dictionary<string, Tuple<StringField, ScalarSubqueryFunction>>();
         }
 
         internal PropertyTuple(
@@ -46,7 +46,7 @@ namespace GraphView
             this.Cardinality = cardinality;
             this.Name = name;
             this.TraversalOp = traversalOp;
-            this.MetaProperties = metaProperties != null ? metaProperties : new Dictionary<string, Tuple<StringField, ScalarSubqueryFunction>>();
+            this.MetaProperties = metaProperties ?? new Dictionary<string, Tuple<StringField, ScalarSubqueryFunction>>();
         }
 
         internal void AddMetaProperty(string metaName, StringField metaValue)
