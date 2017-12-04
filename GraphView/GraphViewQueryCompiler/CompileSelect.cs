@@ -991,9 +991,8 @@ namespace GraphView
                     : ColumnGraphType.Value;
                 context.AddField(nodeAlias, propertyName, columnGraphType);
             }
-            Container container = new Container();
-            int containerIndex = context.AddContainers(container);
-            return new CartesianProductOperator(context.CurrentExecutionOperator, fetchNodeOp, container, containerIndex);
+
+            return new CartesianProductOperator(context.CurrentExecutionOperator, fetchNodeOp);
         }
     }
 

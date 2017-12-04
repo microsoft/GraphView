@@ -484,25 +484,18 @@ namespace GraphView
         [DataMember]
         private GraphViewExecutionOperator rightInput;
 
-        private EnumeratorOperator rightEnumerator;
-        private Container container;
-        [DataMember]
-        private int containerIndex;
+        private Enumerator rightEnumerator;
+
         private RawRecord leftRecord;
 
         private bool needInitialize;
 
         public CartesianProductOperator(
             GraphViewExecutionOperator leftInput, 
-            GraphViewExecutionOperator rightInput,
-            Container container, int containerIndex)
+            GraphViewExecutionOperator rightInput)
         {
             this.leftInput = leftInput;
             this.rightInput = rightInput;
-            this.container = container;
-            this.containerIndex = containerIndex;
-            // int containerIndex = SerializationData.AddContainers(this.container);
-            this.rightEnumerator = new EnumeratorOperator(this.container, this.containerIndex);
 
             this.needInitialize = true;
             leftRecord = null;
@@ -520,7 +513,9 @@ namespace GraphView
                     inputBuffer.Add(inputRecord);
                 }
 
-                this.container.ResetTableCache(inputBuffer);
+                Container container = new Container();
+                this.rightEnumerator = new Enumerator(container);
+                container.ResetTableCache(inputBuffer);
                 this.needInitialize = false;
             }
 
@@ -550,7 +545,7 @@ namespace GraphView
                     {
                         // For the current left record, the enumerator on the right input has reached the end.
                         // Moves to the next left record and resets the enumerator.
-                        rightEnumerator.ResetState();
+                        rightEnumerator.Reset();
                         leftRecord = null;
                     }
                 }
@@ -563,8 +558,8 @@ namespace GraphView
         {
             this.leftInput.ResetState();
             this.rightInput.ResetState();
-            this.container.Clear();
-            this.rightEnumerator.ResetState();
+            this.rightEnumerator?.Reset();
+            this.rightEnumerator?.container.Clear();
             this.needInitialize = true;
             Open();
         }
@@ -572,12 +567,8 @@ namespace GraphView
         [OnDeserialized]
         private void Reconstruct(StreamingContext context)
         {
-            this.container = new Container();
-
-            this.rightEnumerator = new EnumeratorOperator(this.container, this.containerIndex);
-
             this.needInitialize = true;
-            leftRecord = null;
+            this.leftRecord = null;
         }
     }
 

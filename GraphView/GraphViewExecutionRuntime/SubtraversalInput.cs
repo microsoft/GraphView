@@ -268,4 +268,39 @@ namespace GraphView
             }
         }
     }
+
+
+    internal class Enumerator
+    {
+        public Container container { get; private set; }
+
+        private int offset;
+
+        public Enumerator(Container container)
+        {
+            this.container = container;
+            this.offset = -1;
+        }
+
+        public RawRecord Current => this.container.GetRawRecord(this.offset, out this.offset);
+
+        public bool MoveNext()
+        {
+            this.offset++;
+            RawRecord rec = this.container.GetRawRecord(this.offset, out this.offset);
+            if (rec != null)
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        }
+
+        public void Reset()
+        {
+            this.offset = -1;
+        }
+    }
 }

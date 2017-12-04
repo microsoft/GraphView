@@ -224,18 +224,14 @@ namespace GraphView
                     //
                     if (chain.Any())
                     {
-                        Container container = new Container();
-                        int containerIndex = context.AddContainers(container);
-                        chain.Add(new CartesianProductOperator(chain.Last(), op, container, containerIndex));
+                        chain.Add(new CartesianProductOperator(chain.Last(), op));
                     }
                     //
                     // This WSelectQueryBlock is a sub query
                     //
                     else if (context.OuterContextOp != null)
                     {
-                        Container container = new Container();
-                        int containerIndex = context.AddContainers(container);
-                        chain.Add(new CartesianProductOperator(context.OuterContextOp, op, container, containerIndex));
+                        chain.Add(new CartesianProductOperator(context.OuterContextOp, op));
                     }
                     else
                     {
@@ -277,18 +273,14 @@ namespace GraphView
                         //
                         if (chain.Any())
                         {
-                            Container container = new Container();
-                            int containerIndex = context.AddContainers(container);
-                            chain.Add(new CartesianProductOperator(chain.Last(), op, container, containerIndex));
+                            chain.Add(new CartesianProductOperator(chain.Last(), op));
                         }
                         //
                         // This WSelectQueryBlock is a sub query
                         //
                         else if (context.OuterContextOp != null)
                         {
-                            Container container = new Container();
-                            int containerIndex = context.AddContainers(container);
-                            chain.Add(new CartesianProductOperator(context.OuterContextOp, op, container, containerIndex));
+                            chain.Add(new CartesianProductOperator(context.OuterContextOp, op));
                         }
                         else
                         {
@@ -382,9 +374,7 @@ namespace GraphView
                 TemporaryTableHeader tableHeader = temporaryTableTuple.Item1;
                 if (chain.Any())
                 {
-                    Container container = new Container();
-                    int containerIndex = context.AddContainers(container);
-                    op = new CartesianProductOperator(chain.Last(), temporaryTableTuple.Item2, container, containerIndex);
+                    op = new CartesianProductOperator(chain.Last(), temporaryTableTuple.Item2);
                 }
                 else
                 {
