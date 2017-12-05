@@ -5,14 +5,49 @@ using System.Text;
 
 namespace GraphView
 {
-    public class AggregationBlock
+    /// <summary>
+    /// We use AggregationBlocks to separate swappable parts and unswappable parts.
+    /// If some free nodes and TVFs are in one AggregationBlock, they support swap as long as they do not violate dependency.
+    /// Generally, we separate tables according to 
+    ///     side-effect TVFs (aggregate, store, group, subgraph, tree), 
+    ///     global filters (coin, dedup(global), range(global)), 
+    ///     global maps (order(global), select), barriers (barrier), 
+    ///     modification TVFs (addV, addE, commit, drop, property) 
+    ///     and some special TVFs (constant, inject, sample(global)).
+    /// Given a SQL-like query, the AggregationBlocks can be certain. So we use the alias of this special table as the alias 
+    /// of this Aggregation Block
+    /// Here, every AggregationBlock incudes 
+    ///     one alias of the special table and the AggregationBlock, 
+    ///     a list of free tables,
+    ///     a list of all tables except for this special table,
+    ///     a dictionary to map aliases to tables,
+    ///     a dictionary about input dependency,
+    ///     a MatchGraph,
+    ///     and a HashCode which is used as the key to get the optimal solution that is stored in the QueryCompilationContext
+    /// </summary>
+    internal class AggregationBlock
     {
+        // The alias of the AggregationBlock
+        // If no special table in this block, this alias is "dummy"
+        // Every time generating a new solution, the aggregation table must be the first in an sequence if it is not "dummy"
         internal string AggregationAlias { get; set; }
+
+        // A list of aliases of all free nodes and free edges
         internal List<string> FreeTableList { get; set; }
+
+        // A list of aliases of all tables except for The alias of the AggregationBlock
         internal List<string> TableList { get; set; }
+
+        // A dictionary to map aliases to tables
         internal Dictionary<string, WTableReferenceWithAlias> TableDict { get; set; }
+
+        // A dictionary about input dependency, the key is the alias of one table and the value is a set of aliases of input dependency
         internal Dictionary<string, HashSet<string>> TableInputDependency { get; set; }
+
+        // The MatchGraph of this AggregationBlock
         internal MatchGraph GraphPattern { get; set; }
+
+        // The HashCode of this AggregationBlock, we can use it to get optimal solution if this block has been optimized.
         private int HashCode { get; set; }
 
         public AggregationBlock()
@@ -93,6 +128,7 @@ namespace GraphView
             return alias;
         }
 
+        // Greate the MatchGraph of this AggregationBlock. If some free nodes and free edges are connected, they are in the same ConnectedComponent
         internal void CreateMatchGraph(WMatchClause matchClause)
         {
             Dictionary<string, MatchPath> pathDictionary = new Dictionary<string, MatchPath>(StringComparer.OrdinalIgnoreCase);
@@ -101,8 +137,11 @@ namespace GraphView
             Dictionary<string, ConnectedComponent> subGraphMap = new Dictionary<string, ConnectedComponent>(StringComparer.OrdinalIgnoreCase);
             Dictionary<string, string> parent = new Dictionary<string, string>();
             List<ConnectedComponent> connectedSubGraphs = new List<ConnectedComponent>();
+
+            // we use Disjoint-set data structure to determine whether tables are in the same component or not.
             UnionFind unionFind = new UnionFind();
 
+            // Create MatchNodes and MatchEdges
             foreach (string table in this.FreeTableList)
             {
                 if (table.StartsWith(GremlinKeyword.VertexTablePrefix))
@@ -159,10 +198,10 @@ namespace GraphView
                             continue;
                         }
 
-                        // Consturct the source node of a path in MatchClause.Paths
+                        // Get the source node of a path
                         MatchNode srcNode = vertexTableCollection[currentNodeExposedName];
 
-                        // Consturct the edge of a path in MatchClause.Paths
+                        // Get the edge of a path, and set required attributes
                         MatchEdge edgeFromSrcNode;
                         edgeTableCollection[edgeAlias].SourceNode = srcNode;
                         edgeTableCollection[edgeAlias].EdgeColumn = currentEdgeColumnRef;
@@ -250,9 +289,6 @@ namespace GraphView
                                 parent[nextNodeExposedName] = nextNodeExposedName;
                             }
 
-                            // unionFind.Union(currentNodeExposedName, nextNodeExposedName);
-                            // unionFind.Union(edgeAlias, nextNodeExposedName);
-
                             if (path.IsReversed)
                             {
                                 unionFind.Union(nextNodeExposedName, edgeAlias);
@@ -276,7 +312,7 @@ namespace GraphView
                         continue;
                     }
 
-                    // Consturct destination node of a path in MatchClause.Paths
+                    // Get destination node of a path
                     string tailExposedName = path.Tail.BaseIdentifier.Value;
 
                     if (!this.FreeTableList.Contains(tailExposedName))

@@ -15,6 +15,7 @@ namespace GraphView
     {
         internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewCommand command)
         {
+            // Construct AggregationBlocks and Create MatchGraph
             GlobalDependencyVisitor gdVisitor = new GlobalDependencyVisitor();
             gdVisitor.Invoke(this.FromClause);
             List<AggregationBlock> aggregationBlocks = gdVisitor.blocks;
@@ -43,6 +44,7 @@ namespace GraphView
             AccessedTableColumnVisitor columnVisitor = new AccessedTableColumnVisitor();
             GraphviewRuntimeFunctionCountVisitor runtimeFunctionCountVisitor = new GraphviewRuntimeFunctionCountVisitor();
 
+            // Try to attach predicate to MatchNodes and MatchEdges
             foreach (WBooleanExpression predicate in conjunctivePredicates)
             {
                 bool isOnlyTargetTableReferenced;
@@ -50,11 +52,11 @@ namespace GraphView
                 Dictionary<string, HashSet<string>> tableColumnReferences = columnVisitor.Invoke(predicate,
                     vertexAndEdgeAliases, out isOnlyTargetTableReferenced);
 
+                // If failed, these MatchNodes and MatchEdges need to provide referencing properties, used for filterOperators
                 if (useGraphViewRuntimeFunction
                     || !isOnlyTargetTableReferenced
                     || !this.TryAttachPredicate(aggregationBlocks, predicate, tableColumnReferences))
                 {
-                    // Attach cross-table predicate's referencing properties for later runtime evaluation
                     this.AttachProperties(aggregationBlocks, tableColumnReferences);
                     predicatesAccessedTableReferences.Add(
                         new Tuple<WBooleanExpression, HashSet<string>>(predicate,
@@ -62,15 +64,16 @@ namespace GraphView
                 }
             }
 
+            // Attach referencing properties for later runtime evaluation
             foreach (WSelectElement selectElement in SelectElements)
             {
                 bool isOnlyTargetTableReferenced;
                 Dictionary<string, HashSet<string>> tableColumnReferences = columnVisitor.Invoke(selectElement,
                     vertexAndEdgeAliases, out isOnlyTargetTableReferenced);
-                // Attach referencing properties for later runtime evaluation
                 this.AttachProperties(aggregationBlocks, tableColumnReferences);
             }
 
+            // Find input dependency and attach it to AggregationBlock
             foreach (AggregationBlock aggregationBlock in aggregationBlocks)
             {
                 foreach (string table in aggregationBlock.TableDict.Keys)
@@ -78,12 +81,12 @@ namespace GraphView
                     bool isOnlyTargetTableReferenced;
                     Dictionary<string, HashSet<string>> tableColumnReferences = columnVisitor.Invoke(
                         aggregationBlock.TableDict[table], vertexAndEdgeAliases, out isOnlyTargetTableReferenced);
-                    // Attach referencing properties for later runtime evaluation
                     this.AttachProperties(aggregationBlocks, tableColumnReferences);
                     this.AttachInputDependency(aggregationBlock, table, tableColumnReferences.Keys.ToList());
                 }
             }
 
+            // Construct Operators according AggregationBlocks and remaining predicates
             return this.ConstructOperators(command, aggregationBlocks, context, predicatesAccessedTableReferences);
         }
 
@@ -524,6 +527,7 @@ namespace GraphView
         internal GraphViewExecutionOperator ConstructOperators(GraphViewCommand command, List<AggregationBlock> aggregationBlocks,
             QueryCompilationContext context, List<Tuple<WBooleanExpression, HashSet<string>>> predicatesAccessedTableReferences)
         {
+            // Construct Operators according to AggregationBlocks
             List<GraphViewExecutionOperator> chain = new List<GraphViewExecutionOperator>();
 
             foreach (AggregationBlock aggregationBlock in aggregationBlocks)
@@ -535,6 +539,7 @@ namespace GraphView
                 predicatesAccessedTableReferences = operatorChain.RemainingPredicatesAccessedTableReferences;
             }
 
+            // Construct ProjectOperator according to SELECT Clause
             ConstructProjectOperator(command, context, SelectElements.Select(e => e as WSelectScalarExpression).ToList(), chain);
 
             return chain.Last();

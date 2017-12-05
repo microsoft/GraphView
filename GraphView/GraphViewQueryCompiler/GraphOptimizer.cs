@@ -34,6 +34,7 @@ namespace GraphView
             this.OptimalSolution = optimalSolution;
         }
 
+        // If the AggregationBlock has one special table, we must generate referring operator first
         internal void Initial()
         {
             if (this.Block.AggregationAlias != "dummy")
@@ -116,6 +117,7 @@ namespace GraphView
             return nextStates;
         }
 
+        // Generate an execution operator
         internal OperatorChain GenerateExecutionOperator(WTableReferenceWithAlias tableReference, bool inplace = false)
         {
             string alias = tableReference.Alias.Value;
@@ -127,6 +129,7 @@ namespace GraphView
             List<GraphViewExecutionOperator> chain;
             List<string> optimalSolution;
 
+            // if inplace is true, we will generate new solution inplace
             if (inplace)
             {
                 context = this.Context;
@@ -144,6 +147,7 @@ namespace GraphView
                 optimalSolution = new List<string>(this.OptimalSolution);
             }
 
+            // if the table is free variable
             if (tableReference is WNamedTableReference)
             {
                 MatchNode currentNode;
@@ -155,6 +159,7 @@ namespace GraphView
                 MatchEdge pushedToServerEdge = GetPushedToServerEdge(this.Command, remainingEdges);
                 WSelectQueryBlock.ConstructJsonQueryOnNode(this.Command, currentNode, pushedToServerEdge, this.Command.Connection.RealPartitionKey);
 
+                // collect existing edges and remaining edges
                 foreach (MatchEdge edge in currentNode.Neighbors)
                 {
                     if (context.TableReferences.Contains(edge.EdgeAlias))
@@ -194,6 +199,8 @@ namespace GraphView
                         remainingEdges.Add(edge);
                     }
                 }
+
+                // if there are edge-vertex bridge predicates
                 if (edgeVertexBridges.Any())
                 {
                     op = new TraversalOperator(
@@ -211,6 +218,7 @@ namespace GraphView
                     context.TableReferences.Add(alias);
                     optimalSolution.Add(alias);
                 }
+                // FetchNode or FetchEdge
                 else if (this.IsFirstNodeInTheComponent)
                 {
                     op = isDummyNode
@@ -263,6 +271,7 @@ namespace GraphView
                 }
                 else
                 {
+                    // FetchNode
                     if (existingEdges.Count == 0)
                     {
                         op = new FetchNodeOperator(this.Command,
@@ -287,6 +296,7 @@ namespace GraphView
                             chain.Add(op);
                         }
                     }
+                    // TraversalOperator
                     else if (existingEdges.Count == 1)
                     {
                         op = new TraversalOperator(
@@ -299,6 +309,7 @@ namespace GraphView
                             null);
                         chain.Add(op);
                     }
+                    // Filter and TraversalOperator
                     else
                     {
                         List<WColumnReferenceExpression> currentNodeList = new List<WColumnReferenceExpression>();
@@ -354,6 +365,7 @@ namespace GraphView
                 CheckRemainingPredicatesAndAppendFilterOp(this.Command, context, remainingPredicatesAccessedTableReferences, chain);
                 CrossApplyEdges(this.Command, context, chain, remainingEdges, optimalSolution);
             }
+            // if the table is QueryDerivedTable
             else if (tableReference is WQueryDerivedTable)
             {
                 op = tableReference.Compile(context, this.Command);
@@ -361,6 +373,7 @@ namespace GraphView
                 optimalSolution.Add(alias);
                 chain.Add(op);
             }
+            // if the table is variable table
             else if (tableReference is WVariableTableReference)
             {
                 WVariableTableReference variableTable = tableReference as WVariableTableReference;
@@ -394,6 +407,7 @@ namespace GraphView
                 }
                 context.CurrentExecutionOperator = chain.Last();
             }
+            // if the table is TVF
             else if (tableReference is WSchemaObjectFunctionTableReference)
             {
                 WSchemaObjectFunctionTableReference functionTableReference = tableReference as WSchemaObjectFunctionTableReference;
@@ -593,6 +607,7 @@ namespace GraphView
             return localContext;
         }
 
+        // If there are some predicates, like E_0._sink = N_1.id, then we can use TraversalOperator to get the Node instead of FetchNodeOperator
         private static List<Tuple<string, string>> FindEdgeVertexBridges(string alias,
             List<Tuple<WBooleanExpression, HashSet<string>>> remainingPredicatesAccessedTableReferences)
         {
@@ -696,6 +711,9 @@ namespace GraphView
                 return initialChain.RestoreExecutionOperators(context.OptimalSolutions[this.Block.GetHashCode()]);
             }
 
+            // Every time, we will generate multiple next states from queue[index]. If some of them are finished, we put these into queue[1 - index],
+            // and we put another into candidateChains. If the size of candidateChains equals or exceeds the upper bound, we will terminate this 
+            // algorithm and return the best one in candidateChains.
             int index = 0;
             List<List<OperatorChain>> queue = new List<List<OperatorChain>>
             {
