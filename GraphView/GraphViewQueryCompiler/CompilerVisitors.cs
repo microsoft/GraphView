@@ -59,7 +59,7 @@ namespace GraphView
     {
         public List<AggregationBlock> blocks;
 
-        public void Invoke(WFromClause fromClause)
+        public void Invoke(WFromClause fromClause, WMatchClause matchClause)
         {
             blocks = new List<AggregationBlock>()
             {
@@ -82,6 +82,7 @@ namespace GraphView
                     blocks.RemoveAt(index);
                 }
             }
+
         }
 
         public override void Visit(WNamedTableReference node)
@@ -498,6 +499,85 @@ namespace GraphView
             {
                 throw new QueryCompilationException("Identifier " + columnList + " should be bound to a table.");
             }
+        }
+    }
+
+    /// <summary>
+    /// BooleanExprNormalizeVisitor traverses a boolean expression 
+    /// and normalizes it to a list of conjunctive predicates.
+    /// </summary>
+    internal class BooleanExpressionNormalizeVisitor : WSqlFragmentVisitor
+    {
+        private List<WBooleanExpression> normalizedList;
+
+        public List<WBooleanExpression> Invoke(WBooleanExpression expr)
+        {
+            this.normalizedList = new List<WBooleanExpression>();
+            expr.Accept(this);
+
+            return this.normalizedList;
+        }
+
+        private void Extract(WBooleanExpression expr)
+        {
+            this.normalizedList.Add(expr);
+        }
+
+        public override void Visit(WBooleanBinaryExpression node)
+        {
+            if (node.BooleanExpressionType == BooleanBinaryExpressionType.And)
+            {
+                base.Visit(node);
+            }
+            else
+            {
+                this.Extract(new WBooleanParenthesisExpression { Expression = node });
+            }
+        }
+
+        public override void Visit(WBooleanComparisonExpression node)
+        {
+            this.Extract(node);
+        }
+
+        public override void Visit(WBooleanIsNullExpression node)
+        {
+            //Extract(node);
+            throw new QueryCompilationException("WBooleanIsNullExpression is not supported yet.");
+        }
+
+        public override void Visit(WBetweenExpression node)
+        {
+            //Extract(node);
+            throw new QueryCompilationException("WBetweenExpression is not supported yet.");
+        }
+
+        public override void Visit(WLikePredicate node)
+        {
+            //Extract(node);
+            throw new QueryCompilationException("WBetweenExpression is not supported yet.");
+
+        }
+
+        public override void Visit(WInPredicate node)
+        {
+            this.Extract(node);
+        }
+
+        public override void Visit(WSubqueryComparisonPredicate node)
+        {
+            //Extract(node);
+            throw new QueryCompilationException("WSubqueryComparisonPredicate is not supported yet.");
+        }
+
+        public override void Visit(WExistsPredicate node)
+        {
+            this.Extract(node);
+        }
+
+        public override void Visit(WBooleanNotExpression node)
+        {
+            this.Extract(node);
         }
     }
 }

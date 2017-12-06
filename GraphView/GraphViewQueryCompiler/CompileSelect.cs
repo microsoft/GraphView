@@ -15,15 +15,19 @@ namespace GraphView
     {
         internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewCommand command)
         {
+            // Optimal tranversal orders
+            TraversalOrder traversalOrder = new TraversalOrder();
+
             // Construct AggregationBlocks and Create MatchGraph
             GlobalDependencyVisitor gdVisitor = new GlobalDependencyVisitor();
-            gdVisitor.Invoke(this.FromClause);
+            gdVisitor.Invoke(this.FromClause, this.MatchClause);
             List<AggregationBlock> aggregationBlocks = gdVisitor.blocks;
             HashSet<string> vertexAndEdgeAliases = new HashSet<string>();
             foreach (AggregationBlock aggregationBlock in aggregationBlocks)
             {
                 aggregationBlock.CreateMatchGraph(this.MatchClause);
-                foreach (string alias in aggregationBlock.TableDict.Keys)
+                vertexAndEdgeAliases.Add(aggregationBlock.AggregationAlias);
+                foreach (string alias in aggregationBlock.TableList)
                 {
                     vertexAndEdgeAliases.Add(alias);
                 }
@@ -73,21 +77,38 @@ namespace GraphView
                 this.AttachProperties(aggregationBlocks, tableColumnReferences);
             }
 
-            // Find input dependency and attach it to AggregationBlock
+            // Generate optimal traversal orders according to AggregateionBlocks
             foreach (AggregationBlock aggregationBlock in aggregationBlocks)
             {
-                foreach (string table in aggregationBlock.TableDict.Keys)
+                // Find input dependency and attach it to AggregationBlock
+                Dictionary<string, HashSet<string>> tableInputDependency = new Dictionary<string, HashSet<string>>();
+                foreach (KeyValuePair<string, NonMatchTable> pair in aggregationBlock.NonMatchTables)
                 {
                     bool isOnlyTargetTableReferenced;
                     Dictionary<string, HashSet<string>> tableColumnReferences = columnVisitor.Invoke(
-                        aggregationBlock.TableDict[table], vertexAndEdgeAliases, out isOnlyTargetTableReferenced);
+                        pair.Value.TableReference, vertexAndEdgeAliases, out isOnlyTargetTableReferenced);
                     this.AttachProperties(aggregationBlocks, tableColumnReferences);
-                    this.AttachInputDependency(aggregationBlock, table, tableColumnReferences.Keys.ToList());
+                    tableInputDependency[pair.Key] = new HashSet<string>();
+                    foreach (string alias in tableColumnReferences.Keys.ToList())
+                    {
+                        tableInputDependency[pair.Key].Add(alias);
+                    }
                 }
+
+                // Find the optimal traversal order
+                TraversalOrder blockTraversalOrder = ConstructExecutionOrder(aggregationBlock, tableInputDependency, predicatesAccessedTableReferences);
+                // Append traversal order
+                traversalOrder.Append(blockTraversalOrder);
             }
 
+            // Construct Optimal operator chain according TraversalOrder
+            List<GraphViewExecutionOperator> operatorChain = ConstructOperatorChain(context, command, traversalOrder);
+
+            // Construct Project Operator or ProjectAggregation
+            ConstructProjectOperator(command, context, SelectElements.Select(e => e as WSelectScalarExpression).ToList(), operatorChain);
+
             // Construct Operators according AggregationBlocks and remaining predicates
-            return this.ConstructOperators(command, aggregationBlocks, context, predicatesAccessedTableReferences);
+            return operatorChain.Last();
         }
 
         private bool TryAttachPredicate(List<AggregationBlock> aggregationBlocks, WBooleanExpression predicate,
@@ -116,11 +137,6 @@ namespace GraphView
             {
                 aggregationBlock.GraphPattern?.AttachProperties(tableColumnReferences);
             }
-        }
-
-        private void AttachInputDependency(AggregationBlock aggregationBlock, string table, List<string> inputDependency)
-        {
-            aggregationBlock.AttachInputDependency(table, inputDependency);
         }
         
         internal static bool CanBePushedToServer(GraphViewCommand command, MatchEdge matchEdge)
@@ -190,8 +206,8 @@ namespace GraphView
 
             if (edge != null)
             {
-                edgeAlias = edge.EdgeAlias;
-                edgeProperties.Add(edge.EdgeAlias);
+                edgeAlias = edge.LinkAlias;
+                edgeProperties.Add(edge.LinkAlias);
                 edgeProperties.Add(isReverseAdj.ToString());
                 edgeProperties.Add(isStartVertexTheOriginVertex.ToString());
 
@@ -282,7 +298,7 @@ namespace GraphView
         internal static void ConstructJsonQueryOnEdge(GraphViewCommand command, MatchNode node, MatchEdge edge)
         {
             string nodeAlias = node.NodeAlias;
-            string edgeAlias = edge.EdgeAlias;
+            string edgeAlias = edge.LinkAlias;
             List<string> nodeProperties = new List<string> { nodeAlias };
             List<string> edgeProperties = new List<string> { edgeAlias };
             nodeProperties.AddRange(node.Properties);
@@ -349,13 +365,33 @@ namespace GraphView
             edge.AttachedJsonQuery = jsonQuery;
         }
 
-        internal static OperatorChain ConstructExecutionOperators(GraphViewCommand command,
-            QueryCompilationContext context, AggregationBlock aggregationBlock,
-            List<Tuple<WBooleanExpression, HashSet<string>>> predicatesAccessedTableReferences,
-            List<GraphViewExecutionOperator> operatorChain)
+        //internal static OperatorChain ConstructExecutionOperators(GraphViewCommand command,
+        //    QueryCompilationContext context, AggregationBlock aggregationBlock,
+        //    List<Tuple<WBooleanExpression, HashSet<string>>> predicatesAccessedTableReferences,
+        //    List<GraphViewExecutionOperator> operatorChain)
+        //{
+        //    BlockOptimizer blockOptimizer = new BlockOptimizer(aggregationBlock, predicatesAccessedTableReferences);
+        //    return blockOptimizer.GenerateOptimalTraversalOrder(command, context, operatorChain);
+        //}
+
+        internal static TraversalOrder ConstructExecutionOrder(
+            AggregationBlock aggregationBlock,
+            Dictionary<string, HashSet<string>> tableInputDependency, 
+            List<Tuple<WBooleanExpression, HashSet<string>>> predicatesAccessedTableReferences)
         {
-            GraphOptimizer graphOptimizer = new GraphOptimizer(aggregationBlock, predicatesAccessedTableReferences);
-            return graphOptimizer.GenerateOptimalExecutionOrder(command, context, operatorChain);
+            BlockOptimizer blockOptimizer = new BlockOptimizer(aggregationBlock);
+            return blockOptimizer.GenerateOptimalTraversalOrder(tableInputDependency, predicatesAccessedTableReferences);
+        }
+
+        internal static List<GraphViewExecutionOperator> ConstructOperatorChain(QueryCompilationContext context, 
+            GraphViewCommand command,
+            TraversalOrder traversalOrder)
+        {
+            List<GraphViewExecutionOperator> operatorChain = new List<GraphViewExecutionOperator>();
+
+            // TODO: finish this method
+
+            return operatorChain;
         }
 
         internal static void ConstructProjectOperator(GraphViewCommand command, QueryCompilationContext context,
@@ -524,26 +560,26 @@ namespace GraphView
             return false;
         }
         
-        internal GraphViewExecutionOperator ConstructOperators(GraphViewCommand command, List<AggregationBlock> aggregationBlocks,
-            QueryCompilationContext context, List<Tuple<WBooleanExpression, HashSet<string>>> predicatesAccessedTableReferences)
-        {
-            // Construct Operators according to AggregationBlocks
-            List<GraphViewExecutionOperator> chain = new List<GraphViewExecutionOperator>();
+        //internal GraphViewExecutionOperator ConstructOperators(GraphViewCommand command, List<AggregationBlock> aggregationBlocks,
+        //    QueryCompilationContext context, List<Tuple<WBooleanExpression, HashSet<string>>> predicatesAccessedTableReferences)
+        //{
+        //    // Construct Operators according to AggregationBlocks
+        //    List<GraphViewExecutionOperator> chain = new List<GraphViewExecutionOperator>();
 
-            foreach (AggregationBlock aggregationBlock in aggregationBlocks)
-            {
-                OperatorChain operatorChain = ConstructExecutionOperators(command, context, aggregationBlock,
-                    predicatesAccessedTableReferences, chain);
-                context.Update(operatorChain.Context);
-                chain = operatorChain.Chain;
-                predicatesAccessedTableReferences = operatorChain.RemainingPredicatesAccessedTableReferences;
-            }
+        //    foreach (AggregationBlock aggregationBlock in aggregationBlocks)
+        //    {
+        //        OperatorChain operatorChain = ConstructExecutionOperators(command, context, aggregationBlock,
+        //            predicatesAccessedTableReferences, chain);
+        //        context.Update(operatorChain.Context);
+        //        chain = operatorChain.Chain;
+        //        predicatesAccessedTableReferences = operatorChain.RemainingPredicatesAccessedTableReferences;
+        //    }
 
-            // Construct ProjectOperator according to SELECT Clause
-            ConstructProjectOperator(command, context, SelectElements.Select(e => e as WSelectScalarExpression).ToList(), chain);
+        //    // Construct ProjectOperator according to SELECT Clause
+        //    ConstructProjectOperator(command, context, SelectElements.Select(e => e as WSelectScalarExpression).ToList(), chain);
 
-            return chain.Last();
-        }
+        //    return chain.Last();
+        //}
     }
 
     partial class WWithPathClause

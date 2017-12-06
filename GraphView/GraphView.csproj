@@ -85,10 +85,10 @@
     <Compile Include="GraphViewExecutionRuntime\SelectOperators.cs" />
     <Compile Include="GraphViewExecutionRuntime\SubtraversalInput.cs" />
     <Compile Include="GraphViewQueryCompiler\AggregationBlock.cs" />
-    <Compile Include="GraphViewQueryCompiler\AttachWhereClauseVisitor.cs" />
     <Compile Include="GraphViewExecutionRuntime\BooleanFunction.cs" />
     <Compile Include="GraphViewQueryCompiler\ToDocDBStringVisitor.cs" />
     <Compile Include="GraphViewQueryCompiler\ToJsonServerStringVisitor.cs" />
+    <Compile Include="GraphViewQueryCompiler\TraversalOrder.cs" />
     <Compile Include="GraphViewUtils\DictionaryExtensions.cs" />
     <Compile Include="GraphViewQueryCompiler\CompileBooleanExpression.cs" />
     <Compile Include="GraphViewQueryCompiler\CompileModification.cs" />
@@ -235,10 +235,9 @@
     <Compile Include="GremlinTranslation\variables\table\vertex\GremlinEdgeToVertexVariable.cs" />
     <Compile Include="GremlinTranslation\variables\table\vertex\GremlinFreeVertexVariable.cs" />
     <Compile Include="GraphViewExecutionRuntime\TVFOperator.cs" />
-    <Compile Include="GraphViewQueryCompiler\GraphOptimizer.cs" />
+    <Compile Include="GraphViewQueryCompiler\BlockOptimizer.cs" />
     <Compile Include="GraphViewExecutionRuntime\GraphViewExecutionEngine.cs" />
     <Compile Include="GraphViewUtils\GraphViewJsonCommand.cs" />
-    <Compile Include="GraphViewQueryCompiler\MatchComponent.cs" />
     <Compile Include="GraphViewUtils\ObjectExtensions.cs" />
     <Compile Include="GraphViewQueryCompiler\CompileSelect.cs" />
     <Compile Include="GraphViewQueryCompiler\Statistics.cs" />
