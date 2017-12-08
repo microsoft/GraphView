@@ -15,22 +15,21 @@ namespace GraphView
     {
         internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewCommand command)
         {
-            // Optimal tranversal orders
-            TraversalOrder traversalOrder = new TraversalOrder();
+            // Optimal execution orders
+            ExecutionOrder executionOrder = new ExecutionOrder(context.TableReferences);
 
             // Construct AggregationBlocks and Create MatchGraph
             GlobalDependencyVisitor gdVisitor = new GlobalDependencyVisitor();
-            gdVisitor.Invoke(this.FromClause, this.MatchClause);
+            gdVisitor.Invoke(this.FromClause);
             List<AggregationBlock> aggregationBlocks = gdVisitor.blocks;
             HashSet<string> vertexAndEdgeAliases = new HashSet<string>();
+
             foreach (AggregationBlock aggregationBlock in aggregationBlocks)
             {
-                aggregationBlock.CreateMatchGraph(this.MatchClause);
+                HashSet<string> freeNodesAndEdges = aggregationBlock.CreateGraph(this.MatchClause);
                 vertexAndEdgeAliases.Add(aggregationBlock.AggregationAlias);
-                foreach (string alias in aggregationBlock.TableList)
-                {
-                    vertexAndEdgeAliases.Add(alias);
-                }
+                vertexAndEdgeAliases.UnionWith(aggregationBlock.TableAliases);
+                vertexAndEdgeAliases.UnionWith(freeNodesAndEdges);
             }
             vertexAndEdgeAliases.Remove("dummy");
 
@@ -44,25 +43,23 @@ namespace GraphView
             // A list of predicates and their accessed table references 
             // Predicates in this list are those that cannot be assigned to the match graph
             List<Tuple<WBooleanExpression, HashSet<string>>>
-                predicatesAccessedTableReferences = new List<Tuple<WBooleanExpression, HashSet<string>>>();
+                predicatesAccessedTableAliases = new List<Tuple<WBooleanExpression, HashSet<string>>>();
             AccessedTableColumnVisitor columnVisitor = new AccessedTableColumnVisitor();
             GraphviewRuntimeFunctionCountVisitor runtimeFunctionCountVisitor = new GraphviewRuntimeFunctionCountVisitor();
+            bool isOnlyTargetTableReferenced;
 
-            // Try to attach predicate to MatchNodes and MatchEdges
             foreach (WBooleanExpression predicate in conjunctivePredicates)
             {
-                bool isOnlyTargetTableReferenced;
                 bool useGraphViewRuntimeFunction = runtimeFunctionCountVisitor.Invoke(predicate) > 0;
                 Dictionary<string, HashSet<string>> tableColumnReferences = columnVisitor.Invoke(predicate,
                     vertexAndEdgeAliases, out isOnlyTargetTableReferenced);
-
-                // If failed, these MatchNodes and MatchEdges need to provide referencing properties, used for filterOperators
+                
                 if (useGraphViewRuntimeFunction
                     || !isOnlyTargetTableReferenced
                     || !this.TryAttachPredicate(aggregationBlocks, predicate, tableColumnReferences))
                 {
-                    this.AttachProperties(aggregationBlocks, tableColumnReferences);
-                    predicatesAccessedTableReferences.Add(
+                    AttachProperties(aggregationBlocks, tableColumnReferences);
+                    predicatesAccessedTableAliases.Add(
                         new Tuple<WBooleanExpression, HashSet<string>>(predicate,
                             new HashSet<string>(tableColumnReferences.Keys)));
                 }
@@ -71,45 +68,52 @@ namespace GraphView
             // Attach referencing properties for later runtime evaluation
             foreach (WSelectElement selectElement in SelectElements)
             {
-                bool isOnlyTargetTableReferenced;
                 Dictionary<string, HashSet<string>> tableColumnReferences = columnVisitor.Invoke(selectElement,
                     vertexAndEdgeAliases, out isOnlyTargetTableReferenced);
-                this.AttachProperties(aggregationBlocks, tableColumnReferences);
+                AttachProperties(aggregationBlocks, tableColumnReferences);
             }
 
-            // Generate optimal traversal orders according to AggregateionBlocks
+            // Find input dependency and attach it to AggregationBlock
             foreach (AggregationBlock aggregationBlock in aggregationBlocks)
             {
-                // Find input dependency and attach it to AggregationBlock
-                Dictionary<string, HashSet<string>> tableInputDependency = new Dictionary<string, HashSet<string>>();
-                foreach (KeyValuePair<string, NonMatchTable> pair in aggregationBlock.NonMatchTables)
+                WTableReferenceWithAlias tableReference = aggregationBlock.NonFreeTables[aggregationBlock.AggregationAlias].TableReference;
+                Dictionary<string, HashSet<string>> tableColumnReferences = columnVisitor.Invoke(
+                    tableReference, vertexAndEdgeAliases, out isOnlyTargetTableReferenced);
+                AttachProperties(aggregationBlocks, tableColumnReferences);
+                foreach (string alias in tableColumnReferences.Keys.ToList())
                 {
-                    bool isOnlyTargetTableReferenced;
-                    Dictionary<string, HashSet<string>> tableColumnReferences = columnVisitor.Invoke(
-                        pair.Value.TableReference, vertexAndEdgeAliases, out isOnlyTargetTableReferenced);
-                    this.AttachProperties(aggregationBlocks, tableColumnReferences);
-                    tableInputDependency[pair.Key] = new HashSet<string>();
-                    foreach (string alias in tableColumnReferences.Keys.ToList())
-                    {
-                        tableInputDependency[pair.Key].Add(alias);
-                    }
+                    aggregationBlock.TableInputDependency[aggregationBlock.AggregationAlias].Add(alias);
                 }
 
-                // Find the optimal traversal order
-                TraversalOrder blockTraversalOrder = ConstructExecutionOrder(aggregationBlock, tableInputDependency, predicatesAccessedTableReferences);
-                // Append traversal order
-                traversalOrder.Append(blockTraversalOrder);
+                foreach (string table in aggregationBlock.TableAliases)
+                {
+                    if (aggregationBlock.NonFreeTables.ContainsKey(table))
+                    {
+                        tableReference = aggregationBlock.NonFreeTables[table].TableReference;
+                        tableColumnReferences = columnVisitor.Invoke(
+                            tableReference, vertexAndEdgeAliases, out isOnlyTargetTableReferenced);
+                        AttachProperties(aggregationBlocks, tableColumnReferences);
+                        foreach (string alias in tableColumnReferences.Keys.ToList())
+                        {
+                            aggregationBlock.TableInputDependency[table].Add(alias);
+                        }
+                    }
+                }
             }
 
-            // Construct Optimal operator chain according TraversalOrder
-            List<GraphViewExecutionOperator> operatorChain = ConstructOperatorChain(context, command, traversalOrder);
+            // Search the optimal execution order
+            executionOrder = ConstructExecutionOrder(context.TableReferences, aggregationBlocks, predicatesAccessedTableAliases);
+
+            // Construct Optimal operator chain according ExecutionOrder
+            List<GraphViewExecutionOperator> operatorChain = ConstructOperatorChain(context, command, executionOrder);
 
             // Construct Project Operator or ProjectAggregation
             ConstructProjectOperator(command, context, SelectElements.Select(e => e as WSelectScalarExpression).ToList(), operatorChain);
 
             // Construct Operators according AggregationBlocks and remaining predicates
-            return operatorChain.Last();
+           return operatorChain.Last();
         }
+        
 
         private bool TryAttachPredicate(List<AggregationBlock> aggregationBlocks, WBooleanExpression predicate,
             Dictionary<string, HashSet<string>> tableColumnReferences)
@@ -131,54 +135,12 @@ namespace GraphView
             return attachFlag;
         }
 
-        private void AttachProperties(List<AggregationBlock> aggregationBlocks, Dictionary<string, HashSet<string>> tableColumnReferences)
+        private static void AttachProperties(List<AggregationBlock> aggregationBlocks, Dictionary<string, HashSet<string>> tableColumnReferences)
         {
             foreach (AggregationBlock aggregationBlock in aggregationBlocks)
             {
                 aggregationBlock.GraphPattern?.AttachProperties(tableColumnReferences);
             }
-        }
-        
-        internal static bool CanBePushedToServer(GraphViewCommand command, MatchEdge matchEdge)
-        {
-            // For Compatible & Hybrid, we can't push edge predicates to server side
-            if (command.Connection.GraphType != GraphType.GraphAPIOnly) {
-                Debug.Assert(command.Connection.EdgeSpillThreshold == 1);
-                return false;
-            }
-
-            if (IsTraversalThroughPhysicalReverseEdge(matchEdge) && !command.Connection.UseReverseEdges) {
-                return false;
-            }
-
-            return matchEdge != null && matchEdge.EdgeType != WEdgeType.BothEdge;
-        }
-
-        internal static MatchEdge GetPushedToServerEdge(GraphViewCommand command,
-            Tuple<MatchNode, MatchEdge, List<MatchEdge>, List<MatchEdge>, List<MatchEdge>> tuple)
-        {
-            MatchNode currentNode = tuple.Item1;
-            MatchEdge traversalEdge = tuple.Item3.Count > 0 ? tuple.Item3[0] : null;
-            bool hasNoBackwardingOrForwardingEdges = tuple.Item4.Count == 0 && tuple.Item5.Count == 0;
-
-            MatchEdge pushedToServerEdge = null;
-            if (hasNoBackwardingOrForwardingEdges)
-            {
-                if (traversalEdge != null)
-                {
-                    pushedToServerEdge = CanBePushedToServer(command, traversalEdge)
-                        ? traversalEdge
-                        : null;
-                }
-                else if (currentNode.DanglingEdges.Count == 1)
-                {
-                    pushedToServerEdge = CanBePushedToServer(command, currentNode.DanglingEdges[0])
-                        ? currentNode.DanglingEdges[0]
-                        : null;
-                }
-            }
-
-            return pushedToServerEdge;
         }
 
         internal static void ConstructJsonQueryOnNode(GraphViewCommand command, MatchNode node, MatchEdge edge, string partitionKey)
@@ -365,31 +327,210 @@ namespace GraphView
             edge.AttachedJsonQuery = jsonQuery;
         }
 
-        //internal static OperatorChain ConstructExecutionOperators(GraphViewCommand command,
-        //    QueryCompilationContext context, AggregationBlock aggregationBlock,
-        //    List<Tuple<WBooleanExpression, HashSet<string>>> predicatesAccessedTableReferences,
-        //    List<GraphViewExecutionOperator> operatorChain)
-        //{
-        //    BlockOptimizer blockOptimizer = new BlockOptimizer(aggregationBlock, predicatesAccessedTableReferences);
-        //    return blockOptimizer.GenerateOptimalTraversalOrder(command, context, operatorChain);
-        //}
-
-        internal static TraversalOrder ConstructExecutionOrder(
-            AggregationBlock aggregationBlock,
-            Dictionary<string, HashSet<string>> tableInputDependency, 
-            List<Tuple<WBooleanExpression, HashSet<string>>> predicatesAccessedTableReferences)
+        internal static ExecutionOrder ConstructExecutionOrder(HashSet<string> tableReferences, 
+            List<AggregationBlock> aggregationBlocks,
+            List<Tuple<WBooleanExpression, HashSet<string>>> predicatesAccessedTableAliases)
         {
-            BlockOptimizer blockOptimizer = new BlockOptimizer(aggregationBlock);
-            return blockOptimizer.GenerateOptimalTraversalOrder(tableInputDependency, predicatesAccessedTableReferences);
+            ExecutionOrderOptimizer executionOrderOptimizer = new ExecutionOrderOptimizer(aggregationBlocks, predicatesAccessedTableAliases);
+            return executionOrderOptimizer.GenerateOptimalExecutionOrder(tableReferences);
         }
 
         internal static List<GraphViewExecutionOperator> ConstructOperatorChain(QueryCompilationContext context, 
-            GraphViewCommand command,
-            TraversalOrder traversalOrder)
+            GraphViewCommand command, ExecutionOrder executionOrder)
         {
             List<GraphViewExecutionOperator> operatorChain = new List<GraphViewExecutionOperator>();
-
+            if (context.OuterContextOp != null)
+            {
+                context.CurrentExecutionOperator = context.OuterContextOp;
+            }
             // TODO: finish this method
+            foreach (Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>> tuple in executionOrder.Order)
+            {
+                string alias = tuple.Item1.NodeAlias;
+
+                // Make sure that traversalLink and backwardLinks are consistent
+                // AppendFilterOp(command, context, operatorChain, tuple);
+
+                GraphViewExecutionOperator op;
+                // if the table is free variable
+                if (tuple.Item1 is MatchNode)
+                {
+                    MatchNode matchNode = tuple.Item1 as MatchNode;
+                    bool isDummyNode = false;
+
+                    // For the case of g.E()
+                    if (tuple.Item2 == null && !tuple.Item3.Any() && matchNode.DanglingEdges.Count == 1)
+                    {
+                        MatchEdge danglingEdge = matchNode.DanglingEdges[0];
+                        if (danglingEdge != null && danglingEdge.EdgeType == WEdgeType.OutEdge && 
+                            (matchNode.Predicates == null || !matchNode.Predicates.Any()))
+                        {
+                            isDummyNode = true;
+                            ConstructJsonQueryOnEdge(command, matchNode, danglingEdge);
+                        }
+                    }
+
+                    MatchEdge pushedToServerEdge = GetPushedToServerEdge(command, tuple);
+                    ConstructJsonQueryOnNode(command, matchNode, pushedToServerEdge, command.Connection.RealPartitionKey);
+
+                    // For the case of g.E()
+                    if (isDummyNode)
+                    {
+                        op = new FetchEdgeOperator(command, matchNode.DanglingEdges[0].AttachedJsonQuery);
+                        // The graph contains more than one component
+                        if (operatorChain.Any())
+                        {
+                            operatorChain.Add(new CartesianProductOperator(operatorChain.Last(), op));
+                        }
+                        // This WSelectQueryBlock is a sub query
+                        else if (context.OuterContextOp != null)
+                        {
+                            operatorChain.Add(new CartesianProductOperator(context.OuterContextOp, op));
+                        }
+                        else
+                        {
+                            operatorChain.Add(op);
+                        }
+                        UpdateNodeLayout(matchNode.NodeAlias, matchNode.Properties, context);
+                        context.TableReferences.Add(alias);
+
+                        MatchEdge danglingEdge = matchNode.DanglingEdges[0];
+                        UpdateEdgeLayout(danglingEdge.LinkAlias, danglingEdge.Properties, context);
+                        context.TableReferences.Add(danglingEdge.LinkAlias);
+                    }
+                    else
+                    {   
+                        // if item2 is null
+                        if (tuple.Item2 == null)
+                        {
+                            op = new FetchNodeOperator(command,
+                                matchNode.AttachedJsonQuery);
+
+                            // The graph contains more than one component
+                            if (operatorChain.Any())
+                            {
+                                operatorChain.Add(new CartesianProductOperator(operatorChain.Last(), op));
+                            }
+                            // This WSelectQueryBlock is a sub query
+                            else if (context.OuterContextOp != null)
+                            {
+                                operatorChain.Add(new CartesianProductOperator(context.OuterContextOp, op));
+                            }
+                            else
+                            {
+                                operatorChain.Add(op);
+                            }
+                            UpdateNodeLayout(matchNode.NodeAlias, matchNode.Properties, context);
+                            context.TableReferences.Add(alias);
+                        }
+                        // if item2 is an edge-vertex bridge predicate
+                        else if (tuple.Item2 is PredicateLink)
+                        {
+                            PredicateLink edgeVertexBridge = tuple.Item2 as PredicateLink;
+                            WEdgeVertexBridgeExpression bridgeExpr =
+                                edgeVertexBridge.BooleanExpression as WEdgeVertexBridgeExpression;
+                            WColumnReferenceExpression edgeColumnReferenceExpression =
+                                bridgeExpr.FirstExpr as WColumnReferenceExpression;
+                            op = new TraversalOperator(
+                                context.CurrentExecutionOperator,
+                                command,
+                                context.LocateColumnReference(edgeColumnReferenceExpression.TableReference, GremlinKeyword.Star),
+                                edgeColumnReferenceExpression.ColumnName == GremlinKeyword.EdgeSourceV
+                                    ? TraversalOperator.TraversalTypeEnum.Source
+                                    : TraversalOperator.TraversalTypeEnum.Sink,
+                                matchNode.AttachedJsonQuery,
+                                null);
+                            UpdateNodeLayout(matchNode.NodeAlias, matchNode.Properties, context);
+                            operatorChain.Add(op);
+                            context.TableReferences.Add(alias);
+                        }
+                        // if item2 is an edge
+                        else if (tuple.Item2 is MatchEdge)
+                        {
+                            op = new TraversalOperator(
+                                context.CurrentExecutionOperator,
+                                command,
+                                context.LocateColumnReference(tuple.Item2.LinkAlias, GremlinKeyword.Star),
+                                GetTraversalType(tuple.Item2 as MatchEdge),
+                                matchNode.AttachedJsonQuery,
+                                null);
+                            UpdateNodeLayout(matchNode.NodeAlias, matchNode.Properties, context);
+                            operatorChain.Add(op);
+                            context.TableReferences.Add(alias);
+                        }
+                        else
+                        {
+                            throw new QueryCompilationException("Can't support " + tuple.Item2.ToString());
+                        }
+
+                        // Construct edges
+                        CrossApplyEdges(command, context, operatorChain, tuple);
+                    }
+                    context.CurrentExecutionOperator = operatorChain.Last();
+                }
+                else if (tuple.Item1 is NonFreeTable)
+                {
+                    NonFreeTable nonFreeTable = tuple.Item1 as NonFreeTable;
+                    WTableReferenceWithAlias tableReference = nonFreeTable.TableReference;
+                    
+                    // if the table is QueryDerivedTable
+                    if (tableReference is WQueryDerivedTable)
+                    {
+                        op = tableReference.Compile(context, command);
+                        context.TableReferences.Add(alias);
+                        operatorChain.Add(op);
+                    }
+                    // if the table is variable table
+                    else if (tableReference is WVariableTableReference)
+                    {
+                        WVariableTableReference variableTable = tableReference as WVariableTableReference;
+                        string tableName = variableTable.Variable.Name;
+                        Tuple<TemporaryTableHeader, GraphViewExecutionOperator> temporaryTableTuple;
+                        if (!context.TemporaryTableCollection.TryGetValue(tableName, out temporaryTableTuple))
+                        {
+                            throw new GraphViewException("Table variable " + tableName + " doesn't exist in the context.");
+                        }
+
+                        TemporaryTableHeader tableHeader = temporaryTableTuple.Item1;
+                        if (operatorChain.Any())
+                        {
+                            op = new CartesianProductOperator(operatorChain.Last(), temporaryTableTuple.Item2);
+                        }
+                        else
+                        {
+                            op = temporaryTableTuple.Item2;
+                        }
+                        context.TableReferences.Add(alias);
+                        operatorChain.Add(op);
+
+                        // Merge temporary table's header into current context
+                        foreach (var pair in tableHeader.columnSet.OrderBy(e => e.Value.Item1))
+                        {
+                            string columnName = pair.Key;
+                            ColumnGraphType columnGraphType = pair.Value.Item2;
+
+                            context.AddField(alias, columnName, columnGraphType);
+                        }
+                        context.CurrentExecutionOperator = operatorChain.Last();
+                    }
+                    // if the table is TVF
+                    else if (tableReference is WSchemaObjectFunctionTableReference)
+                    {
+                        WSchemaObjectFunctionTableReference functionTableReference = tableReference as WSchemaObjectFunctionTableReference;
+                        op = functionTableReference.Compile(context, command);
+                        context.TableReferences.Add(alias);
+                        operatorChain.Add(op);
+                        context.CurrentExecutionOperator = operatorChain.Last();
+                    }
+                    else if (alias != "dummy")
+                    {
+                        throw new NotImplementedException("Not supported type of FROM clause.");
+                    }
+                }
+
+                // Check predicates and aapend filter operator
+                CheckPredicatesAndAppendFilterOp(command, context, operatorChain, tuple);
+            }
 
             return operatorChain;
         }
@@ -546,6 +687,267 @@ namespace GraphView
             }
         }
 
+        
+        private static void UpdateNodeLayout(string nodeAlias, HashSet<string> properties, QueryCompilationContext context)
+        {
+            foreach (string propertyName in properties)
+            {
+                ColumnGraphType columnGraphType = GraphViewReservedProperties.IsNodeReservedProperty(propertyName)
+                    ? GraphViewReservedProperties.ReservedNodePropertiesColumnGraphTypes[propertyName]
+                    : ColumnGraphType.Value;
+                context.AddField(nodeAlias, propertyName, columnGraphType);
+            }
+        }
+
+        private static void UpdateEdgeLayout(string edgeAlias, List<string> properties, QueryCompilationContext context)
+        {
+            context.AddField(edgeAlias, GremlinKeyword.EdgeSourceV, ColumnGraphType.EdgeSource);
+            context.AddField(edgeAlias, GremlinKeyword.EdgeSinkV, ColumnGraphType.EdgeSink);
+            context.AddField(edgeAlias, GremlinKeyword.EdgeOtherV, ColumnGraphType.Value);
+            context.AddField(edgeAlias, GremlinKeyword.EdgeID, ColumnGraphType.EdgeId);
+            context.AddField(edgeAlias, GremlinKeyword.Star, ColumnGraphType.EdgeObject);
+            for (var i = GraphViewReservedProperties.ReservedEdgeProperties.Count; i < properties.Count; i++)
+            {
+                context.AddField(edgeAlias, properties[i], ColumnGraphType.Value);
+            }
+        }
+
+        private static void AppendFilterOp(GraphViewCommand command,
+            QueryCompilationContext context,
+            List<GraphViewExecutionOperator> operatorChain,
+            Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>> tuple)
+        {
+            if (context.OuterContextOp != null)
+            {
+                context.CurrentExecutionOperator = context.OuterContextOp;
+            }
+
+            if (tuple.Item3.Any())
+            {
+                List<WColumnReferenceExpression> currentNodeList = new List<WColumnReferenceExpression>();
+                List<WBooleanExpression> booleanExpressions = new List<WBooleanExpression>();
+
+                if (tuple.Item2 is MatchEdge)
+                {
+                    MatchEdge edge = tuple.Item2 as MatchEdge;
+                    if (edge.EdgeType == WEdgeType.OutEdge)
+                    {
+                        currentNodeList.Add(SqlUtil.GetColumnReferenceExpr(edge.LinkAlias,
+                            edge.IsReversed ? GremlinKeyword.EdgeSinkV : GremlinKeyword.EdgeSourceV));
+                    }
+                    else if (edge.EdgeType == WEdgeType.InEdge)
+                    {
+                        currentNodeList.Add(SqlUtil.GetColumnReferenceExpr(edge.LinkAlias,
+                            edge.IsReversed ? GremlinKeyword.EdgeSourceV : GremlinKeyword.EdgeSinkV));
+                    }
+                    else
+                    {
+                        currentNodeList.Add(SqlUtil.GetColumnReferenceExpr(edge.LinkAlias, GremlinKeyword.EdgeOtherV));
+                    }
+                }
+                else if (tuple.Item2 is PredicateLink)
+                {
+                    PredicateLink predicateLink = tuple.Item2 as PredicateLink;
+                    if (predicateLink.BooleanExpression is WEdgeVertexBridgeExpression)
+                    {
+                        WColumnReferenceExpression edgeColumnReferenceExpression =
+                            (predicateLink.BooleanExpression as WEdgeVertexBridgeExpression).FirstExpr as WColumnReferenceExpression;
+                        currentNodeList.Add(edgeColumnReferenceExpression);
+                    }
+                }
+                else if (tuple.Item2 != null)
+                {
+                    throw new QueryCompilationException("Can't support " + tuple.Item2.ToString());
+                }
+
+                foreach (CompileLink link in tuple.Item3)
+                {
+                    if (link is MatchEdge)
+                    {
+                        MatchEdge edge = link as MatchEdge;
+                        if (edge.EdgeType == WEdgeType.OutEdge)
+                        {
+                            currentNodeList.Add(SqlUtil.GetColumnReferenceExpr(edge.LinkAlias,
+                                edge.IsReversed ? GremlinKeyword.EdgeSinkV : GremlinKeyword.EdgeSourceV));
+                        }
+                        else if (edge.EdgeType == WEdgeType.InEdge)
+                        {
+                            currentNodeList.Add(SqlUtil.GetColumnReferenceExpr(edge.LinkAlias,
+                                edge.IsReversed ? GremlinKeyword.EdgeSourceV : GremlinKeyword.EdgeSinkV));
+                        }
+                        else
+                        {
+                            currentNodeList.Add(SqlUtil.GetColumnReferenceExpr(edge.LinkAlias, GremlinKeyword.EdgeOtherV));
+                        }
+                    }
+                    else if (link is PredicateLink)
+                    {
+                        PredicateLink predicateLink = link as PredicateLink;
+                        if (predicateLink.BooleanExpression is WEdgeVertexBridgeExpression)
+                        {
+                            WColumnReferenceExpression edgeColumnReferenceExpression =
+                                (predicateLink.BooleanExpression as WEdgeVertexBridgeExpression).FirstExpr as WColumnReferenceExpression;
+                            currentNodeList.Add(edgeColumnReferenceExpression);
+                        }
+                        else
+                        {
+                            booleanExpressions.Add(predicateLink.BooleanExpression);
+                        }
+                    }
+                    else
+                    {
+                        throw new QueryCompilationException("Can't support " + tuple.Item2.ToString());
+                    }
+                }
+                if (currentNodeList.Any())
+                {
+                    for (int index = 1; index < currentNodeList.Count; ++index)
+                    {
+                        booleanExpressions.Add(SqlUtil.GetEqualBooleanComparisonExpr(currentNodeList[0], currentNodeList[index]));
+                    }
+                }
+
+                if (booleanExpressions.Any())
+                {
+                    operatorChain.Add(
+                        new FilterOperator(
+                            operatorChain.Any() ? operatorChain.Last() : context.OuterContextOp,
+                            SqlUtil.ConcatBooleanExprWithAnd(booleanExpressions).CompileToFunction(context, command)));
+                    context.CurrentExecutionOperator = operatorChain.Last();
+                }
+            }
+        }
+
+        private static void CheckPredicatesAndAppendFilterOp(GraphViewCommand command,
+            QueryCompilationContext context, 
+            List<GraphViewExecutionOperator> operatorChain,
+            Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>> tuple)
+        {
+            List<WBooleanExpression> booleanExpressions = new List<WBooleanExpression>();
+            foreach (CompileLink link in tuple.Item4)
+            {
+                PredicateLink predicateLink = link as PredicateLink;
+                if (predicateLink != null)
+                {
+                    booleanExpressions.Add(predicateLink.BooleanExpression);
+                }
+            }
+
+            if (booleanExpressions.Any())
+            {
+                operatorChain.Add(
+                    new FilterInBatchOperator(
+                        operatorChain.Count != 0 ? operatorChain.Last() : context.OuterContextOp,
+                        SqlUtil.ConcatBooleanExprWithAnd(booleanExpressions).CompileToBatchFunction(context, command)));
+                context.CurrentExecutionOperator = operatorChain.Last();
+            }
+        }
+
+        private static TraversalOperator.TraversalTypeEnum GetTraversalType(MatchEdge edge)
+        {
+            if (edge.EdgeType == WEdgeType.BothEdge)
+            {
+                return TraversalOperator.TraversalTypeEnum.Other;
+            }
+
+            return WSelectQueryBlock.IsTraversalThroughPhysicalReverseEdge(edge)
+                ? TraversalOperator.TraversalTypeEnum.Sink
+                : TraversalOperator.TraversalTypeEnum.Source;
+        }
+
+        private static void CrossApplyEdges(GraphViewCommand command, 
+            QueryCompilationContext context,
+            List<GraphViewExecutionOperator> chain, 
+            Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>> tuple)
+        {
+            foreach (CompileLink link in tuple.Item4)
+            {
+                // If an edge does not exist before, we will construct an AdjacencyListDecoder
+                MatchEdge edge = link as MatchEdge;
+                if (edge != null)
+                {
+                    Tuple<bool, bool> crossApplyTypeTuple = GetAdjDecoderCrossApplyTypeParameter(edge);
+                    QueryCompilationContext localEdgeContext =
+                        GenerateLocalContextForAdjacentListDecoder(edge.LinkAlias, edge.Properties);
+                    WBooleanExpression edgePredicates = edge.RetrievePredicatesExpression();
+                    chain.Add(new AdjacencyListDecoder(
+                        chain.Last(),
+                        context.LocateColumnReference(edge.SourceNode.NodeAlias, GremlinKeyword.Star),
+                        crossApplyTypeTuple.Item1, crossApplyTypeTuple.Item2,
+                        edge.EdgeType == WEdgeType.BothEdge || !edge.IsReversed,
+                        edgePredicates != null ? edgePredicates.CompileToFunction(localEdgeContext, command) : null,
+                        edge.Properties, command, context.RawRecordLayout.Count + edge.Properties.Count));
+
+                    // Update edge's context info
+                    context.TableReferences.Add(edge.LinkAlias);
+                    UpdateEdgeLayout(edge.LinkAlias, edge.Properties, context);
+                }
+            }
+        }
+
+        private static Tuple<bool, bool> GetAdjDecoderCrossApplyTypeParameter(MatchEdge edge)
+        {
+            if (edge.EdgeType == WEdgeType.BothEdge)
+                return new Tuple<bool, bool>(true, true);
+
+            if (WSelectQueryBlock.IsTraversalThroughPhysicalReverseEdge(edge))
+                return new Tuple<bool, bool>(false, true);
+            else
+                return new Tuple<bool, bool>(true, false);
+        }
+
+        private static QueryCompilationContext GenerateLocalContextForAdjacentListDecoder(string edgeTableAlias, List<string> projectedFields)
+        {
+            var localContext = new QueryCompilationContext();
+
+            var localIndex = 0;
+            foreach (var projectedField in projectedFields)
+            {
+                var columnReference = new WColumnReferenceExpression(edgeTableAlias, projectedField);
+                localContext.RawRecordLayout.Add(columnReference, localIndex++);
+            }
+
+            return localContext;
+        }
+
+        private static MatchEdge GetPushedToServerEdge(GraphViewCommand command, Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>> tuple)
+        {
+            if (tuple.Item2 == null && tuple.Item4.Any())
+            {
+                foreach (CompileLink link in tuple.Item4)
+                {
+                    MatchEdge edge = link as MatchEdge;
+                    if (CanBePushedToServer(command, edge))
+                    {
+                        return edge;
+                    }
+                }
+            }
+            return null;
+        }
+
+        private static bool CanBePushedToServer(GraphViewCommand command, MatchEdge matchEdge)
+        {
+            // For Compatible & Hybrid, we can't push edge predicates to server side
+            if (command.Connection.GraphType != GraphType.GraphAPIOnly)
+            {
+                Debug.Assert(command.Connection.EdgeSpillThreshold == 1);
+                return false;
+            }
+
+            if (matchEdge == null || matchEdge.EdgeType == WEdgeType.BothEdge)
+            {
+                return false;
+            }
+
+            if (IsTraversalThroughPhysicalReverseEdge(matchEdge) && !command.Connection.UseReverseEdges)
+            {
+                return false;
+            }
+
+            return true;
+        }
+
         /// <summary>
         /// If using node._reverse_edge, return true.
         /// If using node._edge, return false
@@ -559,27 +961,6 @@ namespace GraphView
                 return true;
             return false;
         }
-        
-        //internal GraphViewExecutionOperator ConstructOperators(GraphViewCommand command, List<AggregationBlock> aggregationBlocks,
-        //    QueryCompilationContext context, List<Tuple<WBooleanExpression, HashSet<string>>> predicatesAccessedTableReferences)
-        //{
-        //    // Construct Operators according to AggregationBlocks
-        //    List<GraphViewExecutionOperator> chain = new List<GraphViewExecutionOperator>();
-
-        //    foreach (AggregationBlock aggregationBlock in aggregationBlocks)
-        //    {
-        //        OperatorChain operatorChain = ConstructExecutionOperators(command, context, aggregationBlock,
-        //            predicatesAccessedTableReferences, chain);
-        //        context.Update(operatorChain.Context);
-        //        chain = operatorChain.Chain;
-        //        predicatesAccessedTableReferences = operatorChain.RemainingPredicatesAccessedTableReferences;
-        //    }
-
-        //    // Construct ProjectOperator according to SELECT Clause
-        //    ConstructProjectOperator(command, context, SelectElements.Select(e => e as WSelectScalarExpression).ToList(), chain);
-
-        //    return chain.Last();
-        //}
     }
 
     partial class WWithPathClause
@@ -633,7 +1014,7 @@ namespace GraphView
             foreach (WSqlStatement st in Statements)
             {
                 QueryCompilationContext statementContext = new QueryCompilationContext(priorContext.TemporaryTableCollection,
-                    priorContext.SideEffectFunctions, priorContext.SideEffectStates, priorContext.SelectOperators,
+                    priorContext.SideEffectFunctions, priorContext.SideEffectStates,
                     priorContext.OptimalSolutions, priorContext.Containers);
                 op = st.Compile(statementContext, command);
                 priorContext = statementContext;
@@ -2723,13 +3104,13 @@ namespace GraphView
             
             SelectOperator selectOp = new SelectOperator(
                 context.CurrentExecutionOperator,
+                context.SideEffectFunctions,
                 inputObjectIndex,
                 pathIndex,
                 popType,
                 selectLabels,
                 byFuncList,
                 GremlinKeyword.TableDefaultColumnName);
-            context.SelectOperators.Add(selectOp);
             context.CurrentExecutionOperator = selectOp;
             context.AddField(Alias.Value, GremlinKeyword.TableDefaultColumnName, ColumnGraphType.Value);
 
@@ -2794,6 +3175,7 @@ namespace GraphView
 
             SelectOneOperator selectOneOp = new SelectOneOperator(
                 context.CurrentExecutionOperator,
+                context.SideEffectFunctions,
                 inputObjectIndex,
                 pathIndex,
                 popType,
@@ -2802,7 +3184,6 @@ namespace GraphView
                 populateColumns,
                 GremlinKeyword.TableDefaultColumnName
                 );
-            context.SelectOperators.Add(selectOneOp);
             context.CurrentExecutionOperator = selectOneOp;
             foreach (string columnName in populateColumns) {
                 context.AddField(Alias.Value, columnName, ColumnGraphType.Value);

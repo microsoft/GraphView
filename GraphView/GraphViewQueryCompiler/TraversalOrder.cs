@@ -23,7 +23,7 @@ namespace GraphView
             return 1.0;
         }
 
-        // TODO: estimate cost according experience
+        // TODO: estimate Cost according experience
         public virtual double ComputationalCost()
         {
             return 1.0;
@@ -46,7 +46,7 @@ namespace GraphView
             return 1.0;
         }
 
-        // TODO: estimate cost according experience
+        // TODO: estimate Cost according experience
         public virtual double ComputationalCost()
         {
             return 1.0;
@@ -111,16 +111,23 @@ namespace GraphView
 
         public override double GetCardinality()
         {
-            return 1.0 * this.EstimatedRows;
+            return this.EstimatedRows;
         }
     }
 
-    internal class NonMatchTable : CompileNode
+    internal class NonFreeTable : CompileNode
     {
         public WTableReferenceWithAlias TableReference { get; set; }
         public double Cardinality { get; set; }
 
-        public NonMatchTable(WTableReferenceWithAlias tableReference)
+        public NonFreeTable()
+        {
+            this.NodeAlias = "dummy";
+            this.TableReference = null;
+            this.Cardinality = 0.0;
+        }
+
+        public NonFreeTable(WTableReferenceWithAlias tableReference)
         {
             this.NodeAlias = tableReference.Alias.Value;
             this.TableReference = tableReference;
@@ -147,6 +154,7 @@ namespace GraphView
         public PredicateLink(WBooleanExpression booleanExpression)
         {
             this.BooleanExpression = booleanExpression;
+            this.LinkAlias = booleanExpression.ToString();
         }
 
         // TODO: get selectivity from database and experience
@@ -155,7 +163,7 @@ namespace GraphView
             return 0.5;
         }
         
-        // TODO: get cost from database and experience
+        // TODO: get Cost from database and experience
         public override double ComputationalCost()
         {
             return 0.5;
@@ -252,85 +260,282 @@ namespace GraphView
         }
     }
 
-    internal class TraversalOrder
+    internal class ExecutionOrder
     {
-        public List<Tuple<CompileNode, CompileLink, List<CompileLink>>> Order { get; set; }
-        private Dictionary<string, HashSet<string>> tableInputDependency;
-        private List<Tuple<WBooleanExpression, HashSet<string>>> predicatesAccessedTableReferences;
-        public double cost;
+        public List<Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>>> Order { get; set; }
+        public HashSet<string> ExistingNodesAndEdges { get; set; }
+        public HashSet<string> ExistingPredicateLinks { get; set; }
+        public double Cost { get; set; }
 
-        private static double alpha = 1.0, beta = 1.0, gama = 1.0;
+        private static double alpha = 1.2, beta = 10.0, gama = 1.0;
 
-        public TraversalOrder()
+        public ExecutionOrder(HashSet<string> tableReferences)
         {
-            this.Order = new List<Tuple<CompileNode, CompileLink, List<CompileLink>>>();
-            this.tableInputDependency = new Dictionary<string, HashSet<string>>();
-            this.predicatesAccessedTableReferences = new List<Tuple<WBooleanExpression, HashSet<string>>> ();
-            this.cost = 0.0;
+            this.Order = new List<Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>>>();
+            this.ExistingNodesAndEdges = new HashSet<string>(tableReferences);
+            this.ExistingPredicateLinks = new HashSet<string>();
+            this.Cost = 0.0;
         }
 
-        public TraversalOrder(Dictionary<string, HashSet<string>> tableInputDependency,
-            List<Tuple<WBooleanExpression, HashSet<string>>> predicatesAccessedTableReferences)
+        public ExecutionOrder Duplicate()
         {
-            this.Order = new List<Tuple<CompileNode, CompileLink, List<CompileLink>>>();
-            this.tableInputDependency = tableInputDependency;
-            this.predicatesAccessedTableReferences = predicatesAccessedTableReferences;
-            this.cost = 0.0;
-        }
-
-        public TraversalOrder Duplicate()
-        {
-            return new TraversalOrder()
+            return new ExecutionOrder(this.ExistingNodesAndEdges)
             {
-                Order = this.Order,
-                cost = this.cost
+                ExistingPredicateLinks = new HashSet<string>(this.ExistingPredicateLinks),
+                Order = new List<Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>>>(this.Order),
+                Cost = this.Cost
             };
-        }
-
-        public void Append(TraversalOrder blockOrder)
-        {
-            foreach (Tuple<CompileNode, CompileLink, List<CompileLink>> tuple in blockOrder.Order)
-            {
-                this.AddTuple(tuple);
-            }
         }
 
         // TODO: utilize statistic information
         private void UpdateCost()
         {
-            this.cost = 0.0;
-            foreach (Tuple<CompileNode, CompileLink, List<CompileLink>> tuple in this.Order)
+            Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>> tuple = this.Order.Last();
+            this.Cost *= alpha;
+
+            this.Cost += tuple.Item1.ComputationalCost() * alpha + tuple.Item1.GetCardinality() * beta;
+            this.Cost += tuple.Item2 == null ? 0 : tuple.Item2.ComputationalCost() * alpha + tuple.Item2.GetSelectivity() * gama;
+            foreach (CompileLink link in tuple.Item3)
             {
-                this.cost += tuple.Item1.ComputationalCost() * alpha + tuple.Item1.GetCardinality() * beta;
-                this.cost += tuple.Item2 == null ? 0 : tuple.Item2.ComputationalCost() * alpha + tuple.Item2.GetSelectivity() * gama;
-                foreach (CompileLink link in tuple.Item3)
-                {
-                    this.cost += link.ComputationalCost() * alpha + link.GetSelectivity() * gama;
-                }
+                this.Cost += link.ComputationalCost() * alpha + link.GetSelectivity() * gama;
             }
         }
 
-        public List<TraversalOrder> GenerateNextOrders(AggregationBlock aggregationBlock)
+        public void AddAggregationTable(AggregationBlock aggregationBlock,
+            List<Tuple<PredicateLink, HashSet<string>>> predicateLinksAccessedTableAliases)
         {
-            List<TraversalOrder> nextOrders = new List<TraversalOrder>();
+            NonFreeTable aggregateionTable = aggregationBlock.NonFreeTables[aggregationBlock.AggregationAlias];
 
-            // TODO: finish this method
+            // Find connected predicateLinks
+            List<CompileLink> backwardLinks = new List<CompileLink>();
+            List<CompileLink> forwardLinks = new List<CompileLink>();
 
+            if (aggregateionTable.NodeAlias == "dummy")
+            {
+                foreach (Tuple<PredicateLink, HashSet<string>> tuple in predicateLinksAccessedTableAliases)
+                {
+                    if (!this.ExistingPredicateLinks.Contains(tuple.Item1.LinkAlias))
+                    {
+                        if (this.ExistingNodesAndEdges.IsSupersetOf(tuple.Item2))
+                        {
+                            forwardLinks.Add(tuple.Item1);
+                        }
+                    }
+                }
+            }
+            else
+            {
+                bool isOnlyTargetTableReferenced;
+                AccessedTableColumnVisitor columnVisitor = new AccessedTableColumnVisitor();
+                Dictionary<string, HashSet<string>> tableColumnReferences = columnVisitor.Invoke(aggregateionTable.TableReference,
+                    aggregationBlock.TableAliases, out isOnlyTargetTableReferenced);
+
+                // Add all aliases temporarily, including the node's alias and those of subqueries, to check predicates
+                HashSet<string> temporaryAliases = new HashSet<string>(this.ExistingNodesAndEdges);
+                temporaryAliases.Add(aggregateionTable.NodeAlias);
+                temporaryAliases.UnionWith(tableColumnReferences.Keys);
+                foreach (Tuple<PredicateLink, HashSet<string>> tuple in predicateLinksAccessedTableAliases)
+                {
+                    if (!this.ExistingPredicateLinks.Contains(tuple.Item1.LinkAlias))
+                    {
+                        if (this.ExistingNodesAndEdges.IsSupersetOf(tuple.Item2))
+                        {
+                            backwardLinks.Add(tuple.Item1);
+                        }
+                        else if (temporaryAliases.IsSupersetOf(tuple.Item2))
+                        {
+                            forwardLinks.Add(tuple.Item1);
+                        }
+                    }
+                }
+            }
+
+            // Add a next possible tuple
+            this.AddTuple(new Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>>(aggregateionTable, null, backwardLinks, forwardLinks));
+        }
+
+        public List<ExecutionOrder> GenerateNextOrders(AggregationBlock aggregationBlock, 
+            List<Tuple<PredicateLink, HashSet<string>>> predicateLinksAccessedTableAliases)
+        {
+            List<Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>>> nextTuples =
+                new List<Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>>>();
+            foreach (KeyValuePair<string, HashSet<string>> pair in aggregationBlock.TableInputDependency)
+            {
+                if (!this.ExistingNodesAndEdges.Contains(pair.Key) && this.ExistingNodesAndEdges.IsSupersetOf(pair.Value))
+                {
+                    CompileNode node;
+                    aggregationBlock.TryGetNode(pair.Key, out node);
+                    nextTuples.AddRange(this.GenerateTuples(aggregationBlock, predicateLinksAccessedTableAliases, node));
+                }
+            }
+
+            List<ExecutionOrder> nextOrders = new List<ExecutionOrder>();
+            foreach (Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>> tuple in nextTuples)
+            {
+                ExecutionOrder nextOrder = this.Duplicate();
+                nextOrder.AddTuple(tuple);
+                nextOrders.Add(nextOrder);
+            }
             return nextOrders;
         }
 
-        public void AddTuple(Tuple<CompileNode, CompileLink, List<CompileLink>> tuple)
+        private List<Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>>> GenerateTuples(
+            AggregationBlock aggregationBlock,
+            List<Tuple<PredicateLink, HashSet<string>>> predicateLinksAccessedTableAliases,
+            CompileNode node)
         {
+            List<Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>>> nextTuples =
+                new List<Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>>>();
+            
+            if (node is MatchNode)
+            {
+                MatchNode matchNode = node as MatchNode;
+                // Add the alias of node and aliases of edges temporarily to check predicates
+                HashSet<string> temporaryAliases = new HashSet<string>(this.ExistingNodesAndEdges);
+                temporaryAliases.Add(matchNode.NodeAlias);
+                List<CompileLink> backwardLinks = new List<CompileLink>();
+                List<CompileLink> forwardLinks = new List<CompileLink>();
+
+                foreach (MatchEdge edge in matchNode.Neighbors)
+                {
+                    if (!this.ExistingNodesAndEdges.Contains(edge.LinkAlias))
+                    {
+                        temporaryAliases.Add(edge.LinkAlias);
+                        forwardLinks.Add(edge);
+                    }
+                    else
+                    {
+                        backwardLinks.Add(edge);
+                    }
+                }
+                foreach (MatchEdge edge in matchNode.ReverseNeighbors)
+                {
+                    if (!this.ExistingNodesAndEdges.Contains(edge.LinkAlias))
+                    {
+                        temporaryAliases.Add(edge.LinkAlias);
+                        forwardLinks.Add(edge);
+                    }
+                    else
+                    {
+                        backwardLinks.Add(edge);
+                    }
+                }
+                foreach (MatchEdge edge in matchNode.DanglingEdges)
+                {
+                    if (!this.ExistingNodesAndEdges.Contains(edge.LinkAlias))
+                    {
+                        temporaryAliases.Add(edge.LinkAlias);
+                        forwardLinks.Add(edge);
+                    }
+                    else
+                    {
+                        backwardLinks.Add(edge);
+                    }
+                }
+                
+                // Find connected predicateLinks
+                foreach (Tuple<PredicateLink, HashSet<string>> tuple in predicateLinksAccessedTableAliases)
+                {
+                    if (!this.ExistingPredicateLinks.Contains(tuple.Item1.LinkAlias))
+                    {
+                        if (temporaryAliases.IsSupersetOf(tuple.Item2))
+                        {
+                            if (tuple.Item1.BooleanExpression is WEdgeVertexBridgeExpression)
+                            {
+                                backwardLinks.Add(tuple.Item1);
+                            }
+                            else
+                            {
+                                forwardLinks.Add(tuple.Item1);
+                            }
+                        }
+                    }
+                }
+
+                // if use other link to get this node
+                if (backwardLinks.Any())
+                {
+                    foreach (CompileLink traversalLink in backwardLinks)
+                    {
+                        List<CompileLink> tupleBackwardLinks = new List<CompileLink>(backwardLinks);
+                        tupleBackwardLinks.Remove(traversalLink);
+                        nextTuples.Add(new Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>>(node,
+                            traversalLink, tupleBackwardLinks, forwardLinks));
+                    }
+                }
+                else
+                {
+                    // if do not use other link to get this node
+                    nextTuples.Add(new Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>>(node, null, backwardLinks, forwardLinks));
+                }
+            }
+            else if (node is NonFreeTable)
+            {
+                NonFreeTable nonFreeTable = node as NonFreeTable;
+
+                bool isOnlyTargetTableReferenced;
+                AccessedTableColumnVisitor columnVisitor = new AccessedTableColumnVisitor();
+                Dictionary<string, HashSet<string>> tableColumnReferences = columnVisitor.Invoke(nonFreeTable.TableReference,
+                    aggregationBlock.TableAliases, out isOnlyTargetTableReferenced);
+
+                // Add all aliases temporarily, including the node's alias and those of subqueries, to check predicates
+                HashSet<string> temporaryAliases = new HashSet<string>(this.ExistingNodesAndEdges);
+                temporaryAliases.Add(nonFreeTable.NodeAlias);
+                temporaryAliases.UnionWith(tableColumnReferences.Keys);
+
+                // Find connected predicateLinks
+                List<CompileLink> backwardLinks = new List<CompileLink>();
+                List<CompileLink> forwardLinks = new List<CompileLink>();
+                foreach (Tuple<PredicateLink, HashSet<string>> tuple in predicateLinksAccessedTableAliases)
+                {
+                    if (!this.ExistingPredicateLinks.Contains(tuple.Item1.LinkAlias))
+                    {
+                        if (temporaryAliases.IsSupersetOf(tuple.Item2))
+                        {
+                            forwardLinks.Add(tuple.Item1);
+                        }
+                    }
+                }
+
+                // Add a next possible tuple
+                nextTuples.Add(new Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>>(node, null, backwardLinks, forwardLinks));
+            }
+            else
+            {
+                throw new QueryCompilationException("Can't find " + node.ToString() + " in AggregationBlock");
+            }
+            return nextTuples;
+        }
+
+        public void AddTuple(Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>> tuple)
+        {
+            this.ExistingNodesAndEdges.Add(tuple.Item1.NodeAlias);
+
+            foreach (CompileLink link in tuple.Item4)
+            {
+                if (link is MatchEdge)
+                {
+                    this.ExistingNodesAndEdges.Add(link.LinkAlias);
+                }
+                else if (link is PredicateLink)
+                {
+                    this.ExistingPredicateLinks.Add(link.LinkAlias);
+                }
+                else
+                {
+                    throw new QueryCompilationException(link.LinkAlias + " can not be now supported");
+                }
+            }
             this.Order.Add(tuple);
             this.UpdateCost();
         }
     }
 
-    internal class TraversalOrderComparer : IComparer<TraversalOrder>
+    internal class ExecutionOrderComparer : IComparer<ExecutionOrder>
     {
-        public int Compare(TraversalOrder order1, TraversalOrder order2)
+        public int Compare(ExecutionOrder order1, ExecutionOrder order2)
         {
-            return order1.cost.CompareTo(order2.cost);
+            return order1.Cost.CompareTo(order2.Cost);
         }
     }
 }

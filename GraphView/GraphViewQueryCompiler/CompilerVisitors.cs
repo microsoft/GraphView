@@ -55,11 +55,16 @@ namespace GraphView
         }
     }
 
+    /// <summary>
+    /// The visitor that constructs AggregationBlocks according to side-effect 
+    /// TVFs, global filter TVFs, global map TVFs, modification TVFs and some 
+    /// special TVFs in a FROM clause. AggregationBlocks are used to optimize.
+    /// </summary>
     internal class GlobalDependencyVisitor : WSqlFragmentVisitor
     {
         public List<AggregationBlock> blocks;
 
-        public void Invoke(WFromClause fromClause, WMatchClause matchClause)
+        public void Invoke(WFromClause fromClause)
         {
             blocks = new List<AggregationBlock>()
             {
@@ -77,12 +82,11 @@ namespace GraphView
             }
             for (int index = blocks.Count - 1; index >= 1; --index)
             {
-                if (blocks[index].AggregationAlias == "dummy" && !blocks[index].TableList.Any())
+                if (blocks[index].AggregationAlias == "dummy" && !blocks[index].TableAliases.Any())
                 {
                     blocks.RemoveAt(index);
                 }
             }
-
         }
 
         public override void Visit(WNamedTableReference node)
@@ -132,6 +136,9 @@ namespace GraphView
         }
     }
 
+    /// <summary>
+    /// The visitor that checks if a table reference has Modification TVFs or not.
+    /// </summary>
     internal class ModificationVisitor : WSqlFragmentVisitor
     {
         public bool hasModification;

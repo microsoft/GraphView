@@ -2858,7 +2858,8 @@ namespace GraphView
                     intermediateStepSet.Add(stepObj);
                 }
 
-                if (isCyclicPath) {
+                if (isCyclicPath)
+                {
                     return result;
                 }
             }
@@ -3437,12 +3438,14 @@ namespace GraphView
 
         protected SelectBaseOperator(
             GraphViewExecutionOperator inputOp,
+            Dictionary<string, IAggregateFunction> sideEffectFunctions,
             int inputObjectIndex,
             int pathIndex,
             GremlinKeyword.Pop pop,
             string tableDefaultColumnName)
         {
             this.inputOp = inputOp;
+            this.sideEffectFunctions = sideEffectFunctions;
             this.inputObjectIndex = inputObjectIndex;
             this.pathIndex = pathIndex;
 
@@ -3547,13 +3550,14 @@ namespace GraphView
 
         public SelectOperator(
             GraphViewExecutionOperator inputOp,
+            Dictionary<string, IAggregateFunction> sideEffectFunctions,
             int inputObjectIndex,
             int pathIndex,
             GremlinKeyword.Pop pop,
             List<string> selectLabels,
             List<ScalarFunction> byFuncList,
             string tableDefaultColumnName)
-            : base(inputOp, inputObjectIndex, pathIndex, pop, tableDefaultColumnName)
+            : base(inputOp, sideEffectFunctions, inputObjectIndex, pathIndex, pop, tableDefaultColumnName)
         {
             this.selectLabels = selectLabels;
             this.byFuncList = byFuncList;
@@ -3635,6 +3639,7 @@ namespace GraphView
 
         public SelectOneOperator(
             GraphViewExecutionOperator inputOp,
+            Dictionary<string, IAggregateFunction> sideEffectFunctions,
             int inputObjectIndex,
             int pathIndex,
             GremlinKeyword.Pop pop,
@@ -3642,7 +3647,7 @@ namespace GraphView
             ScalarFunction byFunc,
             List<string> populateColumns,
             string tableDefaultColumnName)
-            : base(inputOp, inputObjectIndex, pathIndex, pop, tableDefaultColumnName)
+            : base(inputOp, sideEffectFunctions, inputObjectIndex, pathIndex, pop, tableDefaultColumnName)
         {
             this.selectLabel = selectLabel;
             this.byFunc = byFunc;

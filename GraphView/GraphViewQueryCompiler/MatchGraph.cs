@@ -58,16 +58,20 @@ namespace GraphView
     internal class MatchGraph
     {
         // Fully-connected components in the graph pattern 
-        public List<ConnectedComponent> ConnectedSubGraphs { get; set; }
-
-        public MatchGraph(List<ConnectedComponent> connectedSubGraphs)
+        public List<ConnectedComponent> ConnectedSubgraphs { get; set; }
+        public MatchGraph()
         {
-            this.ConnectedSubGraphs = connectedSubGraphs;
+            this.ConnectedSubgraphs = new List<ConnectedComponent>();
+        }
+
+        public MatchGraph(List<ConnectedComponent> connectedSubgraphs)
+        {
+            this.ConnectedSubgraphs = connectedSubgraphs;
         }
 
         public bool TryGetNode(string key, out MatchNode node)
         {
-            foreach (var subGraph in ConnectedSubGraphs)
+            foreach (var subGraph in ConnectedSubgraphs)
             {
                 if (subGraph.Nodes.TryGetValue(key, out node))
                 {
@@ -80,7 +84,7 @@ namespace GraphView
 
         public bool TryGetEdge(string key, out MatchEdge edge)
         {
-            foreach (var subGraph in ConnectedSubGraphs)
+            foreach (var subGraph in ConnectedSubgraphs)
             {
                 if (subGraph.Edges.TryGetValue(key, out edge))
                 {

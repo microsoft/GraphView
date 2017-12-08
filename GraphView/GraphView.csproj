@@ -235,7 +235,7 @@
     <Compile Include="GremlinTranslation\variables\table\vertex\GremlinEdgeToVertexVariable.cs" />
     <Compile Include="GremlinTranslation\variables\table\vertex\GremlinFreeVertexVariable.cs" />
     <Compile Include="GraphViewExecutionRuntime\TVFOperator.cs" />
-    <Compile Include="GraphViewQueryCompiler\BlockOptimizer.cs" />
+    <Compile Include="GraphViewQueryCompiler\ExecutionOrderOptimizer.cs" />
     <Compile Include="GraphViewExecutionRuntime\GraphViewExecutionEngine.cs" />
     <Compile Include="GraphViewUtils\GraphViewJsonCommand.cs" />
     <Compile Include="GraphViewUtils\ObjectExtensions.cs" />

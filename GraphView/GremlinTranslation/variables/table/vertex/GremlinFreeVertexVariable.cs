@@ -30,7 +30,6 @@ namespace GraphView
                 return;
             }
             GremlinFreeEdgeVariable bothEdge = new GremlinFreeEdgeVariable(WEdgeType.BothEdge);
-            currentContext.TableReferencesInFromClause.Add(bothEdge);
             currentContext.VariableList.Add(bothEdge);
             currentContext.AddLabelPredicateForEdge(bothEdge, edgeLabels);
 
@@ -53,7 +52,6 @@ namespace GraphView
             }
             GremlinFreeEdgeVariable inEdge = new GremlinFreeEdgeVariable(WEdgeType.InEdge);
             currentContext.VariableList.Add(inEdge);
-            currentContext.TableReferencesInFromClause.Add(inEdge);
             currentContext.AddLabelPredicateForEdge(inEdge, edgeLabels);
 
             GremlinFreeVertexVariable inVertex = new GremlinFreeVertexVariable();
@@ -72,7 +70,6 @@ namespace GraphView
             }
             GremlinFreeEdgeVariable inEdge = new GremlinFreeEdgeVariable(WEdgeType.InEdge);
             currentContext.VariableList.Add(inEdge);
-            currentContext.TableReferencesInFromClause.Add(inEdge);
             currentContext.AddLabelPredicateForEdge(inEdge, edgeLabels);
             currentContext.MatchPathList.Add(new GremlinMatchPath(null, inEdge, this, false));
             currentContext.SetPivotVariable(inEdge);
@@ -87,7 +84,6 @@ namespace GraphView
             }
             GremlinFreeEdgeVariable outEdge = new GremlinFreeEdgeVariable(WEdgeType.OutEdge);
             currentContext.VariableList.Add(outEdge);
-            currentContext.TableReferencesInFromClause.Add(outEdge);
             currentContext.AddLabelPredicateForEdge(outEdge, edgeLabels);
 
             GremlinFreeVertexVariable outVertex = new GremlinFreeVertexVariable();
@@ -105,7 +101,6 @@ namespace GraphView
             }
             GremlinFreeEdgeVariable outEdgeVar = new GremlinFreeEdgeVariable(WEdgeType.OutEdge);
             currentContext.VariableList.Add(outEdgeVar);
-            currentContext.TableReferencesInFromClause.Add(outEdgeVar);
             currentContext.AddLabelPredicateForEdge(outEdgeVar, edgeLabels);
             currentContext.MatchPathList.Add(new GremlinMatchPath(this, outEdgeVar, null, false));
             currentContext.SetPivotVariable(outEdgeVar);

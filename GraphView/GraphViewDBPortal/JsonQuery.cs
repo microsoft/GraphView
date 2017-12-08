@@ -52,7 +52,7 @@ namespace GraphView.GraphViewDBPortal
         {
             this.NodeProperties = rhs.NodeProperties;
             this.EdgeProperties = rhs.EdgeProperties;
-            this.RawWhereClause = rhs.RawWhereClause.Copy();
+            this.RawWhereClause = rhs.RawWhereClause;
             this.NodeAlias = rhs.NodeAlias;
             this.EdgeAlias = rhs.EdgeAlias;
             this.selectDictionary = rhs.selectDictionary;

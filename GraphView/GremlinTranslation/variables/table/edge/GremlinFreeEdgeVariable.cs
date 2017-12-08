@@ -17,16 +17,6 @@ namespace GraphView
             this.EdgeType = edgeType;
         }
 
-        public override WTableReference ToTableReference()
-        {
-            return new WNamedTableReference()
-            {
-                Alias = SqlUtil.GetIdentifier(GetVariableName()),
-                TableObjectString = "edge",
-                TableObjectName = SqlUtil.GetSchemaObjectName("edge"),
-            }; ;
-        }
-
         internal override void InV(GremlinToSqlContext currentContext)
         {
             if (this.IsTraversalToBound)

@@ -222,6 +222,7 @@ namespace GraphView
         internal WWithPathClause2 WithPathClause2 { get; set; }
         internal UniqueRowFilter UniqueRowFilter { get; set; }
         internal bool OutputPath { get; set; }
+
         public WSelectQueryBlock()
         {
             SelectElements = new List<WSelectElement>();
