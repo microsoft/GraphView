@@ -53,8 +53,8 @@ namespace GraphView
             return new WBooleanComparisonExpression()
             {
                 ComparisonType = type,
-                FirstExpr = firstExpr.Copy(),
-                SecondExpr = secondExpr.Copy()
+                FirstExpr = firstExpr,
+                SecondExpr = secondExpr
             };
         }
 
@@ -64,8 +64,8 @@ namespace GraphView
             return new WEdgeVertexBridgeExpression()
             {
                 ComparisonType = BooleanComparisonType.Equals,
-                FirstExpr = firstExpr.Copy(),
-                SecondExpr = secondExpr.Copy()
+                FirstExpr = firstExpr,
+                SecondExpr = secondExpr
             };
         }
 
