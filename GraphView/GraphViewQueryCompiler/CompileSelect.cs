@@ -733,110 +733,7 @@ namespace GraphView
                 context.AddField(edgeAlias, properties[i], ColumnGraphType.Value);
             }
         }
-
-        private static void AppendFilterOp(GraphViewCommand command,
-            QueryCompilationContext context,
-            List<GraphViewExecutionOperator> operatorChain,
-            Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>> tuple)
-        {
-            if (context.OuterContextOp != null)
-            {
-                context.CurrentExecutionOperator = context.OuterContextOp;
-            }
-
-            if (tuple.Item3.Any())
-            {
-                List<WColumnReferenceExpression> currentNodeList = new List<WColumnReferenceExpression>();
-                List<WBooleanExpression> booleanExpressions = new List<WBooleanExpression>();
-
-                if (tuple.Item2 is MatchEdge)
-                {
-                    MatchEdge edge = tuple.Item2 as MatchEdge;
-                    if (edge.EdgeType == WEdgeType.OutEdge)
-                    {
-                        currentNodeList.Add(SqlUtil.GetColumnReferenceExpr(edge.LinkAlias,
-                            edge.IsReversed ? GremlinKeyword.EdgeSinkV : GremlinKeyword.EdgeSourceV));
-                    }
-                    else if (edge.EdgeType == WEdgeType.InEdge)
-                    {
-                        currentNodeList.Add(SqlUtil.GetColumnReferenceExpr(edge.LinkAlias,
-                            edge.IsReversed ? GremlinKeyword.EdgeSourceV : GremlinKeyword.EdgeSinkV));
-                    }
-                    else
-                    {
-                        currentNodeList.Add(SqlUtil.GetColumnReferenceExpr(edge.LinkAlias, GremlinKeyword.EdgeOtherV));
-                    }
-                }
-                else if (tuple.Item2 is PredicateLink)
-                {
-                    PredicateLink edgeVertexBridge = tuple.Item2 as PredicateLink;
-                    Debug.Assert(edgeVertexBridge.BooleanExpression is WEdgeVertexBridgeExpression);
-                    currentNodeList.Add((edgeVertexBridge.BooleanExpression as WEdgeVertexBridgeExpression).FirstExpr as WColumnReferenceExpression);
-                    
-                }
-                else if (tuple.Item2 != null)
-                {
-                    throw new QueryCompilationException("Can't support " + tuple.Item2.ToString());
-                }
-
-                foreach (CompileLink link in tuple.Item3)
-                {
-                    if (link is MatchEdge)
-                    {
-                        MatchEdge edge = link as MatchEdge;
-                        if (edge.EdgeType == WEdgeType.OutEdge)
-                        {
-                            currentNodeList.Add(SqlUtil.GetColumnReferenceExpr(edge.LinkAlias,
-                                edge.IsReversed ? GremlinKeyword.EdgeSinkV : GremlinKeyword.EdgeSourceV));
-                        }
-                        else if (edge.EdgeType == WEdgeType.InEdge)
-                        {
-                            currentNodeList.Add(SqlUtil.GetColumnReferenceExpr(edge.LinkAlias,
-                                edge.IsReversed ? GremlinKeyword.EdgeSourceV : GremlinKeyword.EdgeSinkV));
-                        }
-                        else
-                        {
-                            currentNodeList.Add(SqlUtil.GetColumnReferenceExpr(edge.LinkAlias, GremlinKeyword.EdgeOtherV));
-                        }
-                    }
-                    else if (link is PredicateLink)
-                    {
-                        PredicateLink predicateLink = link as PredicateLink;
-                        if (predicateLink.BooleanExpression is WEdgeVertexBridgeExpression)
-                        {
-                            WColumnReferenceExpression edgeColumnReferenceExpression =
-                                (predicateLink.BooleanExpression as WEdgeVertexBridgeExpression).FirstExpr as WColumnReferenceExpression;
-                            currentNodeList.Add(edgeColumnReferenceExpression);
-                        }
-                        else
-                        {
-                            booleanExpressions.Add(predicateLink.BooleanExpression);
-                        }
-                    }
-                    else
-                    {
-                        throw new QueryCompilationException("Can't support " + tuple.Item2.ToString());
-                    }
-                }
-                if (currentNodeList.Any())
-                {
-                    for (int index = 1; index < currentNodeList.Count; ++index)
-                    {
-                        booleanExpressions.Add(SqlUtil.GetEqualBooleanComparisonExpr(currentNodeList[0], currentNodeList[index]));
-                    }
-                }
-
-                if (booleanExpressions.Any())
-                {
-                    operatorChain.Add(
-                        new FilterOperator(
-                            operatorChain.Any() ? operatorChain.Last() : context.OuterContextOp,
-                            SqlUtil.ConcatBooleanExprWithAnd(booleanExpressions).CompileToFunction(context, command)));
-                    context.CurrentExecutionOperator = operatorChain.Last();
-                }
-            }
-        }
-
+        
         /// <summary>
         /// Check predicates and append an filter operator
         /// </summary>
@@ -850,9 +747,9 @@ namespace GraphView
             Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>> tuple)
         {
             List<WBooleanExpression> booleanExpressions = new List<WBooleanExpression>();
-            List<WColumnReferenceExpression> backwardEdgesInfoList = new List<WColumnReferenceExpression>();
+            List<WColumnReferenceExpression> forwardEdgesInfoList = new List<WColumnReferenceExpression>();
 
-            // We need to make sure all backwardLinks are consistent
+            // We need to make sure all forwardLinks are consistent
             foreach (CompileLink link in tuple.Item3)
             {
                 if (link is MatchEdge)
@@ -860,17 +757,17 @@ namespace GraphView
                     MatchEdge edge = link as MatchEdge;
                     if (edge.EdgeType == WEdgeType.OutEdge)
                     {
-                        backwardEdgesInfoList.Add(SqlUtil.GetColumnReferenceExpr(edge.LinkAlias,
+                        forwardEdgesInfoList.Add(SqlUtil.GetColumnReferenceExpr(edge.LinkAlias,
                             edge.IsReversed ? GremlinKeyword.EdgeSinkV : GremlinKeyword.EdgeSourceV));
                     }
                     else if (edge.EdgeType == WEdgeType.InEdge)
                     {
-                        backwardEdgesInfoList.Add(SqlUtil.GetColumnReferenceExpr(edge.LinkAlias,
+                        forwardEdgesInfoList.Add(SqlUtil.GetColumnReferenceExpr(edge.LinkAlias,
                             edge.IsReversed ? GremlinKeyword.EdgeSourceV : GremlinKeyword.EdgeSinkV));
                     }
                     else
                     {
-                        backwardEdgesInfoList.Add(SqlUtil.GetColumnReferenceExpr(edge.LinkAlias, GremlinKeyword.EdgeOtherV));
+                        forwardEdgesInfoList.Add(SqlUtil.GetColumnReferenceExpr(edge.LinkAlias, GremlinKeyword.EdgeOtherV));
                     }
                 }
                 else if (link is PredicateLink)
@@ -880,7 +777,7 @@ namespace GraphView
                     {
                         WColumnReferenceExpression edgeColumnReferenceExpression =
                             (predicateLink.BooleanExpression as WEdgeVertexBridgeExpression).FirstExpr as WColumnReferenceExpression;
-                        backwardEdgesInfoList.Add(edgeColumnReferenceExpression);
+                        forwardEdgesInfoList.Add(edgeColumnReferenceExpression);
                     }
                 }
             }
@@ -895,7 +792,7 @@ namespace GraphView
                 }
             }
 
-            if (backwardEdgesInfoList.Any())
+            if (forwardEdgesInfoList.Any())
             {
                 WColumnReferenceExpression traversalEdgeInfo;
                 // if item2 is an edge-vertex bridge predicate
@@ -930,9 +827,9 @@ namespace GraphView
                     throw new QueryCompilationException("Can't support " + tuple.Item2.ToString());
                 }
 
-                foreach (WColumnReferenceExpression backwardEdgeInfo in backwardEdgesInfoList)
+                foreach (WColumnReferenceExpression forwardEdgeInfo in forwardEdgesInfoList)
                 {
-                    booleanExpressions.Add(SqlUtil.GetEqualBooleanComparisonExpr(traversalEdgeInfo, backwardEdgeInfo));
+                    booleanExpressions.Add(SqlUtil.GetEqualBooleanComparisonExpr(traversalEdgeInfo, forwardEdgeInfo));
                 }
             }
 

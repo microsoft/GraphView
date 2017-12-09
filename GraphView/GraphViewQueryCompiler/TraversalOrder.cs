@@ -254,8 +254,8 @@ namespace GraphView
     ///     item1 is an MatchNode or NonFreeTable, called "currentNode", which is going to execute
     ///     item2 is an CompileLink, called "traversalLink", which is an link from previous state to current state.
     ///         It can be a MatchEdge, or a PredicateLink of WEdgeVertexBridgeExpression
-    ///     item3 is a list of CompileLinks, called "backwardLinks", which contains all links between currentNode and previous state
-    ///     item4 is a list of CompileLinks, called "forwardLinks", which contains all links that need to be execute
+    ///     item3 is a list of CompileLinks, called "forwardLinks", which contains all links between currentNode and previous state
+    ///     item4 is a list of CompileLinks, called "backwardLinks", which contains all links that need to be execute
     ///         The element can be a MatchEdge, or a PredicateLink
     /// ExistingNodesAndEdges and ExistingPredicateLinks are used to record previous state and avoid redundant work
     /// Cost is to evaluate
@@ -315,8 +315,8 @@ namespace GraphView
             NonFreeTable aggregateionTable = aggregationBlock.NonFreeTables[aggregationBlock.AggregationAlias];
 
             // Find connected predicateLinks
-            List<CompileLink> backwardLinks = new List<CompileLink>();
             List<CompileLink> forwardLinks = new List<CompileLink>();
+            List<CompileLink> backwardLinks = new List<CompileLink>();
 
             if (aggregateionTable.NodeAlias == "dummy")
             {
@@ -326,7 +326,7 @@ namespace GraphView
                     {
                         if (this.ExistingNodesAndEdges.IsSupersetOf(tuple.Item2))
                         {
-                            forwardLinks.Add(tuple.Item1);
+                            backwardLinks.Add(tuple.Item1);
                         }
                     }
                 }
@@ -342,18 +342,18 @@ namespace GraphView
                     {
                         if (this.ExistingNodesAndEdges.IsSupersetOf(tuple.Item2))
                         {
-                            backwardLinks.Add(tuple.Item1);
+                            forwardLinks.Add(tuple.Item1);
                         }
                         else if (temporaryAliases.IsSupersetOf(tuple.Item2))
                         {
-                            forwardLinks.Add(tuple.Item1);
+                            backwardLinks.Add(tuple.Item1);
                         }
                     }
                 }
             }
 
             // Add a next possible tuple
-            this.AddTuple(new Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>>(aggregateionTable, null, backwardLinks, forwardLinks));
+            this.AddTuple(new Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>>(aggregateionTable, null, forwardLinks, backwardLinks));
         }
 
         /// <summary>
@@ -390,7 +390,7 @@ namespace GraphView
         }
 
         /// <summary>
-        /// Given a node, we need to find it possible traversalLink, backwardLinks and forwardLinks
+        /// Given a node, we need to find it possible traversalLink, forwardLinks and backwardLinks
         /// </summary>
         /// <param name="predicateLinksAccessedTableAliases"></param>
         /// <param name="node"></param>
@@ -408,19 +408,19 @@ namespace GraphView
                 // Add the alias of node and aliases of edges temporarily to check predicates
                 HashSet<string> temporaryAliases = new HashSet<string>(this.ExistingNodesAndEdges);
                 temporaryAliases.Add(matchNode.NodeAlias);
-                List<CompileLink> backwardLinks = new List<CompileLink>();
                 List<CompileLink> forwardLinks = new List<CompileLink>();
+                List<CompileLink> backwardLinks = new List<CompileLink>();
 
                 foreach (MatchEdge edge in matchNode.Neighbors)
                 {
                     if (!this.ExistingNodesAndEdges.Contains(edge.LinkAlias))
                     {
                         temporaryAliases.Add(edge.LinkAlias);
-                        forwardLinks.Add(edge);
+                        backwardLinks.Add(edge);
                     }
                     else
                     {
-                        backwardLinks.Add(edge);
+                        forwardLinks.Add(edge);
                     }
                 }
                 foreach (MatchEdge edge in matchNode.ReverseNeighbors)
@@ -428,11 +428,11 @@ namespace GraphView
                     if (!this.ExistingNodesAndEdges.Contains(edge.LinkAlias))
                     {
                         temporaryAliases.Add(edge.LinkAlias);
-                        forwardLinks.Add(edge);
+                        backwardLinks.Add(edge);
                     }
                     else
                     {
-                        backwardLinks.Add(edge);
+                        forwardLinks.Add(edge);
                     }
                 }
                 foreach (MatchEdge edge in matchNode.DanglingEdges)
@@ -440,11 +440,11 @@ namespace GraphView
                     if (!this.ExistingNodesAndEdges.Contains(edge.LinkAlias))
                     {
                         temporaryAliases.Add(edge.LinkAlias);
-                        forwardLinks.Add(edge);
+                        backwardLinks.Add(edge);
                     }
                     else
                     {
-                        backwardLinks.Add(edge);
+                        forwardLinks.Add(edge);
                     }
                 }
                 
@@ -457,31 +457,31 @@ namespace GraphView
                         {
                             if (tuple.Item1.BooleanExpression is WEdgeVertexBridgeExpression)
                             {
-                                backwardLinks.Add(tuple.Item1);
+                                forwardLinks.Add(tuple.Item1);
                             }
                             else
                             {
-                                forwardLinks.Add(tuple.Item1);
+                                backwardLinks.Add(tuple.Item1);
                             }
                         }
                     }
                 }
 
                 // if use other link to get this node
-                if (backwardLinks.Any())
+                if (forwardLinks.Any())
                 {
-                    foreach (CompileLink traversalLink in backwardLinks)
+                    foreach (CompileLink traversalLink in forwardLinks)
                     {
-                        List<CompileLink> tupleBackwardLinks = new List<CompileLink>(backwardLinks);
-                        tupleBackwardLinks.Remove(traversalLink);
+                        List<CompileLink> tupleForwardLinks = new List<CompileLink>(forwardLinks);
+                        tupleForwardLinks.Remove(traversalLink);
                         nextTuples.Add(new Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>>(node,
-                            traversalLink, tupleBackwardLinks, forwardLinks));
+                            traversalLink, tupleForwardLinks, backwardLinks));
                     }
                 }
                 else
                 {
                     // if do not use other link to get this node
-                    nextTuples.Add(new Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>>(node, null, backwardLinks, forwardLinks));
+                    nextTuples.Add(new Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>>(node, null, forwardLinks, backwardLinks));
                 }
             }
             else if (node is NonFreeTable)
@@ -493,21 +493,22 @@ namespace GraphView
                 temporaryAliases.Add(nonFreeTable.NodeAlias);
 
                 // Find connected predicateLinks
-                List<CompileLink> backwardLinks = new List<CompileLink>();
                 List<CompileLink> forwardLinks = new List<CompileLink>();
+                List<CompileLink> backwardLinks = new List<CompileLink>();
+
                 foreach (Tuple<PredicateLink, HashSet<string>> tuple in predicateLinksAccessedTableAliases)
                 {
                     if (!this.ExistingPredicateLinks.Contains(tuple.Item1.LinkAlias))
                     {
                         if (temporaryAliases.IsSupersetOf(tuple.Item2))
                         {
-                            forwardLinks.Add(tuple.Item1);
+                            backwardLinks.Add(tuple.Item1);
                         }
                     }
                 }
 
                 // Add a next possible tuple
-                nextTuples.Add(new Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>>(node, null, backwardLinks, forwardLinks));
+                nextTuples.Add(new Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>>(node, null, forwardLinks, backwardLinks));
             }
             else
             {
