@@ -6,13 +6,19 @@ using GraphView.GraphViewDBPortal;
 
 namespace GraphView
 {
+    /// <summary>
+    /// This is the optimizer to find the best execution order.
+    /// We use beam search algorithm. 
+    /// Beam search is an optimization of best-first search that reduces its memory requirements. 
+    /// In beam search, only a predetermined number of best partial solutions are kept as candidates.
+    /// </summary>
     internal class ExecutionOrderOptimizer
     {
         private List<AggregationBlock> blocks;
         private List<Tuple<PredicateLink, HashSet<string>>> predicateLinksAccessedTableAliases;
 
-        // Upper Bound of the State number
-        internal const int MaxStates = 5;
+        // Upper Bound of the number of orders
+        internal const int MaxNumberOfOrders = 5;
 
         public ExecutionOrderOptimizer(List<AggregationBlock> aggregationBlocks, 
             List<Tuple<WBooleanExpression, HashSet<string>>> predicatesAccessedTableAliases)
@@ -25,11 +31,15 @@ namespace GraphView
             }
         }
 
+        /// <summary>
+        /// Every time, we will generate multiple next orders from queue[index]. If some of them are finished, we put these into queue[1 - index].
+        /// If the size of candidate orders equals or exceeds the upper bound, we will leave a predetermined number of best partial solutions.
+        /// </summary>
+        /// <param name="tableReferences"></param>
+        /// <returns></returns>
         internal ExecutionOrder GenerateOptimalExecutionOrder(HashSet<string> tableReferences)
         {
-            // Every time, we will generate multiple next states from queue[index]. If some of them are finished, we put these into queue[1 - index],
-            // and we put another into candidateChains. If the size of candidateChains equals or exceeds the upper bound, we will terminate this 
-            // algorithm and return the best one in candidateChains.
+            // Two queues, queue[index] keeps forthcoming orders and queue[1 - index] keeps results from queue[index]
             int queueIndex = 0, blockIndex = 0;
             int blocksCount = this.blocks.Count;
             List<List<ExecutionOrder>> queue = new List<List<ExecutionOrder>>
@@ -46,8 +56,7 @@ namespace GraphView
                 // Firstly, add aggregationTable
                 foreach (ExecutionOrder currentOrder in queue[queueIndex])
                 {
-                    currentOrder.AddAggregationTable(this.blocks[blockIndex],
-                        this.predicateLinksAccessedTableAliases);
+                    currentOrder.AddAggregationTable(this.blocks[blockIndex], this.predicateLinksAccessedTableAliases);
                 }
 
                 int numberOfIterations = this.blocks[blockIndex].TableAliases.Count - 1;
@@ -58,10 +67,10 @@ namespace GraphView
                     {
                         List<ExecutionOrder> nextOrders = currentOrder.GenerateNextOrders(this.blocks[blockIndex],
                             this.predicateLinksAccessedTableAliases);
-                        if (nextOrders.Count > MaxStates)
+                        if (nextOrders.Count > MaxNumberOfOrders)
                         {
                             nextOrders.Sort(new ExecutionOrderComparer());
-                            queue[1 - queueIndex].AddRange(nextOrders.GetRange(0, MaxStates));
+                            queue[1 - queueIndex].AddRange(nextOrders.GetRange(0, MaxNumberOfOrders));
                         }
                         else
                         {
@@ -69,14 +78,13 @@ namespace GraphView
                         }
                     }
                     queue[queueIndex].Clear();
-                    if (queue[1 - queueIndex].Count > MaxStates)
+                    if (queue[1 - queueIndex].Count > MaxNumberOfOrders)
                     {
                         queue[1 - queueIndex].Sort(new ExecutionOrderComparer());
-                        queue[1 - queueIndex] = queue[1 - queueIndex].GetRange(0, MaxStates);
+                        queue[1 - queueIndex] = queue[1 - queueIndex].GetRange(0, MaxNumberOfOrders);
                     }
                     queueIndex = 1 - queueIndex;
                 }
-
                 ++blockIndex;
             }
 

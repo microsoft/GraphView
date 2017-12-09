@@ -174,7 +174,7 @@ namespace GraphView
         }
 
         // Greate the MatchGraph of this AggregationBlock. If some free nodes and free edges are connected, they are in the same ConnectedComponent
-        internal HashSet<string> CreateGraph(WMatchClause matchClause)
+        internal HashSet<string> CreateMatchGraph(WMatchClause matchClause)
         {
             HashSet<string> freeNodesAndEdges = new HashSet<string>();
             Dictionary<string, MatchPath> pathCollection = new Dictionary<string, MatchPath>(StringComparer.OrdinalIgnoreCase);
@@ -221,56 +221,73 @@ namespace GraphView
                         MatchNode srcNode = nodeCollection[currentNodeExposedName];
 
                         // Get the edge of a path, and set required attributes
+                        // Because the sourceNode is relative, we need to construct new edges or paths
+                        // But they need to share the same predicates and proerties
                         MatchEdge edgeFromSrcNode;
-                        if (edgeCollection.ContainsKey(edgeAlias))
+                        if (currentEdgeColumnRef.MinLength == 1 && currentEdgeColumnRef.MaxLength == 1)
                         {
-                            edgeFromSrcNode = edgeCollection[edgeAlias];
-                        }
-                        else if (pathCollection.ContainsKey(edgeAlias))
-                        {
-                            edgeFromSrcNode = pathCollection[edgeAlias];
-                        }
-                        else if (currentEdgeColumnRef.MinLength == 1 && currentEdgeColumnRef.MaxLength == 1)
-                        {
-                            edgeFromSrcNode = edgeCollection[edgeAlias] = new MatchEdge
+                            if (!edgeCollection.ContainsKey(edgeAlias))
+                            {
+                                edgeCollection[edgeAlias] = new MatchEdge()
+                                {
+                                    LinkAlias = edgeAlias,
+                                    SourceNode = srcNode,
+                                    EdgeType = currentEdgeColumnRef.EdgeType,
+                                    Predicates = new List<WBooleanExpression>(),
+                                    BindNodeTableObjName = new WSchemaObjectName(),
+                                    IsReversed = false,
+                                    Properties = new List<string>(GraphViewReservedProperties.ReservedEdgeProperties)
+                                };
+                                unionFind.Add(edgeAlias);
+                            }
+
+                            edgeFromSrcNode = new MatchEdge
                             {
                                 LinkAlias = edgeAlias,
                                 SourceNode = srcNode,
-                                EdgeType = currentEdgeColumnRef.EdgeType,
-                                Predicates = new List<WBooleanExpression>(),
-                                BindNodeTableObjName =
-                                    new WSchemaObjectName(
-                                    ),
+                                EdgeType = edgeCollection[edgeAlias].EdgeType,
+                                Predicates = edgeCollection[edgeAlias].Predicates,
+                                BindNodeTableObjName = edgeCollection[edgeAlias].BindNodeTableObjName,
                                 IsReversed = false,
-                                Properties = new List<string>(GraphViewReservedProperties.ReservedEdgeProperties)
+                                Properties = edgeCollection[edgeAlias].Properties
                             };
                         }
                         else
                         {
-                            edgeFromSrcNode = pathCollection[edgeAlias] = new MatchPath
+                            if (!pathCollection.ContainsKey(edgeAlias))
+                            {
+                                pathCollection[edgeAlias] = new MatchPath
+                                {
+                                    SourceNode = srcNode,
+                                    LinkAlias = edgeAlias,
+                                    Predicates = new List<WBooleanExpression>(),
+                                    BindNodeTableObjName = new WSchemaObjectName(),
+                                    MinLength = currentEdgeColumnRef.MinLength,
+                                    MaxLength = currentEdgeColumnRef.MaxLength,
+                                    ReferencePathInfo = false,
+                                    AttributeValueDict = currentEdgeColumnRef.AttributeValueDict,
+                                    IsReversed = false,
+                                    EdgeType = currentEdgeColumnRef.EdgeType,
+                                    Properties = new List<string>(GraphViewReservedProperties.ReservedEdgeProperties)
+                                };
+                            }
+
+                            edgeFromSrcNode = new MatchPath
                             {
                                 SourceNode = srcNode,
                                 LinkAlias = edgeAlias,
-                                Predicates = edgeCollection[edgeAlias].Predicates,
-                                BindNodeTableObjName =
-                                    new WSchemaObjectName(
-                                    ),
-                                MinLength = currentEdgeColumnRef.MinLength,
-                                MaxLength = currentEdgeColumnRef.MaxLength,
+                                Predicates = pathCollection[edgeAlias].Predicates,
+                                BindNodeTableObjName = pathCollection[edgeAlias].BindNodeTableObjName,
+                                MinLength = pathCollection[edgeAlias].MinLength,
+                                MaxLength = pathCollection[edgeAlias].MaxLength,
                                 ReferencePathInfo = false,
-                                AttributeValueDict = currentEdgeColumnRef.AttributeValueDict,
+                                AttributeValueDict = pathCollection[edgeAlias].AttributeValueDict,
                                 IsReversed = false,
-                                EdgeType = currentEdgeColumnRef.EdgeType,
-                                Properties = new List<string>(GraphViewReservedProperties.ReservedEdgeProperties)
+                                EdgeType = pathCollection[edgeAlias].EdgeType,
+                                Properties = pathCollection[edgeAlias].Properties
                             };
-                            unionFind.Add(edgeAlias);
                         }
 
-                        
-                        if (!unionFind.Contains(edgeAlias))
-                        {
-                            unionFind.Add(edgeAlias);
-                        }
                         if (path.IsReversed)
                         {
                             unionFind.Union(edgeAlias, currentNodeExposedName);
@@ -283,6 +300,7 @@ namespace GraphView
                         if (edgeToSrcNode != null)
                         {
                             edgeToSrcNode.SinkNode = srcNode;
+
                             if (!(edgeToSrcNode is MatchPath))
                             {
                                 // Construct reverse edge
@@ -303,6 +321,7 @@ namespace GraphView
 
                         edgeToSrcNode = edgeFromSrcNode;
 
+                        // Add this edge to node's neightbors
                         if (nextNodeExposedName != null)
                         {
                             if (path.IsReversed)
@@ -316,7 +335,7 @@ namespace GraphView
 
                             srcNode.Neighbors.Add(edgeFromSrcNode);
                         }
-                        // Dangling edge without SinkNode
+                        // Add this edge to node's dangling edges
                         else
                         {
                             srcNode.DanglingEdges.Add(edgeFromSrcNode);
@@ -331,11 +350,11 @@ namespace GraphView
                     // Get destination node of a path
                     string tailExposedName = path.Tail.BaseIdentifier.Value;
 
-                    
                     if (!nodeCollection.ContainsKey(tailExposedName))
                     {
                         continue;
                     }
+
                     MatchNode destNode = nodeCollection[tailExposedName];
 
                     if (edgeToSrcNode != null)
@@ -382,18 +401,23 @@ namespace GraphView
 
                 subGraph.IsTailNode[node.Value] = false;
 
+                foreach (MatchEdge edge in node.Value.Neighbors)
+                {
+                    subGraph.Edges[edge.LinkAlias] = edge;
+                    freeNodesAndEdges.Add(edge.LinkAlias);
+                }
+
+                foreach (MatchEdge edge in node.Value.DanglingEdges)
+                {
+                    subGraph.Edges[edge.LinkAlias] = edge;
+                    edge.IsDanglingEdge = true;
+                    freeNodesAndEdges.Add(edge.LinkAlias);
+                }
+
                 if (node.Value.Neighbors.Count + node.Value.ReverseNeighbors.Count + node.Value.DanglingEdges.Count > 0)
                 {
                     node.Value.Properties.Add(GremlinKeyword.Star);
                 }
-            }
-
-            foreach (var edge in edgeCollection)
-            {
-                freeNodesAndEdges.Add(edge.Key);
-                string root = unionFind.Find(edge.Key);
-                ConnectedComponent subGraph = subgraphCollection[root];
-                subGraph.Edges[edge.Key] = edge.Value;
             }
             
             this.GraphPattern = new MatchGraph(subgraphCollection.Values.ToList());

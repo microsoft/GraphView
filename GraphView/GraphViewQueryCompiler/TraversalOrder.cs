@@ -10,12 +10,6 @@ namespace GraphView
     internal abstract class CompileNode
     {
         public string NodeAlias { get; set; }
-        private int hashCode;
-
-        public override int GetHashCode()
-        {
-            return hashCode == Int32.MaxValue ? hashCode = this.NodeAlias.GetHashCode() : hashCode;
-        }
 
         // TODO: get cardinality from database and experience
         public virtual double GetCardinality()
@@ -33,12 +27,6 @@ namespace GraphView
     internal abstract class CompileLink
     {
         public string LinkAlias { get; set; }
-        private int hashCode;
-
-        public override int GetHashCode()
-        {
-            return hashCode == Int32.MaxValue ? hashCode = this.LinkAlias.GetHashCode() : hashCode;
-        }
 
         // TODO: get selectivity from database
         public virtual double GetSelectivity()
@@ -260,14 +248,29 @@ namespace GraphView
         }
     }
 
+    /// <summary>
+    /// This is the data structure to maintain the execution order.
+    /// Order records all information:
+    ///     item1 is an MatchNode or NonFreeTable, called "currentNode", which is going to execute
+    ///     item2 is an CompileLink, called "traversalLink", which is an link from previous state to current state.
+    ///         It can be a MatchEdge, or a PredicateLink of WEdgeVertexBridgeExpression
+    ///     item3 is a list of CompileLinks, called "backwardLinks", which contains all links between currentNode and previous state
+    ///     item4 is a list of CompileLinks, called "forwardLinks", which contains all links that need to be execute
+    ///         The element can be a MatchEdge, or a PredicateLink
+    /// ExistingNodesAndEdges and ExistingPredicateLinks are used to record previous state and avoid redundant work
+    /// Cost is to evaluate
+    /// </summary>
     internal class ExecutionOrder
     {
         public List<Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>>> Order { get; set; }
         public HashSet<string> ExistingNodesAndEdges { get; set; }
         public HashSet<string> ExistingPredicateLinks { get; set; }
         public double Cost { get; set; }
+        
 
-        private static double alpha = 1.2, beta = 10.0, gama = 1.0;
+        // If alpha > 1.0, then it is partial to sequencial order
+        // If alpha < 1.0, then it is partial to reverse order
+        private static double alpha = 10.0, beta = 10.0, gama = 1.0;
 
         public ExecutionOrder(HashSet<string> tableReferences)
         {
@@ -301,6 +304,11 @@ namespace GraphView
             }
         }
 
+        /// <summary>
+        /// The AggregationTable maybe a side-effect table or other special table, so it need to handle firstly.
+        /// </summary>
+        /// <param name="aggregationBlock"></param>
+        /// <param name="predicateLinksAccessedTableAliases"></param>
         public void AddAggregationTable(AggregationBlock aggregationBlock,
             List<Tuple<PredicateLink, HashSet<string>>> predicateLinksAccessedTableAliases)
         {
@@ -325,15 +333,9 @@ namespace GraphView
             }
             else
             {
-                bool isOnlyTargetTableReferenced;
-                AccessedTableColumnVisitor columnVisitor = new AccessedTableColumnVisitor();
-                Dictionary<string, HashSet<string>> tableColumnReferences = columnVisitor.Invoke(aggregateionTable.TableReference,
-                    aggregationBlock.TableAliases, out isOnlyTargetTableReferenced);
-
-                // Add all aliases temporarily, including the node's alias and those of subqueries, to check predicates
+                // Add the node's alias temporarily
                 HashSet<string> temporaryAliases = new HashSet<string>(this.ExistingNodesAndEdges);
                 temporaryAliases.Add(aggregateionTable.NodeAlias);
-                temporaryAliases.UnionWith(tableColumnReferences.Keys);
                 foreach (Tuple<PredicateLink, HashSet<string>> tuple in predicateLinksAccessedTableAliases)
                 {
                     if (!this.ExistingPredicateLinks.Contains(tuple.Item1.LinkAlias))
@@ -354,9 +356,16 @@ namespace GraphView
             this.AddTuple(new Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>>(aggregateionTable, null, backwardLinks, forwardLinks));
         }
 
+        /// <summary>
+        /// If some node has no dependency, we will take it into consideration
+        /// </summary>
+        /// <param name="aggregationBlock"></param>
+        /// <param name="predicateLinksAccessedTableAliases"></param>
+        /// <returns></returns>
         public List<ExecutionOrder> GenerateNextOrders(AggregationBlock aggregationBlock, 
             List<Tuple<PredicateLink, HashSet<string>>> predicateLinksAccessedTableAliases)
         {
+            // Find all possible next tuples
             List<Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>>> nextTuples =
                 new List<Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>>>();
             foreach (KeyValuePair<string, HashSet<string>> pair in aggregationBlock.TableInputDependency)
@@ -365,10 +374,11 @@ namespace GraphView
                 {
                     CompileNode node;
                     aggregationBlock.TryGetNode(pair.Key, out node);
-                    nextTuples.AddRange(this.GenerateTuples(aggregationBlock, predicateLinksAccessedTableAliases, node));
+                    nextTuples.AddRange(this.GenerateTuples(predicateLinksAccessedTableAliases, node));
                 }
             }
 
+            // Generate all possible next orders
             List<ExecutionOrder> nextOrders = new List<ExecutionOrder>();
             foreach (Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>> tuple in nextTuples)
             {
@@ -379,8 +389,13 @@ namespace GraphView
             return nextOrders;
         }
 
+        /// <summary>
+        /// Given a node, we need to find it possible traversalLink, backwardLinks and forwardLinks
+        /// </summary>
+        /// <param name="predicateLinksAccessedTableAliases"></param>
+        /// <param name="node"></param>
+        /// <returns></returns>
         private List<Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>>> GenerateTuples(
-            AggregationBlock aggregationBlock,
             List<Tuple<PredicateLink, HashSet<string>>> predicateLinksAccessedTableAliases,
             CompileNode node)
         {
@@ -473,15 +488,9 @@ namespace GraphView
             {
                 NonFreeTable nonFreeTable = node as NonFreeTable;
 
-                bool isOnlyTargetTableReferenced;
-                AccessedTableColumnVisitor columnVisitor = new AccessedTableColumnVisitor();
-                Dictionary<string, HashSet<string>> tableColumnReferences = columnVisitor.Invoke(nonFreeTable.TableReference,
-                    aggregationBlock.TableAliases, out isOnlyTargetTableReferenced);
-
-                // Add all aliases temporarily, including the node's alias and those of subqueries, to check predicates
+                // Add the node's alias temporarily
                 HashSet<string> temporaryAliases = new HashSet<string>(this.ExistingNodesAndEdges);
                 temporaryAliases.Add(nonFreeTable.NodeAlias);
-                temporaryAliases.UnionWith(tableColumnReferences.Keys);
 
                 // Find connected predicateLinks
                 List<CompileLink> backwardLinks = new List<CompileLink>();
@@ -507,9 +516,18 @@ namespace GraphView
             return nextTuples;
         }
 
+        /// <summary>
+        /// Add an tuple to a new order, and update information
+        /// </summary>
+        /// <param name="tuple"></param>
         public void AddTuple(Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>> tuple)
         {
             this.ExistingNodesAndEdges.Add(tuple.Item1.NodeAlias);
+
+            if (tuple.Item2 is PredicateLink)
+            {
+                this.ExistingPredicateLinks.Add(tuple.Item2.LinkAlias);
+            }
 
             foreach (CompileLink link in tuple.Item4)
             {

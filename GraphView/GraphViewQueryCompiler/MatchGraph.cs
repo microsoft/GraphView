@@ -165,5 +165,16 @@ namespace GraphView
 
             return attachFlag;
         }
+
+        public HashSet<string> GetNodesAndEdgesAliases()
+        {
+            HashSet<string> aliases = new HashSet<string>();
+            foreach (ConnectedComponent connectedComponent in ConnectedSubgraphs)
+            {
+                aliases.UnionWith(connectedComponent.Nodes.Keys);
+                aliases.UnionWith(connectedComponent.Edges.Keys);
+            }
+            return aliases;
+        }
     }
 }

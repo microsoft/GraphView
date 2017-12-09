@@ -116,7 +116,7 @@ namespace GraphView
 
         public Dictionary<string, AggregateState> SideEffectStates { get; private set; }
         public Dictionary<string, IAggregateFunction> SideEffectFunctions { get; private set; }
-        public Dictionary<int, List<string>> OptimalSolutions { get; set; }
+        public Dictionary<int, ExecutionOrder> OptimalExecutionOrders { get; set; }
 
         public List<Container> Containers { get; set; }
         public int index;
@@ -130,7 +130,7 @@ namespace GraphView
             SideEffectStates = new Dictionary<string, AggregateState>();
             SideEffectFunctions = new Dictionary<string, IAggregateFunction>();
             CarryOn = false;
-            OptimalSolutions = new Dictionary<int, List<string>>();
+            OptimalExecutionOrders = new Dictionary<int, ExecutionOrder>();
             Containers = new List<Container>();
         }
 
@@ -147,20 +147,20 @@ namespace GraphView
                 parentContext.RawRecordLayout, new WColumnReferenceExpressionComparer());
             SideEffectStates = parentContext.SideEffectStates;
             SideEffectFunctions = parentContext.SideEffectFunctions;
-            OptimalSolutions = parentContext.OptimalSolutions;
+            OptimalExecutionOrders = parentContext.OptimalExecutionOrders;
             Containers = parentContext.Containers;
         }
 
         public QueryCompilationContext(Dictionary<string, Tuple<TemporaryTableHeader, GraphViewExecutionOperator>> priorTemporaryTables,
             Dictionary<string, IAggregateFunction> priorSideEffectFunctions, Dictionary<string, AggregateState> priorSideEffectStates,
-            Dictionary<int, List<string>> priorOptimalSolutions, List<Container> priorContainers)
+            Dictionary<int, ExecutionOrder> priorOptimalExecutionOrders, List<Container> priorContainers)
         {
             TemporaryTableCollection = priorTemporaryTables;
             RawRecordLayout = new Dictionary<WColumnReferenceExpression, int>(new WColumnReferenceExpressionComparer());
             TableReferences = new HashSet<string>();
             SideEffectFunctions = priorSideEffectFunctions;
             SideEffectStates = priorSideEffectStates;
-            OptimalSolutions = priorOptimalSolutions;
+            OptimalExecutionOrders = priorOptimalExecutionOrders;
             Containers = priorContainers;
         }
 
@@ -181,7 +181,7 @@ namespace GraphView
                 InBatchMode = this.InBatchMode,
                 SideEffectStates = this.SideEffectStates,
                 SideEffectFunctions = this.SideEffectFunctions,
-                OptimalSolutions = this.OptimalSolutions,
+                OptimalExecutionOrders = this.OptimalExecutionOrders,
                 Containers = new List<Container>(this.Containers)
             };
         }
