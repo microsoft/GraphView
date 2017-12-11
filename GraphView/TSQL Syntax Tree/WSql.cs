@@ -106,6 +106,11 @@ namespace GraphView
         {
             return null;
         }
+
+        internal virtual List<ExecutionOrder> GetLocalExecutionOrders(ExecutionOrder parentExecutionOrder)
+        {
+            return new List<ExecutionOrder>();
+        }
     }
 
     public partial class WSqlScript : WSqlFragment

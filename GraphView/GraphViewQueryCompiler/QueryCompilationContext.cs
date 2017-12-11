@@ -116,10 +116,9 @@ namespace GraphView
 
         public Dictionary<string, AggregateState> SideEffectStates { get; private set; }
         public Dictionary<string, IAggregateFunction> SideEffectFunctions { get; private set; }
-        public Dictionary<int, ExecutionOrder> OptimalExecutionOrders { get; set; }
+        public List<ExecutionOrder> LocalExecutionOrders { get; set; }
 
         public List<Container> Containers { get; set; }
-        public int index;
 
 
         public QueryCompilationContext()
@@ -130,7 +129,7 @@ namespace GraphView
             SideEffectStates = new Dictionary<string, AggregateState>();
             SideEffectFunctions = new Dictionary<string, IAggregateFunction>();
             CarryOn = false;
-            OptimalExecutionOrders = new Dictionary<int, ExecutionOrder>();
+            LocalExecutionOrders = new List<ExecutionOrder>();
             Containers = new List<Container>();
         }
 
@@ -147,20 +146,20 @@ namespace GraphView
                 parentContext.RawRecordLayout, new WColumnReferenceExpressionComparer());
             SideEffectStates = parentContext.SideEffectStates;
             SideEffectFunctions = parentContext.SideEffectFunctions;
-            OptimalExecutionOrders = parentContext.OptimalExecutionOrders;
+            LocalExecutionOrders = parentContext.LocalExecutionOrders;
             Containers = parentContext.Containers;
         }
 
         public QueryCompilationContext(Dictionary<string, Tuple<TemporaryTableHeader, GraphViewExecutionOperator>> priorTemporaryTables,
             Dictionary<string, IAggregateFunction> priorSideEffectFunctions, Dictionary<string, AggregateState> priorSideEffectStates,
-            Dictionary<int, ExecutionOrder> priorOptimalExecutionOrders, List<Container> priorContainers)
+            List<ExecutionOrder> priorLocalExecutionOrders, List<Container> priorContainers)
         {
             TemporaryTableCollection = priorTemporaryTables;
             RawRecordLayout = new Dictionary<WColumnReferenceExpression, int>(new WColumnReferenceExpressionComparer());
             TableReferences = new HashSet<string>();
             SideEffectFunctions = priorSideEffectFunctions;
             SideEffectStates = priorSideEffectStates;
-            OptimalExecutionOrders = priorOptimalExecutionOrders;
+            LocalExecutionOrders = priorLocalExecutionOrders;
             Containers = priorContainers;
         }
 
@@ -181,7 +180,7 @@ namespace GraphView
                 InBatchMode = this.InBatchMode,
                 SideEffectStates = this.SideEffectStates,
                 SideEffectFunctions = this.SideEffectFunctions,
-                OptimalExecutionOrders = this.OptimalExecutionOrders,
+                LocalExecutionOrders = this.LocalExecutionOrders,
                 Containers = new List<Container>(this.Containers)
             };
         }
@@ -281,6 +280,11 @@ namespace GraphView
         public bool TryLocateColumnReference(WColumnReferenceExpression columnReference, out int columnIndex)
         {
             return RawRecordLayout.TryGetValue(columnReference, out columnIndex);
+        }
+
+        public void SetLocalExecutionOrders(List<ExecutionOrder> localExecutionOrders)
+        {
+            this.LocalExecutionOrders = localExecutionOrders;
         }
     }
 }

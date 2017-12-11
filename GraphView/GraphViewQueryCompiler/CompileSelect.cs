@@ -15,102 +15,101 @@ namespace GraphView
     {
         internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewCommand command)
         {
-            // It is useless now, but if we need to use statistic information to compare different execution orders, 
-            // we may need to construct the execution order of subquery, then it can avoid redundant computation.
-            int hashCode = this.ToString().GetHashCode();
             ExecutionOrder executionOrder;
-            context.OptimalExecutionOrders.TryGetValue(hashCode, out executionOrder);
-
-            if (executionOrder == null)
+            if (context.LocalExecutionOrders.Any())
             {
-                // Construct AggregationBlocks and Create MatchGraph
-                GlobalDependencyVisitor gdVisitor = new GlobalDependencyVisitor();
-                gdVisitor.Invoke(this.FromClause);
-                List<AggregationBlock> aggregationBlocks = gdVisitor.blocks;
-                HashSet<string> vertexAndEdgeAliases = new HashSet<string>();
-
-                foreach (AggregationBlock aggregationBlock in aggregationBlocks)
-                {
-                    aggregationBlock.CreateMatchGraph(this.MatchClause);
-                    HashSet<string> freeNodesAndEdges = aggregationBlock.GraphPattern.GetNodesAndEdgesAliases();
-                    vertexAndEdgeAliases.Add(aggregationBlock.AggregationAlias);
-                    vertexAndEdgeAliases.UnionWith(aggregationBlock.TableAliases);
-                    vertexAndEdgeAliases.UnionWith(freeNodesAndEdges);
-                }
-                vertexAndEdgeAliases.Remove("dummy");
-
-                // Normalizes the search condition into conjunctive predicates
-                BooleanExpressionNormalizeVisitor booleanNormalize = new BooleanExpressionNormalizeVisitor();
-                List<WBooleanExpression> conjunctivePredicates =
-                    this.WhereClause != null && this.WhereClause.SearchCondition != null ?
-                        booleanNormalize.Invoke(this.WhereClause.SearchCondition) :
-                        new List<WBooleanExpression>();
-
-                // A list of predicates and their accessed table references 
-                // Predicates in this list are those that cannot be assigned to the match graph
-                List<Tuple<WBooleanExpression, HashSet<string>>>
-                    predicatesAccessedTableAliases = new List<Tuple<WBooleanExpression, HashSet<string>>>();
-                AccessedTableColumnVisitor columnVisitor = new AccessedTableColumnVisitor();
-                GraphviewRuntimeFunctionCountVisitor runtimeFunctionCountVisitor = new GraphviewRuntimeFunctionCountVisitor();
-                bool isOnlyTargetTableReferenced;
-
-                foreach (WBooleanExpression predicate in conjunctivePredicates)
-                {
-                    bool useGraphViewRuntimeFunction = runtimeFunctionCountVisitor.Invoke(predicate) > 0;
-                    Dictionary<string, HashSet<string>> tableColumnReferences = columnVisitor.Invoke(predicate,
-                        vertexAndEdgeAliases, out isOnlyTargetTableReferenced);
-
-                    if (useGraphViewRuntimeFunction
-                        || !isOnlyTargetTableReferenced
-                        || !this.TryAttachPredicate(aggregationBlocks, predicate, tableColumnReferences))
-                    {
-                        AttachProperties(aggregationBlocks, tableColumnReferences);
-                        predicatesAccessedTableAliases.Add(
-                            new Tuple<WBooleanExpression, HashSet<string>>(predicate,
-                                new HashSet<string>(tableColumnReferences.Keys)));
-                    }
-                }
-
-                // Attach referencing properties for later runtime evaluation
-                foreach (WSelectElement selectElement in SelectElements)
-                {
-                    Dictionary<string, HashSet<string>> tableColumnReferences = columnVisitor.Invoke(selectElement,
-                        vertexAndEdgeAliases, out isOnlyTargetTableReferenced);
-                    AttachProperties(aggregationBlocks, tableColumnReferences);
-                }
-
-                // Find input dependency and attach it to AggregationBlock
-                foreach (AggregationBlock aggregationBlock in aggregationBlocks)
-                {
-                    WTableReferenceWithAlias tableReference = aggregationBlock.NonFreeTables[aggregationBlock.AggregationAlias].TableReference;
-                    Dictionary<string, HashSet<string>> tableColumnReferences = columnVisitor.Invoke(
-                        tableReference, vertexAndEdgeAliases, out isOnlyTargetTableReferenced);
-                    AttachProperties(aggregationBlocks, tableColumnReferences);
-                    foreach (string alias in tableColumnReferences.Keys.ToList())
-                    {
-                        aggregationBlock.TableInputDependency[aggregationBlock.AggregationAlias].Add(alias);
-                    }
-
-                    foreach (string table in aggregationBlock.TableAliases)
-                    {
-                        if (aggregationBlock.NonFreeTables.ContainsKey(table))
-                        {
-                            tableReference = aggregationBlock.NonFreeTables[table].TableReference;
-                            tableColumnReferences = columnVisitor.Invoke(
-                                tableReference, vertexAndEdgeAliases, out isOnlyTargetTableReferenced);
-                            AttachProperties(aggregationBlocks, tableColumnReferences);
-                            foreach (string alias in tableColumnReferences.Keys.ToList())
-                            {
-                                aggregationBlock.TableInputDependency[table].Add(alias);
-                            }
-                        }
-                    }
-                }
-
-                // Search the optimal execution order
-                executionOrder = ConstructExecutionOrder(context.TableReferences, aggregationBlocks, predicatesAccessedTableAliases);
-                context.OptimalExecutionOrders[hashCode] = executionOrder;
+                executionOrder = context.LocalExecutionOrders.First();
             }
+            else
+            {
+                executionOrder = this.GetLocalExecutionOrders(new ExecutionOrder(context.TableReferences)).First();
+            }
+            //// Construct AggregationBlocks and Create MatchGraph
+            //GlobalDependencyVisitor gdVisitor = new GlobalDependencyVisitor();
+            //gdVisitor.Invoke(this.FromClause);
+            //List<AggregationBlock> aggregationBlocks = gdVisitor.blocks;
+            //HashSet<string> vertexAndEdgeAliases = new HashSet<string>();
+
+            //foreach (AggregationBlock aggregationBlock in aggregationBlocks)
+            //{
+            //    aggregationBlock.CreateMatchGraph(this.MatchClause);
+            //    HashSet<string> freeNodesAndEdges = aggregationBlock.GraphPattern.GetNodesAndEdgesAliases();
+            //    vertexAndEdgeAliases.Add(aggregationBlock.AggregationAlias);
+            //    vertexAndEdgeAliases.UnionWith(aggregationBlock.TableAliases);
+            //    vertexAndEdgeAliases.UnionWith(freeNodesAndEdges);
+            //}
+            //vertexAndEdgeAliases.Remove("dummy");
+
+            //// Normalizes the search condition into conjunctive predicates
+            //BooleanExpressionNormalizeVisitor booleanNormalize = new BooleanExpressionNormalizeVisitor();
+            //List<WBooleanExpression> conjunctivePredicates =
+            //    this.WhereClause != null && this.WhereClause.SearchCondition != null ?
+            //        booleanNormalize.Invoke(this.WhereClause.SearchCondition) :
+            //        new List<WBooleanExpression>();
+
+            //// A list of predicates and their accessed table references 
+            //// Predicates in this list are those that cannot be assigned to the match graph
+            //List<Tuple<WBooleanExpression, HashSet<string>>>
+            //    predicatesAccessedTableAliases = new List<Tuple<WBooleanExpression, HashSet<string>>>();
+            //AccessedTableColumnVisitor columnVisitor = new AccessedTableColumnVisitor();
+            //GraphviewRuntimeFunctionCountVisitor runtimeFunctionCountVisitor = new GraphviewRuntimeFunctionCountVisitor();
+            //bool isOnlyTargetTableReferenced;
+
+            //foreach (WBooleanExpression predicate in conjunctivePredicates)
+            //{
+            //    bool useGraphViewRuntimeFunction = runtimeFunctionCountVisitor.Invoke(predicate) > 0;
+            //    Dictionary<string, HashSet<string>> tableColumnReferences = columnVisitor.Invoke(predicate,
+            //        vertexAndEdgeAliases, out isOnlyTargetTableReferenced);
+
+            //    if (useGraphViewRuntimeFunction
+            //        || !isOnlyTargetTableReferenced
+            //        || !this.TryAttachPredicate(aggregationBlocks, predicate, tableColumnReferences))
+            //    {
+            //        AttachProperties(aggregationBlocks, tableColumnReferences);
+            //        predicatesAccessedTableAliases.Add(
+            //            new Tuple<WBooleanExpression, HashSet<string>>(predicate,
+            //                new HashSet<string>(tableColumnReferences.Keys)));
+            //    }
+            //}
+
+            //// Attach referencing properties for later runtime evaluation
+            //foreach (WSelectElement selectElement in SelectElements)
+            //{
+            //    Dictionary<string, HashSet<string>> tableColumnReferences = columnVisitor.Invoke(selectElement,
+            //        vertexAndEdgeAliases, out isOnlyTargetTableReferenced);
+            //    AttachProperties(aggregationBlocks, tableColumnReferences);
+            //}
+
+            //// Find input dependency and attach it to AggregationBlock
+            //foreach (AggregationBlock aggregationBlock in aggregationBlocks)
+            //{
+            //    WTableReferenceWithAlias tableReference = aggregationBlock.NonFreeTables[aggregationBlock.AggregationAlias].TableReference;
+            //    Dictionary<string, HashSet<string>> tableColumnReferences = columnVisitor.Invoke(
+            //        tableReference, vertexAndEdgeAliases, out isOnlyTargetTableReferenced);
+            //    AttachProperties(aggregationBlocks, tableColumnReferences);
+            //    foreach (string alias in tableColumnReferences.Keys.ToList())
+            //    {
+            //        aggregationBlock.TableInputDependency[aggregationBlock.AggregationAlias].Add(alias);
+            //    }
+
+            //    foreach (string table in aggregationBlock.TableAliases)
+            //    {
+            //        if (aggregationBlock.NonFreeTables.ContainsKey(table))
+            //        {
+            //            tableReference = aggregationBlock.NonFreeTables[table].TableReference;
+            //            tableColumnReferences = columnVisitor.Invoke(
+            //                tableReference, vertexAndEdgeAliases, out isOnlyTargetTableReferenced);
+            //            AttachProperties(aggregationBlocks, tableColumnReferences);
+            //            foreach (string alias in tableColumnReferences.Keys.ToList())
+            //            {
+            //                aggregationBlock.TableInputDependency[table].Add(alias);
+            //            }
+            //        }
+            //    }
+            //}
+
+            //// Search the optimal execution order
+            //ExecutionOrder executionOrder = ConstructExecutionOrder(context.TableReferences, aggregationBlocks, predicatesAccessedTableAliases);
 
             // Construct Optimal operator chain according ExecutionOrder
             List<GraphViewExecutionOperator> operatorChain = ConstructOperatorChain(context, command, executionOrder);
@@ -121,7 +120,100 @@ namespace GraphView
             // Construct Operators according AggregationBlocks and remaining predicates
            return operatorChain.Last();
         }
-        
+
+        internal override List<ExecutionOrder> GetLocalExecutionOrders(ExecutionOrder parentExecutionOrder)
+        {
+            // Construct AggregationBlocks and Create MatchGraph
+            GlobalDependencyVisitor gdVisitor = new GlobalDependencyVisitor();
+            gdVisitor.Invoke(this.FromClause);
+            List<AggregationBlock> aggregationBlocks = gdVisitor.blocks;
+            HashSet<string> vertexAndEdgeAliases = new HashSet<string>();
+
+            foreach (AggregationBlock aggregationBlock in aggregationBlocks)
+            {
+                aggregationBlock.CreateMatchGraph(this.MatchClause);
+                HashSet<string> freeNodesAndEdges = aggregationBlock.GraphPattern.GetNodesAndEdgesAliases();
+                vertexAndEdgeAliases.Add(aggregationBlock.AggregationAlias);
+                vertexAndEdgeAliases.UnionWith(aggregationBlock.TableAliases);
+                vertexAndEdgeAliases.UnionWith(freeNodesAndEdges);
+            }
+            vertexAndEdgeAliases.Remove("dummy");
+
+            // Normalizes the search condition into conjunctive predicates
+            BooleanExpressionNormalizeVisitor booleanNormalize = new BooleanExpressionNormalizeVisitor();
+            List<WBooleanExpression> conjunctivePredicates =
+                this.WhereClause != null && this.WhereClause.SearchCondition != null ?
+                    booleanNormalize.Invoke(this.WhereClause.SearchCondition) :
+                    new List<WBooleanExpression>();
+
+            // A list of predicates and their accessed table references 
+            // Predicates in this list are those that cannot be assigned to the match graph
+            List<Tuple<WBooleanExpression, HashSet<string>>>
+                predicatesAccessedTableAliases = new List<Tuple<WBooleanExpression, HashSet<string>>>();
+            AccessedTableColumnVisitor columnVisitor = new AccessedTableColumnVisitor();
+            GraphviewRuntimeFunctionCountVisitor runtimeFunctionCountVisitor = new GraphviewRuntimeFunctionCountVisitor();
+            bool isOnlyTargetTableReferenced;
+
+            foreach (WBooleanExpression predicate in conjunctivePredicates)
+            {
+                bool useGraphViewRuntimeFunction = runtimeFunctionCountVisitor.Invoke(predicate) > 0;
+                Dictionary<string, HashSet<string>> tableColumnReferences = columnVisitor.Invoke(predicate,
+                    vertexAndEdgeAliases, out isOnlyTargetTableReferenced);
+
+                if (useGraphViewRuntimeFunction
+                    || !isOnlyTargetTableReferenced
+                    || !this.TryAttachPredicate(aggregationBlocks, predicate, tableColumnReferences))
+                {
+                    AttachProperties(aggregationBlocks, tableColumnReferences);
+                    predicatesAccessedTableAliases.Add(
+                        new Tuple<WBooleanExpression, HashSet<string>>(predicate,
+                            new HashSet<string>(tableColumnReferences.Keys)));
+                }
+            }
+
+            // Attach referencing properties for later runtime evaluation
+            foreach (WSelectElement selectElement in SelectElements)
+            {
+                Dictionary<string, HashSet<string>> tableColumnReferences = columnVisitor.Invoke(selectElement,
+                    vertexAndEdgeAliases, out isOnlyTargetTableReferenced);
+                AttachProperties(aggregationBlocks, tableColumnReferences);
+            }
+
+            // Find input dependency and attach it to AggregationBlock
+            foreach (AggregationBlock aggregationBlock in aggregationBlocks)
+            {
+                WTableReferenceWithAlias tableReference = aggregationBlock.NonFreeTables[aggregationBlock.AggregationAlias].TableReference;
+                Dictionary<string, HashSet<string>> tableColumnReferences = columnVisitor.Invoke(
+                    tableReference, vertexAndEdgeAliases, out isOnlyTargetTableReferenced);
+                AttachProperties(aggregationBlocks, tableColumnReferences);
+                foreach (string alias in tableColumnReferences.Keys.ToList())
+                {
+                    aggregationBlock.TableInputDependency[aggregationBlock.AggregationAlias].Add(alias);
+                }
+
+                foreach (string table in aggregationBlock.TableAliases)
+                {
+                    if (aggregationBlock.NonFreeTables.ContainsKey(table))
+                    {
+                        tableReference = aggregationBlock.NonFreeTables[table].TableReference;
+                        tableColumnReferences = columnVisitor.Invoke(
+                            tableReference, vertexAndEdgeAliases, out isOnlyTargetTableReferenced);
+                        AttachProperties(aggregationBlocks, tableColumnReferences);
+                        foreach (string alias in tableColumnReferences.Keys.ToList())
+                        {
+                            aggregationBlock.TableInputDependency[table].Add(alias);
+                        }
+                    }
+                }
+            }
+
+            return new List<ExecutionOrder>()
+            {
+                // Search the optimal execution order
+                ConstructExecutionOrder(parentExecutionOrder.ExistingNodesAndEdges,
+                    aggregationBlocks, predicatesAccessedTableAliases)
+            };
+        }
 
         private bool TryAttachPredicate(List<AggregationBlock> aggregationBlocks, WBooleanExpression predicate,
             Dictionary<string, HashSet<string>> tableColumnReferences)
@@ -369,10 +461,10 @@ namespace GraphView
             }
 
             // compile an operator or some operators according the execution order
-            foreach (Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>> tuple in executionOrder.Order)
+            foreach (Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>, List<ExecutionOrder>> tuple in executionOrder.Order)
             {
                 string alias = tuple.Item1.NodeAlias;
-
+                context.SetLocalExecutionOrders(tuple.Item5);
                 GraphViewExecutionOperator op;
 
                 // if the table is free variable
@@ -744,7 +836,7 @@ namespace GraphView
         private static void CheckPredicatesAndAppendFilterOp(GraphViewCommand command,
             QueryCompilationContext context, 
             List<GraphViewExecutionOperator> operatorChain,
-            Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>> tuple)
+            Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>, List<ExecutionOrder>> tuple)
         {
             List<WBooleanExpression> booleanExpressions = new List<WBooleanExpression>();
             List<WColumnReferenceExpression> forwardEdgesInfoList = new List<WColumnReferenceExpression>();
@@ -870,7 +962,7 @@ namespace GraphView
         private static void CrossApplyEdges(GraphViewCommand command, 
             QueryCompilationContext context,
             List<GraphViewExecutionOperator> chain, 
-            Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>> tuple)
+            Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>, List<ExecutionOrder>> tuple)
         {
             foreach (CompileLink link in tuple.Item4)
             {
@@ -935,7 +1027,8 @@ namespace GraphView
             return localContext;
         }
 
-        private static MatchEdge GetPushedToServerEdge(GraphViewCommand command, Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>> tuple)
+        private static MatchEdge GetPushedToServerEdge(GraphViewCommand command,
+            Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>, List<ExecutionOrder>> tuple)
         {
             if (tuple.Item2 == null && tuple.Item4.Any())
             {
@@ -1040,7 +1133,7 @@ namespace GraphView
             {
                 QueryCompilationContext statementContext = new QueryCompilationContext(priorContext.TemporaryTableCollection,
                     priorContext.SideEffectFunctions, priorContext.SideEffectStates,
-                    priorContext.OptimalExecutionOrders, priorContext.Containers);
+                    priorContext.LocalExecutionOrders, priorContext.Containers);
                 op = st.Compile(statementContext, command);
                 priorContext = statementContext;
             }
@@ -1095,9 +1188,9 @@ namespace GraphView
             WSelectQueryBlock firstSelectQuery = null;
             if (!isUnionWithoutAnyBranch)
             {
-                foreach (WScalarExpression parameter in Parameters)
+                for (int index = 0; index < Parameters.Count; ++index)
                 {
-                    WScalarSubquery scalarSubquery = parameter as WScalarSubquery;
+                    WScalarSubquery scalarSubquery = Parameters[index] as WScalarSubquery;
                     if (scalarSubquery == null)
                     {
                         throw new SyntaxErrorException("The input of an union table reference must be one or more scalar subqueries.");
@@ -1116,6 +1209,11 @@ namespace GraphView
                     subcontext.OuterContextOp.SetContainer(container, containerIndex);
                     subcontext.InBatchMode = context.InBatchMode;
                     subcontext.CarryOn = true;
+                    subcontext.LocalExecutionOrders = new List<ExecutionOrder>();
+                    if (index < context.LocalExecutionOrders.Count)
+                    {
+                        subcontext.LocalExecutionOrders.Add(context.LocalExecutionOrders[index]);
+                    }
                     GraphViewExecutionOperator traversalOp = scalarSubquery.SubQueryExpr.Compile(subcontext, command);
                     unionOp.AddTraversal(traversalOp);
                 }
@@ -1150,6 +1248,37 @@ namespace GraphView
 
             context.CurrentExecutionOperator = unionOp;
             return unionOp;
+        }
+
+        internal override List<ExecutionOrder> GetLocalExecutionOrders(ExecutionOrder parentExecutionOrder)
+        {
+            List<ExecutionOrder> localExecutionOrders = new List<ExecutionOrder>();
+            bool isUnionWithoutAnyBranch = Parameters.Count == 0 || Parameters[0] is WValueExpression;
+
+            WSelectQueryBlock firstSelectQuery = null;
+            if (!isUnionWithoutAnyBranch)
+            {
+                foreach (WScalarExpression parameter in Parameters)
+                {
+                    WScalarSubquery scalarSubquery = parameter as WScalarSubquery;
+                    if (scalarSubquery == null)
+                    {
+                        throw new SyntaxErrorException("The input of an union table reference must be one or more scalar subqueries.");
+                    }
+
+                    if (firstSelectQuery == null)
+                    {
+                        firstSelectQuery = scalarSubquery.SubQueryExpr as WSelectQueryBlock;
+                        if (firstSelectQuery == null)
+                        {
+                            throw new SyntaxErrorException("The input of an union table reference must be one or more select query blocks.");
+                        }
+                    }
+
+                    localExecutionOrders.AddRange(scalarSubquery.SubQueryExpr.GetLocalExecutionOrders(parentExecutionOrder));
+                }
+            }
+            return localExecutionOrders;
         }
     }
 

@@ -22,6 +22,12 @@ namespace GraphView
         {
             return 1.0;
         }
+
+        public virtual List<ExecutionOrder> GetLocalExecutionOrders(ExecutionOrder parentExecutionOrder)
+        {
+            return new List<ExecutionOrder>();
+        }
+
     }
 
     internal abstract class CompileLink
@@ -35,7 +41,7 @@ namespace GraphView
         }
 
         // TODO: estimate Cost according experience
-        public virtual double ComputationalCost()
+        public virtual double GetComputationalCost()
         {
             return 1.0;
         }
@@ -133,6 +139,19 @@ namespace GraphView
         {
             return this.Cardinality;
         }
+
+        public override List<ExecutionOrder> GetLocalExecutionOrders(ExecutionOrder parentExecutionOrder)
+        {
+            if (this.TableReference != null)
+            {
+                return this.TableReference.GetLocalExecutionOrders(parentExecutionOrder);
+            }
+            else
+            {
+                return new List<ExecutionOrder>();
+            }
+        }
+
     }
 
     internal class PredicateLink : CompileLink
@@ -152,7 +171,7 @@ namespace GraphView
         }
         
         // TODO: get Cost from database and experience
-        public override double ComputationalCost()
+        public override double GetComputationalCost()
         {
             return 0.5;
         }
@@ -262,19 +281,14 @@ namespace GraphView
     /// </summary>
     internal class ExecutionOrder
     {
-        public List<Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>>> Order { get; set; }
+        public List<Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>, List<ExecutionOrder>>> Order { get; set; }
         public HashSet<string> ExistingNodesAndEdges { get; set; }
         public HashSet<string> ExistingPredicateLinks { get; set; }
         public double Cost { get; set; }
-        
-
-        // If alpha > 1.0, then it is partial to sequencial order
-        // If alpha < 1.0, then it is partial to reverse order
-        private static double alpha = 10.0, beta = 10.0, gama = 1.0;
 
         public ExecutionOrder(HashSet<string> tableReferences)
         {
-            this.Order = new List<Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>>>();
+            this.Order = new List<Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>, List<ExecutionOrder>>>();
             this.ExistingNodesAndEdges = new HashSet<string>(tableReferences);
             this.ExistingPredicateLinks = new HashSet<string>();
             this.Cost = 0.0;
@@ -285,7 +299,7 @@ namespace GraphView
             return new ExecutionOrder(this.ExistingNodesAndEdges)
             {
                 ExistingPredicateLinks = new HashSet<string>(this.ExistingPredicateLinks),
-                Order = new List<Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>>>(this.Order),
+                Order = new List<Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>, List<ExecutionOrder>>>(this.Order),
                 Cost = this.Cost
             };
         }
@@ -293,15 +307,32 @@ namespace GraphView
         // TODO: utilize statistic information
         private void UpdateCost()
         {
-            Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>> tuple = this.Order.Last();
-            this.Cost *= alpha;
+            Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>, List<ExecutionOrder>> tuple = this.Order.Last();
 
-            this.Cost += tuple.Item1.ComputationalCost() * alpha + tuple.Item1.GetCardinality() * beta;
-            this.Cost += tuple.Item2 == null ? 0 : tuple.Item2.ComputationalCost() * alpha + tuple.Item2.GetSelectivity() * gama;
+            double cost = 0;
+            cost += tuple.Item1.GetCardinality();
+            if (tuple.Item2 != null)
+            {
+                cost += tuple.Item2.GetSelectivity();
+            }
             foreach (CompileLink link in tuple.Item3)
             {
-                this.Cost += link.ComputationalCost() * alpha + link.GetSelectivity() * gama;
+                cost += link.GetSelectivity();
             }
+            foreach (CompileLink link in tuple.Item4)
+            {
+                cost += link.GetComputationalCost();
+            }
+            foreach (ExecutionOrder localExecutionOrder in tuple.Item5)
+            {
+                cost += localExecutionOrder.Cost;
+            }
+
+            // sequential order
+            this.Cost += cost;
+
+            // reverse order
+            // this.Cost += 1 / cost
         }
 
         /// <summary>
@@ -351,9 +382,9 @@ namespace GraphView
                     }
                 }
             }
-
+            List<ExecutionOrder> SubqueryExecutionOrders = aggregateionTable.GetLocalExecutionOrders(this);
             // Add a next possible tuple
-            this.AddTuple(new Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>>(aggregateionTable, null, forwardLinks, backwardLinks));
+            this.AddTuple(new Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>, List<ExecutionOrder>>(aggregateionTable, null, forwardLinks, backwardLinks, SubqueryExecutionOrders));
         }
 
         /// <summary>
@@ -366,8 +397,8 @@ namespace GraphView
             List<Tuple<PredicateLink, HashSet<string>>> predicateLinksAccessedTableAliases)
         {
             // Find all possible next tuples
-            List<Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>>> nextTuples =
-                new List<Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>>>();
+            List<Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>, List<ExecutionOrder>>> nextTuples =
+                new List<Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>, List<ExecutionOrder>>>();
             foreach (KeyValuePair<string, HashSet<string>> pair in aggregationBlock.TableInputDependency)
             {
                 if (!this.ExistingNodesAndEdges.Contains(pair.Key) && this.ExistingNodesAndEdges.IsSupersetOf(pair.Value))
@@ -380,7 +411,7 @@ namespace GraphView
 
             // Generate all possible next orders
             List<ExecutionOrder> nextOrders = new List<ExecutionOrder>();
-            foreach (Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>> tuple in nextTuples)
+            foreach (Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>, List<ExecutionOrder>> tuple in nextTuples)
             {
                 ExecutionOrder nextOrder = this.Duplicate();
                 nextOrder.AddTuple(tuple);
@@ -395,13 +426,13 @@ namespace GraphView
         /// <param name="predicateLinksAccessedTableAliases"></param>
         /// <param name="node"></param>
         /// <returns></returns>
-        private List<Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>>> GenerateTuples(
+        private List<Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>, List<ExecutionOrder>>> GenerateTuples(
             List<Tuple<PredicateLink, HashSet<string>>> predicateLinksAccessedTableAliases,
             CompileNode node)
         {
-            List<Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>>> nextTuples =
-                new List<Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>>>();
-            
+            List<Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>, List<ExecutionOrder>>> nextTuples =
+                new List<Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>, List<ExecutionOrder>>>();
+            List<ExecutionOrder> localExecutionOrders = node.GetLocalExecutionOrders(this);
             if (node is MatchNode)
             {
                 MatchNode matchNode = node as MatchNode;
@@ -474,14 +505,16 @@ namespace GraphView
                     {
                         List<CompileLink> tupleForwardLinks = new List<CompileLink>(forwardLinks);
                         tupleForwardLinks.Remove(traversalLink);
-                        nextTuples.Add(new Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>>(node,
-                            traversalLink, tupleForwardLinks, backwardLinks));
+                        nextTuples.Add(new Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>, List<ExecutionOrder>>(
+                            node, traversalLink, tupleForwardLinks, backwardLinks, localExecutionOrders));
                     }
                 }
                 else
                 {
                     // if do not use other link to get this node
-                    nextTuples.Add(new Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>>(node, null, forwardLinks, backwardLinks));
+                    nextTuples.Add(
+                        new Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>, List<ExecutionOrder>>(
+                            node, null, forwardLinks, backwardLinks, localExecutionOrders));
                 }
             }
             else if (node is NonFreeTable)
@@ -508,7 +541,9 @@ namespace GraphView
                 }
 
                 // Add a next possible tuple
-                nextTuples.Add(new Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>>(node, null, forwardLinks, backwardLinks));
+                nextTuples.Add(
+                    new Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>, List<ExecutionOrder>>(
+                        node, null, forwardLinks, backwardLinks, localExecutionOrders));
             }
             else
             {
@@ -521,7 +556,7 @@ namespace GraphView
         /// Add an tuple to a new order, and update information
         /// </summary>
         /// <param name="tuple"></param>
-        public void AddTuple(Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>> tuple)
+        public void AddTuple(Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>, List<ExecutionOrder>> tuple)
         {
             this.ExistingNodesAndEdges.Add(tuple.Item1.NodeAlias);
 

@@ -88,7 +88,7 @@
     <Compile Include="GraphViewExecutionRuntime\BooleanFunction.cs" />
     <Compile Include="GraphViewQueryCompiler\ToDocDBStringVisitor.cs" />
     <Compile Include="GraphViewQueryCompiler\ToJsonServerStringVisitor.cs" />
-    <Compile Include="GraphViewQueryCompiler\TraversalOrder.cs" />
+    <Compile Include="GraphViewQueryCompiler\ExecutionOrder.cs" />
     <Compile Include="GraphViewUtils\DictionaryExtensions.cs" />
     <Compile Include="GraphViewQueryCompiler\CompileBooleanExpression.cs" />
     <Compile Include="GraphViewQueryCompiler\CompileModification.cs" />
