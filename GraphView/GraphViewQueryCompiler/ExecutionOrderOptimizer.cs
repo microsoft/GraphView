@@ -56,10 +56,10 @@ namespace GraphView
                 // Firstly, add aggregationTable
                 foreach (ExecutionOrder currentOrder in queue[queueIndex])
                 {
-                    currentOrder.AddAggregationTable(this.blocks[blockIndex], this.predicateLinksAccessedTableAliases);
+                    currentOrder.AddRootTable(this.blocks[blockIndex], this.predicateLinksAccessedTableAliases);
                 }
 
-                int numberOfIterations = this.blocks[blockIndex].TableAliases.Count - 1;
+                int numberOfIterations = this.blocks[blockIndex].TableInputDependency.Count - 1;
 
                 while (numberOfIterations-- > 0)
                 {

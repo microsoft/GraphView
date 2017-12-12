@@ -15,84 +15,66 @@ namespace GraphView
     ///     modification TVFs (addV, addE, commit, drop, property) 
     ///     and some special TVFs (constant, inject, sample(global)).
     /// Given a SQL-like query, the AggregationBlocks can be certain. So we use the alias of this special table as the alias 
-    /// of this Aggregation Block
+    /// of this Aggregation Block, and we call this special table "root table"
     /// Here, every AggregationBlock incudes 
-    ///     one alias of the special table and the AggregationBlock, 
-    ///     a list of free tables,
-    ///     a list of all tables except for this special table,
-    ///     a dictionary to map aliases to tables,
-    ///     a dictionary about input dependency,
+    ///     one alias of the root table, 
+    ///     a dictionary to map aliases to nonfree tables,
     ///     a MatchGraph,
-    ///     and a HashCode which is used as the key to get the optimal solution that is stored in the QueryCompilationContext
+    ///     a dictionary about input dependency except edges
     /// </summary>
     internal class AggregationBlock
     {
-        // The alias of the AggregationBlock
-        // If no special table in this block, this alias is "dummy"
+        // The alias of the root table
+        // If this block is the first one, then the alias is "dummy"
         // Every time generating a new solution, the aggregation table must be the first in an sequence if it is not "dummy"
-        internal string AggregationAlias { get; set; }
-
-        // A list of aliases of tables, except for AggregationAlias. It is used to record the original order
-        internal HashSet<string> TableAliases { get; set; }
+        internal string RootTableAlias { get; set; }
 
         // A dictionary to map aliases to NonFreeTables
         internal Dictionary<string, NonFreeTable> NonFreeTables { get; set; }
 
         // The MatchGraph of this AggregationBlock
         internal MatchGraph GraphPattern { get; set; }
-        
+
+        // A dictionary to record all input dependencies except edges'
         internal Dictionary<string, HashSet<string>> TableInputDependency { get; set; }
 
         public AggregationBlock()
         {
-            this.AggregationAlias = "dummy";
+            this.RootTableAlias = "dummy";
             this.GraphPattern = new MatchGraph();
             this.NonFreeTables = new Dictionary<string, NonFreeTable>();
-            this.NonFreeTables[AggregationAlias] = new NonFreeTable();
-            this.TableAliases = new HashSet<string>();
-            this.TableAliases.Add(this.AggregationAlias);
+            this.NonFreeTables[RootTableAlias] = new NonFreeTable();
             this.TableInputDependency = new Dictionary<string, HashSet<string>>();
-            this.TableInputDependency[AggregationAlias] = new HashSet<string>();
-
-            // TODO: find a better way to compute cardinality
-            this.NonFreeTables[AggregationAlias].Cardinality = this.TableAliases.Count * this.TableAliases.Count;
+            this.TableInputDependency[RootTableAlias] = new HashSet<string>();
+            this.NonFreeTables[RootTableAlias].Position = this.TableInputDependency.Count;
         }
 
         public AggregationBlock(WSchemaObjectFunctionTableReference table)
         {
-            this.AggregationAlias = table.Alias.Value;
+            this.RootTableAlias = table.Alias.Value;
             this.GraphPattern = new MatchGraph();
             this.NonFreeTables = new Dictionary<string, NonFreeTable>();
-            this.NonFreeTables[AggregationAlias] = new NonFreeTable(table);
-            this.TableAliases = new HashSet<string>();
-            this.TableAliases.Add(this.AggregationAlias);
+            this.NonFreeTables[RootTableAlias] = new NonFreeTable(table);
             this.TableInputDependency = new Dictionary<string, HashSet<string>>();
-            this.TableInputDependency[AggregationAlias] = new HashSet<string>();
-
-            // TODO: find a better way to compute cardinality
-            this.NonFreeTables[AggregationAlias].Cardinality = this.TableAliases.Count * this.TableAliases.Count;
+            this.TableInputDependency[RootTableAlias] = new HashSet<string>();
+            this.NonFreeTables[RootTableAlias].Position = this.TableInputDependency.Count;
         }
 
         public AggregationBlock(WQueryDerivedTable table)
         {
-            this.AggregationAlias = table.Alias.Value;
+            this.RootTableAlias = table.Alias.Value;
             this.GraphPattern = new MatchGraph();
             this.NonFreeTables = new Dictionary<string, NonFreeTable>();
-            this.NonFreeTables[AggregationAlias] = new NonFreeTable(table);
-            this.TableAliases = new HashSet<string>();
-            this.TableAliases.Add(this.AggregationAlias);
+            this.NonFreeTables[RootTableAlias] = new NonFreeTable(table);
             this.TableInputDependency = new Dictionary<string, HashSet<string>>();
-            this.TableInputDependency[AggregationAlias] = new HashSet<string>();
-
-            // TODO: find a better way to compute cardinality
-            this.NonFreeTables[AggregationAlias].Cardinality = this.TableAliases.Count * this.TableAliases.Count;
+            this.TableInputDependency[RootTableAlias] = new HashSet<string>();
+            this.NonFreeTables[RootTableAlias].Position = this.TableInputDependency.Count;
         }
 
         // We firstly think every node are isolated, and we will find subgraphs later
         internal string AddTable(WNamedTableReference table)
         {
             string alias = table.Alias.Value;
-            this.TableAliases.Add(alias);
             this.TableInputDependency[alias] = new HashSet<string>();
             MatchNode matchNode = new MatchNode()
             {
@@ -106,9 +88,7 @@ namespace GraphView
             ConnectedComponent subgraph = new ConnectedComponent();
             subgraph.Nodes[alias] = matchNode;
             this.GraphPattern.ConnectedSubgraphs.Add(subgraph);
-
-            // TODO: find a better way to compute estimatedRows
-            matchNode.EstimatedRows = this.TableAliases.Count * this.TableAliases.Count;
+            matchNode.Position = this.TableInputDependency.Count;
             return alias;
         }
 
@@ -116,11 +96,8 @@ namespace GraphView
         {
             string alias = table.Alias.Value;
             this.NonFreeTables[alias] = new NonFreeTable(table);
-            this.TableAliases.Add(alias);
             this.TableInputDependency[alias] = new HashSet<string>();
-
-            // TODO: find a better way to compute cardinality
-            this.NonFreeTables[alias].Cardinality = this.TableAliases.Count * this.TableAliases.Count;
+            this.NonFreeTables[alias].Position = this.TableInputDependency.Count;
             return alias;
         }
 
@@ -128,11 +105,8 @@ namespace GraphView
         {
             string alias = table.Alias.Value;
             this.NonFreeTables[alias] = new NonFreeTable(table);
-            this.TableAliases.Add(alias);
             this.TableInputDependency[alias] = new HashSet<string>();
-
-            // TODO: find a better way to compute cardinality
-            this.NonFreeTables[alias].Cardinality = this.TableAliases.Count * this.TableAliases.Count;
+            this.NonFreeTables[alias].Position = this.TableInputDependency.Count;
             return alias;
         }
 
@@ -140,11 +114,8 @@ namespace GraphView
         {
             string alias = table.Alias.Value;
             this.NonFreeTables[alias] = new NonFreeTable(table);
-            this.TableAliases.Add(alias);
             this.TableInputDependency[alias] = new HashSet<string>();
-
-            // TODO: find a better way to compute cardinality
-            this.NonFreeTables[alias].Cardinality = this.TableAliases.Count * this.TableAliases.Count;
+            this.NonFreeTables[alias].Position = this.TableInputDependency.Count;
             return alias;
         }
 

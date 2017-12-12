@@ -23,6 +23,8 @@
 // IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 // CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
+
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.Serialization;
@@ -107,9 +109,12 @@ namespace GraphView
             return null;
         }
 
-        internal virtual List<ExecutionOrder> GetLocalExecutionOrders(ExecutionOrder parentExecutionOrder)
+        internal virtual ExecutionOrder GetLocalExecutionOrder(ExecutionOrder parentExecutionOrder)
         {
-            return new List<ExecutionOrder>();
+            ExecutionOrder executionOrder = new ExecutionOrder();
+            executionOrder.Order.Add(new Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>, List<ExecutionOrder>>(
+                null, null, null, null, new List<ExecutionOrder>()));
+            return executionOrder;
         }
     }
 

@@ -16,97 +16,7 @@ namespace GraphView
         internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewCommand command)
         {
             ExecutionOrder executionOrder;
-            if (context.LocalExecutionOrders.Any())
-            {
-                executionOrder = context.LocalExecutionOrders.First();
-            }
-            else
-            {
-                executionOrder = this.GetLocalExecutionOrders(new ExecutionOrder(context.ParentExecutionOrder)).First();
-            }
-            //// Construct AggregationBlocks and Create MatchGraph
-            //GlobalDependencyVisitor gdVisitor = new GlobalDependencyVisitor();
-            //gdVisitor.Invoke(this.FromClause);
-            //List<AggregationBlock> aggregationBlocks = gdVisitor.blocks;
-            //HashSet<string> vertexAndEdgeAliases = new HashSet<string>();
-
-            //foreach (AggregationBlock aggregationBlock in aggregationBlocks)
-            //{
-            //    aggregationBlock.CreateMatchGraph(this.MatchClause);
-            //    HashSet<string> freeNodesAndEdges = aggregationBlock.GraphPattern.GetNodesAndEdgesAliases();
-            //    vertexAndEdgeAliases.Add(aggregationBlock.AggregationAlias);
-            //    vertexAndEdgeAliases.UnionWith(aggregationBlock.TableAliases);
-            //    vertexAndEdgeAliases.UnionWith(freeNodesAndEdges);
-            //}
-            //vertexAndEdgeAliases.Remove("dummy");
-
-            //// Normalizes the search condition into conjunctive predicates
-            //BooleanExpressionNormalizeVisitor booleanNormalize = new BooleanExpressionNormalizeVisitor();
-            //List<WBooleanExpression> conjunctivePredicates =
-            //    this.WhereClause != null && this.WhereClause.SearchCondition != null ?
-            //        booleanNormalize.Invoke(this.WhereClause.SearchCondition) :
-            //        new List<WBooleanExpression>();
-
-            //// A list of predicates and their accessed table references 
-            //// Predicates in this list are those that cannot be assigned to the match graph
-            //List<Tuple<WBooleanExpression, HashSet<string>>>
-            //    predicatesAccessedTableAliases = new List<Tuple<WBooleanExpression, HashSet<string>>>();
-            //AccessedTableColumnVisitor columnVisitor = new AccessedTableColumnVisitor();
-            //GraphviewRuntimeFunctionCountVisitor runtimeFunctionCountVisitor = new GraphviewRuntimeFunctionCountVisitor();
-            //bool isOnlyTargetTableReferenced;
-
-            //foreach (WBooleanExpression predicate in conjunctivePredicates)
-            //{
-            //    bool useGraphViewRuntimeFunction = runtimeFunctionCountVisitor.Invoke(predicate) > 0;
-            //    Dictionary<string, HashSet<string>> tableColumnReferences = columnVisitor.Invoke(predicate,
-            //        vertexAndEdgeAliases, out isOnlyTargetTableReferenced);
-
-            //    if (useGraphViewRuntimeFunction
-            //        || !isOnlyTargetTableReferenced
-            //        || !this.TryAttachPredicate(aggregationBlocks, predicate, tableColumnReferences))
-            //    {
-            //        AttachProperties(aggregationBlocks, tableColumnReferences);
-            //        predicatesAccessedTableAliases.Add(
-            //            new Tuple<WBooleanExpression, HashSet<string>>(predicate,
-            //                new HashSet<string>(tableColumnReferences.Keys)));
-            //    }
-            //}
-
-            //// Attach referencing properties for later runtime evaluation
-            //foreach (WSelectElement selectElement in SelectElements)
-            //{
-            //    Dictionary<string, HashSet<string>> tableColumnReferences = columnVisitor.Invoke(selectElement,
-            //        vertexAndEdgeAliases, out isOnlyTargetTableReferenced);
-            //    AttachProperties(aggregationBlocks, tableColumnReferences);
-            //}
-
-            //// Find input dependency and attach it to AggregationBlock
-            //foreach (AggregationBlock aggregationBlock in aggregationBlocks)
-            //{
-            //    WTableReferenceWithAlias tableReference = aggregationBlock.NonFreeTables[aggregationBlock.AggregationAlias].TableReference;
-            //    Dictionary<string, HashSet<string>> tableColumnReferences = columnVisitor.Invoke(
-            //        tableReference, vertexAndEdgeAliases, out isOnlyTargetTableReferenced);
-            //    AttachProperties(aggregationBlocks, tableColumnReferences);
-            //    foreach (string alias in tableColumnReferences.Keys.ToList())
-            //    {
-            //        aggregationBlock.TableInputDependency[aggregationBlock.AggregationAlias].Add(alias);
-            //    }
-
-            //    foreach (string table in aggregationBlock.TableAliases)
-            //    {
-            //        if (aggregationBlock.NonFreeTables.ContainsKey(table))
-            //        {
-            //            tableReference = aggregationBlock.NonFreeTables[table].TableReference;
-            //            tableColumnReferences = columnVisitor.Invoke(
-            //                tableReference, vertexAndEdgeAliases, out isOnlyTargetTableReferenced);
-            //            AttachProperties(aggregationBlocks, tableColumnReferences);
-            //            foreach (string alias in tableColumnReferences.Keys.ToList())
-            //            {
-            //                aggregationBlock.TableInputDependency[table].Add(alias);
-            //            }
-            //        }
-            //    }
-            //}
+            executionOrder = context.CurrentExecutionOrder.Order.Any() ? context.CurrentExecutionOrder : this.GetLocalExecutionOrder(context.CurrentExecutionOrder);
 
             // Construct Optimal operator chain according ExecutionOrder
             List<GraphViewExecutionOperator> operatorChain = ConstructOperatorChain(context, command, executionOrder);
@@ -118,23 +28,23 @@ namespace GraphView
            return operatorChain.Last();
         }
 
-        internal override List<ExecutionOrder> GetLocalExecutionOrders(ExecutionOrder parentExecutionOrder)
+        internal override ExecutionOrder GetLocalExecutionOrder(ExecutionOrder parentExecutionOrder)
         {
             // Construct AggregationBlocks and Create MatchGraph
             GlobalDependencyVisitor gdVisitor = new GlobalDependencyVisitor();
             gdVisitor.Invoke(this.FromClause);
             List<AggregationBlock> aggregationBlocks = gdVisitor.blocks;
-            HashSet<string> vertexAndEdgeAliases = new HashSet<string>();
+
+            // collect all tables' aliases
+            HashSet<string> allTableAliases = new HashSet<string>();
 
             foreach (AggregationBlock aggregationBlock in aggregationBlocks)
             {
                 aggregationBlock.CreateMatchGraph(this.MatchClause);
-                HashSet<string> freeNodesAndEdges = aggregationBlock.GraphPattern.GetNodesAndEdgesAliases();
-                vertexAndEdgeAliases.Add(aggregationBlock.AggregationAlias);
-                vertexAndEdgeAliases.UnionWith(aggregationBlock.TableAliases);
-                vertexAndEdgeAliases.UnionWith(freeNodesAndEdges);
+                allTableAliases.UnionWith(aggregationBlock.NonFreeTables.Keys);
+                allTableAliases.UnionWith(aggregationBlock.GraphPattern.GetNodesAndEdgesAliases());
             }
-            vertexAndEdgeAliases.Remove("dummy");
+            allTableAliases.Remove("dummy");
 
             // Normalizes the search condition into conjunctive predicates
             BooleanExpressionNormalizeVisitor booleanNormalize = new BooleanExpressionNormalizeVisitor();
@@ -155,16 +65,17 @@ namespace GraphView
             {
                 bool useGraphViewRuntimeFunction = runtimeFunctionCountVisitor.Invoke(predicate) > 0;
                 Dictionary<string, HashSet<string>> tableColumnReferences = columnVisitor.Invoke(predicate,
-                    vertexAndEdgeAliases, out isOnlyTargetTableReferenced);
+                    allTableAliases, out isOnlyTargetTableReferenced);
 
+                // If some predicates cannot be attached to GraphPatterns, these predicates will be compiled to filter operators
+                // But all columns references need to be populated firstly
                 if (useGraphViewRuntimeFunction
                     || !isOnlyTargetTableReferenced
-                    || !this.TryAttachPredicate(aggregationBlocks, predicate, tableColumnReferences))
+                    || !this.TryAttachPredicateToGraphPatterns(aggregationBlocks, predicate, tableColumnReferences))
                 {
-                    AttachProperties(aggregationBlocks, tableColumnReferences);
+                    AttachPropertiesToGraphPatterns(aggregationBlocks, tableColumnReferences);
                     predicatesAccessedTableAliases.Add(
-                        new Tuple<WBooleanExpression, HashSet<string>>(predicate,
-                            new HashSet<string>(tableColumnReferences.Keys)));
+                        new Tuple<WBooleanExpression, HashSet<string>>(predicate, new HashSet<string>(tableColumnReferences.Keys)));
                 }
             }
 
@@ -172,51 +83,42 @@ namespace GraphView
             foreach (WSelectElement selectElement in SelectElements)
             {
                 Dictionary<string, HashSet<string>> tableColumnReferences = columnVisitor.Invoke(selectElement,
-                    vertexAndEdgeAliases, out isOnlyTargetTableReferenced);
-                AttachProperties(aggregationBlocks, tableColumnReferences);
+                    allTableAliases, out isOnlyTargetTableReferenced);
+                AttachPropertiesToGraphPatterns(aggregationBlocks, tableColumnReferences);
             }
 
             // Find input dependency and attach it to AggregationBlock
             foreach (AggregationBlock aggregationBlock in aggregationBlocks)
             {
-                WTableReferenceWithAlias tableReference = aggregationBlock.NonFreeTables[aggregationBlock.AggregationAlias].TableReference;
-                Dictionary<string, HashSet<string>> tableColumnReferences = columnVisitor.Invoke(
-                    tableReference, vertexAndEdgeAliases, out isOnlyTargetTableReferenced);
-                AttachProperties(aggregationBlocks, tableColumnReferences);
-                foreach (string alias in tableColumnReferences.Keys.ToList())
+                foreach (KeyValuePair<string, NonFreeTable> pair in aggregationBlock.NonFreeTables)
                 {
-                    aggregationBlock.TableInputDependency[aggregationBlock.AggregationAlias].Add(alias);
-                }
-
-                foreach (string table in aggregationBlock.TableAliases)
-                {
-                    if (aggregationBlock.NonFreeTables.ContainsKey(table))
-                    {
-                        tableReference = aggregationBlock.NonFreeTables[table].TableReference;
-                        tableColumnReferences = columnVisitor.Invoke(
-                            tableReference, vertexAndEdgeAliases, out isOnlyTargetTableReferenced);
-                        AttachProperties(aggregationBlocks, tableColumnReferences);
-                        foreach (string alias in tableColumnReferences.Keys.ToList())
-                        {
-                            aggregationBlock.TableInputDependency[table].Add(alias);
-                        }
-                    }
+                    WTableReferenceWithAlias tableReference = pair.Value.TableReference;
+                    Dictionary<string, HashSet<string>> tableColumnReferences = columnVisitor.Invoke(
+                        tableReference, allTableAliases, out isOnlyTargetTableReferenced);
+                    AttachPropertiesToGraphPatterns(aggregationBlocks, tableColumnReferences);
+                    aggregationBlock.TableInputDependency[pair.Key].UnionWith(tableColumnReferences.Keys);
                 }
             }
 
-            return new List<ExecutionOrder>()
-            {
-                // Search the optimal execution order
-                ConstructExecutionOrder(parentExecutionOrder,
-                    aggregationBlocks, predicatesAccessedTableAliases)
-            };
+            return ConstructExecutionOrder(parentExecutionOrder, aggregationBlocks, predicatesAccessedTableAliases);
         }
 
-        private bool TryAttachPredicate(List<AggregationBlock> aggregationBlocks, WBooleanExpression predicate,
+        /// <summary>
+        /// Try add some predicates on nodes' JsonQueries
+        /// </summary>
+        /// <param name="aggregationBlocks"></param>
+        /// <param name="predicate"></param>
+        /// <param name="tableColumnReferences"></param>
+        /// <returns></returns>
+        private bool TryAttachPredicateToGraphPatterns(
+            List<AggregationBlock> aggregationBlocks, 
+            WBooleanExpression predicate,
             Dictionary<string, HashSet<string>> tableColumnReferences)
         {
             if (tableColumnReferences.Count > 1)
+            {
                 return false;
+            }
 
             bool attachFlag = false;
 
@@ -232,7 +134,13 @@ namespace GraphView
             return attachFlag;
         }
 
-        private static void AttachProperties(List<AggregationBlock> aggregationBlocks, Dictionary<string, HashSet<string>> tableColumnReferences)
+        /// <summary>
+        /// Attach  properties to graph patterns.
+        /// Because booleanfunctions need to find these properties in rawRecords, these properties need to be appended after retrieving
+        /// </summary>
+        /// <param name="aggregationBlocks"></param>
+        /// <param name="tableColumnReferences"></param>
+        private static void AttachPropertiesToGraphPatterns(List<AggregationBlock> aggregationBlocks, Dictionary<string, HashSet<string>> tableColumnReferences)
         {
             foreach (AggregationBlock aggregationBlock in aggregationBlocks)
             {
@@ -431,7 +339,8 @@ namespace GraphView
         /// <param name="aggregationBlocks"></param>
         /// <param name="predicatesAccessedTableAliases"></param>
         /// <returns></returns>
-        internal static ExecutionOrder ConstructExecutionOrder(ExecutionOrder parentExecutionOrder, 
+        internal static ExecutionOrder ConstructExecutionOrder(
+            ExecutionOrder parentExecutionOrder, 
             List<AggregationBlock> aggregationBlocks,
             List<Tuple<WBooleanExpression, HashSet<string>>> predicatesAccessedTableAliases)
         {
@@ -451,6 +360,8 @@ namespace GraphView
         {
             List<GraphViewExecutionOperator> operatorChain = new List<GraphViewExecutionOperator>();
 
+            context.SetCurrentExecutionOrder(executionOrder);
+
             // If it is an subquery, it need some information from context
             if (context.OuterContextOp != null)
             {
@@ -458,11 +369,10 @@ namespace GraphView
             }
             
             // compile an operator or some operators according the execution order
-            foreach (Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>, List<ExecutionOrder>> tuple in executionOrder.Order)
+            for (int index = 0; index < executionOrder.Order.Count; ++index)
             {
+                Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>, List<ExecutionOrder>> tuple = executionOrder.Order[index];
                 string alias = tuple.Item1.NodeAlias;
-                context.SetParentExecutionOrder(executionOrder);
-                context.SetLocalExecutionOrders(tuple.Item5);
 
                 GraphViewExecutionOperator op;
 
@@ -585,6 +495,7 @@ namespace GraphView
                 {
                     NonFreeTable nonFreeTable = tuple.Item1 as NonFreeTable;
                     WTableReferenceWithAlias tableReference = nonFreeTable.TableReference;
+                    context.SetLocalExecutionOrders(tuple.Item5);
                     
                     // if the table is QueryDerivedTable
                     if (tableReference is WQueryDerivedTable)
@@ -648,8 +559,11 @@ namespace GraphView
             return operatorChain;
         }
 
-        internal static void ConstructProjectOperator(GraphViewCommand command, QueryCompilationContext context,
-            List<WSelectScalarExpression> selectScalarExprList, List<GraphViewExecutionOperator> operatorChain)
+        internal static void ConstructProjectOperator(
+            GraphViewCommand command, 
+            QueryCompilationContext context,
+            List<WSelectScalarExpression> selectScalarExprList, 
+            List<GraphViewExecutionOperator> operatorChain)
         {
             int aggregateCount = 0;
 
@@ -832,7 +746,8 @@ namespace GraphView
         /// <param name="context"></param>
         /// <param name="operatorChain"></param>
         /// <param name="tuple"></param>
-        private static void CheckPredicatesAndAppendFilterOp(GraphViewCommand command,
+        private static void CheckPredicatesAndAppendFilterOp(
+            GraphViewCommand command,
             QueryCompilationContext context, 
             List<GraphViewExecutionOperator> operatorChain,
             Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>, List<ExecutionOrder>> tuple)
@@ -958,7 +873,8 @@ namespace GraphView
         /// <param name="context"></param>
         /// <param name="chain"></param>
         /// <param name="tuple"></param>
-        private static void CrossApplyEdges(GraphViewCommand command, 
+        private static void CrossApplyEdges(
+            GraphViewCommand command, 
             QueryCompilationContext context,
             List<GraphViewExecutionOperator> chain, 
             Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>, List<ExecutionOrder>> tuple)
@@ -1026,7 +942,8 @@ namespace GraphView
             return localContext;
         }
 
-        private static MatchEdge GetPushedToServerEdge(GraphViewCommand command,
+        private static MatchEdge GetPushedToServerEdge(
+            GraphViewCommand command,
             Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>, List<ExecutionOrder>> tuple)
         {
             if (tuple.Item2 == null && tuple.Item4.Any())
@@ -1132,7 +1049,7 @@ namespace GraphView
             {
                 QueryCompilationContext statementContext = new QueryCompilationContext(priorContext.TemporaryTableCollection,
                     priorContext.SideEffectFunctions, priorContext.SideEffectStates,
-                    priorContext.ParentExecutionOrder, priorContext.LocalExecutionOrders, priorContext.Containers);
+                    priorContext.Containers);
                 op = st.Compile(statementContext, command);
                 priorContext = statementContext;
             }
@@ -1173,16 +1090,6 @@ namespace GraphView
 
             return subqueryOp;
         }
-
-        internal override List<ExecutionOrder> GetLocalExecutionOrders(ExecutionOrder parentExecutionOrder)
-        {
-            List<ExecutionOrder> localExecutionOrders = new List<ExecutionOrder>();
-
-            WSqlStatement subquery = (_expression as WScalarSubquery).SubQueryExpr;
-            localExecutionOrders.Add(subquery.GetLocalExecutionOrders(parentExecutionOrder).First());
-
-            return localExecutionOrders;
-        }
     }
 
     partial class WUnionTableReference
@@ -1220,7 +1127,7 @@ namespace GraphView
                     subcontext.CarryOn = true;
                     if (index < context.LocalExecutionOrders.Count)
                     {
-                        subcontext.LocalExecutionOrders.Add(context.LocalExecutionOrders[index]);
+                        subcontext.SetCurrentExecutionOrder(context.LocalExecutionOrders[index]);
                     }
                     GraphViewExecutionOperator traversalOp = scalarSubquery.SubQueryExpr.Compile(subcontext, command);
                     unionOp.AddTraversal(traversalOp);
@@ -1258,7 +1165,7 @@ namespace GraphView
             return unionOp;
         }
 
-        internal override List<ExecutionOrder> GetLocalExecutionOrders(ExecutionOrder parentExecutionOrder)
+        internal override ExecutionOrder GetLocalExecutionOrder(ExecutionOrder parentExecutionOrder)
         {
             List<ExecutionOrder> localExecutionOrders = new List<ExecutionOrder>();
             bool isUnionWithoutAnyBranch = Parameters.Count == 0 || Parameters[0] is WValueExpression;
@@ -1283,10 +1190,20 @@ namespace GraphView
                         }
                     }
 
-                    localExecutionOrders.Add(scalarSubquery.SubQueryExpr.GetLocalExecutionOrders(parentExecutionOrder).First());
+                    localExecutionOrders.Add(scalarSubquery.SubQueryExpr.GetLocalExecutionOrder(parentExecutionOrder));
                 }
             }
-            return localExecutionOrders;
+
+            ParentLink parentLink = new ParentLink(parentExecutionOrder);
+            foreach (ExecutionOrder localExecutionOrder in localExecutionOrders)
+            {
+                localExecutionOrder.AddParentLink(parentLink);
+            }
+
+            ExecutionOrder executionOrder = new ExecutionOrder(parentExecutionOrder);
+            executionOrder.Order.Add(new Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>, List<ExecutionOrder>>(
+                null, null, null, null, localExecutionOrders));
+            return executionOrder;
         }
     }
 
@@ -1324,7 +1241,7 @@ namespace GraphView
                 subcontext.InBatchMode = true;
                 if (index < context.LocalExecutionOrders.Count)
                 {
-                    subcontext.LocalExecutionOrders.Add(context.LocalExecutionOrders[index]);
+                    subcontext.SetCurrentExecutionOrder(context.LocalExecutionOrders[index]);
                 }
                 GraphViewExecutionOperator traversalOp = scalarSubquery.SubQueryExpr.Compile(subcontext, command);
                 coalesceOp.AddTraversal(traversalOp);
@@ -1350,7 +1267,7 @@ namespace GraphView
             return coalesceOp;
         }
 
-        internal override List<ExecutionOrder> GetLocalExecutionOrders(ExecutionOrder parentExecutionOrder)
+        internal override ExecutionOrder GetLocalExecutionOrder(ExecutionOrder parentExecutionOrder)
         {
             List<ExecutionOrder> localExecutionOrders = new List<ExecutionOrder>();
             WSelectQueryBlock firstSelectQuery = null;
@@ -1371,9 +1288,19 @@ namespace GraphView
                     }
                 }
 
-                localExecutionOrders.Add(scalarSubquery.SubQueryExpr.GetLocalExecutionOrders(parentExecutionOrder).First());
+                localExecutionOrders.Add(scalarSubquery.SubQueryExpr.GetLocalExecutionOrder(parentExecutionOrder));
             }
-            return localExecutionOrders;
+
+            ParentLink parentLink = new ParentLink(parentExecutionOrder);
+            foreach (ExecutionOrder localExecutionOrder in localExecutionOrders)
+            {
+                localExecutionOrder.AddParentLink(parentLink);
+            }
+
+            ExecutionOrder executionOrder = new ExecutionOrder(parentExecutionOrder);
+            executionOrder.Order.Add(new Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>, List<ExecutionOrder>>(
+                null, null, null, null, localExecutionOrders));
+            return executionOrder;
         }
     }
 
@@ -1449,7 +1376,7 @@ namespace GraphView
             targetSubContext.InBatchMode = true;
             if (0 < context.LocalExecutionOrders.Count)
             {
-                targetSubContext.LocalExecutionOrders.Add(context.LocalExecutionOrders[0]);
+                targetSubContext.SetCurrentExecutionOrder(context.LocalExecutionOrders[0]);
             }
             GraphViewExecutionOperator targetSubqueryOp = optionalSelect.Compile(targetSubContext, command);
 
@@ -1461,7 +1388,7 @@ namespace GraphView
             subcontext.InBatchMode = context.InBatchMode;
             if (0 < context.LocalExecutionOrders.Count)
             {
-                subcontext.LocalExecutionOrders.Add(context.LocalExecutionOrders[0]);
+                subcontext.SetCurrentExecutionOrder(context.LocalExecutionOrders[0]);
             }
             GraphViewExecutionOperator optionalTraversalOp = optionalSelect.Compile(subcontext, command);
 
@@ -1489,15 +1416,25 @@ namespace GraphView
             return optionalOp;
         }
 
-        internal override List<ExecutionOrder> GetLocalExecutionOrders(ExecutionOrder parentExecutionOrder)
+        internal override ExecutionOrder GetLocalExecutionOrder(ExecutionOrder parentExecutionOrder)
         {
             List<ExecutionOrder> localExecutionOrders = new List<ExecutionOrder>();
             WSelectQueryBlock contextSelect, optionalSelect;
             this.Split(out contextSelect, out optionalSelect);
 
-            localExecutionOrders.Add(optionalSelect.GetLocalExecutionOrders(parentExecutionOrder).First());
+            localExecutionOrders.Add(optionalSelect.GetLocalExecutionOrder(parentExecutionOrder));
 
-            return localExecutionOrders;
+
+            ParentLink parentLink = new ParentLink(parentExecutionOrder);
+            foreach (ExecutionOrder localExecutionOrder in localExecutionOrders)
+            {
+                localExecutionOrder.AddParentLink(parentLink);
+            }
+
+            ExecutionOrder executionOrder = new ExecutionOrder(parentExecutionOrder);
+            executionOrder.Order.Add(new Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>, List<ExecutionOrder>>(
+                null, null, null, null, localExecutionOrders));
+            return executionOrder;
         }
     }
 
@@ -1524,7 +1461,7 @@ namespace GraphView
             subcontext.InBatchMode = true;
             if (0 < context.LocalExecutionOrders.Count)
             {
-                subcontext.LocalExecutionOrders.Add(context.LocalExecutionOrders[0]);
+                subcontext.SetCurrentExecutionOrder(context.LocalExecutionOrders[0]);
             }
             GraphViewExecutionOperator localTraversalOp = localSelect.Compile(subcontext, command);
             LocalOperator localOp = new LocalOperator(context.CurrentExecutionOperator, localTraversalOp, container, containerIndex);
@@ -1532,7 +1469,8 @@ namespace GraphView
             foreach (WSelectElement selectElement in localSelect.SelectElements)
             {
                 WSelectScalarExpression selectScalar = selectElement as WSelectScalarExpression;
-                if (selectScalar == null) {
+                if (selectScalar == null)
+                {
                     throw new SyntaxErrorException("The SELECT elements of the sub-query in a local table reference must be select scalar elements.");
                 }
                 Debug.Assert(selectScalar.ColumnName != null, "selectScalar.ColumnName != null");
@@ -1545,7 +1483,7 @@ namespace GraphView
             return localOp;
         }
 
-        internal override List<ExecutionOrder> GetLocalExecutionOrders(ExecutionOrder parentExecutionOrder)
+        internal override ExecutionOrder GetLocalExecutionOrder(ExecutionOrder parentExecutionOrder)
         {
             List<ExecutionOrder> localExecutionOrders = new List<ExecutionOrder>();
 
@@ -1560,9 +1498,19 @@ namespace GraphView
                 throw new SyntaxErrorException("The sub-query must be a select query block.");
             }
 
-            localExecutionOrders.Add(localSelect.GetLocalExecutionOrders(parentExecutionOrder).First());
+            localExecutionOrders.Add(localSelect.GetLocalExecutionOrder(parentExecutionOrder));
 
-            return localExecutionOrders;
+
+            ParentLink parentLink = new ParentLink(parentExecutionOrder);
+            foreach (ExecutionOrder localExecutionOrder in localExecutionOrders)
+            {
+                localExecutionOrder.AddParentLink(parentLink);
+            }
+
+            ExecutionOrder executionOrder = new ExecutionOrder(parentExecutionOrder);
+            executionOrder.Order.Add(new Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>, List<ExecutionOrder>>(
+                null, null, null, null, localExecutionOrders));
+            return executionOrder;
         }
     }
 
@@ -1589,7 +1537,7 @@ namespace GraphView
             subcontext.InBatchMode = true;
             if (0 < context.LocalExecutionOrders.Count)
             {
-                subcontext.LocalExecutionOrders.Add(context.LocalExecutionOrders[0]);
+                subcontext.SetCurrentExecutionOrder(context.LocalExecutionOrders[0]);
             }
             GraphViewExecutionOperator flatMapTraversalOp = flatMapSelect.Compile(subcontext, command);
 
@@ -1613,7 +1561,7 @@ namespace GraphView
             return flatMapOp;
         }
 
-        internal override List<ExecutionOrder> GetLocalExecutionOrders(ExecutionOrder parentExecutionOrder)
+        internal override ExecutionOrder GetLocalExecutionOrder(ExecutionOrder parentExecutionOrder)
         {
             List<ExecutionOrder> localExecutionOrders = new List<ExecutionOrder>();
             WScalarSubquery flatMapSubquery = Parameters[0] as WScalarSubquery;
@@ -1627,9 +1575,18 @@ namespace GraphView
                 throw new SyntaxErrorException("The sub-query must be a select query block.");
             }
 
-            localExecutionOrders.Add(flatMapSelect.GetLocalExecutionOrders(parentExecutionOrder).First());
+            localExecutionOrders.Add(flatMapSelect.GetLocalExecutionOrder(parentExecutionOrder));
 
-            return localExecutionOrders;
+            ParentLink parentLink = new ParentLink(parentExecutionOrder);
+            foreach (ExecutionOrder localExecutionOrder in localExecutionOrders)
+            {
+                localExecutionOrder.AddParentLink(parentLink);
+            }
+
+            ExecutionOrder executionOrder = new ExecutionOrder(parentExecutionOrder);
+            executionOrder.Order.Add(new Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>, List<ExecutionOrder>>(
+                null, null, null, null, localExecutionOrders));
+            return executionOrder;
         }
     }
 
@@ -1664,7 +1621,8 @@ namespace GraphView
                 matchNode.AttachedJsonQuery
                 /*matchNode.AttachedJsonQueryOfNodesViaExternalAPI*/);
 
-            foreach (string propertyName in matchNode.Properties) {
+            foreach (string propertyName in matchNode.Properties)
+            {
                 ColumnGraphType columnGraphType = GraphViewReservedProperties.IsNodeReservedProperty(propertyName)
                     ? GraphViewReservedProperties.ReservedNodePropertiesColumnGraphTypes[propertyName]
                     : ColumnGraphType.Value;
@@ -1708,7 +1666,8 @@ namespace GraphView
             //
             // Construct JSON query
             //
-            if (isSendQueryRequired) {
+            if (isSendQueryRequired)
+            {
                 WSelectQueryBlock.ConstructJsonQueryOnNode(command, matchNode, null, command.Connection.RealPartitionKey);
                 //WSelectQueryBlock.ConstructJsonQueryOnNodeViaExternalAPI(matchNode, null);
             }
@@ -1720,15 +1679,18 @@ namespace GraphView
             context.CurrentExecutionOperator = traversalOp;
 
             // Update context's record layout
-            if (isSendQueryRequired) {
-                foreach (string propertyName in matchNode.Properties) {
+            if (isSendQueryRequired)
+            {
+                foreach (string propertyName in matchNode.Properties)
+                {
                     ColumnGraphType columnGraphType = GraphViewReservedProperties.IsNodeReservedProperty(propertyName)
                         ? GraphViewReservedProperties.ReservedNodePropertiesColumnGraphTypes[propertyName]
                         : ColumnGraphType.Value;
                     context.AddField(nodeAlias, propertyName, columnGraphType);
                 }
             }
-            else {
+            else
+            {
                 context.AddField(nodeAlias, GremlinKeyword.NodeID, ColumnGraphType.VertexId);
             }
 
@@ -2099,7 +2061,7 @@ namespace GraphView
             initialContext.CarryOn = true;
             if (0 < context.LocalExecutionOrders.Count)
             {
-                initialContext.LocalExecutionOrders.Add(context.LocalExecutionOrders[0]);
+                initialContext.SetCurrentExecutionOrder(context.LocalExecutionOrders[0]);
             }
             GraphViewExecutionOperator getInitialRecordOp = contextSelect.Compile(initialContext, command);
             
@@ -2137,7 +2099,7 @@ namespace GraphView
             rTableContext.CarryOn = true;
             if (1 < context.LocalExecutionOrders.Count)
             {
-                rTableContext.LocalExecutionOrders.Add(context.LocalExecutionOrders[1]);
+                rTableContext.SetCurrentExecutionOrder(context.LocalExecutionOrders[1]);
             }
             GraphViewExecutionOperator innerOp = repeatSelect.Compile(rTableContext, command);
 
@@ -2169,17 +2131,27 @@ namespace GraphView
             return repeatOp;
         }
 
-        internal override List<ExecutionOrder> GetLocalExecutionOrders(ExecutionOrder parentExecutionOrder)
+        internal override ExecutionOrder GetLocalExecutionOrder(ExecutionOrder parentExecutionOrder)
         {
             List<ExecutionOrder> localExecutionOrders = new List<ExecutionOrder>();
 
             WSelectQueryBlock contextSelect, repeatSelect;
             Split(out contextSelect, out repeatSelect);
 
-            localExecutionOrders.Add(contextSelect.GetLocalExecutionOrders(parentExecutionOrder).First());
-            localExecutionOrders.Add(repeatSelect.GetLocalExecutionOrders(parentExecutionOrder).First());
+            localExecutionOrders.Add(contextSelect.GetLocalExecutionOrder(parentExecutionOrder));
+            localExecutionOrders.Add(repeatSelect.GetLocalExecutionOrder(parentExecutionOrder));
 
-            return localExecutionOrders;
+
+            ParentLink parentLink = new ParentLink(parentExecutionOrder);
+            foreach (ExecutionOrder localExecutionOrder in localExecutionOrders)
+            {
+                localExecutionOrder.AddParentLink(parentLink);
+            }
+
+            ExecutionOrder executionOrder = new ExecutionOrder(parentExecutionOrder);
+            executionOrder.Order.Add(new Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>, List<ExecutionOrder>>(
+                null, null, null, null, localExecutionOrders));
+            return executionOrder;
         }
     }
 
@@ -2202,7 +2174,8 @@ namespace GraphView
                 unfoldColumns);
             context.CurrentExecutionOperator = unfoldOp;
 
-            foreach (string columnName in unfoldColumns) {
+            foreach (string columnName in unfoldColumns)
+            {
                 context.AddField(Alias.Value, columnName, ColumnGraphType.Value);
             }
 
@@ -2305,7 +2278,9 @@ namespace GraphView
             // In g.Inject() case, the inject() step creates a new column in RawRecord
             //
             if (context.RawRecordLayout.Count == 0)
+            {
                 context.AddField(Alias.Value, GremlinKeyword.TableDefaultColumnName, ColumnGraphType.Value);
+            }
 
             return injectOp;
         }
@@ -2317,7 +2292,9 @@ namespace GraphView
         {
             WScalarSubquery getAggregateObjectSubqueryParameter = Parameters[0] as WScalarSubquery;
             if (getAggregateObjectSubqueryParameter == null)
+            {
                 throw new SyntaxErrorException("The first parameter of an Aggregate function must be a WScalarSubquery.");
+            }
             ScalarFunction getAggregateObjectFunction = getAggregateObjectSubqueryParameter.CompileToFunction(context, command);
 
             string storedName = (Parameters[1] as WValueExpression).Value;
@@ -2358,7 +2335,9 @@ namespace GraphView
         {
             WScalarSubquery getStoreObjectSubqueryParameter = Parameters[0] as WScalarSubquery;
             if (getStoreObjectSubqueryParameter == null)
+            {
                 throw new SyntaxErrorException("The first parameter of a Store function must be a WScalarSubquery.");
+            }
             ScalarFunction getStoreObjectFunction = getStoreObjectSubqueryParameter.CompileToFunction(context, command);
 
             string storedName = (Parameters[1] as WValueExpression).Value;
@@ -2399,7 +2378,9 @@ namespace GraphView
         {
             WScalarSubquery getSubgraphObjectSubqueryParameter = Parameters[0] as WScalarSubquery;
             if (getSubgraphObjectSubqueryParameter == null)
+            {
                 throw new SyntaxErrorException("The first parameter of a Store function must be a WScalarSubquery.");
+            }
             ScalarFunction getSubgraphObjectFunction = getSubgraphObjectSubqueryParameter.CompileToFunction(context, command);
             
             string sideEffectKey = (Parameters[1] as WValueExpression).Value;
@@ -2477,7 +2458,7 @@ namespace GraphView
             subcontext.InBatchMode = true;
             if (0 < context.LocalExecutionOrders.Count)
             {
-                subcontext.LocalExecutionOrders.Add(context.LocalExecutionOrders[0]);
+                subcontext.SetCurrentExecutionOrder(context.LocalExecutionOrders[0]);
             }
             GraphViewExecutionOperator mapTraversalOp = mapSelect.Compile(subcontext, command);
             MapOperator mapOp = new MapOperator(context.CurrentExecutionOperator, mapTraversalOp, container, containerIndex);
@@ -2500,7 +2481,7 @@ namespace GraphView
             return mapOp;
         }
 
-        internal override List<ExecutionOrder> GetLocalExecutionOrders(ExecutionOrder parentExecutionOrder)
+        internal override ExecutionOrder GetLocalExecutionOrder(ExecutionOrder parentExecutionOrder)
         {
             List<ExecutionOrder> localExecutionOrders = new List<ExecutionOrder>();
             WScalarSubquery mapSubquery = Parameters[0] as WScalarSubquery;
@@ -2514,9 +2495,19 @@ namespace GraphView
                 throw new SyntaxErrorException("The sub-query must be a select query block.");
             }
             
-            localExecutionOrders.Add(mapSelect.GetLocalExecutionOrders(parentExecutionOrder).First());
+            localExecutionOrders.Add(mapSelect.GetLocalExecutionOrder(parentExecutionOrder));
 
-            return localExecutionOrders;
+
+            ParentLink parentLink = new ParentLink(parentExecutionOrder);
+            foreach (ExecutionOrder localExecutionOrder in localExecutionOrders)
+            {
+                localExecutionOrder.AddParentLink(parentLink);
+            }
+
+            ExecutionOrder executionOrder = new ExecutionOrder(parentExecutionOrder);
+            executionOrder.Order.Add(new Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>, List<ExecutionOrder>>(
+                null, null, null, null, localExecutionOrders));
+            return executionOrder;
         }
     }
 
@@ -2543,7 +2534,7 @@ namespace GraphView
             subcontext.InBatchMode = true;
             if (0 < context.LocalExecutionOrders.Count)
             {
-                subcontext.LocalExecutionOrders.Add(context.LocalExecutionOrders[0]);
+                subcontext.SetCurrentExecutionOrder(context.LocalExecutionOrders[0]);
             }
             GraphViewExecutionOperator sideEffectTraversalOp = sideEffectSelect.Compile(subcontext, command);
             SideEffectOperator sideEffectOp = new SideEffectOperator(context.CurrentExecutionOperator, sideEffectTraversalOp, container, containerIndex);
@@ -2552,7 +2543,7 @@ namespace GraphView
             return sideEffectOp;
         }
 
-        internal override List<ExecutionOrder> GetLocalExecutionOrders(ExecutionOrder parentExecutionOrder)
+        internal override ExecutionOrder GetLocalExecutionOrder(ExecutionOrder parentExecutionOrder)
         {
             List<ExecutionOrder> localExecutionOrders = new List<ExecutionOrder>();
 
@@ -2567,9 +2558,18 @@ namespace GraphView
                 throw new SyntaxErrorException("The sub-query must be a select query block.");
             }
 
-            localExecutionOrders.Add(sideEffectSelect.GetLocalExecutionOrders(parentExecutionOrder).First());
+            localExecutionOrders.Add(sideEffectSelect.GetLocalExecutionOrder(parentExecutionOrder));
 
-            return localExecutionOrders;
+            ParentLink parentLink = new ParentLink(parentExecutionOrder);
+            foreach (ExecutionOrder localExecutionOrder in localExecutionOrders)
+            {
+                localExecutionOrder.AddParentLink(parentLink);
+            }
+
+            ExecutionOrder executionOrder = new ExecutionOrder(parentExecutionOrder);
+            executionOrder.Order.Add(new Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>, List<ExecutionOrder>>(
+                null, null, null, null, localExecutionOrders));
+            return executionOrder;
         }
     }
 
@@ -2658,7 +2658,7 @@ namespace GraphView
             subcontext.OuterContextOp.SetContainer(container, containerIndex);
             if (0 < context.LocalExecutionOrders.Count)
             {
-                subcontext.LocalExecutionOrders.Add(context.LocalExecutionOrders[0]);
+                subcontext.SetCurrentExecutionOrder(context.LocalExecutionOrders[0]);
             }
             GraphViewExecutionOperator aggregateOp = aggregateSubQuery.SubQueryExpr.Compile(subcontext, command);
 
@@ -2722,16 +2722,25 @@ namespace GraphView
             }
         }
 
-        internal override List<ExecutionOrder> GetLocalExecutionOrders(ExecutionOrder parentExecutionOrder)
+        internal override ExecutionOrder GetLocalExecutionOrder(ExecutionOrder parentExecutionOrder)
         {
             List<ExecutionOrder> localExecutionOrders = new List<ExecutionOrder>();
             
             WScalarSubquery aggregateSubQuery = Parameters[2] as WScalarSubquery;
             Debug.Assert(aggregateSubQuery != null);
 
-            localExecutionOrders.Add(aggregateSubQuery.SubQueryExpr.GetLocalExecutionOrders(parentExecutionOrder).First());
+            localExecutionOrders.Add(aggregateSubQuery.SubQueryExpr.GetLocalExecutionOrder(parentExecutionOrder));
 
-            return localExecutionOrders;
+            ParentLink parentLink = new ParentLink(parentExecutionOrder);
+            foreach (ExecutionOrder localExecutionOrder in localExecutionOrders)
+            {
+                localExecutionOrder.AddParentLink(parentLink);
+            }
+
+            ExecutionOrder executionOrder = new ExecutionOrder(parentExecutionOrder);
+            executionOrder.Order.Add(new Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>, List<ExecutionOrder>>(
+                null, null, null, null, localExecutionOrders));
+            return executionOrder;
         }
     }
 
@@ -2761,7 +2770,7 @@ namespace GraphView
             }
             if (0 < context.LocalExecutionOrders.Count)
             {
-                derivedTableContext.LocalExecutionOrders.Add(context.LocalExecutionOrders[0]);
+                derivedTableContext.SetCurrentExecutionOrder(context.LocalExecutionOrders[0]);
             }
             GraphViewExecutionOperator subQueryOp = derivedSelectQueryBlock.Compile(derivedTableContext, command);
 
@@ -2809,7 +2818,7 @@ namespace GraphView
             return queryDerivedTableOp;
         }
 
-        internal override List<ExecutionOrder> GetLocalExecutionOrders(ExecutionOrder parentExecutionOrder)
+        internal override ExecutionOrder GetLocalExecutionOrder(ExecutionOrder parentExecutionOrder)
         {
             List<ExecutionOrder> localExecutionOrders = new List<ExecutionOrder>();
 
@@ -2819,9 +2828,18 @@ namespace GraphView
                 throw new SyntaxErrorException("The QueryExpr of a WQueryDerviedTable must be one select query block.");
             }
 
-            localExecutionOrders.Add(derivedSelectQueryBlock.GetLocalExecutionOrders(parentExecutionOrder).First());
+            localExecutionOrders.Add(derivedSelectQueryBlock.GetLocalExecutionOrder(parentExecutionOrder));
 
-            return localExecutionOrders;
+            ParentLink parentLink = new ParentLink(parentExecutionOrder);
+            foreach (ExecutionOrder localExecutionOrder in localExecutionOrders)
+            {
+                localExecutionOrder.AddParentLink(parentLink);
+            }
+
+            ExecutionOrder executionOrder = new ExecutionOrder(parentExecutionOrder);
+            executionOrder.Order.Add(new Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>, List<ExecutionOrder>>(
+                null, null, null, null, localExecutionOrders));
+            return executionOrder;
         }
     }
 
@@ -3276,7 +3294,7 @@ namespace GraphView
             targetSubContext.InBatchMode = true;
             if (0 < context.LocalExecutionOrders.Count)
             {
-                targetSubContext.LocalExecutionOrders.Add(context.LocalExecutionOrders[0]);
+                targetSubContext.SetCurrentExecutionOrder(context.LocalExecutionOrders[0]);
             }
             GraphViewExecutionOperator targetSubqueryOp = targetSubquery.SubQueryExpr.Compile(targetSubContext, command);
 
@@ -3288,7 +3306,7 @@ namespace GraphView
             trueSubContext.OuterContextOp.SetContainer(trueBranchContainer, trueBranchContainerIndex);
             if (1 < context.LocalExecutionOrders.Count)
             {
-                trueSubContext.LocalExecutionOrders.Add(context.LocalExecutionOrders[1]);
+                trueSubContext.SetCurrentExecutionOrder(context.LocalExecutionOrders[1]);
             }
             GraphViewExecutionOperator trueBranchTraversalOp =
                 trueTraversalParameter.SubQueryExpr.Compile(trueSubContext, command);
@@ -3301,7 +3319,7 @@ namespace GraphView
             falseSubContext.OuterContextOp.SetContainer(falseBranchContainer, falseBranchContainerIndex);
             if (2 < context.LocalExecutionOrders.Count)
             {
-                falseSubContext.LocalExecutionOrders.Add(context.LocalExecutionOrders[2]);
+                falseSubContext.SetCurrentExecutionOrder(context.LocalExecutionOrders[2]);
             }
             GraphViewExecutionOperator falseBranchTraversalOp =
                 falseTraversalParameter.SubQueryExpr.Compile(falseSubContext, command);
@@ -3328,7 +3346,7 @@ namespace GraphView
             return chooseOp;
         }
 
-        internal override List<ExecutionOrder> GetLocalExecutionOrders(ExecutionOrder parentExecutionOrder)
+        internal override ExecutionOrder GetLocalExecutionOrder(ExecutionOrder parentExecutionOrder)
         {
             List<ExecutionOrder> localExecutionOrders = new List<ExecutionOrder>();
 
@@ -3343,10 +3361,20 @@ namespace GraphView
             WScalarSubquery falseTraversalParameter = this.Parameters[2] as WScalarSubquery;
             Debug.Assert(falseTraversalParameter != null, "falseTraversalParameter != null");
 
-            localExecutionOrders.Add(targetSubquery.SubQueryExpr.GetLocalExecutionOrders(parentExecutionOrder).First());
-            localExecutionOrders.Add(trueTraversalParameter.SubQueryExpr.GetLocalExecutionOrders(parentExecutionOrder).First());
-            localExecutionOrders.Add(falseTraversalParameter.SubQueryExpr.GetLocalExecutionOrders(parentExecutionOrder).First());
-            return localExecutionOrders;
+            localExecutionOrders.Add(targetSubquery.SubQueryExpr.GetLocalExecutionOrder(parentExecutionOrder));
+            localExecutionOrders.Add(trueTraversalParameter.SubQueryExpr.GetLocalExecutionOrder(parentExecutionOrder));
+            localExecutionOrders.Add(falseTraversalParameter.SubQueryExpr.GetLocalExecutionOrder(parentExecutionOrder));
+
+            ParentLink parentLink = new ParentLink(parentExecutionOrder);
+            foreach (ExecutionOrder localExecutionOrder in localExecutionOrders)
+            {
+                localExecutionOrder.AddParentLink(parentLink);
+            }
+
+            ExecutionOrder executionOrder = new ExecutionOrder(parentExecutionOrder);
+            executionOrder.Order.Add(new Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>, List<ExecutionOrder>>(
+                null, null, null, null, localExecutionOrders));
+            return executionOrder;
         }
     }
 
@@ -3365,7 +3393,7 @@ namespace GraphView
             targetContext.AddField(GremlinKeyword.IndexTableName, command.IndexColumnName, ColumnGraphType.Value, true);
             if (0 < context.LocalExecutionOrders.Count)
             {
-                targetContext.LocalExecutionOrders.Add(context.LocalExecutionOrders[0]);   
+                targetContext.SetCurrentExecutionOrder(context.LocalExecutionOrders[0]);
             }
             GraphViewExecutionOperator targetSubqueryOp = targetSubquery.SubQueryExpr.Compile(targetContext, command);
 
@@ -3402,7 +3430,7 @@ namespace GraphView
                 subcontext.OuterContextOp.SetContainer(optionContainer, optionContainerIndex);
                 if ((i+1)/2 < context.LocalExecutionOrders.Count)
                 {
-                    subcontext.LocalExecutionOrders.Add(context.LocalExecutionOrders[(i + 1) / 2]);
+                    subcontext.SetCurrentExecutionOrder(context.LocalExecutionOrders[(i+1)/2]);
                 }
                 GraphViewExecutionOperator optionTraversalOp = scalarSubquery.SubQueryExpr.Compile(subcontext, command);
                 chooseWithOptionsOp.AddOptionTraversal(value?.CompileToFunction(context, command), optionContainer, optionTraversalOp, optionContainerIndex);
@@ -3423,14 +3451,14 @@ namespace GraphView
             return chooseWithOptionsOp;
         }
 
-        internal override List<ExecutionOrder> GetLocalExecutionOrders(ExecutionOrder parentExecutionOrder)
+        internal override ExecutionOrder GetLocalExecutionOrder(ExecutionOrder parentExecutionOrder)
         {
             List<ExecutionOrder> localExecutionOrders = new List<ExecutionOrder>();
 
             WScalarSubquery targetSubquery = this.Parameters[0] as WScalarSubquery;
             Debug.Assert(targetSubquery != null, "targetSubquery != null");
 
-            localExecutionOrders.Add(targetSubquery.SubQueryExpr.GetLocalExecutionOrders(parentExecutionOrder).First());
+            localExecutionOrders.Add(targetSubquery.SubQueryExpr.GetLocalExecutionOrder(parentExecutionOrder));
 
             WSelectQueryBlock firstSelectQuery = null;
             for (int i = 1; i < this.Parameters.Count; i += 2)
@@ -3447,10 +3475,19 @@ namespace GraphView
                     Debug.Assert(firstSelectQuery != null, "firstSelectQuery != null");
                 }
 
-                localExecutionOrders.Add(scalarSubquery.SubQueryExpr.GetLocalExecutionOrders(parentExecutionOrder).First());
+                localExecutionOrders.Add(scalarSubquery.SubQueryExpr.GetLocalExecutionOrder(parentExecutionOrder));
             }
 
-            return localExecutionOrders;
+            ParentLink parentLink = new ParentLink(parentExecutionOrder);
+            foreach (ExecutionOrder localExecutionOrder in localExecutionOrders)
+            {
+                localExecutionOrder.AddParentLink(parentLink);
+            }
+
+            ExecutionOrder executionOrder = new ExecutionOrder(parentExecutionOrder);
+            executionOrder.Order.Add(new Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>, List<ExecutionOrder>>(
+                null, null, null, null, localExecutionOrders));
+            return executionOrder;
         }
     }
 
@@ -3510,7 +3547,9 @@ namespace GraphView
             Debug.Assert(popParameter != null, "popParameter != null");
             GremlinKeyword.Pop popType;
             if (!Enum.TryParse(popParameter.Value, true, out popType))
+            {
                 throw new QueryCompilationException("Unsupported pop type.");
+            }
 
             List<ScalarFunction> byFuncList = new List<ScalarFunction>();
             QueryCompilationContext byInitContext = new QueryCompilationContext(context);
@@ -3524,13 +3563,16 @@ namespace GraphView
                 WValueExpression label = this.Parameters[i] as WValueExpression;
                 WScalarSubquery byFunc = this.Parameters[i] as WScalarSubquery;
 
-                if (label != null) {
+                if (label != null)
+                {
                     selectLabels.Add(label.Value);
                 }
-                else if (byFunc != null) {
+                else if (byFunc != null)
+                {
                     byFuncList.Add(byFunc.CompileToFunction(byInitContext, command));
                 }
-                else {
+                else
+                {
                     throw new QueryCompilationException(
                         "The parameter of WSelectTableReference can only be a WValueExpression or WScalarSubquery.");
                 }
@@ -3582,7 +3624,9 @@ namespace GraphView
             Debug.Assert(popParameter != null, "popParameter != null");
             GremlinKeyword.Pop popType;
             if (!Enum.TryParse(popParameter.Value, true, out popType))
+            {
                 throw new QueryCompilationException("Unsupported pop type.");
+            }
 
 
             WValueExpression labelParameter = this.Parameters[3] as WValueExpression;
@@ -3619,7 +3663,8 @@ namespace GraphView
                 GremlinKeyword.TableDefaultColumnName
                 );
             context.CurrentExecutionOperator = selectOneOp;
-            foreach (string columnName in populateColumns) {
+            foreach (string columnName in populateColumns)
+            {
                 context.AddField(Alias.Value, columnName, ColumnGraphType.Value);
             }
 

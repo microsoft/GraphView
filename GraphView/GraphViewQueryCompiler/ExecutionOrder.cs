@@ -10,6 +10,7 @@ namespace GraphView
     internal abstract class CompileNode
     {
         public string NodeAlias { get; set; }
+        public int Position { get; set; }
 
         // TODO: get cardinality from database and experience
         public virtual double GetCardinality()
@@ -23,9 +24,12 @@ namespace GraphView
             return 1.0;
         }
 
-        public virtual List<ExecutionOrder> GetLocalExecutionOrders(ExecutionOrder parentExecutionOrder)
+        public virtual ExecutionOrder GetLocalExecutionOrder(ExecutionOrder parentExecutionOrder)
         {
-            return new List<ExecutionOrder>();
+            ExecutionOrder executionOrder = new ExecutionOrder();
+            executionOrder.Order.Add(new Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>, List<ExecutionOrder>>(
+                null, null, null, null, new List<ExecutionOrder>()));
+            return executionOrder;
         }
 
     }
@@ -140,15 +144,18 @@ namespace GraphView
             return this.Cardinality;
         }
 
-        public override List<ExecutionOrder> GetLocalExecutionOrders(ExecutionOrder parentExecutionOrder)
+        public override ExecutionOrder GetLocalExecutionOrder(ExecutionOrder parentExecutionOrder)
         {
             if (this.TableReference != null)
             {
-                return this.TableReference.GetLocalExecutionOrders(parentExecutionOrder);
+                return this.TableReference.GetLocalExecutionOrder(parentExecutionOrder);
             }
             else
             {
-                return new List<ExecutionOrder>();
+                ExecutionOrder executionOrder = new ExecutionOrder();
+                executionOrder.Order.Add(new Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>, List<ExecutionOrder>>(
+                    null, null, null, null, new List<ExecutionOrder>()));
+                return executionOrder;
             }
         }
 
@@ -218,6 +225,29 @@ namespace GraphView
         }
     }
 
+    internal class ParentLink : CompileLink
+    {
+        internal ExecutionOrder ParentExecutionOrder { get; set; }
+
+        public ParentLink(ExecutionOrder parentExecutionOrder)
+        {
+            this.LinkAlias = parentExecutionOrder.Order.Last().Item1.NodeAlias + "->";
+            this.ParentExecutionOrder = parentExecutionOrder.Duplicate();
+        }
+
+        // TODO: get selectivity from database and experience
+        public override double GetSelectivity()
+        {
+            return 0;
+        }
+
+        // TODO: get Cost from database and experience
+        public override double GetComputationalCost()
+        {
+            return 0;
+        }
+    }
+
     internal class MatchPath : MatchEdge
     {
         // The minimal length constraint for the path
@@ -276,13 +306,13 @@ namespace GraphView
     ///     item3 is a list of CompileLinks, called "forwardLinks", which contains all links between currentNode and previous state
     ///     item4 is a list of CompileLinks, called "backwardLinks", which contains all links that need to be execute
     ///         The element can be a MatchEdge, or a PredicateLink
+    ///     item5 is a list of ExecutionOrders, called "localExecutionOrders", which contains all execution orders in this TVFs or Derived tables.
     /// ExistingNodesAndEdges and ExistingPredicateLinks are used to record previous state and avoid redundant work
     /// Cost is to evaluate
     /// </summary>
     internal class ExecutionOrder
     {
         public List<Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>, List<ExecutionOrder>>> Order { get; set; }
-        public ExecutionOrder ParentExecutionOrder { get; set; }
         public HashSet<string> ExistingNodesAndEdges { get; set; }
         public HashSet<string> ExistingPredicateLinks { get; set; }
         public double Cost { get; set; }
@@ -297,18 +327,16 @@ namespace GraphView
 
         public ExecutionOrder(ExecutionOrder executionOrder)
         {
-            this.ParentExecutionOrder = executionOrder;
             this.Order = new List<Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>, List<ExecutionOrder>>>();
             this.ExistingNodesAndEdges = new HashSet<string>(executionOrder.ExistingNodesAndEdges);
-            this.ExistingPredicateLinks = new HashSet<string>(executionOrder.ExistingNodesAndEdges);
-            this.Cost = executionOrder.Cost;
+            this.ExistingPredicateLinks = new HashSet<string>(executionOrder.ExistingPredicateLinks);
+            this.Cost = 0.0;
         }
 
         public ExecutionOrder Duplicate()
         {
             return new ExecutionOrder()
             {
-                ParentExecutionOrder = this.ParentExecutionOrder,
                 ExistingNodesAndEdges = new HashSet<string>(this.ExistingNodesAndEdges),
                 ExistingPredicateLinks = new HashSet<string>(this.ExistingPredicateLinks),
                 Order = new List<Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>, List<ExecutionOrder>>>(this.Order),
@@ -322,29 +350,24 @@ namespace GraphView
             Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>, List<ExecutionOrder>> tuple = this.Order.Last();
 
             double cost = 0;
-            cost += tuple.Item1.GetCardinality();
-            if (tuple.Item2 != null)
-            {
-                cost += tuple.Item2.GetSelectivity();
-            }
-            foreach (CompileLink link in tuple.Item3)
-            {
-                cost += link.GetSelectivity();
-            }
-            foreach (CompileLink link in tuple.Item4)
-            {
-                cost += link.GetComputationalCost();
-            }
-            foreach (ExecutionOrder localExecutionOrder in tuple.Item5)
-            {
-                cost += localExecutionOrder.Cost;
-            }
-
+            cost += tuple.Item1.Position;
+            
             // sequential order
-            this.Cost += cost;
+            this.Cost = this.Cost * 10 + cost;
 
             // reverse order
-            // this.Cost += 1 / cost
+            // this.Cost = this.Cost * 10 + 1 / cost
+        }
+
+        public void AddParentLink(ParentLink parentLink)
+        {
+            if (this.Order.Any())
+            {
+                Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>, List<ExecutionOrder>> newFirstTuple =
+                    new Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>, List<ExecutionOrder>>(
+                        this.Order[0].Item1, parentLink, this.Order[0].Item3, this.Order[0].Item4, this.Order[0].Item5);
+                this.Order[0] = newFirstTuple;
+            }
         }
 
         /// <summary>
@@ -352,16 +375,20 @@ namespace GraphView
         /// </summary>
         /// <param name="aggregationBlock"></param>
         /// <param name="predicateLinksAccessedTableAliases"></param>
-        public void AddAggregationTable(AggregationBlock aggregationBlock,
+        public void AddRootTable(
+            AggregationBlock aggregationBlock,
             List<Tuple<PredicateLink, HashSet<string>>> predicateLinksAccessedTableAliases)
         {
-            NonFreeTable aggregateionTable = aggregationBlock.NonFreeTables[aggregationBlock.AggregationAlias];
+            NonFreeTable rootTable = aggregationBlock.NonFreeTables[aggregationBlock.RootTableAlias];
+
+            // Find local execution orders
+            List<ExecutionOrder> localExecutionOrders = rootTable.GetLocalExecutionOrder(this).Order.First().Item5;
 
             // Find connected predicateLinks
             List<CompileLink> forwardLinks = new List<CompileLink>();
             List<CompileLink> backwardLinks = new List<CompileLink>();
 
-            if (aggregateionTable.NodeAlias == "dummy")
+            if (rootTable.NodeAlias == "dummy")
             {
                 foreach (Tuple<PredicateLink, HashSet<string>> tuple in predicateLinksAccessedTableAliases)
                 {
@@ -378,7 +405,7 @@ namespace GraphView
             {
                 // Add the node's alias temporarily
                 HashSet<string> temporaryAliases = new HashSet<string>(this.ExistingNodesAndEdges);
-                temporaryAliases.Add(aggregateionTable.NodeAlias);
+                temporaryAliases.Add(rootTable.NodeAlias);
                 foreach (Tuple<PredicateLink, HashSet<string>> tuple in predicateLinksAccessedTableAliases)
                 {
                     if (!this.ExistingPredicateLinks.Contains(tuple.Item1.LinkAlias))
@@ -394,9 +421,11 @@ namespace GraphView
                     }
                 }
             }
-            List<ExecutionOrder> SubqueryExecutionOrders = aggregateionTable.GetLocalExecutionOrders(this);
+
             // Add a next possible tuple
-            this.AddTuple(new Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>, List<ExecutionOrder>>(aggregateionTable, null, forwardLinks, backwardLinks, SubqueryExecutionOrders));
+            this.AddTuple(
+                new Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>, List<ExecutionOrder>>(
+                    rootTable, null, forwardLinks, backwardLinks, localExecutionOrders));
         }
 
         /// <summary>
@@ -405,7 +434,8 @@ namespace GraphView
         /// <param name="aggregationBlock"></param>
         /// <param name="predicateLinksAccessedTableAliases"></param>
         /// <returns></returns>
-        public List<ExecutionOrder> GenerateNextOrders(AggregationBlock aggregationBlock, 
+        public List<ExecutionOrder> GenerateNextOrders(
+            AggregationBlock aggregationBlock, 
             List<Tuple<PredicateLink, HashSet<string>>> predicateLinksAccessedTableAliases)
         {
             // Find all possible next tuples
@@ -444,7 +474,10 @@ namespace GraphView
         {
             List<Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>, List<ExecutionOrder>>> nextTuples =
                 new List<Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>, List<ExecutionOrder>>>();
-            List<ExecutionOrder> localExecutionOrders = node.GetLocalExecutionOrders(this);
+
+            // Find local execution orders
+            List<ExecutionOrder> localExecutionOrders = node.GetLocalExecutionOrder(this).Order.First().Item5;
+
             if (node is MatchNode)
             {
                 MatchNode matchNode = node as MatchNode;

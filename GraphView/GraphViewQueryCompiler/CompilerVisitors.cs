@@ -82,7 +82,7 @@ namespace GraphView
             }
             for (int index = blocks.Count - 1; index >= 1; --index)
             {
-                if (blocks[index].AggregationAlias == "dummy" && !blocks[index].TableAliases.Any())
+                if (blocks[index].RootTableAlias == "dummy" && !blocks[index].TableInputDependency.Any())
                 {
                     blocks.RemoveAt(index);
                 }

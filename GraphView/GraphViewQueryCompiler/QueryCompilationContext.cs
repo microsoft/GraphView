@@ -116,8 +116,8 @@ namespace GraphView
 
         public Dictionary<string, AggregateState> SideEffectStates { get; private set; }
         public Dictionary<string, IAggregateFunction> SideEffectFunctions { get; private set; }
+        public ExecutionOrder CurrentExecutionOrder { get; set; }
         public List<ExecutionOrder> LocalExecutionOrders { get; set; }
-        public ExecutionOrder ParentExecutionOrder { get; set; }
         public List<Container> Containers { get; set; }
 
 
@@ -129,9 +129,9 @@ namespace GraphView
             SideEffectStates = new Dictionary<string, AggregateState>();
             SideEffectFunctions = new Dictionary<string, IAggregateFunction>();
             CarryOn = false;
-            LocalExecutionOrders = new List<ExecutionOrder>();
             Containers = new List<Container>();
-            ParentExecutionOrder = new ExecutionOrder();
+            CurrentExecutionOrder = new ExecutionOrder();
+            LocalExecutionOrders = new List<ExecutionOrder>();
         }
 
         public QueryCompilationContext(QueryCompilationContext parentContext)
@@ -147,23 +147,25 @@ namespace GraphView
                 parentContext.RawRecordLayout, new WColumnReferenceExpressionComparer());
             SideEffectStates = parentContext.SideEffectStates;
             SideEffectFunctions = parentContext.SideEffectFunctions;
-            LocalExecutionOrders = new List<ExecutionOrder>();
             Containers = parentContext.Containers;
-            ParentExecutionOrder = parentContext.ParentExecutionOrder;
+            CurrentExecutionOrder = new ExecutionOrder(parentContext.CurrentExecutionOrder);
+            LocalExecutionOrders = new List<ExecutionOrder>();
         }
 
-        public QueryCompilationContext(Dictionary<string, Tuple<TemporaryTableHeader, GraphViewExecutionOperator>> priorTemporaryTables,
-            Dictionary<string, IAggregateFunction> priorSideEffectFunctions, Dictionary<string, AggregateState> priorSideEffectStates,
-            ExecutionOrder priorParentExecutionOrder, List<ExecutionOrder> priorLocalExecutionOrders, List<Container> priorContainers)
+        public QueryCompilationContext(
+            Dictionary<string, Tuple<TemporaryTableHeader, GraphViewExecutionOperator>> priorTemporaryTables,
+            Dictionary<string, IAggregateFunction> priorSideEffectFunctions,
+            Dictionary<string, AggregateState> priorSideEffectStates,
+            List<Container> priorContainers)
         {
             TemporaryTableCollection = priorTemporaryTables;
             RawRecordLayout = new Dictionary<WColumnReferenceExpression, int>(new WColumnReferenceExpressionComparer());
             TableReferences = new HashSet<string>();
             SideEffectFunctions = priorSideEffectFunctions;
             SideEffectStates = priorSideEffectStates;
-            LocalExecutionOrders = priorLocalExecutionOrders;
             Containers = priorContainers;
-            ParentExecutionOrder = priorParentExecutionOrder;
+            CurrentExecutionOrder = new ExecutionOrder();
+            LocalExecutionOrders = new List<ExecutionOrder>();
         }
 
         public int AddContainers(Container container)
@@ -263,14 +265,14 @@ namespace GraphView
             return RawRecordLayout.TryGetValue(columnReference, out columnIndex);
         }
 
-        public void SetLocalExecutionOrders(List<ExecutionOrder> localExecutionOrders)
+        public void SetCurrentExecutionOrder(ExecutionOrder currentExecutionOrder)
         {
-            LocalExecutionOrders = localExecutionOrders;
+            CurrentExecutionOrder = currentExecutionOrder;
         }
 
-        public void SetParentExecutionOrder(ExecutionOrder parentExecutionOrder)
+        public void SetLocalExecutionOrders(List<ExecutionOrder> localExecutionOrders)
         {
-            ParentExecutionOrder = parentExecutionOrder;
+            this.LocalExecutionOrders = localExecutionOrders;
         }
     }
 }
