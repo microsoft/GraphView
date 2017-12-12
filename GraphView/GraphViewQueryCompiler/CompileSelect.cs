@@ -22,7 +22,7 @@ namespace GraphView
             }
             else
             {
-                executionOrder = this.GetLocalExecutionOrders(new ExecutionOrder(context.TableReferences)).First();
+                executionOrder = this.GetLocalExecutionOrders(new ExecutionOrder(context.ParentExecutionOrder)).First();
             }
             //// Construct AggregationBlocks and Create MatchGraph
             //GlobalDependencyVisitor gdVisitor = new GlobalDependencyVisitor();
@@ -107,9 +107,6 @@ namespace GraphView
             //        }
             //    }
             //}
-
-            //// Search the optimal execution order
-            //ExecutionOrder executionOrder = ConstructExecutionOrder(context.TableReferences, aggregationBlocks, predicatesAccessedTableAliases);
 
             // Construct Optimal operator chain according ExecutionOrder
             List<GraphViewExecutionOperator> operatorChain = ConstructOperatorChain(context, command, executionOrder);
@@ -210,7 +207,7 @@ namespace GraphView
             return new List<ExecutionOrder>()
             {
                 // Search the optimal execution order
-                ConstructExecutionOrder(parentExecutionOrder.ExistingNodesAndEdges,
+                ConstructExecutionOrder(parentExecutionOrder,
                     aggregationBlocks, predicatesAccessedTableAliases)
             };
         }
@@ -434,12 +431,12 @@ namespace GraphView
         /// <param name="aggregationBlocks"></param>
         /// <param name="predicatesAccessedTableAliases"></param>
         /// <returns></returns>
-        internal static ExecutionOrder ConstructExecutionOrder(HashSet<string> tableReferences, 
+        internal static ExecutionOrder ConstructExecutionOrder(ExecutionOrder parentExecutionOrder, 
             List<AggregationBlock> aggregationBlocks,
             List<Tuple<WBooleanExpression, HashSet<string>>> predicatesAccessedTableAliases)
         {
             ExecutionOrderOptimizer executionOrderOptimizer = new ExecutionOrderOptimizer(aggregationBlocks, predicatesAccessedTableAliases);
-            return executionOrderOptimizer.GenerateOptimalExecutionOrder(tableReferences);
+            return executionOrderOptimizer.GenerateOptimalExecutionOrder(parentExecutionOrder);
         }
 
         /// <summary>
@@ -459,12 +456,14 @@ namespace GraphView
             {
                 context.CurrentExecutionOperator = context.OuterContextOp;
             }
-
+            
             // compile an operator or some operators according the execution order
             foreach (Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>, List<ExecutionOrder>> tuple in executionOrder.Order)
             {
                 string alias = tuple.Item1.NodeAlias;
+                context.SetParentExecutionOrder(executionOrder);
                 context.SetLocalExecutionOrders(tuple.Item5);
+
                 GraphViewExecutionOperator op;
 
                 // if the table is free variable
@@ -1133,7 +1132,7 @@ namespace GraphView
             {
                 QueryCompilationContext statementContext = new QueryCompilationContext(priorContext.TemporaryTableCollection,
                     priorContext.SideEffectFunctions, priorContext.SideEffectStates,
-                    priorContext.LocalExecutionOrders, priorContext.Containers);
+                    priorContext.ParentExecutionOrder, priorContext.LocalExecutionOrders, priorContext.Containers);
                 op = st.Compile(statementContext, command);
                 priorContext = statementContext;
             }
@@ -1174,6 +1173,16 @@ namespace GraphView
 
             return subqueryOp;
         }
+
+        internal override List<ExecutionOrder> GetLocalExecutionOrders(ExecutionOrder parentExecutionOrder)
+        {
+            List<ExecutionOrder> localExecutionOrders = new List<ExecutionOrder>();
+
+            WSqlStatement subquery = (_expression as WScalarSubquery).SubQueryExpr;
+            localExecutionOrders.Add(subquery.GetLocalExecutionOrders(parentExecutionOrder).First());
+
+            return localExecutionOrders;
+        }
     }
 
     partial class WUnionTableReference
@@ -1209,7 +1218,6 @@ namespace GraphView
                     subcontext.OuterContextOp.SetContainer(container, containerIndex);
                     subcontext.InBatchMode = context.InBatchMode;
                     subcontext.CarryOn = true;
-                    subcontext.LocalExecutionOrders = new List<ExecutionOrder>();
                     if (index < context.LocalExecutionOrders.Count)
                     {
                         subcontext.LocalExecutionOrders.Add(context.LocalExecutionOrders[index]);
@@ -1275,7 +1283,7 @@ namespace GraphView
                         }
                     }
 
-                    localExecutionOrders.AddRange(scalarSubquery.SubQueryExpr.GetLocalExecutionOrders(parentExecutionOrder));
+                    localExecutionOrders.Add(scalarSubquery.SubQueryExpr.GetLocalExecutionOrders(parentExecutionOrder).First());
                 }
             }
             return localExecutionOrders;
@@ -1292,9 +1300,9 @@ namespace GraphView
             CoalesceOperator coalesceOp = new CoalesceOperator(context.CurrentExecutionOperator, container, containerIndex);
                
             WSelectQueryBlock firstSelectQuery = null;
-            foreach (WScalarExpression parameter in Parameters)
+            for (int index = 0; index < Parameters.Count; ++index)
             {
-                WScalarSubquery scalarSubquery = parameter as WScalarSubquery;
+                WScalarSubquery scalarSubquery = Parameters[index] as WScalarSubquery;
                 if (scalarSubquery == null)
                 {
                     throw new SyntaxErrorException("The input of a coalesce table reference must be one or more scalar subqueries.");
@@ -1314,6 +1322,10 @@ namespace GraphView
                 subcontext.OuterContextOp.SetContainer(container, containerIndex);
                 subcontext.AddField(GremlinKeyword.IndexTableName, command.IndexColumnName, ColumnGraphType.Value, true);
                 subcontext.InBatchMode = true;
+                if (index < context.LocalExecutionOrders.Count)
+                {
+                    subcontext.LocalExecutionOrders.Add(context.LocalExecutionOrders[index]);
+                }
                 GraphViewExecutionOperator traversalOp = scalarSubquery.SubQueryExpr.Compile(subcontext, command);
                 coalesceOp.AddTraversal(traversalOp);
             }
@@ -1336,6 +1348,32 @@ namespace GraphView
 
             context.CurrentExecutionOperator = coalesceOp;
             return coalesceOp;
+        }
+
+        internal override List<ExecutionOrder> GetLocalExecutionOrders(ExecutionOrder parentExecutionOrder)
+        {
+            List<ExecutionOrder> localExecutionOrders = new List<ExecutionOrder>();
+            WSelectQueryBlock firstSelectQuery = null;
+            foreach (WScalarExpression parameter in Parameters)
+            {
+                WScalarSubquery scalarSubquery = parameter as WScalarSubquery;
+                if (scalarSubquery == null)
+                {
+                    throw new SyntaxErrorException("The input of a coalesce table reference must be one or more scalar subqueries.");
+                }
+
+                if (firstSelectQuery == null)
+                {
+                    firstSelectQuery = scalarSubquery.SubQueryExpr as WSelectQueryBlock;
+                    if (firstSelectQuery == null)
+                    {
+                        throw new SyntaxErrorException("The input of a coalesce table reference must be one or more select query blocks.");
+                    }
+                }
+
+                localExecutionOrders.Add(scalarSubquery.SubQueryExpr.GetLocalExecutionOrders(parentExecutionOrder).First());
+            }
+            return localExecutionOrders;
         }
     }
 
@@ -1409,6 +1447,10 @@ namespace GraphView
             targetSubContext.OuterContextOp.SetContainer(targetContainer, targetContainerIndex);
             targetSubContext.AddField(GremlinKeyword.IndexTableName, command.IndexColumnName, ColumnGraphType.Value, true);
             targetSubContext.InBatchMode = true;
+            if (0 < context.LocalExecutionOrders.Count)
+            {
+                targetSubContext.LocalExecutionOrders.Add(context.LocalExecutionOrders[0]);
+            }
             GraphViewExecutionOperator targetSubqueryOp = optionalSelect.Compile(targetSubContext, command);
 
             QueryCompilationContext subcontext = new QueryCompilationContext(context);
@@ -1417,6 +1459,10 @@ namespace GraphView
             subcontext.OuterContextOp.SetContainer(optinalContainer, optinalContainerIndex);
             subcontext.CarryOn = true;
             subcontext.InBatchMode = context.InBatchMode;
+            if (0 < context.LocalExecutionOrders.Count)
+            {
+                subcontext.LocalExecutionOrders.Add(context.LocalExecutionOrders[0]);
+            }
             GraphViewExecutionOperator optionalTraversalOp = optionalSelect.Compile(subcontext, command);
 
             OptionalOperator optionalOp = new OptionalOperator(
@@ -1443,6 +1489,16 @@ namespace GraphView
             return optionalOp;
         }
 
+        internal override List<ExecutionOrder> GetLocalExecutionOrders(ExecutionOrder parentExecutionOrder)
+        {
+            List<ExecutionOrder> localExecutionOrders = new List<ExecutionOrder>();
+            WSelectQueryBlock contextSelect, optionalSelect;
+            this.Split(out contextSelect, out optionalSelect);
+
+            localExecutionOrders.Add(optionalSelect.GetLocalExecutionOrders(parentExecutionOrder).First());
+
+            return localExecutionOrders;
+        }
     }
 
     partial class WLocalTableReference
@@ -1466,6 +1522,10 @@ namespace GraphView
             subcontext.OuterContextOp.SetContainer(container, containerIndex);
             subcontext.AddField(GremlinKeyword.IndexTableName, command.IndexColumnName, ColumnGraphType.Value, true);
             subcontext.InBatchMode = true;
+            if (0 < context.LocalExecutionOrders.Count)
+            {
+                subcontext.LocalExecutionOrders.Add(context.LocalExecutionOrders[0]);
+            }
             GraphViewExecutionOperator localTraversalOp = localSelect.Compile(subcontext, command);
             LocalOperator localOp = new LocalOperator(context.CurrentExecutionOperator, localTraversalOp, container, containerIndex);
 
@@ -1483,6 +1543,26 @@ namespace GraphView
             }
 
             return localOp;
+        }
+
+        internal override List<ExecutionOrder> GetLocalExecutionOrders(ExecutionOrder parentExecutionOrder)
+        {
+            List<ExecutionOrder> localExecutionOrders = new List<ExecutionOrder>();
+
+            WScalarSubquery localSubquery = Parameters[0] as WScalarSubquery;
+            if (localSubquery == null)
+            {
+                throw new SyntaxErrorException("The input of a local table reference must be a scalar subquery.");
+            }
+            WSelectQueryBlock localSelect = localSubquery.SubQueryExpr as WSelectQueryBlock;
+            if (localSelect == null)
+            {
+                throw new SyntaxErrorException("The sub-query must be a select query block.");
+            }
+
+            localExecutionOrders.Add(localSelect.GetLocalExecutionOrders(parentExecutionOrder).First());
+
+            return localExecutionOrders;
         }
     }
 
@@ -1507,6 +1587,10 @@ namespace GraphView
             subcontext.OuterContextOp.SetContainer(container, containerIndex);
             subcontext.AddField(GremlinKeyword.IndexTableName, command.IndexColumnName, ColumnGraphType.Value, true);
             subcontext.InBatchMode = true;
+            if (0 < context.LocalExecutionOrders.Count)
+            {
+                subcontext.LocalExecutionOrders.Add(context.LocalExecutionOrders[0]);
+            }
             GraphViewExecutionOperator flatMapTraversalOp = flatMapSelect.Compile(subcontext, command);
 
             FlatMapOperator flatMapOp = new FlatMapOperator(context.CurrentExecutionOperator, flatMapTraversalOp, container, containerIndex);
@@ -1527,6 +1611,25 @@ namespace GraphView
             }
 
             return flatMapOp;
+        }
+
+        internal override List<ExecutionOrder> GetLocalExecutionOrders(ExecutionOrder parentExecutionOrder)
+        {
+            List<ExecutionOrder> localExecutionOrders = new List<ExecutionOrder>();
+            WScalarSubquery flatMapSubquery = Parameters[0] as WScalarSubquery;
+            if (flatMapSubquery == null)
+            {
+                throw new SyntaxErrorException("The input of a flatMap table reference must be a scalar subquery.");
+            }
+            WSelectQueryBlock flatMapSelect = flatMapSubquery.SubQueryExpr as WSelectQueryBlock;
+            if (flatMapSelect == null)
+            {
+                throw new SyntaxErrorException("The sub-query must be a select query block.");
+            }
+
+            localExecutionOrders.Add(flatMapSelect.GetLocalExecutionOrders(parentExecutionOrder).First());
+
+            return localExecutionOrders;
         }
     }
 
@@ -1994,6 +2097,10 @@ namespace GraphView
             initialContext.OuterContextOp.SetContainer(initialContainer, initialContainerIndex);
             initialContext.InBatchMode = context.InBatchMode;
             initialContext.CarryOn = true;
+            if (0 < context.LocalExecutionOrders.Count)
+            {
+                initialContext.LocalExecutionOrders.Add(context.LocalExecutionOrders[0]);
+            }
             GraphViewExecutionOperator getInitialRecordOp = contextSelect.Compile(initialContext, command);
             
             QueryCompilationContext rTableContext = new QueryCompilationContext(context);
@@ -2028,6 +2135,10 @@ namespace GraphView
             rTableContext.OuterContextOp.SetContainer(innerContainer, innerContainerIndex);
             rTableContext.InBatchMode = context.InBatchMode;
             rTableContext.CarryOn = true;
+            if (1 < context.LocalExecutionOrders.Count)
+            {
+                rTableContext.LocalExecutionOrders.Add(context.LocalExecutionOrders[1]);
+            }
             GraphViewExecutionOperator innerOp = repeatSelect.Compile(rTableContext, command);
 
             RepeatOperator repeatOp = new RepeatOperator(
@@ -2056,6 +2167,19 @@ namespace GraphView
             }
 
             return repeatOp;
+        }
+
+        internal override List<ExecutionOrder> GetLocalExecutionOrders(ExecutionOrder parentExecutionOrder)
+        {
+            List<ExecutionOrder> localExecutionOrders = new List<ExecutionOrder>();
+
+            WSelectQueryBlock contextSelect, repeatSelect;
+            Split(out contextSelect, out repeatSelect);
+
+            localExecutionOrders.Add(contextSelect.GetLocalExecutionOrders(parentExecutionOrder).First());
+            localExecutionOrders.Add(repeatSelect.GetLocalExecutionOrders(parentExecutionOrder).First());
+
+            return localExecutionOrders;
         }
     }
 
@@ -2351,6 +2475,10 @@ namespace GraphView
             subcontext.OuterContextOp.SetContainer(container, containerIndex);
             subcontext.AddField(GremlinKeyword.IndexTableName, command.IndexColumnName, ColumnGraphType.Value, true);
             subcontext.InBatchMode = true;
+            if (0 < context.LocalExecutionOrders.Count)
+            {
+                subcontext.LocalExecutionOrders.Add(context.LocalExecutionOrders[0]);
+            }
             GraphViewExecutionOperator mapTraversalOp = mapSelect.Compile(subcontext, command);
             MapOperator mapOp = new MapOperator(context.CurrentExecutionOperator, mapTraversalOp, container, containerIndex);
             context.CurrentExecutionOperator = mapOp;
@@ -2370,6 +2498,25 @@ namespace GraphView
             }
 
             return mapOp;
+        }
+
+        internal override List<ExecutionOrder> GetLocalExecutionOrders(ExecutionOrder parentExecutionOrder)
+        {
+            List<ExecutionOrder> localExecutionOrders = new List<ExecutionOrder>();
+            WScalarSubquery mapSubquery = Parameters[0] as WScalarSubquery;
+            if (mapSubquery == null)
+            {
+                throw new SyntaxErrorException("The input of a map table reference must be a scalar subquery.");
+            }
+            WSelectQueryBlock mapSelect = mapSubquery.SubQueryExpr as WSelectQueryBlock;
+            if (mapSelect == null)
+            {
+                throw new SyntaxErrorException("The sub-query must be a select query block.");
+            }
+            
+            localExecutionOrders.Add(mapSelect.GetLocalExecutionOrders(parentExecutionOrder).First());
+
+            return localExecutionOrders;
         }
     }
 
@@ -2394,11 +2541,35 @@ namespace GraphView
             subcontext.OuterContextOp.SetContainer(container, containerIndex);
             subcontext.AddField(GremlinKeyword.IndexTableName, command.IndexColumnName, ColumnGraphType.Value, true);
             subcontext.InBatchMode = true;
+            if (0 < context.LocalExecutionOrders.Count)
+            {
+                subcontext.LocalExecutionOrders.Add(context.LocalExecutionOrders[0]);
+            }
             GraphViewExecutionOperator sideEffectTraversalOp = sideEffectSelect.Compile(subcontext, command);
             SideEffectOperator sideEffectOp = new SideEffectOperator(context.CurrentExecutionOperator, sideEffectTraversalOp, container, containerIndex);
             context.CurrentExecutionOperator = sideEffectOp;
 
             return sideEffectOp;
+        }
+
+        internal override List<ExecutionOrder> GetLocalExecutionOrders(ExecutionOrder parentExecutionOrder)
+        {
+            List<ExecutionOrder> localExecutionOrders = new List<ExecutionOrder>();
+
+            WScalarSubquery sideEffectSubquery = Parameters[0] as WScalarSubquery;
+            if (sideEffectSubquery == null)
+            {
+                throw new SyntaxErrorException("The input of a sideEffect table reference must be a scalar subquery.");
+            }
+            WSelectQueryBlock sideEffectSelect = sideEffectSubquery.SubQueryExpr as WSelectQueryBlock;
+            if (sideEffectSelect == null)
+            {
+                throw new SyntaxErrorException("The sub-query must be a select query block.");
+            }
+
+            localExecutionOrders.Add(sideEffectSelect.GetLocalExecutionOrders(parentExecutionOrder).First());
+
+            return localExecutionOrders;
         }
     }
 
@@ -2485,6 +2656,10 @@ namespace GraphView
             Container container = new Container();
             int containerIndex = context.AddContainers(container);
             subcontext.OuterContextOp.SetContainer(container, containerIndex);
+            if (0 < context.LocalExecutionOrders.Count)
+            {
+                subcontext.LocalExecutionOrders.Add(context.LocalExecutionOrders[0]);
+            }
             GraphViewExecutionOperator aggregateOp = aggregateSubQuery.SubQueryExpr.Compile(subcontext, command);
 
             WValueExpression groupParameter = Parameters[0] as WValueExpression;
@@ -2546,6 +2721,18 @@ namespace GraphView
                 return groupSideEffectOp;
             }
         }
+
+        internal override List<ExecutionOrder> GetLocalExecutionOrders(ExecutionOrder parentExecutionOrder)
+        {
+            List<ExecutionOrder> localExecutionOrders = new List<ExecutionOrder>();
+            
+            WScalarSubquery aggregateSubQuery = Parameters[2] as WScalarSubquery;
+            Debug.Assert(aggregateSubQuery != null);
+
+            localExecutionOrders.Add(aggregateSubQuery.SubQueryExpr.GetLocalExecutionOrders(parentExecutionOrder).First());
+
+            return localExecutionOrders;
+        }
     }
 
     partial class WQueryDerivedTable
@@ -2554,7 +2741,9 @@ namespace GraphView
         {
             WSelectQueryBlock derivedSelectQueryBlock = QueryExpr as WSelectQueryBlock;
             if (derivedSelectQueryBlock == null)
+            {
                 throw new SyntaxErrorException("The QueryExpr of a WQueryDerviedTable must be one select query block.");
+            }
 
             QueryCompilationContext derivedTableContext = new QueryCompilationContext(context);
             Container container = new Container();
@@ -2570,7 +2759,10 @@ namespace GraphView
                 derivedTableContext.InBatchMode = context.InBatchMode;
                 derivedTableContext.OuterContextOp.SetContainer(container, containerIndex);
             }
-            
+            if (0 < context.LocalExecutionOrders.Count)
+            {
+                derivedTableContext.LocalExecutionOrders.Add(context.LocalExecutionOrders[0]);
+            }
             GraphViewExecutionOperator subQueryOp = derivedSelectQueryBlock.Compile(derivedTableContext, command);
 
             ProjectAggregationInBatch projectAggregationInBatchOp = null;
@@ -2602,7 +2794,9 @@ namespace GraphView
                 {
                     WValueExpression expr = selectScalar.SelectExpr as WValueExpression;;
                     if (expr == null)
+                    {
                         throw new SyntaxErrorException(string.Format("The select element \"{0}\" doesn't have an alias.", selectScalar.ToString()));
+                    }
 
                     selectElementAlias = expr.Value;
                 }
@@ -2613,6 +2807,21 @@ namespace GraphView
             context.CurrentExecutionOperator = queryDerivedTableOp;
 
             return queryDerivedTableOp;
+        }
+
+        internal override List<ExecutionOrder> GetLocalExecutionOrders(ExecutionOrder parentExecutionOrder)
+        {
+            List<ExecutionOrder> localExecutionOrders = new List<ExecutionOrder>();
+
+            WSelectQueryBlock derivedSelectQueryBlock = QueryExpr as WSelectQueryBlock;
+            if (derivedSelectQueryBlock == null)
+            {
+                throw new SyntaxErrorException("The QueryExpr of a WQueryDerviedTable must be one select query block.");
+            }
+
+            localExecutionOrders.Add(derivedSelectQueryBlock.GetLocalExecutionOrders(parentExecutionOrder).First());
+
+            return localExecutionOrders;
         }
     }
 
@@ -3065,6 +3274,10 @@ namespace GraphView
             targetSubContext.OuterContextOp.SetContainer(container, containerIndex);
             targetSubContext.AddField(GremlinKeyword.IndexTableName, command.IndexColumnName, ColumnGraphType.Value, true);
             targetSubContext.InBatchMode = true;
+            if (0 < context.LocalExecutionOrders.Count)
+            {
+                targetSubContext.LocalExecutionOrders.Add(context.LocalExecutionOrders[0]);
+            }
             GraphViewExecutionOperator targetSubqueryOp = targetSubquery.SubQueryExpr.Compile(targetSubContext, command);
 
             Container trueBranchContainer = new Container();
@@ -3073,6 +3286,10 @@ namespace GraphView
             trueSubContext.CarryOn = true;
             trueSubContext.InBatchMode = context.InBatchMode;
             trueSubContext.OuterContextOp.SetContainer(trueBranchContainer, trueBranchContainerIndex);
+            if (1 < context.LocalExecutionOrders.Count)
+            {
+                trueSubContext.LocalExecutionOrders.Add(context.LocalExecutionOrders[1]);
+            }
             GraphViewExecutionOperator trueBranchTraversalOp =
                 trueTraversalParameter.SubQueryExpr.Compile(trueSubContext, command);
 
@@ -3082,6 +3299,10 @@ namespace GraphView
             falseSubContext.CarryOn = true;
             falseSubContext.InBatchMode = context.InBatchMode;
             falseSubContext.OuterContextOp.SetContainer(falseBranchContainer, falseBranchContainerIndex);
+            if (2 < context.LocalExecutionOrders.Count)
+            {
+                falseSubContext.LocalExecutionOrders.Add(context.LocalExecutionOrders[2]);
+            }
             GraphViewExecutionOperator falseBranchTraversalOp =
                 falseTraversalParameter.SubQueryExpr.Compile(falseSubContext, command);
 
@@ -3106,6 +3327,27 @@ namespace GraphView
 
             return chooseOp;
         }
+
+        internal override List<ExecutionOrder> GetLocalExecutionOrders(ExecutionOrder parentExecutionOrder)
+        {
+            List<ExecutionOrder> localExecutionOrders = new List<ExecutionOrder>();
+
+            WScalarSubquery targetSubquery = this.Parameters[0] as WScalarSubquery;
+            Debug.Assert(targetSubquery != null, "targetSubquery != null");
+
+            WScalarSubquery trueTraversalParameter = this.Parameters[1] as WScalarSubquery;
+            Debug.Assert(trueTraversalParameter != null, "trueTraversalParameter != null");
+            WSelectQueryBlock selectQueryBlock = trueTraversalParameter.SubQueryExpr as WSelectQueryBlock;
+            Debug.Assert(selectQueryBlock != null, "selectQueryBlock != null");
+
+            WScalarSubquery falseTraversalParameter = this.Parameters[2] as WScalarSubquery;
+            Debug.Assert(falseTraversalParameter != null, "falseTraversalParameter != null");
+
+            localExecutionOrders.Add(targetSubquery.SubQueryExpr.GetLocalExecutionOrders(parentExecutionOrder).First());
+            localExecutionOrders.Add(trueTraversalParameter.SubQueryExpr.GetLocalExecutionOrders(parentExecutionOrder).First());
+            localExecutionOrders.Add(falseTraversalParameter.SubQueryExpr.GetLocalExecutionOrders(parentExecutionOrder).First());
+            return localExecutionOrders;
+        }
     }
 
     partial class WChooseWithOptionsTableReference
@@ -3121,6 +3363,10 @@ namespace GraphView
             targetContext.InBatchMode = true;
             targetContext.OuterContextOp.SetContainer(container, containerIndex);
             targetContext.AddField(GremlinKeyword.IndexTableName, command.IndexColumnName, ColumnGraphType.Value, true);
+            if (0 < context.LocalExecutionOrders.Count)
+            {
+                targetContext.LocalExecutionOrders.Add(context.LocalExecutionOrders[0]);   
+            }
             GraphViewExecutionOperator targetSubqueryOp = targetSubquery.SubQueryExpr.Compile(targetContext, command);
 
             ChooseWithOptionsOperator chooseWithOptionsOp =
@@ -3154,6 +3400,10 @@ namespace GraphView
                 subcontext.CarryOn = true;
                 subcontext.InBatchMode = context.InBatchMode;
                 subcontext.OuterContextOp.SetContainer(optionContainer, optionContainerIndex);
+                if ((i+1)/2 < context.LocalExecutionOrders.Count)
+                {
+                    subcontext.LocalExecutionOrders.Add(context.LocalExecutionOrders[(i + 1) / 2]);
+                }
                 GraphViewExecutionOperator optionTraversalOp = scalarSubquery.SubQueryExpr.Compile(subcontext, command);
                 chooseWithOptionsOp.AddOptionTraversal(value?.CompileToFunction(context, command), optionContainer, optionTraversalOp, optionContainerIndex);
             }
@@ -3171,6 +3421,36 @@ namespace GraphView
 
             context.CurrentExecutionOperator = chooseWithOptionsOp;
             return chooseWithOptionsOp;
+        }
+
+        internal override List<ExecutionOrder> GetLocalExecutionOrders(ExecutionOrder parentExecutionOrder)
+        {
+            List<ExecutionOrder> localExecutionOrders = new List<ExecutionOrder>();
+
+            WScalarSubquery targetSubquery = this.Parameters[0] as WScalarSubquery;
+            Debug.Assert(targetSubquery != null, "targetSubquery != null");
+
+            localExecutionOrders.Add(targetSubquery.SubQueryExpr.GetLocalExecutionOrders(parentExecutionOrder).First());
+
+            WSelectQueryBlock firstSelectQuery = null;
+            for (int i = 1; i < this.Parameters.Count; i += 2)
+            {
+                WValueExpression value = this.Parameters[i] as WValueExpression;
+                Debug.Assert(value != null, "value != null");
+
+                WScalarSubquery scalarSubquery = this.Parameters[i + 1] as WScalarSubquery;
+                Debug.Assert(scalarSubquery != null, "scalarSubquery != null");
+
+                if (firstSelectQuery == null)
+                {
+                    firstSelectQuery = scalarSubquery.SubQueryExpr as WSelectQueryBlock;
+                    Debug.Assert(firstSelectQuery != null, "firstSelectQuery != null");
+                }
+
+                localExecutionOrders.Add(scalarSubquery.SubQueryExpr.GetLocalExecutionOrders(parentExecutionOrder).First());
+            }
+
+            return localExecutionOrders;
         }
     }
 

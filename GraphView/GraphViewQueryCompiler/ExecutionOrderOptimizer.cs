@@ -37,7 +37,7 @@ namespace GraphView
         /// </summary>
         /// <param name="tableReferences"></param>
         /// <returns></returns>
-        internal ExecutionOrder GenerateOptimalExecutionOrder(HashSet<string> tableReferences)
+        internal ExecutionOrder GenerateOptimalExecutionOrder(ExecutionOrder parentExecutionOrder)
         {
             // Two queues, queue[index] keeps forthcoming orders and queue[1 - index] keeps results from queue[index]
             int queueIndex = 0, blockIndex = 0;
@@ -49,7 +49,7 @@ namespace GraphView
 
             };
 
-            queue[queueIndex].Add(new ExecutionOrder(tableReferences));
+            queue[queueIndex].Add(new ExecutionOrder(parentExecutionOrder));
 
             while (blockIndex < blocksCount)
             {

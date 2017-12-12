@@ -7,6 +7,7 @@ using Microsoft.SqlServer.TransactSql.ScriptDom;
 namespace GraphViewUnitTest
 {
     [TestClass]
+    [Ignore]
     public class GraphViewMarvelTest
     {
         [TestMethod]

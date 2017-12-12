@@ -282,22 +282,34 @@ namespace GraphView
     internal class ExecutionOrder
     {
         public List<Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>, List<ExecutionOrder>>> Order { get; set; }
+        public ExecutionOrder ParentExecutionOrder { get; set; }
         public HashSet<string> ExistingNodesAndEdges { get; set; }
         public HashSet<string> ExistingPredicateLinks { get; set; }
         public double Cost { get; set; }
 
-        public ExecutionOrder(HashSet<string> tableReferences)
+        public ExecutionOrder()
         {
             this.Order = new List<Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>, List<ExecutionOrder>>>();
-            this.ExistingNodesAndEdges = new HashSet<string>(tableReferences);
+            this.ExistingNodesAndEdges = new HashSet<string>();
             this.ExistingPredicateLinks = new HashSet<string>();
             this.Cost = 0.0;
         }
 
+        public ExecutionOrder(ExecutionOrder executionOrder)
+        {
+            this.ParentExecutionOrder = executionOrder;
+            this.Order = new List<Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>, List<ExecutionOrder>>>();
+            this.ExistingNodesAndEdges = new HashSet<string>(executionOrder.ExistingNodesAndEdges);
+            this.ExistingPredicateLinks = new HashSet<string>(executionOrder.ExistingNodesAndEdges);
+            this.Cost = executionOrder.Cost;
+        }
+
         public ExecutionOrder Duplicate()
         {
-            return new ExecutionOrder(this.ExistingNodesAndEdges)
+            return new ExecutionOrder()
             {
+                ParentExecutionOrder = this.ParentExecutionOrder,
+                ExistingNodesAndEdges = new HashSet<string>(this.ExistingNodesAndEdges),
                 ExistingPredicateLinks = new HashSet<string>(this.ExistingPredicateLinks),
                 Order = new List<Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>, List<ExecutionOrder>>>(this.Order),
                 Cost = this.Cost
