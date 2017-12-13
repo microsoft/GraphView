@@ -132,9 +132,18 @@ namespace GraphView
         }
     }
 
-    public class RepeatCondition
+    internal class RepeatCondition
     {
+        /// <summary>
+        /// When this variable is true, the repeat step corresponds to the while-do semantics. 
+        /// That is: the input will be evaluated against the until condition first,
+        /// if there is any, before it is fed into the repeat body. 
+        /// Or, the repeat step corresponds to the do-while semantics.
+        /// </summary>
         internal bool StartFromContext { get; set; }
+        /// <summary>
+        /// When this variable is true, the repeat step will always projects the step's input.
+        /// </summary>
         internal bool IsEmitContext { get; set; }
         internal int RepeatTimes { get; set; }
         internal GremlinToSqlContext EmitContext { get; set; }

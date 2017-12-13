@@ -47,7 +47,7 @@ namespace GraphView
             }
             ProjectedProperties.Add(GremlinKeyword.Path);
             this.LocalContext.PopulateLocalPath();
-            this.MinPathLength = this.LocalContext.MinPathLength;
+            this.LocalPathLengthLowerBound = this.LocalContext.MinPathLength;
         }
 
         internal override WScalarExpression ToStepScalarExpr(List<string> composedProperties = null)

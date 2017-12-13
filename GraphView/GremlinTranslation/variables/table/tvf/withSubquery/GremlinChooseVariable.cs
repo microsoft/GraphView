@@ -140,16 +140,16 @@ namespace GraphView
             {
                 this.TrueChoiceContext.PopulateLocalPath();
                 this.FalseChocieContext.PopulateLocalPath();
-                this.MinPathLength = Math.Min(this.TrueChoiceContext.MinPathLength,
+                this.LocalPathLengthLowerBound = Math.Min(this.TrueChoiceContext.MinPathLength,
                     this.FalseChocieContext.MinPathLength);
             }
             else
             {
-                this.MinPathLength = Int32.MaxValue;
+                this.LocalPathLengthLowerBound = Int32.MaxValue;
                 foreach (var option in this.Options)
                 {
                     option.Value.PopulateLocalPath();
-                    this.MinPathLength = Math.Min(this.MinPathLength, option.Value.MinPathLength);
+                    this.LocalPathLengthLowerBound = Math.Min(this.LocalPathLengthLowerBound, option.Value.MinPathLength);
                 }
             }
         }

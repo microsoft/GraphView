@@ -103,7 +103,7 @@ namespace GraphView
             foreach (var step in this.StepList)
             {
                 step.PopulateLocalPath();
-                this.MinPathLength += step.MinPathLength;
+                this.MinPathLength += step.LocalPathLengthLowerBound;
             }
 
             GremlinLocalPathVariable newVariable = new GremlinLocalPathVariable(this.StepList);
@@ -112,9 +112,9 @@ namespace GraphView
             this.ContextLocalPath = newVariable;
         }
 
-        internal List<GremlinVariable> GetGlobalPathStepList()
+        internal List<GremlinVariable> PopulateGlobalPathStepList()
         {
-            List<GremlinVariable> steps = this.ParentContext?.GetGlobalPathStepList() ?? new List<GremlinVariable>();
+            List<GremlinVariable> steps = this.ParentContext?.PopulateGlobalPathStepList() ?? new List<GremlinVariable>();
             foreach (var step in this.StepList)
             {
                 step.PopulateLocalPath();
@@ -194,12 +194,12 @@ namespace GraphView
             {
                 return this.Predicates;
             }
-            return SqlUtil.GetExistPredicate(ToSelectQueryBlock());
+            return SqlUtil.GetExistPredicate(this.ToSelectQueryBlock());
         }
 
         internal WSqlScript ToSqlScript()
         {
-            return new WSqlScript() { Batches = GetBatchList() };
+            return new WSqlScript() { Batches = this.GetBatchList() };
         }
 
         internal List<WSqlBatch> GetBatchList()
@@ -208,24 +208,24 @@ namespace GraphView
             {
                 new WSqlBatch()
                 {
-                    Statements = GetStatements()
+                    Statements = this.GetStatements()
                 }
             };
         }
 
         internal List<WSqlStatement> GetStatements()
         {
-            return new List<WSqlStatement>() { ToSelectQueryBlock() };
+            return new List<WSqlStatement>() { this.ToSelectQueryBlock() };
         }
 
         internal WSelectQueryBlock ToSelectQueryBlock(bool isToCompose1 = false)
         {
             return new WSelectQueryBlock()
             {
-                SelectElements = GetSelectElement(isToCompose1),
-                FromClause = GetFromClause(),
-                MatchClause = GetMatchClause(),
-                WhereClause = GetWhereClause()
+                SelectElements = this.GetSelectElement(isToCompose1),
+                FromClause = this.GetFromClause(),
+                MatchClause = this.GetMatchClause(),
+                WhereClause = this.GetWhereClause()
             };
         }
 
@@ -235,18 +235,22 @@ namespace GraphView
 
             if (this.PivotVariable.GetVariableType() == GremlinVariableType.NULL)
             {
-                selectElements.Add(SqlUtil.GetSelectScalarExpr(SqlUtil.GetValueExpr(null), GremlinKeyword.TableDefaultColumnName));
+                selectElements.Add(
+                    SqlUtil.GetSelectScalarExpr(SqlUtil.GetValueExpr(null), 
+                    GremlinKeyword.TableDefaultColumnName));
                 return selectElements;
             }
 
             if (isToCompose1)
             {
-                selectElements.Add(SqlUtil.GetSelectScalarExpr(this.PivotVariable.ToCompose1(), GremlinKeyword.TableDefaultColumnName));
+                selectElements.Add(
+                    SqlUtil.GetSelectScalarExpr(this.PivotVariable.ToCompose1(), GremlinKeyword.TableDefaultColumnName));
                 return selectElements;
             }
 
             GremlinVariableProperty defaultProjection = this.PivotVariable.DefaultProjection();
-            selectElements.Add(SqlUtil.GetSelectScalarExpr(defaultProjection.ToScalarExpression(), this.PivotVariable.DefaultProperty()));
+            selectElements.Add(
+                SqlUtil.GetSelectScalarExpr(defaultProjection.ToScalarExpression(), this.PivotVariable.DefaultProperty()));
 
             foreach (var property in this.ProjectedProperties)
             {

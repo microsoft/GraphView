@@ -32,7 +32,7 @@ namespace GraphView
             }
             ProjectedProperties.Add(GremlinKeyword.Path);
             this.OptionalContext.PopulateLocalPath();
-            this.MinPathLength = 0;
+            this.LocalPathLengthLowerBound = 0;
         }
 
         internal override bool Populate(string property, string label = null)

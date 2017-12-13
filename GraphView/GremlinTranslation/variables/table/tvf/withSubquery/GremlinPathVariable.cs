@@ -10,9 +10,21 @@ namespace GraphView
     internal class GremlinPathVariable : GremlinTableVariable
     {
         public List<GremlinVariable> StepList { get; set; }
-        public List<List<string>> StepLabelsAtThatMoment { get; set; }
-        public List<List<string>> StepLabelsPerhaps { get; set; }
+        /// <summary>
+        /// For each path step, a list of labels assigned to it through the annotation step as(). 
+        /// </summary>
+        public List<List<string>> AnnotatedLabels { get; set; }
+        /// <summary>
+        /// For each path step, a list of labels inherited from its following steps 
+        /// should the following steps are annotated but produce no content and as a result 
+        /// the annotation step(s) have to pass the labels to this step.   
+        /// </summary>
+        public List<List<string>> InheritedLabels { get; set; }
         public List<GremlinToSqlContext> ByContexts { get; set; }
+        /// <summary>
+        /// A list of label-property pairs such that all path steps annotated with a label 
+        /// should populate the designated property. 
+        /// </summary>
         public List<Tuple<string, string> > LabelPropertyList { get; set; }
 
         public GremlinPathVariable(List<GremlinVariable> stepList, List<GremlinToSqlContext> byContexts = null,
@@ -29,15 +41,16 @@ namespace GraphView
                 this.ByContexts = byContexts;
             }
         }
+
         private void NormalizePathAndLabels(List<GremlinVariable> stepList, string fromLabel, string toLabel)
         {
             int fromIndex = 0, toIndex = stepList.Count - 1;
             this.StepList = new List<GremlinVariable>();
             this.LabelPropertyList = new List<Tuple<string, string>>();
-            this.StepLabelsAtThatMoment = new List<List<string>>();
-            this.StepLabelsPerhaps = new List<List<string>>();
+            this.AnnotatedLabels = new List<List<string>>();
+            this.InheritedLabels = new List<List<string>>();
             
-            this.StepLabelsAtThatMoment.Add(new List<string>());
+            this.AnnotatedLabels.Add(new List<string>());
 
             for (int index = 0; index < stepList.Count;)
             {
@@ -49,13 +62,13 @@ namespace GraphView
                 else if (step is GremlinContextVariable)
                 {
                     this.StepList.Add(step);
-                    this.StepLabelsAtThatMoment[this.StepLabelsAtThatMoment.Count - 1].AddRange(step.Labels);
-                    this.StepLabelsAtThatMoment.Add(new List<string>());
+                    this.AnnotatedLabels[this.AnnotatedLabels.Count - 1].AddRange(step.Labels);
+                    this.AnnotatedLabels.Add(new List<string>());
                     ++index;
                 }
                 else
                 {
-                    this.StepLabelsAtThatMoment[this.StepLabelsAtThatMoment.Count - 1].AddRange(step.Labels);
+                    this.AnnotatedLabels[this.AnnotatedLabels.Count - 1].AddRange(step.Labels);
                     while (++index < stepList.Count)
                     {
                         if (stepList[index] is GremlinContextVariable &&
@@ -65,7 +78,7 @@ namespace GraphView
                         {
                             if (step == ((GremlinContextVariable)stepList[index]).RealVariable)
                             {
-                                this.StepLabelsAtThatMoment[this.StepLabelsAtThatMoment.Count - 1].AddRange(stepList[index].Labels);
+                                this.AnnotatedLabels[this.AnnotatedLabels.Count - 1].AddRange(stepList[index].Labels);
                             }
                         }
                         else
@@ -74,32 +87,32 @@ namespace GraphView
                         }
                     }
                     this.StepList.Add(step);
-                    this.StepLabelsAtThatMoment.Add(new List<string>());
+                    this.AnnotatedLabels.Add(new List<string>());
                 }
             }
 
             for (int index = 0; index < this.StepList.Count; index++)
             {
-                if (this.StepLabelsAtThatMoment[index].Contains(fromLabel))
+                if (this.AnnotatedLabels[index].Contains(fromLabel))
                 {
                     fromIndex = index;
                 }
-                if (this.StepLabelsAtThatMoment[index].Contains(toLabel))
+                if (this.AnnotatedLabels[index].Contains(toLabel))
                 {
                     toIndex = index;
                 }
-                this.StepLabelsPerhaps.Add(new List<string>());
+                this.InheritedLabels.Add(new List<string>());
             }
 
             toIndex = toIndex < this.StepList.Count ? toIndex : this.StepList.Count - 1;
             this.StepList = this.StepList.GetRange(fromIndex, toIndex - fromIndex + 1);
-            this.StepLabelsAtThatMoment = this.StepLabelsAtThatMoment.GetRange(fromIndex, toIndex - fromIndex + 1);
-            this.StepLabelsPerhaps = this.StepLabelsPerhaps.GetRange(fromIndex, toIndex - fromIndex + 1);
+            this.AnnotatedLabels = this.AnnotatedLabels.GetRange(fromIndex, toIndex - fromIndex + 1);
+            this.InheritedLabels = this.InheritedLabels.GetRange(fromIndex, toIndex - fromIndex + 1);
 
-            this.MinPathLength = 0;
+            this.LocalPathLengthLowerBound = 0;
             foreach (GremlinVariable step in this.StepList)
             {
-                this.MinPathLength += step.MinPathLength;
+                this.LocalPathLengthLowerBound += step.LocalPathLengthLowerBound;
             }
         }
         
@@ -186,15 +199,15 @@ namespace GraphView
                 bool populateSuccess = false;
                 for (int index = 0; index < this.StepList.Count; index++)
                 {
-                    if (this.StepLabelsAtThatMoment[index].Contains(label) ||
-                        this.StepLabelsPerhaps[index].Contains(label))
+                    if (this.AnnotatedLabels[index].Contains(label) ||
+                        this.InheritedLabels[index].Contains(label))
                     {
                         populateSuccess |= this.StepList[index].PopulateStepProperty(property, null);
                     }
                     else if (this.StepList[index].PopulateStepProperty(property, label))
                     {
                         populateSuccess = true;
-                        this.StepLabelsPerhaps[index].Add(label);
+                        this.InheritedLabels[index].Add(label);
                     }
                     else
                     {
@@ -202,12 +215,12 @@ namespace GraphView
                     }
 
                     int preIndex = index;
-                    while (preIndex > 0 && this.StepList[preIndex].MinPathLength == 0)
+                    while (preIndex > 0 && this.StepList[preIndex].LocalPathLengthLowerBound == 0)
                     {
                         preIndex--;
-                        if (!(this.StepLabelsAtThatMoment[preIndex].Contains(label) || this.StepLabelsPerhaps[preIndex].Contains(label)))
+                        if (!(this.AnnotatedLabels[preIndex].Contains(label) || this.InheritedLabels[preIndex].Contains(label)))
                         {
-                            this.StepLabelsPerhaps[preIndex].Add(label);
+                            this.InheritedLabels[preIndex].Add(label);
                         }
                         this.StepList[preIndex].PopulateStepProperty(property, null);
                     }
@@ -239,21 +252,21 @@ namespace GraphView
                                                                (step is GremlinUntilContextVariable) ||
                                                                (step is GremlinEmitContextVariable)))
                 {
-                    parameters.AddRange(this.StepLabelsAtThatMoment[index].Select(SqlUtil.GetValueExpr));
+                    parameters.AddRange(this.AnnotatedLabels[index].Select(SqlUtil.GetValueExpr));
                     continue;
                 }
                 List<string> composedProperties = new List<string>(this.ProjectedProperties);
                 foreach (var labelproperty in this.LabelPropertyList)
                 {
                     if (!composedProperties.Contains(labelproperty.Item1) &&
-                        (this.StepLabelsAtThatMoment[index].Contains(labelproperty.Item1) ||
-                        this.StepLabelsPerhaps[index].Contains(labelproperty.Item1)))
+                        (this.AnnotatedLabels[index].Contains(labelproperty.Item1) ||
+                        this.InheritedLabels[index].Contains(labelproperty.Item1)))
                     {
                         composedProperties.Add(labelproperty.Item2);
                     }
                 }
                 parameters.Add(step.ToStepScalarExpr(composedProperties));
-                parameters.AddRange(this.StepLabelsAtThatMoment[index].Select(SqlUtil.GetValueExpr));
+                parameters.AddRange(this.AnnotatedLabels[index].Select(SqlUtil.GetValueExpr));
                 
             }
 
@@ -299,7 +312,7 @@ namespace GraphView
                 }
 
                 bool populateSuccess = false;
-                if (this.StepLabelsAtThatMoment[0].Contains(label) || this.StepLabelsPerhaps[0].Contains(label))
+                if (this.AnnotatedLabels[0].Contains(label) || this.InheritedLabels[0].Contains(label))
                 {
                     populateSuccess |= this.StepList[0].Populate(property, null);
                 }
@@ -310,15 +323,15 @@ namespace GraphView
                 
                 for (int index = 1; index < this.StepList.Count; index++)
                 {
-                    if (this.StepLabelsAtThatMoment[index].Contains(label) ||
-                        this.StepLabelsPerhaps[index].Contains(label))
+                    if (this.AnnotatedLabels[index].Contains(label) ||
+                        this.InheritedLabels[index].Contains(label))
                     {
                         populateSuccess |= this.StepList[index].PopulateStepProperty(property, null);
                     }
                     else if (this.StepList[index].PopulateStepProperty(property, label))
                     {
                         populateSuccess = true;
-                        this.StepLabelsPerhaps[index].Add(label);
+                        this.InheritedLabels[index].Add(label);
                     }
                     else
                     {
@@ -326,12 +339,12 @@ namespace GraphView
                     }
 
                     int preIndex = index;
-                    while (preIndex > 0 && this.StepList[preIndex].MinPathLength == 0)
+                    while (preIndex > 0 && this.StepList[preIndex].LocalPathLengthLowerBound == 0)
                     {
                         preIndex--;
-                        if (!(this.StepLabelsAtThatMoment[preIndex].Contains(label) || this.StepLabelsPerhaps[preIndex].Contains(label)))
+                        if (!(this.AnnotatedLabels[preIndex].Contains(label) || this.InheritedLabels[preIndex].Contains(label)))
                         {
-                            this.StepLabelsPerhaps[preIndex].Add(label);
+                            this.InheritedLabels[preIndex].Add(label);
                         }
                         this.StepList[preIndex].PopulateStepProperty(property, null);
                     }
@@ -388,15 +401,15 @@ namespace GraphView
                                                         (step is GremlinUntilContextVariable) ||
                                                         (step is GremlinEmitContextVariable)))
                 {
-                    parameters.AddRange(this.StepLabelsAtThatMoment[index].Select(SqlUtil.GetValueExpr));
+                    parameters.AddRange(this.AnnotatedLabels[index].Select(SqlUtil.GetValueExpr));
                     continue;
                 }
                 List<string> composedProperties = new List<string>(this.ProjectedProperties);
                 foreach (var labelproperty in this.LabelPropertyList)
                 {
                     if (!composedProperties.Contains(labelproperty.Item1) &&
-                        (this.StepLabelsAtThatMoment[index].Contains(labelproperty.Item1) ||
-                         this.StepLabelsPerhaps[index].Contains(labelproperty.Item1)))
+                        (this.AnnotatedLabels[index].Contains(labelproperty.Item1) ||
+                         this.InheritedLabels[index].Contains(labelproperty.Item1)))
                     {
                         composedProperties.Add(labelproperty.Item2);
                     }
@@ -406,7 +419,7 @@ namespace GraphView
                 {
                     composedProperties.RemoveAll(s => String.IsNullOrEmpty(s));
                     parameters.Add(step.ToStepScalarExpr(composedProperties));
-                    parameters.AddRange(this.StepLabelsAtThatMoment[index].Select(SqlUtil.GetValueExpr));
+                    parameters.AddRange(this.AnnotatedLabels[index].Select(SqlUtil.GetValueExpr));
                 }
 
             }

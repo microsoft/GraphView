@@ -14,7 +14,10 @@ namespace GraphView
         public RepeatCondition RepeatCondition { get; set; }
         private int Count { get; set; }
 
-        public GremlinRepeatVariable(GremlinVariable inputVariable, GremlinToSqlContext repeatContext, RepeatCondition repeatCondition,
+        public GremlinRepeatVariable(
+            GremlinVariable inputVariable, 
+            GremlinToSqlContext repeatContext, 
+            RepeatCondition repeatCondition,
             GremlinVariableType variableType) : base(variableType)
         {
             this.InputVariable = new GremlinContextVariable(inputVariable);
@@ -84,11 +87,11 @@ namespace GraphView
 
                 if (repeatInputVariable == emitInputVariable)
                 {
-                    this.MinPathLength = 0;
+                    this.LocalPathLengthLowerBound = 0;
                 }
                 return;
             }
-            this.MinPathLength = this.RepeatContext.MinPathLength;
+            this.LocalPathLengthLowerBound = this.RepeatContext.MinPathLength;
         }
 
         internal override WScalarExpression ToStepScalarExpr(List<string> composedProperties = null)
@@ -102,9 +105,15 @@ namespace GraphView
             variableList.AddRange(this.InputVariable.FetchAllVars());
             variableList.AddRange(this.RepeatContext.FetchAllVars());
             if (this.RepeatCondition.EmitContext != null)
+            {
                 variableList.AddRange(this.RepeatCondition.EmitContext.FetchAllVars());
+            }
+                
             if (this.RepeatCondition.TerminationContext != null)
+            {
                 variableList.AddRange(this.RepeatCondition.TerminationContext.FetchAllVars());
+            }
+                
             return variableList;
         }
 
@@ -150,7 +159,8 @@ namespace GraphView
             // such as N_0.id -> R.key_0 
             string aliasName;
             Tuple<string, string> key, value;
-            Dictionary<Tuple<string, string>, Tuple<string, string>> inputVariableVistorMap = new Dictionary<Tuple<string, string>, Tuple<string, string>>();
+            Dictionary<Tuple<string, string>, Tuple<string, string>> inputVariableVistorMap = 
+                new Dictionary<Tuple<string, string>, Tuple<string, string>>();
 
             // We should generate the syntax tree firstly
             // Some variables will populate ProjectProperty only when we call the ToTableReference function where they appear.
@@ -181,7 +191,10 @@ namespace GraphView
                 if (property == GremlinKeyword.Path)
                 {
                     firstSelectList.Add(SqlUtil.GetSelectScalarExpr(SqlUtil.GetValueExpr(null), GremlinKeyword.Path));
-                    secondSelectList.Add(SqlUtil.GetSelectScalarExpr(this.RepeatContext.ContextLocalPath.DefaultProjection().ToScalarExpression(), GremlinKeyword.Path));
+                    secondSelectList.Add(
+                        SqlUtil.GetSelectScalarExpr(
+                            this.RepeatContext.ContextLocalPath.DefaultProjection().ToScalarExpression(), 
+                            GremlinKeyword.Path));
                 }
                 else
                 {
@@ -338,7 +351,7 @@ namespace GraphView
             return SqlUtil.GetCrossApplyTableReference(tableRef);
         }
 
-        public WRepeatConditionExpression GetRepeatConditionExpression()
+        private WRepeatConditionExpression GetRepeatConditionExpression()
         {
             return new WRepeatConditionExpression()
             {
@@ -350,7 +363,7 @@ namespace GraphView
             };
         }
 
-        public string GenerateKey()
+        private string GenerateKey()
         {
             return GremlinKeyword.RepeatColumnPrefix + this.Count++;
         }
