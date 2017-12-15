@@ -264,15 +264,5 @@ namespace GraphView
         {
             return RawRecordLayout.TryGetValue(columnReference, out columnIndex);
         }
-
-        public void SetCurrentExecutionOrder(ExecutionOrder currentExecutionOrder)
-        {
-            CurrentExecutionOrder = currentExecutionOrder;
-        }
-
-        public void SetLocalExecutionOrders(List<ExecutionOrder> localExecutionOrders)
-        {
-            this.LocalExecutionOrders = localExecutionOrders;
-        }
     }
 }

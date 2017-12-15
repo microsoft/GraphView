@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Windows.Forms;
 using GraphView.GraphViewDBPortal;
 
 namespace GraphView
@@ -18,7 +19,7 @@ namespace GraphView
         private List<Tuple<PredicateLink, HashSet<string>>> predicateLinksAccessedTableAliases;
 
         // Upper Bound of the number of orders
-        internal const int MaxNumberOfOrders = 5;
+        internal const int MaxNumberOfOrders = 100;
 
         public ExecutionOrderOptimizer(List<AggregationBlock> aggregationBlocks, 
             List<Tuple<WBooleanExpression, HashSet<string>>> predicatesAccessedTableAliases)
@@ -53,7 +54,7 @@ namespace GraphView
 
             while (blockIndex < blocksCount)
             {
-                // Firstly, add aggregationTable
+                // Firstly, we need to add the root table
                 foreach (ExecutionOrder currentOrder in queue[queueIndex])
                 {
                     currentOrder.AddRootTable(this.blocks[blockIndex], this.predicateLinksAccessedTableAliases);
@@ -85,9 +86,18 @@ namespace GraphView
                     }
                     queueIndex = 1 - queueIndex;
                 }
+
+                // Finally, check whether there is any ready edge. If there is, we discard this order
+                for (int index = queue[queueIndex].Count - 1; index >= 0; --index)
+                {
+                    if (queue[queueIndex][index].ReadyEdges.Any())
+                    {
+                        queue[queueIndex].RemoveAt(index);
+                    }
+                }
                 ++blockIndex;
             }
-
+            
             queue[queueIndex].Sort(new ExecutionOrderComparer());
             return queue[queueIndex].First();
         }

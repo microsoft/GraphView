@@ -112,7 +112,7 @@ namespace GraphView
         internal virtual ExecutionOrder GetLocalExecutionOrder(ExecutionOrder parentExecutionOrder)
         {
             ExecutionOrder executionOrder = new ExecutionOrder();
-            executionOrder.Order.Add(new Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>, List<ExecutionOrder>>(
+            executionOrder.Order.Add(new Tuple<CompileNode, CompileLink, List<Tuple<PredicateLink, int>>, List<Tuple<MatchEdge, int>>, List<ExecutionOrder>>(
                 null, null, null, null, new List<ExecutionOrder>()));
             return executionOrder;
         }

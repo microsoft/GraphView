@@ -24,24 +24,23 @@ namespace GraphView
                 base.InV(currentContext);
                 return;
             }
-
-            GremlinFreeVertexVariable inVertex = new GremlinFreeVertexVariable();
-            currentContext.VariableList.Add(inVertex);
-            currentContext.TableReferencesInFromClause.Add(inVertex);
-            currentContext.SetPivotVariable(inVertex);
-
+            
             for (int index = currentContext.MatchPathList.Count - 1; index >= 0; --index)
             {
                 if (currentContext.MatchPathList[index].EdgeVariable == this &&
                     currentContext.MatchPathList[index].SinkVariable == null &&
                     !currentContext.MatchPathList[index].IsReversed)
                 {
+                    GremlinFreeVertexVariable inVertex = new GremlinFreeVertexVariable();
+                    currentContext.VariableList.Add(inVertex);
+                    currentContext.TableReferencesInFromClause.Add(inVertex);
+                    currentContext.SetPivotVariable(inVertex);
                     currentContext.MatchPathList[index].SinkVariable = inVertex;
                     return;
                 }
             }
 
-            currentContext.MatchPathList.Add(new GremlinMatchPath(null, this, inVertex, true));
+            base.InV(currentContext);
         }
 
         internal override void OutV(GremlinToSqlContext currentContext)
@@ -52,23 +51,22 @@ namespace GraphView
                 return;
             }
 
-            GremlinFreeVertexVariable outVertex = new GremlinFreeVertexVariable();
-            currentContext.VariableList.Add(outVertex);
-            currentContext.TableReferencesInFromClause.Add(outVertex);
-            currentContext.SetPivotVariable(outVertex);
-
             for (int index = currentContext.MatchPathList.Count - 1; index >= 0; --index)
             {
                 if (currentContext.MatchPathList[index].EdgeVariable == this &&
                     currentContext.MatchPathList[index].SourceVariable == null &&
                     !currentContext.MatchPathList[index].IsReversed)
                 {
+                    GremlinFreeVertexVariable outVertex = new GremlinFreeVertexVariable();
+                    currentContext.VariableList.Add(outVertex);
+                    currentContext.TableReferencesInFromClause.Add(outVertex);
+                    currentContext.SetPivotVariable(outVertex);
                     currentContext.MatchPathList[index].SourceVariable = outVertex;
                     return;
                 }
             }
 
-            currentContext.MatchPathList.Add(new GremlinMatchPath(outVertex, this, null, true));
+            base.OutV(currentContext);
         }
 
         internal override void OtherV(GremlinToSqlContext currentContext)

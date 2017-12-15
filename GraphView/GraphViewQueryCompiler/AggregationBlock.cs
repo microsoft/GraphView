@@ -395,6 +395,24 @@ namespace GraphView
 
             return freeNodesAndEdges;
         }
+
+        internal void CheckIsDummy()
+        {
+            foreach (ConnectedComponent component in this.GraphPattern.ConnectedSubgraphs)
+            {
+                foreach (MatchNode node in component.Nodes.Values)
+                {
+                    if (node.Neighbors.Count + node.ReverseNeighbors.Count == 0 &&
+                        node.DanglingEdges.Count == 1 &&
+                        node.DanglingEdges[0].EdgeType == WEdgeType.OutEdge &&
+                        (node.Predicates == null || !node.Predicates.Any()))
+                    {
+                        node.IsDummyNode = true;
+                        break;
+                    }
+                }
+            }
+        }
     }
 
 

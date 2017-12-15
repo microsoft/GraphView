@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Windows.Forms;
 using GraphView.GraphViewDBPortal;
 
 namespace GraphView
@@ -27,7 +28,7 @@ namespace GraphView
         public virtual ExecutionOrder GetLocalExecutionOrder(ExecutionOrder parentExecutionOrder)
         {
             ExecutionOrder executionOrder = new ExecutionOrder();
-            executionOrder.Order.Add(new Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>, List<ExecutionOrder>>(
+            executionOrder.Order.Add(new Tuple<CompileNode, CompileLink, List<Tuple<PredicateLink, int>>, List<Tuple<MatchEdge, int>>, List<ExecutionOrder>>(
                 null, null, null, null, new List<ExecutionOrder>()));
             return executionOrder;
         }
@@ -61,6 +62,7 @@ namespace GraphView
         public int TableRowCount { get; set; }
         internal JsonQuery AttachedJsonQuery { get; set; }
         public HashSet<string> Properties { get; set; }
+        public bool IsDummyNode { get; set; }
 
         /// <summary>
         /// The density value of the GlobalNodeId Column of the corresponding node table.
@@ -89,6 +91,7 @@ namespace GraphView
             this.Properties = new HashSet<string>(rhs.Properties);
             this.GlobalNodeIdDensity = rhs.GlobalNodeIdDensity;
             this.Predicates = rhs.Predicates;
+            this.IsDummyNode = false;
         }
 
         public override bool Equals(object obj)
@@ -153,7 +156,7 @@ namespace GraphView
             else
             {
                 ExecutionOrder executionOrder = new ExecutionOrder();
-                executionOrder.Order.Add(new Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>, List<ExecutionOrder>>(
+                executionOrder.Order.Add(new Tuple<CompileNode, CompileLink, List<Tuple<PredicateLink, int>>, List<Tuple<MatchEdge, int>>, List<ExecutionOrder>>(
                     null, null, null, null, new List<ExecutionOrder>()));
                 return executionOrder;
             }
@@ -304,7 +307,7 @@ namespace GraphView
     ///     item2 is an CompileLink, called "traversalLink", which is an link from previous state to current state.
     ///         It can be a MatchEdge, or a PredicateLink of WEdgeVertexBridgeExpression
     ///     item3 is a list of CompileLinks, called "forwardLinks", which contains all links between currentNode and previous state
-    ///     item4 is a list of CompileLinks, called "backwardLinks", which contains all links that need to be execute
+    ///     item4 is a list of CompileLinks, called "backwardEdges", which contains all links that need to be execute
     ///         The element can be a MatchEdge, or a PredicateLink
     ///     item5 is a list of ExecutionOrders, called "localExecutionOrders", which contains all execution orders in this TVFs or Derived tables.
     /// ExistingNodesAndEdges and ExistingPredicateLinks are used to record previous state and avoid redundant work
@@ -312,24 +315,30 @@ namespace GraphView
     /// </summary>
     internal class ExecutionOrder
     {
-        public List<Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>, List<ExecutionOrder>>> Order { get; set; }
+        public List<Tuple<CompileNode, CompileLink, List<Tuple<PredicateLink, int>>, List<Tuple<MatchEdge, int>>, List<ExecutionOrder>>> Order { get; set; }
         public HashSet<string> ExistingNodesAndEdges { get; set; }
         public HashSet<string> ExistingPredicateLinks { get; set; }
+        // public Dictionary<string, MatchEdge> ReadyEdges { get; set; }
+        public HashSet<string> ReadyEdges { get; set; }
         public double Cost { get; set; }
 
         public ExecutionOrder()
         {
-            this.Order = new List<Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>, List<ExecutionOrder>>>();
+            this.Order = new List<Tuple<CompileNode, CompileLink, List<Tuple<PredicateLink, int>>, List<Tuple<MatchEdge, int>>, List<ExecutionOrder>>>();
             this.ExistingNodesAndEdges = new HashSet<string>();
             this.ExistingPredicateLinks = new HashSet<string>();
+            // this.ReadyEdges = new Dictionary<string, MatchEdge>();
+            this.ReadyEdges = new HashSet<string>();
             this.Cost = 0.0;
         }
 
         public ExecutionOrder(ExecutionOrder executionOrder)
         {
-            this.Order = new List<Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>, List<ExecutionOrder>>>();
+            this.Order = new List<Tuple<CompileNode, CompileLink, List<Tuple<PredicateLink, int>>, List<Tuple<MatchEdge, int>>, List<ExecutionOrder>>>();
             this.ExistingNodesAndEdges = new HashSet<string>(executionOrder.ExistingNodesAndEdges);
             this.ExistingPredicateLinks = new HashSet<string>(executionOrder.ExistingPredicateLinks);
+            // this.ReadyEdges = new Dictionary<string, MatchEdge>(executionOrder.ReadyEdges);
+            this.ReadyEdges = new HashSet<string>();
             this.Cost = 0.0;
         }
 
@@ -339,7 +348,9 @@ namespace GraphView
             {
                 ExistingNodesAndEdges = new HashSet<string>(this.ExistingNodesAndEdges),
                 ExistingPredicateLinks = new HashSet<string>(this.ExistingPredicateLinks),
-                Order = new List<Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>, List<ExecutionOrder>>>(this.Order),
+                // ReadyEdges = new Dictionary<string, MatchEdge>(this.ReadyEdges),
+                ReadyEdges = new HashSet<string>(this.ReadyEdges),
+                Order = new List<Tuple<CompileNode, CompileLink, List<Tuple<PredicateLink, int>>, List<Tuple<MatchEdge, int>>, List<ExecutionOrder>>>(this.Order),
                 Cost = this.Cost
             };
         }
@@ -347,7 +358,7 @@ namespace GraphView
         // TODO: utilize statistic information
         private void UpdateCost()
         {
-            Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>, List<ExecutionOrder>> tuple = this.Order.Last();
+            Tuple<CompileNode, CompileLink, List<Tuple<PredicateLink, int>>, List<Tuple<MatchEdge, int>>, List<ExecutionOrder>> tuple = this.Order.Last();
 
             double cost = 0;
             cost += tuple.Item1.Position;
@@ -363,8 +374,8 @@ namespace GraphView
         {
             if (this.Order.Any())
             {
-                Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>, List<ExecutionOrder>> newFirstTuple =
-                    new Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>, List<ExecutionOrder>>(
+                Tuple<CompileNode, CompileLink, List<Tuple<PredicateLink, int>>, List<Tuple<MatchEdge, int>>, List<ExecutionOrder>> newFirstTuple =
+                    new Tuple<CompileNode, CompileLink, List<Tuple<PredicateLink, int>>, List<Tuple<MatchEdge, int>>, List<ExecutionOrder>>(
                         this.Order[0].Item1, parentLink, this.Order[0].Item3, this.Order[0].Item4, this.Order[0].Item5);
                 this.Order[0] = newFirstTuple;
             }
@@ -385,47 +396,15 @@ namespace GraphView
             List<ExecutionOrder> localExecutionOrders = rootTable.GetLocalExecutionOrder(this).Order.First().Item5;
 
             // Find connected predicateLinks
-            List<CompileLink> forwardLinks = new List<CompileLink>();
-            List<CompileLink> backwardLinks = new List<CompileLink>();
+            List<Tuple<PredicateLink, int>> forwardLinks;
+            List<Tuple<MatchEdge, int>> backwardEdges = new List<Tuple<MatchEdge, int>>();
 
-            if (rootTable.NodeAlias == "dummy")
-            {
-                foreach (Tuple<PredicateLink, HashSet<string>> tuple in predicateLinksAccessedTableAliases)
-                {
-                    if (!this.ExistingPredicateLinks.Contains(tuple.Item1.LinkAlias))
-                    {
-                        if (this.ExistingNodesAndEdges.IsSupersetOf(tuple.Item2))
-                        {
-                            backwardLinks.Add(tuple.Item1);
-                        }
-                    }
-                }
-            }
-            else
-            {
-                // Add the node's alias temporarily
-                HashSet<string> temporaryAliases = new HashSet<string>(this.ExistingNodesAndEdges);
-                temporaryAliases.Add(rootTable.NodeAlias);
-                foreach (Tuple<PredicateLink, HashSet<string>> tuple in predicateLinksAccessedTableAliases)
-                {
-                    if (!this.ExistingPredicateLinks.Contains(tuple.Item1.LinkAlias))
-                    {
-                        if (this.ExistingNodesAndEdges.IsSupersetOf(tuple.Item2))
-                        {
-                            forwardLinks.Add(tuple.Item1);
-                        }
-                        else if (temporaryAliases.IsSupersetOf(tuple.Item2))
-                        {
-                            backwardLinks.Add(tuple.Item1);
-                        }
-                    }
-                }
-            }
-
+            // Find predicates that can be evaluated
+            forwardLinks = this.FindPredicates(rootTable, null, backwardEdges, predicateLinksAccessedTableAliases);
             // Add a next possible tuple
             this.AddTuple(
-                new Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>, List<ExecutionOrder>>(
-                    rootTable, null, forwardLinks, backwardLinks, localExecutionOrders));
+                new Tuple<CompileNode, CompileLink, List<Tuple<PredicateLink, int>>, List<Tuple<MatchEdge, int>>, List<ExecutionOrder>>(
+                    rootTable, null, forwardLinks, backwardEdges, localExecutionOrders));
         }
 
         /// <summary>
@@ -439,8 +418,8 @@ namespace GraphView
             List<Tuple<PredicateLink, HashSet<string>>> predicateLinksAccessedTableAliases)
         {
             // Find all possible next tuples
-            List<Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>, List<ExecutionOrder>>> nextTuples =
-                new List<Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>, List<ExecutionOrder>>>();
+            List<Tuple<CompileNode, CompileLink, List<Tuple<PredicateLink, int>>, List<Tuple<MatchEdge, int>>, List<ExecutionOrder>>> nextTuples =
+                new List<Tuple<CompileNode, CompileLink, List<Tuple<PredicateLink, int>>, List<Tuple<MatchEdge, int>>, List<ExecutionOrder>>>();
             foreach (KeyValuePair<string, HashSet<string>> pair in aggregationBlock.TableInputDependency)
             {
                 if (!this.ExistingNodesAndEdges.Contains(pair.Key) && this.ExistingNodesAndEdges.IsSupersetOf(pair.Value))
@@ -453,7 +432,7 @@ namespace GraphView
 
             // Generate all possible next orders
             List<ExecutionOrder> nextOrders = new List<ExecutionOrder>();
-            foreach (Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>, List<ExecutionOrder>> tuple in nextTuples)
+            foreach (Tuple<CompileNode, CompileLink, List<Tuple<PredicateLink, int>>, List<Tuple<MatchEdge, int>>, List<ExecutionOrder>> tuple in nextTuples)
             {
                 ExecutionOrder nextOrder = this.Duplicate();
                 nextOrder.AddTuple(tuple);
@@ -463,168 +442,528 @@ namespace GraphView
         }
 
         /// <summary>
-        /// Given a node, we need to find it possible traversalLink, forwardLinks and backwardLinks
+        /// Given a node, we need to find it possible traversalLink, forwardLinks and backwardEdges
         /// </summary>
         /// <param name="predicateLinksAccessedTableAliases"></param>
         /// <param name="node"></param>
         /// <returns></returns>
-        private List<Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>, List<ExecutionOrder>>> GenerateTuples(
+        private List<Tuple<CompileNode, CompileLink, List<Tuple<PredicateLink, int>>, List<Tuple<MatchEdge, int>>, List<ExecutionOrder>>> GenerateTuples(
             List<Tuple<PredicateLink, HashSet<string>>> predicateLinksAccessedTableAliases,
             CompileNode node)
         {
-            List<Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>, List<ExecutionOrder>>> nextTuples =
-                new List<Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>, List<ExecutionOrder>>>();
+            List<Tuple<CompileNode, CompileLink, List<Tuple<PredicateLink, int>>, List<Tuple<MatchEdge, int>>, List<ExecutionOrder>>> nextTuples =
+                new List<Tuple<CompileNode, CompileLink, List<Tuple<PredicateLink, int>>, List<Tuple<MatchEdge, int>>, List<ExecutionOrder>>>();
 
             // Find local execution orders
             List<ExecutionOrder> localExecutionOrders = node.GetLocalExecutionOrder(this).Order.First().Item5;
+            List<CompileLink> traversalLinks = new List<CompileLink>();
+            List<MatchEdge> connectedReadyEdges = new List<MatchEdge>();
+            List<MatchEdge> connectedUnreadyEdges = new List<MatchEdge>();
 
+            List<Tuple<PredicateLink, int>> forwardLinks = new List<Tuple<PredicateLink, int>>();
+            List<Tuple<MatchEdge, int>> backwardEdges = new List<Tuple<MatchEdge, int>>();
+
+            // Find forwardLinks, backwardEdges and predicates after adding the alias of node
             if (node is MatchNode)
             {
                 MatchNode matchNode = node as MatchNode;
-                // Add the alias of node and aliases of edges temporarily to check predicates
-                HashSet<string> temporaryAliases = new HashSet<string>(this.ExistingNodesAndEdges);
-                temporaryAliases.Add(matchNode.NodeAlias);
-                List<CompileLink> forwardLinks = new List<CompileLink>();
-                List<CompileLink> backwardLinks = new List<CompileLink>();
 
                 foreach (MatchEdge edge in matchNode.Neighbors)
                 {
                     if (!this.ExistingNodesAndEdges.Contains(edge.LinkAlias))
                     {
-                        temporaryAliases.Add(edge.LinkAlias);
-                        backwardLinks.Add(edge);
+                        if (this.ReadyEdges.Contains(edge.LinkAlias))
+                        {
+                            connectedReadyEdges.Add(edge);
+                        }
+                        else
+                        {
+                            connectedUnreadyEdges.Add(edge);
+                        }
                     }
-                    else
+
+                    if (this.ExistingNodesAndEdges.Contains(edge.LinkAlias) || this.ReadyEdges.Contains(edge.LinkAlias))
                     {
-                        forwardLinks.Add(edge);
+                        traversalLinks.Add(edge);
                     }
                 }
                 foreach (MatchEdge edge in matchNode.ReverseNeighbors)
                 {
                     if (!this.ExistingNodesAndEdges.Contains(edge.LinkAlias))
                     {
-                        temporaryAliases.Add(edge.LinkAlias);
-                        backwardLinks.Add(edge);
+                        if (this.ReadyEdges.Contains(edge.LinkAlias))
+                        {
+                            connectedReadyEdges.Add(edge);
+                        }
+                        else
+                        {
+                            connectedUnreadyEdges.Add(edge);
+                        }
                     }
-                    else
+                    if (this.ExistingNodesAndEdges.Contains(edge.LinkAlias) || this.ReadyEdges.Contains(edge.LinkAlias))
                     {
-                        forwardLinks.Add(edge);
+                        traversalLinks.Add(edge);
                     }
                 }
                 foreach (MatchEdge edge in matchNode.DanglingEdges)
                 {
                     if (!this.ExistingNodesAndEdges.Contains(edge.LinkAlias))
                     {
-                        temporaryAliases.Add(edge.LinkAlias);
-                        backwardLinks.Add(edge);
-                    }
-                    else
-                    {
-                        forwardLinks.Add(edge);
-                    }
-                }
-                
-                // Find connected predicateLinks
-                foreach (Tuple<PredicateLink, HashSet<string>> tuple in predicateLinksAccessedTableAliases)
-                {
-                    if (!this.ExistingPredicateLinks.Contains(tuple.Item1.LinkAlias))
-                    {
-                        if (temporaryAliases.IsSupersetOf(tuple.Item2))
-                        {
-                            if (tuple.Item1.BooleanExpression is WEdgeVertexBridgeExpression)
-                            {
-                                forwardLinks.Add(tuple.Item1);
-                            }
-                            else
-                            {
-                                backwardLinks.Add(tuple.Item1);
-                            }
-                        }
+                        connectedUnreadyEdges.Add(edge);
                     }
                 }
 
-                // if use other link to get this node
-                if (forwardLinks.Any())
+                // Add the node's alias temporarily to find WEdgeVertexBridgeExpression
+                HashSet<string> temporaryAliases = new HashSet<string>(this.ExistingNodesAndEdges);
+                temporaryAliases.Add(matchNode.NodeAlias);
+                foreach (Tuple<PredicateLink, HashSet<string>> tuple in predicateLinksAccessedTableAliases)
                 {
-                    foreach (CompileLink traversalLink in forwardLinks)
+                    if (!this.ExistingPredicateLinks.Contains(tuple.Item1.LinkAlias) &&
+                        temporaryAliases.IsSupersetOf(tuple.Item2) &&
+                        tuple.Item1.BooleanExpression is WEdgeVertexBridgeExpression)
                     {
-                        List<CompileLink> tupleForwardLinks = new List<CompileLink>(forwardLinks);
-                        tupleForwardLinks.Remove(traversalLink);
-                        nextTuples.Add(new Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>, List<ExecutionOrder>>(
-                            node, traversalLink, tupleForwardLinks, backwardLinks, localExecutionOrders));
+                        traversalLinks.Add(tuple.Item1);
                     }
                 }
-                else
+
+                // Find all possible sublists of connectedUnreadyEdges
+                List<List<MatchEdge>> connectedUnreadyEdgesSublists = GetAllSublists(connectedUnreadyEdges);
+
+                if (!traversalLinks.Any())
                 {
-                    // if do not use other link to get this node
-                    nextTuples.Add(
-                        new Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>, List<ExecutionOrder>>(
-                            node, null, forwardLinks, backwardLinks, localExecutionOrders));
+                    traversalLinks.Add(null);
+                }
+
+                // tupleBackwardEdges = (connectedReadyEdges)U(a sublist of connectedUnreadyEdges) - (traversalLink)
+                foreach (CompileLink traversalLink in traversalLinks)
+                {
+                    foreach (List<MatchEdge> connectedUnreadyEdgesSublist in connectedUnreadyEdgesSublists)
+                    {
+                        List<MatchEdge> connectedReadyEdgesSublist = new List<MatchEdge>(connectedReadyEdges);
+                        if (traversalLink is MatchEdge)
+                        {
+                            connectedReadyEdgesSublist.Remove(traversalLink as MatchEdge);
+                        }
+
+                        // Find all combinations of connectedReadyEdges
+                        List<List<Tuple<MatchEdge, int>>> connectedReadyEdgesCombinations = GetAllCombinations(connectedReadyEdgesSublist, new List<int>() { 2, 3 });
+                        // Find all combinations of connectedUnreadyEdges
+                        List<List<Tuple<MatchEdge, int>>> connectedUnreadyEdgesCombinations = GetAllCombinations(connectedUnreadyEdgesSublist, new List<int>() { 2 });
+
+                        // Find all combinations of connectedReadyEdges and connectedUnreadyEdges
+                        foreach (List<Tuple<MatchEdge, int>> connectedReadyEdgesCombination in connectedReadyEdgesCombinations)
+                        {
+                            foreach (List<Tuple<MatchEdge, int>> connectedUnreadyEdgesCombination in connectedUnreadyEdgesCombinations)
+                            {
+                                backwardEdges = new List<Tuple<MatchEdge, int>>(connectedReadyEdgesCombination);
+                                backwardEdges.AddRange(connectedUnreadyEdgesCombination);
+                                forwardLinks = this.FindPredicates(matchNode, traversalLink, backwardEdges, predicateLinksAccessedTableAliases);
+                                nextTuples.Add(
+                                    new Tuple<CompileNode, CompileLink, List<Tuple<PredicateLink, int>>,
+                                        List<Tuple<MatchEdge, int>>, List<ExecutionOrder>>(matchNode,
+                                        traversalLink, forwardLinks, backwardEdges, localExecutionOrders));
+                            }
+                        }
+                    }
                 }
             }
             else if (node is NonFreeTable)
             {
-                NonFreeTable nonFreeTable = node as NonFreeTable;
-
-                // Add the node's alias temporarily
-                HashSet<string> temporaryAliases = new HashSet<string>(this.ExistingNodesAndEdges);
-                temporaryAliases.Add(nonFreeTable.NodeAlias);
-
-                // Find connected predicateLinks
-                List<CompileLink> forwardLinks = new List<CompileLink>();
-                List<CompileLink> backwardLinks = new List<CompileLink>();
-
-                foreach (Tuple<PredicateLink, HashSet<string>> tuple in predicateLinksAccessedTableAliases)
-                {
-                    if (!this.ExistingPredicateLinks.Contains(tuple.Item1.LinkAlias))
-                    {
-                        if (temporaryAliases.IsSupersetOf(tuple.Item2))
-                        {
-                            backwardLinks.Add(tuple.Item1);
-                        }
-                    }
-                }
-
-                // Add a next possible tuple
-                nextTuples.Add(
-                    new Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>, List<ExecutionOrder>>(
-                        node, null, forwardLinks, backwardLinks, localExecutionOrders));
+                forwardLinks = this.FindPredicates(node, null, backwardEdges, predicateLinksAccessedTableAliases);
+                nextTuples.Add(new Tuple<CompileNode, CompileLink, List<Tuple<PredicateLink, int>>, List<Tuple<MatchEdge, int>>, List<ExecutionOrder>>(
+                    node, null, forwardLinks, backwardEdges, localExecutionOrders));
             }
             else
             {
                 throw new QueryCompilationException("Can't find " + node.ToString() + " in AggregationBlock");
             }
+
             return nextTuples;
+        }
+        
+
+        private List<Tuple<PredicateLink, int>> FindPredicates(
+            CompileNode node,
+            CompileLink traversalLink,
+            List<Tuple<MatchEdge, int>> backwardEdges,
+            List<Tuple<PredicateLink, HashSet<string>>> predicateLinksAccessedTableAliases)
+        {
+            HashSet<string> temporaryAliases = new HashSet<string>(this.ExistingNodesAndEdges);
+            HashSet<string> temporaryPredicates = new HashSet<string>(this.ExistingPredicateLinks);
+            List<Tuple<PredicateLink, int>> forwardLinks = new List<Tuple<PredicateLink, int>>();
+
+            // priority = 1
+            // retrieve traversalLink and add predicates
+            if (traversalLink != null && !this.ExistingNodesAndEdges.Contains(traversalLink.LinkAlias))
+            {
+                // Find predicates that can be evaluated after retrieving this traversalLink
+                if (traversalLink is MatchEdge)
+                {
+                    temporaryAliases.Add(traversalLink.LinkAlias);
+                }
+                else if (traversalLink is PredicateLink)
+                {
+                    temporaryPredicates.Add(traversalLink.LinkAlias);
+                }
+                else
+                {
+                    throw new QueryCompilationException("Cannot support " + traversalLink + " as a traversal link or an edge");
+                }
+
+                foreach (Tuple<PredicateLink, HashSet<string>> tuple in predicateLinksAccessedTableAliases)
+                {
+                    if (!temporaryPredicates.Contains(tuple.Item1.LinkAlias) &&
+                        temporaryAliases.IsSupersetOf(tuple.Item2))
+                    {
+                        temporaryPredicates.Add(tuple.Item1.LinkAlias);
+                        forwardLinks.Add(new Tuple<PredicateLink, int>(tuple.Item1, 1));
+                    }
+                }
+
+                // Make sure the all existing edges and this traversalLink are consistent
+                // Because all existing edges are consistent, we just need make one exstring edge and this traversalLink consistent
+                MatchNode matchNode = node as MatchNode;
+                WColumnReferenceExpression nodeColumnReferenceExprFromTraversalLink = GetNodeColumnReferenceExprFromLink(traversalLink);
+                WColumnReferenceExpression nodeColumnReferenceExprFromAnExistingEdge = GetNodeColumnReferenceExprFromAnExistingEdge(matchNode, this.ExistingNodesAndEdges);
+                if (nodeColumnReferenceExprFromTraversalLink != null &&
+                    nodeColumnReferenceExprFromAnExistingEdge != null)
+                {
+                    forwardLinks.Add(
+                        new Tuple<PredicateLink, int>(
+                            new PredicateLink(
+                                SqlUtil.GetEqualBooleanComparisonExpr(nodeColumnReferenceExprFromTraversalLink,
+                                    nodeColumnReferenceExprFromAnExistingEdge)), 1));
+                }
+            }
+
+            // priority = 2
+            // retrieve node and some edges and add predicates
+            temporaryAliases.Add(node.NodeAlias);
+            foreach (Tuple<MatchEdge, int> tuple in backwardEdges)
+            {
+                if (tuple.Item2 == 2)
+                {
+                    temporaryAliases.Add(tuple.Item1.LinkAlias);
+                    MatchNode otherNode = tuple.Item1.SinkNode;
+                    WColumnReferenceExpression nodeColumnReferenceExprFromBackwardEdge = null;
+                    WColumnReferenceExpression nodeColumnReferenceExprFromAnExistingEdge = GetNodeColumnReferenceExprFromAnExistingEdge(otherNode, this.ExistingNodesAndEdges);
+                    if (nodeColumnReferenceExprFromAnExistingEdge != null)
+                    {
+                        foreach (MatchEdge edge in otherNode.Neighbors)
+                        {
+                            if (edge.LinkAlias == tuple.Item1.LinkAlias)
+                            {
+                                nodeColumnReferenceExprFromBackwardEdge = GetNodeColumnReferenceExprFromLink(edge);
+                                break;
+                            }
+                        }
+                        if (nodeColumnReferenceExprFromBackwardEdge == null)
+                        {
+                            foreach (MatchEdge edge in otherNode.ReverseNeighbors)
+                            {
+                                if (edge.LinkAlias == tuple.Item1.LinkAlias)
+                                {
+                                    nodeColumnReferenceExprFromBackwardEdge = GetNodeColumnReferenceExprFromLink(edge);
+                                    break;
+                                }
+                            }
+                        }
+                        if (nodeColumnReferenceExprFromBackwardEdge == null)
+                        {
+                            foreach (MatchEdge edge in otherNode.DanglingEdges)
+                            {
+                                if (edge.LinkAlias == tuple.Item1.LinkAlias)
+                                {
+                                    nodeColumnReferenceExprFromBackwardEdge = GetNodeColumnReferenceExprFromLink(edge);
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    if (nodeColumnReferenceExprFromBackwardEdge != null &&
+                        nodeColumnReferenceExprFromAnExistingEdge != null)
+                    {
+                        temporaryPredicates.Add(tuple.Item1.LinkAlias);
+                        forwardLinks.Add(
+                            new Tuple<PredicateLink, int>(
+                                new PredicateLink(
+                                    SqlUtil.GetEqualBooleanComparisonExpr(nodeColumnReferenceExprFromBackwardEdge,
+                                        nodeColumnReferenceExprFromAnExistingEdge)), 2));
+                    }
+                }
+            }
+            foreach (Tuple<PredicateLink, HashSet<string>> tuple in predicateLinksAccessedTableAliases)
+            {
+                if (!temporaryPredicates.Contains(tuple.Item1.LinkAlias) &&
+                    temporaryAliases.IsSupersetOf(tuple.Item2))
+                {
+                    temporaryPredicates.Add(tuple.Item1.LinkAlias);
+                    forwardLinks.Add(new Tuple<PredicateLink, int>(tuple.Item1, 2));
+                }
+            }
+
+            // priority = 3
+            // retrieve another edges and add predicates
+            foreach (Tuple<MatchEdge, int> tuple in backwardEdges)
+            {
+                if (tuple.Item2 == 3)
+                {
+                    temporaryAliases.Add(tuple.Item1.LinkAlias);
+                    MatchNode otherNode = tuple.Item1.SinkNode;
+                    WColumnReferenceExpression nodeColumnReferenceExprFromBackwardEdge = null;
+                    WColumnReferenceExpression nodeColumnReferenceExprFromAnExistingEdge = GetNodeColumnReferenceExprFromAnExistingEdge(otherNode, this.ExistingNodesAndEdges);
+                    if (nodeColumnReferenceExprFromAnExistingEdge != null)
+                    {
+                        foreach (MatchEdge edge in otherNode.Neighbors)
+                        {
+                            if (edge.LinkAlias == tuple.Item1.LinkAlias)
+                            {
+                                nodeColumnReferenceExprFromBackwardEdge = GetNodeColumnReferenceExprFromLink(edge);
+                                break;
+                            }
+                        }
+                        if (nodeColumnReferenceExprFromBackwardEdge == null)
+                        {
+                            foreach (MatchEdge edge in otherNode.ReverseNeighbors)
+                            {
+                                if (edge.LinkAlias == tuple.Item1.LinkAlias)
+                                {
+                                    nodeColumnReferenceExprFromBackwardEdge = GetNodeColumnReferenceExprFromLink(edge);
+                                    break;
+                                }
+                            }
+                        }
+                        if (nodeColumnReferenceExprFromBackwardEdge == null)
+                        {
+                            foreach (MatchEdge edge in otherNode.DanglingEdges)
+                            {
+                                if (edge.LinkAlias == tuple.Item1.LinkAlias)
+                                {
+                                    nodeColumnReferenceExprFromBackwardEdge = GetNodeColumnReferenceExprFromLink(edge);
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    if (nodeColumnReferenceExprFromBackwardEdge != null &&
+                        nodeColumnReferenceExprFromAnExistingEdge != null)
+                    {
+                        temporaryPredicates.Add(tuple.Item1.LinkAlias);
+                        forwardLinks.Add(
+                            new Tuple<PredicateLink, int>(
+                                new PredicateLink(
+                                    SqlUtil.GetEqualBooleanComparisonExpr(nodeColumnReferenceExprFromBackwardEdge,
+                                        nodeColumnReferenceExprFromAnExistingEdge)), 3));
+                    }
+                }
+            }
+            foreach (Tuple<PredicateLink, HashSet<string>> tuple in predicateLinksAccessedTableAliases)
+            {
+                if (!temporaryPredicates.Contains(tuple.Item1.LinkAlias) &&
+                    temporaryAliases.IsSupersetOf(tuple.Item2))
+                {
+                    temporaryPredicates.Add(tuple.Item1.LinkAlias);
+                    forwardLinks.Add(new Tuple<PredicateLink, int>(tuple.Item1, 3));
+                }
+            }
+            return forwardLinks;
+        }
+
+        private static WColumnReferenceExpression GetNodeColumnReferenceExprFromLink(CompileLink link)
+        {
+            if (link is MatchEdge)
+            {
+                MatchEdge edge = link as MatchEdge;
+                if (edge.EdgeType == WEdgeType.OutEdge)
+                {
+                    return SqlUtil.GetColumnReferenceExpr(edge.LinkAlias,
+                        edge.IsReversed ? GremlinKeyword.EdgeSinkV : GremlinKeyword.EdgeSourceV);
+                }
+                else if (edge.EdgeType == WEdgeType.InEdge)
+                {
+                    return SqlUtil.GetColumnReferenceExpr(edge.LinkAlias,
+                        edge.IsReversed ? GremlinKeyword.EdgeSourceV : GremlinKeyword.EdgeSinkV);
+                }
+                else
+                {
+                    return SqlUtil.GetColumnReferenceExpr(edge.LinkAlias, GremlinKeyword.EdgeOtherV);
+                }
+            }
+            else if (link is PredicateLink)
+            {
+                PredicateLink predicateLink = link as PredicateLink;
+                if (predicateLink.BooleanExpression is WEdgeVertexBridgeExpression)
+                {
+                    return (predicateLink.BooleanExpression as WEdgeVertexBridgeExpression).FirstExpr as WColumnReferenceExpression;
+                }
+            }
+            throw new QueryCompilationException("Cannot support " + link + " as a traversal link or an edge");
+        }
+
+        private static WColumnReferenceExpression GetNodeColumnReferenceExprFromAnExistingEdge(MatchNode node, HashSet<string> existingNodeAndEdges)
+        {
+            if (node == null)
+            {
+                return null;
+            }
+            foreach (MatchEdge edge in node.Neighbors)
+            {
+                if (existingNodeAndEdges.Contains(edge.LinkAlias))
+                {
+                    return GetNodeColumnReferenceExprFromLink(edge);
+                }
+            }
+            foreach (MatchEdge edge in node.ReverseNeighbors)
+            {
+                if (existingNodeAndEdges.Contains(edge.LinkAlias))
+                {
+                    return GetNodeColumnReferenceExprFromLink(edge);
+                }
+            }
+            foreach (MatchEdge edge in node.DanglingEdges)
+            {
+                if (existingNodeAndEdges.Contains(edge.LinkAlias))
+                {
+                    return GetNodeColumnReferenceExprFromLink(edge);
+                }
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// Find all sublists
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="list"></param>
+        /// <returns></returns>
+        private static List<List<T>> GetAllSublists<T>(List<T> list)
+        {
+            List<List<T>> all = new List<List<T>>() {new List<T>()};
+            CollectAllSublists(all, 0, list);
+            return all;
+        }
+
+        private static void CollectAllSublists<T>(List<List<T>> all, int index, List<T> list)
+        {
+            if (index >= list.Count)
+            {
+                return;
+            }
+            int count = all.Count;
+            for (int index1 = 0; index1 < count; ++index1)
+            {
+                List<T> newList = new List<T>(all[index1]);
+                newList.Add(list[index]);
+                all.Add(newList);
+            }
+            CollectAllSublists(all, index+1, list);
+        }
+
+        private static List<List<Tuple<T, int>>> GetAllCombinations<T>(List<T> tupleCollection, List<int> possibleList)
+        {
+            List<List<Tuple<T, int>>> all = new List<List<Tuple<T, int>>>() { new List<Tuple<T, int>>() };
+            CollectAllCombinations(all, 0, tupleCollection, possibleList);
+            return all;
+        }
+
+        private static void CollectAllCombinations<T>(List<List<Tuple<T, int>>> existingCombinations, int index, List<T> tupleCollection, List<int> possibleList)
+        {
+            if (index >= tupleCollection.Count)
+            {
+                return;
+            }
+            List<List<Tuple<T, int>>> newCombinations = new List<List<Tuple<T, int>>>();
+            foreach (List<Tuple<T, int>> existingCombination in existingCombinations)
+            {
+                foreach (int label in possibleList)
+                {
+                    List<Tuple<T, int>> newCombination = new List<Tuple<T, int>>(existingCombination);
+                    newCombination.Add(new Tuple<T, int>(tupleCollection[index], label));
+                    newCombinations.Add(newCombination);
+                }
+            }
+            existingCombinations.Clear();
+            existingCombinations.AddRange(newCombinations);
+            CollectAllCombinations(existingCombinations, index + 1, tupleCollection, possibleList);
         }
 
         /// <summary>
         /// Add an tuple to a new order, and update information
         /// </summary>
         /// <param name="tuple"></param>
-        public void AddTuple(Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>, List<ExecutionOrder>> tuple)
+        public void AddTuple(Tuple<CompileNode, CompileLink, List<Tuple<PredicateLink, int>>, List<Tuple<MatchEdge, int>>, List<ExecutionOrder>> tuple)
         {
-            this.ExistingNodesAndEdges.Add(tuple.Item1.NodeAlias);
-
             if (tuple.Item2 is PredicateLink)
             {
                 this.ExistingPredicateLinks.Add(tuple.Item2.LinkAlias);
             }
-
-            foreach (CompileLink link in tuple.Item4)
+            else if (tuple.Item2 is MatchEdge)
             {
-                if (link is MatchEdge)
+                this.ExistingNodesAndEdges.Add(tuple.Item2.LinkAlias);
+                this.ReadyEdges.Remove(tuple.Item2.LinkAlias);
+            }
+
+            this.ExistingNodesAndEdges.Add(tuple.Item1.NodeAlias);
+
+            // Check ready edges whether to be generated
+            foreach (Tuple<PredicateLink, int> predicateLinkTuple in tuple.Item3)
+            {
+                this.ExistingPredicateLinks.Add(predicateLinkTuple.Item1.LinkAlias);
+            }
+
+            if (tuple.Item1 is MatchNode)
+            {
+                MatchNode matchNode = tuple.Item1 as MatchNode;
+                foreach (MatchEdge edge in matchNode.Neighbors)
                 {
-                    this.ExistingNodesAndEdges.Add(link.LinkAlias);
+                    if (this.ExistingNodesAndEdges.Contains(edge.LinkAlias))
+                    {
+                        continue;
+                    }
+                    else if (tuple.Item4.Exists(edgeTuple => edgeTuple.Item1.LinkAlias == edge.LinkAlias))
+                    {
+                        this.ExistingNodesAndEdges.Add(edge.LinkAlias);
+                        this.ReadyEdges.Remove(edge.LinkAlias);
+                    }
+                    else
+                    {
+                        this.ReadyEdges.Add(edge.LinkAlias);
+                    }
                 }
-                else if (link is PredicateLink)
+                foreach (MatchEdge edge in matchNode.ReverseNeighbors)
                 {
-                    this.ExistingPredicateLinks.Add(link.LinkAlias);
+                    if (this.ExistingNodesAndEdges.Contains(edge.LinkAlias))
+                    {
+                        continue;
+                    }
+                    else if (tuple.Item4.Exists(edgeTuple => edgeTuple.Item1.LinkAlias == edge.LinkAlias))
+                    {
+                        this.ExistingNodesAndEdges.Add(edge.LinkAlias);
+                        this.ReadyEdges.Remove(edge.LinkAlias);
+                    }
+                    else
+                    {
+                        this.ReadyEdges.Add(edge.LinkAlias);
+                    }
                 }
-                else
+                foreach (MatchEdge edge in matchNode.DanglingEdges)
                 {
-                    throw new QueryCompilationException(link.LinkAlias + " can not be now supported");
+                    if (this.ExistingNodesAndEdges.Contains(edge.LinkAlias))
+                    {
+                        continue;
+                    }
+                    else if (tuple.Item4.Exists(edgeTuple => edgeTuple.Item1.LinkAlias == edge.LinkAlias))
+                    {
+                        this.ExistingNodesAndEdges.Add(edge.LinkAlias);
+                        this.ReadyEdges.Remove(edge.LinkAlias);
+                    }
+                    else
+                    {
+                        this.ReadyEdges.Add(edge.LinkAlias);
+                    }
                 }
             }
+
             this.Order.Add(tuple);
             this.UpdateCost();
         }

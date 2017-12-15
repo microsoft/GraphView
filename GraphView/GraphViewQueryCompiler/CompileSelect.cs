@@ -87,9 +87,13 @@ namespace GraphView
                 AttachPropertiesToGraphPatterns(aggregationBlocks, tableColumnReferences);
             }
 
+
             // Find input dependency and attach it to AggregationBlock
             foreach (AggregationBlock aggregationBlock in aggregationBlocks)
             {
+                // Check every node is dummy or not
+                aggregationBlock.CheckIsDummy();
+
                 foreach (KeyValuePair<string, NonFreeTable> pair in aggregationBlock.NonFreeTables)
                 {
                     WTableReferenceWithAlias tableReference = pair.Value.TableReference;
@@ -350,6 +354,14 @@ namespace GraphView
 
         /// <summary>
         /// Given an execution order, compile it to a list of execution operators
+        /// It can divide into 6 parts
+        ///     1. construct traversalLink if necessary
+        ///     2. append a filter operator to ensure consistency and evaluate some predicates
+        ///     3. compile this MatchNode or NonFreeTable and some edges (not support)
+        ///     4. append a filter operator to evaluate some predicates
+        ///     5. construct another edges in backwardEdges
+        ///     6. append a filter operator for remaining predicates
+        /// And the priority of step 1 and step2 is 1, the priority of step 3 and step 4 is 2, and the priority of step 5 and step 6 is 3
         /// </summary>
         /// <param name="context"></param>
         /// <param name="command"></param>
@@ -360,7 +372,7 @@ namespace GraphView
         {
             List<GraphViewExecutionOperator> operatorChain = new List<GraphViewExecutionOperator>();
 
-            context.SetCurrentExecutionOrder(executionOrder);
+            context.CurrentExecutionOrder = executionOrder;
 
             // If it is an subquery, it need some information from context
             if (context.OuterContextOp != null)
@@ -369,36 +381,36 @@ namespace GraphView
             }
             
             // compile an operator or some operators according the execution order
-            for (int index = 0; index < executionOrder.Order.Count; ++index)
+            //for (int index = 0; index < executionOrder.Order.Count; ++index)
+            foreach (Tuple<CompileNode, CompileLink, List<Tuple<PredicateLink, int>>, List<Tuple<MatchEdge, int>>, List<ExecutionOrder>> tuple in executionOrder.Order)
             {
-                Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>, List<ExecutionOrder>> tuple = executionOrder.Order[index];
                 string alias = tuple.Item1.NodeAlias;
 
                 GraphViewExecutionOperator op;
+
+                // The first time calling CrossApplyEdges to make sure traversalLink and edges in forwardLinks exist
+                CrossApplyEdges(command, context, operatorChain, tuple, 1);
+
+                CheckPredicatesAndAppendFilterOp(command, context, operatorChain, tuple, 1);
 
                 // if the table is free variable
                 if (tuple.Item1 is MatchNode)
                 {
                     MatchNode matchNode = tuple.Item1 as MatchNode;
-                    bool isDummyNode = false;
 
                     // For the case of g.E()
-                    if (tuple.Item2 == null && !tuple.Item3.Any() && tuple.Item4.Count == 1 && matchNode.DanglingEdges.Count == 1)
+                    if (tuple.Item2 == null && matchNode.IsDummyNode)
                     {
-                        MatchEdge danglingEdge = matchNode.DanglingEdges[0];
-                        if (danglingEdge != null && danglingEdge.EdgeType == WEdgeType.OutEdge && 
-                            (matchNode.Predicates == null || !matchNode.Predicates.Any()))
-                        {
-                            isDummyNode = true;
-                            ConstructJsonQueryOnEdge(command, matchNode, danglingEdge);
-                        }
+                        ConstructJsonQueryOnEdge(command, matchNode, matchNode.DanglingEdges[0]);
                     }
 
-                    MatchEdge pushedToServerEdge = GetPushedToServerEdge(command, tuple);
+                    // TODO: support make edges whose priorities are 2 as pushedToServerEdges to help construct Json queries of nodes
+                    // Now we just edges whose priorities are 2 and edges whose priorities are 3 are equally treated!!!
+                    MatchEdge pushedToServerEdge = GetPushedToServerEdge(command, tuple); // it is null!!!
                     ConstructJsonQueryOnNode(command, matchNode, pushedToServerEdge, command.Connection.RealPartitionKey);
 
                     // For the case of g.E()
-                    if (isDummyNode)
+                    if (tuple.Item2 == null && matchNode.IsDummyNode)
                     {
                         op = new FetchEdgeOperator(command, matchNode.DanglingEdges[0].AttachedJsonQuery);
                         // The graph contains more than one component
@@ -421,6 +433,7 @@ namespace GraphView
                         MatchEdge danglingEdge = matchNode.DanglingEdges[0];
                         UpdateEdgeLayout(danglingEdge.LinkAlias, danglingEdge.Properties, context);
                         context.TableReferences.Add(danglingEdge.LinkAlias);
+                        context.CurrentExecutionOperator = operatorChain.Last();
                     }
                     else
                     {   
@@ -446,6 +459,7 @@ namespace GraphView
                             }
                             UpdateNodeLayout(matchNode.NodeAlias, matchNode.Properties, context);
                             context.TableReferences.Add(alias);
+                            context.CurrentExecutionOperator = operatorChain.Last();
                         }
                         // if item2 is an edge-vertex bridge predicate
                         else if (tuple.Item2 is PredicateLink)
@@ -466,6 +480,7 @@ namespace GraphView
                             UpdateNodeLayout(matchNode.NodeAlias, matchNode.Properties, context);
                             operatorChain.Add(op);
                             context.TableReferences.Add(alias);
+                            context.CurrentExecutionOperator = operatorChain.Last();
                         }
                         // if item2 is an edge
                         else if (tuple.Item2 is MatchEdge)
@@ -480,22 +495,23 @@ namespace GraphView
                             UpdateNodeLayout(matchNode.NodeAlias, matchNode.Properties, context);
                             operatorChain.Add(op);
                             context.TableReferences.Add(alias);
+                            context.CurrentExecutionOperator = operatorChain.Last();
                         }
                         else
                         {
                             throw new QueryCompilationException("Can't support " + tuple.Item2.ToString());
                         }
 
-                        // Construct edges
-                        CrossApplyEdges(command, context, operatorChain, tuple);
+                        // Construct edges and check predicates whose priorities are 2
+                        CrossApplyEdges(command, context, operatorChain, tuple, 2);
+                        CheckPredicatesAndAppendFilterOp(command, context, operatorChain, tuple, 2);
                     }
-                    context.CurrentExecutionOperator = operatorChain.Last();
                 }
                 else if (tuple.Item1 is NonFreeTable)
                 {
                     NonFreeTable nonFreeTable = tuple.Item1 as NonFreeTable;
                     WTableReferenceWithAlias tableReference = nonFreeTable.TableReference;
-                    context.SetLocalExecutionOrders(tuple.Item5);
+                    context.LocalExecutionOrders = tuple.Item5;
                     
                     // if the table is QueryDerivedTable
                     if (tableReference is WQueryDerivedTable)
@@ -550,10 +566,13 @@ namespace GraphView
                     {
                         throw new NotImplementedException("Not supported type of FROM clause.");
                     }
-                }
 
-                // Check predicates and aapend filter operator
-                CheckPredicatesAndAppendFilterOp(command, context, operatorChain, tuple);
+                    // Check predicates whose priorities are 2
+                    CheckPredicatesAndAppendFilterOp(command, context, operatorChain, tuple, 2);
+                }
+                // Construct edges and check predicates whose priorities are 3
+                CrossApplyEdges(command, context, operatorChain, tuple, 3);
+                CheckPredicatesAndAppendFilterOp(command, context, operatorChain, tuple, 3);
             }
 
             return operatorChain;
@@ -750,95 +769,12 @@ namespace GraphView
             GraphViewCommand command,
             QueryCompilationContext context, 
             List<GraphViewExecutionOperator> operatorChain,
-            Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>, List<ExecutionOrder>> tuple)
+            Tuple<CompileNode, CompileLink, List<Tuple<PredicateLink, int>>, List<Tuple<MatchEdge, int>>, List<ExecutionOrder>> tuple,
+            int priority)
         {
             List<WBooleanExpression> booleanExpressions = new List<WBooleanExpression>();
-            List<WColumnReferenceExpression> forwardEdgesInfoList = new List<WColumnReferenceExpression>();
-
-            // We need to make sure all forwardLinks are consistent
-            foreach (CompileLink link in tuple.Item3)
-            {
-                if (link is MatchEdge)
-                {
-                    MatchEdge edge = link as MatchEdge;
-                    if (edge.EdgeType == WEdgeType.OutEdge)
-                    {
-                        forwardEdgesInfoList.Add(SqlUtil.GetColumnReferenceExpr(edge.LinkAlias,
-                            edge.IsReversed ? GremlinKeyword.EdgeSinkV : GremlinKeyword.EdgeSourceV));
-                    }
-                    else if (edge.EdgeType == WEdgeType.InEdge)
-                    {
-                        forwardEdgesInfoList.Add(SqlUtil.GetColumnReferenceExpr(edge.LinkAlias,
-                            edge.IsReversed ? GremlinKeyword.EdgeSourceV : GremlinKeyword.EdgeSinkV));
-                    }
-                    else
-                    {
-                        forwardEdgesInfoList.Add(SqlUtil.GetColumnReferenceExpr(edge.LinkAlias, GremlinKeyword.EdgeOtherV));
-                    }
-                }
-                else if (link is PredicateLink)
-                {
-                    PredicateLink predicateLink = link as PredicateLink;
-                    if (predicateLink.BooleanExpression is WEdgeVertexBridgeExpression)
-                    {
-                        WColumnReferenceExpression edgeColumnReferenceExpression =
-                            (predicateLink.BooleanExpression as WEdgeVertexBridgeExpression).FirstExpr as WColumnReferenceExpression;
-                        forwardEdgesInfoList.Add(edgeColumnReferenceExpression);
-                    }
-                }
-            }
-
-            // We need to process predicates 
-            foreach (CompileLink link in tuple.Item4)
-            {
-                if (link is PredicateLink)
-                {
-                    PredicateLink predicateLink = link as PredicateLink;
-                    booleanExpressions.Add(predicateLink.BooleanExpression);
-                }
-            }
-
-            if (forwardEdgesInfoList.Any())
-            {
-                WColumnReferenceExpression traversalEdgeInfo;
-                // if item2 is an edge-vertex bridge predicate
-                if (tuple.Item2 is PredicateLink)
-                {
-                    PredicateLink edgeVertexBridge = tuple.Item2 as PredicateLink;
-                    WEdgeVertexBridgeExpression bridgeExpr =
-                        edgeVertexBridge.BooleanExpression as WEdgeVertexBridgeExpression;
-                    traversalEdgeInfo = bridgeExpr.FirstExpr as WColumnReferenceExpression;
-                }
-                // if item2 is an edge
-                else if (tuple.Item2 is MatchEdge)
-                {
-                    MatchEdge edge = tuple.Item2 as MatchEdge;
-                    if (edge.EdgeType == WEdgeType.OutEdge)
-                    {
-                        traversalEdgeInfo = SqlUtil.GetColumnReferenceExpr(edge.LinkAlias,
-                            edge.IsReversed ? GremlinKeyword.EdgeSinkV : GremlinKeyword.EdgeSourceV);
-                    }
-                    else if (edge.EdgeType == WEdgeType.InEdge)
-                    {
-                        traversalEdgeInfo = SqlUtil.GetColumnReferenceExpr(edge.LinkAlias,
-                            edge.IsReversed ? GremlinKeyword.EdgeSourceV : GremlinKeyword.EdgeSinkV);
-                    }
-                    else
-                    {
-                        traversalEdgeInfo = SqlUtil.GetColumnReferenceExpr(edge.LinkAlias, GremlinKeyword.EdgeOtherV);
-                    }
-                }
-                else
-                {
-                    throw new QueryCompilationException("Can't support " + tuple.Item2.ToString());
-                }
-
-                foreach (WColumnReferenceExpression forwardEdgeInfo in forwardEdgesInfoList)
-                {
-                    booleanExpressions.Add(SqlUtil.GetEqualBooleanComparisonExpr(traversalEdgeInfo, forwardEdgeInfo));
-                }
-            }
-
+            booleanExpressions.AddRange(tuple.Item3.FindAll(preditateTuple => preditateTuple.Item2 == priority)
+                .Select(preditateTuple => preditateTuple.Item1.BooleanExpression));
             if (booleanExpressions.Any())
             {
                 operatorChain.Add(
@@ -877,29 +813,64 @@ namespace GraphView
             GraphViewCommand command, 
             QueryCompilationContext context,
             List<GraphViewExecutionOperator> chain, 
-            Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>, List<ExecutionOrder>> tuple)
+            Tuple<CompileNode, CompileLink, List<Tuple<PredicateLink, int>>, List<Tuple<MatchEdge, int>>, List<ExecutionOrder>> tuple,
+            int priority)
         {
-            foreach (CompileLink link in tuple.Item4)
+            if (priority == 1)
             {
-                // If an edge does not exist before, we will construct an AdjacencyListDecoder
-                MatchEdge edge = link as MatchEdge;
-                if (edge != null)
+                if (tuple.Item2 != null && tuple.Item2 is MatchEdge)
                 {
-                    Tuple<bool, bool> crossApplyTypeTuple = GetAdjDecoderCrossApplyTypeParameter(edge);
-                    QueryCompilationContext localEdgeContext =
-                        GenerateLocalContextForAdjacentListDecoder(edge.LinkAlias, edge.Properties);
-                    WBooleanExpression edgePredicates = edge.RetrievePredicatesExpression();
-                    chain.Add(new AdjacencyListDecoder(
-                        chain.Last(),
-                        context.LocateColumnReference(edge.SourceNode.NodeAlias, GremlinKeyword.Star),
-                        crossApplyTypeTuple.Item1, crossApplyTypeTuple.Item2,
-                        edge.EdgeType == WEdgeType.BothEdge || !edge.IsReversed,
-                        edgePredicates != null ? edgePredicates.CompileToFunction(localEdgeContext, command) : null,
-                        edge.Properties, command, context.RawRecordLayout.Count + edge.Properties.Count));
+                    MatchEdge edge = tuple.Item2 as MatchEdge;
+                    // Need construct the edge from another node
+                    if (!context.TableReferences.Contains(edge.LinkAlias))
+                    {
+                        Tuple<bool, bool> crossApplyTypeTuple = GetAdjDecoderCrossApplyTypeParameter(edge);
+                        QueryCompilationContext localEdgeContext =
+                            GenerateLocalContextForAdjacentListDecoder(edge.LinkAlias, edge.Properties);
+                        WBooleanExpression edgePredicates = edge.RetrievePredicatesExpression();
+                        chain.Add(new AdjacencyListDecoder(
+                            chain.Last(),
+                            context.LocateColumnReference(edge.SinkNode.NodeAlias, GremlinKeyword.Star),
+                            crossApplyTypeTuple.Item2, crossApplyTypeTuple.Item1,
+                            edge.EdgeType == WEdgeType.BothEdge || edge.IsReversed,
+                            edgePredicates != null ? edgePredicates.CompileToFunction(localEdgeContext, command) : null,
+                            edge.Properties, command, context.RawRecordLayout.Count + edge.Properties.Count));
 
-                    // Update edge's context info
-                    context.TableReferences.Add(edge.LinkAlias);
-                    UpdateEdgeLayout(edge.LinkAlias, edge.Properties, context);
+                        // Update edge's context info
+                        context.TableReferences.Add(edge.LinkAlias);
+                        UpdateEdgeLayout(edge.LinkAlias, edge.Properties, context);
+                        context.CurrentExecutionOperator = chain.Last();
+                    }
+                }
+            }
+            else
+            {
+                foreach (Tuple<MatchEdge, int> edgeTuple in tuple.Item4)
+                {
+                    if (edgeTuple.Item2 != priority)
+                    {
+                        continue;
+                    }
+                    MatchEdge edge = edgeTuple.Item1;
+                    if (!context.TableReferences.Contains(edge.LinkAlias))
+                    {
+                        Tuple<bool, bool> crossApplyTypeTuple = GetAdjDecoderCrossApplyTypeParameter(edge);
+                        QueryCompilationContext localEdgeContext =
+                            GenerateLocalContextForAdjacentListDecoder(edge.LinkAlias, edge.Properties);
+                        WBooleanExpression edgePredicates = edge.RetrievePredicatesExpression();
+                        chain.Add(new AdjacencyListDecoder(
+                            chain.Last(),
+                            context.LocateColumnReference(edge.SourceNode.NodeAlias, GremlinKeyword.Star),
+                            crossApplyTypeTuple.Item1, crossApplyTypeTuple.Item2,
+                            edge.EdgeType == WEdgeType.BothEdge || !edge.IsReversed,
+                            edgePredicates != null ? edgePredicates.CompileToFunction(localEdgeContext, command) : null,
+                            edge.Properties, command, context.RawRecordLayout.Count + edge.Properties.Count));
+                        
+                        // Update edge's context info
+                        context.TableReferences.Add(edge.LinkAlias);
+                        UpdateEdgeLayout(edge.LinkAlias, edge.Properties, context);
+                        context.CurrentExecutionOperator = chain.Last();
+                    }
                 }
             }
         }
@@ -942,21 +913,21 @@ namespace GraphView
             return localContext;
         }
 
+        // TODO: need support more than one edges as PushedToServerEdges
         private static MatchEdge GetPushedToServerEdge(
             GraphViewCommand command,
-            Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>, List<ExecutionOrder>> tuple)
+            Tuple<CompileNode, CompileLink, List<Tuple<PredicateLink, int>>, List<Tuple<MatchEdge, int>>, List<ExecutionOrder>> tuple)
         {
-            if (tuple.Item2 == null && tuple.Item4.Any())
-            {
-                foreach (CompileLink link in tuple.Item4)
-                {
-                    MatchEdge edge = link as MatchEdge;
-                    if (CanBePushedToServer(command, edge))
-                    {
-                        return edge;
-                    }
-                }
-            }
+            //if (tuple.Item2 == null && tuple.Item4.Any())
+            //{
+            //    foreach (MatchEdge edge in tuple.Item4)
+            //    {
+            //        if (CanBePushedToServer(command, edge))
+            //        {
+            //            return edge;
+            //        }
+            //    }
+            //}
             return null;
         }
 
@@ -1127,7 +1098,7 @@ namespace GraphView
                     subcontext.CarryOn = true;
                     if (index < context.LocalExecutionOrders.Count)
                     {
-                        subcontext.SetCurrentExecutionOrder(context.LocalExecutionOrders[index]);
+                        subcontext.CurrentExecutionOrder = context.LocalExecutionOrders[index];
                     }
                     GraphViewExecutionOperator traversalOp = scalarSubquery.SubQueryExpr.Compile(subcontext, command);
                     unionOp.AddTraversal(traversalOp);
@@ -1201,7 +1172,7 @@ namespace GraphView
             }
 
             ExecutionOrder executionOrder = new ExecutionOrder(parentExecutionOrder);
-            executionOrder.Order.Add(new Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>, List<ExecutionOrder>>(
+            executionOrder.Order.Add(new Tuple<CompileNode, CompileLink, List<Tuple<PredicateLink, int>>, List<Tuple<MatchEdge, int>>, List<ExecutionOrder>>(
                 null, null, null, null, localExecutionOrders));
             return executionOrder;
         }
@@ -1241,7 +1212,7 @@ namespace GraphView
                 subcontext.InBatchMode = true;
                 if (index < context.LocalExecutionOrders.Count)
                 {
-                    subcontext.SetCurrentExecutionOrder(context.LocalExecutionOrders[index]);
+                    subcontext.CurrentExecutionOrder = context.LocalExecutionOrders[index];
                 }
                 GraphViewExecutionOperator traversalOp = scalarSubquery.SubQueryExpr.Compile(subcontext, command);
                 coalesceOp.AddTraversal(traversalOp);
@@ -1298,7 +1269,7 @@ namespace GraphView
             }
 
             ExecutionOrder executionOrder = new ExecutionOrder(parentExecutionOrder);
-            executionOrder.Order.Add(new Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>, List<ExecutionOrder>>(
+            executionOrder.Order.Add(new Tuple<CompileNode, CompileLink, List<Tuple<PredicateLink, int>>, List<Tuple<MatchEdge, int>>, List<ExecutionOrder>>(
                 null, null, null, null, localExecutionOrders));
             return executionOrder;
         }
@@ -1376,7 +1347,7 @@ namespace GraphView
             targetSubContext.InBatchMode = true;
             if (0 < context.LocalExecutionOrders.Count)
             {
-                targetSubContext.SetCurrentExecutionOrder(context.LocalExecutionOrders[0]);
+                targetSubContext.CurrentExecutionOrder = context.LocalExecutionOrders[0];
             }
             GraphViewExecutionOperator targetSubqueryOp = optionalSelect.Compile(targetSubContext, command);
 
@@ -1388,7 +1359,7 @@ namespace GraphView
             subcontext.InBatchMode = context.InBatchMode;
             if (0 < context.LocalExecutionOrders.Count)
             {
-                subcontext.SetCurrentExecutionOrder(context.LocalExecutionOrders[0]);
+                subcontext.CurrentExecutionOrder = context.LocalExecutionOrders[0];
             }
             GraphViewExecutionOperator optionalTraversalOp = optionalSelect.Compile(subcontext, command);
 
@@ -1432,7 +1403,7 @@ namespace GraphView
             }
 
             ExecutionOrder executionOrder = new ExecutionOrder(parentExecutionOrder);
-            executionOrder.Order.Add(new Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>, List<ExecutionOrder>>(
+            executionOrder.Order.Add(new Tuple<CompileNode, CompileLink, List<Tuple<PredicateLink, int>>, List<Tuple<MatchEdge, int>>, List<ExecutionOrder>>(
                 null, null, null, null, localExecutionOrders));
             return executionOrder;
         }
@@ -1461,7 +1432,7 @@ namespace GraphView
             subcontext.InBatchMode = true;
             if (0 < context.LocalExecutionOrders.Count)
             {
-                subcontext.SetCurrentExecutionOrder(context.LocalExecutionOrders[0]);
+                subcontext.CurrentExecutionOrder = context.LocalExecutionOrders[0];
             }
             GraphViewExecutionOperator localTraversalOp = localSelect.Compile(subcontext, command);
             LocalOperator localOp = new LocalOperator(context.CurrentExecutionOperator, localTraversalOp, container, containerIndex);
@@ -1508,7 +1479,7 @@ namespace GraphView
             }
 
             ExecutionOrder executionOrder = new ExecutionOrder(parentExecutionOrder);
-            executionOrder.Order.Add(new Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>, List<ExecutionOrder>>(
+            executionOrder.Order.Add(new Tuple<CompileNode, CompileLink, List<Tuple<PredicateLink, int>>, List<Tuple<MatchEdge, int>>, List<ExecutionOrder>>(
                 null, null, null, null, localExecutionOrders));
             return executionOrder;
         }
@@ -1537,7 +1508,7 @@ namespace GraphView
             subcontext.InBatchMode = true;
             if (0 < context.LocalExecutionOrders.Count)
             {
-                subcontext.SetCurrentExecutionOrder(context.LocalExecutionOrders[0]);
+                subcontext.CurrentExecutionOrder = context.LocalExecutionOrders[0];
             }
             GraphViewExecutionOperator flatMapTraversalOp = flatMapSelect.Compile(subcontext, command);
 
@@ -1584,7 +1555,7 @@ namespace GraphView
             }
 
             ExecutionOrder executionOrder = new ExecutionOrder(parentExecutionOrder);
-            executionOrder.Order.Add(new Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>, List<ExecutionOrder>>(
+            executionOrder.Order.Add(new Tuple<CompileNode, CompileLink, List<Tuple<PredicateLink, int>>, List<Tuple<MatchEdge, int>>, List<ExecutionOrder>>(
                 null, null, null, null, localExecutionOrders));
             return executionOrder;
         }
@@ -2061,7 +2032,7 @@ namespace GraphView
             initialContext.CarryOn = true;
             if (0 < context.LocalExecutionOrders.Count)
             {
-                initialContext.SetCurrentExecutionOrder(context.LocalExecutionOrders[0]);
+                initialContext.CurrentExecutionOrder = context.LocalExecutionOrders[0];
             }
             GraphViewExecutionOperator getInitialRecordOp = contextSelect.Compile(initialContext, command);
             
@@ -2099,7 +2070,7 @@ namespace GraphView
             rTableContext.CarryOn = true;
             if (1 < context.LocalExecutionOrders.Count)
             {
-                rTableContext.SetCurrentExecutionOrder(context.LocalExecutionOrders[1]);
+                rTableContext.CurrentExecutionOrder = context.LocalExecutionOrders[1];
             }
             GraphViewExecutionOperator innerOp = repeatSelect.Compile(rTableContext, command);
 
@@ -2149,7 +2120,7 @@ namespace GraphView
             }
 
             ExecutionOrder executionOrder = new ExecutionOrder(parentExecutionOrder);
-            executionOrder.Order.Add(new Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>, List<ExecutionOrder>>(
+            executionOrder.Order.Add(new Tuple<CompileNode, CompileLink, List<Tuple<PredicateLink, int>>, List<Tuple<MatchEdge, int>>, List<ExecutionOrder>>(
                 null, null, null, null, localExecutionOrders));
             return executionOrder;
         }
@@ -2458,7 +2429,7 @@ namespace GraphView
             subcontext.InBatchMode = true;
             if (0 < context.LocalExecutionOrders.Count)
             {
-                subcontext.SetCurrentExecutionOrder(context.LocalExecutionOrders[0]);
+                subcontext.CurrentExecutionOrder = context.LocalExecutionOrders[0];
             }
             GraphViewExecutionOperator mapTraversalOp = mapSelect.Compile(subcontext, command);
             MapOperator mapOp = new MapOperator(context.CurrentExecutionOperator, mapTraversalOp, container, containerIndex);
@@ -2505,7 +2476,7 @@ namespace GraphView
             }
 
             ExecutionOrder executionOrder = new ExecutionOrder(parentExecutionOrder);
-            executionOrder.Order.Add(new Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>, List<ExecutionOrder>>(
+            executionOrder.Order.Add(new Tuple<CompileNode, CompileLink, List<Tuple<PredicateLink, int>>, List<Tuple<MatchEdge, int>>, List<ExecutionOrder>>(
                 null, null, null, null, localExecutionOrders));
             return executionOrder;
         }
@@ -2534,7 +2505,7 @@ namespace GraphView
             subcontext.InBatchMode = true;
             if (0 < context.LocalExecutionOrders.Count)
             {
-                subcontext.SetCurrentExecutionOrder(context.LocalExecutionOrders[0]);
+                subcontext.CurrentExecutionOrder = context.LocalExecutionOrders[0];
             }
             GraphViewExecutionOperator sideEffectTraversalOp = sideEffectSelect.Compile(subcontext, command);
             SideEffectOperator sideEffectOp = new SideEffectOperator(context.CurrentExecutionOperator, sideEffectTraversalOp, container, containerIndex);
@@ -2567,7 +2538,7 @@ namespace GraphView
             }
 
             ExecutionOrder executionOrder = new ExecutionOrder(parentExecutionOrder);
-            executionOrder.Order.Add(new Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>, List<ExecutionOrder>>(
+            executionOrder.Order.Add(new Tuple<CompileNode, CompileLink, List<Tuple<PredicateLink, int>>, List<Tuple<MatchEdge, int>>, List<ExecutionOrder>>(
                 null, null, null, null, localExecutionOrders));
             return executionOrder;
         }
@@ -2658,7 +2629,7 @@ namespace GraphView
             subcontext.OuterContextOp.SetContainer(container, containerIndex);
             if (0 < context.LocalExecutionOrders.Count)
             {
-                subcontext.SetCurrentExecutionOrder(context.LocalExecutionOrders[0]);
+                subcontext.CurrentExecutionOrder = context.LocalExecutionOrders[0];
             }
             GraphViewExecutionOperator aggregateOp = aggregateSubQuery.SubQueryExpr.Compile(subcontext, command);
 
@@ -2738,7 +2709,7 @@ namespace GraphView
             }
 
             ExecutionOrder executionOrder = new ExecutionOrder(parentExecutionOrder);
-            executionOrder.Order.Add(new Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>, List<ExecutionOrder>>(
+            executionOrder.Order.Add(new Tuple<CompileNode, CompileLink, List<Tuple<PredicateLink, int>>, List<Tuple<MatchEdge, int>>, List<ExecutionOrder>>(
                 null, null, null, null, localExecutionOrders));
             return executionOrder;
         }
@@ -2770,7 +2741,7 @@ namespace GraphView
             }
             if (0 < context.LocalExecutionOrders.Count)
             {
-                derivedTableContext.SetCurrentExecutionOrder(context.LocalExecutionOrders[0]);
+                derivedTableContext.CurrentExecutionOrder = context.LocalExecutionOrders[0];
             }
             GraphViewExecutionOperator subQueryOp = derivedSelectQueryBlock.Compile(derivedTableContext, command);
 
@@ -2837,7 +2808,7 @@ namespace GraphView
             }
 
             ExecutionOrder executionOrder = new ExecutionOrder(parentExecutionOrder);
-            executionOrder.Order.Add(new Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>, List<ExecutionOrder>>(
+            executionOrder.Order.Add(new Tuple<CompileNode, CompileLink, List<Tuple<PredicateLink, int>>, List<Tuple<MatchEdge, int>>, List<ExecutionOrder>>(
                 null, null, null, null, localExecutionOrders));
             return executionOrder;
         }
@@ -3294,7 +3265,7 @@ namespace GraphView
             targetSubContext.InBatchMode = true;
             if (0 < context.LocalExecutionOrders.Count)
             {
-                targetSubContext.SetCurrentExecutionOrder(context.LocalExecutionOrders[0]);
+                targetSubContext.CurrentExecutionOrder = context.LocalExecutionOrders[0];
             }
             GraphViewExecutionOperator targetSubqueryOp = targetSubquery.SubQueryExpr.Compile(targetSubContext, command);
 
@@ -3306,7 +3277,7 @@ namespace GraphView
             trueSubContext.OuterContextOp.SetContainer(trueBranchContainer, trueBranchContainerIndex);
             if (1 < context.LocalExecutionOrders.Count)
             {
-                trueSubContext.SetCurrentExecutionOrder(context.LocalExecutionOrders[1]);
+                trueSubContext.CurrentExecutionOrder = context.LocalExecutionOrders[1];
             }
             GraphViewExecutionOperator trueBranchTraversalOp =
                 trueTraversalParameter.SubQueryExpr.Compile(trueSubContext, command);
@@ -3319,7 +3290,7 @@ namespace GraphView
             falseSubContext.OuterContextOp.SetContainer(falseBranchContainer, falseBranchContainerIndex);
             if (2 < context.LocalExecutionOrders.Count)
             {
-                falseSubContext.SetCurrentExecutionOrder(context.LocalExecutionOrders[2]);
+                falseSubContext.CurrentExecutionOrder = context.LocalExecutionOrders[2];
             }
             GraphViewExecutionOperator falseBranchTraversalOp =
                 falseTraversalParameter.SubQueryExpr.Compile(falseSubContext, command);
@@ -3372,7 +3343,7 @@ namespace GraphView
             }
 
             ExecutionOrder executionOrder = new ExecutionOrder(parentExecutionOrder);
-            executionOrder.Order.Add(new Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>, List<ExecutionOrder>>(
+            executionOrder.Order.Add(new Tuple<CompileNode, CompileLink, List<Tuple<PredicateLink, int>>, List<Tuple<MatchEdge, int>>, List<ExecutionOrder>>(
                 null, null, null, null, localExecutionOrders));
             return executionOrder;
         }
@@ -3393,7 +3364,7 @@ namespace GraphView
             targetContext.AddField(GremlinKeyword.IndexTableName, command.IndexColumnName, ColumnGraphType.Value, true);
             if (0 < context.LocalExecutionOrders.Count)
             {
-                targetContext.SetCurrentExecutionOrder(context.LocalExecutionOrders[0]);
+                targetContext.CurrentExecutionOrder = context.LocalExecutionOrders[0];
             }
             GraphViewExecutionOperator targetSubqueryOp = targetSubquery.SubQueryExpr.Compile(targetContext, command);
 
@@ -3430,7 +3401,7 @@ namespace GraphView
                 subcontext.OuterContextOp.SetContainer(optionContainer, optionContainerIndex);
                 if ((i+1)/2 < context.LocalExecutionOrders.Count)
                 {
-                    subcontext.SetCurrentExecutionOrder(context.LocalExecutionOrders[(i+1)/2]);
+                    subcontext.CurrentExecutionOrder = context.LocalExecutionOrders[(i+1)/2];
                 }
                 GraphViewExecutionOperator optionTraversalOp = scalarSubquery.SubQueryExpr.Compile(subcontext, command);
                 chooseWithOptionsOp.AddOptionTraversal(value?.CompileToFunction(context, command), optionContainer, optionTraversalOp, optionContainerIndex);
@@ -3485,7 +3456,7 @@ namespace GraphView
             }
 
             ExecutionOrder executionOrder = new ExecutionOrder(parentExecutionOrder);
-            executionOrder.Order.Add(new Tuple<CompileNode, CompileLink, List<CompileLink>, List<CompileLink>, List<ExecutionOrder>>(
+            executionOrder.Order.Add(new Tuple<CompileNode, CompileLink, List<Tuple<PredicateLink, int>>, List<Tuple<MatchEdge, int>>, List<ExecutionOrder>>(
                 null, null, null, null, localExecutionOrders));
             return executionOrder;
         }

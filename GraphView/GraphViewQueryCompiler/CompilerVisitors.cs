@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -183,11 +184,11 @@ namespace GraphView
         Dictionary<string, HashSet<string>> accessedColumns;
         private bool _isOnlyTargetTableReferenced;
 
-        public Dictionary<string, HashSet<string>> Invoke(WSqlFragment sqlFragment, HashSet<string> targetTableReferences,
+        public Dictionary<string, HashSet<string>> Invoke(WSqlFragment sqlFragment, System.Collections.IEnumerable targetTableReferences,
             out bool isOnlyTargetTableReferecend)
         {
             _isOnlyTargetTableReferenced = true;
-            accessedColumns = new Dictionary<string, HashSet<string>>(targetTableReferences.Count);
+            accessedColumns = new Dictionary<string, HashSet<string>>();
 
             if (sqlFragment != null)
             {
