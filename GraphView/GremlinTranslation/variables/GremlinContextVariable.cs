@@ -77,7 +77,7 @@ namespace GraphView
         }
         internal override void PopulateLocalPath()
         {
-            this.MinPathLength = 0;
+            this.LocalPathLengthLowerBound = 0;
         }
     }
 

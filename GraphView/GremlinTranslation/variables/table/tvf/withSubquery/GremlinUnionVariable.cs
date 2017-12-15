@@ -58,11 +58,11 @@ namespace GraphView
                 return;
             }
             this.ProjectedProperties.Add(GremlinKeyword.Path);
-            this.MinPathLength = Int32.MaxValue;
+            this.LocalPathLengthLowerBound = Int32.MaxValue;
             foreach (var context in this.UnionContextList)
             {
                 context.PopulateLocalPath();
-                this.MinPathLength = Math.Min(context.MinPathLength, this.MinPathLength);
+                this.LocalPathLengthLowerBound = Math.Min(context.MinPathLength, this.LocalPathLengthLowerBound);
             }
         }
 
