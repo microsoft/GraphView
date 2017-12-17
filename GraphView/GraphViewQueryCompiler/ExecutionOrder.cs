@@ -332,12 +332,18 @@ namespace GraphView
             this.Cost = 0.0;
         }
 
+        /// <summary>
+        /// This constructor is used to transfer information to subquery
+        /// </summary>
+        /// <param name="executionOrder"></param>
         public ExecutionOrder(ExecutionOrder executionOrder)
         {
             this.Order = new List<Tuple<CompileNode, CompileLink, List<Tuple<PredicateLink, int>>, List<Tuple<MatchEdge, int>>, List<ExecutionOrder>>>();
             this.ExistingNodesAndEdges = new HashSet<string>(executionOrder.ExistingNodesAndEdges);
             this.ExistingPredicateLinks = new HashSet<string>(executionOrder.ExistingPredicateLinks);
-            // this.ReadyEdges = new Dictionary<string, MatchEdge>(executionOrder.ReadyEdges);
+            // It is important that the readyEdges should be empty.
+            // If the parentOrder has some readyEdges and this order records, the subquery cannot remove edges from readyEdges
+            // because it could see the information from parent's aggregationBlock
             this.ReadyEdges = new HashSet<string>();
             this.Cost = 0.0;
         }
@@ -348,7 +354,6 @@ namespace GraphView
             {
                 ExistingNodesAndEdges = new HashSet<string>(this.ExistingNodesAndEdges),
                 ExistingPredicateLinks = new HashSet<string>(this.ExistingPredicateLinks),
-                // ReadyEdges = new Dictionary<string, MatchEdge>(this.ReadyEdges),
                 ReadyEdges = new HashSet<string>(this.ReadyEdges),
                 Order = new List<Tuple<CompileNode, CompileLink, List<Tuple<PredicateLink, int>>, List<Tuple<MatchEdge, int>>, List<ExecutionOrder>>>(this.Order),
                 Cost = this.Cost
@@ -456,10 +461,21 @@ namespace GraphView
 
             // Find local execution orders
             List<ExecutionOrder> localExecutionOrders = node.GetLocalExecutionOrder(this).Order.First().Item5;
+            // traversalLinks must be existing edges, ready edges or WEdgeVertexBridgeExpression.
             List<CompileLink> traversalLinks = new List<CompileLink>();
             List<MatchEdge> connectedReadyEdges = new List<MatchEdge>();
             List<MatchEdge> connectedUnreadyEdges = new List<MatchEdge>();
 
+            // The item2 is the corresponding priority.
+            // If the priority is 1, 
+            //  then the edge should try to retrieve before retrieve a node or execute a TVF, 
+            //  and predicates should be evaluated after retrieving the edge
+            // If the priority is 2, 
+            //  then edges should try to retrieve when retrieving a node (not support in execution part now),
+            //  and predicates should be evaluated after retrieving these edges and a node or executing a TVF
+            // If the priority is 3, 
+            //  then edges should try to retrieve after retrieving a node,
+            //  and predicates should be evaluated after retrieving these edges
             List<Tuple<PredicateLink, int>> forwardLinks = new List<Tuple<PredicateLink, int>>();
             List<Tuple<MatchEdge, int>> backwardEdges = new List<Tuple<MatchEdge, int>>();
 
@@ -481,7 +497,6 @@ namespace GraphView
                             connectedUnreadyEdges.Add(edge);
                         }
                     }
-
                     if (this.ExistingNodesAndEdges.Contains(edge.LinkAlias) || this.ReadyEdges.Contains(edge.LinkAlias))
                     {
                         traversalLinks.Add(edge);
@@ -527,14 +542,17 @@ namespace GraphView
                 }
 
                 // Find all possible sublists of connectedUnreadyEdges
+                // Because we may not reterieve all edges at this step
                 List<List<MatchEdge>> connectedUnreadyEdgesSublists = GetAllSublists(connectedUnreadyEdges);
 
+                // if traversalLinks is empty, we add a NULL in it.
                 if (!traversalLinks.Any())
                 {
                     traversalLinks.Add(null);
                 }
 
-                // tupleBackwardEdges = (connectedReadyEdges)U(a sublist of connectedUnreadyEdges) - (traversalLink)
+                // backwardEdges = (connectedReadyEdges) U (a sublist of connectedUnreadyEdges) - (traversalLink)
+                // but connnectedREadyEdges' priorities can be 2 or 3, connectedUnreadyEdges must be 2
                 foreach (CompileLink traversalLink in traversalLinks)
                 {
                     foreach (List<MatchEdge> connectedUnreadyEdgesSublist in connectedUnreadyEdgesSublists)
@@ -546,8 +564,10 @@ namespace GraphView
                         }
 
                         // Find all combinations of connectedReadyEdges
+                        // These readyEdges' priorities can be 2 or 3
                         List<List<Tuple<MatchEdge, int>>> connectedReadyEdgesCombinations = GetAllCombinations(connectedReadyEdgesSublist, new List<int>() { 2, 3 });
                         // Find all combinations of connectedUnreadyEdges
+                        // All unreadyEdges' priorities must be 2 if retrieving them
                         List<List<Tuple<MatchEdge, int>>> connectedUnreadyEdgesCombinations = GetAllCombinations(connectedUnreadyEdgesSublist, new List<int>() { 2 });
 
                         // Find all combinations of connectedReadyEdges and connectedUnreadyEdges
@@ -580,14 +600,21 @@ namespace GraphView
 
             return nextTuples;
         }
-        
 
+        /// <summary>
+        /// Given a node / TVF, a traversalLink and backwardEdges, try to find all predicates that can be evaluated
+        /// </summary>
+        /// <param name="node"></param>
+        /// <param name="traversalLink"></param>
+        /// <param name="backwardEdges"></param>
+        /// <param name="predicateLinksAccessedTableAliases"></param>
         private List<Tuple<PredicateLink, int>> FindPredicates(
             CompileNode node,
             CompileLink traversalLink,
             List<Tuple<MatchEdge, int>> backwardEdges,
             List<Tuple<PredicateLink, HashSet<string>>> predicateLinksAccessedTableAliases)
         {
+            // Record temporary aliases and predicates
             HashSet<string> temporaryAliases = new HashSet<string>(this.ExistingNodesAndEdges);
             HashSet<string> temporaryPredicates = new HashSet<string>(this.ExistingPredicateLinks);
             List<Tuple<PredicateLink, int>> forwardLinks = new List<Tuple<PredicateLink, int>>();
@@ -680,6 +707,7 @@ namespace GraphView
                             }
                         }
                     }
+                    // Because all existing edges are consistent, we just need make one exstring edge and this edge consistent
                     if (nodeColumnReferenceExprFromBackwardEdge != null &&
                         nodeColumnReferenceExprFromAnExistingEdge != null)
                     {
@@ -692,6 +720,8 @@ namespace GraphView
                     }
                 }
             }
+
+            // Check predicates
             foreach (Tuple<PredicateLink, HashSet<string>> tuple in predicateLinksAccessedTableAliases)
             {
                 if (!temporaryPredicates.Contains(tuple.Item1.LinkAlias) &&
@@ -745,6 +775,7 @@ namespace GraphView
                             }
                         }
                     }
+                    // Because all existing edges are consistent, we just need make one exstring edge and this edge consistent
                     if (nodeColumnReferenceExprFromBackwardEdge != null &&
                         nodeColumnReferenceExprFromAnExistingEdge != null)
                     {
@@ -757,6 +788,8 @@ namespace GraphView
                     }
                 }
             }
+
+            // Check predicates
             foreach (Tuple<PredicateLink, HashSet<string>> tuple in predicateLinksAccessedTableAliases)
             {
                 if (!temporaryPredicates.Contains(tuple.Item1.LinkAlias) &&

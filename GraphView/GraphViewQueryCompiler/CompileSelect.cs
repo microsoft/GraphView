@@ -821,7 +821,7 @@ namespace GraphView
                 if (tuple.Item2 != null && tuple.Item2 is MatchEdge)
                 {
                     MatchEdge edge = tuple.Item2 as MatchEdge;
-                    // Need construct the edge from another node
+                    // Need construct the edge from another node because the source node is unready
                     if (!context.TableReferences.Contains(edge.LinkAlias))
                     {
                         Tuple<bool, bool> crossApplyTypeTuple = GetAdjDecoderCrossApplyTypeParameter(edge);
