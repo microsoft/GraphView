@@ -32,42 +32,34 @@ namespace GraphView
 
         internal override bool Populate(string property, string label = null)
         {
-            bool populateSuccess = false;
-            if (base.Populate(property, label))
+            bool populateSuccessfully = false;
+            if (label == null || this.ProjectedProperties.Contains(label))
             {
+                populateSuccessfully = true;
                 this.TrueChoiceContext?.Populate(property, null);
                 this.FalseChocieContext?.Populate(property, null);
                 foreach (var option in this.Options)
                 {
                     option.Value.Populate(property, null);
                 }
-                populateSuccess = true;
             }
             else if (this.PredicateContext != null)
             {
-                if (this.TrueChoiceContext.Populate(property, label))
-                {
-                    this.FalseChocieContext.Populate(property, null);
-                    populateSuccess = base.Populate(property, null);
-                }
-                else if (this.FalseChocieContext.Populate(property, label))
-                {
-                    this.TrueChoiceContext.Populate(property, null);
-                    populateSuccess = base.Populate(property, null);
-                }
+                populateSuccessfully |= this.TrueChoiceContext.Populate(property, label);
+                populateSuccessfully |= this.FalseChocieContext.Populate(property, label);
             }
             else
             {
                 foreach (var option in this.Options)
                 {
-                    populateSuccess |= option.Value.Populate(property, label);
-                }
-                if (populateSuccess)
-                {
-                    base.Populate(property, null);
+                    populateSuccessfully |= option.Value.Populate(property, label);
                 }
             }
-            return populateSuccess;
+            if (populateSuccessfully && property != null)
+            {
+                this.ProjectedProperties.Add(property);
+            }
+            return populateSuccessfully;
         }
 
         internal override List<GremlinVariable> FetchAllVars()
@@ -112,21 +104,21 @@ namespace GraphView
 
         internal override bool PopulateStepProperty(string property, string label = null)
         {
-            bool populateSuccess = false;
+            bool populateSuccessfully = false;
             
             if (this.PredicateContext != null)
             {
-                populateSuccess |= this.TrueChoiceContext.ContextLocalPath.PopulateStepProperty(property, label);
-                populateSuccess |= this.FalseChocieContext.ContextLocalPath.PopulateStepProperty(property, label);
+                populateSuccessfully |= this.TrueChoiceContext.ContextLocalPath.PopulateStepProperty(property, label);
+                populateSuccessfully |= this.FalseChocieContext.ContextLocalPath.PopulateStepProperty(property, label);
             }
             else
             {
                 foreach (var option in this.Options)
                 {
-                    populateSuccess |= option.Value.ContextLocalPath.PopulateStepProperty(property, label);
+                    populateSuccessfully |= option.Value.ContextLocalPath.PopulateStepProperty(property, label);
                 }
             }
-            return populateSuccess;
+            return populateSuccessfully;
         }
 
         internal override void PopulateLocalPath()
@@ -154,7 +146,7 @@ namespace GraphView
             }
         }
 
-        internal override WScalarExpression ToStepScalarExpr(List<string> composedProperties = null)
+        internal override WScalarExpression ToStepScalarExpr(HashSet<string> composedProperties = null)
         {
             return SqlUtil.GetColumnReferenceExpr(GetVariableName(), GremlinKeyword.Path);
         }

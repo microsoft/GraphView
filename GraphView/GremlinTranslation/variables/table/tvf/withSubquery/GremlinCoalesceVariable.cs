@@ -18,16 +18,26 @@ namespace GraphView
 
         internal override bool Populate(string property, string label = null)
         {
-            bool populateSuccess = false;
-            foreach (var context in this.CoalesceContextList)
+            bool populateSuccessfully = false;
+            if (label == null || this.Labels.Contains(label))
             {
-                populateSuccess |= context.Populate(property, label);
+                foreach (GremlinToSqlContext context in this.CoalesceContextList)
+                {
+                    populateSuccessfully |= context.Populate(property, null);
+                }
             }
-            if (populateSuccess)
+            else
             {
-                base.Populate(property, null);
+                foreach (GremlinToSqlContext context in this.CoalesceContextList)
+                {
+                    populateSuccessfully |= context.Populate(property, label);
+                }
             }
-            return populateSuccess;
+            if (populateSuccessfully && property != null)
+            {
+                this.ProjectedProperties.Add(property);
+            }
+            return populateSuccessfully;
         }
 
         internal override List<GremlinVariable> FetchAllVars()

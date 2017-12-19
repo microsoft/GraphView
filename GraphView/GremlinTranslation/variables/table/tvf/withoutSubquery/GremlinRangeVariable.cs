@@ -12,11 +12,11 @@ namespace GraphView
         public int High { get; set; }
         public bool IsReverse { get; set; }
         public GremlinKeyword.Scope Scope { get; set; }
-        public GremlinVariable InputVaribale { get; set; }
+        public GremlinVariable InputVariable { get; set; }
 
         public GremlinRangeVariable(GremlinVariable inputVariable, int low, int high, GremlinKeyword.Scope scope, bool isReverse): base(inputVariable.GetVariableType())
         {
-            this.InputVaribale = inputVariable;
+            this.InputVariable = inputVariable;
             this.Low = low;
             this.High = high;
             this.Scope = scope;
@@ -25,24 +25,23 @@ namespace GraphView
 
         internal override bool Populate(string property, string label = null)
         {
-            if (base.Populate(property, label))
+            bool populateSuccessfully = false;
+            if (label == null || this.Labels.Contains(label))
             {
-                return this.InputVaribale.Populate(property, null);
-            }
-            else if (this.InputVaribale.Populate(property, label))
-            {
-                return base.Populate(property, null);
+                populateSuccessfully = true;
+                this.InputVariable.Populate(property, null);
             }
             else
             {
-                return false;
+                populateSuccessfully |= this.InputVariable.Populate(property, label);
             }
+            return populateSuccessfully;
         }
 
         internal override List<GremlinVariable> FetchAllVars()
         {
             List<GremlinVariable> variableList = new List<GremlinVariable>() { this };
-            variableList.AddRange(this.InputVaribale.FetchAllVars());
+            variableList.AddRange(this.InputVariable.FetchAllVars());
             return variableList;
         }
 
@@ -52,7 +51,7 @@ namespace GraphView
 
             if (Scope == GremlinKeyword.Scope.Local)
             {
-                parameters.Add(InputVaribale.DefaultProjection().ToScalarExpression());
+                parameters.Add(InputVariable.DefaultProjection().ToScalarExpression());
             }
 
             parameters.Add(SqlUtil.GetValueExpr(this.Low));

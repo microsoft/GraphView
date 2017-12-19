@@ -17,7 +17,6 @@ namespace GraphView
         {
             this.InputVariable = inputVariable;
             this.Injection = injection;
-            this.ProjectedProperties.Add(GremlinKeyword.TableDefaultColumnName);
         }
 
         internal override bool Populate(string property, string label = null)

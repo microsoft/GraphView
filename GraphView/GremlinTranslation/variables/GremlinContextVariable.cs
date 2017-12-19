@@ -27,7 +27,7 @@ namespace GraphView
         
         internal override GremlinVariableProperty GetVariableProperty(string property)
         {
-            this.Populate(property, null);
+            this.ProjectedProperties.Add(property);
             return this.RealVariable.GetVariableProperty(property);
         }
 
@@ -44,36 +44,40 @@ namespace GraphView
 
         internal override bool Populate(string property, string label = null)
         {
-            if (base.Populate(property, label))
+            bool populateSuccessfully = false;
+            if (label == null || this.Labels.Contains(label))
             {
+                populateSuccessfully = true;
                 this.RealVariable.Populate(property, null);
-                return true;
-            }
-            else if (this.RealVariable.Populate(property, label))
-            {
-                base.Populate(property, null);
-                return true;
             }
             else
             {
-                return false;
+                populateSuccessfully |= this.RealVariable.Populate(property, label);
             }
+            if (populateSuccessfully && property != null)
+            {
+                this.ProjectedProperties.Add(property);
+            }
+            return populateSuccessfully;
         }
 
         internal override bool PopulateStepProperty(string property, string label = null)
         {
-            if (this.RealVariable.PopulateStepProperty(property, label))
+            bool populateSuccessfully = false;
+            if (label == null || this.Labels.Contains(label))
             {
-                return base.PopulateStepProperty(property, null);
-            }
-            else if (base.PopulateStepProperty(property, label))
-            {
-                return this.RealVariable.PopulateStepProperty(property, null);
+                populateSuccessfully = true;
+                this.RealVariable.PopulateStepProperty(property, null);
             }
             else
             {
-                return false;
+                populateSuccessfully = this.RealVariable.PopulateStepProperty(property, label);
             }
+            if (populateSuccessfully && property != null)
+            {
+                this.ProjectedProperties.Add(property);
+            }
+            return populateSuccessfully;
         }
         internal override void PopulateLocalPath()
         {
@@ -117,7 +121,7 @@ namespace GraphView
             }
         }
 
-        internal override WScalarExpression ToStepScalarExpr(List<string> composedProperties = null)
+        internal override WScalarExpression ToStepScalarExpr(HashSet<string> composedProperties = null)
         {
             return SqlUtil.GetColumnReferenceExpr(GremlinKeyword.RepeatInitalTableName, GremlinKeyword.Path);
         }
@@ -157,7 +161,7 @@ namespace GraphView
             }
         }
 
-        internal override WScalarExpression ToStepScalarExpr(List<string> composedProperties = null)
+        internal override WScalarExpression ToStepScalarExpr(HashSet<string> composedProperties = null)
         {
             return SqlUtil.GetColumnReferenceExpr(GremlinKeyword.RepeatInitalTableName, GremlinKeyword.Path);
         }
@@ -197,7 +201,7 @@ namespace GraphView
             }
         }
 
-        internal override WScalarExpression ToStepScalarExpr(List<string> composedProperties = null)
+        internal override WScalarExpression ToStepScalarExpr(HashSet<string> composedProperties = null)
         {
             return SqlUtil.GetColumnReferenceExpr(GremlinKeyword.RepeatInitalTableName, GremlinKeyword.Path);
         }

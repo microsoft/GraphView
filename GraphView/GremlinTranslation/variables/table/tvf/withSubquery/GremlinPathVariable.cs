@@ -116,9 +116,9 @@ namespace GraphView
             }
         }
         
-        internal override WScalarExpression ToStepScalarExpr(List<string> composedProperties = null)
+        internal override WScalarExpression ToStepScalarExpr(HashSet<string> composedProperties = null)
         {
-            return this.ToCompose1(new List<string>());
+            return this.ToCompose1(new HashSet<string>());
         }
 
         internal override List<GremlinVariable> FetchAllVars()
@@ -144,36 +144,27 @@ namespace GraphView
 
         internal override bool Populate(string property, string label = null)
         {
-            if (base.Populate(property, label))
+            bool populateSuccessfully = false;
+            if (label == null || this.Labels.Contains(label))
             {
-                foreach (var context in this.ByContexts)
+                populateSuccessfully = true;
+                foreach (GremlinToSqlContext context in this.ByContexts)
                 {
                     context.Populate(property, null);
                 }
-                return true;
             }
             else
             {
-                bool populateSuccess = false;
-                foreach (var context in this.ByContexts)
+                foreach (GremlinToSqlContext context in this.ByContexts)
                 {
-                    populateSuccess |= context.Populate(property, label);
+                    populateSuccessfully |= context.Populate(property, label);
                 }
-                if (populateSuccess)
-                {
-                    base.Populate(property, null);
-                }
-                return populateSuccess;
             }
+            return populateSuccessfully;
         }
 
         internal override bool PopulateStepProperty(string property, string label = null)
         {
-            if (this.ProjectedProperties.Contains(property))
-            {
-                return true;
-            }
-            
             if (label == null)
             {
                 if (property != null)
@@ -196,17 +187,17 @@ namespace GraphView
                     return true;
                 }
 
-                bool populateSuccess = false;
+                bool populateSuccessfully = false;
                 for (int index = 0; index < this.StepList.Count; index++)
                 {
                     if (this.AnnotatedLabels[index].Contains(label) ||
                         this.InheritedLabels[index].Contains(label))
                     {
-                        populateSuccess |= this.StepList[index].PopulateStepProperty(property, null);
+                        populateSuccessfully |= this.StepList[index].PopulateStepProperty(property, null);
                     }
                     else if (this.StepList[index].PopulateStepProperty(property, label))
                     {
-                        populateSuccess = true;
+                        populateSuccessfully = true;
                         this.InheritedLabels[index].Add(label);
                     }
                     else
@@ -226,11 +217,11 @@ namespace GraphView
                     }
                 }
 
-                if (populateSuccess)
+                if (populateSuccessfully)
                 {
                     this.LabelPropertyList.Add(labelproperty);
                 }
-                return populateSuccess;
+                return populateSuccessfully;
             }
         }
 
@@ -255,7 +246,7 @@ namespace GraphView
                     parameters.AddRange(this.AnnotatedLabels[index].Select(SqlUtil.GetValueExpr));
                     continue;
                 }
-                List<string> composedProperties = new List<string>(this.ProjectedProperties);
+                HashSet<string> composedProperties = new HashSet<string>(this.ProjectedProperties);
                 foreach (var labelproperty in this.LabelPropertyList)
                 {
                     if (!composedProperties.Contains(labelproperty.Item1) &&
@@ -404,7 +395,7 @@ namespace GraphView
                     parameters.AddRange(this.AnnotatedLabels[index].Select(SqlUtil.GetValueExpr));
                     continue;
                 }
-                List<string> composedProperties = new List<string>(this.ProjectedProperties);
+                HashSet<string> composedProperties = new HashSet<string>(this.ProjectedProperties);
                 foreach (var labelproperty in this.LabelPropertyList)
                 {
                     if (!composedProperties.Contains(labelproperty.Item1) &&
@@ -417,7 +408,7 @@ namespace GraphView
 
                 if (composedProperties.Count > this.ProjectedProperties.Count)
                 {
-                    composedProperties.RemoveAll(s => String.IsNullOrEmpty(s));
+                    composedProperties.RemoveWhere(s => String.IsNullOrEmpty(s));
                     parameters.Add(step.ToStepScalarExpr(composedProperties));
                     parameters.AddRange(this.AnnotatedLabels[index].Select(SqlUtil.GetValueExpr));
                 }

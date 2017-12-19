@@ -35,8 +35,6 @@ namespace GraphView
                 {
                     this.ComposeVariable.Populate(property, label);
                 }
-                base.Populate(property, null);
-                return true;
             }
             else
             {
@@ -51,9 +49,12 @@ namespace GraphView
                         this.ComposeVariable.Populate(property, sideEffectKey);
                     }
                 }
-                base.Populate(property, null);
-                return true;
             }
+            if (property != null)
+            {
+                this.ProjectedProperties.Add(property);
+            }
+            return true;
         }
 
         public override WTableReference ToTableReference()

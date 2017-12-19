@@ -18,27 +18,27 @@ namespace GraphView
 
         internal override bool Populate(string property, string label = null)
         {
-            if (base.Populate(property, label))
+            bool populateSuccessfully = false;
+            if (label == null || this.Labels.Contains(label))
             {
-                foreach (var context in this.UnionContextList)
+                populateSuccessfully = true;
+                foreach (GremlinToSqlContext context in this.UnionContextList)
                 {
                     context.Populate(property, null);
                 }
-                return true;
             }
             else
             {
-                bool populateSuccess = false;
-                foreach (var context in this.UnionContextList)
+                foreach (GremlinToSqlContext context in this.UnionContextList)
                 {
-                    populateSuccess |= context.Populate(property, label);
-                }
-                if (populateSuccess)
-                {
-                    base.Populate(property, null);
-                }
-                return populateSuccess;
+                    populateSuccessfully |= context.Populate(property, label);
+                } 
             }
+            if (populateSuccessfully && property != null)
+            {
+                this.ProjectedProperties.Add(property);
+            }
+            return populateSuccessfully;
         }
 
         internal override bool PopulateStepProperty(string property, string label = null)
@@ -66,7 +66,7 @@ namespace GraphView
             }
         }
 
-        internal override WScalarExpression ToStepScalarExpr(List<string> composedProperties = null)
+        internal override WScalarExpression ToStepScalarExpr(HashSet<string> composedProperties = null)
         {
             return SqlUtil.GetColumnReferenceExpr(GetVariableName(), GremlinKeyword.Path);
         }

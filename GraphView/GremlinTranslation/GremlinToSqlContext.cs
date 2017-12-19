@@ -12,7 +12,7 @@ namespace GraphView
         internal GremlinToSqlContext ParentContext { get; set; }
         internal GremlinVariable PivotVariable { get; set; }
         internal List<GremlinVariable> VariableList { get; private set; }
-        internal List<string> ProjectedProperties { get; set; }  // Used for generating select clause
+        internal HashSet<string> ProjectedProperties { get; set; }  // Used for generating select clause
         internal List<GremlinTableVariable> TableReferencesInFromClause { get; private set; } // Used for generating from clause
         internal List<GremlinMatchPath> MatchPathList { get; set; }  // Used for generating match clause
         internal WBooleanExpression Predicates { get; private set; } // Used for generating where clause
@@ -28,7 +28,7 @@ namespace GraphView
             this.VariableList = new List<GremlinVariable>();
             this.MatchPathList = new List<GremlinMatchPath>();
             this.StepList = new List<GremlinVariable>();
-            this.ProjectedProperties = new List<string>();
+            this.ProjectedProperties = new HashSet<string>();
         }
 
         internal GremlinToSqlContext Duplicate()
@@ -38,7 +38,7 @@ namespace GraphView
                 ParentContext = this.ParentContext,
                 PivotVariable = this.PivotVariable,
                 VariableList = new List<GremlinVariable>(this.VariableList),
-                ProjectedProperties = new List<string>(this.ProjectedProperties),
+                ProjectedProperties = new HashSet<string>(this.ProjectedProperties),
                 TableReferencesInFromClause = new List<GremlinTableVariable>(this.TableReferencesInFromClause),
                 AllTableVariablesInWhereClause = new List<GremlinTableVariable>(this.AllTableVariablesInWhereClause),
                 MatchPathList = new List<GremlinMatchPath>(this.MatchPathList),
@@ -76,19 +76,16 @@ namespace GraphView
 
         internal bool Populate(string property, string label = null)
         {
-            if (property == null || this.ProjectedProperties.Contains(property))
+            bool populateSuccessfully = false;
+            if (this.PivotVariable.Populate(property, label))
             {
-                return true;
+                populateSuccessfully = true;
             }
-            else if (this.PivotVariable.Populate(property, label))
+            if (populateSuccessfully && property != null)
             {
                 this.ProjectedProperties.Add(property);
-                return true;
             }
-            else
-            {
-                return false;
-            }
+            return populateSuccessfully;
         }
 
         internal void PopulateLocalPath()

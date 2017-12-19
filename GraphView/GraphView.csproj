@@ -219,7 +219,7 @@
     <Compile Include="GremlinTranslation\variables\table\tvf\withSubquery\GremlinMapVariable.cs" />
     <Compile Include="GremlinTranslation\variables\table\tvf\withSubquery\GremlinProjectVariable.cs" />
     <Compile Include="GremlinTranslation\variables\GremlinVariableProperty.cs" />
-    <Compile Include="GremlinTranslation\variables\table\tvf\withSubquery\GremlinCoalesceTableVariable.cs" />
+    <Compile Include="GremlinTranslation\variables\table\tvf\withSubquery\GremlinCoalesceVariable.cs" />
     <Compile Include="GremlinTranslation\variables\table\tvf\withoutSubquery\GremlinConstantVariable.cs" />
     <Compile Include="GremlinTranslation\variables\table\tvf\withSubquery\GremlinFlatMapVariable.cs" />
     <Compile Include="GremlinTranslation\variables\table\tvf\withSubquery\GremlinOptionalVariable.cs" />

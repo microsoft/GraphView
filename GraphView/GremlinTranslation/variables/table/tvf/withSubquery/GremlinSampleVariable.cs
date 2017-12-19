@@ -24,20 +24,22 @@ namespace GraphView
 
         internal override bool Populate(string property, string label = null)
         {
-            if (base.Populate(property, label))
+            bool populateSuccessfully = false;
+            if (label == null || this.Labels.Contains(label))
             {
-                this.InputVariable.Populate(property, label);
-                return true;
-            }
-            else if (this.InputVariable.Populate(property, label))
-            {
-                base.Populate(property, null);
-                return true;
+                populateSuccessfully = true;
+                this.InputVariable.Populate(property, null);
             }
             else
             {
-                return false;
+                populateSuccessfully |= this.InputVariable.Populate(property, label);
+                return true;
             }
+            if (populateSuccessfully && property != null)
+            {
+                this.ProjectedProperties.Add(property);
+            }
+            return populateSuccessfully;
         }
 
         internal override List<GremlinVariable> FetchAllVars()

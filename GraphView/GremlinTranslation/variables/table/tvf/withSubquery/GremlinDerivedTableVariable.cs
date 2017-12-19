@@ -18,20 +18,21 @@ namespace GraphView
 
         internal override bool Populate(string property, string label = null)
         {
-            if (base.Populate(property, label))
+            bool populateSuccessfully = false;
+            if (label == null || this.Labels.Contains(label))
             {
+                populateSuccessfully = true;
                 this.SubqueryContext.Populate(property, null);
-                return true;
             }
             else if (this.SubqueryContext.Populate(property, label))
             {
-                base.Populate(property, null);
-                return true;
+                populateSuccessfully = true;
             }
-            else
+            if (populateSuccessfully && property != null)
             {
-                return false;
+                base.Populate(property, null);
             }
+            return populateSuccessfully;
         }
 
         internal override List<GremlinVariable> FetchAllVars()
@@ -208,17 +209,27 @@ namespace GraphView
 
         internal override bool Populate(string property, string label = null)
         {
-            bool populateSuccess = false;
-            foreach (var sideEffectVariable in SideEffectVariables)
+            bool populateSuccessfully = false;
+            if (label == null || this.Labels.Contains(label))
             {
-                populateSuccess |= sideEffectVariable.Populate(property, label);
+                populateSuccessfully = true;
+                foreach (GremlinVariable sideEffectVariable in SideEffectVariables)
+                {
+                    sideEffectVariable.Populate(property, null);
+                }
             }
-
-            if (populateSuccess)
+            else
             {
-                base.Populate(property, null);
+                foreach (GremlinVariable sideEffectVariable in SideEffectVariables)
+                {
+                    populateSuccessfully |= sideEffectVariable.Populate(property, label);
+                }
             }
-            return populateSuccess;
+            if (populateSuccessfully && property != null)
+            {
+                this.ProjectedProperties.Add(property);
+            }
+            return populateSuccessfully;
         }
 
         public override WTableReference ToTableReference()

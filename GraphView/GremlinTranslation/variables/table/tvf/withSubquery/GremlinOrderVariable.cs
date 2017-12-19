@@ -43,20 +43,21 @@ namespace GraphView
 
         internal override bool Populate(string property, string label = null)
         {
-            if (base.Populate(property, label))
+            bool populateSuccessfully = false;
+            if (label == null || this.Labels.Contains(label))
             {
-                this.InputVariable.Populate(property, label);
-                return true;
+                populateSuccessfully = true;
+                this.InputVariable.Populate(property, null);
             }
-            else if (this.InputVariable.Populate(property, label))
+            else 
             {
-                base.Populate(property, null);
-                return true;
+                populateSuccessfully |= this.InputVariable.Populate(property, label);
             }
-            else
+            if (populateSuccessfully && property != null)
             {
-                return false;
+                this.ProjectedProperties.Add(property);
             }
+            return populateSuccessfully;
         }
 
         public override WTableReference ToTableReference()

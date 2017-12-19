@@ -31,8 +31,8 @@ namespace GraphView
     {
         protected string VariableName;
         protected GremlinVariableType VariableType;
-        public List<string> Labels { get; set; }
-        public List<string> ProjectedProperties { get; set; }
+        public HashSet<string> Labels { get; set; }
+        public HashSet<string> ProjectedProperties { get; set; }
         /// <summary>
         /// The lower bound of the length of the variable's local path
         /// </summary>
@@ -41,16 +41,16 @@ namespace GraphView
 
         public GremlinVariable()
         {
-            this.Labels = new List<string>();
-            this.ProjectedProperties = new List<string>();
+            this.Labels = new HashSet<string>();
+            this.ProjectedProperties = new HashSet<string>();
             this.NeedFilter = false;
             this.VariableType = GremlinVariableType.Unknown;
         }
 
         public GremlinVariable(GremlinVariableType variableType)
         {
-            this.Labels = new List<string>();
-            this.ProjectedProperties = new List<string>();
+            this.Labels = new HashSet<string>();
+            this.ProjectedProperties = new HashSet<string>();
             this.NeedFilter = false;
             this.VariableType = variableType;
         }
@@ -62,22 +62,9 @@ namespace GraphView
 
         internal virtual bool Populate(string property, string label = null)
         {
-            if (property == null)
+            if (label == null || this.Labels.Contains(label))
             {
-                return true;
-            }
-
-            if (label == null)
-            {
-                if (!this.ProjectedProperties.Contains(property))
-                {
-                    this.ProjectedProperties.Add(property);
-                }
-                return true;
-            }
-            else if (this.Labels.Contains(label))
-            {
-                if (!this.ProjectedProperties.Contains(property))
+                if (property != null)
                 {
                     this.ProjectedProperties.Add(property);
                 }
@@ -117,7 +104,7 @@ namespace GraphView
 
         internal virtual GremlinVariableProperty GetVariableProperty(string property)
         {
-            if (property != GremlinKeyword.Path && !this.ProjectedProperties.Contains(property))
+            if (property != GremlinKeyword.Path)
             {
                 this.Populate(property, null);
             }
@@ -209,12 +196,12 @@ namespace GraphView
             }
         }
 
-        internal virtual WScalarExpression ToStepScalarExpr(List<string> composedProperties = null)
+        internal virtual WScalarExpression ToStepScalarExpr(HashSet<string> composedProperties = null)
         {
             return this.ToCompose1(composedProperties);
         }
 
-        internal virtual WFunctionCall ToCompose1(List<string> composedProperties = null)
+        internal virtual WFunctionCall ToCompose1(HashSet<string> composedProperties = null)
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();
             parameters.Add(DefaultProjection().ToScalarExpression());
@@ -254,7 +241,7 @@ namespace GraphView
             currentContext.SetPivotVariable(newTableVariable);
         }
 
-        internal virtual void AddV(GremlinToSqlContext currentContext, string vertexLabel, List<GremlinProperty> propertyKeyValues)
+        internal virtual void AddV(GremlinToSqlContext currentContext, string vertexLabel, HashSet<GremlinProperty> propertyKeyValues)
         {
             this.NeedFilter = true;
             GremlinAddVVariable newVariable = new GremlinAddVVariable(currentContext, vertexLabel, propertyKeyValues);
@@ -1310,10 +1297,6 @@ namespace GraphView
 
         internal virtual void Values(GremlinToSqlContext currentContext, List<string> propertyKeys)
         {
-            foreach (var property in propertyKeys)
-            {
-                Populate(property, null);
-            }
             GremlinValuesVariable newVariable = new GremlinValuesVariable(this, propertyKeys);
             currentContext.VariableList.Add(newVariable);
             currentContext.TableReferencesInFromClause.Add(newVariable);

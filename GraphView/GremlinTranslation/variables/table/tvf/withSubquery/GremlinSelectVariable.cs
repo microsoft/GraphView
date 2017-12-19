@@ -54,8 +54,13 @@ namespace GraphView
 
         internal override bool Populate(string property, string label = null)
         {
+            bool populateSuccessfully = false;
             if (label == null || this.Labels.Contains(label))
             {
+                if (SelectKeys.Count() == 1)
+                {
+                    populateSuccessfully = true;
+                }
                 foreach (string selectKey in this.SelectKeys)
                 {
                     if (GremlinVariableType.NULL <= this.InputVariable.GetVariableType() && this.InputVariable.GetVariableType() <= GremlinVariableType.Map)
@@ -72,13 +77,13 @@ namespace GraphView
                         context.Populate(property, selectKey);
                     }
                 }
-                if (SelectKeys.Count() == 1)
-                {
-                    return base.Populate(property, null);
-                }
             }
             else
             {
+                if (SelectKeys.Count() == 1)
+                {
+                    populateSuccessfully = base.Populate(property, label);
+                }
                 if (GremlinVariableType.NULL <= this.InputVariable.GetVariableType() && this.InputVariable.GetVariableType() <= GremlinVariableType.Map)
                 {
                     this.InputVariable.Populate(property, label);
@@ -92,12 +97,12 @@ namespace GraphView
                 {
                     context.Populate(property, label);
                 }
-                if (SelectKeys.Count() == 1)
-                {
-                    return base.Populate(property, label);
-                }
             }
-            return false;
+            if (populateSuccessfully && property != null)
+            {
+                this.ProjectedProperties.Add(property);
+            }
+            return populateSuccessfully;
         }
 
         public override WTableReference ToTableReference()
@@ -131,22 +136,12 @@ namespace GraphView
                     break;
             }
 
-            foreach (var selectKey in this.SelectKeys)
-            {
-                parameters.Add(SqlUtil.GetValueExpr(selectKey));
-            }
-
-            foreach (var block in queryBlocks)
-            {
-                parameters.Add(SqlUtil.GetScalarSubquery(block));
-            }
+            parameters.AddRange(this.SelectKeys.Select(SqlUtil.GetValueExpr));
+            parameters.AddRange(queryBlocks.Select(SqlUtil.GetScalarSubquery));
 
             if (this.SelectKeys.Count == 1)
             {
-                foreach (var projectProperty in ProjectedProperties)
-                {
-                    parameters.Add(SqlUtil.GetValueExpr(projectProperty));
-                }
+                parameters.AddRange(this.ProjectedProperties.Select(SqlUtil.GetValueExpr));
                 var tableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.SelectOne, parameters, GetVariableName());
                 return SqlUtil.GetCrossApplyTableReference(tableRef);
             }

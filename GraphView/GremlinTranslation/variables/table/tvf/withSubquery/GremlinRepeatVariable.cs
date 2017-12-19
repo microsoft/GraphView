@@ -47,23 +47,23 @@ namespace GraphView
 
         internal override bool Populate(string property, string label = null)
         {
-            if (base.Populate(property, label))
+            bool populateSuccessfully = false;
+            if (label == null || this.Labels.Contains(label))
             {
+                populateSuccessfully = true;
                 this.InputVariable.Populate(property, null);
                 this.RepeatContext.Populate(property, null);
-                return true;
             }
             else
             {
-                bool populateSuccess = false;
-                populateSuccess |= this.InputVariable.Populate(property, label);
-                populateSuccess |= this.RepeatContext.Populate(property, label);
-                if (populateSuccess)
-                {
-                    base.Populate(property, label);
-                }
-                return populateSuccess;
+                populateSuccessfully |= this.InputVariable.Populate(property, label);
+                populateSuccessfully |= this.RepeatContext.Populate(property, label);
             }
+            if (populateSuccessfully && property != null)
+            {
+                this.ProjectedProperties.Add(property);
+            }
+            return populateSuccessfully;
         }
 
         internal override bool PopulateStepProperty(string property, string label = null)
@@ -94,7 +94,7 @@ namespace GraphView
             this.LocalPathLengthLowerBound = this.RepeatContext.MinPathLength;
         }
 
-        internal override WScalarExpression ToStepScalarExpr(List<string> composedProperties = null)
+        internal override WScalarExpression ToStepScalarExpr(HashSet<string> composedProperties = null)
         {
             return SqlUtil.GetColumnReferenceExpr(this.GetVariableName(), GremlinKeyword.Path);
         }

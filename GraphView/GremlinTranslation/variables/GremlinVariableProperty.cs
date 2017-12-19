@@ -19,15 +19,17 @@ namespace GraphView
 
         internal override bool Populate(string property, string label = null)
         {
+            // no label
+            bool populateSuccessfully = false;
             if (this.GremlinVariable.Populate(property, label))
             {
-                base.Populate(property, null);
-                return true;
+                populateSuccessfully = true;
             }
-            else
+            if (populateSuccessfully && property != null)
             {
-                return false;
+                this.ProjectedProperties.Add(property);
             }
+            return populateSuccessfully;
         }
 
         public WScalarExpression ToScalarExpression()

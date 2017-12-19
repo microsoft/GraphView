@@ -37,26 +37,26 @@ namespace GraphView
 
         internal override bool Populate(string property, string label = null)
         {
-            if (base.Populate(property, label))
+            bool populateSuccessfully = false;
+            if (label == null || this.Labels.Contains(label))
             {
+                populateSuccessfully = true;
                 this.InputVariable.Populate(property, null);
                 this.OptionalContext.Populate(property, null);
-                return true;
             }
             else
             {
-                bool populateSuccess = false;
-                populateSuccess |= this.InputVariable.Populate(property, label);
-                populateSuccess |= this.OptionalContext.Populate(property, label);
-                if (populateSuccess)
-                {
-                    base.Populate(property, label);
-                }
-                return populateSuccess;
+                populateSuccessfully |= this.InputVariable.Populate(property, label);
+                populateSuccessfully |= this.OptionalContext.Populate(property, label);
             }
+           if (populateSuccessfully && property != null)
+            {
+                this.ProjectedProperties.Add(property);
+            }
+            return populateSuccessfully;
         }
 
-        internal override WScalarExpression ToStepScalarExpr(List<string> composedProperties = null)
+        internal override WScalarExpression ToStepScalarExpr(HashSet<string> composedProperties = null)
         {
             return SqlUtil.GetColumnReferenceExpr(GetVariableName(), GremlinKeyword.Path);
         }

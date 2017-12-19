@@ -9,17 +9,17 @@ namespace GraphView
     internal class GremlinAddVOp: GremlinTranslationOperator
     {
         public string VertexLabel { get; set; }
-        public List<GremlinPropertyOp> PropertyOps { get; set; }
+        public HashSet<GremlinPropertyOp> PropertyOps { get; set; }
 
         public GremlinAddVOp()
         {
-            PropertyOps = new List<GremlinPropertyOp>();
+            PropertyOps = new HashSet<GremlinPropertyOp>();
             VertexLabel = "vertex";
         }
 
         public GremlinAddVOp(params object[] propertyKeyValues)
         {
-            PropertyOps = new List<GremlinPropertyOp>();
+            PropertyOps = new HashSet<GremlinPropertyOp>();
 
             if (propertyKeyValues.Length % 2 != 0)
             {
@@ -38,14 +38,14 @@ namespace GraphView
         public GremlinAddVOp(string vertexLabel)
         {
             VertexLabel = vertexLabel;
-            PropertyOps = new List<GremlinPropertyOp>();
+            PropertyOps = new HashSet<GremlinPropertyOp>();
         }
 
         internal override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = GetInputContext();
 
-            List<GremlinProperty> properties = new List<GremlinProperty>();
+            HashSet<GremlinProperty> properties = new HashSet<GremlinProperty>();
             foreach (GremlinPropertyOp propertyOp in PropertyOps)
             {
                 GremlinProperty property = propertyOp.ToGremlinProperty(inputContext);
