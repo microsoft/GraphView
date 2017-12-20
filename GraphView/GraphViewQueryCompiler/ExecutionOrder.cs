@@ -306,9 +306,8 @@ namespace GraphView
     ///     item1 is an MatchNode or NonFreeTable, called "currentNode", which is going to execute
     ///     item2 is an CompileLink, called "traversalLink", which is an link from previous state to current state.
     ///         It can be a MatchEdge, or a PredicateLink of WEdgeVertexBridgeExpression
-    ///     item3 is a list of CompileLinks, called "forwardLinks", which contains all links between currentNode and previous state
-    ///     item4 is a list of CompileLinks, called "backwardEdges", which contains all links that need to be execute
-    ///         The element can be a MatchEdge, or a PredicateLink
+    ///     item3 is a list of Tuple<PredicateLink, int>, called "forwardLinks", which contains all predicates and corresponding priorities between currentNode and previous state
+    ///     item4 is a list of Tuple<MatchEdge, int>, called "backwardEdges", which contains all edges and corresponding priorities that need to be execute
     ///     item5 is a list of ExecutionOrders, called "localExecutionOrders", which contains all execution orders in this TVFs or Derived tables.
     /// ExistingNodesAndEdges and ExistingPredicateLinks are used to record previous state and avoid redundant work
     /// Cost is to evaluate
