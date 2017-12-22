@@ -186,13 +186,12 @@ namespace GraphView
                 throw new SyntaxErrorException("The first two parameters of AddE can only be WScalarSubquery.");
 
             Container container = new Container();
-            int containerIndex = context.AddContainers(container);
             QueryCompilationContext srcSubContext = new QueryCompilationContext(context);
-            srcSubContext.OuterContextOp.SetContainer(container, containerIndex);
+            srcSubContext.OuterContextOp.SetContainer(container);
             GraphViewExecutionOperator srcSubQueryOp = srcSubQuery.SubQueryExpr.Compile(srcSubContext, command);
 
             QueryCompilationContext sinkSubContext = new QueryCompilationContext(context);
-            sinkSubContext.OuterContextOp.SetContainer(container, containerIndex);
+            sinkSubContext.OuterContextOp.SetContainer(container);
             GraphViewExecutionOperator sinkSubQueryOp = sinkSubQuery.SubQueryExpr.Compile(sinkSubContext, command);
 
             WValueExpression otherVTagParameter = Parameters[2] as WValueExpression;
@@ -237,7 +236,7 @@ namespace GraphView
 
             JObject edgeJsonObject = ConstructEdgeJsonObject(command, labelValue.Value, edgeProperties);  // metadata remains missing
 
-            GraphViewExecutionOperator addEOp = new AddEOperator(context.CurrentExecutionOperator, command, container, containerIndex,
+            GraphViewExecutionOperator addEOp = new AddEOperator(context.CurrentExecutionOperator, command, container,
                 srcSubQueryOp, sinkSubQueryOp, otherVTag, edgeJsonObject, projectedField, subtraversalProperties);
             context.CurrentExecutionOperator = addEOp;
 

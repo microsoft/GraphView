@@ -12,10 +12,8 @@ using static GraphView.DocumentDBKeywords;
 
 namespace GraphView
 {
-    [DataContract]
     public abstract class AggregateState
     {
-        [DataMember]
         internal readonly string tableAlias;
 
         protected AggregateState(string tableAlias)
@@ -33,9 +31,10 @@ namespace GraphView
         FieldObject Terminate();
     }
 
-    [DataContract]
+    [Serializable]
     internal class FoldFunction : IAggregateFunction
     {
+        [NonSerialized]
         private List<FieldObject> buffer;
 
         public void Accumulate(params FieldObject[] values)
@@ -54,9 +53,10 @@ namespace GraphView
         }
     }
 
-    [DataContract]
+    [Serializable]
     internal class CountFunction : IAggregateFunction
     {
+        [NonSerialized]
         private long count;
 
         public void Accumulate(params FieldObject[] values)
@@ -75,9 +75,10 @@ namespace GraphView
         }
     }
 
-    [DataContract]
+    [Serializable]
     internal class SumFunction : IAggregateFunction
     {
+        [NonSerialized]
         private double sum;
 
         public void Accumulate(params FieldObject[] values)
@@ -100,9 +101,10 @@ namespace GraphView
         }
     }
 
-    [DataContract]
+    [Serializable]
     internal class MaxFunction : IAggregateFunction
     {
+        [NonSerialized]
         private double max;
 
         public void Accumulate(params FieldObject[] values)
@@ -130,9 +132,10 @@ namespace GraphView
         }
     }
 
-    [DataContract]
+    [Serializable]
     internal class MinFunction : IAggregateFunction
     {
+        [NonSerialized]
         private double min;
 
         public void Accumulate(params FieldObject[] values)
@@ -160,10 +163,12 @@ namespace GraphView
         }
     }
 
-    [DataContract]
+    [Serializable]
     internal class MeanFunction : IAggregateFunction
     {
+        [NonSerialized]
         private double sum;
+        [NonSerialized]
         private long count;
 
         public void Accumulate(params FieldObject[] values)
@@ -190,10 +195,9 @@ namespace GraphView
         }
     }
 
-    [DataContract]
-    internal class CapFunction : IAggregateFunction
+    [Serializable]
+    internal class CapFunction : IAggregateFunction, ISerializable
     {
-        [DataMember]
         private List<Tuple<string, IAggregateFunction>> sideEffectFunction;
 
         public CapFunction()
@@ -241,23 +245,28 @@ namespace GraphView
             }
         }
 
-        [OnDeserialized]
-        private void Reconstruct(StreamingContext context)
+        public void GetObjectData(SerializationInfo info, StreamingContext context)
         {
-            List<Tuple<string, IAggregateFunction>> states = new List<Tuple<string, IAggregateFunction>>();
+            List<string> labels = this.sideEffectFunction.Select(tuple => tuple.Item1).ToList();
+            GraphViewSerializer.SerializeList(info, "labels", labels);
+        }
 
-            foreach (Tuple<string, IAggregateFunction> tuple in this.sideEffectFunction)
+        protected CapFunction(SerializationInfo info, StreamingContext context)
+        {
+            List<string> labels = GraphViewSerializer.DeserializeList<string>(info, "labels");
+            AdditionalSerializationInfo additionalInfo = (AdditionalSerializationInfo)context.Context;
+            this.sideEffectFunction = new List<Tuple<string, IAggregateFunction>>();
+            foreach (string label in labels)
             {
-                states.Add(new Tuple<string, IAggregateFunction>(tuple.Item1, SerializationData.SideEffectStates[tuple.Item1]));
+                this.sideEffectFunction.Add(new Tuple<string, IAggregateFunction>(label, additionalInfo.SideEffectFunctions[label]));
             }
-
-            this.sideEffectFunction = states;
         }
     }
 
-    [DataContract]
+    [Serializable]
     internal class TreeFunction : IAggregateFunction
     {
+        [NonSerialized]
         private TreeState treeState;
 
         private static void ConstructTree(TreeField root, int index, PathField pathField)
@@ -329,9 +338,10 @@ namespace GraphView
         }
     }
 
-    [DataContract]
+    [Serializable]
     internal class SubgraphFunction : IAggregateFunction
     {
+        [NonSerialized]
         private SubgraphState subgraphState;
 
         public SubgraphFunction(SubgraphState subgraphState)
@@ -574,7 +584,8 @@ namespace GraphView
         [OnDeserialized]
         private void Reconstruct(StreamingContext context)
         {
-            this.subgraphState = new SubgraphState(SerializationData.Command, "");
+            AdditionalSerializationInfo additionalInfo = (AdditionalSerializationInfo)context.Context;
+            this.subgraphState = new SubgraphState(additionalInfo.Command, "");
         }
     }
 
@@ -601,35 +612,38 @@ namespace GraphView
         }
     }
 
-    [DataContract]
+    [Serializable]
     internal class CollectionFunction : IAggregateFunction
     {
-        public CollectionState CollectionState { get; private set; }
+        [NonSerialized]
+        private CollectionState collectionState;
+
+        public CollectionState CollectionState => this.collectionState;
 
         public CollectionFunction(CollectionState collectionState)
         {
-            this.CollectionState = collectionState;
+            this.collectionState = collectionState;
         }
 
         public void Init()
         {
-            this.CollectionState.Init();
+            this.collectionState.Init();
         }
 
         public void Accumulate(params FieldObject[] values)
         {
-            this.CollectionState.collectionField.Collection.Add(values[0]);
+            this.collectionState.collectionField.Collection.Add(values[0]);
         }
 
         public FieldObject Terminate()
         {
-            return this.CollectionState.collectionField;
+            return this.collectionState.collectionField;
         }
 
         [OnDeserialized]
         private void Reconstruct(StreamingContext context)
         {
-            this.CollectionState = new CollectionState("");
+            this.collectionState = new CollectionState("");
         }
     }
 
@@ -648,26 +662,23 @@ namespace GraphView
         }
     }
 
-    [DataContract]
+    [Serializable]
     internal class GroupFunction : IAggregateFunction
     {
+        [NonSerialized]
         private GroupState groupState;
 
-        [DataMember]
         private GraphViewExecutionOperator aggregateOp;
+        [NonSerialized]
         private Container container;
-        [DataMember]
-        private int containerIndex;
 
-        [DataMember]
         private bool isProjectingACollection;
 
-        public GroupFunction(GroupState groupState, GraphViewExecutionOperator aggregateOp, Container container, int containerIndex, bool isProjectingACollection)
+        public GroupFunction(GroupState groupState, GraphViewExecutionOperator aggregateOp, Container container, bool isProjectingACollection)
         {
             this.groupState = groupState;
             this.aggregateOp = aggregateOp;
             this.container = container;
-            this.containerIndex = containerIndex;
             this.isProjectingACollection = isProjectingACollection;
         }
 
@@ -755,7 +766,9 @@ namespace GraphView
         private void Reconstruct(StreamingContext context)
         {
             this.groupState = new GroupState("");
-            this.container = SerializationData.Containers[this.containerIndex];
+            this.container = new Container();
+            EnumeratorOperator enumeratorOp = (this.aggregateOp.GetFirstOperator() as EnumeratorOperator);
+            enumeratorOp.SetContainer(this.container);
         }
     }
 
@@ -775,15 +788,13 @@ namespace GraphView
     }
 
 
-    [DataContract]
+    [Serializable]
     internal class GroupSideEffectOperator : GraphViewExecutionOperator
     {
+        [NonSerialized]
         private GroupFunction groupFunction;
-        [DataMember]
         private GraphViewExecutionOperator inputOp;
-        [DataMember]
         private ScalarFunction groupByKeyFunction;
-        [DataMember]
         private readonly string sideEffectKey;
 
         public GroupSideEffectOperator(
@@ -831,22 +842,26 @@ namespace GraphView
             this.Open();
         }
 
+        public override GraphViewExecutionOperator GetFirstOperator()
+        {
+            return this.inputOp.GetFirstOperator();
+        }
+
         [OnDeserialized]
         private void Reconstruct(StreamingContext context)
         {
-            this.groupFunction = (GroupFunction)SerializationData.SideEffectStates[this.sideEffectKey];
+            AdditionalSerializationInfo additionalInfo = (AdditionalSerializationInfo)context.Context;
+            this.groupFunction = (GroupFunction)additionalInfo.SideEffectFunctions[this.sideEffectKey];
         }
     }
 
-    [DataContract]
+    [Serializable]
     internal class TreeSideEffectOperator : GraphViewExecutionOperator
     {
+        [NonSerialized]
         private TreeFunction treeFunction;
-        [DataMember]
         private GraphViewExecutionOperator inputOp;
-        [DataMember]
         private int pathIndex;
-        [DataMember]
         private readonly string sideEffectKey;
 
         public TreeSideEffectOperator(
@@ -895,39 +910,38 @@ namespace GraphView
             this.Open();
         }
 
-        [OnDeserialized]
-        private void ReconstructOperator(StreamingContext context)
+        public override GraphViewExecutionOperator GetFirstOperator()
         {
-            this.treeFunction = (TreeFunction)SerializationData.SideEffectStates[this.sideEffectKey];
+            return this.inputOp.GetFirstOperator();
+        }
+
+        [OnDeserialized]
+        private void Reconstruct(StreamingContext context)
+        {
+            AdditionalSerializationInfo additionalInfo = (AdditionalSerializationInfo)context.Context;
+            this.treeFunction = (TreeFunction)additionalInfo.SideEffectFunctions[this.sideEffectKey];
         }
     }
 
-    [DataContract]
-    [KnownType(typeof(GroupInBatchOperator))]
+    [Serializable]
     internal class GroupOperator : GraphViewExecutionOperator
     {
-        [DataMember]
         protected GraphViewExecutionOperator inputOp;
-        [DataMember]
         protected ScalarFunction groupByKeyFunction;
-        [DataMember]
         protected GraphViewExecutionOperator aggregateOp;
+        [NonSerialized]
         protected Container container;
-        [DataMember]
-        protected int containerIndex;
 
-        [DataMember]
         protected bool isProjectingACollection;
-        [DataMember]
         protected int carryOnCount;
 
+        [NonSerialized]
         protected Dictionary<FieldObject, List<RawRecord>> groupedStates;
 
         public GroupOperator(
             GraphViewExecutionOperator inputOp,
             ScalarFunction groupByKeyFunction,
             Container container,
-            int containerIndex,
             GraphViewExecutionOperator aggregateOp,
             bool isProjectingACollection,
             int carryOnCount)
@@ -937,7 +951,6 @@ namespace GraphView
             this.groupByKeyFunction = groupByKeyFunction;
 
             this.container = container;
-            this.containerIndex = containerIndex;
             this.aggregateOp = aggregateOp;
 
             this.isProjectingACollection = isProjectingACollection;
@@ -1044,17 +1057,25 @@ namespace GraphView
             this.Open();
         }
 
+        public override GraphViewExecutionOperator GetFirstOperator()
+        {
+            return this.inputOp.GetFirstOperator();
+        }
+
         [OnDeserialized]
         private void Reconstruct(StreamingContext context)
         {
             this.groupedStates = new Dictionary<FieldObject, List<RawRecord>>();
-            this.container = SerializationData.Containers[this.containerIndex];
+            this.container = new Container();
+            EnumeratorOperator enumeratorOp = this.aggregateOp.GetFirstOperator() as EnumeratorOperator;
+            enumeratorOp.SetContainer(this.container);
         }
     }
 
-    [DataContract]
+    [Serializable]
     internal class GroupInBatchOperator : GroupOperator
     {
+        [NonSerialized]
         private RawRecord firstRecordInGroup;
         private int processedGroupIndex;
 
@@ -1062,11 +1083,10 @@ namespace GraphView
             GraphViewExecutionOperator inputOp,
             ScalarFunction groupByKeyFunction,
             Container container,
-            int containerIndex,
             GraphViewExecutionOperator aggregateOp,
             bool isProjectingACollection,
             int carryOnCount)
-            : base(inputOp, groupByKeyFunction, container, containerIndex, aggregateOp,
+            : base(inputOp, groupByKeyFunction, container, aggregateOp,
                 isProjectingACollection, carryOnCount)
         {
             this.processedGroupIndex = 0;

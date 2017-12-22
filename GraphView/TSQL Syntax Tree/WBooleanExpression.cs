@@ -94,6 +94,27 @@ namespace GraphView
             return sb.ToString();
         }
 
+        internal override string ToString(string indent, bool useSquareBracket)
+        {
+            var sb = new StringBuilder(512);
+
+            sb.Append(FirstExpr.ToString(indent, useSquareBracket));
+
+            sb.AppendFormat(" {0} ", TsqlFragmentToString.BooleanExpressionType(BooleanExpressionType));
+
+            if (SecondExpr.OneLine())
+            {
+                sb.Append(SecondExpr.ToString("", useSquareBracket));
+            }
+            else
+            {
+                sb.Append("\r\n");
+                sb.Append(SecondExpr.ToString(indent, useSquareBracket));
+            }
+
+            return sb.ToString();
+        }
+
         public override void Accept(WSqlFragmentVisitor visitor)
         {
             if (visitor != null)
@@ -166,6 +187,27 @@ namespace GraphView
             return sb.ToString();
         }
 
+        internal override string ToString(string indent, bool useSquareBracket)
+        {
+            var sb = new StringBuilder(512);
+
+            sb.Append(FirstExpr.ToString(indent, useSquareBracket));
+
+            sb.AppendFormat(" {0} ", TsqlFragmentToString.BooleanComparisonType(ComparisonType));
+
+            if (SecondExpr.OneLine())
+            {
+                sb.Append(SecondExpr.ToString("", useSquareBracket));
+            }
+            else
+            {
+                sb.Append("\r\n");
+                sb.Append(SecondExpr.ToString(indent + "    ", useSquareBracket));
+            }
+
+            return sb.ToString();
+        }
+
         public override void Accept(WSqlFragmentVisitor visitor)
         {
             if (visitor != null)
@@ -197,6 +239,11 @@ namespace GraphView
         internal override string ToString(string indent)
         {
             return string.Format(CultureInfo.CurrentCulture, IsNot ? "{0} IS NOT NULL" : "{0} IS NULL", Expression.ToString(indent));
+        }
+
+        internal override string ToString(string indent, bool useSquareBracket)
+        {
+            return string.Format(CultureInfo.CurrentCulture, IsNot ? "{0} IS NOT NULL" : "{0} IS NULL", Expression.ToString(indent, useSquareBracket));
         }
 
         public override void Accept(WSqlFragmentVisitor visitor)
@@ -235,6 +282,19 @@ namespace GraphView
             }
         }
 
+        internal override string ToString(string indent, bool useSquareBracket)
+        {
+            if (Expression.OneLine())
+            {
+                return string.Format(CultureInfo.CurrentCulture, "{0}NOT {1}", indent, Expression.ToString("", useSquareBracket));
+            }
+            else
+            {
+                var line1 = string.Format(CultureInfo.CurrentCulture, "{0}NOT\r\n", indent);
+                return line1 + Expression.ToString(indent, useSquareBracket);
+            }
+        }
+
         public override void Accept(WSqlFragmentVisitor visitor)
         {
             if (visitor != null)
@@ -268,6 +328,21 @@ namespace GraphView
 
             sb.AppendFormat("{0}(\r\n", indent);
             sb.AppendFormat("{0}\r\n", Expression.ToString(indent));
+            sb.AppendFormat("{0})", indent);
+
+            return sb.ToString();
+        }
+
+        internal override string ToString(string indent, bool useSquareBracket)
+        {
+            if (Expression.OneLine())
+            {
+                return string.Format(CultureInfo.CurrentCulture, "{0}({1})", indent, Expression.ToString("", useSquareBracket));
+            }
+            var sb = new StringBuilder(512);
+
+            sb.AppendFormat("{0}(\r\n", indent);
+            sb.AppendFormat("{0}\r\n", Expression.ToString(indent, useSquareBracket));
             sb.AppendFormat("{0})", indent);
 
             return sb.ToString();
@@ -334,6 +409,39 @@ namespace GraphView
             return sb.ToString();
         }
 
+        internal override string ToString(string indent, bool useSquareBracket)
+        {
+            var sb = new StringBuilder(128);
+
+            sb.Append(FirstExpr.ToString(indent, useSquareBracket));
+
+            sb.Append(NotDefined ? " NOT BETWEEN " : " BETWEEN ");
+
+            if (SecondExpr.OneLine())
+            {
+                sb.Append(SecondExpr.ToString("", useSquareBracket));
+            }
+            else
+            {
+                sb.Append("\r\n");
+                sb.Append(SecondExpr.ToString(indent + "    ", useSquareBracket));
+            }
+
+            sb.Append(" AND ");
+
+            if (ThirdExpr.OneLine())
+            {
+                sb.Append(ThirdExpr.ToString("", useSquareBracket));
+            }
+            else
+            {
+                sb.Append("\r\n");
+                sb.Append(ThirdExpr.ToString(indent, useSquareBracket));
+            }
+
+            return sb.ToString();
+        }
+
         public override void Accept(WSqlFragmentVisitor visitor)
         {
             if (visitor != null)
@@ -373,6 +481,24 @@ namespace GraphView
             {
                 sb.AppendFormat("{0}EXISTS (\r\n", indent);
                 sb.AppendFormat(Subquery.SubQueryExpr.ToString(indent + "  "));
+                sb.AppendFormat("\r\n{0})", indent);
+            }
+
+            return sb.ToString();
+        }
+
+        internal override string ToString(string indent, bool useSquareBracket)
+        {
+            var sb = new StringBuilder(512);
+
+            if (OneLine())
+            {
+                sb.AppendFormat("{0}EXISTS {1}", indent, Subquery.ToString("", useSquareBracket));
+            }
+            else
+            {
+                sb.AppendFormat("{0}EXISTS (\r\n", indent);
+                sb.AppendFormat(Subquery.SubQueryExpr.ToString(indent + "  ", useSquareBracket));
                 sb.AppendFormat("\r\n{0})", indent);
             }
 
@@ -468,6 +594,53 @@ namespace GraphView
             return sb.ToString();
         }
 
+        internal override string ToString(string indent, bool useSquareBracket)
+        {
+            var sb = new StringBuilder(512);
+
+            sb.AppendFormat(CultureInfo.CurrentCulture, Expression.ToString(indent, useSquareBracket));
+
+            sb.Append(NotDefined ? " NOT IN " : " IN ");
+
+            if (Values != null)
+            {
+                var newLine = false;
+
+                for (var i = 0; i < Values.Count; i++)
+                {
+                    sb.Append(i > 0 ? ", " : "(");
+
+                    if (Values[i].OneLine())
+                    {
+                        sb.Append(Values[i].ToString("", useSquareBracket));
+                    }
+                    else
+                    {
+                        sb.Append("\r\n");
+                        sb.Append(Values[i].ToString(indent + " ", useSquareBracket));
+                        newLine = true;
+                    }
+                }
+
+                if (newLine)
+                {
+                    sb.Append("\r\n");
+                    sb.AppendFormat("{0})", indent);
+                }
+                else
+                {
+                    sb.Append(")");
+                }
+            }
+            else if (Subquery != null)
+            {
+                sb.Append("\r\n");
+                sb.Append(Subquery.ToString(indent + " ", useSquareBracket));
+            }
+
+            return sb.ToString();
+        }
+
         public override void Accept(WSqlFragmentVisitor visitor)
         {
             if (visitor != null)
@@ -523,6 +696,27 @@ namespace GraphView
             return sb.ToString();
         }
 
+        internal override string ToString(string indent, bool useSquareBracket)
+        {
+            var sb = new StringBuilder(512);
+
+            sb.AppendFormat(CultureInfo.CurrentCulture, FirstExpr.ToString(indent, useSquareBracket));
+
+            sb.Append(NotDefined ? " NOT LIKE " : " LIKE ");
+
+            if (SecondExpr.OneLine())
+            {
+                sb.Append(SecondExpr.ToString("", useSquareBracket));
+            }
+            else
+            {
+                sb.Append("\r\n");
+                sb.AppendFormat(CultureInfo.CurrentCulture, SecondExpr.ToString(indent + " ", useSquareBracket));
+            }
+
+            return sb.ToString();
+        }
+
         public override void Accept(WSqlFragmentVisitor visitor)
         {
             if (visitor != null)
@@ -560,6 +754,17 @@ namespace GraphView
             sb.Append(Expression.ToString(indent));
             sb.AppendFormat(" {0} \r\n", TsqlFragmentToString.BooleanComparisonType(ComparisonType));
             sb.Append(Subquery.ToString(indent + " "));
+
+            return sb.ToString();
+        }
+
+        internal override string ToString(string indent, bool useSquareBracket)
+        {
+            var sb = new StringBuilder();
+
+            sb.Append(Expression.ToString(indent, useSquareBracket));
+            sb.AppendFormat(" {0} \r\n", TsqlFragmentToString.BooleanComparisonType(ComparisonType));
+            sb.Append(Subquery.ToString(indent + " ", useSquareBracket));
 
             return sb.ToString();
         }

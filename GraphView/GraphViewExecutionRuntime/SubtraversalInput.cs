@@ -9,9 +9,6 @@ using System.Threading.Tasks;
 // These classes are used as input of subtraversal.
 namespace GraphView
 {
-    // only serialize in ChooseWithOptionsOperator
-    [DataContract]
-    [KnownType(typeof(ContainerWithFlag))]
     internal class Container
     {
         protected List<RawRecord> tableCache;
@@ -63,15 +60,8 @@ namespace GraphView
 
             this.tableCache = new List<RawRecord> { record };
         }
-
-        [OnDeserialized]
-        private void Reconstruct(StreamingContext context)
-        {
-            this.tableCache = new List<RawRecord>();
-        }
     }
 
-    [DataContract]
     internal class ContainerWithFlag : Container
     {
         private List<bool> flags;
@@ -168,44 +158,38 @@ namespace GraphView
             this.flags = new List<bool> { true };
             this.Count = this.tableCache.Count;
         }
-
-        [OnDeserialized]
-        private void Reconstruct(StreamingContext context)
-        {
-            this.flags = new List<bool>();
-            this.Count = 0;
-        }
     }
 
-
-    [DataContract]
-    internal class EnumeratorOperator : GraphViewExecutionOperator
+    [Serializable]
+    internal class EnumeratorOperator : GraphViewExecutionOperator, ISerializable
     {
         private Container container;
-        [DataMember]
-        private int containerIndex;
-
         private int offset;
+
+        // withContainer is true initially whether it has container or not.
+        // withContainer is used when deserialization
+        // the value of withContainer is decided when serialization
+        // if withContainer is false, then setContainer will do nothing.(do not set container actually)
+        private readonly bool withContainer;
 
         public EnumeratorOperator()
         {
+            this.withContainer = true;
             this.offset = -1;
-            this.containerIndex = -1;
             this.Open();
         }
 
-        public EnumeratorOperator(Container container, int containerIndex)
+        public EnumeratorOperator(Container container) : this()
         {
             this.container = container;
-            this.containerIndex = containerIndex;
-            this.offset = -1;
-            this.Open();
         }
 
-        public void SetContainer(Container aContainer, int aContainerIndex)
+        public void SetContainer(Container aContainer)
         {
-            this.container = aContainer;
-            this.containerIndex = aContainerIndex;
+            if (this.withContainer)
+            {
+                this.container = aContainer;
+            }
         }
 
         public override RawRecord Next()
@@ -258,17 +242,23 @@ namespace GraphView
             this.Open();
         }
 
-        [OnDeserialized]
-        private void Reconstruct(StreamingContext context)
+        public override GraphViewExecutionOperator GetFirstOperator()
+        {
+            return this;
+        }
+
+        public void GetObjectData(SerializationInfo info, StreamingContext context)
+        {
+            info.AddValue("withContainer", this.container != null, typeof(bool));
+        }
+
+        protected EnumeratorOperator(SerializationInfo info, StreamingContext context)
         {
             this.offset = -1;
-            if (this.containerIndex != -1)
-            {
-                this.container = SerializationData.Containers[this.containerIndex];
-            }
+            this.withContainer = info.GetBoolean("withContainer");
+            this.Open();
         }
     }
-
 
     internal class Enumerator
     {

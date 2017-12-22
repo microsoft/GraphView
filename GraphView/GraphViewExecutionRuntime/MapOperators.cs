@@ -8,34 +8,31 @@ using static GraphView.DocumentDBKeywords;
 
 namespace GraphView
 {
-    [DataContract]
+    [Serializable]
     internal class MapOperator : GraphViewExecutionOperator
     {
-        [DataMember]
         private GraphViewExecutionOperator inputOp;
 
         // The traversal inside the map function.
-        [DataMember]
         private GraphViewExecutionOperator mapTraversal;
+        [NonSerialized]
         private Container container;
-        [DataMember]
-        private int containerIndex;
 
+        [NonSerialized]
         private List<RawRecord> inputBatch;
+        [NonSerialized]
         private int batchSize;
-
+        [NonSerialized]
         private HashSet<int> inputRecordSet;
 
         public MapOperator(
             GraphViewExecutionOperator inputOp,
             GraphViewExecutionOperator mapTraversal,
-            Container container,
-            int containerIndex)
+            Container container)
         {
             this.inputOp = inputOp;
             this.mapTraversal = mapTraversal;
             this.container = container;
-            this.containerIndex = containerIndex;
 
             this.inputBatch = new List<RawRecord>();
             this.batchSize = KW_DEFAULT_BATCH_SIZE;
@@ -102,46 +99,48 @@ namespace GraphView
             this.Open();
         }
 
+        public override GraphViewExecutionOperator GetFirstOperator()
+        {
+            return this.inputOp.GetFirstOperator();
+        }
+
         [OnDeserialized]
         private void Reconstruct(StreamingContext context)
         {
             this.inputBatch = new List<RawRecord>();
             this.batchSize = KW_DEFAULT_BATCH_SIZE;
             this.inputRecordSet = new HashSet<int>();
-            this.container = SerializationData.Containers[this.containerIndex];
+
+            this.container = new Container();
+            EnumeratorOperator enumeratorOp = this.mapTraversal.GetFirstOperator() as EnumeratorOperator;
+            enumeratorOp.SetContainer(this.container);
         }
     }
 
-    [DataContract]
+    [Serializable]
     internal class FlatMapOperator : GraphViewExecutionOperator
     {
-        [DataMember]
         private GraphViewExecutionOperator inputOp;
 
         // The traversal inside the flatMap function.
-        [DataMember]
         private GraphViewExecutionOperator flatMapTraversal;
+        [NonSerialized]
         private Container container;
-        [DataMember]
-        private int containerIndex;
 
+        [NonSerialized]
         private List<RawRecord> inputBatch;
 
-        [DataMember]
         private int batchSize;
 
         public FlatMapOperator(
             GraphViewExecutionOperator inputOp,
             GraphViewExecutionOperator flatMapTraversal,
             Container container,
-            int containerIndex,
             int batchSize = KW_DEFAULT_BATCH_SIZE)
         {
             this.inputOp = inputOp;
             this.flatMapTraversal = flatMapTraversal;
             this.container = container;
-            this.containerIndex = containerIndex;
-
             this.batchSize = batchSize;
 
             this.inputBatch = new List<RawRecord>();
@@ -198,11 +197,19 @@ namespace GraphView
             this.Open();
         }
 
+        public override GraphViewExecutionOperator GetFirstOperator()
+        {
+            return this.inputOp.GetFirstOperator();
+        }
+
         [OnDeserialized]
         private void Reconstruct(StreamingContext context)
         {
             this.inputBatch = new List<RawRecord>();
-            this.container = SerializationData.Containers[this.containerIndex];
+
+            this.container = new Container();
+            EnumeratorOperator enumeratorOp = this.flatMapTraversal.GetFirstOperator() as EnumeratorOperator;
+            enumeratorOp.SetContainer(this.container);
         }
     }
 
@@ -214,35 +221,30 @@ namespace GraphView
     /// g.V().both().local(__.count()) : 3,1,3,3,1,1
     /// now the implementation is a map type.
     /// </summary>
-    [DataContract]
+    [Serializable]
     internal class LocalOperator : GraphViewExecutionOperator
     {
-        [DataMember]
         private GraphViewExecutionOperator inputOp;
 
         // The traversal inside the local function.
-        [DataMember]
         private GraphViewExecutionOperator localTraversal;
+        [NonSerialized]
         private Container container;
-        [DataMember]
-        private int containerIndex;
 
+        [NonSerialized]
         private List<RawRecord> inputBatch;
 
-        [DataMember]
         private int batchSize;
 
         public LocalOperator(
             GraphViewExecutionOperator inputOp,
             GraphViewExecutionOperator localTraversal,
             Container container,
-            int containerIndex,
             int batchSize = KW_DEFAULT_BATCH_SIZE)
         {
             this.inputOp = inputOp;
             this.localTraversal = localTraversal;
             this.container = container;
-            this.containerIndex = containerIndex;
 
             this.batchSize = batchSize;
 
@@ -300,38 +302,40 @@ namespace GraphView
             this.Open();
         }
 
+        public override GraphViewExecutionOperator GetFirstOperator()
+        {
+            return this.inputOp.GetFirstOperator();
+        }
+
         [OnDeserialized]
         private void Reconstruct(StreamingContext context)
         {
             this.inputBatch = new List<RawRecord>();
-            this.container = SerializationData.Containers[this.containerIndex];
+
+            this.container = new Container();
+            EnumeratorOperator enumeratorOp = this.localTraversal.GetFirstOperator() as EnumeratorOperator;
+            enumeratorOp.SetContainer(this.container);
         }
     }
 
-    [DataContract]
-    internal class CoalesceOperator : GraphViewExecutionOperator
+    [Serializable]
+    internal class CoalesceOperator : GraphViewExecutionOperator, ISerializable
     {
         private ContainerWithFlag container;
-        [DataMember]
-        private int containerIndex;
-        [DataMember]
         private List<GraphViewExecutionOperator> traversalList;
-        [DataMember]
         private GraphViewExecutionOperator inputOp;
 
         // In batch mode, each RawRacord has an index,
         // so in this buffer dict, the keys are the indexes,
         // but in the Queue<RawRecord>, the indexes of RawRacords was already removed for output.
-        [DataMember]
         private SortedDictionary<int, Queue<RawRecord>> outputBuffer;
 
         private int batchSize;
 
-        public CoalesceOperator(GraphViewExecutionOperator inputOp, ContainerWithFlag container, int containerIndex)
+        public CoalesceOperator(GraphViewExecutionOperator inputOp, ContainerWithFlag container)
         {
             this.inputOp = inputOp;
             this.container = container;
-            this.containerIndex = containerIndex;
             this.traversalList = new List<GraphViewExecutionOperator>();
             this.outputBuffer = new SortedDictionary<int, Queue<RawRecord>>();
 
@@ -434,43 +438,62 @@ namespace GraphView
             this.Open();
         }
 
+        public override GraphViewExecutionOperator GetFirstOperator()
+        {
+            return this.inputOp.GetFirstOperator();
+        }
+
         [OnDeserialized]
         private void Reconstruct(StreamingContext context)
         {
+            this.container = new ContainerWithFlag();
+            foreach (GraphViewExecutionOperator traversal in this.traversalList)
+            {
+                EnumeratorOperator enumeratorOp = traversal.GetFirstOperator() as EnumeratorOperator;
+                enumeratorOp.SetContainer(this.container);
+            }
+        }
+
+        public void GetObjectData(SerializationInfo info, StreamingContext context)
+        {
+            GraphViewSerializer.SerializeList(info, "traversalList", this.traversalList);
+            info.AddValue("inputOp", this.inputOp);
+        }
+
+        protected CoalesceOperator(SerializationInfo info, StreamingContext context)
+        {
+            this.traversalList = GraphViewSerializer.DeserializeList<GraphViewExecutionOperator>(info, "traversalList");
+            this.inputOp = (GraphViewExecutionOperator)info.GetValue("inputOp", typeof(GraphViewExecutionOperator));
             this.outputBuffer = new SortedDictionary<int, Queue<RawRecord>>();
             this.batchSize = KW_DEFAULT_BATCH_SIZE;
-            this.container = (ContainerWithFlag)SerializationData.Containers[this.containerIndex];
         }
     }
 
     // sideEffect type && map type
-    [DataContract]
+    [Serializable]
     internal class SideEffectOperator : GraphViewExecutionOperator
     {
-        [DataMember]
         private GraphViewExecutionOperator inputOp;
-        [DataMember]
         private GraphViewExecutionOperator sideEffectTraversal;
+        [NonSerialized]
         private Container container;
-        [DataMember]
-        private int containerIndex;
 
+        [NonSerialized]
         private List<RawRecord> inputBatch;
+        [NonSerialized]
         private Queue<RawRecord> outputBuffer;
-        [DataMember]
+
         private int batchSize;
 
         public SideEffectOperator(
             GraphViewExecutionOperator inputOp,
             GraphViewExecutionOperator sideEffectTraversal,
             Container container,
-            int containerIndex,
             int batchSize = KW_DEFAULT_BATCH_SIZE)
         {
             this.inputOp = inputOp;
             this.sideEffectTraversal = sideEffectTraversal;
             this.container = container;
-            this.containerIndex = containerIndex;
 
             this.inputBatch = new List<RawRecord>();
             this.batchSize = batchSize;
@@ -527,12 +550,20 @@ namespace GraphView
             this.Open();
         }
 
+        public override GraphViewExecutionOperator GetFirstOperator()
+        {
+            return this.inputOp.GetFirstOperator();
+        }
+
         [OnDeserialized]
         private void Reconstruct(StreamingContext context)
         {
             this.inputBatch = new List<RawRecord>();
             this.outputBuffer = new Queue<RawRecord>();
-            this.container = SerializationData.Containers[this.containerIndex];
+
+            this.container = new Container();
+            EnumeratorOperator enumeratorOp = this.sideEffectTraversal.GetFirstOperator() as EnumeratorOperator;
+            enumeratorOp.SetContainer(this.container);
         }
     }
 }

@@ -1026,16 +1026,13 @@ namespace GraphView
             }
 
 #if USE_SERIALIZE
-            SerializationData.SetSideEffectStates(priorContext.SideEffectFunctions);
-            SerializationData.SetContainers(priorContext.Containers);
+            string serString = GraphViewSerializer.Serialize(command, priorContext.SideEffectFunctions, op);
+            Tuple<GraphViewCommand, GraphViewExecutionOperator> deserTuple = GraphViewSerializer.Deserialize(serString);
 
-            GraphViewSerializer.Serialize(command, op);
-            GraphViewCommand newCommand;
-            GraphViewExecutionOperator newOp = GraphViewSerializer.Deserialize(out newCommand);
             // because the command is used in test-case later, we can only set fields and properties of the command.
-            command.SetCommand(newCommand);
+            command.SetCommand(deserTuple.Item1);
 
-            return newOp;
+            return deserTuple.Item2;
 #endif
 
             // Returns the last execution operator
@@ -1068,8 +1065,7 @@ namespace GraphView
         internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewCommand command)
         {
             Container container = new Container();
-            int containerIndex = context.AddContainers(container);
-            UnionOperator unionOp = new UnionOperator(context.CurrentExecutionOperator, container, containerIndex);
+            UnionOperator unionOp = new UnionOperator(context.CurrentExecutionOperator, container);
             bool isUnionWithoutAnyBranch = Parameters.Count == 0 || Parameters[0] is WValueExpression;
 
             WSelectQueryBlock firstSelectQuery = null;
@@ -1093,7 +1089,7 @@ namespace GraphView
                     }
 
                     QueryCompilationContext subcontext = new QueryCompilationContext(context);
-                    subcontext.OuterContextOp.SetContainer(container, containerIndex);
+                    subcontext.OuterContextOp.SetContainer(container);
                     subcontext.InBatchMode = context.InBatchMode;
                     subcontext.CarryOn = true;
                     if (index < context.LocalExecutionOrders.Count)
@@ -1183,9 +1179,7 @@ namespace GraphView
         internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewCommand command)
         {
             ContainerWithFlag container = new ContainerWithFlag();
-            // int containerIndex = SerializationData.AddContainers(container);
-            int containerIndex = context.AddContainers(container);
-            CoalesceOperator coalesceOp = new CoalesceOperator(context.CurrentExecutionOperator, container, containerIndex);
+            CoalesceOperator coalesceOp = new CoalesceOperator(context.CurrentExecutionOperator, container);
                
             WSelectQueryBlock firstSelectQuery = null;
             for (int index = 0; index < Parameters.Count; ++index)
@@ -1207,7 +1201,7 @@ namespace GraphView
 
                 // Set all sub-traversals' source to a same `sourceEnumerator`, and turn on InBatchMode
                 QueryCompilationContext subcontext = new QueryCompilationContext(context);
-                subcontext.OuterContextOp.SetContainer(container, containerIndex);
+                subcontext.OuterContextOp.SetContainer(container);
                 subcontext.AddField(GremlinKeyword.IndexTableName, command.IndexColumnName, ColumnGraphType.Value, true);
                 subcontext.InBatchMode = true;
                 if (index < context.LocalExecutionOrders.Count)
@@ -1341,8 +1335,7 @@ namespace GraphView
 
             QueryCompilationContext targetSubContext = new QueryCompilationContext(context);
             Container targetContainer = new Container();
-            int targetContainerIndex = context.AddContainers(targetContainer);
-            targetSubContext.OuterContextOp.SetContainer(targetContainer, targetContainerIndex);
+            targetSubContext.OuterContextOp.SetContainer(targetContainer);
             targetSubContext.AddField(GremlinKeyword.IndexTableName, command.IndexColumnName, ColumnGraphType.Value, true);
             targetSubContext.InBatchMode = true;
             if (0 < context.LocalExecutionOrders.Count)
@@ -1353,8 +1346,7 @@ namespace GraphView
 
             QueryCompilationContext subcontext = new QueryCompilationContext(context);
             Container optinalContainer = new Container();
-            int optinalContainerIndex = context.AddContainers(optinalContainer);
-            subcontext.OuterContextOp.SetContainer(optinalContainer, optinalContainerIndex);
+            subcontext.OuterContextOp.SetContainer(optinalContainer);
             subcontext.CarryOn = true;
             subcontext.InBatchMode = context.InBatchMode;
             if (0 < context.LocalExecutionOrders.Count)
@@ -1367,10 +1359,8 @@ namespace GraphView
                 context.CurrentExecutionOperator,
                 inputIndexes,
                 targetContainer,
-                targetContainerIndex,
                 targetSubqueryOp,
                 optinalContainer,
-                optinalContainerIndex,
                 optionalTraversalOp);
 
             context.CurrentExecutionOperator = optionalOp;
@@ -1426,8 +1416,7 @@ namespace GraphView
 
             QueryCompilationContext subcontext = new QueryCompilationContext(context);
             Container container = new Container();
-            int containerIndex = context.AddContainers(container);
-            subcontext.OuterContextOp.SetContainer(container, containerIndex);
+            subcontext.OuterContextOp.SetContainer(container);
             subcontext.AddField(GremlinKeyword.IndexTableName, command.IndexColumnName, ColumnGraphType.Value, true);
             subcontext.InBatchMode = true;
             if (0 < context.LocalExecutionOrders.Count)
@@ -1435,7 +1424,7 @@ namespace GraphView
                 subcontext.CurrentExecutionOrder = context.LocalExecutionOrders[0];
             }
             GraphViewExecutionOperator localTraversalOp = localSelect.Compile(subcontext, command);
-            LocalOperator localOp = new LocalOperator(context.CurrentExecutionOperator, localTraversalOp, container, containerIndex);
+            LocalOperator localOp = new LocalOperator(context.CurrentExecutionOperator, localTraversalOp, container);
 
             foreach (WSelectElement selectElement in localSelect.SelectElements)
             {
@@ -1501,9 +1490,8 @@ namespace GraphView
             }
 
             Container container = new Container();
-            int containerIndex = context.AddContainers(container);
             QueryCompilationContext subcontext = new QueryCompilationContext(context);
-            subcontext.OuterContextOp.SetContainer(container, containerIndex);
+            subcontext.OuterContextOp.SetContainer(container);
             subcontext.AddField(GremlinKeyword.IndexTableName, command.IndexColumnName, ColumnGraphType.Value, true);
             subcontext.InBatchMode = true;
             if (0 < context.LocalExecutionOrders.Count)
@@ -1512,7 +1500,7 @@ namespace GraphView
             }
             GraphViewExecutionOperator flatMapTraversalOp = flatMapSelect.Compile(subcontext, command);
 
-            FlatMapOperator flatMapOp = new FlatMapOperator(context.CurrentExecutionOperator, flatMapTraversalOp, container, containerIndex);
+            FlatMapOperator flatMapOp = new FlatMapOperator(context.CurrentExecutionOperator, flatMapTraversalOp, container);
             context.CurrentExecutionOperator = flatMapOp;
 
             foreach (WSelectElement selectElement in flatMapSelect.SelectElements)
@@ -2025,9 +2013,8 @@ namespace GraphView
             Split(out contextSelect, out repeatSelect);
 
             Container initialContainer = new Container();
-            int initialContainerIndex = context.AddContainers(initialContainer);
             QueryCompilationContext initialContext = new QueryCompilationContext(context);
-            initialContext.OuterContextOp.SetContainer(initialContainer, initialContainerIndex);
+            initialContext.OuterContextOp.SetContainer(initialContainer);
             initialContext.InBatchMode = context.InBatchMode;
             initialContext.CarryOn = true;
             if (0 < context.LocalExecutionOrders.Count)
@@ -2064,8 +2051,7 @@ namespace GraphView
             
             // compile sub-traversal
             Container innerContainer = new Container();
-            int innerContainerIndex = context.AddContainers(innerContainer);
-            rTableContext.OuterContextOp.SetContainer(innerContainer, innerContainerIndex);
+            rTableContext.OuterContextOp.SetContainer(innerContainer);
             rTableContext.InBatchMode = context.InBatchMode;
             rTableContext.CarryOn = true;
             if (1 < context.LocalExecutionOrders.Count)
@@ -2077,10 +2063,8 @@ namespace GraphView
             RepeatOperator repeatOp = new RepeatOperator(
                 context.CurrentExecutionOperator,
                 initialContainer,
-                initialContainerIndex,
                 getInitialRecordOp,
                 innerContainer,
-                innerContainerIndex,
                 innerOp,
                 emitCondition,
                 emitFront,
@@ -2422,9 +2406,8 @@ namespace GraphView
             }
 
             Container container = new Container();
-            int containerIndex = context.AddContainers(container);
             QueryCompilationContext subcontext = new QueryCompilationContext(context);
-            subcontext.OuterContextOp.SetContainer(container, containerIndex);
+            subcontext.OuterContextOp.SetContainer(container);
             subcontext.AddField(GremlinKeyword.IndexTableName, command.IndexColumnName, ColumnGraphType.Value, true);
             subcontext.InBatchMode = true;
             if (0 < context.LocalExecutionOrders.Count)
@@ -2432,7 +2415,7 @@ namespace GraphView
                 subcontext.CurrentExecutionOrder = context.LocalExecutionOrders[0];
             }
             GraphViewExecutionOperator mapTraversalOp = mapSelect.Compile(subcontext, command);
-            MapOperator mapOp = new MapOperator(context.CurrentExecutionOperator, mapTraversalOp, container, containerIndex);
+            MapOperator mapOp = new MapOperator(context.CurrentExecutionOperator, mapTraversalOp, container);
             context.CurrentExecutionOperator = mapOp;
 
             foreach (WSelectElement selectElement in mapSelect.SelectElements)
@@ -2498,9 +2481,8 @@ namespace GraphView
             }
 
             Container container = new Container();
-            int containerIndex = context.AddContainers(container);
             QueryCompilationContext subcontext = new QueryCompilationContext(context);
-            subcontext.OuterContextOp.SetContainer(container, containerIndex);
+            subcontext.OuterContextOp.SetContainer(container);
             subcontext.AddField(GremlinKeyword.IndexTableName, command.IndexColumnName, ColumnGraphType.Value, true);
             subcontext.InBatchMode = true;
             if (0 < context.LocalExecutionOrders.Count)
@@ -2508,7 +2490,7 @@ namespace GraphView
                 subcontext.CurrentExecutionOrder = context.LocalExecutionOrders[0];
             }
             GraphViewExecutionOperator sideEffectTraversalOp = sideEffectSelect.Compile(subcontext, command);
-            SideEffectOperator sideEffectOp = new SideEffectOperator(context.CurrentExecutionOperator, sideEffectTraversalOp, container, containerIndex);
+            SideEffectOperator sideEffectOp = new SideEffectOperator(context.CurrentExecutionOperator, sideEffectTraversalOp, container);
             context.CurrentExecutionOperator = sideEffectOp;
 
             return sideEffectOp;
@@ -2625,8 +2607,7 @@ namespace GraphView
 
             QueryCompilationContext subcontext = new QueryCompilationContext(context);
             Container container = new Container();
-            int containerIndex = context.AddContainers(container);
-            subcontext.OuterContextOp.SetContainer(container, containerIndex);
+            subcontext.OuterContextOp.SetContainer(container);
             if (0 < context.LocalExecutionOrders.Count)
             {
                 subcontext.CurrentExecutionOrder = context.LocalExecutionOrders[0];
@@ -2640,13 +2621,13 @@ namespace GraphView
                     ? new GroupInBatchOperator(
                         context.CurrentExecutionOperator,
                         groupKeyFunction,
-                        container, containerIndex, aggregateOp,
+                        container, aggregateOp,
                         this.IsProjectingACollection,
                         context.RawRecordLayout.Count)
                     : new GroupOperator(
                         context.CurrentExecutionOperator,
                         groupKeyFunction,
-                        container, containerIndex, aggregateOp,
+                        container, aggregateOp,
                         this.IsProjectingACollection,
                         context.RawRecordLayout.Count);
 
@@ -2681,8 +2662,7 @@ namespace GraphView
                     }
                 }
 
-                GroupFunction groupFunction = new GroupFunction(sideEffectState as GroupState, aggregateOp, container,
-                    containerIndex, this.IsProjectingACollection);
+                GroupFunction groupFunction = new GroupFunction(sideEffectState as GroupState, aggregateOp, container, this.IsProjectingACollection);
                 context.SideEffectFunctions[groupParameter.Value] = groupFunction;
                 GroupSideEffectOperator groupSideEffectOp = new GroupSideEffectOperator(
                     context.CurrentExecutionOperator, groupFunction, groupParameter.Value, groupKeyFunction);
@@ -2727,7 +2707,6 @@ namespace GraphView
 
             QueryCompilationContext derivedTableContext = new QueryCompilationContext(context);
             Container container = new Container();
-            int containerIndex = context.AddContainers(container);
 
             // If QueryDerivedTable is the first table in the whole script
             if (context.CurrentExecutionOperator == null)
@@ -2737,7 +2716,7 @@ namespace GraphView
             else
             {
                 derivedTableContext.InBatchMode = context.InBatchMode;
-                derivedTableContext.OuterContextOp.SetContainer(container, containerIndex);
+                derivedTableContext.OuterContextOp.SetContainer(container);
             }
             if (0 < context.LocalExecutionOrders.Count)
             {
@@ -2754,9 +2733,9 @@ namespace GraphView
 
             QueryDerivedTableOperator queryDerivedTableOp =
                 context.InBatchMode
-                    ? new QueryDerivedInBatchOperator(context.CurrentExecutionOperator, subQueryOp, container, containerIndex,
+                    ? new QueryDerivedInBatchOperator(context.CurrentExecutionOperator, subQueryOp, container,
                         projectAggregationInBatchOp, context.RawRecordLayout.Count)
-                    : new QueryDerivedTableOperator(context.CurrentExecutionOperator, subQueryOp, container, containerIndex,
+                    : new QueryDerivedTableOperator(context.CurrentExecutionOperator, subQueryOp, container,
                         context.RawRecordLayout.Count);
 
             foreach (var selectElement in derivedSelectQueryBlock.SelectElements)
@@ -3258,9 +3237,8 @@ namespace GraphView
             Debug.Assert(falseTraversalParameter != null, "falseTraversalParameter != null");
             
             Container container = new Container();
-            int containerIndex = context.AddContainers(container);
             QueryCompilationContext targetSubContext = new QueryCompilationContext(context);
-            targetSubContext.OuterContextOp.SetContainer(container, containerIndex);
+            targetSubContext.OuterContextOp.SetContainer(container);
             targetSubContext.AddField(GremlinKeyword.IndexTableName, command.IndexColumnName, ColumnGraphType.Value, true);
             targetSubContext.InBatchMode = true;
             if (0 < context.LocalExecutionOrders.Count)
@@ -3270,11 +3248,10 @@ namespace GraphView
             GraphViewExecutionOperator targetSubqueryOp = targetSubquery.SubQueryExpr.Compile(targetSubContext, command);
 
             Container trueBranchContainer = new Container();
-            int trueBranchContainerIndex = context.AddContainers(trueBranchContainer);
             QueryCompilationContext trueSubContext = new QueryCompilationContext(context);
             trueSubContext.CarryOn = true;
             trueSubContext.InBatchMode = context.InBatchMode;
-            trueSubContext.OuterContextOp.SetContainer(trueBranchContainer, trueBranchContainerIndex);
+            trueSubContext.OuterContextOp.SetContainer(trueBranchContainer);
             if (1 < context.LocalExecutionOrders.Count)
             {
                 trueSubContext.CurrentExecutionOrder = context.LocalExecutionOrders[1];
@@ -3283,11 +3260,10 @@ namespace GraphView
                 trueTraversalParameter.SubQueryExpr.Compile(trueSubContext, command);
 
             Container falseBranchContainer = new Container();
-            int falseBranchContainerIndex = context.AddContainers(falseBranchContainer);
             QueryCompilationContext falseSubContext = new QueryCompilationContext(context);
             falseSubContext.CarryOn = true;
             falseSubContext.InBatchMode = context.InBatchMode;
-            falseSubContext.OuterContextOp.SetContainer(falseBranchContainer, falseBranchContainerIndex);
+            falseSubContext.OuterContextOp.SetContainer(falseBranchContainer);
             if (2 < context.LocalExecutionOrders.Count)
             {
                 falseSubContext.CurrentExecutionOrder = context.LocalExecutionOrders[2];
@@ -3297,10 +3273,10 @@ namespace GraphView
 
             ChooseOperator chooseOp = new ChooseOperator(
                 context.CurrentExecutionOperator,
-                container, containerIndex,
+                container,
                 targetSubqueryOp,
-                trueBranchContainer, trueBranchContainerIndex, trueBranchTraversalOp, 
-                falseBranchContainer, falseBranchContainerIndex, falseBranchTraversalOp);
+                trueBranchContainer, trueBranchTraversalOp, 
+                falseBranchContainer, falseBranchTraversalOp);
             context.CurrentExecutionOperator = chooseOp;
 
             foreach (WSelectElement selectElement in selectQueryBlock.SelectElements)
@@ -3357,10 +3333,9 @@ namespace GraphView
             Debug.Assert(targetSubquery != null, "targetSubquery != null");
 
             Container container = new Container();
-            int containerIndex = context.AddContainers(container);
             QueryCompilationContext targetContext = new QueryCompilationContext(context);
             targetContext.InBatchMode = true;
-            targetContext.OuterContextOp.SetContainer(container, containerIndex);
+            targetContext.OuterContextOp.SetContainer(container);
             targetContext.AddField(GremlinKeyword.IndexTableName, command.IndexColumnName, ColumnGraphType.Value, true);
             if (0 < context.LocalExecutionOrders.Count)
             {
@@ -3372,7 +3347,6 @@ namespace GraphView
                 new ChooseWithOptionsOperator(
                     context.CurrentExecutionOperator,
                     container, 
-                    containerIndex,
                     targetSubqueryOp);
 
             WSelectQueryBlock firstSelectQuery = null;
@@ -3394,17 +3368,16 @@ namespace GraphView
                 }
 
                 Container optionContainer = new Container();
-                int optionContainerIndex = context.AddContainers(optionContainer);
                 QueryCompilationContext subcontext = new QueryCompilationContext(context);
                 subcontext.CarryOn = true;
                 subcontext.InBatchMode = context.InBatchMode;
-                subcontext.OuterContextOp.SetContainer(optionContainer, optionContainerIndex);
+                subcontext.OuterContextOp.SetContainer(optionContainer);
                 if ((i+1)/2 < context.LocalExecutionOrders.Count)
                 {
                     subcontext.CurrentExecutionOrder = context.LocalExecutionOrders[(i+1)/2];
                 }
                 GraphViewExecutionOperator optionTraversalOp = scalarSubquery.SubQueryExpr.Compile(subcontext, command);
-                chooseWithOptionsOp.AddOptionTraversal(value?.CompileToFunction(context, command), optionContainer, optionTraversalOp, optionContainerIndex);
+                chooseWithOptionsOp.AddOptionTraversal(value?.CompileToFunction(context, command), optionContainer, optionTraversalOp);
             }
 
             foreach (WSelectElement selectElement in firstSelectQuery.SelectElements)

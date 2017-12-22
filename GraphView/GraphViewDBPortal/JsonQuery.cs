@@ -10,34 +10,25 @@ using Microsoft.SqlServer.TransactSql.ScriptDom;
 
 namespace GraphView.GraphViewDBPortal
 {
-    [DataContract]
-    internal class JsonQuery
+    [Serializable]
+    internal class JsonQuery : ISerializable
     {
-        [DataMember]
         public List<string> NodeProperties { get; set; }
-        [DataMember]
         public List<string> EdgeProperties { get; set; }
 
         public WBooleanExpression RawWhereClause;
 
-        [DataMember]
         public string NodeAlias;
-        [DataMember]
         public string EdgeAlias;
 
         // Note: this Dict is used to contruct select clause.
-        [DataMember]
         private Dictionary<string, List<WPrimaryExpression>> selectDictionary;
-        [DataMember]
         public HashSet<string> FlatProperties;
-        [DataMember]
         public Dictionary<string, string> JoinDictionary;
 
         // Only JsonServer needs it, given by JsonServerDbPortal
-        [DataMember]
         public string JsonServerCollectionName;
 
-        [DataMember]
         private string dummyQueryString;
 
         public JsonQuery()
@@ -301,24 +292,35 @@ namespace GraphView.GraphViewDBPortal
             }
         }
 
-        [OnSerializing]
-        private void ConstructQueryString(StreamingContext context)
+        void ISerializable.GetObjectData(SerializationInfo info, StreamingContext context)
         {
-            JsonQueryConfig.useSquareBracket = true;
-            this.dummyQueryString = "SELECT *\nFROM T\n" + $"WHERE {this.RawWhereClause}";
-            JsonQueryConfig.useSquareBracket = false;
+            GraphViewSerializer.SerializeList(info, "NodeProperties", this.NodeProperties);
+            GraphViewSerializer.SerializeList(info, "EdgeProperties", this.EdgeProperties);
+            info.AddValue("NodeAlias", this.NodeAlias, typeof(string));
+            info.AddValue("EdgeAlias", this.EdgeAlias, typeof(string));
+            GraphViewSerializer.SerializeDictionaryList(info, "selectDictionary", this.selectDictionary);
+            GraphViewSerializer.SerializeHashSet(info, "FlatProperties", this.FlatProperties);
+            GraphViewSerializer.SerializeDictionary(info, "JoinDictionary", this.JoinDictionary);
+            info.AddValue("JsonServerCollectionName", this.JsonServerCollectionName, typeof(string));
+
+            this.dummyQueryString = "SELECT *\nFROM T\n" + $"WHERE {this.RawWhereClause.ToString("", true)}";
+            info.AddValue("dummyQuery", this.dummyQueryString, typeof(string));
         }
 
-        [OnDeserialized]
-        private void ConstructWhereClause(StreamingContext context)
+        protected JsonQuery(SerializationInfo info, StreamingContext context)
         {
+            this.NodeProperties = GraphViewSerializer.DeserializeList<string>(info, "NodeProperties");
+            this.EdgeProperties = GraphViewSerializer.DeserializeList<string>(info, "EdgeProperties");
+            this.NodeAlias = info.GetString("NodeAlias");
+            this.EdgeAlias = info.GetString("EdgeAlias");
+            this.selectDictionary = GraphViewSerializer.DeserializeDictionaryList<string, WPrimaryExpression>(info, "selectDictionary", true);
+            this.FlatProperties = GraphViewSerializer.DeserializeHashSet<string>(info, "FlatProperties");
+            this.JoinDictionary = GraphViewSerializer.DeserializeDictionary<string, string>(info, "JoinDictionary");
+            this.JsonServerCollectionName = info.GetString("JsonServerCollectionName");
+            this.dummyQueryString = info.GetString("dummyQuery");
             this.RawWhereClause = new WSqlParser().ParseWhereClauseFromSelect(this.dummyQueryString);
         }
 
     }
 
-    internal static class JsonQueryConfig
-    {
-        public static bool useSquareBracket = false;
-    }
 }

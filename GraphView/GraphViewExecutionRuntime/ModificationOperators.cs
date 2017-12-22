@@ -13,15 +13,10 @@ using static GraphView.DocumentDBKeywords;
 
 namespace GraphView
 {
-    [DataContract]
-    [KnownType(typeof(AddVOperator))]
-    [KnownType(typeof(DropOperator))]
-    [KnownType(typeof(UpdatePropertiesOperator))]
-    [KnownType(typeof(AddEOperator))]
-    internal abstract class ModificationBaseOperator : GraphViewExecutionOperator
+    [Serializable]
+    internal abstract class ModificationBaseOperator : GraphViewExecutionOperator, ISerializable
     {
         protected GraphViewCommand Command;
-        [DataMember]
         protected GraphViewExecutionOperator InputOperator;
 
         protected ModificationBaseOperator(GraphViewExecutionOperator inputOp, GraphViewCommand command)
@@ -58,23 +53,31 @@ namespace GraphView
             Open();
         }
 
-        [OnDeserialized]
-        private void Reconstruct(StreamingContext context)
+        public override GraphViewExecutionOperator GetFirstOperator()
         {
-            this.Command = SerializationData.Command;
+            return this.InputOperator.GetFirstOperator();
+        }
+
+        public virtual void GetObjectData(SerializationInfo info, StreamingContext context)
+        {
+            info.AddValue("inputOp", this.InputOperator, typeof(GraphViewExecutionOperator));
+        }
+
+        protected ModificationBaseOperator(SerializationInfo info, StreamingContext context)
+        {
+            this.InputOperator = (GraphViewExecutionOperator)info.GetValue("inputOp", typeof(GraphViewExecutionOperator));
+            AdditionalSerializationInfo additionalInfo = (AdditionalSerializationInfo)context.Context;
+            this.Command = additionalInfo.Command;
+            this.Open();
         }
     }
 
-    [DataContract]
+    [Serializable]
     internal class AddVOperator : ModificationBaseOperator
     {
         private JObject vertexDocument;
-        [DataMember]
         private readonly List<string> projectedFieldList;
-        [DataMember]
         private readonly List<PropertyTuple> properties;
-        [DataMember]
-        private string jsonString;
 
         public AddVOperator(GraphViewExecutionOperator inputOp, GraphViewCommand command, JObject vertexDocument, 
             List<string> projectedFieldList, List<PropertyTuple> properties)
@@ -83,7 +86,6 @@ namespace GraphView
             this.vertexDocument = vertexDocument;
             this.projectedFieldList = projectedFieldList;
             this.properties = properties;
-            this.jsonString = this.vertexDocument.ToString();
         }
 
         private void AddPropertiesToVertexObject(JObject vertexJObject, RawRecord record)
@@ -249,18 +251,26 @@ namespace GraphView
             return result;
         }
 
-        [OnDeserialized]
-        private void Reconstruct(StreamingContext context)
+        public override void GetObjectData(SerializationInfo info, StreamingContext context)
         {
-            this.vertexDocument = JObject.Parse(this.jsonString);
+            base.GetObjectData(info, context);
+            info.AddValue("vertex", this.vertexDocument.ToString());
+            GraphViewSerializer.SerializeList(info, "projectedFieldList", this.projectedFieldList);
+            GraphViewSerializer.SerializeList(info, "properties", this.properties);
+        }
+
+        protected AddVOperator(SerializationInfo info, StreamingContext context) : base(info, context)
+        {
+            this.vertexDocument = JObject.Parse(info.GetString("vertex"));
+            this.projectedFieldList = GraphViewSerializer.DeserializeList<string>(info, "projectedFieldList");
+            this.properties = GraphViewSerializer.DeserializeList<PropertyTuple>(info, "properties");
         }
 
     }
 
-    [DataContract]
+    [Serializable]
     internal class DropOperator : ModificationBaseOperator
     {
-        [DataMember]
         private readonly int dropTargetIndex;
 
         public DropOperator(GraphViewExecutionOperator inputOp, GraphViewCommand command, int dropTargetIndex)
@@ -647,14 +657,23 @@ namespace GraphView
             // Should not reach here
             throw new GraphViewException("The incoming object is not removable");
         }
+
+        public override void GetObjectData(SerializationInfo info, StreamingContext context)
+        {
+            base.GetObjectData(info, context);
+            info.AddValue("dropTargetIndex", this.dropTargetIndex);
+        }
+
+        protected DropOperator(SerializationInfo info, StreamingContext context) : base(info, context)
+        {
+            this.dropTargetIndex = info.GetInt32("dropTargetIndex");
+        }
     }
 
-    [DataContract]
+    [Serializable]
     internal class UpdatePropertiesOperator : ModificationBaseOperator
     {
-        [DataMember]
         private readonly int updateTargetIndex;
-        [DataMember]
         private readonly List<PropertyTuple> updateProperties;
 
         public UpdatePropertiesOperator(
@@ -990,50 +1009,51 @@ namespace GraphView
             return null;
         }
 
+        public override void GetObjectData(SerializationInfo info, StreamingContext context)
+        {
+            base.GetObjectData(info, context);
+            info.AddValue("updateTargetIndex", this.updateTargetIndex);
+            GraphViewSerializer.SerializeList(info, "updateProperties", this.updateProperties);
+        }
+
+        protected UpdatePropertiesOperator(SerializationInfo info, StreamingContext context) : base(info, context)
+        {
+            this.updateTargetIndex = info.GetInt32("updateTargetIndex");
+            this.updateProperties = GraphViewSerializer.DeserializeList<PropertyTuple>(info, "updateProperties");
+        }
     }
 
-    [DataContract]
+    [Serializable]
     internal class AddEOperator : ModificationBaseOperator
     {
         //
         // if otherVTag == 0, this newly added edge's otherV() is the src vertex.
         // Otherwise, it's the sink vertex
         //
-        [DataMember]
         private int otherVTag;
         //
         // The subquery operator select the vertex ID of source and sink of the edge to be added or deleted
         //
         private Container container;
-        [DataMember]
-        private int containerIndex;
-        [DataMember]
         private GraphViewExecutionOperator srcSubQueryOp;
-        [DataMember]
         private GraphViewExecutionOperator sinkSubQueryOp;
         //
         // The initial json object string of to-be-inserted edge, waiting to update the edgeOffset field
         //
         private JObject edgeJsonObject;
-        [DataMember]
-        private string jsonString;
-        [DataMember]
         private List<string> edgeProperties;
-        [DataMember]
         private List<PropertyTuple> subtraversalProperties;
 
         public AddEOperator(GraphViewExecutionOperator inputOp, GraphViewCommand command, Container container,
-            int containerIndex, GraphViewExecutionOperator srcSubQueryOp, GraphViewExecutionOperator sinkSubQueryOp,
+            GraphViewExecutionOperator srcSubQueryOp, GraphViewExecutionOperator sinkSubQueryOp,
             int otherVTag, JObject edgeJsonObject, List<string> projectedFieldList, List<PropertyTuple> subtraversalProperties)
             : base(inputOp, command)
         {
             this.container = container;
-            this.containerIndex = containerIndex;
             this.srcSubQueryOp = srcSubQueryOp;
             this.sinkSubQueryOp = sinkSubQueryOp;
             this.otherVTag = otherVTag;
             this.edgeJsonObject = edgeJsonObject;
-            this.jsonString = this.edgeJsonObject.ToString();
             this.edgeProperties = projectedFieldList;
             this.subtraversalProperties = subtraversalProperties;
         }
@@ -1146,18 +1166,44 @@ namespace GraphView
         [OnDeserialized]
         private void Reconstruct(StreamingContext context)
         {
-            this.edgeJsonObject = JObject.Parse(this.jsonString);
-            this.container = SerializationData.Containers[this.containerIndex];
+            this.container = new Container();
+            EnumeratorOperator enumeratorOp = this.srcSubQueryOp.GetFirstOperator() as EnumeratorOperator;
+            enumeratorOp.SetContainer(this.container);
+            enumeratorOp = this.sinkSubQueryOp.GetFirstOperator() as EnumeratorOperator;
+            enumeratorOp.SetContainer(this.container);
+        }
+
+        public override void GetObjectData(SerializationInfo info, StreamingContext context)
+        {
+            base.GetObjectData(info, context);
+            info.AddValue("otherVTag", this.otherVTag);
+            info.AddValue("srcSubQueryOp", this.srcSubQueryOp, typeof(GraphViewExecutionOperator));
+            info.AddValue("sinkSubQueryOp", this.sinkSubQueryOp, typeof(GraphViewExecutionOperator));
+            info.AddValue("edge", this.edgeJsonObject.ToString());
+            GraphViewSerializer.SerializeList(info, "edgeProperties", this.edgeProperties);
+            GraphViewSerializer.SerializeList(info, "subtraversalProperties", this.subtraversalProperties);
+        }
+
+        protected AddEOperator(SerializationInfo info, StreamingContext context) : base(info, context)
+        {
+            this.otherVTag = info.GetInt32("otherVTag");
+            this.srcSubQueryOp = (GraphViewExecutionOperator)info.GetValue("srcSubQueryOp", typeof(GraphViewExecutionOperator));
+            this.sinkSubQueryOp = (GraphViewExecutionOperator)info.GetValue("sinkSubQueryOp", typeof(GraphViewExecutionOperator));
+            this.edgeJsonObject = JObject.Parse(info.GetString("edge"));
+            this.edgeProperties = GraphViewSerializer.DeserializeList<string>(info, "edgeProperties");
+            this.subtraversalProperties = GraphViewSerializer.DeserializeList<PropertyTuple>(info, "subtraversalProperties");
         }
 
     }
 
-    [DataContract]
+    [Serializable]
     internal class CommitOperator : GraphViewExecutionOperator
     {
+        [NonSerialized]
         private GraphViewCommand command;
-        [DataMember]
         private GraphViewExecutionOperator inputOp;
+
+        [NonSerialized]
         private Queue<RawRecord> outputBuffer;
 
         public CommitOperator(GraphViewCommand command, GraphViewExecutionOperator inputOp)
@@ -1185,11 +1231,17 @@ namespace GraphView
             return null;
         }
 
+        public override GraphViewExecutionOperator GetFirstOperator()
+        {
+            return this.inputOp.GetFirstOperator();
+        }
+
         [OnDeserialized]
         private void Reconstruct(StreamingContext context)
         {
             this.outputBuffer = new Queue<RawRecord>();
-            this.command = SerializationData.Command;
+            AdditionalSerializationInfo additionalInfo = (AdditionalSerializationInfo)context.Context;
+            this.command = additionalInfo.Command;
         }
 
         public override void ResetState()

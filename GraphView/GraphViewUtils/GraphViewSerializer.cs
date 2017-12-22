@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Runtime.Serialization;
@@ -12,87 +13,445 @@ namespace GraphView
 {
     internal static class GraphViewSerializer
     {
-        private static string commandFile = "command.xml";
-        private static string operatorsFile = "plan.xml";
-        private static string sideEffectFile = "sideEffect.xml";
-        private static string containerFile = "container.xml";
+        private const string IsNullMark = "Null";
 
-        public static void Serialize(GraphViewCommand command, GraphViewExecutionOperator op)
+        private static string SerializeWithSoapFormatter(object obj)
         {
-            SoapFormatter serilizer = new SoapFormatter();
-            Stream stream = File.Open(commandFile, FileMode.Create);
-            serilizer.Serialize(stream, command);
-            stream.Close();
+            using (MemoryStream memStream = new MemoryStream())
+            {
+                SoapFormatter serilizer = new SoapFormatter();
+                serilizer.Serialize(memStream, obj);
 
-            stream = File.Open(containerFile, FileMode.Create);
-            DataContractSerializer containerSer = new DataContractSerializer(typeof(List<Container>));
-            containerSer.WriteObject(stream, SerializationData.Containers);
-            stream.Close();
-
-            stream = File.Open(sideEffectFile, FileMode.Create);
-            DataContractSerializer sideEffectSer = new DataContractSerializer(typeof(Dictionary<string, IAggregateFunction>),
-                new List<Type>{typeof(CollectionFunction), typeof(GroupFunction), typeof(SubgraphFunction), typeof(TreeFunction) });
-            sideEffectSer.WriteObject(stream, SerializationData.SideEffectStates);
-            stream.Close();
-
-            stream = File.Open(operatorsFile, FileMode.Create);
-            DataContractSerializer ser = new DataContractSerializer(typeof(GraphViewExecutionOperator));
-            ser.WriteObject(stream, op);
-            stream.Close();
+                memStream.Position = 0;
+                StreamReader stringReader = new StreamReader(memStream);
+                return stringReader.ReadToEnd();
+            }
         }
 
-        public static GraphViewExecutionOperator Deserialize(out GraphViewCommand command)
+        private static object DeserializeWithSoapFormatter(string objString, object additionalInfo = null)
         {
-            SoapFormatter deserilizer = new SoapFormatter();
-            Stream stream = File.Open(commandFile, FileMode.Open);
-            command = (GraphViewCommand)deserilizer.Deserialize(stream);
-            SerializationData.SetCommand(command);
-            stream.Close();
+            using (MemoryStream stream = new MemoryStream())
+            {
+                StreamWriter writer = new StreamWriter(stream);
+                writer.Write(objString);
+                writer.Flush();
+                stream.Position = 0;
 
-            stream = File.Open(containerFile, FileMode.Open);
-            DataContractSerializer containerDeser = new DataContractSerializer(typeof(List<Container>));
-            SerializationData.SetContainers((List<Container>)containerDeser.ReadObject(stream));
-            stream.Close();
+                SoapFormatter deserilizer;
+                if (additionalInfo != null)
+                {
+                    deserilizer = new SoapFormatter(null, new StreamingContext(StreamingContextStates.All, additionalInfo));
+                }
+                else
+                {
+                    deserilizer = new SoapFormatter();
+                }
 
-            stream = File.Open(sideEffectFile, FileMode.Open);
-            DataContractSerializer sideEffectDeser = new DataContractSerializer(typeof(Dictionary<string, IAggregateFunction>),
-                new List<Type> { typeof(CollectionFunction), typeof(GroupFunction), typeof(SubgraphFunction), typeof(TreeFunction) });
-            SerializationData.SetSideEffectStates((Dictionary<string, IAggregateFunction>)sideEffectDeser.ReadObject(stream));
-            stream.Close();
-
-            stream = File.Open(operatorsFile, FileMode.Open);
-            DataContractSerializer deser = new DataContractSerializer(typeof(GraphViewExecutionOperator));
-            GraphViewExecutionOperator op = (GraphViewExecutionOperator)deser.ReadObject(stream);
-            stream.Close();
-
-            op.ResetState();
-            return op;
+                return deserilizer.Deserialize(stream);
+            }
         }
 
+        public static string Serialize(GraphViewCommand command, 
+            Dictionary<string, IAggregateFunction> sideEffectFunctions, 
+            GraphViewExecutionOperator op)
+        {
+            string commandString = SerializeWithSoapFormatter(command);
+
+            WrapSideEffectFunctions wrapSideEffectFunctions = new WrapSideEffectFunctions(sideEffectFunctions);
+            string sideEffectString = SerializeWithSoapFormatter(wrapSideEffectFunctions);
+
+            string opString = SerializeWithSoapFormatter(op);
+
+            string[] arr = { commandString, sideEffectString, opString };
+            return SerializeWithSoapFormatter(arr);
+        }
+
+        public static Tuple<GraphViewCommand, GraphViewExecutionOperator> Deserialize(string serializationString)
+        {
+            string[] arr = (string[])DeserializeWithSoapFormatter(serializationString);
+
+            string commandString = arr[0];
+            GraphViewCommand command = (GraphViewCommand)DeserializeWithSoapFormatter(commandString);
+
+            string sideEffectString = arr[1];
+            AdditionalSerializationInfo additionalInfo = new AdditionalSerializationInfo(command);
+            WrapSideEffectFunctions wrapSideEffectFunctions = 
+                (WrapSideEffectFunctions) DeserializeWithSoapFormatter(sideEffectString, additionalInfo);
+
+            string opString = arr[2];
+            additionalInfo.SideEffectFunctions = wrapSideEffectFunctions.sideEffectFunctions;
+            GraphViewExecutionOperator op = (GraphViewExecutionOperator)DeserializeWithSoapFormatter(opString, additionalInfo);
+
+            return new Tuple<GraphViewCommand, GraphViewExecutionOperator>(command, op);
+        }
+
+        private static bool HasStringValue(SerializationInfo info, string name)
+        {
+            try
+            {
+                info.GetValue(name, typeof(string));
+                return true;
+            }
+            catch (SerializationException e)
+            {
+                return false;
+            }
+        }
+
+        public static void SerializeList<T>(SerializationInfo info, string name, List<T> list)
+        {
+            if (list != null)
+            {
+                for (int i = 0; i < list.Count; i++)
+                {
+                    info.AddValue($"{name}-{i}", list[i], typeof(T));
+                }
+            }
+            else
+            {
+                info.AddValue(name, IsNullMark);
+            }
+        }
+
+        public static List<T> DeserializeList<T>(SerializationInfo info, string name)
+        {
+
+            if (HasStringValue(info, name))
+            {
+                return null;
+            }
+
+            List<T> list = new List<T>();
+            int index = 0;
+            while (true)
+            {
+                try
+                {
+                    T item = (T)info.GetValue($"{name}-{index}", typeof(T));
+                    list.Add(item);
+                    index++;
+                }
+                catch (SerializationException e)
+                {
+                    return list;
+                }
+            }
+        }
+
+        public static void SerializeListTuple<T1, T2>(SerializationInfo info, string name, List<Tuple<T1, T2>> list)
+        {
+            if (list != null)
+            {
+                for (int i = 0; i < list.Count; i++)
+                {
+                    info.AddValue($"{name}-item1-{i}", list[i].Item1, typeof(T1));
+                    info.AddValue($"{name}-item2-{i}", list[i].Item2, typeof(T2));
+                }
+            }
+            else
+            {
+                info.AddValue(name, IsNullMark);
+            }
+        }
+
+        public static List<Tuple<T1, T2>> DeserializeListTuple<T1, T2>(SerializationInfo info, string name)
+        {
+            if (HasStringValue(info, name))
+            {
+                return null;
+            }
+
+            List<Tuple<T1, T2>> list = new List<Tuple<T1, T2>>();
+            int index = 0;
+            while (true)
+            {
+                try
+                {
+                    T1 item1 = (T1)info.GetValue($"{name}-item1-{index}", typeof(T1));
+                    T2 item2 = (T2)info.GetValue($"{name}-item2-{index}", typeof(T2));
+                    list.Add(new Tuple<T1, T2>(item1, item2));
+                    index++;
+                }
+                catch (SerializationException e)
+                {
+                    return list;
+                }
+            }
+        }
+
+        public static void SerializeListTupleList<T1, T2>(SerializationInfo info, string name, List<Tuple<T1, List<T2>>> list)
+        {
+            if (list != null)
+            {
+                info.AddValue($"{name}-Count", list.Count);
+                for (int i = 0; i < list.Count; i++)
+                {
+                    info.AddValue($"{name}-item1-{i}", list[i].Item1, typeof(T1));
+                    SerializeList(info, $"{name}-item2-{i}", list[i].Item2);
+                }
+            }
+            else
+            {
+                info.AddValue(name, IsNullMark);
+            }
+        }
+
+        public static List<Tuple<T1, List<T2>>> DeserializeListTupleList<T1, T2>(SerializationInfo info, string name)
+        {
+            if (HasStringValue(info, name))
+            {
+                return null;
+            }
+
+            List<Tuple<T1, List<T2>>> list = new List<Tuple<T1, List<T2>>>();
+            int count = info.GetInt32($"{name}-Count");
+            for (int i = 0; i < count; i++)
+            {
+                T1 item1 = (T1)info.GetValue($"{name}-item1-{i}", typeof(T1));
+                List<T2> item2 = DeserializeList<T2>(info, $"{name}-item2-{i}");
+                list.Add(new Tuple<T1, List<T2>>(item1, item2));
+            }
+            return list;
+        }
+
+        public static void SerializeHashSet<T>(SerializationInfo info, string name, HashSet<T> set)
+        {
+            if (set != null)
+            {
+                int index = 0;
+                foreach (T item in set)
+                {
+                    info.AddValue($"{name}-{index}", item, typeof(T));
+                    index++;
+                }
+            }
+            else
+            {
+                info.AddValue(name, IsNullMark);
+            }
+        }
+
+        public static HashSet<T> DeserializeHashSet<T>(SerializationInfo info, string name)
+        {
+            if (HasStringValue(info, name))
+            {
+                return null;
+            }
+
+            HashSet<T> set = new HashSet<T>();
+            int index = 0;
+            while (true)
+            {
+                try
+                {
+                    T item = (T)info.GetValue($"{name}-{index}", typeof(T));
+                    set.Add(item);
+                    index++;
+                }
+                catch (SerializationException e)
+                {
+                    return set;
+                }
+            }
+        }
+
+        public static void SerializeListHashSet<T>(SerializationInfo info, string name, List<HashSet<T>> list)
+        {
+            if (list != null)
+            {
+                info.AddValue($"{name}-Count", list.Count);
+                for (int i = 0; i < list.Count; i++)
+                {
+                    SerializeHashSet(info, $"{name}-{i}", list[i]);
+                }
+            }
+            else
+            {
+                info.AddValue(name, IsNullMark);
+            }
+        }
+
+        public static List<HashSet<T>> DeserializeListHashSet<T>(SerializationInfo info, string name)
+        {
+            if (HasStringValue(info, name))
+            {
+                return null;
+            }
+
+            List<HashSet<T>> list = new List<HashSet<T>>();
+            int count = info.GetInt32($"{name}-Count");
+            for (int i = 0; i < count; i++)
+            {
+                HashSet<T> item = DeserializeHashSet<T>(info, $"{name}-{i}");
+                list.Add(item);
+            }
+            return list;
+        }
+
+        public static void SerializeDictionary<T1, T2>(SerializationInfo info, string name, Dictionary<T1, T2> dict)
+        {
+            if (dict != null)
+            {
+                int index = 0;
+                foreach (KeyValuePair<T1, T2> pair in dict)
+                {
+                    info.AddValue($"{name}-key-{index}", pair.Key, typeof(T1));
+                    info.AddValue($"{name}-value-{index}", pair.Value, typeof(T2));
+                    index++;
+                }
+            }
+            else
+            {
+                info.AddValue(name, IsNullMark);
+            }
+        }
+
+        public static Dictionary<T1, T2> DeserializeDictionary<T1, T2>(SerializationInfo info, string name)
+        {
+            if (HasStringValue(info, name))
+            {
+                return null;
+            }
+
+            Dictionary<T1, T2> dict = new Dictionary<T1, T2>();
+            int index = 0;
+            while (true)
+            {
+                try
+                {
+                    T1 key = (T1) info.GetValue($"{name}-key-{index}", typeof(T1));
+                    T2 value = (T2) info.GetValue($"{name}-value-{index}", typeof(T2));
+                    dict.Add(key, value);
+                    index++;
+                }
+                catch (SerializationException e)
+                {
+                    return dict;
+                }
+            }
+        }
+
+        public static void SerializeDictionaryTuple<T1, T2, T3>(SerializationInfo info, string name, Dictionary<T1, Tuple<T2, T3>> dict)
+        {
+            if (dict != null)
+            {
+                int index = 0;
+                foreach (KeyValuePair<T1, Tuple<T2, T3>> pair in dict)
+                {
+                    info.AddValue($"{name}-key-{index}", pair.Key, typeof(T1));
+                    info.AddValue($"{name}-value1-{index}", pair.Value.Item1, typeof(T2));
+                    info.AddValue($"{name}-value2-{index}", pair.Value.Item2, typeof(T3));
+                    index++;
+                }
+            }
+            else
+            {
+                info.AddValue(name, IsNullMark);
+            }
+        }
+
+        public static Dictionary<T1, Tuple<T2, T3>> DeserializeDictionaryTuple<T1, T2, T3>(SerializationInfo info, string name)
+        {
+            if (HasStringValue(info, name))
+            {
+                return null;
+            }
+
+            Dictionary<T1, Tuple<T2, T3>> dict = new Dictionary<T1, Tuple<T2, T3>>();
+            int index = 0;
+            while (true)
+            {
+                try
+                {
+                    T1 key = (T1)info.GetValue($"{name}-key-{index}", typeof(T1));
+                    T2 value1 = (T2)info.GetValue($"{name}-value1-{index}", typeof(T2));
+                    T3 value2 = (T3)info.GetValue($"{name}-value2-{index}", typeof(T3));
+                    dict.Add(key, new Tuple<T2, T3>(value1, value2));
+                    index++;
+                }
+                catch (SerializationException e)
+                {
+                    return dict;
+                }
+            }
+        }
+
+        public static void SerializeDictionaryList<T1, T2>(SerializationInfo info, string name, Dictionary<T1, List<T2>> dict)
+        {
+            if (dict != null)
+            {
+                int index = 0;
+                foreach (KeyValuePair<T1, List<T2>> pair in dict)
+                {
+                    info.AddValue($"{name}-key-{index}", pair.Key, typeof(T1));
+                    SerializeList(info, $"{name}-value-{index}", pair.Value);
+                    index++;
+                }
+            }
+            else
+            {
+                info.AddValue(name, IsNullMark);
+            }
+        }
+
+        public static Dictionary<T1, List<T2>> DeserializeDictionaryList<T1, T2>(SerializationInfo info, string name, bool valueIsList)
+        {
+            if (HasStringValue(info, name))
+            {
+                return null;
+            }
+
+            Dictionary<T1, List<T2>> dict = new Dictionary<T1, List<T2>>();
+            int index = 0;
+            while (true)
+            {
+                try
+                {
+                    T1 key = (T1)info.GetValue($"{name}-key-{index}", typeof(T1));
+                    List<T2> value = DeserializeList<T2>(info, $"{name}-value-{index}");
+                    dict.Add(key, value);
+                    index++;
+                }
+                catch (SerializationException e)
+                {
+                    return dict;
+                }
+            }
+        }
     }
 
-    internal static class SerializationData
+    [Serializable]
+    internal class WrapSideEffectFunctions : ISerializable
     {
-        public static Dictionary<string, IAggregateFunction> SideEffectStates { get; private set; } = new Dictionary<string, IAggregateFunction>();
+        public Dictionary<string, IAggregateFunction> sideEffectFunctions;
 
-        public static List<Container> Containers { get; private set; } = new List<Container>();
-        public static int index = 0;
-
-        public static GraphViewCommand Command { get; private set; }
-
-        public static void SetSideEffectStates(Dictionary<string, IAggregateFunction> sideEffectStates)
+        public WrapSideEffectFunctions(Dictionary<string, IAggregateFunction> sideEffectFunctions)
         {
-            SerializationData.SideEffectStates = sideEffectStates;
+            this.sideEffectFunctions = sideEffectFunctions;
         }
 
-        public static void SetContainers(List<Container> containers)
+        public void GetObjectData(SerializationInfo info, StreamingContext context)
         {
-            SerializationData.Containers = containers;
+            GraphViewSerializer.SerializeDictionary(info, "sideEffectFunctions", this.sideEffectFunctions);
         }
 
-        public static void SetCommand(GraphViewCommand command)
+        protected WrapSideEffectFunctions(SerializationInfo info, StreamingContext context)
         {
-            SerializationData.Command = command;
+            Debug.Assert((context.Context as AdditionalSerializationInfo)?.Command != null);
+
+            this.sideEffectFunctions = GraphViewSerializer.DeserializeDictionary<string, IAggregateFunction>(info, "sideEffectFunctions");
         }
     }
+
+    internal class AdditionalSerializationInfo
+    {
+        public GraphViewCommand Command { get; private set; }
+        public Dictionary<string, IAggregateFunction> SideEffectFunctions { get; set; }
+
+        public AdditionalSerializationInfo(GraphViewCommand command)
+        {
+            this.Command = command;
+        }
+    }
+
 }

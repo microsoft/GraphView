@@ -2,16 +2,10 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.Serialization;
-using Microsoft.SqlServer.TransactSql.ScriptDom;
 
 namespace GraphView
 {
-    [DataContract]
-    [KnownType(typeof(ComparisonFunction))]
-    [KnownType(typeof(InFunction))]
-    [KnownType(typeof(BooleanBinaryFunction))]
-    [KnownType(typeof(ExistsFunction))]
-    [KnownType(typeof(BooleanNotFunction))]
+    [Serializable]
     internal abstract class BooleanFunction
     {
         public abstract bool Evaluate(RawRecord r);
@@ -32,14 +26,11 @@ namespace GraphView
         }
     }
 
-    [DataContract]
+    [Serializable]
     internal class ComparisonFunction : BooleanFunction
     {
-        [DataMember]
         ScalarFunction firstScalarFunction;
-        [DataMember]
         ScalarFunction secondScalarFunction;
-        [DataMember]
         BooleanComparisonType comparisonType;
         
         public ComparisonFunction(ScalarFunction f1, ScalarFunction f2, BooleanComparisonType comparisonType)
@@ -279,14 +270,11 @@ namespace GraphView
         }
     }
 
-    [DataContract]
+    [Serializable]
     internal class InFunction : BooleanFunction
     {
-        [DataMember]
         private ScalarFunction lhsFunction;
-        [DataMember]
         private List<ScalarFunction> values;
-        [DataMember]
         private bool notDefined;
 
         public InFunction(ScalarFunction lhsFunction, List<ScalarFunction> values, bool notDefined)
@@ -378,14 +366,11 @@ namespace GraphView
         Or,
     }
 
-    [DataContract]
+    [Serializable]
     internal class BooleanBinaryFunction : BooleanFunction
     {
-        [DataMember]
         private BooleanBinaryFunctionType type;
-        [DataMember]
         private BooleanFunction lhs;
-        [DataMember]
         private BooleanFunction rhs;
 
         internal BooleanBinaryFunction(BooleanFunction plhs, BooleanFunction prhs, BooleanBinaryFunctionType ptype)
@@ -429,23 +414,20 @@ namespace GraphView
         }
     }
 
-    [DataContract]
+    [Serializable]
     internal class ExistsFunction : BooleanFunction
     {
         // When a subquery is compiled, the tuple from the outer context
         // is injected into the subquery through a constant-source scan, 
         // which is in a Cartesian product with the operators compiled from the query. 
-        [DataMember]
         private GraphViewExecutionOperator subqueryOp;
+        [NonSerialized]
         private Container container;
-        [DataMember]
-        private int containerIndex;
 
-        public ExistsFunction(GraphViewExecutionOperator subqueryOp, Container container, int containerIndex)
+        public ExistsFunction(GraphViewExecutionOperator subqueryOp, Container container)
         {
             this.subqueryOp = subqueryOp;
             this.container = container;
-            this.containerIndex = containerIndex;
         }
 
         public override bool Evaluate(RawRecord r)
@@ -476,14 +458,15 @@ namespace GraphView
         [OnDeserialized]
         private void Reconstruct(StreamingContext context)
         {
-            this.container = SerializationData.Containers[this.containerIndex];
+            this.container = new Container();
+            EnumeratorOperator enumeratorOp = this.subqueryOp.GetFirstOperator() as EnumeratorOperator;
+            enumeratorOp.SetContainer(this.container);
         }
     }
 
-    [DataContract]
+    [Serializable]
     internal class BooleanNotFunction : BooleanFunction
     {
-        [DataMember]
         private BooleanFunction booleanFunction;
 
         public BooleanNotFunction(BooleanFunction booleanFunction)

@@ -35,15 +35,13 @@ using Microsoft.SqlServer.TransactSql.ScriptDom;
 
 namespace GraphView
 {
-    [DataContract]
-    [KnownType(typeof(Identifier))]
-    [KnownType(typeof(WMultiPartIdentifier))]
-    public abstract partial class WSqlFragment 
+    [Serializable]
+    public abstract partial class WSqlFragment// : ISerializable
     {
-        [DataMember]
         public int FirstTokenIndex { get; set; }
-        [DataMember]
         public int LastTokenIndex { get; set; }
+
+        protected WSqlFragment() { }
 
         internal void UpdateTokenInfo(WSqlFragment fragment)
         {
@@ -86,6 +84,11 @@ namespace GraphView
             return "";
         }
 
+        internal virtual string ToString(string indent, bool useSquareBracket)
+        {
+            return ToString(indent);
+        }
+
         public override string ToString()
         {
             return ToString("");
@@ -116,6 +119,18 @@ namespace GraphView
                 null, null, null, null, new List<ExecutionOrder>()));
             return executionOrder;
         }
+
+        //public virtual void GetObjectData(SerializationInfo info, StreamingContext context)
+        //{
+        //    info.AddValue("FirstTokenIndex", this.FirstTokenIndex, typeof(int));
+        //    info.AddValue("LastTokenIndex", this.LastTokenIndex, typeof(int));
+        //}
+
+        //protected WSqlFragment(SerializationInfo info, StreamingContext context)
+        //{
+        //    this.FirstTokenIndex = info.GetInt32("FirstTokenIndex");
+        //    this.LastTokenIndex = info.GetInt32("LastTokenIndex");
+        //}
     }
 
     public partial class WSqlScript : WSqlFragment

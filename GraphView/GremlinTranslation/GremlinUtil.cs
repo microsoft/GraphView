@@ -226,7 +226,7 @@ namespace GraphView
         }
     }
 
-    [DataContract]
+    [Serializable]
     public class IncrOrder : IComparer
     {
         public int Compare(object x, object y)
@@ -239,7 +239,7 @@ namespace GraphView
         }
     }
 
-    [DataContract]
+    [Serializable]
     public class DecrOrder : IComparer
     {
         public int Compare(object x, object y)
@@ -252,7 +252,7 @@ namespace GraphView
         }
     }
 
-    [DataContract]
+    [Serializable]
     public class ShuffleOrder : IComparer
     {
         private Random random = new Random();

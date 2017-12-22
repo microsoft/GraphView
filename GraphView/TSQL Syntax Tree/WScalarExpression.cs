@@ -23,6 +23,8 @@
 // IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 // CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
+
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -66,7 +68,7 @@ namespace GraphView
         Wildcard
     }
 
-    [DataContract]
+    [Serializable]
     public abstract partial class WScalarExpression : WSqlFragment 
     {
     }
@@ -156,9 +158,7 @@ namespace GraphView
         }
     }
 
-    [DataContract]
-    [KnownType(typeof(WValueExpression))]
-    [KnownType(typeof(WColumnReferenceExpression))]
+    [Serializable]
     public abstract partial class WPrimaryExpression : WScalarExpression { }
 
     public partial class WEdgeColumnReferenceExpression : WColumnReferenceExpression
@@ -220,14 +220,11 @@ namespace GraphView
     /// This class represents columns as scalar expressions.
     /// In particular, when WColumnReferenceExpression is of type *, it appears in function calls such as COUNT(*)
     /// </summary>
-    [DataContract]
+    [Serializable]
     public partial class WColumnReferenceExpression : WPrimaryExpression
     {
-        [DataMember]
         internal WMultiPartIdentifier MultiPartIdentifier { get; set; }
-        [DataMember]
         internal ColumnType ColumnType { get; set; }
-        [DataMember]
         internal ColumnGraphType ColumnGraphType { get; set; }
 
         public WColumnReferenceExpression() { }
@@ -299,6 +296,14 @@ namespace GraphView
             return MultiPartIdentifier != null
                 ? string.Format(CultureInfo.CurrentCulture, "{0}{1}", indent,
                     MultiPartIdentifier)
+                : "";
+        }
+
+        internal override string ToString(string indent, bool useSquareBracket)
+        {
+            return MultiPartIdentifier != null
+                ? string.Format(CultureInfo.CurrentCulture, "{0}{1}", indent,
+                    MultiPartIdentifier.ToString("", useSquareBracket))
                 : "";
         }
 
@@ -453,12 +458,10 @@ namespace GraphView
     /// <summary>
     /// A value expression can be a variable or a literal. 
     /// </summary>
-    [DataContract]
+    [Serializable]
     public partial class WValueExpression : WPrimaryExpression 
     {
-        [DataMember]
         internal string Value { get; set; }
-        [DataMember]
         internal bool SingleQuoted { get; set; }
 
         public WValueExpression(string value, bool quoted = false)
@@ -791,13 +794,13 @@ namespace GraphView
         SquareBracket
     }
 
-    [DataContract]
+    [Serializable]
     public class Identifier : WSqlFragment
     {
-        [DataMember]
         public string Value { get; set; }
-        [DataMember]
         public QuoteType QuoteType { get; set; }
+
+        public Identifier() { }
 
         internal override bool OneLine()
         {
@@ -816,5 +819,6 @@ namespace GraphView
                     return indent + Value;
             }
         }
+
     }
 }

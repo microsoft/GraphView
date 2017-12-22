@@ -92,17 +92,7 @@ namespace GraphView
     /// <summary>
     /// A scalar function takes input as a raw record and outputs a scalar value.
     /// </summary>
-    [DataContract]
-    [KnownType(typeof(ScalarSubqueryFunction))]
-    [KnownType(typeof(ScalarValue))]
-    [KnownType(typeof(FieldValue))]
-    [KnownType(typeof(BinaryScalarFunction))]
-    [KnownType(typeof(ComposeCompositeField))]
-    [KnownType(typeof(Compose2))]
-    [KnownType(typeof(WithOutArray))]
-    [KnownType(typeof(WithInArray))]
-    [KnownType(typeof(HasProperty))]
-    [KnownType(typeof(Path))]
+    [Serializable]
     internal abstract class ScalarFunction
     {
         public abstract FieldObject Evaluate(RawRecord record);
@@ -112,23 +102,20 @@ namespace GraphView
         }
     }
 
-    [DataContract]
+    [Serializable]
     internal class ScalarSubqueryFunction : ScalarFunction
     {
         // When a subquery is compiled, the tuple from the outer context
         // is injected into the subquery through a constant-source scan, 
         // which is in a Cartesian product with the operators compiled from the query. 
-        [DataMember]
         private GraphViewExecutionOperator subqueryOp;
+        [NonSerialized]
         private Container container;
-        [DataMember]
-        private int containerIndex;
 
-        public ScalarSubqueryFunction(GraphViewExecutionOperator subqueryOp, Container container, int containerIndex)
+        public ScalarSubqueryFunction(GraphViewExecutionOperator subqueryOp, Container container)
         {
             this.subqueryOp = subqueryOp;
             this.container = container;
-            this.containerIndex = containerIndex;
         }
 
         public override FieldObject Evaluate(RawRecord record)
@@ -144,16 +131,16 @@ namespace GraphView
         [OnDeserialized]
         private void Reconstruct(StreamingContext context)
         {
-            this.container = SerializationData.Containers[this.containerIndex];
+            EnumeratorOperator enumeratorOp = subqueryOp.GetFirstOperator() as EnumeratorOperator;
+            this.container = new Container();
+            enumeratorOp.SetContainer(this.container);
         }
     }
 
-    [DataContract]
+    [Serializable]
     internal class ScalarValue : ScalarFunction
     {
-        [DataMember]
         private string value;
-        [DataMember]
         private JsonDataType dataType;
 
         public ScalarValue(string value, JsonDataType dataType)
@@ -174,12 +161,10 @@ namespace GraphView
         }
     }
 
-    [DataContract]
+    [Serializable]
     internal class FieldValue : ScalarFunction
     {
-        [DataMember]
         private int fieldIndex;
-        [DataMember]
         private JsonDataType dataType;
 
         public FieldValue(int fieldIndex)
@@ -215,14 +200,11 @@ namespace GraphView
         }
     }
 
-    [DataContract]
+    [Serializable]
     internal class BinaryScalarFunction : ScalarFunction
     {
-        [DataMember]
         ScalarFunction f1;
-        [DataMember]
         ScalarFunction f2;
-        [DataMember]
         BinaryExpressionType binaryType;
 
         public BinaryScalarFunction(ScalarFunction f1, ScalarFunction f2, BinaryExpressionType binaryType)
@@ -407,12 +389,10 @@ namespace GraphView
 
     }
 
-    [DataContract]
-    internal class ComposeCompositeField : ScalarFunction
+    [Serializable]
+    internal class ComposeCompositeField : ScalarFunction, ISerializable
     {
-        [DataMember]
         List<Tuple<string, int>> targetFieldsAndTheirNames;
-        [DataMember]
         string defaultProjectionKey;
         
         public ComposeCompositeField(List<Tuple<string, int>> targetFieldsAndTheirNames, string defaultProjectionKey)
@@ -435,12 +415,42 @@ namespace GraphView
         {
             return JsonDataType.Object;
         }
+
+        public void GetObjectData(SerializationInfo info, StreamingContext context)
+        {
+            List<string> targetFieldsAndTheirNames1 = new List<string>();
+            List<int> targetFieldsAndTheirNames2 = new List<int>();
+            foreach (Tuple<string, int> tuple in this.targetFieldsAndTheirNames)
+            {
+                targetFieldsAndTheirNames1.Add(tuple.Item1);
+                targetFieldsAndTheirNames2.Add(tuple.Item2);
+            }
+            GraphViewSerializer.SerializeList(info, "targetFieldsAndTheirNames1", targetFieldsAndTheirNames1);
+            GraphViewSerializer.SerializeList(info, "targetFieldsAndTheirNames2", targetFieldsAndTheirNames2);
+
+            info.AddValue("defaultProjectionKey", this.defaultProjectionKey, typeof(string));
+        }
+
+        protected ComposeCompositeField(SerializationInfo info, StreamingContext context)
+        {
+            List<string> targetFieldsAndTheirNames1 =
+                GraphViewSerializer.DeserializeList<string>(info, "targetFieldsAndTheirNames1");
+            List<int> targetFieldsAndTheirNames2 =
+                GraphViewSerializer.DeserializeList<int>(info, "targetFieldsAndTheirNames2");
+            this.targetFieldsAndTheirNames = new List<Tuple<string, int>>();
+            Debug.Assert(targetFieldsAndTheirNames1.Count == targetFieldsAndTheirNames2.Count);
+            for (int i = 0; i < targetFieldsAndTheirNames1.Count; i++)
+            {
+                this.targetFieldsAndTheirNames.Add(new Tuple<string, int>(targetFieldsAndTheirNames1[i], targetFieldsAndTheirNames2[i]));
+            }
+
+            this.defaultProjectionKey = info.GetString("defaultProjectionKey");
+        }
     }
 
-    [DataContract]
-    internal class Compose2 : ScalarFunction
+    [Serializable]
+    internal class Compose2 : ScalarFunction, ISerializable
     {
-        [DataMember]
         List<ScalarFunction> inputOfCompose2;
 
         public Compose2(List<ScalarFunction> inputOfCompose2)
@@ -486,14 +496,21 @@ namespace GraphView
             return JsonDataType.Array;
         }
 
+        public void GetObjectData(SerializationInfo info, StreamingContext context)
+        {
+            GraphViewSerializer.SerializeList(info, "inputOfCompose2", this.inputOfCompose2);
+        }
+
+        protected Compose2(SerializationInfo info, StreamingContext context)
+        {
+            this.inputOfCompose2 = GraphViewSerializer.DeserializeList<ScalarFunction>(info, "inputOfCompose2");
+        }
     }
 
-    [DataContract]
+    [Serializable]
     internal class WithOutArray : ScalarFunction
     {
-        [DataMember]
         private int checkFieldIndex;
-        [DataMember]
         private int arrayFieldIndex;
 
         public WithOutArray(int checkFieldIndex, int arrayFieldIndex)
@@ -538,12 +555,10 @@ namespace GraphView
         }
     }
 
-    [DataContract]
+    [Serializable]
     internal class WithInArray : ScalarFunction
     {
-        [DataMember]
         private int checkFieldIndex;
-        [DataMember]
         private int arrayFieldIndex;
 
         public WithInArray(int checkFieldIndex, int arrayFieldIndex)
@@ -588,12 +603,10 @@ namespace GraphView
         }
     }
 
-    [DataContract]
+    [Serializable]
     internal class HasProperty : ScalarFunction
     {
-        [DataMember]
         private int _checkFieldIndex;
-        [DataMember]
         private string _propertyName;
 
         public HasProperty(int checkFieldIndex, string propertyName)
@@ -637,13 +650,12 @@ namespace GraphView
         }
     }
 
-    [DataContract]
-    internal class Path : ScalarFunction
+    [Serializable]
+    internal class Path : ScalarFunction, ISerializable
     {
         //
         // If the boolean value is true, then it's a subPath to be unfolded
         //
-        [DataMember]
         private List<Tuple<ScalarFunction, bool, HashSet<string>>> pathStepList;
 
         public Path(List<Tuple<ScalarFunction, bool, HashSet<string>>> pathStepList)
@@ -749,6 +761,36 @@ namespace GraphView
         public override JsonDataType DataType()
         {
             return JsonDataType.Array;
+        }
+
+        public void GetObjectData(SerializationInfo info, StreamingContext context)
+        {
+            List<ScalarFunction> pathStepList1 = new List<ScalarFunction>();
+            List<bool> pathStepList2 = new List<bool>();
+            List<HashSet<string>> pathStepList3 = new List<HashSet<string>>();
+            foreach (Tuple<ScalarFunction, bool, HashSet<string>> tuple in this.pathStepList)
+            {
+                pathStepList1.Add(tuple.Item1);
+                pathStepList2.Add(tuple.Item2);
+                pathStepList3.Add(tuple.Item3);
+            }
+            GraphViewSerializer.SerializeList(info, "pathStepList1", pathStepList1);
+            GraphViewSerializer.SerializeList(info, "pathStepList2", pathStepList2);
+            GraphViewSerializer.SerializeList(info, "pathStepList3", pathStepList3);
+        }
+
+        protected Path(SerializationInfo info, StreamingContext context)
+        {
+            List<ScalarFunction> pathStepList1 = GraphViewSerializer.DeserializeList<ScalarFunction>(info, "pathStepList1");
+            List<bool> pathStepList2 = GraphViewSerializer.DeserializeList<bool>(info, "pathStepList2");
+            List<HashSet<string>> pathStepList3 = GraphViewSerializer.DeserializeListHashSet<string>(info, "pathStepList3");
+            this.pathStepList = new List<Tuple<ScalarFunction, bool, HashSet<string>>>();
+            Debug.Assert(pathStepList1.Count == pathStepList2.Count && pathStepList2.Count == pathStepList3.Count);
+            for (int i = 0; i < pathStepList1.Count; i++)
+            {
+                this.pathStepList.Add(new Tuple<ScalarFunction, bool, HashSet<string>>(
+                    pathStepList1[i], pathStepList2[i], pathStepList3[i]));
+            }
         }
     }
 }

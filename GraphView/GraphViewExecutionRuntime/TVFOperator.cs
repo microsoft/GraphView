@@ -10,29 +10,18 @@ using static GraphView.DocumentDBKeywords;
 
 namespace GraphView
 {
-    [DataContract]
-    [KnownType(typeof(PropertiesOperator))]
-    [KnownType(typeof(ValuesOperator))]
-    [KnownType(typeof(LabelOperator))]
-    [KnownType(typeof(IdOperator))]
-    [KnownType(typeof(AllPropertiesOperator))]
-    [KnownType(typeof(ValueMapOperator))]
-    [KnownType(typeof(PropertyMapOperator))]
-    [KnownType(typeof(AllValuesOperator))]
-    [KnownType(typeof(ConstantOperator))]
-    [KnownType(typeof(UnfoldOperator))]
-    internal abstract class TableValuedFunction : GraphViewExecutionOperator
+    [Serializable]
+    internal abstract class TableValuedFunction : GraphViewExecutionOperator, ISerializable
     {
-        [DataMember]
         protected GraphViewExecutionOperator inputOperator;
-        protected Queue<RawRecord> outputBuffer;
 
+        protected Queue<RawRecord> outputBuffer;
         protected RawRecord currentRecord = null;
 
         internal TableValuedFunction(GraphViewExecutionOperator pInputOperator)
         {
-            inputOperator = pInputOperator;
-            outputBuffer = new Queue<RawRecord>();
+            this.inputOperator = pInputOperator;
+            this.outputBuffer = new Queue<RawRecord>();
             this.Open();
         }
 
@@ -87,19 +76,28 @@ namespace GraphView
             this.Open();
         }
 
-        [OnDeserialized]
-        private void Reconstruct(StreamingContext context)
+        public override GraphViewExecutionOperator GetFirstOperator()
         {
+            return this.inputOperator.GetFirstOperator();
+        }
+
+        public virtual void GetObjectData(SerializationInfo info, StreamingContext context)
+        {
+            info.AddValue("inputOp", this.inputOperator, typeof(GraphViewExecutionOperator));
+        }
+
+        protected TableValuedFunction(SerializationInfo info, StreamingContext context)
+        {
+            this.inputOperator = (GraphViewExecutionOperator)info.GetValue("inputOp", typeof(GraphViewExecutionOperator));
             this.outputBuffer = new Queue<RawRecord>();
+            this.Open();
         }
     }
 
-    [DataContract]
+    [Serializable]
     internal class PropertiesOperator : TableValuedFunction
     {
-        [DataMember]
         List<int> propertiesIndex;
-        [DataMember]
         List<string> populateMetaproperties; 
 
         public PropertiesOperator(
@@ -186,12 +184,24 @@ namespace GraphView
 
             return results;
         }
+
+        public override void GetObjectData(SerializationInfo info, StreamingContext context)
+        {
+            base.GetObjectData(info, context);
+            GraphViewSerializer.SerializeList(info, "propertiesIndex", this.propertiesIndex);
+            GraphViewSerializer.SerializeList(info, "populateMetaproperties", this.populateMetaproperties);
+        }
+
+        protected PropertiesOperator(SerializationInfo info, StreamingContext context) : base(info, context)
+        {
+            this.propertiesIndex = GraphViewSerializer.DeserializeList<int>(info, "propertiesIndex");
+            this.populateMetaproperties = GraphViewSerializer.DeserializeList<string>(info, "populateMetaproperties");
+        }
     }
 
-    [DataContract]
+    [Serializable]
     internal class ValuesOperator : TableValuedFunction
     {
-        [DataMember]
         List<int> propertiesIndex;
 
         public ValuesOperator(GraphViewExecutionOperator inputOp, List<int> propertiesIndex) : base(inputOp)
@@ -264,25 +274,35 @@ namespace GraphView
 
             return results;
         }
+
+        public override void GetObjectData(SerializationInfo info, StreamingContext context)
+        {
+            base.GetObjectData(info, context);
+            GraphViewSerializer.SerializeList(info, "propertiesIndex", this.propertiesIndex);
+        }
+
+        protected ValuesOperator(SerializationInfo info, StreamingContext context) : base(info, context)
+        {
+            this.propertiesIndex = GraphViewSerializer.DeserializeList<int>(info, "propertiesIndex");
+        }
     }
 
-    [DataContract]
+    [Serializable]
     internal class LabelOperator : TableValuedFunction
     {
-        [DataMember]
-        private readonly int _targetIndex;
+        private readonly int targetIndex;
 
         public LabelOperator(GraphViewExecutionOperator inputOp, int targetIndex)
             : base(inputOp)
         {
-            this._targetIndex = targetIndex;
+            this.targetIndex = targetIndex;
         }
 
         internal override List<RawRecord> CrossApply(RawRecord record)
         {
             List<RawRecord> results = new List<RawRecord>();
 
-            FieldObject target = record[this._targetIndex];
+            FieldObject target = record[this.targetIndex];
             if (target != null)
             {
                 VertexField vertex = target as VertexField;
@@ -313,25 +333,35 @@ namespace GraphView
 
             return results;
         }
+
+        public override void GetObjectData(SerializationInfo info, StreamingContext context)
+        {
+            base.GetObjectData(info, context);
+            info.AddValue("targetIndex", this.targetIndex);
+        }
+
+        protected LabelOperator(SerializationInfo info, StreamingContext context) : base(info, context)
+        {
+            this.targetIndex = info.GetInt32("targetIndex");
+        }
     }
 
-    [DataContract]
+    [Serializable]
     internal class IdOperator : TableValuedFunction
     {
-        [DataMember]
-        private readonly int _targetIndex;
+        private readonly int targetIndex;
 
         public IdOperator(GraphViewExecutionOperator inputOp, int targetIndex)
             : base(inputOp)
         {
-            this._targetIndex = targetIndex;
+            this.targetIndex = targetIndex;
         }
 
         internal override List<RawRecord> CrossApply(RawRecord record)
         {
             List<RawRecord> results = new List<RawRecord>();
 
-            FieldObject target = record[this._targetIndex];
+            FieldObject target = record[this.targetIndex];
             if (target != null)
             {
                 VertexField vertex = target as VertexField;
@@ -362,14 +392,23 @@ namespace GraphView
 
             return results;
         }
+
+        public override void GetObjectData(SerializationInfo info, StreamingContext context)
+        {
+            base.GetObjectData(info, context);
+            info.AddValue("targetIndex", this.targetIndex);
+        }
+
+        protected IdOperator(SerializationInfo info, StreamingContext context) : base(info, context)
+        {
+            this.targetIndex = info.GetInt32("targetIndex");
+        }
     }
 
-    [DataContract]
+    [Serializable]
     internal class AllPropertiesOperator : TableValuedFunction
     {
-        [DataMember]
         private readonly int inputTargetIndex;
-        [DataMember]
         private readonly List<string> populateMetaProperties;
 
         internal AllPropertiesOperator(
@@ -475,16 +514,26 @@ namespace GraphView
             }
             return results;
         }
+
+        public override void GetObjectData(SerializationInfo info, StreamingContext context)
+        {
+            base.GetObjectData(info, context);
+            info.AddValue("inputTargetIndex", this.inputTargetIndex);
+            GraphViewSerializer.SerializeList(info, "populateMetaProperties", this.populateMetaProperties);
+        }
+
+        protected AllPropertiesOperator(SerializationInfo info, StreamingContext context) : base(info, context)
+        {
+            this.inputTargetIndex = info.GetInt32("inputTargetIndex");
+            this.populateMetaProperties = GraphViewSerializer.DeserializeList<string>(info, "populateMetaProperties");
+        }
     }
 
-    [DataContract]
+    [Serializable]
     internal class ValueMapOperator : TableValuedFunction
     {
-        [DataMember]
         private readonly int inputTargetIndex;
-        [DataMember]
         private readonly bool includingMetaValue;
-        [DataMember]
         private readonly List<string> propertyNameList;
 
         internal ValueMapOperator(
@@ -666,14 +715,27 @@ namespace GraphView
             result.Append(valueMap);
             return new List<RawRecord> { result };
         }
+
+        public override void GetObjectData(SerializationInfo info, StreamingContext context)
+        {
+            base.GetObjectData(info, context);
+            info.AddValue("inputTargetIndex", this.inputTargetIndex);
+            info.AddValue("includingMetaValue", this.includingMetaValue);
+            GraphViewSerializer.SerializeList(info, "propertyNameList", this.propertyNameList);
+        }
+
+        protected ValueMapOperator(SerializationInfo info, StreamingContext context) : base(info, context)
+        {
+            this.inputTargetIndex = info.GetInt32("inputTargetIndex");
+            this.includingMetaValue = info.GetBoolean("includingMetaValue");
+            this.propertyNameList = GraphViewSerializer.DeserializeList<string>(info, "propertyNameList");
+        }
     }
 
-    [DataContract]
+    [Serializable]
     internal class PropertyMapOperator : TableValuedFunction
     {
-        [DataMember]
         private readonly int inputTargetIndex;
-        [DataMember]
         private readonly List<string> propertyNameList;
 
         internal PropertyMapOperator(
@@ -832,12 +894,24 @@ namespace GraphView
             result.Append(valueMap);
             return new List<RawRecord> { result };
         }
+
+        public override void GetObjectData(SerializationInfo info, StreamingContext context)
+        {
+            base.GetObjectData(info, context);
+            info.AddValue("inputTargetIndex", this.inputTargetIndex);
+            GraphViewSerializer.SerializeList(info, "propertyNameList", this.propertyNameList);
+        }
+
+        protected PropertyMapOperator(SerializationInfo info, StreamingContext context) : base(info, context)
+        {
+            this.inputTargetIndex = info.GetInt32("inputTargetIndex");
+            this.propertyNameList = GraphViewSerializer.DeserializeList<string>(info, "propertyNameList");
+        }
     }
 
-    [DataContract]
+    [Serializable]
     internal class AllValuesOperator : TableValuedFunction
     {
-        [DataMember]
         private readonly int inputTargetIndex;
 
         internal AllValuesOperator(GraphViewExecutionOperator inputOp, int inputTargetIndex) : base(inputOp)
@@ -926,16 +1000,24 @@ namespace GraphView
             }
             return results;
         }
+
+        public override void GetObjectData(SerializationInfo info, StreamingContext context)
+        {
+            base.GetObjectData(info, context);
+            info.AddValue("inputTargetIndex", this.inputTargetIndex);
+        }
+
+        protected AllValuesOperator(SerializationInfo info, StreamingContext context) : base(info, context)
+        {
+            this.inputTargetIndex = info.GetInt32("inputTargetIndex");
+        }
     }
 
-    [DataContract]
+    [Serializable]
     internal class ConstantOperator : TableValuedFunction
     {
-        [DataMember]
         private List<ScalarFunction> constantValues;
-        [DataMember]
         private bool isList;
-        [DataMember]
         private readonly string defaultProjectionKey;
 
         internal ConstantOperator(
@@ -978,21 +1060,34 @@ namespace GraphView
             return new List<RawRecord> { result };
         }
 
+        public override void GetObjectData(SerializationInfo info, StreamingContext context)
+        {
+            base.GetObjectData(info, context);
+            GraphViewSerializer.SerializeList(info, "constantValues", this.constantValues);
+            info.AddValue("isList", this.isList);
+            info.AddValue("defaultProjectionKey", this.defaultProjectionKey);
+            
+        }
+
+        protected ConstantOperator(SerializationInfo info, StreamingContext context) : base(info, context)
+        {
+            this.constantValues = GraphViewSerializer.DeserializeList<ScalarFunction>(info, "constantValues");
+            this.isList = info.GetBoolean("isList");
+            this.defaultProjectionKey = info.GetString("defaultProjectionKey");
+            
+        }
     }
 
-    [DataContract]
-    internal class PathOperator : GraphViewExecutionOperator
+    [Serializable]
+    internal class PathOperator : GraphViewExecutionOperator, ISerializable
     {
-        [DataMember]
         private GraphViewExecutionOperator inputOp;
         // The scalar function in a path step is either a ComposeCompositeField function 
         // or a column reference. The former wrapps all fields of a single step into one column 
         // that are needed by the By functions. The latter refers to a sub-path produced by a 
         // Gremlin step (or TVF) that has one or more steps.  
         // The boolean value indicates a path step is a sub-path or not. 
-        [DataMember]
         private List<Tuple<ScalarFunction, bool, HashSet<string>>> pathStepList;
-        [DataMember]
         private List<ScalarFunction> byFuncList;
 
         public PathOperator(GraphViewExecutionOperator inputOp,
@@ -1158,19 +1253,52 @@ namespace GraphView
             this.inputOp.ResetState();
             this.Open();
         }
+
+        public override GraphViewExecutionOperator GetFirstOperator()
+        {
+            return this.inputOp.GetFirstOperator();
+        }
+
+        public void GetObjectData(SerializationInfo info, StreamingContext context)
+        {
+            info.AddValue("inputOp", this.inputOp, typeof(GraphViewExecutionOperator));
+
+            List<ScalarFunction> pathStepList1 = this.pathStepList.Select(tuple => tuple.Item1).ToList();
+            List<bool> pathStepList2 = this.pathStepList.Select(tuple => tuple.Item2).ToList();
+            List<HashSet<string>> pathStepList3 = this.pathStepList.Select(tuple => tuple.Item3).ToList();
+            GraphViewSerializer.SerializeList(info, "pathStepList1", pathStepList1);
+            GraphViewSerializer.SerializeList(info, "pathStepList2", pathStepList2);
+            GraphViewSerializer.SerializeListHashSet(info, "pathStepList3", pathStepList3);
+
+            GraphViewSerializer.SerializeList(info, "byFuncList", this.byFuncList);
+        }
+
+        protected PathOperator(SerializationInfo info, StreamingContext context)
+        {
+            this.inputOp = (GraphViewExecutionOperator)info.GetValue("inputOp", typeof(GraphViewExecutionOperator));
+
+            List<ScalarFunction> pathStepList1 = GraphViewSerializer.DeserializeList<ScalarFunction>(info, "pathStepList1");
+            List<bool> pathStepList2 = GraphViewSerializer.DeserializeList<bool>(info, "pathStepList2");
+            List<HashSet<string>> pathStepList3 = GraphViewSerializer.DeserializeListHashSet<string>(info, "pathStepList3");
+            Debug.Assert(pathStepList1.Count == pathStepList2.Count && pathStepList2.Count == pathStepList3.Count);
+            this.pathStepList = new List<Tuple<ScalarFunction, bool, HashSet<string>>>();
+            for (int i = 0; i < pathStepList1.Count; i++)
+            {
+                this.pathStepList.Add(new Tuple<ScalarFunction, bool, HashSet<string>>(pathStepList1[i], pathStepList2[i], pathStepList3[i]));
+            }
+
+            this.byFuncList = GraphViewSerializer.DeserializeList<ScalarFunction>(info, "byFuncList");
+        }
     }
 
-    [DataContract]
-    internal class PathOperator2 : GraphViewExecutionOperator
+    [Serializable]
+    internal class PathOperator2 : GraphViewExecutionOperator, ISerializable
     {
-        [DataMember]
         private GraphViewExecutionOperator inputOp;
         //
         // If the boolean value is true, then it's a subPath to be unfolded
         //
-        [DataMember]
         private List<Tuple<ScalarFunction, bool>> pathStepList;
-        [DataMember]
         private List<ScalarFunction> byFuncList;
 
         public PathOperator2(GraphViewExecutionOperator inputOp,
@@ -1253,14 +1381,45 @@ namespace GraphView
             this.inputOp.ResetState();
             this.Open();
         }
+
+        public override GraphViewExecutionOperator GetFirstOperator()
+        {
+            return this.inputOp.GetFirstOperator();
+        }
+
+        public void GetObjectData(SerializationInfo info, StreamingContext context)
+        {
+            info.AddValue("inputOp", this.inputOp, typeof(GraphViewExecutionOperator));
+
+            List<ScalarFunction> pathStepList1 = this.pathStepList.Select(tuple => tuple.Item1).ToList();
+            List<bool> pathStepList2 = this.pathStepList.Select(tuple => tuple.Item2).ToList();
+            GraphViewSerializer.SerializeList(info, "pathStepList1", pathStepList1);
+            GraphViewSerializer.SerializeList(info, "pathStepList2", pathStepList2);
+
+            GraphViewSerializer.SerializeList(info, "byFuncList", this.byFuncList);
+        }
+
+        protected PathOperator2(SerializationInfo info, StreamingContext context)
+        {
+            this.inputOp = (GraphViewExecutionOperator)info.GetValue("inputOp", typeof(GraphViewExecutionOperator));
+
+            List<ScalarFunction> pathStepList1 = GraphViewSerializer.DeserializeList<ScalarFunction>(info, "pathStepList1");
+            List<bool> pathStepList2 = GraphViewSerializer.DeserializeList<bool>(info, "pathStepList2");
+            Debug.Assert(pathStepList1.Count == pathStepList2.Count);
+            this.pathStepList = new List<Tuple<ScalarFunction, bool>>();
+            for (int i = 0; i < pathStepList1.Count; i++)
+            {
+                this.pathStepList.Add(new Tuple<ScalarFunction, bool>(pathStepList1[i], pathStepList2[i]));
+            }
+
+            this.byFuncList = GraphViewSerializer.DeserializeList<ScalarFunction>(info, "byFuncList");
+        }
     }
 
-    [DataContract]
+    [Serializable]
     internal class UnfoldOperator : TableValuedFunction
     {
-        [DataMember]
         private ScalarFunction getUnfoldTargetFunc;
-        [DataMember]
         private List<string> populateColumns;
 
         internal UnfoldOperator(
@@ -1350,5 +1509,17 @@ namespace GraphView
             return results;
         }
 
+        public override void GetObjectData(SerializationInfo info, StreamingContext context)
+        {
+            base.GetObjectData(info, context);
+            info.AddValue("getUnfoldTargetFunc", this.getUnfoldTargetFunc);
+            GraphViewSerializer.SerializeList(info, "populateColumns", this.populateColumns);
+        }
+
+        protected UnfoldOperator(SerializationInfo info, StreamingContext context) : base(info, context)
+        {
+            this.getUnfoldTargetFunc = (ScalarFunction)info.GetValue("getUnfoldTargetFunc", typeof(ScalarFunction));
+            this.populateColumns = GraphViewSerializer.DeserializeList<string>(info, "populateColumns");
+        }
     }
 }
