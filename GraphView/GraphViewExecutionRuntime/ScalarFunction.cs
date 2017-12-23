@@ -765,32 +765,12 @@ namespace GraphView
 
         public void GetObjectData(SerializationInfo info, StreamingContext context)
         {
-            List<ScalarFunction> pathStepList1 = new List<ScalarFunction>();
-            List<bool> pathStepList2 = new List<bool>();
-            List<HashSet<string>> pathStepList3 = new List<HashSet<string>>();
-            foreach (Tuple<ScalarFunction, bool, HashSet<string>> tuple in this.pathStepList)
-            {
-                pathStepList1.Add(tuple.Item1);
-                pathStepList2.Add(tuple.Item2);
-                pathStepList3.Add(tuple.Item3);
-            }
-            GraphViewSerializer.SerializeList(info, "pathStepList1", pathStepList1);
-            GraphViewSerializer.SerializeList(info, "pathStepList2", pathStepList2);
-            GraphViewSerializer.SerializeList(info, "pathStepList3", pathStepList3);
+            GraphViewSerializer.SerializeListTupleHashSet(info, "pathStepList", this.pathStepList);
         }
 
         protected Path(SerializationInfo info, StreamingContext context)
         {
-            List<ScalarFunction> pathStepList1 = GraphViewSerializer.DeserializeList<ScalarFunction>(info, "pathStepList1");
-            List<bool> pathStepList2 = GraphViewSerializer.DeserializeList<bool>(info, "pathStepList2");
-            List<HashSet<string>> pathStepList3 = GraphViewSerializer.DeserializeListHashSet<string>(info, "pathStepList3");
-            this.pathStepList = new List<Tuple<ScalarFunction, bool, HashSet<string>>>();
-            Debug.Assert(pathStepList1.Count == pathStepList2.Count && pathStepList2.Count == pathStepList3.Count);
-            for (int i = 0; i < pathStepList1.Count; i++)
-            {
-                this.pathStepList.Add(new Tuple<ScalarFunction, bool, HashSet<string>>(
-                    pathStepList1[i], pathStepList2[i], pathStepList3[i]));
-            }
+            this.pathStepList = GraphViewSerializer.DeserializeListTupleHashSet<ScalarFunction, bool, string>(info, "pathStepList");
         }
     }
 }

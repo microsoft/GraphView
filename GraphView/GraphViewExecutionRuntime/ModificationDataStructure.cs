@@ -75,7 +75,7 @@ namespace GraphView
             GraphViewSerializer.SerializeDictionaryTuple(info, "MetaProperties", this.MetaProperties);
         }
 
-        protected PropertyTuple(SerializationInfo info, StreamingContext context)
+        private PropertyTuple(SerializationInfo info, StreamingContext context)
         {
             this.Cardinality = 
                 (GremlinKeyword.PropertyCardinality)info.GetValue("Cardinality", typeof(GremlinKeyword.PropertyCardinality));

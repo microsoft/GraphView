@@ -288,6 +288,43 @@ namespace GraphView
             return list;
         }
 
+        public static void SerializeListTupleHashSet<T1, T2, T3>(SerializationInfo info, string name, List<Tuple<T1, T2, HashSet<T3>>> list)
+        {
+            if (list != null)
+            {
+                info.AddValue($"{name}-Count", list.Count);
+                for (int i = 0; i < list.Count; i++)
+                {
+                    info.AddValue($"{name}-item1-{i}", list[i].Item1, typeof(T1));
+                    info.AddValue($"{name}-item2-{i}", list[i].Item2, typeof(T2));
+                    SerializeHashSet(info, $"{name}-item3-{i}", list[i].Item3);
+                }
+            }
+            else
+            {
+                info.AddValue(name, IsNullMark);
+            }
+        }
+
+        public static List<Tuple<T1, T2, HashSet<T3>>> DeserializeListTupleHashSet<T1, T2, T3>(SerializationInfo info, string name)
+        {
+            if (HasStringValue(info, name))
+            {
+                return null;
+            }
+
+            List<Tuple<T1, T2, HashSet<T3>>> list = new List<Tuple<T1, T2, HashSet<T3>>>();
+            int count = info.GetInt32($"{name}-Count");
+            for (int i = 0; i < count; i++)
+            {
+                T1 item1 = (T1)info.GetValue($"{name}-item1-{i}", typeof(T1));
+                T2 item2 = (T2)info.GetValue($"{name}-item2-{i}", typeof(T2));
+                HashSet<T3> item3 = DeserializeHashSet<T3>(info, $"{name}-item3-{i}");
+                list.Add(new Tuple<T1, T2, HashSet<T3>>(item1, item2, item3));
+            }
+            return list;
+        }
+
         public static void SerializeDictionary<T1, T2>(SerializationInfo info, string name, Dictionary<T1, T2> dict)
         {
             if (dict != null)
