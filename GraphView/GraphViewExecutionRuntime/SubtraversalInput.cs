@@ -166,10 +166,11 @@ namespace GraphView
         private Container container;
         private int offset;
 
-        // withContainer is true initially whether it has container or not.
-        // withContainer is used when deserialization
-        // the value of withContainer is decided when serialization
-        // if withContainer is false, then setContainer will do nothing.(do not set container actually)
+        // In some case, the EnumeratorOperator should not have container.
+        // Use withContainer to avoid add needless container to EnumeratorOperator in deserialization.
+        // Initially, withContainer is true whether it has container or not.
+        // The value of withContainer is decided and serialized in serialization.
+        // If withContainer is false, then setContainer will do nothing.(do not set container actually)
         private readonly bool withContainer;
 
         public EnumeratorOperator()

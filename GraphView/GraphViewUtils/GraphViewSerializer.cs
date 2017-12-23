@@ -13,6 +13,8 @@ namespace GraphView
 {
     internal static class GraphViewSerializer
     {
+        // When serilize a object like List/Set/Dict, if the object is null, serialize IsNullMark.
+        // Use IsNullMark to distinguish whether object is null or empty.
         private const string IsNullMark = "Null";
 
         private static string SerializeWithSoapFormatter(object obj)
@@ -62,6 +64,7 @@ namespace GraphView
 
             string opString = SerializeWithSoapFormatter(op);
 
+            // To combine three string into one string.
             string[] arr = { commandString, sideEffectString, opString };
             return SerializeWithSoapFormatter(arr);
         }
@@ -73,11 +76,13 @@ namespace GraphView
             string commandString = arr[0];
             GraphViewCommand command = (GraphViewCommand)DeserializeWithSoapFormatter(commandString);
 
+            // Deserilization of sideEffectFunctions needs information about command.
             string sideEffectString = arr[1];
             AdditionalSerializationInfo additionalInfo = new AdditionalSerializationInfo(command);
             WrapSideEffectFunctions wrapSideEffectFunctions = 
                 (WrapSideEffectFunctions) DeserializeWithSoapFormatter(sideEffectString, additionalInfo);
 
+            // Deserilization of op needs information about command and sideEffectFunctions.
             string opString = arr[2];
             additionalInfo.SideEffectFunctions = wrapSideEffectFunctions.sideEffectFunctions;
             GraphViewExecutionOperator op = (GraphViewExecutionOperator)DeserializeWithSoapFormatter(opString, additionalInfo);
@@ -85,6 +90,17 @@ namespace GraphView
             return new Tuple<GraphViewCommand, GraphViewExecutionOperator>(command, op);
         }
 
+        //
+        // Following methods are helper methods. They are only used in the serilization of List/HashSet/Dict. 
+        //
+
+        /// <summary>
+        /// Return true if there is a string named [name] in [info];
+        /// Return false otherwise
+        /// </summary>
+        /// <param name="info"></param>
+        /// <param name="name"></param>
+        /// <returns></returns>
         private static bool HasStringValue(SerializationInfo info, string name)
         {
             try
@@ -92,7 +108,7 @@ namespace GraphView
                 info.GetValue(name, typeof(string));
                 return true;
             }
-            catch (SerializationException e)
+            catch (Exception e)
             {
                 return false;
             }
@@ -457,6 +473,10 @@ namespace GraphView
         }
     }
 
+    /// <summary>
+    /// Wrap sideEffectFunctions into a object.
+    /// Make the serialization and deserialization of sideEffectFunctions convenient.
+    /// </summary>
     [Serializable]
     internal class WrapSideEffectFunctions : ISerializable
     {
@@ -480,6 +500,10 @@ namespace GraphView
         }
     }
 
+    /// <summary>
+    /// To store addtional info about Command and SideEffectFunctions.
+    /// These info will be used in deserialization.
+    /// </summary>
     internal class AdditionalSerializationInfo
     {
         public GraphViewCommand Command { get; private set; }
