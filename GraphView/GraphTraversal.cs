@@ -296,6 +296,53 @@ namespace GraphView
             return results;
         }
 
+        public string CompileAndSerialize()
+        {
+            this.Reset();
+            WSqlScript sqlScript = GetEndOp().ToSqlScript();
+            this.SqlScript = sqlScript.ToString();
+
+            return sqlScript.Batches[0].CompileAndSerialize(null, this.Command);
+        }
+
+        public static List<string> ExecuteQueryByDeserialization(string serializationStr, string partitionStr)
+        {
+            Tuple<GraphViewCommand, GraphViewExecutionOperator> tuple = GraphViewSerializer.Deserialize(serializationStr, partitionStr);
+            GraphViewCommand command = tuple.Item1;
+            GraphViewExecutionOperator op = tuple.Item2;
+
+            List<RawRecord> rawRecordResults = new List<RawRecord>();
+            RawRecord outputRec = null;
+
+            while ((outputRec = op.Next()) != null)
+            {
+                rawRecordResults.Add(outputRec);
+            }
+
+            if (command.InLazyMode)
+            {
+                command.VertexCache.UploadDelta();
+            }
+
+            List<string> results = new List<string>();
+
+            switch (command.OutputFormat)
+            {
+                case OutputFormat.GraphSON:
+                    results.Add(GraphSONProjector.ToGraphSON(rawRecordResults, command));
+                    break;
+                default:
+                    foreach (var record in rawRecordResults)
+                    {
+                        FieldObject field = record[0];
+                        results.Add(field.ToString());
+                    }
+                    break;
+            }
+
+            return results;
+        }
+
         internal void InsertGremlinOperator(int index, GremlinTranslationOperator newGremlinTranslationOp)
         {
             if (index > this.GremlinTranslationOpList.Count || index < 0)
@@ -1515,6 +1562,11 @@ namespace GraphView
             return this.EvalGraphTraversal(ConvertGremlinToGraphTraversalCode(sCSCode));
         }
 
+        public string CompileAndSerializeGremlinTraversal(string sCSCode)
+        {
+            return this.CompileAndSerializeGraphTraversal(ConvertGremlinToGraphTraversalCode(sCSCode));
+        }
+
         public string ConvertGremlinToGraphTraversalCode(string sCSCode)
         {
             // transform all the quotes to escape quotes in string in gremlin(groovy).
@@ -1609,6 +1661,50 @@ namespace GraphView
             MethodInfo mi = t.GetMethod("Main");
 
             return (IEnumerable<string>)mi.Invoke(o, null);
+        }
+
+        public string CompileAndSerializeGraphTraversal(string sCSCode)
+        {
+            CompilerParameters cp = new CompilerParameters();
+            cp.ReferencedAssemblies.Add("GraphView.dll");
+            cp.ReferencedAssemblies.Add("System.dll");
+            cp.GenerateInMemory = true;
+
+            StringBuilder sb = new StringBuilder("");
+            sb.Append("using GraphView;\n");
+            sb.Append("using System;\n");
+            sb.Append("using System.Collections.Generic;\n");
+
+            sb.Append("namespace GraphView { \n");
+            sb.Append("public class Program { \n");
+            sb.Append("public object Main() {\n");
+            sb.Append("GraphViewConnection connection = new GraphViewConnection(" + this.GetConnectionInfo() + ");");
+            sb.Append("GraphViewCommand graph = new GraphViewCommand(connection);\n");
+            switch (OutputFormat)
+            {
+                case OutputFormat.GraphSON:
+                    sb.Append("graph.OutputFormat = OutputFormat.GraphSON;\r\n");
+                    break;
+            }
+            sb.Append("return " + sCSCode + ".CompileAndSerialize();\n");
+            sb.Append("}\n");
+            sb.Append("}\n");
+            sb.Append("}\n");
+
+            CodeDomProvider icc = CodeDomProvider.CreateProvider("CSharp");
+            CompilerResults cr = icc.CompileAssemblyFromSource(cp, sb.ToString());
+            if (cr.Errors.Count > 0)
+            {
+                throw new Exception("ERROR: " + cr.Errors[0].ErrorText + "Error evaluating cs code");
+            }
+
+            System.Reflection.Assembly a = cr.CompiledAssembly;
+            object o = a.CreateInstance("GraphView.Program");
+
+            Type t = o.GetType();
+            MethodInfo mi = t.GetMethod("Main");
+
+            return (string)mi.Invoke(o, null);
         }
 
         private string AddDoubleQuotes(string str)

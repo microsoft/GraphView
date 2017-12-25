@@ -1,5 +1,4 @@
-﻿#define USE_SERIALIZE
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Data;
@@ -1025,19 +1024,24 @@ namespace GraphView
                 priorContext = statementContext;
             }
 
-#if USE_SERIALIZE
-            string serString = GraphViewSerializer.Serialize(command, priorContext.SideEffectFunctions, op);
-            Tuple<GraphViewCommand, GraphViewExecutionOperator> deserTuple = GraphViewSerializer.Deserialize(serString);
-
-            // because the command is used in test-case later, we can only set fields and properties of the command.
-            command.SetCommand(deserTuple.Item1);
-
-            return deserTuple.Item2;
-#endif
-
             // Returns the last execution operator
             // To consider: prior execution operators that have no links to the last operator will not be executed.
             return op;
+        }
+
+        internal string CompileAndSerialize(QueryCompilationContext context, GraphViewCommand command)
+        {
+            QueryCompilationContext priorContext = new QueryCompilationContext();
+            GraphViewExecutionOperator op = null;
+            foreach (WSqlStatement st in Statements)
+            {
+                QueryCompilationContext statementContext = new QueryCompilationContext(priorContext.TemporaryTableCollection,
+                    priorContext.SideEffectFunctions, priorContext.SideEffectStates,
+                    priorContext.Containers);
+                op = st.Compile(statementContext, command);
+                priorContext = statementContext;
+            }
+            return GraphViewSerializer.Serialize(command, priorContext.SideEffectFunctions, op);
         }
     }
 

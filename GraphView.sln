@@ -12,6 +12,10 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		UnitTest.runsettings = UnitTest.runsettings
 	EndProjectSection
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StartAzureBatch", "StartAzureBatch\StartAzureBatch.csproj", "{AD320481-FDB0-4257-A550-40E3524BAD84}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GraphViewProgram", "GraphViewProgram\GraphViewProgram.csproj", "{90B219DE-7129-4048-B1A2-9EF712F3CD8D}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -26,6 +30,14 @@ Global
 		{4060ECE6-40A9-4471-8195-8669C5EFA674}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{4060ECE6-40A9-4471-8195-8669C5EFA674}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{4060ECE6-40A9-4471-8195-8669C5EFA674}.Release|Any CPU.Build.0 = Release|Any CPU
+		{AD320481-FDB0-4257-A550-40E3524BAD84}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AD320481-FDB0-4257-A550-40E3524BAD84}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AD320481-FDB0-4257-A550-40E3524BAD84}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AD320481-FDB0-4257-A550-40E3524BAD84}.Release|Any CPU.Build.0 = Release|Any CPU
+		{90B219DE-7129-4048-B1A2-9EF712F3CD8D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{90B219DE-7129-4048-B1A2-9EF712F3CD8D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{90B219DE-7129-4048-B1A2-9EF712F3CD8D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{90B219DE-7129-4048-B1A2-9EF712F3CD8D}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

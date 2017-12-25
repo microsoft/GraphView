@@ -11,7 +11,7 @@ using GraphView.GraphViewDBPortal;
 
 namespace GraphView
 {
-    internal static class GraphViewSerializer
+    internal class GraphViewSerializer
     {
         // When serilize a object like List/Set/Dict, if the object is null, serialize IsNullMark.
         // Use IsNullMark to distinguish whether object is null or empty.
@@ -65,30 +65,31 @@ namespace GraphView
             string opString = SerializeWithSoapFormatter(op);
 
             // To combine three string into one string.
-            string[] arr = { commandString, sideEffectString, opString };
-            return SerializeWithSoapFormatter(arr);
+            SerializationString serializationString = new SerializationString(commandString, sideEffectString, opString);
+            return SerializeWithSoapFormatter(serializationString);
         }
 
-        public static Tuple<GraphViewCommand, GraphViewExecutionOperator> Deserialize(string serializationString)
+        public static Tuple<GraphViewCommand, GraphViewExecutionOperator> Deserialize(string serializationString, string partitionString)
         {
-            string[] arr = (string[])DeserializeWithSoapFormatter(serializationString);
+            SerializationString serializationStringObj = (SerializationString)DeserializeWithSoapFormatter(serializationString);
 
-            string commandString = arr[0];
-            GraphViewCommand command = (GraphViewCommand)DeserializeWithSoapFormatter(commandString);
+            GraphViewCommand command = (GraphViewCommand)DeserializeWithSoapFormatter(serializationStringObj.commandString);
+
+            PartitionPlan partitionPlan = PartitionPlan.DeserializePatitionPlans(partitionString);
 
             // Deserilization of sideEffectFunctions needs information about command.
-            string sideEffectString = arr[1];
-            AdditionalSerializationInfo additionalInfo = new AdditionalSerializationInfo(command);
+            AdditionalSerializationInfo additionalInfo = new AdditionalSerializationInfo(command, partitionPlan);
             WrapSideEffectFunctions wrapSideEffectFunctions = 
-                (WrapSideEffectFunctions) DeserializeWithSoapFormatter(sideEffectString, additionalInfo);
+                (WrapSideEffectFunctions) DeserializeWithSoapFormatter(serializationStringObj.sideEffectString, additionalInfo);
 
             // Deserilization of op needs information about command and sideEffectFunctions.
-            string opString = arr[2];
             additionalInfo.SideEffectFunctions = wrapSideEffectFunctions.sideEffectFunctions;
-            GraphViewExecutionOperator op = (GraphViewExecutionOperator)DeserializeWithSoapFormatter(opString, additionalInfo);
+            GraphViewExecutionOperator op = (GraphViewExecutionOperator)DeserializeWithSoapFormatter(serializationStringObj.opString, additionalInfo);
 
             return new Tuple<GraphViewCommand, GraphViewExecutionOperator>(command, op);
         }
+
+        
 
         //
         // Following methods are helper methods. They are only used in the serilization of List/HashSet/Dict. 
@@ -507,12 +508,205 @@ namespace GraphView
     internal class AdditionalSerializationInfo
     {
         public GraphViewCommand Command { get; private set; }
+        public PartitionPlan PartitionPlan { get; private set; }
         public Dictionary<string, IAggregateFunction> SideEffectFunctions { get; set; }
 
-        public AdditionalSerializationInfo(GraphViewCommand command)
+        public AdditionalSerializationInfo(GraphViewCommand command, PartitionPlan partitionPlan)
         {
             this.Command = command;
+            this.PartitionPlan = partitionPlan;
         }
     }
 
+    public enum PartitionCompareType
+    {
+        Equal,
+        In,
+        Between
+    }
+
+    public enum PartitionBetweenType
+    {
+        IncludeBoth, // a <= x <= b
+        IncludeLeft, // a <= x < b
+        IncludeRight, // a < x <=b
+        Greater, // a < x
+        GreaterOrEqual, // a <= x
+        Less, // x < b
+        LessOrEqual // x <= b
+    }
+
+    public enum PartitionMethod
+    {
+        CompareEntire, // compare entire partition key.
+        CompareFirstChar, // compare the first char of the partition key.
+    }
+
+    [DataContract]
+    public class PartitionPlan
+    {
+        public bool HasBeenApplied { get; set; }
+
+        [DataMember]
+        private string partitionKey;
+
+        [DataMember]
+        private PartitionCompareType compareType;
+
+        [DataMember]
+        private string equalValue;
+        [DataMember]
+        private List<string> inValues;
+        [DataMember]
+        private Tuple<string, string, PartitionBetweenType> betweenValues;
+
+        [DataMember]
+        private PartitionMethod partitionMethod;
+
+        public PartitionPlan(string partitionKey, PartitionMethod partitionMethod, string equalValue)
+        {
+            this.partitionKey = partitionKey;
+            this.partitionMethod = partitionMethod;
+            this.equalValue = equalValue;
+            this.compareType = PartitionCompareType.Equal;
+        }
+
+        public PartitionPlan(string partitionKey, PartitionMethod partitionMethod, List<string> inValues)
+        {
+            this.partitionKey = partitionKey;
+            this.partitionMethod = partitionMethod;
+            this.inValues = inValues;
+            this.compareType = PartitionCompareType.In;
+        }
+
+        public PartitionPlan(string partitionKey, PartitionMethod partitionMethod, Tuple<string, string, PartitionBetweenType> betweenValues)
+        {
+            this.partitionKey = partitionKey;
+            this.partitionMethod = partitionMethod;
+            this.betweenValues = betweenValues;
+            this.compareType = PartitionCompareType.Between;
+        }
+
+        internal string AppendToWhereClause(string tableAlias, string whereClause)
+        {
+            if (this.partitionMethod == PartitionMethod.CompareEntire)
+            {
+                if (this.compareType == PartitionCompareType.In)
+                {
+                    // todo: add new partitionMethod
+                    throw new NotImplementedException();
+                }
+                else
+                {
+                    throw new NotImplementedException();
+                }
+            }
+            else if (this.partitionMethod == PartitionMethod.CompareFirstChar)
+            {
+                if (this.compareType == PartitionCompareType.Between)
+                {
+                    string leftSymbol = "<";
+                    string rightSymbol = "<";
+                    switch (this.betweenValues.Item3)
+                    {
+                        case PartitionBetweenType.IncludeBoth:
+                            leftSymbol += "=";
+                            rightSymbol += "=";
+                            break;
+                        case PartitionBetweenType.IncludeLeft:
+                            leftSymbol += "=";
+                            break;
+                        case PartitionBetweenType.IncludeRight:
+                            rightSymbol += "=";
+                            break;
+                        case PartitionBetweenType.GreaterOrEqual:
+                            leftSymbol += "=";
+                            break;
+                        case PartitionBetweenType.LessOrEqual:
+                            rightSymbol += "=";
+                            break;
+                    }
+
+                    switch (this.betweenValues.Item3)
+                    {
+                        case PartitionBetweenType.IncludeBoth:
+                        case PartitionBetweenType.IncludeLeft:
+                        case PartitionBetweenType.IncludeRight:
+                            return $"({whereClause}) AND " +
+                                   $"\"{this.betweenValues.Item1}\" {leftSymbol} LOWER(LEFT({tableAlias}.{this.partitionKey}, 1)) " +
+                                   $"AND LOWER(LEFT({tableAlias}.{this.partitionKey}, 1)) {rightSymbol} \"{this.betweenValues.Item2}\" ";
+                        case PartitionBetweenType.Greater:
+                        case PartitionBetweenType.GreaterOrEqual:
+                            return $"({whereClause}) AND " +
+                                   $"\"{this.betweenValues.Item1}\" {leftSymbol} LOWER(LEFT({tableAlias}.{this.partitionKey}, 1)) ";
+                        case PartitionBetweenType.Less:
+                        case PartitionBetweenType.LessOrEqual:
+                            return $"({whereClause}) AND " +
+                                   $"LOWER(LEFT({tableAlias}.{this.partitionKey}, 1)) {rightSymbol} \"{this.betweenValues.Item2}\" ";
+                        default:
+                            throw new NotImplementedException();
+                    }
+                }
+                else
+                {
+                    throw new NotImplementedException();
+                }
+            }
+            else
+            {
+                throw new NotImplementedException();
+            }
+        }
+
+        [OnDeserialized]
+        private void Reconstruct(StreamingContext context)
+        {
+            this.HasBeenApplied = false;
+        }
+
+        public static string SerializePatitionPlans(List<PartitionPlan> partitionPlans)
+        {
+            using (MemoryStream memStream = new MemoryStream())
+            {
+                DataContractSerializer ser = new DataContractSerializer(typeof(List<PartitionPlan>));
+                ser.WriteObject(memStream, partitionPlans);
+
+                memStream.Position = 0;
+                StreamReader stringReader = new StreamReader(memStream);
+                return stringReader.ReadToEnd();
+            }
+        }
+
+        public static PartitionPlan DeserializePatitionPlans(string partitionPlanStr)
+        {
+            using (MemoryStream stream = new MemoryStream())
+            {
+                StreamWriter writer = new StreamWriter(stream);
+                writer.Write(partitionPlanStr);
+                writer.Flush();
+                stream.Position = 0;
+
+                DataContractSerializer deser = new DataContractSerializer(typeof(List<PartitionPlan>));
+                int index = int.Parse(Environment.GetEnvironmentVariable("AZ_BATCH_TASK_ID"));
+                PartitionPlan partitionPlan = ((List<PartitionPlan>)deser.ReadObject(stream))[index];
+                return partitionPlan;
+            }
+
+        }
+    }
+
+    [Serializable]
+    public class SerializationString
+    {
+        public string commandString;
+        public string sideEffectString;
+        public string opString;
+
+        public SerializationString(string commandString, string sideEffectString, string opString)
+        {
+            this.commandString = commandString;
+            this.sideEffectString = sideEffectString;
+            this.opString = opString;
+        }
+    }
 }

@@ -31,6 +31,8 @@ namespace GraphView.GraphViewDBPortal
 
         private string dummyQueryString;
 
+        private PartitionPlan partitionPlan;
+
         public JsonQuery()
         {
             this.FlatProperties = new HashSet<string>();
@@ -179,7 +181,17 @@ namespace GraphView.GraphViewDBPortal
             // construct where clause string.
             var docDbStringVisitor = new ToDocDbStringVisitor();
             docDbStringVisitor.Invoke(whereClauseCopy);
-            string whereClauseString = $"WHERE ({docDbStringVisitor.GetString()})";
+            string rawWhereClauseString = docDbStringVisitor.GetString();
+            
+            if (this.partitionPlan != null && !this.partitionPlan.HasBeenApplied)
+            {
+                this.partitionPlan.HasBeenApplied = true;
+                return $"{selectClauseString}\n" +
+                       $"{fromClauseString} {joinClauseString}\n" +
+                       $"WHERE ({this.partitionPlan.AppendToWhereClause(this.NodeAlias ?? this.EdgeAlias, rawWhereClauseString)})";
+            }
+
+            string whereClauseString = $"WHERE ({rawWhereClauseString})";
 
             return $"{selectClauseString}\n" +
                    $"{fromClauseString} {joinClauseString}\n" +
@@ -292,7 +304,7 @@ namespace GraphView.GraphViewDBPortal
             }
         }
 
-        void ISerializable.GetObjectData(SerializationInfo info, StreamingContext context)
+        public void GetObjectData(SerializationInfo info, StreamingContext context)
         {
             GraphViewSerializer.SerializeList(info, "NodeProperties", this.NodeProperties);
             GraphViewSerializer.SerializeList(info, "EdgeProperties", this.EdgeProperties);
@@ -319,6 +331,9 @@ namespace GraphView.GraphViewDBPortal
             this.JsonServerCollectionName = info.GetString("JsonServerCollectionName");
             this.dummyQueryString = info.GetString("dummyQuery");
             this.RawWhereClause = new WSqlParser().ParseWhereClauseFromSelect(this.dummyQueryString);
+
+            AdditionalSerializationInfo additionalInfo = (AdditionalSerializationInfo)context.Context;
+            this.partitionPlan = additionalInfo.PartitionPlan;
         }
 
     }

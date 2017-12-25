@@ -110,6 +110,16 @@ namespace GraphView
             return results;
         }
 
+        public string CompileAndSerialize()
+        {
+            if (this.CommandText == null)
+            {
+                throw new QueryExecutionException("CommandText of GraphViewCommand is not set.");
+            }
+
+            return this.g().CompileAndSerializeGremlinTraversal(CommandText);
+        }
+
         public void Dispose()
         {
         }
