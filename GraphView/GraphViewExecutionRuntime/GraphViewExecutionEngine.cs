@@ -18,6 +18,23 @@ using static GraphView.DocumentDBKeywords;
 namespace GraphView
 {
     [Serializable]
+    [DataContract]
+    [KnownType(typeof(StringField))]
+    [KnownType(typeof(PathStepField))]
+    [KnownType(typeof(PathField))]
+    [KnownType(typeof(CollectionField))]
+    [KnownType(typeof(MapField))]
+    [KnownType(typeof(EntryField))]
+    [KnownType(typeof(CompositeField))]
+    [KnownType(typeof(PropertyField))]
+    [KnownType(typeof(VertexSinglePropertyField))]
+    [KnownType(typeof(EdgePropertyField))]
+    [KnownType(typeof(ValuePropertyField))]
+    [KnownType(typeof(VertexPropertyField))]
+    [KnownType(typeof(EdgeField))]
+    [KnownType(typeof(AdjacencyListField))]
+    [KnownType(typeof(VertexField))]
+    [KnownType(typeof(TreeField))]
     public abstract class FieldObject
     {
         public virtual string ToGraphSON() => ToString();
@@ -53,9 +70,12 @@ namespace GraphView
     }
 
     [Serializable]
+    [DataContract]
     internal class StringField : FieldObject
     {
+        [DataMember]
         public string Value { get; set; }
+        [DataMember]
         public JsonDataType JsonDataType { get; set; }
 
         public StringField(string value, JsonDataType jsonDataType = JsonDataType.String)
@@ -128,10 +148,13 @@ namespace GraphView
         public override string ToValue => this.Value;
     }
 
+    [DataContract]
     internal class PathStepField : FieldObject
     {
-        private FieldObject step { get; set; }
-        private HashSet<string> labels { get; set; }
+        [DataMember]
+        private FieldObject step;
+        [DataMember]
+        private HashSet<string> labels;
 
         public FieldObject StepFieldObject
         {
@@ -199,8 +222,10 @@ namespace GraphView
         public override string ToValue => this.step.ToValue;
     }
 
+    [DataContract]
     internal class PathField : FieldObject
     {
+        [DataMember]
         public List<FieldObject> Path { get; set; }
 
         public PathField(List<FieldObject> path)
@@ -309,8 +334,10 @@ namespace GraphView
         }
     }
 
+    [DataContract]
     internal class CollectionField : FieldObject
     {
+        [DataMember]
         public List<FieldObject> Collection { get; set; }
 
         public CollectionField()
@@ -392,9 +419,12 @@ namespace GraphView
 
     }
 
+    [DataContract]
     internal class MapField : FieldObject, IEnumerable<EntryField>
     {
+        [DataMember]
         private Dictionary<FieldObject, FieldObject> map;
+        [DataMember]
         public List<FieldObject> Order { get; set; } 
 
         public int Count => this.map.Count;
@@ -586,8 +616,10 @@ namespace GraphView
         }
     }
 
+    [DataContract]
     internal class EntryField : FieldObject
     {
+        [DataMember]
         private KeyValuePair<FieldObject, FieldObject> entry;
 
         public EntryField(KeyValuePair<FieldObject, FieldObject> entry)
@@ -630,14 +662,17 @@ namespace GraphView
         }
     }
 
+    [DataContract]
     internal class CompositeField : FieldObject
     {
-        private Dictionary<string, FieldObject> compositeFieldObject { get; set; }
+        [DataMember]
+        public Dictionary<string, FieldObject> CompositeFieldObject { get; private set; }
+        [DataMember]
         public string DefaultProjectionKey { get; set; }
 
         public CompositeField(Dictionary<string, FieldObject> compositeFieldObject, string defaultProjectionKey)
         {
-            this.compositeFieldObject = compositeFieldObject;
+            this.CompositeFieldObject = compositeFieldObject;
             DefaultProjectionKey = defaultProjectionKey;
         }
 
@@ -646,12 +681,12 @@ namespace GraphView
             get
             {
                 FieldObject value;
-                this.compositeFieldObject.TryGetValue(key, out value);
+                this.CompositeFieldObject.TryGetValue(key, out value);
                 return value;
             }
             set
             {
-                this.compositeFieldObject[key] = value;
+                this.CompositeFieldObject[key] = value;
             }
         }
 
@@ -689,6 +724,7 @@ namespace GraphView
         }
     }
 
+    [DataContract]
     public abstract class PropertyField : FieldObject
     {
         public string PropertyName { get; private set; }
@@ -751,6 +787,7 @@ namespace GraphView
         }
     }
 
+    [DataContract]
     public class VertexSinglePropertyField : PropertyField
     {
         public readonly Dictionary<string, ValuePropertyField> MetaProperties = new Dictionary<string, ValuePropertyField>();
@@ -759,6 +796,9 @@ namespace GraphView
 
         public VertexPropertyField VertexProperty { get; }
 
+        [DataMember]
+        // vertexId, propertyName, propertyId
+        public Tuple<string, string, string> SearchInfo { get; private set; } // For serialization
 
         public VertexSinglePropertyField(string propertyId, string propertyName, JValue value, VertexPropertyField vertexProperty)
             : base(propertyName, value.ToString(), JsonDataTypeHelper.GetJsonDataType(value.Type))
@@ -919,11 +959,22 @@ namespace GraphView
 
             return vpGraphSonBuilder.ToString();
         }
+
+        [OnSerializing]
+        private void SetValuesOnSerializing(StreamingContext context)
+        {
+            this.SearchInfo = new Tuple<string, string, string>(this.VertexProperty.Vertex.VertexId, this.PropertyName, this.PropertyId);
+        }
     }
 
+    [DataContract]
     public class EdgePropertyField : PropertyField
     {
         public EdgeField Edge { get; }
+
+        [DataMember]
+        // edgeId, isReverseEdge, propertyName
+        public Tuple<String, bool, string> SearchInfo { get; private set; } // For serialization
 
         public EdgePropertyField(string propertyName, string propertyValue, JsonDataType jsonDataType, EdgeField edgeField)
             : base(propertyName, propertyValue, jsonDataType)
@@ -974,8 +1025,16 @@ namespace GraphView
             this.PropertyValue = ((JValue)property.Value).ToString(CultureInfo.InvariantCulture);
             this.JsonDataType = JsonDataTypeHelper.GetJsonDataType(property.Value.Type);
         }
+
+        [OnSerializing]
+        private void SetValuesOnSerializing(StreamingContext context)
+        {
+            this.SearchInfo = new Tuple<string, bool, string>(this.Edge.EdgeId, 
+                this.Edge.GetEdgeDirection(), this.PropertyName);
+        }
     }
 
+    [DataContract]
     public class ValuePropertyField : PropertyField
     {
         /// <summary>
@@ -983,6 +1042,11 @@ namespace GraphView
         /// If this is a vertex-property's meta property, its parent is VertexSinglePropertyField
         /// </summary>
         public FieldObject Parent { get; }
+
+        [DataMember]
+        // If parent is VertexField: vertexId, null, null, propertyName
+        // If parent is VertexSinglePropertyField: vertexId, singlePropertyName, singlePropertyId, propertyName
+        public Tuple<string, string, string, string> SearchInfo { get; set; }
 
         public ValuePropertyField(string propertyName, string propertyValue, JsonDataType jsonDataType, VertexField vertexField)
             : base(propertyName, propertyValue, jsonDataType)
@@ -1056,14 +1120,41 @@ namespace GraphView
             this.PropertyValue = ((JValue)property.Value).ToString(CultureInfo.InvariantCulture);
             this.JsonDataType = JsonDataTypeHelper.GetJsonDataType(property.Value.Type);
         }
+
+        [OnSerializing]
+        private void SetValuesOnSerializing(StreamingContext context)
+        {
+            VertexField vertexField = this.Parent as VertexField;
+            if (vertexField != null)
+            {
+                this.SearchInfo =
+                    new Tuple<string, string, string, string>(vertexField.VertexId, null, null, this.PropertyName);
+                return;
+            }
+
+            VertexSinglePropertyField vertexSingleProperty = this.Parent as VertexSinglePropertyField;
+            if (vertexSingleProperty != null)
+            {
+                this.SearchInfo =
+                    new Tuple<string, string, string, string>(vertexSingleProperty.VertexProperty.Vertex.VertexId,
+                        vertexSingleProperty.PropertyName, vertexSingleProperty.PropertyId, this.PropertyName);
+                return;
+            }
+            throw new GraphViewException("Should not get here");
+        }
     }
 
+    [DataContract]
     public class VertexPropertyField : PropertyField
     {
         // <id, single_property_field>
         public Dictionary<string, VertexSinglePropertyField> Multiples { get; } = new Dictionary<string, VertexSinglePropertyField>();
 
         public VertexField Vertex { get; }
+
+        [DataMember]
+        // vertexId, propertyName
+        public Tuple<string, string> SearchInfo { get; private set; } // For serialization
 
         public override string PropertyValue
         {
@@ -1228,7 +1319,6 @@ namespace GraphView
             }
         }
 
-
         public void Replace(JProperty multiProperty)
         {
             /* multiProperty looks like: 
@@ -1298,10 +1388,20 @@ namespace GraphView
                 this.Multiples.Remove(propId);
             }
         }
+
+        [OnSerializing]
+        private void SetValuesOnSerializing(StreamingContext context)
+        {
+            this.SearchInfo = new Tuple<string, string>(this.Vertex.VertexId, this.PropertyName);
+        }
     }
 
+    [DataContract]
     public class EdgeField : FieldObject
     {
+        [DataMember]
+        // edgeID, isReverseEdge
+        public Tuple<string, bool> SearchInfo { get; private set; } // For serialization
 
         // <PropertyName, EdgePropertyField>
         public readonly Dictionary<string, EdgePropertyField> EdgeProperties;
@@ -1332,7 +1432,6 @@ namespace GraphView
             get { return this._edgeDocId.Value; }
             set { this._edgeDocId.Value = value; }
         }
-
 
         public string EdgeId => this.EdgeProperties[KW_EDGE_ID].PropertyValue;
 
@@ -1590,6 +1689,22 @@ namespace GraphView
 
             return edgeField;
         }
+
+
+        /// <summary>
+        /// Forward edge return true; Backward edge return false.
+        /// </summary>
+        /// <returns></returns>
+        public bool GetEdgeDirection()
+        {
+            return this.EdgeJObject.Property(KW_EDGE_SINKV).Value.ToString() == this.InV;
+        }
+
+        [OnSerializing]
+        private void SetValuesOnSerializing(StreamingContext context)
+        {
+            this.SearchInfo = new Tuple<string, bool>(this.EdgeId, this.GetEdgeDirection());
+        }
     }
 
     public class AdjacencyListField : FieldObject
@@ -1749,8 +1864,13 @@ namespace GraphView
         }
     }
 
+    [DataContract]
     public class VertexField : FieldObject
     {
+        [DataMember]
+        // vertexId
+        public string SearchInfo { get; private set; } // For serialization
+
         public static bool IsVertexMetaProperty(string propertyName)
         {
             switch (propertyName)
@@ -2373,7 +2493,11 @@ namespace GraphView
             (isReverse ? this.RevAdjacencyList : this.AdjacencyList).HasBeenFetched = true;
         }
 
-
+        [OnSerializing]
+        private void SetValuesOnSerializing(StreamingContext context)
+        {
+            this.SearchInfo = this.VertexId;
+        }
 
         public override bool Equals(object obj)
         {
@@ -2394,14 +2518,17 @@ namespace GraphView
         }
     }
 
+    [DataContract]
     internal class TreeField : FieldObject
     {
-        private FieldObject nodeObject;
-        internal Dictionary<FieldObject, TreeField> Children;
+        [DataMember]
+        public FieldObject NodeObject { get; }
+        [DataMember]
+        public Dictionary<FieldObject, TreeField> Children { get; private set; }
 
         internal TreeField(FieldObject pNodeObject)
         {
-            nodeObject = pNodeObject;
+            NodeObject = pNodeObject;
             Children = new Dictionary<FieldObject, TreeField>();
         }
 
@@ -2427,8 +2554,8 @@ namespace GraphView
         public void ToGraphSON(StringBuilder strBuilder)
         {
             int cnt = 0;
-            strBuilder.Append(FieldObject.ToLiteral(nodeObject.ToValue) + ":{\"key\":");
-            strBuilder.Append(nodeObject.ToGraphSON());
+            strBuilder.Append(FieldObject.ToLiteral(NodeObject.ToValue) + ":{\"key\":");
+            strBuilder.Append(NodeObject.ToGraphSON());
             strBuilder.Append(", \"value\": ");
             strBuilder.Append("{");
             foreach (KeyValuePair<FieldObject, TreeField> child in Children)
@@ -2463,7 +2590,7 @@ namespace GraphView
 
         private void ToString(StringBuilder strBuilder)
         {
-            strBuilder.Append(nodeObject.ToString()).Append(":[");
+            strBuilder.Append(NodeObject.ToString()).Append(":[");
             var cnt = 0;
             foreach (var child in Children)
             {
@@ -2492,6 +2619,7 @@ namespace GraphView
     /// 
     /// | node1 | node1_adjacency_list | node1_rev_adjacency_list |...| nodeK | nodeK_adjacency_list | nodeK_rev_adjacency_list | property1 | property2 |......
     /// </summary>
+    [DataContract]
     public class RawRecord
     {
         internal RawRecord()
@@ -2561,6 +2689,7 @@ namespace GraphView
 
         internal FieldObject this[int index] => this.fieldValues[index];
 
+        [DataMember]
         internal List<FieldObject> fieldValues;
     }
 

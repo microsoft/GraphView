@@ -17,7 +17,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// </summary>
         [TestMethod]
         [Ignore]
-        public async Task AddVertexTest()
+        public void AddVertexTest()
         {
             GraphViewCommand cmd = new GraphViewCommand(graphConnection);
             cmd.OutputFormat = OutputFormat.GraphSON;

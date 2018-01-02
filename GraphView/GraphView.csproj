@@ -65,6 +65,7 @@
     <Reference Include="System.Core" />
     <Reference Include="System.Runtime.Serialization" />
     <Reference Include="System.Runtime.Serialization.Formatters.Soap" />
+    <Reference Include="System.ServiceModel" />
     <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
@@ -86,6 +87,7 @@
     <Compile Include="GraphViewExecutionRuntime\ModificationOperators.cs" />
     <Compile Include="GraphViewExecutionRuntime\ModificationLazyCommit.cs" />
     <Compile Include="GraphViewExecutionRuntime\SelectOperators.cs" />
+    <Compile Include="GraphViewExecutionRuntime\Service.cs" />
     <Compile Include="GraphViewExecutionRuntime\SubtraversalInput.cs" />
     <Compile Include="GraphViewQueryCompiler\AggregationBlock.cs" />
     <Compile Include="GraphViewExecutionRuntime\BooleanFunction.cs" />
