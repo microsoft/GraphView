@@ -114,5 +114,15 @@ namespace GraphView.Transaction
         {
             throw new NotImplementedException();
         }
+
+        public void Commit()
+        {
+            throw new NotImplementedException();
+        }
+
+        public void Abort()
+        {
+            throw new NotImplementedException();
+        }
     }
 }
