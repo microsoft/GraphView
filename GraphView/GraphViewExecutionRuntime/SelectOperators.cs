@@ -48,7 +48,7 @@ namespace GraphView
 
         public override GraphViewExecutionOperator GetFirstOperator()
         {
-            return null;
+            return this;
         }
 
         [OnDeserialized]
@@ -99,7 +99,7 @@ namespace GraphView
 
         public override GraphViewExecutionOperator GetFirstOperator()
         {
-            return null;
+            return this;
         }
 
         [OnDeserialized]
