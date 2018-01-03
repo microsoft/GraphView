@@ -75,10 +75,12 @@ namespace GraphView
 
             GraphViewCommand command = (GraphViewCommand)DeserializeWithSoapFormatter(serializationStringObj.commandString);
 
-            PartitionPlan partitionPlan = PartitionPlan.DeserializePatitionPlans(partitionString);
+            int taskId = int.Parse(Environment.GetEnvironmentVariable("AZ_BATCH_TASK_ID"));
+            List<PartitionPlan> partitionPlans = PartitionPlan.DeserializePatitionPlans(partitionString);
+            PartitionPlan ownPartitionPlan = partitionPlans[taskId];
 
             // Deserilization of sideEffectFunctions needs information about command.
-            AdditionalSerializationInfo additionalInfo = new AdditionalSerializationInfo(command, partitionPlan);
+            AdditionalSerializationInfo additionalInfo = new AdditionalSerializationInfo(command, ownPartitionPlan);
             WrapSideEffectFunctions wrapSideEffectFunctions = 
                 (WrapSideEffectFunctions) DeserializeWithSoapFormatter(serializationStringObj.sideEffectString, additionalInfo);
 
@@ -520,7 +522,6 @@ namespace GraphView
 
     public enum PartitionCompareType
     {
-        Equal,
         In,
         Between
     }
@@ -554,8 +555,6 @@ namespace GraphView
         private PartitionCompareType compareType;
 
         [DataMember]
-        private string equalValue;
-        [DataMember]
         private List<string> inValues;
         [DataMember]
         private Tuple<string, string, PartitionBetweenType> betweenValues;
@@ -563,26 +562,29 @@ namespace GraphView
         [DataMember]
         private PartitionMethod partitionMethod;
 
-        public PartitionPlan(string partitionKey, PartitionMethod partitionMethod, string equalValue)
+        [DataMember]
+        private string ip;
+        [DataMember]
+        private int port;
+
+        public PartitionPlan(string partitionKey, PartitionMethod partitionMethod, string ip, int port)
         {
             this.partitionKey = partitionKey;
             this.partitionMethod = partitionMethod;
-            this.equalValue = equalValue;
-            this.compareType = PartitionCompareType.Equal;
+            this.ip = ip;
+            this.port = port;
         }
 
-        public PartitionPlan(string partitionKey, PartitionMethod partitionMethod, List<string> inValues)
+        public PartitionPlan(string partitionKey, PartitionMethod partitionMethod, string ip, int port, List<string> inValues) 
+            : this(partitionKey, partitionMethod, ip, port)
         {
-            this.partitionKey = partitionKey;
-            this.partitionMethod = partitionMethod;
             this.inValues = inValues;
             this.compareType = PartitionCompareType.In;
         }
 
-        public PartitionPlan(string partitionKey, PartitionMethod partitionMethod, Tuple<string, string, PartitionBetweenType> betweenValues)
+        public PartitionPlan(string partitionKey, PartitionMethod partitionMethod, string ip, int port, Tuple<string, string, PartitionBetweenType> betweenValues)
+            : this(partitionKey, partitionMethod, ip, port)
         {
-            this.partitionKey = partitionKey;
-            this.partitionMethod = partitionMethod;
             this.betweenValues = betweenValues;
             this.compareType = PartitionCompareType.Between;
         }
@@ -677,7 +679,7 @@ namespace GraphView
             }
         }
 
-        public static PartitionPlan DeserializePatitionPlans(string partitionPlanStr)
+        public static List<PartitionPlan> DeserializePatitionPlans(string partitionPlanStr)
         {
             using (MemoryStream stream = new MemoryStream())
             {
@@ -687,9 +689,8 @@ namespace GraphView
                 stream.Position = 0;
 
                 DataContractSerializer deser = new DataContractSerializer(typeof(List<PartitionPlan>));
-                int index = int.Parse(Environment.GetEnvironmentVariable("AZ_BATCH_TASK_ID"));
-                PartitionPlan partitionPlan = ((List<PartitionPlan>)deser.ReadObject(stream))[index];
-                return partitionPlan;
+                List<PartitionPlan> partitionPlans = (List<PartitionPlan>)deser.ReadObject(stream);
+                return partitionPlans;
             }
 
         }
