@@ -243,6 +243,10 @@
     <Compile Include="GraphViewQueryCompiler\Statistics.cs" />
     <Compile Include="GraphViewCommand.cs" />
     <Compile Include="GraphViewDBPortal\DocumentDBKeywords.cs" />
+    <Compile Include="Transaction\LogStore.cs" />
+    <Compile Include="Transaction\RecordQuery.cs" />
+    <Compile Include="Transaction\Transaction.cs" />
+    <Compile Include="Transaction\TxSequenceGenerator.cs" />
     <Compile Include="TSQL Syntax Tree\WControlFlow.cs" />
     <Compile Include="TSQL Syntax Tree\WCreateViewStatement.cs" />
     <Compile Include="TSQL Syntax Tree\WDeclareVariableStatement.cs" />
