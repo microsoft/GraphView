@@ -467,6 +467,31 @@ namespace GraphView
                             Debug.Assert(edgeVertexBridge.BooleanExpression is WEdgeVertexBridgeExpression);
                             WColumnReferenceExpression edgeColumnReferenceExpression =
                                 (edgeVertexBridge.BooleanExpression as WEdgeVertexBridgeExpression).FirstExpr as WColumnReferenceExpression;
+
+                            WBooleanExpression nodeCondition = null;
+                            foreach (WBooleanExpression predicate in matchNode.Predicates)
+                            {
+                                nodeCondition = WBooleanBinaryExpression.Conjunction(nodeCondition, predicate);
+                            }
+
+                            BooleanFunction booleanFunction = null;
+                            List<string> nodeProperties = new List<string>(matchNode.AttachedJsonQuery.NodeProperties);
+                            QueryCompilationContext queryCompilationContext = new QueryCompilationContext();
+
+                            nodeProperties.RemoveAt(0);
+                            foreach (string propertyName in nodeProperties)
+                            {
+                                ColumnGraphType columnGraphType = GraphViewReservedProperties.IsNodeReservedProperty(propertyName)
+                                    ? GraphViewReservedProperties.ReservedNodePropertiesColumnGraphTypes[propertyName]
+                                    : ColumnGraphType.Value;
+                                queryCompilationContext.AddField(matchNode.AttachedJsonQuery.NodeAlias, propertyName, columnGraphType);
+                            }
+
+                            if (nodeCondition != null)
+                            {
+                                booleanFunction = nodeCondition.CompileToFunction(queryCompilationContext, command);
+                            }
+
                             op = new TraversalOperator(
                                 context.CurrentExecutionOperator,
                                 command,
@@ -475,7 +500,8 @@ namespace GraphView
                                     ? TraversalOperator.TraversalTypeEnum.Source
                                     : TraversalOperator.TraversalTypeEnum.Sink,
                                 matchNode.AttachedJsonQuery,
-                                null);
+                                null,
+                                booleanFunction);
                             UpdateNodeLayout(matchNode.NodeAlias, matchNode.Properties, context);
                             operatorChain.Add(op);
                             context.TableReferences.Add(alias);
@@ -484,13 +510,38 @@ namespace GraphView
                         // if item2 is an edge
                         else if (tuple.Item2 is MatchEdge)
                         {
+                            WBooleanExpression nodeCondition = null;
+                            foreach (WBooleanExpression predicate in matchNode.Predicates)
+                            {
+                                nodeCondition = WBooleanBinaryExpression.Conjunction(nodeCondition, predicate);
+                            }
+
+                            BooleanFunction booleanFunction = null;
+                            List<string> nodeProperties = new List<string>(matchNode.AttachedJsonQuery.NodeProperties);
+                            QueryCompilationContext queryCompilationContext = new QueryCompilationContext();
+
+                            nodeProperties.RemoveAt(0);
+                            foreach (string propertyName in nodeProperties)
+                            {
+                                ColumnGraphType columnGraphType = GraphViewReservedProperties.IsNodeReservedProperty(propertyName)
+                                    ? GraphViewReservedProperties.ReservedNodePropertiesColumnGraphTypes[propertyName]
+                                    : ColumnGraphType.Value;
+                                queryCompilationContext.AddField(matchNode.AttachedJsonQuery.NodeAlias, propertyName, columnGraphType);
+                            }
+
+                            if (nodeCondition != null)
+                            {
+                                booleanFunction = nodeCondition.CompileToFunction(queryCompilationContext, command);
+                            }
+
                             op = new TraversalOperator(
                                 context.CurrentExecutionOperator,
                                 command,
                                 context.LocateColumnReference(tuple.Item2.LinkAlias, GremlinKeyword.Star),
                                 GetTraversalType(tuple.Item2 as MatchEdge),
                                 matchNode.AttachedJsonQuery,
-                                null);
+                                null,
+                                booleanFunction);
                             UpdateNodeLayout(matchNode.NodeAlias, matchNode.Properties, context);
                             operatorChain.Add(op);
                             context.TableReferences.Add(alias);
@@ -500,6 +551,7 @@ namespace GraphView
                         {
                             throw new QueryCompilationException("Can't support " + tuple.Item2.ToString());
                         }
+
 
                         // Construct edges and check predicates whose priorities are 2
                         CrossApplyEdges(command, context, operatorChain, tuple, 2);
@@ -1635,10 +1687,34 @@ namespace GraphView
                 //WSelectQueryBlock.ConstructJsonQueryOnNodeViaExternalAPI(matchNode, null);
             }
 
+            WBooleanExpression nodeCondition = null;
+            foreach (WBooleanExpression predicate in matchNode.Predicates)
+            {
+                nodeCondition = WBooleanBinaryExpression.Conjunction(nodeCondition, predicate);
+            }
+
+            BooleanFunction booleanFunction = null;
+            List<string> nodeProperties = new List<string>(matchNode.AttachedJsonQuery.NodeProperties);
+            QueryCompilationContext queryCompilationContext = new QueryCompilationContext();
+
+            nodeProperties.RemoveAt(0);
+            foreach (string propertyName in nodeProperties)
+            {
+                ColumnGraphType columnGraphType = GraphViewReservedProperties.IsNodeReservedProperty(propertyName)
+                    ? GraphViewReservedProperties.ReservedNodePropertiesColumnGraphTypes[propertyName]
+                    : ColumnGraphType.Value;
+                queryCompilationContext.AddField(matchNode.AttachedJsonQuery.NodeAlias, propertyName, columnGraphType);
+            }
+
+            if (nodeCondition != null)
+            {
+                booleanFunction = nodeCondition.CompileToFunction(queryCompilationContext, command);
+            }
+
             TraversalOperator traversalOp = new TraversalOperator(
                 context.CurrentExecutionOperator, command, 
                 edgeFieldIndex, this.GetTraversalTypeParameter(),
-                matchNode.AttachedJsonQuery/*, matchNode.AttachedJsonQueryOfNodesViaExternalAPI*/, null);
+                matchNode.AttachedJsonQuery/*, matchNode.AttachedJsonQueryOfNodesViaExternalAPI*/, null, booleanFunction);
             context.CurrentExecutionOperator = traversalOp;
 
             // Update context's record layout
