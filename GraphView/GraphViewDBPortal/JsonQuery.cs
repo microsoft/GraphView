@@ -181,17 +181,7 @@ namespace GraphView.GraphViewDBPortal
             // construct where clause string.
             var docDbStringVisitor = new ToDocDbStringVisitor();
             docDbStringVisitor.Invoke(whereClauseCopy);
-            string rawWhereClauseString = docDbStringVisitor.GetString();
-            
-            if (this.partitionPlan != null && !this.partitionPlan.HasBeenApplied)
-            {
-                this.partitionPlan.HasBeenApplied = true;
-                return $"{selectClauseString}\n" +
-                       $"{fromClauseString} {joinClauseString}\n" +
-                       $"WHERE ({this.partitionPlan.AppendToWhereClause(this.NodeAlias ?? this.EdgeAlias, rawWhereClauseString)})";
-            }
-
-            string whereClauseString = $"WHERE ({rawWhereClauseString})";
+            string whereClauseString = $"WHERE ({docDbStringVisitor.GetString()})";
 
             return $"{selectClauseString}\n" +
                    $"{fromClauseString} {joinClauseString}\n" +

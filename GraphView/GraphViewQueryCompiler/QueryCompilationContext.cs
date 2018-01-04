@@ -112,6 +112,9 @@ namespace GraphView
         public bool InBatchMode { get; set; }
 
         public bool CarryOn { get; set; }
+
+        public bool InParallelMode { get; set; }
+
         public Dictionary<WColumnReferenceExpression, int> ParentContextRawRecordLayout { get; private set; }
 
         public Dictionary<string, AggregateState> SideEffectStates { get; private set; }
@@ -129,6 +132,7 @@ namespace GraphView
             SideEffectStates = new Dictionary<string, AggregateState>();
             SideEffectFunctions = new Dictionary<string, IAggregateFunction>();
             CarryOn = false;
+            InParallelMode = false;
             Containers = new List<Container>();
             CurrentExecutionOrder = new ExecutionOrder();
             LocalExecutionOrders = new List<ExecutionOrder>();
@@ -143,6 +147,7 @@ namespace GraphView
             TableReferences = new HashSet<string>(parentContext.TableReferences);
             OuterContextOp = new EnumeratorOperator();
             CarryOn = false;
+            InParallelMode = parentContext.InParallelMode;
             ParentContextRawRecordLayout = new Dictionary<WColumnReferenceExpression, int>(
                 parentContext.RawRecordLayout, new WColumnReferenceExpressionComparer());
             SideEffectStates = parentContext.SideEffectStates;
@@ -166,12 +171,13 @@ namespace GraphView
             Containers = priorContainers;
             CurrentExecutionOrder = new ExecutionOrder();
             LocalExecutionOrders = new List<ExecutionOrder>();
+            InParallelMode = false;
         }
 
         public int AddContainers(Container container)
         {
             this.Containers.Add(container);
-            return Containers.Count-1;
+            return Containers.Count - 1;
         }
 
         /// <summary>

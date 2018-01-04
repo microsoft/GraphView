@@ -76,7 +76,7 @@ namespace StartAzureBatch
             this.jobId = "GraphViewJob";
             this.port = 1101;
 
-            this.parallelism = 3;
+            this.parallelism = 2;
 
             this.outputContainerName = "output";
             this.appContainerName = "application";
@@ -220,35 +220,21 @@ namespace StartAzureBatch
         private string MakePartitionPlan(List<Tuple<string, string>> nodeInfo)
         {
             List<PartitionPlan> plans = new List<PartitionPlan>();
-            // temporary solution, very simple. just can run very simple query like g.V().out()
+            
+            // For debug
+            Debug.Assert(this.parallelism == 2);
 
-            if (this.parallelism == 1)
-            {
-                plans.Add(new PartitionPlan("name", PartitionMethod.CompareFirstChar, nodeInfo[0].Item1, this.port,
-                    new Tuple<string, string, PartitionBetweenType>("a", "z", PartitionBetweenType.IncludeBoth)));
-            }
+            plans.Add(new PartitionPlan(
+                "_parititon", 
+                PartitionMethod.CompareEntire, nodeInfo[0].Item1, 
+                this.port, 
+                new List<string>{"marko", "vadas", "lop"}));
 
-            string left = "a";
-            string right;
-            Debug.Assert(this.parallelism <= 26);
-            int span = 26 / this.parallelism;
-            for (int i = 0; i < this.parallelism; i++)
-            {
-                PartitionPlan plan;
-                if (i == this.parallelism - 1)
-                {
-                    plan = new PartitionPlan("name", PartitionMethod.CompareFirstChar, nodeInfo[i].Item1, this.port,
-                        new Tuple<string, string, PartitionBetweenType>(left, "z", PartitionBetweenType.IncludeBoth));
-                    plans.Add(plan);
-                    break;
-                }
-
-                right = "" + (char)(left.First() + span);
-                plan = new PartitionPlan("name", PartitionMethod.CompareFirstChar, nodeInfo[i].Item1, this.port,
-                    new Tuple<string, string, PartitionBetweenType>(left, right, PartitionBetweenType.IncludeLeft));
-                plans.Add(plan);
-                left = right;
-            }
+            plans.Add(new PartitionPlan(
+                "_parititon",
+                PartitionMethod.CompareEntire, nodeInfo[1].Item1,
+                this.port,
+                new List<string> { "josh", "ripple", "peter" }));
 
             return PartitionPlan.SerializePatitionPlans(plans);
         }

@@ -88,7 +88,23 @@ namespace GraphView
             additionalInfo.SideEffectFunctions = wrapSideEffectFunctions.sideEffectFunctions;
             GraphViewExecutionOperator op = (GraphViewExecutionOperator)DeserializeWithSoapFormatter(serializationStringObj.opString, additionalInfo);
 
-            return new Tuple<GraphViewCommand, GraphViewExecutionOperator>(command, op);
+            GraphViewExecutionOperator firstOp = op.GetFirstOperator();
+
+            FetchNodeOperator fetchNode = firstOp as FetchNodeOperator;
+            if (fetchNode != null)
+            {
+                fetchNode.AppendPartitionPlan(ownPartitionPlan);
+                return new Tuple<GraphViewCommand, GraphViewExecutionOperator>(command, op);
+            }
+
+            FetchEdgeOperator fetchEdge = firstOp as FetchEdgeOperator;
+            if (fetchEdge != null)
+            {
+                fetchEdge.AppendPartitionPlan(ownPartitionPlan);
+                return new Tuple<GraphViewCommand, GraphViewExecutionOperator>(command, op);
+            }
+
+            throw new GraphViewException("Can not support this kind of query in parallel mode. First step must be V() or E()");
         }
 
         
@@ -546,8 +562,6 @@ namespace GraphView
     [DataContract]
     public class PartitionPlan
     {
-        public bool HasBeenApplied { get; set; }
-
         [DataMember]
         private string partitionKey;
 
@@ -563,16 +577,16 @@ namespace GraphView
         private PartitionMethod partitionMethod;
 
         [DataMember]
-        private string ip;
+        public string IP { get; }
         [DataMember]
-        private int port;
+        public int Port { get; }
 
         public PartitionPlan(string partitionKey, PartitionMethod partitionMethod, string ip, int port)
         {
             this.partitionKey = partitionKey;
             this.partitionMethod = partitionMethod;
-            this.ip = ip;
-            this.port = port;
+            this.IP = ip;
+            this.Port = port;
         }
 
         public PartitionPlan(string partitionKey, PartitionMethod partitionMethod, string ip, int port, List<string> inValues) 
@@ -589,13 +603,39 @@ namespace GraphView
             this.compareType = PartitionCompareType.Between;
         }
 
+        internal void AppendToWhereClause(JsonQuery jsonQuery)
+        {
+            if (this.partitionMethod == PartitionMethod.CompareEntire)
+            {
+                if (this.compareType == PartitionCompareType.In)
+                {
+                    jsonQuery.WhereConjunction(new WInPredicate(
+                        new WColumnReferenceExpression(jsonQuery.NodeAlias, this.partitionKey), this.inValues),
+                        BooleanBinaryExpressionType.And);
+                }
+                else
+                {
+                    throw new NotImplementedException();
+                }
+            }
+            else
+            {
+                throw new NotImplementedException();
+            }
+        }
+
+        /// <summary>
+        /// Deprecated. Will be deleted later.
+        /// </summary>
+        /// <param name="tableAlias"></param>
+        /// <param name="whereClause"></param>
+        /// <returns></returns>
         internal string AppendToWhereClause(string tableAlias, string whereClause)
         {
             if (this.partitionMethod == PartitionMethod.CompareEntire)
             {
                 if (this.compareType == PartitionCompareType.In)
                 {
-                    // todo: add new partitionMethod
                     throw new NotImplementedException();
                 }
                 else
@@ -660,10 +700,34 @@ namespace GraphView
             }
         }
 
-        [OnDeserialized]
-        private void Reconstruct(StreamingContext context)
+        internal bool BelongToPartitionPlan(string partition)
         {
-            this.HasBeenApplied = false;
+            if (this.partitionMethod == PartitionMethod.CompareEntire)
+            {
+                if (this.compareType == PartitionCompareType.In)
+                {
+                    foreach (string inValue in this.inValues)
+                    {
+                        if (partition == inValue)
+                        {
+                            return true;
+                        }
+                    }
+                    return false;
+                }
+                else
+                {
+                    throw new NotImplementedException();
+                }
+            }
+            else if (this.partitionMethod == PartitionMethod.CompareFirstChar)
+            {
+                throw new NotImplementedException();
+            }
+            else
+            {
+                throw new NotImplementedException();
+            }
         }
 
         public static string SerializePatitionPlans(List<PartitionPlan> partitionPlans)

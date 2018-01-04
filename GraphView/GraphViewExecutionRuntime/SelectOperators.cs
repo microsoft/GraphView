@@ -51,6 +51,11 @@ namespace GraphView
             return this;
         }
 
+        public void AppendPartitionPlan(PartitionPlan plan)
+        {
+            plan.AppendToWhereClause(this.vertexQuery);
+        }
+
         [OnDeserialized]
         private void Reconstruct(StreamingContext context)
         {
@@ -100,6 +105,11 @@ namespace GraphView
         public override GraphViewExecutionOperator GetFirstOperator()
         {
             return this;
+        }
+
+        public void AppendPartitionPlan(PartitionPlan plan)
+        {
+            plan.AppendToWhereClause(this.edgeQuery);
         }
 
         [OnDeserialized]

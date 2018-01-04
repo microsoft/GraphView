@@ -492,13 +492,24 @@ namespace GraphView
                                 booleanFunction = nodeCondition.CompileToFunction(queryCompilationContext, command);
                             }
 
-                            op = new TraversalOperator(
-                                context.CurrentExecutionOperator,
-                                command,
-                                context.LocateColumnReference(edgeColumnReferenceExpression.TableReference, GremlinKeyword.Star),
+                            GraphViewExecutionOperator currentExecutionOperator = context.CurrentExecutionOperator;
+                            int edgeFieldIndex = context.LocateColumnReference(edgeColumnReferenceExpression.TableReference, GremlinKeyword.Star);
+                            TraversalOperator.TraversalTypeEnum traversalType =
                                 edgeColumnReferenceExpression.ColumnName == GremlinKeyword.EdgeSourceV
                                     ? TraversalOperator.TraversalTypeEnum.Source
-                                    : TraversalOperator.TraversalTypeEnum.Sink,
+                                    : TraversalOperator.TraversalTypeEnum.Sink;
+                            if (context.InParallelMode)
+                            {
+                                SendOperatorOfTraversalOp sendOperatorOfTraversalOp = new SendOperatorOfTraversalOp(context.CurrentExecutionOperator,
+                                    edgeFieldIndex, traversalType);
+                                ReceiveOperatorOfTraversalOp receiveOperatorOfTraversalOp = new ReceiveOperatorOfTraversalOp(sendOperatorOfTraversalOp);
+                                currentExecutionOperator = receiveOperatorOfTraversalOp;
+                            }
+                            op = new TraversalOperator(
+                                currentExecutionOperator,
+                                command,
+                                edgeFieldIndex,
+                                traversalType,
                                 matchNode.AttachedJsonQuery,
                                 null,
                                 booleanFunction);
@@ -534,11 +545,21 @@ namespace GraphView
                                 booleanFunction = nodeCondition.CompileToFunction(queryCompilationContext, command);
                             }
 
+                            GraphViewExecutionOperator currentExecutionOperator = context.CurrentExecutionOperator;
+                            int edgeFieldIndex = context.LocateColumnReference(tuple.Item2.LinkAlias, GremlinKeyword.Star);
+                            TraversalOperator.TraversalTypeEnum traversalType = GetTraversalType(tuple.Item2 as MatchEdge);
+                            if (context.InParallelMode)
+                            {
+                                SendOperatorOfTraversalOp sendOperatorOfTraversalOp = new SendOperatorOfTraversalOp(context.CurrentExecutionOperator,
+                                    edgeFieldIndex, traversalType);
+                                ReceiveOperatorOfTraversalOp receiveOperatorOfTraversalOp = new ReceiveOperatorOfTraversalOp(sendOperatorOfTraversalOp);
+                                currentExecutionOperator = receiveOperatorOfTraversalOp;
+                            }
                             op = new TraversalOperator(
-                                context.CurrentExecutionOperator,
+                                currentExecutionOperator,
                                 command,
-                                context.LocateColumnReference(tuple.Item2.LinkAlias, GremlinKeyword.Star),
-                                GetTraversalType(tuple.Item2 as MatchEdge),
+                                edgeFieldIndex,
+                                traversalType,
                                 matchNode.AttachedJsonQuery,
                                 null,
                                 booleanFunction);
@@ -1090,6 +1111,7 @@ namespace GraphView
                 QueryCompilationContext statementContext = new QueryCompilationContext(priorContext.TemporaryTableCollection,
                     priorContext.SideEffectFunctions, priorContext.SideEffectStates,
                     priorContext.Containers);
+                statementContext.InParallelMode = true;
                 op = st.Compile(statementContext, command);
                 priorContext = statementContext;
             }
@@ -1711,8 +1733,17 @@ namespace GraphView
                 booleanFunction = nodeCondition.CompileToFunction(queryCompilationContext, command);
             }
 
+            GraphViewExecutionOperator currentExecutionOperator = context.CurrentExecutionOperator;
+            if (context.InParallelMode)
+            {
+                SendOperatorOfTraversalOp sendOperatorOfTraversalOp = new SendOperatorOfTraversalOp(context.CurrentExecutionOperator,
+                    edgeFieldIndex, this.GetTraversalTypeParameter());
+                ReceiveOperatorOfTraversalOp receiveOperatorOfTraversalOp = new ReceiveOperatorOfTraversalOp(sendOperatorOfTraversalOp);
+                currentExecutionOperator = receiveOperatorOfTraversalOp;
+            }
+
             TraversalOperator traversalOp = new TraversalOperator(
-                context.CurrentExecutionOperator, command, 
+                currentExecutionOperator, command, 
                 edgeFieldIndex, this.GetTraversalTypeParameter(),
                 matchNode.AttachedJsonQuery/*, matchNode.AttachedJsonQueryOfNodesViaExternalAPI*/, null, booleanFunction);
             context.CurrentExecutionOperator = traversalOp;

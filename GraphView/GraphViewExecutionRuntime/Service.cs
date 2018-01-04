@@ -1,8 +1,12 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Linq;
 using System.Runtime.Serialization;
 using System.ServiceModel;
+using System.ServiceModel.Description;
+using System.Threading;
 using Newtonsoft.Json.Linq;
 using static GraphView.DocumentDBKeywords;
 
@@ -13,12 +17,256 @@ namespace GraphView
     {
         [OperationContract]
         void SendRawRecord(RawRecordMessage record);
+
+        [OperationContract]
+        void SendSignal(int index);
     }
 
     internal class RawRecordService : IRawRecordService
     {
+        // use concurrentQueue temporarily
+        public ConcurrentQueue<RawRecordMessage> Messages { get; } = new ConcurrentQueue<RawRecordMessage>();
+        public ConcurrentQueue<int> Signals { get; } = new ConcurrentQueue<int>();
+
         public void SendRawRecord(RawRecordMessage record)
         {
+            Messages.Enqueue(record);
+        }
+
+        public void SendSignal(int index)
+        {
+            Signals.Enqueue(index);
+        }
+    }
+
+    internal class SendOperatorOfTraversalOp : GraphViewExecutionOperator
+    {
+        private GraphViewExecutionOperator inputOp;
+
+        private int edgeFieldIndex;
+        TraversalOperator.TraversalTypeEnum traversalType;
+
+        private string receiveOpId;
+
+        // Set following fields in deserialization
+        private List<PartitionPlan> partitionPlans;
+        private int partitionPlanIndex;
+        private GraphViewCommand command;
+
+        public SendOperatorOfTraversalOp(GraphViewExecutionOperator inputOp, int edgeFieldIndex, 
+            TraversalOperator.TraversalTypeEnum traversalType)
+        {
+            this.inputOp = inputOp;
+            this.edgeFieldIndex = edgeFieldIndex;
+            this.traversalType = traversalType;
+            this.Open();
+        }
+
+        public override RawRecord Next()
+        {
+            RawRecord record;
+            while (this.inputOp.State() && (record = this.inputOp.Next()) != null)
+            {
+                EdgeField edge = record[this.edgeFieldIndex] as EdgeField;
+                switch (this.traversalType)
+                {
+                    case TraversalOperator.TraversalTypeEnum.Source:
+                        if (ReturnOrSend(record, edge.OutVPartition))
+                        {
+                            return record;
+                        }
+                        break;
+                    case TraversalOperator.TraversalTypeEnum.Sink:
+                        if (ReturnOrSend(record, edge.InVPartition))
+                        {
+                            return record;
+                        }
+                        break;
+                    case TraversalOperator.TraversalTypeEnum.Other:
+                        if (ReturnOrSend(record, edge.OtherVPartition))
+                        {
+                            return record;
+                        }
+                        break;
+                    case TraversalOperator.TraversalTypeEnum.Both:
+                        if (ReturnOrSend(record, edge.OutVPartition))
+                        {
+                            return record;
+                        }
+                        break;
+                    default:
+                        throw new GraphViewException("Type of TraversalTypeEnum wrong.");
+                }
+            }
+
+            for (int i = 0; i < this.partitionPlans.Count; i++)
+            {
+                if (i == this.partitionPlanIndex)
+                {
+                    continue;
+                }
+                // todo: construct client and send signal
+            }
+
+            this.Close();
+            return null;
+        }
+
+        private bool ReturnOrSend(RawRecord record, string partition)
+        {
+            if (this.partitionPlans[this.partitionPlanIndex].BelongToPartitionPlan(partition))
+            {
+                return true;
+            }
+            for (int i = 0; i < this.partitionPlans.Count; i++)
+            {
+                if (i == this.partitionPlanIndex)
+                {
+                    continue;
+                }
+                if (this.partitionPlans[this.partitionPlanIndex].BelongToPartitionPlan(partition))
+                {
+                    SendRawRecord(record, i);
+                    break;
+                }
+                Debug.Assert(i != this.partitionPlans.Count - 1);
+            }
+            return false;
+        }
+
+        private void SendRawRecord(RawRecord record, int NodeIndex)
+        {
+            RawRecordMessage message = new RawRecordMessage(record, this.command);
+
+            string ip = this.partitionPlans[this.partitionPlanIndex].IP;
+            int port = this.partitionPlans[this.partitionPlanIndex].Port;
+            UriBuilder uri = new UriBuilder("http", ip, port, this.receiveOpId);
+            Uri baseAddress = uri.Uri;
+
+            // todo: construct client and send message
+        }
+
+        public void SetReceiveOpId(string id)
+        {
+            this.receiveOpId = id;
+        }
+
+        public override GraphViewExecutionOperator GetFirstOperator()
+        {
+            return this.inputOp.GetFirstOperator();
+        }
+
+        public override void ResetState()
+        {
+            this.Open();
+            this.inputOp.ResetState();
+        }
+    }
+
+    internal class ReceiveOperatorOfTraversalOp : GraphViewExecutionOperator
+    {
+        private SendOperatorOfTraversalOp inputOp;
+
+        private ServiceHost selfHost;
+        private RawRecordService service;
+        private List<bool> hasBeenSignaled;
+
+        // Set following fields in deserialization
+        private List<PartitionPlan> partitionPlans;
+        private int partitionPlanIndex;
+        private GraphViewCommand command;
+
+        public string Id { get;}
+
+        public ReceiveOperatorOfTraversalOp(SendOperatorOfTraversalOp inputOp)
+        {
+            this.inputOp = inputOp;
+
+            this.Id = Guid.NewGuid().ToString("N");
+            this.inputOp.SetReceiveOpId(this.Id);
+
+            this.selfHost = null;
+            this.hasBeenSignaled = Enumerable.Repeat(false, this.partitionPlans.Count).ToList();
+            this.hasBeenSignaled[this.partitionPlanIndex] = true;
+
+            this.Open();
+        }
+
+        public override RawRecord Next()
+        {
+            if (this.selfHost == null)
+            {
+                PartitionPlan ownPartitionPlan = this.partitionPlans[this.partitionPlanIndex];
+                UriBuilder uri = new UriBuilder("http", ownPartitionPlan.IP, ownPartitionPlan.Port, this.Id);
+                Uri baseAddress = uri.Uri;
+
+                this.selfHost = new ServiceHost(new RawRecordService(), baseAddress);
+
+                selfHost.AddServiceEndpoint(typeof(IRawRecordService), new WSHttpBinding(), "RawRecordService");
+
+                ServiceMetadataBehavior smb = new ServiceMetadataBehavior();
+                smb.HttpGetEnabled = true;
+                selfHost.Description.Behaviors.Add(smb);
+                selfHost.Description.Behaviors.Find<ServiceBehaviorAttribute>().InstanceContextMode =
+                    InstanceContextMode.Single;
+
+                this.service = selfHost.SingletonInstance as RawRecordService;
+
+                selfHost.Open();
+            }
+
+            RawRecord record;
+            if (this.inputOp.State() && (record = this.inputOp.Next()) != null)
+            {
+                return record;
+            }
+
+            // todo : use loop temporarily. need change later.
+            while (true)
+            {
+                RawRecordMessage message;
+                if (this.service.Messages.TryDequeue(out message))
+                {
+                    return message.DecodingMessage(this.command);
+                }
+
+                int signalIndex;
+                while (this.service.Signals.TryDequeue(out signalIndex))
+                {
+                    this.hasBeenSignaled[signalIndex] = true;
+                }
+
+                bool canClose = true;
+                foreach (bool flag in this.hasBeenSignaled)
+                {
+                    if (flag == false)
+                    {
+                        canClose = false;
+                        break;
+                    }
+                }
+                if (canClose)
+                {
+                    break;
+                }
+            }
+
+            this.selfHost.Close();
+            this.Close();
+            return null;
+        }
+
+        public override GraphViewExecutionOperator GetFirstOperator()
+        {
+            return this.inputOp.GetFirstOperator();
+        }
+
+        public override void ResetState()
+        {
+            this.Open();
+            Debug.Assert(this.selfHost == null || this.selfHost.State == CommunicationState.Closed);
+            this.selfHost = null;
+            this.inputOp.ResetState();
         }
     }
 
@@ -36,10 +284,8 @@ namespace GraphView
         private RawRecord record;
 
         private Dictionary<string, VertexField> vertexFields;
-        private Dictionary<string, EdgeField> forwardEdgeFields;
-        private Dictionary<string, EdgeField> backwardEdgeFields;
 
-        public RawRecordMessage(RawRecord record)
+        public RawRecordMessage(RawRecord record, GraphViewCommand command)
         {
             this.record = record;
 
@@ -49,11 +295,11 @@ namespace GraphView
             // analysis record
             for (int i = 0; i < record.Length; i++)
             {
-                AnalysisFieldObject(record[i]);
+                AnalysisFieldObject(record[i], command);
             }
         }
 
-        private void AnalysisFieldObject(FieldObject fieldObject)
+        private void AnalysisFieldObject(FieldObject fieldObject, GraphViewCommand command)
         {
             StringField stringField = fieldObject as StringField;
             if (stringField != null)
@@ -64,7 +310,7 @@ namespace GraphView
             PathStepField pathStepField = fieldObject as PathStepField;
             if (pathStepField != null)
             {
-                AnalysisFieldObject(pathStepField.StepFieldObject);
+                AnalysisFieldObject(pathStepField.StepFieldObject, command);
             }
 
             PathField pathField = fieldObject as PathField;
@@ -72,7 +318,7 @@ namespace GraphView
             {
                 foreach (FieldObject pathStep in pathField.Path)
                 {
-                    AnalysisFieldObject(pathStep);
+                    AnalysisFieldObject(pathStep, command);
                 }
             }
 
@@ -81,7 +327,7 @@ namespace GraphView
             {
                 foreach (FieldObject field in collectionField.Collection)
                 {
-                    AnalysisFieldObject(field);
+                    AnalysisFieldObject(field, command);
                 }
             }
 
@@ -90,15 +336,15 @@ namespace GraphView
             {
                 foreach (EntryField entry in mapField.ToList())
                 {
-                    AnalysisFieldObject(entry);
+                    AnalysisFieldObject(entry, command);
                 }
             }
 
             EntryField entryField = fieldObject as EntryField;
             if (entryField != null)
             {
-                AnalysisFieldObject(entryField.Key);
-                AnalysisFieldObject(entryField.Value);
+                AnalysisFieldObject(entryField.Key, command);
+                AnalysisFieldObject(entryField.Value, command);
             }
 
             CompositeField compositeField = fieldObject as CompositeField;
@@ -106,17 +352,17 @@ namespace GraphView
             {
                 foreach (FieldObject field in compositeField.CompositeFieldObject.Values)
                 {
-                    AnalysisFieldObject(field);
+                    AnalysisFieldObject(field, command);
                 }
             }
 
             TreeField treeField = fieldObject as TreeField;
             if (treeField != null)
             {
-                AnalysisFieldObject(treeField.NodeObject);
+                AnalysisFieldObject(treeField.NodeObject, command);
                 foreach (TreeField field in treeField.Children.Values)
                 {
-                    AnalysisFieldObject(field);
+                    AnalysisFieldObject(field, command);
                 }
             }
 
@@ -129,7 +375,7 @@ namespace GraphView
             EdgePropertyField edgePropertyField = fieldObject as EdgePropertyField;
             if (edgePropertyField != null)
             {
-                AddEdge(edgePropertyField.Edge);
+                AddEdge(edgePropertyField.Edge, command);
             }
 
             ValuePropertyField valuePropertyField = fieldObject as ValuePropertyField;
@@ -156,7 +402,7 @@ namespace GraphView
             EdgeField edgeField = fieldObject as EdgeField;
             if (edgeField != null)
             {
-                AddEdge(edgeField);
+                AddEdge(edgeField, command);
             }
 
             VertexField vertexField = fieldObject as VertexField;
@@ -177,23 +423,63 @@ namespace GraphView
             }
         }
 
-        private void AddEdge(EdgeField edgeField)
+        private void AddEdge(EdgeField edgeField, GraphViewCommand command)
         {
             string edgeId = edgeField.EdgeId;
-            bool isForward = edgeField.GetEdgeDirection();
+            bool isReverse = edgeField.IsReverse;
 
-            if (isForward)
+            if (isReverse)
             {
-                if (!this.forwardEdges.ContainsKey(edgeId))
+                string vertexId = edgeField.InV;
+                VertexField vertex;
+                if (command.VertexCache.TryGetVertexField(vertexId, out vertex))
                 {
-                    this.forwardEdges[edgeId] = edgeField.EdgeJObject.ToString();
+                    bool isSpilled = EdgeDocumentHelper.IsSpilledVertex(vertex.VertexJObject, isReverse);
+                    if (isSpilled)
+                    {
+                        if (!this.forwardEdges.ContainsKey(edgeId))
+                        {
+                            this.forwardEdges[edgeId] = edgeField.EdgeJObject.ToString();
+                        }
+                    }
+                    else
+                    {
+                        if (!this.vertices.ContainsKey(vertexId))
+                        {
+                            this.vertices[vertexId] = vertex.VertexJObject.ToString();
+                        }
+                    }
+                }
+                else
+                {
+                    throw new GraphViewException($"VertexCache should have this vertex. VertexId:{vertexId}");
                 }
             }
             else
             {
-                if (!this.backwardEdges.ContainsKey(edgeId))
+                string vertexId = edgeField.OutV;
+                VertexField vertex;
+                if (command.VertexCache.TryGetVertexField(vertexId, out vertex))
                 {
-                    this.backwardEdges[edgeId] = edgeField.EdgeJObject.ToString();
+                    bool isSpilled = EdgeDocumentHelper.IsSpilledVertex(vertex.VertexJObject, isReverse);
+                    if (isSpilled)
+                    {
+                        if (!this.backwardEdges.ContainsKey(edgeId))
+                        {
+                            this.backwardEdges[edgeId] = edgeField.EdgeJObject.ToString();
+                        }
+                    }
+                    else
+                    {
+                        if (!this.vertices.ContainsKey(vertexId))
+                        {
+                            this.vertices[vertexId] = vertex.VertexJObject.ToString();
+                        }
+                    }
+                }
+                else
+                {
+                    throw new GraphViewException($"VertexCache should have this vertex. VertexId:{vertexId}");
                 }
             }
         }
@@ -216,14 +502,9 @@ namespace GraphView
                 string outVLable = (string)edgeJObject[KW_EDGE_SRCV_LABEL];
                 string outVPartition = (string)edgeJObject[KW_EDGE_SRCV_PARTITION];
                 string edgeDocId = (string)edgeJObject[KW_DOC_ID];
-                this.forwardEdgeFields[pair.Key] = EdgeField.ConstructForwardEdgeField(outVId,
-                    outVLable, outVPartition, edgeDocId, edgeJObject);
 
-                if (this.vertexFields.ContainsKey(outVId))
-                {
-                    this.vertexFields[outVId].AdjacencyList.TryAddEdgeField(pair.Key, 
-                        () => this.forwardEdgeFields[pair.Key]);
-                }
+                this.vertexFields[outVId].AdjacencyList.TryAddEdgeField(pair.Key,
+                    () => EdgeField.ConstructForwardEdgeField(outVId, outVLable, outVPartition, edgeDocId, edgeJObject));
             }
 
             foreach (KeyValuePair<string, string> pair in this.backwardEdges)
@@ -233,14 +514,9 @@ namespace GraphView
                 string inVLable = (string)edgeJObject[KW_EDGE_SINKV_LABEL];
                 string inVPartition = (string)edgeJObject[KW_EDGE_SINKV_PARTITION];
                 string edgeDocId = (string)edgeJObject[KW_DOC_ID];
-                this.backwardEdgeFields[pair.Key] = EdgeField.ConstructBackwardEdgeField(inVId,
-                    inVLable, inVPartition, edgeDocId, edgeJObject);
 
-                if (this.vertexFields.ContainsKey(inVId))
-                {
-                    this.vertexFields[inVId].RevAdjacencyList.TryAddEdgeField(pair.Key,
-                        () => this.backwardEdgeFields[pair.Key]);
-                }
+                this.vertexFields[inVId].RevAdjacencyList.TryAddEdgeField(pair.Key,
+                    () => EdgeField.ConstructBackwardEdgeField(inVId, inVLable, inVPartition, edgeDocId, edgeJObject));
             }
 
             RawRecord correctRecord = new RawRecord();
@@ -336,17 +612,18 @@ namespace GraphView
             EdgePropertyField edgePropertyField = fieldObject as EdgePropertyField;
             if (edgePropertyField != null)
             {
-                string edgeId = edgePropertyField.SearchInfo.Item1;
-                bool isReverseEdge = edgePropertyField.SearchInfo.Item2;
-                string propertyName = edgePropertyField.SearchInfo.Item3;
+                string vertexId = edgePropertyField.SearchInfo.Item1;
+                string edgeId = edgePropertyField.SearchInfo.Item2;
+                bool isReverseEdge = edgePropertyField.SearchInfo.Item3;
+                string propertyName = edgePropertyField.SearchInfo.Item4;
 
                 if (isReverseEdge)
                 {
-                    return this.backwardEdgeFields[edgeId].EdgeProperties[propertyName];
+                    return this.vertexFields[vertexId].RevAdjacencyList.GetEdgeField(edgeId, false).EdgeProperties[propertyName];
                 }
                 else
                 {
-                    return this.forwardEdgeFields[edgeId].EdgeProperties[propertyName];
+                    return this.vertexFields[vertexId].AdjacencyList.GetEdgeField(edgeId, false).EdgeProperties[propertyName];
                 }
             }
 
@@ -380,15 +657,16 @@ namespace GraphView
             EdgeField edgeField = fieldObject as EdgeField;
             if (edgeField != null)
             {
-                string edgeId = edgeField.SearchInfo.Item1;
-                bool isReverseEdge = edgeField.SearchInfo.Item2;
+                string vertexId = edgePropertyField.SearchInfo.Item1;
+                string edgeId = edgeField.SearchInfo.Item2;
+                bool isReverseEdge = edgeField.SearchInfo.Item3;
                 if (isReverseEdge)
                 {
-                    return this.backwardEdgeFields[edgeId];
+                    return this.vertexFields[vertexId].RevAdjacencyList.GetEdgeField(edgeId, false);
                 }
                 else
                 {
-                    return this.forwardEdgeFields[edgeId];
+                    return this.vertexFields[vertexId].AdjacencyList.GetEdgeField(edgeId, false);
                 }
             }
 
@@ -400,6 +678,69 @@ namespace GraphView
             }
 
             throw new GraphViewException($"The type of the fieldObject is wrong. Now the type is: {fieldObject.GetType()}");
+        }
+    }
+
+    internal class BoundedBuffer<T>
+    {
+        private int bufferSize;
+        private Queue<T> boundedBuffer;
+
+        // Whether the queue expects more elements to come
+        public bool More { get; private set; }
+
+        private readonly Object monitor;
+
+        public BoundedBuffer(int bufferSize)
+        {
+            this.boundedBuffer = new Queue<T>(bufferSize);
+            this.bufferSize = bufferSize;
+            this.More = true;
+            this.monitor = new object();
+        }
+
+        public void Add(T element)
+        {
+            lock (this.monitor)
+            {
+                while (boundedBuffer.Count == this.bufferSize)
+                {
+                    Monitor.Wait(this.monitor);
+                }
+
+                this.boundedBuffer.Enqueue(element);
+                Monitor.Pulse(this.monitor);
+            }
+        }
+
+        public T Retrieve()
+        {
+            T element = default(T);
+
+            lock (this.monitor)
+            {
+                while (this.boundedBuffer.Count == 0 && this.More)
+                {
+                    Monitor.Wait(this.monitor);
+                }
+
+                if (this.boundedBuffer.Count > 0)
+                {
+                    element = this.boundedBuffer.Dequeue();
+                    Monitor.Pulse(this.monitor);
+                }
+            }
+
+            return element;
+        }
+
+        public void Close()
+        {
+            lock (this.monitor)
+            {
+                this.More = false;
+                Monitor.PulseAll(this.monitor);
+            }
         }
     }
 

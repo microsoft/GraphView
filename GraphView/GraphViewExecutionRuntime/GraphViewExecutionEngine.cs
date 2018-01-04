@@ -973,8 +973,8 @@ namespace GraphView
         public EdgeField Edge { get; }
 
         [DataMember]
-        // edgeId, isReverseEdge, propertyName
-        public Tuple<String, bool, string> SearchInfo { get; private set; } // For serialization
+        // outV/inV, edgeId, isReverseEdge, propertyName
+        public Tuple<string, String, bool, string> SearchInfo { get; private set; } // For serialization
 
         public EdgePropertyField(string propertyName, string propertyValue, JsonDataType jsonDataType, EdgeField edgeField)
             : base(propertyName, propertyValue, jsonDataType)
@@ -1029,8 +1029,17 @@ namespace GraphView
         [OnSerializing]
         private void SetValuesOnSerializing(StreamingContext context)
         {
-            this.SearchInfo = new Tuple<string, bool, string>(this.Edge.EdgeId, 
-                this.Edge.GetEdgeDirection(), this.PropertyName);
+            if (this.Edge.IsReverse)
+            {
+                this.SearchInfo = new Tuple<string, string, bool, string>(
+                    this.Edge.InV, this.Edge.EdgeId, false, this.PropertyName);
+            }
+            else
+            {
+                this.SearchInfo = new Tuple<string, string, bool, string>(
+                    this.Edge.OutV, this.Edge.EdgeId, true, this.PropertyName);
+            }
+           
         }
     }
 
@@ -1400,8 +1409,8 @@ namespace GraphView
     public class EdgeField : FieldObject
     {
         [DataMember]
-        // edgeID, isReverseEdge
-        public Tuple<string, bool> SearchInfo { get; private set; } // For serialization
+        // outV/inV, edgeID, isReverseEdge
+        public Tuple<string, string, bool> SearchInfo { get; private set; } // For serialization
 
         // <PropertyName, EdgePropertyField>
         public readonly Dictionary<string, EdgePropertyField> EdgeProperties;
@@ -1691,19 +1700,19 @@ namespace GraphView
         }
 
 
-        /// <summary>
-        /// Forward edge return true; Backward edge return false.
-        /// </summary>
-        /// <returns></returns>
-        public bool GetEdgeDirection()
-        {
-            return this.EdgeJObject.Property(KW_EDGE_SINKV).Value.ToString() == this.InV;
-        }
+        public bool IsReverse => bool.Parse(this.EdgeJObject.Property(KW_EDGEDOC_ISREVERSE).Value.ToString());
 
         [OnSerializing]
         private void SetValuesOnSerializing(StreamingContext context)
         {
-            this.SearchInfo = new Tuple<string, bool>(this.EdgeId, this.GetEdgeDirection());
+            if (this.IsReverse)
+            {
+                this.SearchInfo = new Tuple<string, string, bool>(this.InV, this.EdgeId, false);
+            }
+            else
+            {
+                this.SearchInfo = new Tuple<string, string, bool>(this.OutV, this.EdgeId, true);
+            }
         }
     }
 
