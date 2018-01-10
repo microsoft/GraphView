@@ -498,12 +498,12 @@ namespace GraphView
                                 edgeColumnReferenceExpression.ColumnName == GremlinKeyword.EdgeSourceV
                                     ? TraversalOperator.TraversalTypeEnum.Source
                                     : TraversalOperator.TraversalTypeEnum.Sink;
+                            GetPartitionMethodForTraversalOp getPartitionMethod = new GetPartitionMethodForTraversalOp(edgeFieldIndex, traversalType);
                             if (context.InParallelMode)
                             {
-                                SendOperatorOfTraversalOp sendOperatorOfTraversalOp = new SendOperatorOfTraversalOp(context.CurrentExecutionOperator,
-                                    edgeFieldIndex, traversalType);
-                                ReceiveOperatorOfTraversalOp receiveOperatorOfTraversalOp = new ReceiveOperatorOfTraversalOp(sendOperatorOfTraversalOp);
-                                currentExecutionOperator = receiveOperatorOfTraversalOp;
+                                SendOperator sendOperator = new SendOperator(context.CurrentExecutionOperator, getPartitionMethod);
+                                ReceiveOperator receiveOperator = new ReceiveOperator(sendOperator);
+                                currentExecutionOperator = receiveOperator;
                             }
                             op = new TraversalOperator(
                                 currentExecutionOperator,
@@ -548,12 +548,12 @@ namespace GraphView
                             GraphViewExecutionOperator currentExecutionOperator = context.CurrentExecutionOperator;
                             int edgeFieldIndex = context.LocateColumnReference(tuple.Item2.LinkAlias, GremlinKeyword.Star);
                             TraversalOperator.TraversalTypeEnum traversalType = GetTraversalType(tuple.Item2 as MatchEdge);
+                            GetPartitionMethodForTraversalOp getPartitionMethod = new GetPartitionMethodForTraversalOp(edgeFieldIndex, traversalType);
                             if (context.InParallelMode)
                             {
-                                SendOperatorOfTraversalOp sendOperatorOfTraversalOp = new SendOperatorOfTraversalOp(context.CurrentExecutionOperator,
-                                    edgeFieldIndex, traversalType);
-                                ReceiveOperatorOfTraversalOp receiveOperatorOfTraversalOp = new ReceiveOperatorOfTraversalOp(sendOperatorOfTraversalOp);
-                                currentExecutionOperator = receiveOperatorOfTraversalOp;
+                                SendOperator sendOperator = new SendOperator(context.CurrentExecutionOperator, getPartitionMethod);
+                                ReceiveOperator receiveOperator = new ReceiveOperator(sendOperator);
+                                currentExecutionOperator = receiveOperator;
                             }
                             op = new TraversalOperator(
                                 currentExecutionOperator,
@@ -1734,17 +1734,18 @@ namespace GraphView
             }
 
             GraphViewExecutionOperator currentExecutionOperator = context.CurrentExecutionOperator;
+            TraversalOperator.TraversalTypeEnum traversalType = this.GetTraversalTypeParameter();
+            GetPartitionMethodForTraversalOp getPartitionMethod = new GetPartitionMethodForTraversalOp(edgeFieldIndex, traversalType);
             if (context.InParallelMode)
             {
-                SendOperatorOfTraversalOp sendOperatorOfTraversalOp = new SendOperatorOfTraversalOp(context.CurrentExecutionOperator,
-                    edgeFieldIndex, this.GetTraversalTypeParameter());
-                ReceiveOperatorOfTraversalOp receiveOperatorOfTraversalOp = new ReceiveOperatorOfTraversalOp(sendOperatorOfTraversalOp);
-                currentExecutionOperator = receiveOperatorOfTraversalOp;
+                SendOperator sendOperator = new SendOperator(context.CurrentExecutionOperator, getPartitionMethod);
+                ReceiveOperator receiveOperator = new ReceiveOperator(sendOperator);
+                currentExecutionOperator = receiveOperator;
             }
 
             TraversalOperator traversalOp = new TraversalOperator(
                 currentExecutionOperator, command, 
-                edgeFieldIndex, this.GetTraversalTypeParameter(),
+                edgeFieldIndex, traversalType,
                 matchNode.AttachedJsonQuery/*, matchNode.AttachedJsonQueryOfNodesViaExternalAPI*/, null, booleanFunction);
             context.CurrentExecutionOperator = traversalOp;
 

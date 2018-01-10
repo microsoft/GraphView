@@ -31,8 +31,6 @@ namespace GraphView.GraphViewDBPortal
 
         private string dummyQueryString;
 
-        private PartitionPlan partitionPlan;
-
         public JsonQuery()
         {
             this.FlatProperties = new HashSet<string>();
@@ -321,9 +319,6 @@ namespace GraphView.GraphViewDBPortal
             this.JsonServerCollectionName = info.GetString("JsonServerCollectionName");
             this.dummyQueryString = info.GetString("dummyQuery");
             this.RawWhereClause = new WSqlParser().ParseWhereClauseFromSelect(this.dummyQueryString);
-
-            AdditionalSerializationInfo additionalInfo = (AdditionalSerializationInfo)context.Context;
-            this.partitionPlan = additionalInfo.PartitionPlan;
         }
 
     }

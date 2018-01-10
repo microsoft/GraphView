@@ -74,7 +74,7 @@ namespace StartAzureBatch
 
             this.poolId = "GraphViewPool";
             this.jobId = "GraphViewJob";
-            this.port = 1101;
+            this.port = 6061;
 
             this.parallelism = 2;
 
@@ -164,25 +164,31 @@ namespace StartAzureBatch
 
                 List<ResourceFile> resourceFiles = await UploadFilesToContainerAsync(blobClient, client.appContainerName, applicationFilePaths);
 
-                await client.CreateJobAsync(batchClient);
+                try
+                {
+                    await client.CreateJobAsync(batchClient);
+                }
+                catch (Exception e)
+                {
+                    batchClient.JobOperations.DeleteJob(client.jobId);
+                    System.Threading.Thread.Sleep(5000);
+                    await client.CreateJobAsync(batchClient);
+                }
 
-                string[] args = { "-file", compileResultPath, partitionPath, outputContainerSasUrl};
+                string[] args = { "-file", compileResultPath, partitionPath, outputContainerSasUrl };
                 await client.AddTasksAsync(batchClient, nodeInfo, resourceFiles, args);
 
-                await MonitorTasks(batchClient, client.jobId, TimeSpan.FromMinutes(30));
+                await MonitorTasks(batchClient, client.jobId, TimeSpan.FromMinutes(1));
 
                 await client.DownloadAndAggregateOutputAsync(blobClient);
 
                 // Clean up Storage resources
-                await DeleteContainerAsync(blobClient, client.outputContainerName);
-                await DeleteContainerAsync(blobClient, client.appContainerName);
+                //await DeleteContainerAsync(blobClient, client.outputContainerName);
+                //await DeleteContainerAsync(blobClient, client.appContainerName);
 
                 // For Debug. Print stdout and stderr
-                // client.PrintTaskOutput(batchClient);
+                client.PrintTaskOutput(batchClient);
 
-                // For Debug
-                Console.WriteLine("Press Enter to exit.");
-                Console.ReadLine();
                 await batchClient.JobOperations.DeleteJobAsync(client.jobId);
             }
         }
@@ -225,13 +231,13 @@ namespace StartAzureBatch
             Debug.Assert(this.parallelism == 2);
 
             plans.Add(new PartitionPlan(
-                "_parititon", 
+                "_partition", 
                 PartitionMethod.CompareEntire, nodeInfo[0].Item1, 
                 this.port, 
                 new List<string>{"marko", "vadas", "lop"}));
 
             plans.Add(new PartitionPlan(
-                "_parititon",
+                "_partition",
                 PartitionMethod.CompareEntire, nodeInfo[1].Item1,
                 this.port,
                 new List<string> { "josh", "ripple", "peter" }));
@@ -497,7 +503,21 @@ namespace StartAzureBatch
                     $"\"{args[0]}\" \"{args[1]}\" \"{args[2]}\" \"{args[3]}\"";
                 CloudTask task = new CloudTask(i.ToString(), taskCommandLine);
                 task.ResourceFiles = new List<ResourceFile>(applicationFiles);
+                
+                // specify compute node
                 task.AffinityInformation = new AffinityInformation(nodeInfo[i].Item2);
+
+                // set partition-plan-index
+                if (task.EnvironmentSettings == null)
+                {
+                    task.EnvironmentSettings = new List<EnvironmentSetting>();
+                }
+                task.EnvironmentSettings.Add(new EnvironmentSetting("PARTITION_PLAN_INDEX", i.ToString()));
+
+                // set task running in administrator level
+                task.UserIdentity = new UserIdentity(new AutoUserSpecification(
+                    elevationLevel: ElevationLevel.Admin, scope: AutoUserScope.Task));
+
                 tasks.Add(task);
             }
 

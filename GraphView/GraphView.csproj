@@ -82,6 +82,7 @@
     <Compile Include="GraphViewExecutionRuntime\AggregateOperator.cs" />
     <Compile Include="GraphViewExecutionRuntime\BranchOperators.cs" />
     <Compile Include="GraphViewExecutionRuntime\EdgeDocumentHelper.cs" />
+    <Compile Include="GraphViewExecutionRuntime\GeneratedProxy.cs" />
     <Compile Include="GraphViewExecutionRuntime\MapOperators.cs" />
     <Compile Include="GraphViewExecutionRuntime\ModificationDataStructure.cs" />
     <Compile Include="GraphViewExecutionRuntime\ModificationOperators.cs" />

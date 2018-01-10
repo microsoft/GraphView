@@ -46,10 +46,11 @@ namespace GraphViewProgram
 
             List<string> result = GraphTraversal.ExecuteQueryByDeserialization(serializationStr, partitionStr);
 
-            foreach (var r in result)
-            {
-                Console.WriteLine(r);
-            }
+            // for Debug
+            //foreach (var r in result)
+            //{
+            //    Console.WriteLine(r);
+            //}
 
             SaveOutput(result, outputContainerSas);
         }
@@ -116,38 +117,5 @@ namespace GraphViewProgram
             }
         }
 
-        /// <summary>
-        /// Use for Debug.
-        /// </summary>
-        private static void LoadModernGraphData()
-        {
-            string endpoint = "";
-            string authKey = "";
-            string databaseId = "GroupMatch";
-            string collectionId = "Modern";
-            bool TestUseReverseEdge = true;
-            string TestPartitionByKey = "name";
-            int TestSpilledEdgeThresholdViagraphAPI = 1;
-
-            GraphViewConnection connection =  GraphViewConnection.ResetGraphAPICollection(endpoint, authKey, databaseId, collectionId,
-                TestUseReverseEdge, TestSpilledEdgeThresholdViagraphAPI, TestPartitionByKey);
-
-            using (GraphViewCommand graphCommand = new GraphViewCommand(connection))
-            {
-                graphCommand.g().AddV("person").Property("id", "dummy").Property("name", "marko").Property("age", 29).Next();
-                graphCommand.g().AddV("person").Property("id", "特殊符号").Property("name", "vadas").Property("age", 27).Next();
-                graphCommand.g().AddV("software").Property("id", "这是一个中文ID").Property("name", "lop").Property("lang", "java").Next();
-                graphCommand.g().AddV("person").Property("id", "引号").Property("name", "josh").Property("age", 32).Next();
-                graphCommand.g().AddV("software").Property("id", "中文English").Property("name", "ripple").Property("lang", "java").Next();
-                graphCommand.g().AddV("person").Property("name", "peter").Property("age", 35).Next();  // Auto generate document id
-                graphCommand.g().V().Has("name", "marko").AddE("knows").Property("weight", 0.5d).To(graphCommand.g().V().Has("name", "vadas")).Next();
-                graphCommand.g().V().Has("name", "marko").AddE("knows").Property("weight", 1.0d).To(graphCommand.g().V().Has("name", "josh")).Next();
-                graphCommand.g().V().Has("name", "marko").AddE("created").Property("weight", 0.4d).To(graphCommand.g().V().Has("name", "lop")).Next();
-                graphCommand.g().V().Has("name", "josh").AddE("created").Property("weight", 1.0d).To(graphCommand.g().V().Has("name", "ripple")).Next();
-                graphCommand.g().V().Has("name", "josh").AddE("created").Property("weight", 0.4d).To(graphCommand.g().V().Has("name", "lop")).Next();
-                graphCommand.g().V().Has("name", "peter").AddE("created").Property("weight", 0.2d).To(graphCommand.g().V().Has("name", "lop")).Next();
-
-            }
-        }
     }
 }

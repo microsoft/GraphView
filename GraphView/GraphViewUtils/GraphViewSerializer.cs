@@ -75,12 +75,12 @@ namespace GraphView
 
             GraphViewCommand command = (GraphViewCommand)DeserializeWithSoapFormatter(serializationStringObj.commandString);
 
-            int taskId = int.Parse(Environment.GetEnvironmentVariable("AZ_BATCH_TASK_ID"));
+            int partitionPlanIndex = int.Parse(Environment.GetEnvironmentVariable("PARTITION_PLAN_INDEX"));
             List<PartitionPlan> partitionPlans = PartitionPlan.DeserializePatitionPlans(partitionString);
-            PartitionPlan ownPartitionPlan = partitionPlans[taskId];
+            PartitionPlan ownPartitionPlan = partitionPlans[partitionPlanIndex];
 
             // Deserilization of sideEffectFunctions needs information about command.
-            AdditionalSerializationInfo additionalInfo = new AdditionalSerializationInfo(command, ownPartitionPlan);
+            AdditionalSerializationInfo additionalInfo = new AdditionalSerializationInfo(command, partitionPlans, partitionPlanIndex);
             WrapSideEffectFunctions wrapSideEffectFunctions = 
                 (WrapSideEffectFunctions) DeserializeWithSoapFormatter(serializationStringObj.sideEffectString, additionalInfo);
 
@@ -526,13 +526,15 @@ namespace GraphView
     internal class AdditionalSerializationInfo
     {
         public GraphViewCommand Command { get; private set; }
-        public PartitionPlan PartitionPlan { get; private set; }
+        public List<PartitionPlan> PartitionPlans { get; private set; }
+        public int PartitionPlanIndex { get; private set; }
         public Dictionary<string, IAggregateFunction> SideEffectFunctions { get; set; }
 
-        public AdditionalSerializationInfo(GraphViewCommand command, PartitionPlan partitionPlan)
+        public AdditionalSerializationInfo(GraphViewCommand command, List<PartitionPlan> partitionPlans, int partitionPlanIndex)
         {
             this.Command = command;
-            this.PartitionPlan = partitionPlan;
+            this.PartitionPlans = partitionPlans;
+            this.PartitionPlanIndex = partitionPlanIndex;
         }
     }
 
@@ -577,9 +579,9 @@ namespace GraphView
         private PartitionMethod partitionMethod;
 
         [DataMember]
-        public string IP { get; }
+        public string IP { get; private set; }
         [DataMember]
-        public int Port { get; }
+        public int Port { get; private set; }
 
         public PartitionPlan(string partitionKey, PartitionMethod partitionMethod, string ip, int port)
         {
@@ -609,8 +611,9 @@ namespace GraphView
             {
                 if (this.compareType == PartitionCompareType.In)
                 {
+                    jsonQuery.FlatProperties.Add(this.partitionKey);
                     jsonQuery.WhereConjunction(new WInPredicate(
-                        new WColumnReferenceExpression(jsonQuery.NodeAlias, this.partitionKey), this.inValues),
+                        new WColumnReferenceExpression(jsonQuery.NodeAlias ?? jsonQuery.EdgeAlias, this.partitionKey), this.inValues),
                         BooleanBinaryExpressionType.And);
                 }
                 else
