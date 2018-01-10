@@ -86,7 +86,9 @@ namespace GraphView
 
         private string receiveOpId;
 
-        private int retryLimit;
+        private readonly int retryLimit;
+        // if send data failed, sendOp will wait retryInterval milliseconds.
+        private readonly int retryInterval;
 
         // Set following fields in deserialization
         [NonSerialized]
@@ -101,19 +103,16 @@ namespace GraphView
             this.inputOp = inputOp;
             this.getPartitionMethod = getPartitionMethod;
             this.retryLimit = 20;
+            this.retryInterval = 5; // 5 ms
             this.Open();
         }
 
         public override RawRecord Next()
-        {
-            GetPartitionMethodForTraversalOp forTraversalOp =
-                this.getPartitionMethod as GetPartitionMethodForTraversalOp;
-            Debug.Assert(forTraversalOp != null);
-            
+        {   
             RawRecord record;
             while (this.inputOp.State() && (record = this.inputOp.Next()) != null)
             {
-                if (ReturnOrSend(record, forTraversalOp.GetPartition(record)))
+                if (ReturnOrSend(record, this.getPartitionMethod.GetPartition(record)))
                 {
                     return record;
                 }
@@ -149,9 +148,8 @@ namespace GraphView
                     SendRawRecord(record, i);
                     return false;
                 }
-                Debug.Assert(i != this.partitionPlans.Count - 1);
             }
-            return false;
+            throw new GraphViewException($"This partition does not belong to any partition plan! partition:{ partition }");
         }
 
         private void SendRawRecord(RawRecord record, int nodeIndex)
@@ -257,14 +255,14 @@ namespace GraphView
         [NonSerialized]
         private GraphViewCommand command;
 
-        public string Id { get;}
+        private readonly string id;
 
         public ReceiveOperator(SendOperator inputOp)
         {
             this.inputOp = inputOp;
 
-            this.Id = Guid.NewGuid().ToString("N");
-            this.inputOp.SetReceiveOpId(this.Id);
+            this.id = Guid.NewGuid().ToString("N");
+            this.inputOp.SetReceiveOpId(this.id);
 
             this.selfHost = null;
 
@@ -276,11 +274,12 @@ namespace GraphView
             if (this.selfHost == null)
             {
                 PartitionPlan ownPartitionPlan = this.partitionPlans[this.partitionPlanIndex];
-                UriBuilder uri = new UriBuilder("http", ownPartitionPlan.IP, ownPartitionPlan.Port, this.Id);
+                UriBuilder uri = new UriBuilder("http", ownPartitionPlan.IP, ownPartitionPlan.Port, this.id);
                 Uri baseAddress = uri.Uri;
 
                 WSHttpBinding binding = new WSHttpBinding();
                 binding.Security.Mode = SecurityMode.None;
+
                 this.selfHost = new ServiceHost(new RawRecordService(), baseAddress);
                 this.selfHost.AddServiceEndpoint(typeof(IRawRecordService), binding, "RawRecordService");
 
@@ -344,7 +343,6 @@ namespace GraphView
         public override void ResetState()
         {
             this.Open();
-            Debug.Assert(this.selfHost == null || this.selfHost.State == CommunicationState.Closed);
             this.selfHost = null;
             this.inputOp.ResetState();
         }
@@ -452,16 +450,14 @@ namespace GraphView
 
         private void AnalysisFieldObject(FieldObject fieldObject)
         {
-            StringField stringField = fieldObject as StringField;
-            if (stringField != null)
+            if (fieldObject == null)
             {
                 return;
             }
 
-            PathStepField pathStepField = fieldObject as PathStepField;
-            if (pathStepField != null)
+            StringField stringField = fieldObject as StringField;
+            if (stringField != null)
             {
-                AnalysisFieldObject(pathStepField.StepFieldObject);
                 return;
             }
 
@@ -470,7 +466,12 @@ namespace GraphView
             {
                 foreach (FieldObject pathStep in pathField.Path)
                 {
-                    AnalysisFieldObject(pathStep);
+                    if (pathStep == null)
+                    {
+                        continue;
+                    }
+
+                    AnalysisFieldObject(((PathStepField)pathStep).StepFieldObject);
                 }
                 return;
             }
@@ -490,16 +491,9 @@ namespace GraphView
             {
                 foreach (EntryField entry in mapField.ToList())
                 {
-                    AnalysisFieldObject(entry);
+                    AnalysisFieldObject(entry.Key);
+                    AnalysisFieldObject(entry.Value);
                 }
-                return;
-            }
-
-            EntryField entryField = fieldObject as EntryField;
-            if (entryField != null)
-            {
-                AnalysisFieldObject(entryField.Key);
-                AnalysisFieldObject(entryField.Value);
                 return;
             }
 
@@ -516,11 +510,25 @@ namespace GraphView
             TreeField treeField = fieldObject as TreeField;
             if (treeField != null)
             {
-                AnalysisFieldObject(treeField.NodeObject);
-                foreach (TreeField field in treeField.Children.Values)
+                //AnalysisFieldObject(treeField.NodeObject);
+                //foreach (TreeField field in treeField.Children.Values)
+                //{
+                //    AnalysisFieldObject(field);
+                //}
+
+                Queue<TreeField> queue = new Queue<TreeField>();
+                queue.Enqueue(treeField);
+
+                while (queue.Count > 0)
                 {
-                    AnalysisFieldObject(field);
+                    TreeField treeNode = queue.Dequeue();
+                    AnalysisFieldObject(treeNode);
+                    foreach (TreeField childNode in treeNode.Children.Values)
+                    {
+                        queue.Enqueue(childNode);
+                    }
                 }
+
                 return;
             }
 
@@ -720,22 +728,20 @@ namespace GraphView
             StringField stringField = fieldObject as StringField;
             if (stringField != null)
             {
-                return fieldObject;
-            }
-
-            PathStepField pathStepField = fieldObject as PathStepField;
-            if (pathStepField != null)
-            {
-                pathStepField.StepFieldObject = RecoverFieldObject(pathStepField.StepFieldObject);
-                return pathStepField;
+                return stringField;
             }
 
             PathField pathField = fieldObject as PathField;
             if (pathField != null)
             {
-                for (int i = 0; i < pathField.Path.Count; i++)
+                foreach (FieldObject pathStep in pathField.Path)
                 {
-                    pathField.Path[i] = RecoverFieldObject(pathField.Path[i]);
+                    if (pathStep == null)
+                    {
+                        continue;
+                    }
+                    PathStepField pathStepField = pathStep as PathStepField;
+                    pathStepField.StepFieldObject = RecoverFieldObject(pathStepField.StepFieldObject);
                 }
                 return pathField;
             }
@@ -759,12 +765,6 @@ namespace GraphView
                     newMapField.Add(RecoverFieldObject(key), RecoverFieldObject(mapField[key]));
                 }
                 return newMapField;
-            }
-
-            EntryField entryField = fieldObject as EntryField;
-            if (entryField != null)
-            {
-                throw new GraphViewException("Type of fieldObject should not be EntryField");
             }
 
             CompositeField compositeField = fieldObject as CompositeField;

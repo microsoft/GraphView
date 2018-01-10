@@ -1,68 +1,42 @@
-﻿using System.Linq;
+﻿using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
+using System.Text;
+using System.Threading.Tasks;
+using Microsoft.Azure.Batch;
+using Microsoft.Azure.Batch.Auth;
+using Microsoft.Azure.Batch.Common;
+using Microsoft.WindowsAzure.Storage;
+using Microsoft.WindowsAzure.Storage.Blob;
+using GraphView;
 
 namespace StartAzureBatch
 {
-    using System;
-    using System.Collections.Generic;
-    using System.Diagnostics;
-    using System.IO;
-    using System.Threading.Tasks;
-    using Microsoft.Azure.Batch;
-    using Microsoft.Azure.Batch.Auth;
-    using Microsoft.Azure.Batch.Common;
-    using Microsoft.WindowsAzure.Storage;
-    using Microsoft.WindowsAzure.Storage.Blob;
-    using GraphView;
-
-    public class StartAzureBatch
+    public class GraphViewAzureBatchJob
     {
-        private readonly string queryString;
+        public readonly string query;
 
-        // Batch account credentials
-        private readonly string batchAccountName;
-        private readonly string batchAccountKey;
-        private readonly string batchAccountUrl;
+        public readonly string jobId;
 
-        // Storage account credentials
-        private readonly string storageConnectionString;
+        public readonly int parallelism;
 
         // CosmosDB account credentials
-        private readonly string docDBEndPoint;
-        private readonly string docDBKey;
-        private readonly string docDBDatabaseId;
-        private readonly string docDBCollectionId;
-        private readonly bool useReverseEdge;
-        private readonly string partitionByKey;
-        private readonly int spilledEdgeThresholdViagraphAPI;
+        public readonly string docDBEndPoint;
+        public readonly string docDBKey;
+        public readonly string docDBDatabaseId;
+        public readonly string docDBCollectionId;
+        public readonly bool useReverseEdge;
+        public readonly string partitionByKey;
+        public readonly int spilledEdgeThresholdViagraphAPI;
 
-        private readonly string poolId;
-        private readonly string jobId;
-        // When internode communication is enabled, 
-        // nodes in Cloud Services Configuration pools can communicate with each other on ports greater than 1100, 
-        // and Virtual Machine Configuration pools do not restrict traffic on any port.
-        private readonly int port;
-
-        // number of tasks.
-        private readonly int parallelism;
-
-        private readonly string outputContainerName;
-        private readonly string appContainerName;
-
-        private readonly string denpendencyPath;
-        private readonly string exeName;
-
-        // local path that stores downloaded output
-        private readonly string outputPath;
-
-        public StartAzureBatch()
+        public GraphViewAzureBatchJob()
         {
-            this.queryString = "g.V()";
+            this.query = "g.V().out().values('name')";
 
-            this.batchAccountName = "";
-            this.batchAccountKey = "";
-            this.batchAccountUrl = "";
+            this.jobId = Guid.NewGuid().ToString("N");
 
-            this.storageConnectionString = "";
+            this.parallelism = 2;
 
             this.docDBEndPoint = "";
             this.docDBKey = "";
@@ -71,28 +45,56 @@ namespace StartAzureBatch
             this.useReverseEdge = true;
             this.partitionByKey = "name";
             this.spilledEdgeThresholdViagraphAPI = 1;
+        }
+
+    }
+
+    public class AzureBatchJobManager
+    {
+        // Batch account credentials
+        private readonly string batchAccountName;
+        private readonly string batchAccountKey;
+        private readonly string batchAccountUrl;
+
+        // Storage account credentials
+        private readonly string storageConnectionString;
+
+        // Suppose that there is only one pool.
+        private readonly string poolId;
+
+        private readonly string outputContainerNamePrefix;
+        private readonly string appContainerNamePrefix;
+
+        private readonly string denpendencyPath;
+        private readonly string exeName;
+
+        public AzureBatchJobManager()
+        {
+            this.batchAccountName = "";
+            this.batchAccountKey = "";
+            this.batchAccountUrl = "";
+
+            this.storageConnectionString = "DefaultEndpointsProtocol=https;AccountName=;AccountKey=";
 
             this.poolId = "GraphViewPool";
-            this.jobId = "GraphViewJob";
-            this.port = 6061;
 
-            this.parallelism = 2;
-
-            this.outputContainerName = "output";
-            this.appContainerName = "application";
+            this.outputContainerNamePrefix = "output";
+            this.appContainerNamePrefix = "application";
 
             this.denpendencyPath = "..\\..\\..\\GraphViewProgram\\bin\\Debug\\";
             this.exeName = "Program.exe";
 
-            this.outputPath = "";
+            this.CreatePoolIfNotExistAsync().Wait();
         }
 
         public static void Main(string[] args)
         {
             try
             {
-                StartAzureBatch client = new StartAzureBatch();
-                RunQueryAsync(client).Wait();
+                AzureBatchJobManager jobManager = new AzureBatchJobManager();
+                GraphViewAzureBatchJob graphViewJob = new GraphViewAzureBatchJob();
+
+                jobManager.RunQueryAsync(graphViewJob).Wait();
             }
             catch (AggregateException ae)
             {
@@ -110,101 +112,91 @@ namespace StartAzureBatch
             }
         }
 
-        private static async Task RunQueryAsync(StartAzureBatch client)
+        private async Task RunQueryAsync(GraphViewAzureBatchJob job)
         {
-            Console.WriteLine($"Query {client.queryString} start.");
+            Console.WriteLine($"Query {job.query} start.");
 
-            CloudStorageAccount storageAccount = CloudStorageAccount.Parse(client.storageConnectionString);
-
+            CloudStorageAccount storageAccount = CloudStorageAccount.Parse(this.storageConnectionString);
             CloudBlobClient blobClient = storageAccount.CreateCloudBlobClient();
-            await CreateContainerIfNotExistAsync(blobClient, client.appContainerName);
-            await CreateContainerIfNotExistAsync(blobClient, client.outputContainerName);
+
+            string appContainerName = this.appContainerNamePrefix + job.jobId;
+            await CreateContainerIfNotExistAsync(blobClient, appContainerName);
+
+            string outputContainerName = this.outputContainerNamePrefix + job.jobId;
+            await CreateContainerIfNotExistAsync(blobClient, outputContainerName);
             
             Console.WriteLine("[compile query] start");
-            string compileStr = client.CompileQuery();
+            string compileStr = CompileQuery(job);
             Console.WriteLine("[compile query] finish");
 
-            string compileResultPath = $"compileResult-{client.jobId}";
+            string compileResultPath = $"compileResult{job.jobId}";
             File.WriteAllText(compileResultPath, compileStr);
             
             // Obtain a shared access signature that provides write access to the output container to which the tasks will upload their output.
-            string outputContainerSasUrl = GetContainerSasUrl(blobClient, client.outputContainerName, SharedAccessBlobPermissions.Write);
+            string outputContainerSasUrl = GetContainerSasUrl(blobClient, outputContainerName, SharedAccessBlobPermissions.Write);
 
-            BatchSharedKeyCredentials cred = new BatchSharedKeyCredentials(client.batchAccountUrl, client.batchAccountName, client.batchAccountKey);
+            BatchSharedKeyCredentials cred = new BatchSharedKeyCredentials(this.batchAccountUrl, this.batchAccountName, this.batchAccountKey);
             using (BatchClient batchClient = BatchClient.Open(cred))
             {
-                await client.CreatePoolIfNotExistAsync(batchClient);
-
                 //          IP   , AffinityId
-                List<Tuple<string, string>> nodeInfo =  client.AllocateComputeNode(batchClient);
+                List<Tuple<string, string>> nodeInfo =  this.AllocateComputeNode(batchClient, job);
 
                 Console.WriteLine("[make partition plan] start");
-                string partitionStr = client.MakePartitionPlan(nodeInfo);
+                string partitionStr = MakePartitionPlan(nodeInfo, job);
                 Console.WriteLine("[make partition plan] finish");
 
-                string partitionPath = $"parititonPlan-{client.jobId}";
+                string partitionPath = $"parititonPlan{job.jobId}";
                 File.WriteAllText(partitionPath, partitionStr);
 
                 // Paths to the executable and its dependencies that will be executed by the tasks
                 List<string> applicationFilePaths = new List<string>
                 {
-                    Path.Combine(client.denpendencyPath, client.exeName), // Program.exe
-                    Path.Combine(client.denpendencyPath, "Microsoft.WindowsAzure.Storage.dll"),
-                    Path.Combine(client.denpendencyPath, "DocumentDB.Spatial.Sql.dll"),
-                    Path.Combine(client.denpendencyPath, "GraphView.dll"),
-                    Path.Combine(client.denpendencyPath, "JsonServer.dll"),
-                    Path.Combine(client.denpendencyPath, "Microsoft.Azure.Documents.Client.dll"),
-                    Path.Combine(client.denpendencyPath, "Microsoft.Azure.Documents.ServiceInterop.dll"),
-                    Path.Combine(client.denpendencyPath, "Microsoft.SqlServer.TransactSql.ScriptDom.dll"),
-                    Path.Combine(client.denpendencyPath, "Newtonsoft.Json.dll"),
-                    Path.Combine(client.denpendencyPath, client.exeName + ".config"), // "Program.exe.config"
+                    Path.Combine(this.denpendencyPath, this.exeName), // Program.exe
+                    Path.Combine(this.denpendencyPath, "Microsoft.WindowsAzure.Storage.dll"),
+                    Path.Combine(this.denpendencyPath, "DocumentDB.Spatial.Sql.dll"),
+                    Path.Combine(this.denpendencyPath, "GraphView.dll"),
+                    Path.Combine(this.denpendencyPath, "JsonServer.dll"),
+                    Path.Combine(this.denpendencyPath, "Microsoft.Azure.Documents.Client.dll"),
+                    Path.Combine(this.denpendencyPath, "Microsoft.Azure.Documents.ServiceInterop.dll"),
+                    Path.Combine(this.denpendencyPath, "Microsoft.SqlServer.TransactSql.ScriptDom.dll"),
+                    Path.Combine(this.denpendencyPath, "Newtonsoft.Json.dll"),
+                    Path.Combine(this.denpendencyPath, this.exeName + ".config"), // "Program.exe.config"
                     compileResultPath,
                     partitionPath,
                 };
 
-                List<ResourceFile> resourceFiles = await UploadFilesToContainerAsync(blobClient, client.appContainerName, applicationFilePaths);
+                List<ResourceFile> resourceFiles = await UploadFilesToContainerAsync(blobClient, appContainerName, applicationFilePaths);
 
-                try
-                {
-                    await client.CreateJobAsync(batchClient);
-                }
-                catch (Exception e)
-                {
-                    batchClient.JobOperations.DeleteJob(client.jobId);
-                    System.Threading.Thread.Sleep(5000);
-                    await client.CreateJobAsync(batchClient);
-                }
-
+                await this.CreateJobAsync(batchClient, job);
                 string[] args = { "-file", compileResultPath, partitionPath, outputContainerSasUrl };
-                await client.AddTasksAsync(batchClient, nodeInfo, resourceFiles, args);
+                await this.AddTasksAsync(batchClient, job, nodeInfo, resourceFiles, args);
 
-                await MonitorTasks(batchClient, client.jobId, TimeSpan.FromMinutes(1));
+                await MonitorTasks(batchClient, job.jobId, TimeSpan.FromMinutes(1));
 
-                await client.DownloadAndAggregateOutputAsync(blobClient);
-
-                // Clean up Storage resources
-                //await DeleteContainerAsync(blobClient, client.outputContainerName);
-                //await DeleteContainerAsync(blobClient, client.appContainerName);
+                await this.DownloadAndAggregateOutputAsync(blobClient, outputContainerName);
 
                 // For Debug. Print stdout and stderr
-                client.PrintTaskOutput(batchClient);
+                PrintTaskOutput(batchClient, job);
 
-                await batchClient.JobOperations.DeleteJobAsync(client.jobId);
+                await DeleteContainerAsync(blobClient, outputContainerName);
+                await DeleteContainerAsync(blobClient, appContainerName);
+
+                await batchClient.JobOperations.DeleteJobAsync(job.jobId);
             }
         }
 
-        private string CompileQuery()
+        private static string CompileQuery(GraphViewAzureBatchJob job)
         {
             GraphViewConnection connection = new GraphViewConnection(
-                this.docDBEndPoint, this.docDBKey, this.docDBDatabaseId, this.docDBCollectionId,
-                GraphType.GraphAPIOnly, this.useReverseEdge, this.spilledEdgeThresholdViagraphAPI, this.partitionByKey);
+                job.docDBEndPoint, job.docDBKey, job.docDBDatabaseId, job.docDBCollectionId,
+                GraphType.GraphAPIOnly, job.useReverseEdge, job.spilledEdgeThresholdViagraphAPI, job.partitionByKey);
             GraphViewCommand command = new GraphViewCommand(connection);
 
-            command.CommandText = this.queryString;
+            command.CommandText = job.query;
             return command.CompileAndSerialize();
         }
 
-        private List<Tuple<string, string>> AllocateComputeNode(BatchClient batchClient)
+        private List<Tuple<string, string>> AllocateComputeNode(BatchClient batchClient, GraphViewAzureBatchJob job)
         {
             List<Tuple<string, string>> nodeInfo = new List<Tuple<string, string>>();
 
@@ -214,7 +206,7 @@ namespace StartAzureBatch
                 // todo : implement an algorithm to allocate node
                 nodeInfo.Add(new Tuple<string, string>(node.IPAddress, node.AffinityId));
 
-                if (nodeInfo.Count == this.parallelism)
+                if (nodeInfo.Count == job.parallelism)
                 {
                     break;
                 }
@@ -223,34 +215,34 @@ namespace StartAzureBatch
             return nodeInfo;
         }
 
-        private string MakePartitionPlan(List<Tuple<string, string>> nodeInfo)
+        private static string MakePartitionPlan(List<Tuple<string, string>> nodeInfo, GraphViewAzureBatchJob job)
         {
             List<PartitionPlan> plans = new List<PartitionPlan>();
             
             // For debug
-            Debug.Assert(this.parallelism == 2);
+            Debug.Assert(job.parallelism == 2);
 
             plans.Add(new PartitionPlan(
                 "_partition", 
                 PartitionMethod.CompareEntire, nodeInfo[0].Item1, 
-                this.port, 
+                6061, // port 
                 new List<string>{"marko", "vadas", "lop"}));
 
             plans.Add(new PartitionPlan(
                 "_partition",
                 PartitionMethod.CompareEntire, nodeInfo[1].Item1,
-                this.port,
+                6061, // port
                 new List<string> { "josh", "ripple", "peter" }));
 
             return PartitionPlan.SerializePatitionPlans(plans);
         }
 
         // For Debug
-        private void PrintTaskOutput(BatchClient batchClient)
+        private static void PrintTaskOutput(BatchClient batchClient, GraphViewAzureBatchJob job)
         {
-            for (int i = 0; i < this.parallelism; i++)
+            for (int i = 0; i < job.parallelism; i++)
             {
-                CloudTask task = batchClient.JobOperations.GetTask(this.jobId, i.ToString());
+                CloudTask task = batchClient.JobOperations.GetTask(job.jobId, i.ToString());
                 string stdOut = task.GetNodeFile(Constants.StandardOutFileName).ReadAsString();
                 string stdErr = task.GetNodeFile(Constants.StandardErrorFileName).ReadAsString();
                 Console.WriteLine("---- stdout.txt ----taskId: " + i);
@@ -423,40 +415,44 @@ namespace StartAzureBatch
             }
         }
 
-        private async Task CreatePoolIfNotExistAsync(BatchClient batchClient)
+        private async Task CreatePoolIfNotExistAsync()
         {
-            CloudPool pool = null;
-            try
+            BatchSharedKeyCredentials cred = new BatchSharedKeyCredentials(this.batchAccountUrl, this.batchAccountName, this.batchAccountKey);
+            using (BatchClient batchClient = BatchClient.Open(cred))
             {
-                Console.WriteLine("Creating pool [{0}]...", this.poolId);
-
-                pool = batchClient.PoolOperations.CreatePool(
-                    poolId: this.poolId,
-                    targetLowPriorityComputeNodes: 0,
-                    targetDedicatedComputeNodes: this.parallelism,
-                    virtualMachineSize: "small",
-                    cloudServiceConfiguration: new CloudServiceConfiguration(osFamily: "4"));   // Windows Server 2012 R2
-
-                // When internode communication is enabled, 
-                // nodes in Cloud Services Configuration pools can communicate with each other on ports greater than 1100, 
-                // and Virtual Machine Configuration pools do not restrict traffic on any port.
-                pool.InterComputeNodeCommunicationEnabled = true;
-
-                await pool.CommitAsync();
-            }
-            catch (BatchException be)
-            {
-                // Swallow the specific error code PoolExists since that is expected if the pool already exists
-                if (be.RequestInformation?.BatchError != null && be.RequestInformation.BatchError.Code == BatchErrorCodeStrings.PoolExists)
+                CloudPool pool = null;
+                try
                 {
-                    Console.WriteLine("The pool {0} already existed when we tried to create it", this.poolId);
-                    pool = batchClient.PoolOperations.GetPool(this.poolId);
-                    Console.WriteLine("TargetDedicatedComputeNodes: " + pool.TargetDedicatedComputeNodes);
-                    Console.WriteLine("TargetLowPriorityComputeNodes :" + pool.TargetLowPriorityComputeNodes);
+                    Console.WriteLine("Creating pool [{0}]...", this.poolId);
+
+                    pool = batchClient.PoolOperations.CreatePool(
+                        poolId: this.poolId,
+                        targetLowPriorityComputeNodes: 0,
+                        targetDedicatedComputeNodes: 2,
+                        virtualMachineSize: "small",
+                        cloudServiceConfiguration: new CloudServiceConfiguration(osFamily: "4"));   // Windows Server 2012 R2
+
+                    // When internode communication is enabled, 
+                    // nodes in Cloud Services Configuration pools can communicate with each other on ports greater than 1100, 
+                    // and Virtual Machine Configuration pools do not restrict traffic on any port.
+                    pool.InterComputeNodeCommunicationEnabled = true;
+
+                    await pool.CommitAsync();
                 }
-                else
+                catch (BatchException be)
                 {
-                    throw; // Any other exception is unexpected
+                    // Swallow the specific error code PoolExists since that is expected if the pool already exists
+                    if (be.RequestInformation?.BatchError != null && be.RequestInformation.BatchError.Code == BatchErrorCodeStrings.PoolExists)
+                    {
+                        Console.WriteLine("The pool {0} already existed when we tried to create it", this.poolId);
+                        pool = batchClient.PoolOperations.GetPool(this.poolId);
+                        Console.WriteLine("TargetDedicatedComputeNodes: " + pool.TargetDedicatedComputeNodes);
+                        Console.WriteLine("TargetLowPriorityComputeNodes :" + pool.TargetLowPriorityComputeNodes);
+                    }
+                    else
+                    {
+                        throw; // Any other exception is unexpected
+                    }
                 }
             }
         }
@@ -468,15 +464,15 @@ namespace StartAzureBatch
         /// <param name="jobId">The id of the job to be created.</param>
         /// <param name="poolId">The id of the <see cref="CloudPool"/> in which to create the job.</param>
         /// <returns>A <see cref="System.Threading.Tasks.Task"/> object that represents the asynchronous operation.</returns>
-        private async Task CreateJobAsync(BatchClient batchClient)
+        private async Task CreateJobAsync(BatchClient batchClient, GraphViewAzureBatchJob job)
         {
-            Console.WriteLine("Creating job [{0}]...", this.jobId);
+            Console.WriteLine("Creating job [{0}]...", job.jobId);
 
-            CloudJob job = batchClient.JobOperations.CreateJob();
-            job.Id = this.jobId;
-            job.PoolInformation = new PoolInformation { PoolId = this.poolId };
+            CloudJob cloudJob = batchClient.JobOperations.CreateJob();
+            cloudJob.Id = job.jobId;
+            cloudJob.PoolInformation = new PoolInformation { PoolId = this.poolId };
 
-            await job.CommitAsync();
+            await cloudJob.CommitAsync();
         }
 
         /// <summary>
@@ -489,15 +485,15 @@ namespace StartAzureBatch
         /// (with dependencies and serialization data) to be executed on the compute nodes.</param>
         /// <param name="args"></param>
         /// <returns>A collection of the submitted tasks.</returns>
-        private async Task<List<CloudTask>> AddTasksAsync(BatchClient batchClient, List<Tuple<string, string>> nodeInfo,
-            List<ResourceFile> applicationFiles, string[] args)
+        private async Task<List<CloudTask>> AddTasksAsync(BatchClient batchClient, GraphViewAzureBatchJob job,
+            List<Tuple<string, string>> nodeInfo, List<ResourceFile> applicationFiles, string[] args)
         {
-            Console.WriteLine("Adding task to job [{0}]...", this.jobId);
+            Console.WriteLine("Adding task to job [{0}]...", job.jobId);
             Debug.Assert(args.Length == 4);
             // Create a collection to hold the tasks that we'll be adding to the job
             List<CloudTask> tasks = new List<CloudTask>();
 
-            for (int i = 0; i < this.parallelism; i++)
+            for (int i = 0; i < job.parallelism; i++)
             {
                 string taskCommandLine = $"cmd /c %AZ_BATCH_TASK_WORKING_DIR%\\{this.exeName} " +
                     $"\"{args[0]}\" \"{args[1]}\" \"{args[2]}\" \"{args[3]}\"";
@@ -523,41 +519,37 @@ namespace StartAzureBatch
 
             // Add the tasks as a collection opposed to a separate AddTask call for each. Bulk task submission
             // helps to ensure efficient underlying API calls to the Batch service.
-            await batchClient.JobOperations.AddTaskAsync(this.jobId, tasks);
+            await batchClient.JobOperations.AddTaskAsync(job.jobId, tasks);
 
             return tasks;
         }
 
-        private async Task DownloadAndAggregateOutputAsync(CloudBlobClient blobClient)
+        private async Task DownloadAndAggregateOutputAsync(CloudBlobClient blobClient, string outputContainerName)
         {
-            Console.WriteLine("Downloading all files from container [{0}]...", this.outputContainerName);
+            Console.WriteLine("Downloading all files from container [{0}]...", outputContainerName);
 
-            CloudBlobContainer container = blobClient.GetContainerReference(this.outputContainerName);
+            CloudBlobContainer container = blobClient.GetContainerReference(outputContainerName);
 
-            string outputFile = Path.Combine(this.outputPath, $"output-{this.jobId}");
-            // If file exists, clear it; otherwise create an empty file.
-            File.WriteAllText(outputFile, String.Empty);
-            using (StreamWriter file = new StreamWriter(outputFile))
+            List<MemoryStream> streams = new List<MemoryStream>();
+            foreach (IListBlobItem item in container.ListBlobs(prefix: null, useFlatBlobListing: true))
             {
-                // Get a flat listing of all the block blobs in the specified container
-                foreach (IListBlobItem item in container.ListBlobs(prefix: null, useFlatBlobListing: true))
-                {
-                    // Retrieve reference to the current blob
-                    CloudBlob blob = (CloudBlob)item;
+                CloudBlob blob = (CloudBlob)item;
+                MemoryStream stream = new MemoryStream();
+                streams.Add(stream);
 
-                    // Save blob contents to a file in the specified folder
-                    string localOutputFile = Path.Combine(this.outputPath, blob.Name);
-                    await blob.DownloadToFileAsync(localOutputFile, FileMode.Create);
-
-                    // write result to aggregate file
-                    string text = File.ReadAllText(localOutputFile);
-                    file.Write(text);
-                }
+                await blob.DownloadToStreamAsync(stream);
             }
 
-            Console.WriteLine("All files downloaded to {0}", this.outputPath);
-            Console.WriteLine("Aggregation File create in {0}. The content is as follows:", outputFile);
-            Console.Write(File.ReadAllText(outputFile));
+            StringBuilder result = new StringBuilder();
+            foreach (MemoryStream stream in streams)
+            {
+                stream.Position = 0;
+                StreamReader stringReader = new StreamReader(stream);
+                result.Append(stringReader.ReadToEnd());
+            }
+
+            Console.WriteLine("Aggregate result is as follows:");
+            Console.Write(result.ToString());
         }
 
         /// <summary>
@@ -649,23 +641,12 @@ namespace StartAzureBatch
         }
 
         // For Debug
-        private void DeleteJob()
+        private void DeleteJob(string jobId)
         {
             BatchSharedKeyCredentials cred = new BatchSharedKeyCredentials(this.batchAccountUrl, this.batchAccountName, this.batchAccountKey);
             using (BatchClient batchClient = BatchClient.Open(cred))
             {
-                batchClient.JobOperations.DeleteJob(this.jobId);
-            }
-        }
-
-        // For Debug
-        private void DeletePoolAndJob()
-        {
-            BatchSharedKeyCredentials cred = new BatchSharedKeyCredentials(this.batchAccountUrl, this.batchAccountName, this.batchAccountKey);
-            using (BatchClient batchClient = BatchClient.Open(cred))
-            {
-                batchClient.JobOperations.DeleteJob(this.jobId);
-                batchClient.PoolOperations.DeletePool(this.poolId);
+                batchClient.JobOperations.DeleteJob(jobId);
             }
         }
     }
