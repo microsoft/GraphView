@@ -499,7 +499,7 @@ namespace GraphView
                                     ? TraversalOperator.TraversalTypeEnum.Source
                                     : TraversalOperator.TraversalTypeEnum.Sink;
                             GetPartitionMethodForTraversalOp getPartitionMethod = new GetPartitionMethodForTraversalOp(edgeFieldIndex, traversalType);
-                            if (context.InParallelMode)
+                            if (context.InParallelMode && context.OuterContextOp == null)
                             {
                                 SendOperator sendOperator = new SendOperator(context.CurrentExecutionOperator, getPartitionMethod);
                                 ReceiveOperator receiveOperator = new ReceiveOperator(sendOperator);
@@ -549,7 +549,7 @@ namespace GraphView
                             int edgeFieldIndex = context.LocateColumnReference(tuple.Item2.LinkAlias, GremlinKeyword.Star);
                             TraversalOperator.TraversalTypeEnum traversalType = GetTraversalType(tuple.Item2 as MatchEdge);
                             GetPartitionMethodForTraversalOp getPartitionMethod = new GetPartitionMethodForTraversalOp(edgeFieldIndex, traversalType);
-                            if (context.InParallelMode)
+                            if (context.InParallelMode && context.OuterContextOp == null)
                             {
                                 SendOperator sendOperator = new SendOperator(context.CurrentExecutionOperator, getPartitionMethod);
                                 ReceiveOperator receiveOperator = new ReceiveOperator(sendOperator);
@@ -1736,7 +1736,7 @@ namespace GraphView
             GraphViewExecutionOperator currentExecutionOperator = context.CurrentExecutionOperator;
             TraversalOperator.TraversalTypeEnum traversalType = this.GetTraversalTypeParameter();
             GetPartitionMethodForTraversalOp getPartitionMethod = new GetPartitionMethodForTraversalOp(edgeFieldIndex, traversalType);
-            if (context.InParallelMode)
+            if (context.InParallelMode && context.OuterContextOp == null)
             {
                 SendOperator sendOperator = new SendOperator(context.CurrentExecutionOperator, getPartitionMethod);
                 ReceiveOperator receiveOperator = new ReceiveOperator(sendOperator);

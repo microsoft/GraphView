@@ -170,7 +170,7 @@ namespace GraphView
                     {
                         throw e;
                     }
-                    System.Threading.Thread.Sleep(5);
+                    System.Threading.Thread.Sleep(this.retryInterval);
                 }
             }
         }
@@ -192,7 +192,7 @@ namespace GraphView
                     {
                         throw e;
                     }
-                    System.Threading.Thread.Sleep(5);
+                    System.Threading.Thread.Sleep(this.retryInterval);
                 }
             }
         }
