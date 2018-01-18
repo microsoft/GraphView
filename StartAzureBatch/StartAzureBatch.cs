@@ -32,7 +32,8 @@ namespace StartAzureBatch
 
         public GraphViewAzureBatchJob()
         {
-            this.query = "g.V().out().values('name')";
+            //this.query = "g.V().has('name', 'marko').emit(__.has('label', 'person')).repeat(__.out()).values('name')";
+            this.query = "g.V().has('name', 'marko').repeat(__.out()).until(__.outE().count().is(0)).values('name')";
 
             this.jobId = Guid.NewGuid().ToString("N");
 
@@ -225,13 +226,13 @@ namespace StartAzureBatch
             plans.Add(new PartitionPlan(
                 "_partition", 
                 PartitionMethod.CompareEntire, nodeInfo[0].Item1, 
-                6061, // port 
+                8000, // port 
                 new List<string>{"marko", "vadas", "lop"}));
 
             plans.Add(new PartitionPlan(
                 "_partition",
                 PartitionMethod.CompareEntire, nodeInfo[1].Item1,
-                6061, // port
+                8000, // port
                 new List<string> { "josh", "ripple", "peter" }));
 
             return PartitionPlan.SerializePatitionPlans(plans);

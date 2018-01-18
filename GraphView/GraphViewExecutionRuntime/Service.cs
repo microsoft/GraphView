@@ -20,23 +20,183 @@ namespace GraphView
         void SendRawRecord(string message);
 
         [OperationContract]
-        void SendSignal(int index);
+        void SendSignal(string message);
     }
 
     internal class RawRecordService : IRawRecordService
     {
         // use concurrentQueue temporarily
         public ConcurrentQueue<string> Messages { get; } = new ConcurrentQueue<string>();
-        public ConcurrentQueue<int> Signals { get; } = new ConcurrentQueue<int>();
+        public ConcurrentQueue<string> Signals { get; } = new ConcurrentQueue<string>();
 
         public void SendRawRecord(string message)
         {
             Messages.Enqueue(message);
         }
 
-        public void SendSignal(int index)
+        public void SendSignal(string index)
         {
             Signals.Enqueue(index);
+        }
+    }
+
+    [Serializable]
+    internal abstract class SendOperator : GraphViewExecutionOperator
+    {
+        protected GraphViewExecutionOperator inputOp;
+
+        protected string receiveOpId;
+
+        protected readonly int retryLimit;
+        protected readonly int retryInterval; // if send data failed, sendOp will wait retryInterval milliseconds.
+
+        // Set following fields in deserialization
+        [NonSerialized]
+        protected List<PartitionPlan> partitionPlans;
+        [NonSerialized]
+        protected int partitionPlanIndex;
+
+        protected SendOperator(GraphViewExecutionOperator inputOp)
+        {
+            this.inputOp = inputOp;
+            this.retryLimit = 20;
+            this.retryInterval = 5; // 5 ms
+            this.Open();
+        }
+
+        protected RawRecordServiceClient ConstructClient(int taskIndex)
+        {
+            string ip = this.partitionPlans[taskIndex].IP;
+            int port = this.partitionPlans[taskIndex].Port;
+            UriBuilder uri = new UriBuilder("http", ip, port, this.receiveOpId + "/RawRecordService");
+            EndpointAddress endpointAddress = new EndpointAddress(uri.ToString());
+            WSHttpBinding binding = new WSHttpBinding();
+            binding.Security.Mode = SecurityMode.None;
+            return new RawRecordServiceClient(binding, endpointAddress);
+        }
+
+        protected void SendSignal(int nodeIndex, string signal)
+        {
+            RawRecordServiceClient client = ConstructClient(nodeIndex);
+
+            for (int i = 0; i < this.retryLimit; i++)
+            {
+                try
+                {
+                    client.SendSignal(signal);
+                    return;
+                }
+                catch (Exception e)
+                {
+                    if (i == this.retryLimit - 1)
+                    {
+                        throw e;
+                    }
+                    System.Threading.Thread.Sleep(this.retryInterval);
+                }
+            }
+        }
+
+        public void SetReceiveOpId(string id)
+        {
+            this.receiveOpId = id;
+        }
+
+        public override GraphViewExecutionOperator GetFirstOperator()
+        {
+            return this.inputOp.GetFirstOperator();
+        }
+
+        public override void ResetState()
+        {
+            this.Open();
+            this.inputOp.ResetState();
+        }
+
+        [OnDeserialized]
+        private void Reconstruct(StreamingContext context)
+        {
+            AdditionalSerializationInfo additionalInfo = (AdditionalSerializationInfo)context.Context;
+            this.partitionPlans = additionalInfo.PartitionPlans;
+            this.partitionPlanIndex = additionalInfo.PartitionPlanIndex;
+        }
+    }
+
+    [Serializable]
+    internal abstract class ReceiveOperator : GraphViewExecutionOperator
+    {
+        protected SendOperator inputOp;
+
+        protected readonly string id;
+
+        [NonSerialized]
+        protected ServiceHost selfHost;
+        [NonSerialized]
+        protected RawRecordService service;
+
+        // Set following fields in deserialization
+        [NonSerialized]
+        protected List<PartitionPlan> partitionPlans;
+        [NonSerialized]
+        protected int partitionPlanIndex;
+        [NonSerialized]
+        protected GraphViewCommand command;
+
+        protected ReceiveOperator(SendOperator inputOp)
+        {
+            this.inputOp = inputOp;
+
+            this.id = Guid.NewGuid().ToString("N");
+            this.inputOp.SetReceiveOpId(this.id);
+
+            this.selfHost = null;
+
+            this.Open();
+        }
+
+        protected void OpenHost()
+        {
+            PartitionPlan ownPartitionPlan = this.partitionPlans[this.partitionPlanIndex];
+            UriBuilder uri = new UriBuilder("http", ownPartitionPlan.IP, ownPartitionPlan.Port, this.id);
+            Uri baseAddress = uri.Uri;
+
+            WSHttpBinding binding = new WSHttpBinding();
+            binding.Security.Mode = SecurityMode.None;
+
+            this.selfHost = new ServiceHost(new RawRecordService(), baseAddress);
+            this.selfHost.AddServiceEndpoint(typeof(IRawRecordService), binding, "RawRecordService");
+
+            ServiceMetadataBehavior smb = new ServiceMetadataBehavior();
+            smb.HttpGetEnabled = true;
+            this.selfHost.Description.Behaviors.Add(smb);
+            this.selfHost.Description.Behaviors.Find<ServiceBehaviorAttribute>().InstanceContextMode =
+                InstanceContextMode.Single;
+
+            this.service = selfHost.SingletonInstance as RawRecordService;
+
+            selfHost.Open();
+        }
+
+        public override GraphViewExecutionOperator GetFirstOperator()
+        {
+            return this.inputOp.GetFirstOperator();
+        }
+
+        public override void ResetState()
+        {
+            this.Open();
+            this.inputOp.ResetState();
+        }
+
+        [OnDeserialized]
+        private void Reconstruct(StreamingContext context)
+        {
+            AdditionalSerializationInfo additionalInfo = (AdditionalSerializationInfo)context.Context;
+            this.command = additionalInfo.Command;
+            this.partitionPlans = additionalInfo.PartitionPlans;
+            this.partitionPlanIndex = additionalInfo.PartitionPlanIndex;
+
+            this.selfHost = null;
         }
     }
 
@@ -78,37 +238,18 @@ namespace GraphView
     }
 
     [Serializable]
-    internal class SendOperator : GraphViewExecutionOperator
+    internal class DistributeSendOperator : SendOperator
     {
-        private GraphViewExecutionOperator inputOp;
-
         private GetPartitionMethod getPartitionMethod;
 
-        private string receiveOpId;
-
-        private readonly int retryLimit;
-        // if send data failed, sendOp will wait retryInterval milliseconds.
-        private readonly int retryInterval;
-
-        // Set following fields in deserialization
-        [NonSerialized]
-        private List<PartitionPlan> partitionPlans;
-        [NonSerialized]
-        private int partitionPlanIndex;
-        [NonSerialized]
-        private GraphViewCommand command;
-
-        public SendOperator(GraphViewExecutionOperator inputOp, GetPartitionMethod getPartitionMethod)
+        public DistributeSendOperator(GraphViewExecutionOperator inputOp, GetPartitionMethod getPartitionMethod) : base(inputOp)
         {
-            this.inputOp = inputOp;
             this.getPartitionMethod = getPartitionMethod;
-            this.retryLimit = 20;
-            this.retryInterval = 5; // 5 ms
             this.Open();
         }
 
         public override RawRecord Next()
-        {   
+        {
             RawRecord record;
             while (this.inputOp.State() && (record = this.inputOp.Next()) != null)
             {
@@ -124,7 +265,7 @@ namespace GraphView
                 {
                     continue;
                 }
-                SendSignal(i);
+                SendSignal(i, this.partitionPlanIndex.ToString());
             }
 
             this.Close();
@@ -175,123 +316,23 @@ namespace GraphView
             }
         }
 
-        private void SendSignal(int nodeIndex)
-        {
-            RawRecordServiceClient client = ConstructClient(nodeIndex);
-
-            for (int i = 0; i < this.retryLimit; i++)
-            {
-                try
-                {
-                    client.SendSignal(this.partitionPlanIndex);
-                    return;
-                }
-                catch (Exception e)
-                {
-                    if (i == this.retryLimit - 1)
-                    {
-                        throw e;
-                    }
-                    System.Threading.Thread.Sleep(this.retryInterval);
-                }
-            }
-        }
-
-        private RawRecordServiceClient ConstructClient(int nodeIndex)
-        {
-            string ip = this.partitionPlans[nodeIndex].IP;
-            int port = this.partitionPlans[nodeIndex].Port;
-            UriBuilder uri = new UriBuilder("http", ip, port, this.receiveOpId + "/RawRecordService");
-            EndpointAddress endpointAddress = new EndpointAddress(uri.ToString());
-            WSHttpBinding binding = new WSHttpBinding();
-            binding.Security.Mode = SecurityMode.None;
-            return new RawRecordServiceClient(binding, endpointAddress);
-        }
-
-        public void SetReceiveOpId(string id)
-        {
-            this.receiveOpId = id;
-        }
-
-        public override GraphViewExecutionOperator GetFirstOperator()
-        {
-            return this.inputOp.GetFirstOperator();
-        }
-
-        public override void ResetState()
-        {
-            this.Open();
-            this.inputOp.ResetState();
-        }
-
-        [OnDeserialized]
-        private void Reconstruct(StreamingContext context)
-        {
-            AdditionalSerializationInfo additionalInfo = (AdditionalSerializationInfo)context.Context;
-            this.command = additionalInfo.Command;
-            this.partitionPlans = additionalInfo.PartitionPlans;
-            this.partitionPlanIndex = additionalInfo.PartitionPlanIndex;
-        }
-
     }
 
     [Serializable]
-    internal class ReceiveOperator : GraphViewExecutionOperator
+    internal class DistributeReceiveOperator : ReceiveOperator
     {
-        private SendOperator inputOp;
-
-        [NonSerialized]
-        private ServiceHost selfHost;
-        [NonSerialized]
-        private RawRecordService service;
         [NonSerialized]
         private List<bool> hasBeenSignaled;
 
-        // Set following fields in deserialization
-        [NonSerialized]
-        private List<PartitionPlan> partitionPlans;
-        [NonSerialized]
-        private int partitionPlanIndex;
-        [NonSerialized]
-        private GraphViewCommand command;
-
-        private readonly string id;
-
-        public ReceiveOperator(SendOperator inputOp)
+        public DistributeReceiveOperator(SendOperator inputOp) : base(inputOp)
         {
-            this.inputOp = inputOp;
-
-            this.id = Guid.NewGuid().ToString("N");
-            this.inputOp.SetReceiveOpId(this.id);
-
-            this.selfHost = null;
-
-            this.Open();
         }
 
         public override RawRecord Next()
         {
             if (this.selfHost == null)
             {
-                PartitionPlan ownPartitionPlan = this.partitionPlans[this.partitionPlanIndex];
-                UriBuilder uri = new UriBuilder("http", ownPartitionPlan.IP, ownPartitionPlan.Port, this.id);
-                Uri baseAddress = uri.Uri;
-
-                WSHttpBinding binding = new WSHttpBinding();
-                binding.Security.Mode = SecurityMode.None;
-
-                this.selfHost = new ServiceHost(new RawRecordService(), baseAddress);
-                this.selfHost.AddServiceEndpoint(typeof(IRawRecordService), binding, "RawRecordService");
-
-                ServiceMetadataBehavior smb = new ServiceMetadataBehavior();
-                smb.HttpGetEnabled = true;
-                this.selfHost.Description.Behaviors.Add(smb);
-                this.selfHost.Description.Behaviors.Find<ServiceBehaviorAttribute>().InstanceContextMode =
-                    InstanceContextMode.Single;
-
-                this.service = selfHost.SingletonInstance as RawRecordService;
-
-                selfHost.Open();
+                base.OpenHost();
             }
 
             RawRecord record;
@@ -309,10 +350,10 @@ namespace GraphView
                     return RawRecordMessage.DecodeMessage(message, this.command);
                 }
 
-                int signalIndex;
-                while (this.service.Signals.TryDequeue(out signalIndex))
+                string signal;
+                while (this.service.Signals.TryDequeue(out signal))
                 {
-                    this.hasBeenSignaled[signalIndex] = true;
+                    this.hasBeenSignaled[Int32.Parse(signal)] = true;
                 }
 
                 bool canClose = true;
@@ -330,32 +371,151 @@ namespace GraphView
                 }
             }
 
-            this.selfHost.Close();
             this.Close();
             return null;
         }
 
-        public override GraphViewExecutionOperator GetFirstOperator()
-        {
-            return this.inputOp.GetFirstOperator();
-        }
-
         public override void ResetState()
         {
-            this.Open();
-            this.selfHost = null;
-            this.inputOp.ResetState();
+            base.ResetState();
+            this.hasBeenSignaled = Enumerable.Repeat(false, this.partitionPlans.Count).ToList();
+            this.hasBeenSignaled[this.partitionPlanIndex] = true;
         }
 
         [OnDeserialized]
         private void Reconstruct(StreamingContext context)
         {
-            AdditionalSerializationInfo additionalInfo = (AdditionalSerializationInfo)context.Context;
-            this.command = additionalInfo.Command;
-            this.partitionPlans = additionalInfo.PartitionPlans;
-            this.partitionPlanIndex = additionalInfo.PartitionPlanIndex;
+            this.hasBeenSignaled = Enumerable.Repeat(false, this.partitionPlans.Count).ToList();
+            this.hasBeenSignaled[this.partitionPlanIndex] = true;
+        }
+    }
 
-            this.selfHost = null;
+    [Serializable]
+    internal class SyncSendOperator : SendOperator
+    {
+        [NonSerialized]
+        private bool hasResult;
+
+        public SyncSendOperator(GraphViewExecutionOperator inputOp) : base(inputOp)
+        {
+        }
+
+        public override RawRecord Next()
+        {
+            RawRecord record;
+            while (this.inputOp.State() && (record = this.inputOp.Next()) != null)
+            {
+                if (!hasResult)
+                {
+                    this.hasResult = true;
+                }
+                return record;
+            }
+
+            for (int i = 0; i < this.partitionPlans.Count; i++)
+            {
+                if (i == this.partitionPlanIndex)
+                {
+                    continue;
+                }
+                SendSignal(i, $"{this.partitionPlanIndex},{this.hasResult}");
+            }
+
+            this.Close();
+            return null;
+        }
+
+        public override void ResetState()
+        {
+            base.ResetState();
+            this.hasResult = false;
+        }
+
+        [OnDeserialized]
+        private void Reconstruct(StreamingContext context)
+        {
+            this.hasResult = false;
+        }
+    }
+
+    [Serializable]
+    internal class SyncReceiveOperator : ReceiveOperator
+    {
+        public bool HasGlobalResult => this.hasGlobalResult;
+
+        [NonSerialized]
+        private bool hasGlobalResult;
+        [NonSerialized]
+        private List<bool> hasBeenSignaled;
+
+        public SyncReceiveOperator(SendOperator inputOp) : base(inputOp)
+        {
+        }
+
+        public override RawRecord Next()
+        {
+            if (this.selfHost == null)
+            {
+                base.OpenHost();
+            }
+
+            RawRecord record;
+            if (this.inputOp.State() && (record = this.inputOp.Next()) != null)
+            {
+                if (!this.hasGlobalResult)
+                {
+                    this.hasGlobalResult = true;
+                }
+                return record;
+            }
+
+            // todo : use loop temporarily. need change later.
+            while (true)
+            {
+                string signal;
+                while (this.service.Signals.TryDequeue(out signal))
+                {
+                    string[] strArray = signal.Split(',');
+                    int taskId = Int32.Parse(strArray[0]);
+                    bool hasResult = bool.Parse(strArray[1]);
+                    this.hasBeenSignaled[taskId] = true;
+                    if (!this.hasGlobalResult)
+                    {
+                        this.hasGlobalResult |= hasResult;
+                    }
+                }
+
+                bool canClose = true;
+                foreach (bool flag in this.hasBeenSignaled)
+                {
+                    if (flag == false)
+                    {
+                        canClose = false;
+                        break;
+                    }
+                }
+                if (canClose)
+                {
+                    break;
+                }
+            }
+
+            this.Close();
+            return null;
+        }
+
+        public override void ResetState()
+        {
+            base.ResetState();
+            this.hasGlobalResult = false;
+            this.hasBeenSignaled = Enumerable.Repeat(false, this.partitionPlans.Count).ToList();
+            this.hasBeenSignaled[this.partitionPlanIndex] = true;
+        }
+
+        [OnDeserialized]
+        private void Reconstruct(StreamingContext context)
+        {
+            this.hasGlobalResult = false;
             this.hasBeenSignaled = Enumerable.Repeat(false, this.partitionPlans.Count).ToList();
             this.hasBeenSignaled[this.partitionPlanIndex] = true;
         }
@@ -370,7 +530,7 @@ namespace GraphView
 
     //        ServiceHost selfHost = new ServiceHost(new RawRecordService(), baseAddress);
 
-    //        selfHost.AddServiceEndpoint(typeof(IRawRecordService), new WSHttpBinding(), typeof(RawRecordService).ToString());
+    //        selfHost.AddServiceEndpoint(typeof(IRawRecordService), new WSHttpBinding(), "1");
 
     //        ServiceMetadataBehavior smb = new ServiceMetadataBehavior();
     //        smb.HttpGetEnabled = true;

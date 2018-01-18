@@ -499,12 +499,13 @@ namespace GraphView
                                     ? TraversalOperator.TraversalTypeEnum.Source
                                     : TraversalOperator.TraversalTypeEnum.Sink;
                             GetPartitionMethodForTraversalOp getPartitionMethod = new GetPartitionMethodForTraversalOp(edgeFieldIndex, traversalType);
-                            if (context.InParallelMode && context.OuterContextOp == null)
+                            if (context.InParallelMode && !context.InBatchMode)
                             {
-                                SendOperator sendOperator = new SendOperator(context.CurrentExecutionOperator, getPartitionMethod);
-                                ReceiveOperator receiveOperator = new ReceiveOperator(sendOperator);
+                                SendOperator sendOperator = new DistributeSendOperator(context.CurrentExecutionOperator, getPartitionMethod);
+                                ReceiveOperator receiveOperator = new DistributeReceiveOperator(sendOperator);
                                 currentExecutionOperator = receiveOperator;
                             }
+
                             op = new TraversalOperator(
                                 currentExecutionOperator,
                                 command,
@@ -549,10 +550,10 @@ namespace GraphView
                             int edgeFieldIndex = context.LocateColumnReference(tuple.Item2.LinkAlias, GremlinKeyword.Star);
                             TraversalOperator.TraversalTypeEnum traversalType = GetTraversalType(tuple.Item2 as MatchEdge);
                             GetPartitionMethodForTraversalOp getPartitionMethod = new GetPartitionMethodForTraversalOp(edgeFieldIndex, traversalType);
-                            if (context.InParallelMode && context.OuterContextOp == null)
+                            if (context.InParallelMode && !context.InBatchMode)
                             {
-                                SendOperator sendOperator = new SendOperator(context.CurrentExecutionOperator, getPartitionMethod);
-                                ReceiveOperator receiveOperator = new ReceiveOperator(sendOperator);
+                                SendOperator sendOperator = new DistributeSendOperator(context.CurrentExecutionOperator, getPartitionMethod);
+                                ReceiveOperator receiveOperator = new DistributeReceiveOperator(sendOperator);
                                 currentExecutionOperator = receiveOperator;
                             }
                             op = new TraversalOperator(
@@ -1736,10 +1737,10 @@ namespace GraphView
             GraphViewExecutionOperator currentExecutionOperator = context.CurrentExecutionOperator;
             TraversalOperator.TraversalTypeEnum traversalType = this.GetTraversalTypeParameter();
             GetPartitionMethodForTraversalOp getPartitionMethod = new GetPartitionMethodForTraversalOp(edgeFieldIndex, traversalType);
-            if (context.InParallelMode && context.OuterContextOp == null)
+            if (context.InParallelMode && !context.InBatchMode)
             {
-                SendOperator sendOperator = new SendOperator(context.CurrentExecutionOperator, getPartitionMethod);
-                ReceiveOperator receiveOperator = new ReceiveOperator(sendOperator);
+                SendOperator sendOperator = new DistributeSendOperator(context.CurrentExecutionOperator, getPartitionMethod);
+                ReceiveOperator receiveOperator = new DistributeReceiveOperator(sendOperator);
                 currentExecutionOperator = receiveOperator;
             }
 
@@ -2171,6 +2172,14 @@ namespace GraphView
                 rTableContext.CurrentExecutionOrder = context.LocalExecutionOrders[1];
             }
             GraphViewExecutionOperator innerOp = repeatSelect.Compile(rTableContext, command);
+            bool useSendReceive = false;
+            if (!context.InBatchMode)
+            {
+                SyncSendOperator syncSendOp = new SyncSendOperator(innerOp);
+                SyncReceiveOperator syncReceiveOp = new SyncReceiveOperator(syncSendOp);
+                innerOp = syncReceiveOp;
+                useSendReceive = true;
+            }
 
             RepeatOperator repeatOp = new RepeatOperator(
                 context.CurrentExecutionOperator,
@@ -2182,7 +2191,8 @@ namespace GraphView
                 emitFront,
                 terminationCondition,
                 untilFront,
-                repeatTimes);
+                repeatTimes,
+                useSendReceive);
 
             context.CurrentExecutionOperator = repeatOp;
 

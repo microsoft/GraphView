@@ -335,6 +335,10 @@ namespace GraphView
         private readonly GraphViewExecutionOperator repeatTraversalOp;
         [NonSerialized]
         private Container repeatTraversalContainer;
+        [NonSerialized]
+        private bool hasGlobalResult;
+
+        private bool useSendReceive;
 
         // After initialization, input records will become repeat rocords,
         // For each loop, this records will be the inputs of repeatTraversalOp(the loop body),
@@ -356,7 +360,8 @@ namespace GraphView
             bool isEmitFront,
             BooleanFunction untilCondition = null,
             bool isUntilFront = false,
-            int repeatTimes = -1)
+            int repeatTimes = -1,
+            bool useSendReceive = false)
         {
             this.inputOp = inputOp;
             this.initialContainer = initialContainer;
@@ -364,6 +369,7 @@ namespace GraphView
 
             this.repeatTraversalContainer = repeatTraversalContainer;
             this.repeatTraversalOp = repeatTraversalOp;
+            this.useSendReceive = useSendReceive;
 
             this.emitCondition = emitCondition;
             this.isEmitFront = isEmitFront;
@@ -451,6 +457,10 @@ namespace GraphView
             {
                 result.Add(innerOutput);
             }
+            if (this.useSendReceive)
+            {
+                this.hasGlobalResult = ((SyncReceiveOperator) this.repeatTraversalOp).HasGlobalResult;
+            }
             return result;
         }
 
@@ -461,6 +471,12 @@ namespace GraphView
             {
                 return false;
             }
+
+            if (this.repeatTimes == -1 && this.useSendReceive && this.hasGlobalResult)
+            {
+                return false;
+            }
+
             return true;
         }
 

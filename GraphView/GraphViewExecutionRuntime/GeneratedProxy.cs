@@ -22,10 +22,10 @@ public interface IRawRecordService
     System.Threading.Tasks.Task SendRawRecordAsync(string message);
     
     [System.ServiceModel.OperationContractAttribute(Action="http://tempuri.org/IRawRecordService/SendSignal", ReplyAction="http://tempuri.org/IRawRecordService/SendSignalResponse")]
-    void SendSignal(int index);
+    void SendSignal(string message);
     
     [System.ServiceModel.OperationContractAttribute(Action="http://tempuri.org/IRawRecordService/SendSignal", ReplyAction="http://tempuri.org/IRawRecordService/SendSignalResponse")]
-    System.Threading.Tasks.Task SendSignalAsync(int index);
+    System.Threading.Tasks.Task SendSignalAsync(string message);
 }
 
 [System.CodeDom.Compiler.GeneratedCodeAttribute("System.ServiceModel", "4.0.0.0")]
@@ -72,13 +72,13 @@ public partial class RawRecordServiceClient : System.ServiceModel.ClientBase<IRa
         return base.Channel.SendRawRecordAsync(message);
     }
     
-    public void SendSignal(int index)
+    public void SendSignal(string message)
     {
-        base.Channel.SendSignal(index);
+        base.Channel.SendSignal(message);
     }
     
-    public System.Threading.Tasks.Task SendSignalAsync(int index)
+    public System.Threading.Tasks.Task SendSignalAsync(string message)
     {
-        return base.Channel.SendSignalAsync(index);
+        return base.Channel.SendSignalAsync(message);
     }
 }
