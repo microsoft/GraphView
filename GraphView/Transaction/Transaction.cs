@@ -1,4 +1,4 @@
-﻿
+﻿using System.Windows.Forms;
 
 namespace GraphView.Transaction
 {
@@ -9,6 +9,11 @@ namespace GraphView.Transaction
     using System.Threading.Tasks;
     using GraphView.GraphViewDBPortal;
     using Newtonsoft.Json.Linq;
+
+    //public class LockFreeDictionary<TKey, TValue> : IDictionary<TKey, TValue>
+    //{
+    //    private Dictionary<TKey, TValue> dict;
+    //}
 
     internal enum OperationType
     {

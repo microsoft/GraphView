@@ -60,6 +60,7 @@
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
+    <Reference Include="System.Data.Linq" />
     <Reference Include="System.Runtime.Serialization" />
     <Reference Include="System.Runtime.Serialization.Formatters.Soap" />
     <Reference Include="System.Windows.Forms" />
@@ -246,6 +247,7 @@
     <Compile Include="Transaction\LogStore.cs" />
     <Compile Include="Transaction\RecordQuery.cs" />
     <Compile Include="Transaction\Transaction.cs" />
+    <Compile Include="Transaction\TransactionTable.cs" />
     <Compile Include="Transaction\TxSequenceGenerator.cs" />
     <Compile Include="TSQL Syntax Tree\WControlFlow.cs" />
     <Compile Include="TSQL Syntax Tree\WCreateViewStatement.cs" />
