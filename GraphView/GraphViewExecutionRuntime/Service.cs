@@ -34,29 +34,77 @@ namespace GraphView
             Messages.Enqueue(message);
         }
 
-        public void SendSignal(string index)
+        public void SendSignal(string message)
         {
-            Signals.Enqueue(index);
+            Signals.Enqueue(message);
         }
     }
 
     [Serializable]
-    internal abstract class SendOperator : GraphViewExecutionOperator
+    internal abstract class GetPartitionMethod
     {
-        protected GraphViewExecutionOperator inputOp;
+        public abstract string GetPartition(RawRecord record);
+    }
 
-        protected string receiveOpId;
+    [Serializable]
+    internal class GetPartitionMethodForTraversalOp : GetPartitionMethod
+    {
+        private readonly int edgeFieldIndex;
+        private readonly TraversalOperator.TraversalTypeEnum traversalType;
 
-        protected readonly int retryLimit;
-        protected readonly int retryInterval; // if send data failed, sendOp will wait retryInterval milliseconds.
+        public GetPartitionMethodForTraversalOp(int edgeFieldIndex, TraversalOperator.TraversalTypeEnum traversalType)
+        {
+            this.edgeFieldIndex = edgeFieldIndex;
+            this.traversalType = traversalType;
+        }
+
+        public override string GetPartition(RawRecord record)
+        {
+            EdgeField edge = record[this.edgeFieldIndex] as EdgeField;
+            switch (this.traversalType)
+            {
+                case TraversalOperator.TraversalTypeEnum.Source:
+                    return edge.OutVPartition;
+                case TraversalOperator.TraversalTypeEnum.Sink:
+                    return edge.InVPartition;
+                case TraversalOperator.TraversalTypeEnum.Other:
+                    return edge.OtherVPartition;
+                case TraversalOperator.TraversalTypeEnum.Both:
+                    return edge.OutVPartition;
+                default:
+                    throw new GraphViewException("Type of TraversalTypeEnum wrong.");
+            }
+        }
+    }
+
+    [Serializable]
+    internal class SendOperator : GraphViewExecutionOperator
+    {
+        private readonly GraphViewExecutionOperator inputOp;
+        private string receiveOpId;
+        // if send data failed, sendOp will retry retryLimit times.
+        private readonly int retryLimit;
+        // if send data failed, sendOp will wait retryInterval milliseconds.
+        private readonly int retryInterval; 
+        
+        // The number of results that has been handled
+        [NonSerialized]
+        private int resultCount;
+
+        public int ResultCount => this.resultCount;
+
+        private readonly GetPartitionMethod getPartitionMethod;
+        private readonly bool needAttachTaskIndex;
+        private readonly bool isSendBack;
+        private readonly bool isSync;
 
         // Set following fields in deserialization
         [NonSerialized]
-        protected List<PartitionPlan> partitionPlans;
+        private List<PartitionPlan> partitionPlans;
         [NonSerialized]
-        protected int partitionPlanIndex;
+        private int taskIndex;
 
-        protected SendOperator(GraphViewExecutionOperator inputOp)
+        private SendOperator(GraphViewExecutionOperator inputOp)
         {
             this.inputOp = inputOp;
             this.retryLimit = 20;
@@ -64,10 +112,97 @@ namespace GraphView
             this.Open();
         }
 
-        protected RawRecordServiceClient ConstructClient(int taskIndex)
+        public SendOperator(GraphViewExecutionOperator inputOp, GetPartitionMethod getPartitionMethod, bool needSendBack) 
+            : this(inputOp)
         {
-            string ip = this.partitionPlans[taskIndex].IP;
-            int port = this.partitionPlans[taskIndex].Port;
+            this.getPartitionMethod = getPartitionMethod;
+            this.needAttachTaskIndex = needSendBack;
+            this.isSendBack = false;
+            this.isSync = false;
+        }
+
+        public SendOperator(GraphViewExecutionOperator inputOp, bool isSendBack, bool isSync)
+            : this(inputOp)
+        {
+            this.getPartitionMethod = null;
+            this.needAttachTaskIndex = false;
+            this.isSendBack = isSendBack;
+            this.isSync = isSync;
+        }
+
+        public override RawRecord Next()
+        {
+            RawRecord record;
+            while (this.inputOp.State() && (record = this.inputOp.Next()) != null)
+            {
+                if (this.needAttachTaskIndex)
+                {
+                    ((StringField) record[0]).Value = this.taskIndex.ToString();
+                }
+
+                if (this.isSendBack)
+                {
+                    int index = int.Parse(record[0].ToValue);
+                    if (index == this.taskIndex)
+                    {
+                        this.resultCount++;
+                        return record;
+                    }
+                    else
+                    {
+                        SendRawRecord(record, index);
+                    }
+                }
+                else if (this.isSync)
+                {
+                    this.resultCount++;
+                    return record;
+                }
+                else
+                {
+                    string partition = this.getPartitionMethod.GetPartition(record);
+                    if (this.partitionPlans[this.taskIndex].BelongToPartitionPlan(partition))
+                    {
+                        this.resultCount++;
+                        return record;
+                    }
+                    for (int i = 0; i < this.partitionPlans.Count; i++)
+                    {
+                        if (i == this.taskIndex)
+                        {
+                            continue;
+                        }
+                        if (this.partitionPlans[i].BelongToPartitionPlan(partition))
+                        {
+                            SendRawRecord(record, i);
+                            break;
+                        }
+                        if (i == this.partitionPlans.Count - 1)
+                        {
+                            throw new GraphViewException($"This partition does not belong to any partition plan! partition:{ partition }");
+                        }
+                    }
+                }
+            }
+
+            for (int i = 0; i < this.partitionPlans.Count; i++)
+            {
+                if (i == this.taskIndex)
+                {
+                    continue;
+                }
+                string message = $"{this.taskIndex},{this.resultCount}";
+                SendSignal(i, message);
+            }
+
+            this.Close();
+            return null;
+        }
+
+        private RawRecordServiceClient ConstructClient(int targetTaskIndex)
+        {
+            string ip = this.partitionPlans[targetTaskIndex].IP;
+            int port = this.partitionPlans[targetTaskIndex].Port;
             UriBuilder uri = new UriBuilder("http", ip, port, this.receiveOpId + "/RawRecordService");
             EndpointAddress endpointAddress = new EndpointAddress(uri.ToString());
             WSHttpBinding binding = new WSHttpBinding();
@@ -75,9 +210,32 @@ namespace GraphView
             return new RawRecordServiceClient(binding, endpointAddress);
         }
 
-        protected void SendSignal(int nodeIndex, string signal)
+        private void SendRawRecord(RawRecord record, int targetTaskIndex)
         {
-            RawRecordServiceClient client = ConstructClient(nodeIndex);
+            string message = RawRecordMessage.CodeMessage(record);
+            RawRecordServiceClient client = ConstructClient(targetTaskIndex);
+
+            for (int i = 0; i < this.retryLimit; i++)
+            {
+                try
+                {
+                    client.SendRawRecord(message);
+                    return;
+                }
+                catch (Exception e)
+                {
+                    if (i == this.retryLimit - 1)
+                    {
+                        throw e;
+                    }
+                    System.Threading.Thread.Sleep(this.retryInterval);
+                }
+            }
+        }
+
+        private void SendSignal(int targetTaskIndex, string signal)
+        {
+            RawRecordServiceClient client = ConstructClient(targetTaskIndex);
 
             for (int i = 0; i < this.retryLimit; i++)
             {
@@ -111,6 +269,7 @@ namespace GraphView
         {
             this.Open();
             this.inputOp.ResetState();
+            this.resultCount = 0;
         }
 
         [OnDeserialized]
@@ -118,45 +277,109 @@ namespace GraphView
         {
             AdditionalSerializationInfo additionalInfo = (AdditionalSerializationInfo)context.Context;
             this.partitionPlans = additionalInfo.PartitionPlans;
-            this.partitionPlanIndex = additionalInfo.PartitionPlanIndex;
+            this.taskIndex = additionalInfo.TaskIndex;
+            this.resultCount = 0;
         }
     }
 
     [Serializable]
-    internal abstract class ReceiveOperator : GraphViewExecutionOperator
+    internal class ReceiveOperator : GraphViewExecutionOperator
     {
-        protected SendOperator inputOp;
+        private readonly SendOperator inputOp;
+        private readonly string id;
 
-        protected readonly string id;
+        private readonly bool needFetchRawRecord;
 
         [NonSerialized]
-        protected ServiceHost selfHost;
+        private ServiceHost selfHost;
         [NonSerialized]
-        protected RawRecordService service;
+        private RawRecordService service;
+
+        [NonSerialized]
+        private List<bool> hasBeenSignaled;
+        [NonSerialized]
+        private List<int> resultCountList;
 
         // Set following fields in deserialization
         [NonSerialized]
-        protected List<PartitionPlan> partitionPlans;
+        private List<PartitionPlan> partitionPlans;
         [NonSerialized]
-        protected int partitionPlanIndex;
+        private int taskIndex;
         [NonSerialized]
-        protected GraphViewCommand command;
+        private GraphViewCommand command;
 
-        protected ReceiveOperator(SendOperator inputOp)
+        public ReceiveOperator(SendOperator inputOp, bool needFetchRawRecord = true)
         {
             this.inputOp = inputOp;
-
             this.id = Guid.NewGuid().ToString("N");
             this.inputOp.SetReceiveOpId(this.id);
+            this.needFetchRawRecord = needFetchRawRecord;
 
             this.selfHost = null;
 
             this.Open();
         }
 
-        protected void OpenHost()
+        public override RawRecord Next()
         {
-            PartitionPlan ownPartitionPlan = this.partitionPlans[this.partitionPlanIndex];
+            if (this.selfHost == null)
+            {
+                this.OpenHost();
+            }
+
+            RawRecord record;
+            if (this.inputOp.State() && (record = this.inputOp.Next()) != null)
+            {
+                return record;
+            }
+
+            this.resultCountList[this.taskIndex] = this.inputOp.ResultCount;
+
+            // todo : use loop temporarily. need change later.
+            while (true)
+            {
+                if (this.needFetchRawRecord)
+                {
+                    string message;
+                    if (this.service.Messages.TryDequeue(out message))
+                    {
+                        return RawRecordMessage.DecodeMessage(message, this.command);
+                    }
+                }
+
+                string acknowledge;
+                while (this.service.Signals.TryDequeue(out acknowledge))
+                {
+                    string[] messages = acknowledge.Split(',');
+                    int ackTaskId = Int32.Parse(messages[0]);
+                    int ackResultCount = Int32.Parse(messages[1]);
+
+                    this.hasBeenSignaled[ackTaskId] = true;
+                    this.resultCountList[ackTaskId] = ackResultCount;
+                }
+
+                bool canClose = true;
+                foreach (bool flag in this.hasBeenSignaled)
+                {
+                    if (flag == false)
+                    {
+                        canClose = false;
+                        break;
+                    }
+                }
+                if (canClose)
+                {
+                    break;
+                }
+            }
+
+            this.Close();
+            return null;
+        }
+
+        private void OpenHost()
+        {
+            PartitionPlan ownPartitionPlan = this.partitionPlans[this.taskIndex];
             UriBuilder uri = new UriBuilder("http", ownPartitionPlan.IP, ownPartitionPlan.Port, this.id);
             Uri baseAddress = uri.Uri;
 
@@ -177,6 +400,18 @@ namespace GraphView
             selfHost.Open();
         }
 
+        public bool HasGlobalResult()
+        {
+            foreach (int resultCount in this.resultCountList)
+            {
+                if (resultCount > 0)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
         public override GraphViewExecutionOperator GetFirstOperator()
         {
             return this.inputOp.GetFirstOperator();
@@ -186,6 +421,9 @@ namespace GraphView
         {
             this.Open();
             this.inputOp.ResetState();
+            this.hasBeenSignaled = Enumerable.Repeat(false, this.partitionPlans.Count).ToList();
+            this.hasBeenSignaled[this.taskIndex] = true;
+            this.resultCountList = Enumerable.Repeat(0, this.partitionPlans.Count).ToList();
         }
 
         [OnDeserialized]
@@ -194,330 +432,13 @@ namespace GraphView
             AdditionalSerializationInfo additionalInfo = (AdditionalSerializationInfo)context.Context;
             this.command = additionalInfo.Command;
             this.partitionPlans = additionalInfo.PartitionPlans;
-            this.partitionPlanIndex = additionalInfo.PartitionPlanIndex;
+            this.taskIndex = additionalInfo.TaskIndex;
 
             this.selfHost = null;
-        }
-    }
 
-    [Serializable]
-    internal abstract class GetPartitionMethod
-    {
-        public abstract string GetPartition(RawRecord record);
-    }
-
-    [Serializable]
-    internal class GetPartitionMethodForTraversalOp : GetPartitionMethod
-    {
-        private int edgeFieldIndex;
-        TraversalOperator.TraversalTypeEnum traversalType;
-
-        public GetPartitionMethodForTraversalOp(int edgeFieldIndex, TraversalOperator.TraversalTypeEnum traversalType)
-        {
-            this.edgeFieldIndex = edgeFieldIndex;
-            this.traversalType = traversalType;
-        }
-
-        public override string GetPartition(RawRecord record)
-        {
-            EdgeField edge = record[this.edgeFieldIndex] as EdgeField;
-            switch (this.traversalType)
-            {
-                case TraversalOperator.TraversalTypeEnum.Source:
-                    return edge.OutVPartition;
-                case TraversalOperator.TraversalTypeEnum.Sink:
-                    return edge.InVPartition;
-                case TraversalOperator.TraversalTypeEnum.Other:
-                    return edge.OtherVPartition;
-                case TraversalOperator.TraversalTypeEnum.Both:
-                    return edge.OutVPartition;
-                default:
-                    throw new GraphViewException("Type of TraversalTypeEnum wrong.");
-            }
-        }
-    }
-
-    [Serializable]
-    internal class DistributeSendOperator : SendOperator
-    {
-        private GetPartitionMethod getPartitionMethod;
-
-        public DistributeSendOperator(GraphViewExecutionOperator inputOp, GetPartitionMethod getPartitionMethod) : base(inputOp)
-        {
-            this.getPartitionMethod = getPartitionMethod;
-            this.Open();
-        }
-
-        public override RawRecord Next()
-        {
-            RawRecord record;
-            while (this.inputOp.State() && (record = this.inputOp.Next()) != null)
-            {
-                if (ReturnOrSend(record, this.getPartitionMethod.GetPartition(record)))
-                {
-                    return record;
-                }
-            }
-
-            for (int i = 0; i < this.partitionPlans.Count; i++)
-            {
-                if (i == this.partitionPlanIndex)
-                {
-                    continue;
-                }
-                SendSignal(i, this.partitionPlanIndex.ToString());
-            }
-
-            this.Close();
-            return null;
-        }
-
-        private bool ReturnOrSend(RawRecord record, string partition)
-        {
-            if (this.partitionPlans[this.partitionPlanIndex].BelongToPartitionPlan(partition))
-            {
-                return true;
-            }
-            for (int i = 0; i < this.partitionPlans.Count; i++)
-            {
-                if (i == this.partitionPlanIndex)
-                {
-                    continue;
-                }
-                if (this.partitionPlans[i].BelongToPartitionPlan(partition))
-                {
-                    SendRawRecord(record, i);
-                    return false;
-                }
-            }
-            throw new GraphViewException($"This partition does not belong to any partition plan! partition:{ partition }");
-        }
-
-        private void SendRawRecord(RawRecord record, int nodeIndex)
-        {
-            string message = RawRecordMessage.CodeMessage(record);
-            RawRecordServiceClient client = ConstructClient(nodeIndex);
-
-            for (int i = 0; i < this.retryLimit; i++)
-            {
-                try
-                {
-                    client.SendRawRecord(message);
-                    return;
-                }
-                catch (Exception e)
-                {
-                    if (i == this.retryLimit - 1)
-                    {
-                        throw e;
-                    }
-                    System.Threading.Thread.Sleep(this.retryInterval);
-                }
-            }
-        }
-
-    }
-
-    [Serializable]
-    internal class DistributeReceiveOperator : ReceiveOperator
-    {
-        [NonSerialized]
-        private List<bool> hasBeenSignaled;
-
-        public DistributeReceiveOperator(SendOperator inputOp) : base(inputOp)
-        {
-        }
-
-        public override RawRecord Next()
-        {
-            if (this.selfHost == null)
-            {
-                base.OpenHost();
-            }
-
-            RawRecord record;
-            if (this.inputOp.State() && (record = this.inputOp.Next()) != null)
-            {
-                return record;
-            }
-
-            // todo : use loop temporarily. need change later.
-            while (true)
-            {
-                string message;
-                if (this.service.Messages.TryDequeue(out message))
-                {
-                    return RawRecordMessage.DecodeMessage(message, this.command);
-                }
-
-                string signal;
-                while (this.service.Signals.TryDequeue(out signal))
-                {
-                    this.hasBeenSignaled[Int32.Parse(signal)] = true;
-                }
-
-                bool canClose = true;
-                foreach (bool flag in this.hasBeenSignaled)
-                {
-                    if (flag == false)
-                    {
-                        canClose = false;
-                        break;
-                    }
-                }
-                if (canClose)
-                {
-                    break;
-                }
-            }
-
-            this.Close();
-            return null;
-        }
-
-        public override void ResetState()
-        {
-            base.ResetState();
             this.hasBeenSignaled = Enumerable.Repeat(false, this.partitionPlans.Count).ToList();
-            this.hasBeenSignaled[this.partitionPlanIndex] = true;
-        }
-
-        [OnDeserialized]
-        private void Reconstruct(StreamingContext context)
-        {
-            this.hasBeenSignaled = Enumerable.Repeat(false, this.partitionPlans.Count).ToList();
-            this.hasBeenSignaled[this.partitionPlanIndex] = true;
-        }
-    }
-
-    [Serializable]
-    internal class SyncSendOperator : SendOperator
-    {
-        [NonSerialized]
-        private bool hasResult;
-
-        public SyncSendOperator(GraphViewExecutionOperator inputOp) : base(inputOp)
-        {
-        }
-
-        public override RawRecord Next()
-        {
-            RawRecord record;
-            while (this.inputOp.State() && (record = this.inputOp.Next()) != null)
-            {
-                if (!hasResult)
-                {
-                    this.hasResult = true;
-                }
-                return record;
-            }
-
-            for (int i = 0; i < this.partitionPlans.Count; i++)
-            {
-                if (i == this.partitionPlanIndex)
-                {
-                    continue;
-                }
-                SendSignal(i, $"{this.partitionPlanIndex},{this.hasResult}");
-            }
-
-            this.Close();
-            return null;
-        }
-
-        public override void ResetState()
-        {
-            base.ResetState();
-            this.hasResult = false;
-        }
-
-        [OnDeserialized]
-        private void Reconstruct(StreamingContext context)
-        {
-            this.hasResult = false;
-        }
-    }
-
-    [Serializable]
-    internal class SyncReceiveOperator : ReceiveOperator
-    {
-        public bool HasGlobalResult => this.hasGlobalResult;
-
-        [NonSerialized]
-        private bool hasGlobalResult;
-        [NonSerialized]
-        private List<bool> hasBeenSignaled;
-
-        public SyncReceiveOperator(SendOperator inputOp) : base(inputOp)
-        {
-        }
-
-        public override RawRecord Next()
-        {
-            if (this.selfHost == null)
-            {
-                base.OpenHost();
-            }
-
-            RawRecord record;
-            if (this.inputOp.State() && (record = this.inputOp.Next()) != null)
-            {
-                if (!this.hasGlobalResult)
-                {
-                    this.hasGlobalResult = true;
-                }
-                return record;
-            }
-
-            // todo : use loop temporarily. need change later.
-            while (true)
-            {
-                string signal;
-                while (this.service.Signals.TryDequeue(out signal))
-                {
-                    string[] strArray = signal.Split(',');
-                    int taskId = Int32.Parse(strArray[0]);
-                    bool hasResult = bool.Parse(strArray[1]);
-                    this.hasBeenSignaled[taskId] = true;
-                    if (!this.hasGlobalResult)
-                    {
-                        this.hasGlobalResult |= hasResult;
-                    }
-                }
-
-                bool canClose = true;
-                foreach (bool flag in this.hasBeenSignaled)
-                {
-                    if (flag == false)
-                    {
-                        canClose = false;
-                        break;
-                    }
-                }
-                if (canClose)
-                {
-                    break;
-                }
-            }
-
-            this.Close();
-            return null;
-        }
-
-        public override void ResetState()
-        {
-            base.ResetState();
-            this.hasGlobalResult = false;
-            this.hasBeenSignaled = Enumerable.Repeat(false, this.partitionPlans.Count).ToList();
-            this.hasBeenSignaled[this.partitionPlanIndex] = true;
-        }
-
-        [OnDeserialized]
-        private void Reconstruct(StreamingContext context)
-        {
-            this.hasGlobalResult = false;
-            this.hasBeenSignaled = Enumerable.Repeat(false, this.partitionPlans.Count).ToList();
-            this.hasBeenSignaled[this.partitionPlanIndex] = true;
+            this.hasBeenSignaled[this.taskIndex] = true;
+            this.resultCountList = Enumerable.Repeat(0, this.partitionPlans.Count).ToList();
         }
     }
 

@@ -499,11 +499,21 @@ namespace GraphView
                                     ? TraversalOperator.TraversalTypeEnum.Source
                                     : TraversalOperator.TraversalTypeEnum.Sink;
                             GetPartitionMethodForTraversalOp getPartitionMethod = new GetPartitionMethodForTraversalOp(edgeFieldIndex, traversalType);
-                            if (context.InParallelMode && !context.InBatchMode)
+                            if (context.InParallelMode && context.SendReceiveMode != SendReceiveMode.None)
                             {
-                                SendOperator sendOperator = new DistributeSendOperator(context.CurrentExecutionOperator, getPartitionMethod);
-                                ReceiveOperator receiveOperator = new DistributeReceiveOperator(sendOperator);
-                                currentExecutionOperator = receiveOperator;
+                                if (context.SendReceiveMode == SendReceiveMode.Send)
+                                {
+                                    SendOperator sendOperator = new SendOperator(context.CurrentExecutionOperator, getPartitionMethod, false);
+                                    ReceiveOperator receiveOperator = new ReceiveOperator(sendOperator);
+                                    currentExecutionOperator = receiveOperator;
+                                }
+                                else if(context.SendReceiveMode == SendReceiveMode.SendThenSendBack)
+                                {
+                                    context.NeedSendBack = true;
+                                    SendOperator sendOperator = new SendOperator(context.CurrentExecutionOperator, getPartitionMethod, true);
+                                    ReceiveOperator receiveOperator = new ReceiveOperator(sendOperator);
+                                    currentExecutionOperator = receiveOperator;
+                                }
                             }
 
                             op = new TraversalOperator(
@@ -550,11 +560,21 @@ namespace GraphView
                             int edgeFieldIndex = context.LocateColumnReference(tuple.Item2.LinkAlias, GremlinKeyword.Star);
                             TraversalOperator.TraversalTypeEnum traversalType = GetTraversalType(tuple.Item2 as MatchEdge);
                             GetPartitionMethodForTraversalOp getPartitionMethod = new GetPartitionMethodForTraversalOp(edgeFieldIndex, traversalType);
-                            if (context.InParallelMode && !context.InBatchMode)
+                            if (context.InParallelMode && context.SendReceiveMode != SendReceiveMode.None)
                             {
-                                SendOperator sendOperator = new DistributeSendOperator(context.CurrentExecutionOperator, getPartitionMethod);
-                                ReceiveOperator receiveOperator = new DistributeReceiveOperator(sendOperator);
-                                currentExecutionOperator = receiveOperator;
+                                if (context.SendReceiveMode == SendReceiveMode.Send)
+                                {
+                                    SendOperator sendOperator = new SendOperator(context.CurrentExecutionOperator, getPartitionMethod, false);
+                                    ReceiveOperator receiveOperator = new ReceiveOperator(sendOperator);
+                                    currentExecutionOperator = receiveOperator;
+                                }
+                                else if (context.SendReceiveMode == SendReceiveMode.SendThenSendBack)
+                                {
+                                    context.NeedSendBack = true;
+                                    SendOperator sendOperator = new SendOperator(context.CurrentExecutionOperator, getPartitionMethod, true);
+                                    ReceiveOperator receiveOperator = new ReceiveOperator(sendOperator);
+                                    currentExecutionOperator = receiveOperator;
+                                }
                             }
                             op = new TraversalOperator(
                                 currentExecutionOperator,
@@ -691,6 +711,11 @@ namespace GraphView
                         ? operatorChain.Last()
                         : (context.OuterContextOp ?? new EnumeratorOperator()));
 
+                if (context.InParallelMode && context.SendReceiveMode == SendReceiveMode.SendThenSendBack)
+                {
+                    FieldValue indexValue = new FieldValue(0);
+                    projectOperator.AddSelectScalarElement(indexValue);
+                }
 
                 // When CarryOn is set, in addition to the SELECT elements in the SELECT clause,
                 // the query also projects fields from its parent context.
@@ -704,8 +729,14 @@ namespace GraphView
                 }
                 else if (context.InBatchMode)
                 {
-                    FieldValue indexValue = new FieldValue(0);
-                    projectOperator.AddSelectScalarElement(indexValue);
+                    if (context.InParallelMode && context.SendReceiveMode == SendReceiveMode.SendThenSendBack)
+                    {
+                        projectOperator.AddSelectScalarElement(new FieldValue(1));
+                    }
+                    else
+                    {
+                        projectOperator.AddSelectScalarElement(new FieldValue(0));
+                    }
                 }
 
 
@@ -1105,6 +1136,7 @@ namespace GraphView
 
         internal string CompileAndSerialize(QueryCompilationContext context, GraphViewCommand command)
         {
+            ParallelLevel parallelLevel = new ParallelLevel(true, true, true);
             QueryCompilationContext priorContext = new QueryCompilationContext();
             GraphViewExecutionOperator op = null;
             foreach (WSqlStatement st in Statements)
@@ -1112,7 +1144,13 @@ namespace GraphView
                 QueryCompilationContext statementContext = new QueryCompilationContext(priorContext.TemporaryTableCollection,
                     priorContext.SideEffectFunctions, priorContext.SideEffectStates,
                     priorContext.Containers);
+
                 statementContext.InParallelMode = true;
+                statementContext.ParallelLevel = parallelLevel;
+                statementContext.SendReceiveMode = statementContext.ParallelLevel.EnableSend
+                    ? SendReceiveMode.Send
+                    : SendReceiveMode.None;
+
                 op = st.Compile(statementContext, command);
                 priorContext = statementContext;
             }
@@ -1258,7 +1296,8 @@ namespace GraphView
         internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewCommand command)
         {
             ContainerWithFlag container = new ContainerWithFlag();
-            CoalesceOperator coalesceOp = new CoalesceOperator(context.CurrentExecutionOperator, container);
+            bool isParallel = context.InParallelMode && context.ParallelLevel.EnableSendThenSendBack;
+            CoalesceOperator coalesceOp = new CoalesceOperator(context.CurrentExecutionOperator, container, isParallel);
                
             WSelectQueryBlock firstSelectQuery = null;
             for (int index = 0; index < Parameters.Count; ++index)
@@ -1278,16 +1317,31 @@ namespace GraphView
                     }
                 }
 
-                // Set all sub-traversals' source to a same `sourceEnumerator`, and turn on InBatchMode
+                // Set all sub-traversals' source to a same container, and turn on InBatchMode
                 QueryCompilationContext subcontext = new QueryCompilationContext(context);
                 subcontext.OuterContextOp.SetContainer(container);
                 subcontext.AddField(GremlinKeyword.IndexTableName, command.IndexColumnName, ColumnGraphType.Value, true);
                 subcontext.InBatchMode = true;
+                if (isParallel)
+                {
+                    subcontext.SendReceiveMode = SendReceiveMode.SendThenSendBack;
+                    subcontext.AddField(GremlinKeyword.TaskIndexTableName, command.IndexColumnName, ColumnGraphType.Value, true);
+                }
+                else
+                {
+                    subcontext.SendReceiveMode = SendReceiveMode.None;
+                }
                 if (index < context.LocalExecutionOrders.Count)
                 {
                     subcontext.CurrentExecutionOrder = context.LocalExecutionOrders[index];
                 }
                 GraphViewExecutionOperator traversalOp = scalarSubquery.SubQueryExpr.Compile(subcontext, command);
+                if (isParallel && subcontext.NeedSendBack)
+                {
+                    SendOperator sendOperator = new SendOperator(traversalOp, true, false);
+                    ReceiveOperator receiveOperator = new ReceiveOperator(sendOperator);
+                    traversalOp = receiveOperator;
+                }
                 coalesceOp.AddTraversal(traversalOp);
             }
 
@@ -1737,11 +1791,21 @@ namespace GraphView
             GraphViewExecutionOperator currentExecutionOperator = context.CurrentExecutionOperator;
             TraversalOperator.TraversalTypeEnum traversalType = this.GetTraversalTypeParameter();
             GetPartitionMethodForTraversalOp getPartitionMethod = new GetPartitionMethodForTraversalOp(edgeFieldIndex, traversalType);
-            if (context.InParallelMode && !context.InBatchMode)
+            if (context.InParallelMode && context.SendReceiveMode != SendReceiveMode.None)
             {
-                SendOperator sendOperator = new DistributeSendOperator(context.CurrentExecutionOperator, getPartitionMethod);
-                ReceiveOperator receiveOperator = new DistributeReceiveOperator(sendOperator);
-                currentExecutionOperator = receiveOperator;
+                if (context.SendReceiveMode == SendReceiveMode.Send)
+                {
+                    SendOperator sendOperator = new SendOperator(context.CurrentExecutionOperator, getPartitionMethod, false);
+                    ReceiveOperator receiveOperator = new ReceiveOperator(sendOperator);
+                    currentExecutionOperator = receiveOperator;
+                }
+                else if (context.SendReceiveMode == SendReceiveMode.SendThenSendBack)
+                {
+                    context.NeedSendBack = true;
+                    SendOperator sendOperator = new SendOperator(context.CurrentExecutionOperator, getPartitionMethod, true);
+                    ReceiveOperator receiveOperator = new ReceiveOperator(sendOperator);
+                    currentExecutionOperator = receiveOperator;
+                }
             }
 
             TraversalOperator traversalOp = new TraversalOperator(
@@ -2150,12 +2214,19 @@ namespace GraphView
 
             WRepeatConditionExpression repeatCondition = Parameters[1] as WRepeatConditionExpression;
             if (repeatCondition == null)
+            {
                 throw new SyntaxErrorException("The second parameter of a repeat table reference must be WRepeatConditionExpression");
+            }
 
             int repeatTimes = repeatCondition.RepeatTimes;
             bool untilFront = repeatCondition.StartFromContext;
             bool emitFront = repeatCondition.EmitContext;
 
+            // BooleanFunction can not parallel now. Enable send/receive in later update.
+            if (rTableContext.InParallelMode)
+            {
+                rTableContext.SendReceiveMode = SendReceiveMode.None;
+            }
             // compile until
             BooleanFunction terminationCondition = repeatCondition.TerminationCondition?.CompileToBatchFunction(rTableContext, command);
 
@@ -2167,18 +2238,36 @@ namespace GraphView
             rTableContext.OuterContextOp.SetContainer(innerContainer);
             rTableContext.InBatchMode = context.InBatchMode;
             rTableContext.CarryOn = true;
+            rTableContext.SendReceiveMode = context.SendReceiveMode;
             if (1 < context.LocalExecutionOrders.Count)
             {
                 rTableContext.CurrentExecutionOrder = context.LocalExecutionOrders[1];
             }
-            GraphViewExecutionOperator innerOp = repeatSelect.Compile(rTableContext, command);
-            bool useSendReceive = false;
-            if (!context.InBatchMode)
+
+            if (rTableContext.InParallelMode && rTableContext.SendReceiveMode == SendReceiveMode.SendThenSendBack)
             {
-                SyncSendOperator syncSendOp = new SyncSendOperator(innerOp);
-                SyncReceiveOperator syncReceiveOp = new SyncReceiveOperator(syncSendOp);
-                innerOp = syncReceiveOp;
-                useSendReceive = true;
+                rTableContext.AddField(GremlinKeyword.TaskIndexTableName, command.IndexColumnName, ColumnGraphType.Value, true);
+            }
+
+            GraphViewExecutionOperator innerOp = repeatSelect.Compile(rTableContext, command);
+
+            bool useSendReceive = false;
+            if (rTableContext.InParallelMode)
+            {
+                if (rTableContext.SendReceiveMode == SendReceiveMode.Send)
+                {
+                    useSendReceive = true;
+                    SendOperator syncSendOp = new SendOperator(innerOp, false, true);
+                    ReceiveOperator syncReceiveOp = new ReceiveOperator(syncSendOp, false);
+                    innerOp = syncReceiveOp;
+                }
+                else if (rTableContext.SendReceiveMode == SendReceiveMode.SendThenSendBack)
+                {
+                    useSendReceive = true;
+                    SendOperator syncSendOp = new SendOperator(innerOp, true, true);
+                    ReceiveOperator syncReceiveOp = new ReceiveOperator(syncSendOp);
+                    innerOp = syncReceiveOp;
+                }
             }
 
             RepeatOperator repeatOp = new RepeatOperator(

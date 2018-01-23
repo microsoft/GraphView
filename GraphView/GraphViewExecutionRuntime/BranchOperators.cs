@@ -459,7 +459,7 @@ namespace GraphView
             }
             if (this.useSendReceive)
             {
-                this.hasGlobalResult = ((SyncReceiveOperator) this.repeatTraversalOp).HasGlobalResult;
+                this.hasGlobalResult = ((ReceiveOperator) this.repeatTraversalOp).HasGlobalResult();
             }
             return result;
         }
@@ -1093,7 +1093,7 @@ namespace GraphView
         private void Reconstruct(StreamingContext context)
         {
             this.container = new Container();
-            // enumeratorOp maybe is null. for example: g.V().count()
+            // EnumeratorOp maybe be null. For example: g.V().count()
             EnumeratorOperator enumeratorOp = this.derivedQueryOp.GetFirstOperator() as EnumeratorOperator;
             enumeratorOp?.SetContainer(this.container);
         }

@@ -527,14 +527,14 @@ namespace GraphView
     {
         public GraphViewCommand Command { get; private set; }
         public List<PartitionPlan> PartitionPlans { get; private set; }
-        public int PartitionPlanIndex { get; private set; }
+        public int TaskIndex { get; private set; }
         public Dictionary<string, IAggregateFunction> SideEffectFunctions { get; set; }
 
-        public AdditionalSerializationInfo(GraphViewCommand command, List<PartitionPlan> partitionPlans, int partitionPlanIndex)
+        public AdditionalSerializationInfo(GraphViewCommand command, List<PartitionPlan> partitionPlans, int taskIndex)
         {
             this.Command = command;
             this.PartitionPlans = partitionPlans;
-            this.PartitionPlanIndex = partitionPlanIndex;
+            this.TaskIndex = taskIndex;
         }
     }
 

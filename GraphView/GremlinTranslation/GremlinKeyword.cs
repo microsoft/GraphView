@@ -34,6 +34,8 @@ namespace GraphView
 
         public const string IndexTableName = "$INDEX";
 
+        public const string TaskIndexTableName = "$TASKINDEX";
+
         public static class func
         {
             public const string Coalesce = "Coalesce";

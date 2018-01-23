@@ -26,6 +26,7 @@
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Diagnostics;
 using System.Linq;
 
 namespace GraphView
@@ -83,6 +84,31 @@ namespace GraphView
         }
     }
 
+    internal enum SendReceiveMode
+    {
+        None, // no send/receive
+        Send, // ...->op->send->receive->op-> ...
+        SendThenSendBack, // ...->op->send->receive->op->...->send->send
+    }
+
+    internal class ParallelLevel
+    {
+        public bool EnableSend { get; }
+        public bool EnableSendInSubTraversal { get; }
+        public bool EnableSendThenSendBack { get; }
+
+        public ParallelLevel(bool enableSend = false, bool enableSendInSubTraversal = false, 
+            bool enableSendThenSendBack = false)
+        {
+            Debug.Assert(enableSend || (!enableSendInSubTraversal && !enableSendThenSendBack));
+            Debug.Assert(enableSendInSubTraversal || !enableSendThenSendBack);
+
+            this.EnableSend = enableSend;
+            this.EnableSendInSubTraversal = enableSendInSubTraversal;
+            this.EnableSendThenSendBack = enableSendThenSendBack;
+        }
+    }
+
     /// <summary>
     /// QueryCompilationContext is an entity providing contexts 
     /// for translating a SQL statement or a nested SQL query. 
@@ -115,6 +141,12 @@ namespace GraphView
 
         public bool InParallelMode { get; set; }
 
+        public SendReceiveMode SendReceiveMode { get; set; }
+
+        public ParallelLevel ParallelLevel { get; set; }
+
+        public bool NeedSendBack { get; set; }
+
         public Dictionary<WColumnReferenceExpression, int> ParentContextRawRecordLayout { get; private set; }
 
         public Dictionary<string, AggregateState> SideEffectStates { get; private set; }
@@ -126,35 +158,39 @@ namespace GraphView
 
         public QueryCompilationContext()
         {
-            TemporaryTableCollection = new Dictionary<string, Tuple<TemporaryTableHeader, GraphViewExecutionOperator>>();
-            RawRecordLayout = new Dictionary<WColumnReferenceExpression, int>(new WColumnReferenceExpressionComparer());
-            TableReferences = new HashSet<string>();
-            SideEffectStates = new Dictionary<string, AggregateState>();
-            SideEffectFunctions = new Dictionary<string, IAggregateFunction>();
-            CarryOn = false;
-            InParallelMode = false;
-            Containers = new List<Container>();
-            CurrentExecutionOrder = new ExecutionOrder();
-            LocalExecutionOrders = new List<ExecutionOrder>();
+            this.TemporaryTableCollection = new Dictionary<string, Tuple<TemporaryTableHeader, GraphViewExecutionOperator>>();
+            this.RawRecordLayout = new Dictionary<WColumnReferenceExpression, int>(new WColumnReferenceExpressionComparer());
+            this.TableReferences = new HashSet<string>();
+            this.SideEffectStates = new Dictionary<string, AggregateState>();
+            this.SideEffectFunctions = new Dictionary<string, IAggregateFunction>();
+            this.CarryOn = false;
+            this.InParallelMode = false;
+            this.NeedSendBack = false;
+            this.Containers = new List<Container>();
+            this.CurrentExecutionOrder = new ExecutionOrder();
+            this.LocalExecutionOrders = new List<ExecutionOrder>();
         }
 
         public QueryCompilationContext(QueryCompilationContext parentContext)
         {
-            CurrentExecutionOperator = parentContext.CurrentExecutionOperator;
-            TemporaryTableCollection = parentContext.TemporaryTableCollection;
-            RawRecordLayout = new Dictionary<WColumnReferenceExpression, int>(parentContext.RawRecordLayout,
+            this.CurrentExecutionOperator = parentContext.CurrentExecutionOperator;
+            this.TemporaryTableCollection = parentContext.TemporaryTableCollection;
+            this.RawRecordLayout = new Dictionary<WColumnReferenceExpression, int>(parentContext.RawRecordLayout,
                 new WColumnReferenceExpressionComparer());
-            TableReferences = new HashSet<string>(parentContext.TableReferences);
-            OuterContextOp = new EnumeratorOperator();
-            CarryOn = false;
-            InParallelMode = parentContext.InParallelMode;
-            ParentContextRawRecordLayout = new Dictionary<WColumnReferenceExpression, int>(
+            this.TableReferences = new HashSet<string>(parentContext.TableReferences);
+            this.OuterContextOp = new EnumeratorOperator();
+            this.CarryOn = false;
+            this.InParallelMode = parentContext.InParallelMode;
+            this.SendReceiveMode = parentContext.SendReceiveMode;
+            this.ParallelLevel = parentContext.ParallelLevel;
+            this.NeedSendBack = false;
+            this.ParentContextRawRecordLayout = new Dictionary<WColumnReferenceExpression, int>(
                 parentContext.RawRecordLayout, new WColumnReferenceExpressionComparer());
-            SideEffectStates = parentContext.SideEffectStates;
-            SideEffectFunctions = parentContext.SideEffectFunctions;
-            Containers = parentContext.Containers;
-            CurrentExecutionOrder = new ExecutionOrder(parentContext.CurrentExecutionOrder);
-            LocalExecutionOrders = new List<ExecutionOrder>();
+            this.SideEffectStates = parentContext.SideEffectStates;
+            this.SideEffectFunctions = parentContext.SideEffectFunctions;
+            this.Containers = parentContext.Containers;
+            this.CurrentExecutionOrder = new ExecutionOrder(parentContext.CurrentExecutionOrder);
+            this.LocalExecutionOrders = new List<ExecutionOrder>();
         }
 
         public QueryCompilationContext(
@@ -163,15 +199,16 @@ namespace GraphView
             Dictionary<string, AggregateState> priorSideEffectStates,
             List<Container> priorContainers)
         {
-            TemporaryTableCollection = priorTemporaryTables;
-            RawRecordLayout = new Dictionary<WColumnReferenceExpression, int>(new WColumnReferenceExpressionComparer());
-            TableReferences = new HashSet<string>();
-            SideEffectFunctions = priorSideEffectFunctions;
-            SideEffectStates = priorSideEffectStates;
-            Containers = priorContainers;
-            CurrentExecutionOrder = new ExecutionOrder();
-            LocalExecutionOrders = new List<ExecutionOrder>();
-            InParallelMode = false;
+            this.TemporaryTableCollection = priorTemporaryTables;
+            this.RawRecordLayout = new Dictionary<WColumnReferenceExpression, int>(new WColumnReferenceExpressionComparer());
+            this.TableReferences = new HashSet<string>();
+            this.SideEffectFunctions = priorSideEffectFunctions;
+            this.SideEffectStates = priorSideEffectStates;
+            this.Containers = priorContainers;
+            this.CurrentExecutionOrder = new ExecutionOrder();
+            this.LocalExecutionOrders = new List<ExecutionOrder>();
+            this.InParallelMode = false;
+            this.NeedSendBack = false;
         }
 
         public int AddContainers(Container container)
