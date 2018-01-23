@@ -51,32 +51,32 @@ namespace GraphView.Transaction
 
         private SingletonTxTable()
         {
-            table = new Dictionary<long, TxTableEntry>();
+            this.table = new Dictionary<long, TxTableEntry>();
         }
 
         internal static SingletonTxTable InstSingletonTxTable
         {
             get
             {
-                if (instSingletonTxTable == null)
+                if (SingletonTxTable.instSingletonTxTable == null)
                 {
-                    lock (initiLock)
+                    lock (SingletonTxTable.initiLock)
                     {
-                        if (instSingletonTxTable == null)
+                        if (SingletonTxTable.instSingletonTxTable == null)
                         {
-                            instSingletonTxTable = new SingletonTxTable();
+                            SingletonTxTable.instSingletonTxTable = new SingletonTxTable();
                         }
                     }
                 }
 
-                return instSingletonTxTable;
+                return SingletonTxTable.instSingletonTxTable;
             }
         }
 
         public TxStatus GetTxStatusByTxId(long txId)
         {
             TxTableEntry entry = null;
-            if (table.TryGetValue(txId, out entry))
+            if (this.table.TryGetValue(txId, out entry))
             {
                 return entry.Status;
             }
@@ -85,7 +85,7 @@ namespace GraphView.Transaction
 
         public void UpdateTxStatusByTxId(long txId, TxStatus txStatus)
         {
-            if (table.ContainsKey(txId))
+            if (this.table.ContainsKey(txId))
             {
                 table[txId].Status = txStatus;
             }
@@ -94,18 +94,18 @@ namespace GraphView.Transaction
 
         public void InsertNewTx(long txId, long beginTimestamp)
         {
-            if (table.ContainsKey(txId))
+            if (this.table.ContainsKey(txId))
             {
                 throw new DuplicateKeyException(txId);
             }
-            table.Add(txId, new TxTableEntry(TxStatus.Active, beginTimestamp, long.MaxValue));
+            this.table.Add(txId, new TxTableEntry(TxStatus.Active, beginTimestamp, long.MaxValue));
         }
 
         public void UpdateTxEndTimestampByTxId(long txId, long endTimestamp)
         {
-            if (table.ContainsKey(txId))
+            if (this.table.ContainsKey(txId))
             {
-                table[txId].EndTimestamp = endTimestamp;
+                this.table[txId].EndTimestamp = endTimestamp;
             }
             throw new KeyNotFoundException();
         }
