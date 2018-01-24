@@ -1,11 +1,12 @@
 ﻿using System.ComponentModel.Design;
 
+
 namespace GraphView.Transaction
 {
     using System.Collections.Generic;
     using System.Data.Linq;
 
-    internal enum TxStatus
+    public enum TxStatus
     {
         Active,
         Validating,
@@ -31,7 +32,7 @@ namespace GraphView.Transaction
     /// <summary>
     /// An interface for the transaction table.
     /// </summary>
-    internal interface ITxTable
+    public interface ITxTable
     {
         TxStatus GetTxStatusByTxId(long txId);
         void UpdateTxStatusByTxId(long txId, TxStatus txStatus);
@@ -43,12 +44,12 @@ namespace GraphView.Transaction
     /// A singleton transaction table, which stores transaction state and timestamps.
     /// This table is globally visible.
     /// </summary>
-    internal class SingletonTxTable : ITxTable
+    public class SingletonTxTable : ITxTable
     {
         private static volatile SingletonTxTable instSingletonTxTable;
         private static object initiLock = new object();
         private Dictionary<long, TxTableEntry> table;
-
+        
         private SingletonTxTable()
         {
             this.table = new Dictionary<long, TxTableEntry>();
@@ -98,7 +99,7 @@ namespace GraphView.Transaction
             {
                 throw new DuplicateKeyException(txId);
             }
-            this.table.Add(txId, new TxTableEntry(TxStatus.Active, beginTimestamp, long.MaxValue));
+            this.table.Add(txId, new TxTableEntry(TxStatus.Active, beginTimestamp, long.MinValue));
         }
 
         public void UpdateTxEndTimestampByTxId(long txId, long endTimestamp)

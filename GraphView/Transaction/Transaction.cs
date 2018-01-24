@@ -1,4 +1,5 @@
-﻿using System.Windows.Forms;
+﻿using System.Data;
+using System.Windows.Forms;
 
 namespace GraphView.Transaction
 {
@@ -6,14 +7,10 @@ namespace GraphView.Transaction
     using System.Collections.Generic;
     using System.Linq;
     using System.Text;
+    using System.Data.Entity;
     using System.Threading.Tasks;
     using GraphView.GraphViewDBPortal;
     using Newtonsoft.Json.Linq;
-
-    //public class LockFreeDictionary<TKey, TValue> : IDictionary<TKey, TValue>
-    //{
-    //    private Dictionary<TKey, TValue> dict;
-    //}
 
     internal enum OperationType
     {
@@ -55,27 +52,81 @@ namespace GraphView.Transaction
     public class Transaction
     {
         /// <summary>
-        /// Data store for logging
+        /// Data store for loggingl
         /// </summary>
         private readonly LogStore logStore;
+
         /// <summary>
-        /// Transaction sequence number assigned to this transaction
+        /// Transaction table for concurrency control
         /// </summary>
-        private readonly long sequenceNumber;
+        private readonly SingletonTxTable txTable;
+
+        /// <summary>
+        /// Lock free hash table for concurrency control
+        /// </summary>
+        private readonly LockFreeHashTable hashTable;
+
+        /// <summary>
+        /// Transaction id assigned to this transaction
+        /// </summary>
+        private readonly long txId;
+
+        /// <summary>
+        /// Begin timestamp assigned to this transaction
+        /// </summary>
+        private readonly long beginTimestamp;
+
+        /// <summary>
+        /// End timestamp assigned to this transaction
+        /// </summary>
+        private long endTimestamp;
 
         /// <summary>
         /// A collection of records (indexed by their Ids) and the operations on them
         /// </summary>
         private Dictionary<string, List<TransactionEntry>> recordAccess;
 
-        public Transaction(LogStore logStore, long sequenceNumber)
+        public Transaction(long txId, long beginTimestamp, LogStore logStore, LockFreeHashTable hashTable, SingletonTxTable txTable)
         {
+            this.txId = txId;
+            this.beginTimestamp = beginTimestamp;
             this.logStore = logStore;
-            this.sequenceNumber = sequenceNumber;
+            this.hashTable = hashTable;
+            this.txTable = txTable;
+            this.endTimestamp = long.MinValue;
             this.recordAccess = new Dictionary<string, List<TransactionEntry>>();
         }
 
+        public void InsertJson(string recordId, JObject record)
+        {
+            throw new NotImplementedException();
+        }
+
+        /// <summary>
+        /// read the legal version of record.
+        /// </summary>
         public JObject ReadJson(string recordId)
+        {
+            List<VersionEntry> versionList = this.hashTable.GetScanList(recordId);
+            foreach (VersionEntry version in versionList)
+            {
+                if (!(version.IsBeginTxId || version.IsEndTxId))
+                {
+                    if (this.beginTimestamp >= version.BeginTimestamp && this.beginTimestamp < version.EndTimestamp)
+                    {
+                        return version.Record;
+                    }
+                }
+            }
+            throw new ObjectNotFoundException();
+        }
+
+        public void UpdateJson(string recordId, JObject record)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void DeleteJson(string recordId)
         {
             throw new NotImplementedException();
         }
@@ -115,7 +166,7 @@ namespace GraphView.Transaction
             throw new NotImplementedException();
         }
 
-        public void WriteJson(IList<JObject> recordList)
+        public void WrilteJson(IList<JObject> recordList)
         {
             throw new NotImplementedException();
         }

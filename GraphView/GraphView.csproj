@@ -60,6 +60,7 @@
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
+    <Reference Include="System.Data.Entity" />
     <Reference Include="System.Data.Linq" />
     <Reference Include="System.Runtime.Serialization" />
     <Reference Include="System.Runtime.Serialization.Formatters.Soap" />
@@ -244,6 +245,7 @@
     <Compile Include="GraphViewQueryCompiler\Statistics.cs" />
     <Compile Include="GraphViewCommand.cs" />
     <Compile Include="GraphViewDBPortal\DocumentDBKeywords.cs" />
+    <Compile Include="Transaction\LockFreeHashTable.cs" />
     <Compile Include="Transaction\LogStore.cs" />
     <Compile Include="Transaction\RecordQuery.cs" />
     <Compile Include="Transaction\Transaction.cs" />
