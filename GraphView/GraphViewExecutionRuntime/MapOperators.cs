@@ -25,14 +25,18 @@ namespace GraphView
         [NonSerialized]
         private HashSet<int> inputRecordSet;
 
+        private readonly bool isParallel;
+
         public MapOperator(
             GraphViewExecutionOperator inputOp,
             GraphViewExecutionOperator mapTraversal,
-            Container container)
+            Container container,
+            bool isParallel)
         {
             this.inputOp = inputOp;
             this.mapTraversal = mapTraversal;
             this.container = container;
+            this.isParallel = isParallel;
 
             this.inputBatch = new List<RawRecord>();
             this.batchSize = KW_DEFAULT_BATCH_SIZE;
@@ -51,11 +55,12 @@ namespace GraphView
                     RawRecord subTraversalRecord;
                     while (this.mapTraversal.State() && (subTraversalRecord = this.mapTraversal.Next()) != null)
                     {
-                        int subTraversalRecordIndex = int.Parse(subTraversalRecord[0].ToValue);
+                        int batchIndexPostition = this.isParallel ? 1 : 0;
+                        int subTraversalRecordIndex = int.Parse(subTraversalRecord[batchIndexPostition].ToValue);
                         if (this.inputRecordSet.Remove(subTraversalRecordIndex))
                         {
-                            RawRecord resultRecord = inputBatch[subTraversalRecordIndex].GetRange(1);
-                            resultRecord.Append(subTraversalRecord.GetRange(1));
+                            RawRecord resultRecord = inputBatch[subTraversalRecordIndex].GetRange(batchIndexPostition + 1);
+                            resultRecord.Append(subTraversalRecord.GetRange(batchIndexPostition + 1));
                             return resultRecord;
                         }
                     }
@@ -67,6 +72,10 @@ namespace GraphView
                 while (this.inputBatch.Count < this.batchSize && this.inputOp.State() && (inputRecord = inputOp.Next()) != null)
                 {
                     RawRecord batchRawRecord = new RawRecord();
+                    if (this.isParallel)
+                    {
+                        batchRawRecord.Append(new StringField("-1", JsonDataType.Int));
+                    }
                     batchRawRecord.Append(new StringField(this.inputBatch.Count.ToString(), JsonDataType.Int));
                     batchRawRecord.Append(inputRecord);
 
@@ -132,15 +141,19 @@ namespace GraphView
 
         private int batchSize;
 
+        private readonly bool isParallel;
+
         public FlatMapOperator(
             GraphViewExecutionOperator inputOp,
             GraphViewExecutionOperator flatMapTraversal,
             Container container,
+            bool isParallel,
             int batchSize = KW_DEFAULT_BATCH_SIZE)
         {
             this.inputOp = inputOp;
             this.flatMapTraversal = flatMapTraversal;
             this.container = container;
+            this.isParallel = isParallel;
             this.batchSize = batchSize;
 
             this.inputBatch = new List<RawRecord>();
@@ -157,9 +170,10 @@ namespace GraphView
                     RawRecord subTraversalRecord;
                     while (flatMapTraversal.State() && (subTraversalRecord = flatMapTraversal.Next()) != null)
                     {
-                        int subTraversalRecordIndex = int.Parse(subTraversalRecord[0].ToValue);
-                        RawRecord resultRecord = inputBatch[subTraversalRecordIndex].GetRange(1);
-                        resultRecord.Append(subTraversalRecord.GetRange(1));
+                        int batchIndexPostition = this.isParallel ? 1 : 0;
+                        int subTraversalRecordIndex = int.Parse(subTraversalRecord[batchIndexPostition].ToValue);
+                        RawRecord resultRecord = inputBatch[subTraversalRecordIndex].GetRange(batchIndexPostition + 1);
+                        resultRecord.Append(subTraversalRecord.GetRange(batchIndexPostition + 1));
                         return resultRecord;
                     }
                 }
@@ -169,6 +183,10 @@ namespace GraphView
                 while (this.inputBatch.Count < this.batchSize && this.inputOp.State() && (inputRecord = inputOp.Next()) != null)
                 {
                     RawRecord batchRawRecord = new RawRecord();
+                    if (this.isParallel)
+                    {
+                        batchRawRecord.Append(new StringField("-1", JsonDataType.Int));
+                    }
                     batchRawRecord.Append(new StringField(this.inputBatch.Count.ToString(), JsonDataType.Int));
                     batchRawRecord.Append(inputRecord);
 
@@ -236,20 +254,23 @@ namespace GraphView
 
         private int batchSize;
 
+        private readonly bool isParallel;
+
         public LocalOperator(
             GraphViewExecutionOperator inputOp,
             GraphViewExecutionOperator localTraversal,
             Container container,
+            bool isParallel,
             int batchSize = KW_DEFAULT_BATCH_SIZE)
         {
             this.inputOp = inputOp;
             this.localTraversal = localTraversal;
             this.container = container;
-
+            this.isParallel = isParallel;
             this.batchSize = batchSize;
 
             this.inputBatch = new List<RawRecord>();
-
+            
             this.Open();
         }
 
@@ -262,9 +283,10 @@ namespace GraphView
                     RawRecord subTraversalRecord;
                     while (localTraversal.State() && (subTraversalRecord = localTraversal.Next()) != null)
                     {
-                        int subTraversalRecordIndex = int.Parse(subTraversalRecord[0].ToValue);
-                        RawRecord resultRecord = inputBatch[subTraversalRecordIndex].GetRange(1);
-                        resultRecord.Append(subTraversalRecord.GetRange(1));
+                        int batchIndexPostition = this.isParallel ? 1 : 0;
+                        int subTraversalRecordIndex = int.Parse(subTraversalRecord[batchIndexPostition].ToValue);
+                        RawRecord resultRecord = inputBatch[subTraversalRecordIndex].GetRange(batchIndexPostition + 1);
+                        resultRecord.Append(subTraversalRecord.GetRange(batchIndexPostition + 1));
                         return resultRecord;
                     }
                 }
@@ -274,6 +296,10 @@ namespace GraphView
                 while (this.inputBatch.Count < this.batchSize && this.inputOp.State() && (inputRecord = inputOp.Next()) != null)
                 {
                     RawRecord batchRawRecord = new RawRecord();
+                    if (this.isParallel)
+                    {
+                        batchRawRecord.Append(new StringField("-1", JsonDataType.Int));
+                    }
                     batchRawRecord.Append(new StringField(this.inputBatch.Count.ToString(), JsonDataType.Int));
                     batchRawRecord.Append(inputRecord);
 

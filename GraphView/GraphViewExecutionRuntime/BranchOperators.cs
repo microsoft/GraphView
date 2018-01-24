@@ -33,13 +33,16 @@ namespace GraphView
 
         private bool needInitialize;
 
+        private readonly bool isParallel;
+
         public OptionalOperator(
             GraphViewExecutionOperator inputOp,
             List<int> inputIndexes,
             Container targetContainer,
             GraphViewExecutionOperator targetSubQueryOp,
             Container optionalContainer,
-            GraphViewExecutionOperator optionalTraversal)
+            GraphViewExecutionOperator optionalTraversal,
+            bool isParallel)
         {
             this.inputOp = inputOp;
             this.inputIndexes = inputIndexes;
@@ -53,6 +56,8 @@ namespace GraphView
             this.currentIndex = 0;
             this.haveOutput = new HashSet<int>();
             this.needInitialize = true;
+
+            this.isParallel = isParallel;
 
             this.Open();
         }
@@ -85,6 +90,10 @@ namespace GraphView
                 while (this.inputOp.State() && (currentRecord = this.inputOp.Next()) != null)
                 {
                     RawRecord batchRawRecord = new RawRecord();
+                    if (this.isParallel)
+                    {
+                        batchRawRecord.Append(new StringField("-1", JsonDataType.Int));
+                    }
                     batchRawRecord.Append(new StringField(inputBuffer.Count.ToString(), JsonDataType.Int));
                     batchRawRecord.Append(currentRecord);
                     inputBuffer.Add(batchRawRecord);
@@ -103,15 +112,28 @@ namespace GraphView
                 RawRecord rec;
                 while (this.targetSubQueryOp.State() && (rec = this.targetSubQueryOp.Next()) != null)
                 {
-                    this.haveOutput.Add(int.Parse(rec.RetriveData(0).ToValue));
+                    this.haveOutput.Add(int.Parse(rec.RetriveData(this.isParallel ? 1 : 0).ToValue));
                 }
 
                 List<RawRecord> optionalInputs = new List<RawRecord>();
                 foreach (RawRecord record in inputBuffer)
                 {
-                    if (this.haveOutput.Contains(int.Parse(record.RetriveData(0).ToValue)))
+                    if (this.isParallel)
                     {
-                        optionalInputs.Add(record.GetRange(1));
+                        if (this.haveOutput.Contains(int.Parse(record.RetriveData(1).ToValue)))
+                        {
+                            RawRecord inputRecord = new RawRecord();
+                            inputRecord.Append(record[0]);
+                            inputRecord.Append(record.GetRange(2));
+                            optionalInputs.Add(inputRecord);
+                        }
+                    }
+                    else
+                    {
+                        if (this.haveOutput.Contains(int.Parse(record.RetriveData(0).ToValue)))
+                        {
+                            optionalInputs.Add(record.GetRange(1));
+                        }
                     }
                 }
                 this.optionalContainer.ResetTableCache(optionalInputs);
@@ -126,13 +148,15 @@ namespace GraphView
                     RawRecord record;
                     if (this.optionalTraversal.State() && (record = this.optionalTraversal.Next()) != null)
                     {
-                        return record;
+                        return this.isParallel ? record.GetRange(1) : record;
                     }
                     this.currentIndex++;
                 }
                 else
                 {
-                    return this.ConstructForwardingRecord(this.targetContainer[this.currentIndex++].GetRange(1));
+                    return this.isParallel
+                        ? this.ConstructForwardingRecord(this.targetContainer[this.currentIndex++].GetRange(2))
+                        : this.ConstructForwardingRecord(this.targetContainer[this.currentIndex++].GetRange(1));
                 }
             }
 
@@ -167,6 +191,7 @@ namespace GraphView
             info.AddValue("inputOp", this.inputOp);
             info.AddValue("targetSubQueryOp", this.targetSubQueryOp);
             info.AddValue("optionalTraversal", this.optionalTraversal);
+            info.AddValue("isParallel", this.isParallel);
         }
 
         protected OptionalOperator(SerializationInfo info, StreamingContext context)
@@ -175,6 +200,7 @@ namespace GraphView
             this.inputOp = (GraphViewExecutionOperator)info.GetValue("inputOp", typeof(GraphViewExecutionOperator));
             this.targetSubQueryOp = (GraphViewExecutionOperator)info.GetValue("targetSubQueryOp", typeof(GraphViewExecutionOperator));
             this.optionalTraversal = (GraphViewExecutionOperator)info.GetValue("optionalTraversal", typeof(GraphViewExecutionOperator));
+            this.isParallel = info.GetBoolean("isParallel");
             this.currentIndex = 0;
             this.haveOutput = new HashSet<int>();
             this.needInitialize = true;
@@ -619,10 +645,13 @@ namespace GraphView
         [NonSerialized]
         private bool needInitialize;
 
+        private readonly bool isParallel;
+
         public ChooseOperator(
             GraphViewExecutionOperator inputOp,
             Container container,
             GraphViewExecutionOperator targetSubQueryOp,
+            bool isParallel,
             Container trueBranchContainer,
             GraphViewExecutionOperator trueBranchTraversalOp,
             Container falseBranchContainer,
@@ -631,6 +660,7 @@ namespace GraphView
             this.inputOp = inputOp;
             this.container = container;
             this.targetSubQueryOp = targetSubQueryOp;
+            this.isParallel = isParallel;
 
             this.trueBranchContainer = trueBranchContainer;
             this.trueBranchTraversalOp = trueBranchTraversalOp;
@@ -653,6 +683,10 @@ namespace GraphView
                 while (this.inputOp.State() && (currentRecord = this.inputOp.Next()) != null)
                 {
                     RawRecord batchRawRecord = new RawRecord();
+                    if (this.isParallel)
+                    {
+                        batchRawRecord.Append(new StringField("-1", JsonDataType.Int));
+                    }
                     batchRawRecord.Append(new StringField(inputBuffer.Count.ToString(), JsonDataType.Int));
                     batchRawRecord.Append(currentRecord);
                     inputBuffer.Add(batchRawRecord);
@@ -672,7 +706,7 @@ namespace GraphView
                 RawRecord targetOutput;
                 while (this.targetSubQueryOp.State() && (targetOutput = this.targetSubQueryOp.Next()) != null)
                 {
-                    this.chooseBranch[int.Parse(targetOutput.RetriveData(0).ToValue)] = true;
+                    this.chooseBranch[int.Parse(targetOutput.RetriveData(this.isParallel ? 1 : 0).ToValue)] = true;
                 }
 
                 // determine which branch should the records apply
@@ -680,13 +714,14 @@ namespace GraphView
                 List<RawRecord> falseRawRecords = new List<RawRecord>();
                 foreach (RawRecord record in inputBuffer)
                 {
-                    if (this.chooseBranch[int.Parse(record.RetriveData(0).ToValue)])
+                    int batchIndexPostition = this.isParallel ? 1 : 0;
+                    if (this.chooseBranch[int.Parse(record.RetriveData(batchIndexPostition).ToValue)])
                     {
-                        trueRawRecords.Add(record.GetRange(1));
+                        trueRawRecords.Add(record.GetRange(batchIndexPostition + 1));
                     }
                     else
                     {
-                        falseRawRecords.Add(record.GetRange(1));
+                        falseRawRecords.Add(record.GetRange(batchIndexPostition + 1));
                     }
                 }
 
@@ -794,15 +829,19 @@ namespace GraphView
         private Queue<RawRecord> outputBuffer;
         private bool needInitialize;
 
+        private readonly bool isParallel;
+
         public ChooseWithOptionsOperator(
             GraphViewExecutionOperator inputOp,
             Container container,
-            GraphViewExecutionOperator targetSubOp
+            GraphViewExecutionOperator targetSubOp,
+            bool isParallel
         )
         {
             this.inputOp = inputOp;
             this.container = container;
             this.targetSubOp = targetSubOp;
+            this.isParallel = isParallel;
 
             this.optionNoneTraversalOp = null;
 
@@ -840,6 +879,10 @@ namespace GraphView
                 while (this.inputOp.State() && (inputRecord = this.inputOp.Next()) != null)
                 {
                     RawRecord batchRawRecord = new RawRecord();
+                    if (this.isParallel)
+                    {
+                        batchRawRecord.Append(new StringField("-1", JsonDataType.Int));
+                    }
                     batchRawRecord.Append(new StringField(inputs.Count.ToString(), JsonDataType.Int));
                     batchRawRecord.Append(inputRecord);
                     inputs.Add(batchRawRecord);
@@ -859,12 +902,13 @@ namespace GraphView
                 RawRecord targetRecord;
                 while (this.targetSubOp.State() && (targetRecord = this.targetSubOp.Next()) != null)
                 {
+                    int batchIndexPostition = this.isParallel ? 1 : 0;
                     // one input, one output. must one to one
-                    Debug.Assert(this.container[index][0].ToValue == targetRecord[0].ToValue,
+                    Debug.Assert(this.container[index][batchIndexPostition].ToValue == targetRecord[batchIndexPostition].ToValue,
                         "The provided traversal of choose() does not map to a value.");
 
-                    FieldObject value = targetRecord[1];
-                    RawRecord input = this.container[index].GetRange(1);
+                    FieldObject value = targetRecord[batchIndexPostition + 1];
+                    RawRecord input = this.container[index].GetRange(batchIndexPostition + 1);
                     for (int i = 0; i < this.traversalList.Count; i++)
                     {
                         if (this.traversalList[i].Item1.Equals(value))
@@ -991,6 +1035,7 @@ namespace GraphView
             GraphViewSerializer.SerializeList(info, "traversalListTuple3", traversalListTuple3);
 
             info.AddValue("optionNoneTraversalOp", this.optionNoneTraversalOp, typeof(GraphViewExecutionOperator));
+            info.AddValue("isParallel", this.isParallel);
         }
 
         protected ChooseWithOptionsOperator(SerializationInfo info, StreamingContext context)
@@ -1011,6 +1056,8 @@ namespace GraphView
             }
 
             this.optionNoneTraversalOp = (GraphViewExecutionOperator)info.GetValue("optionNoneTraversalOp", typeof(GraphViewExecutionOperator));
+
+            this.isParallel = info.GetBoolean("isParallel");
 
             this.selectOption = new List<int>();
             this.currentIndex = 0;

@@ -121,7 +121,7 @@ namespace GraphView
             this.isSync = false;
         }
 
-        public SendOperator(GraphViewExecutionOperator inputOp, bool isSendBack, bool isSync)
+        public SendOperator(GraphViewExecutionOperator inputOp, bool isSendBack, bool isSync = false)
             : this(inputOp)
         {
             this.getPartitionMethod = null;
