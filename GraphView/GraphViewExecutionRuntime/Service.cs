@@ -107,8 +107,8 @@ namespace GraphView
         private SendOperator(GraphViewExecutionOperator inputOp)
         {
             this.inputOp = inputOp;
-            this.retryLimit = 20;
-            this.retryInterval = 5; // 5 ms
+            this.retryLimit = 100;
+            this.retryInterval = 10; // 5 ms
             this.Open();
         }
 
@@ -815,13 +815,13 @@ namespace GraphView
             PathField pathField = fieldObject as PathField;
             if (pathField != null)
             {
-                foreach (FieldObject pathStep in pathField.Path)
+                for (int i = 0; i < pathField.Path.Count; i++)
                 {
-                    if (pathStep == null)
+                    if (pathField.Path[i] == null)
                     {
                         continue;
                     }
-                    PathStepField pathStepField = pathStep as PathStepField;
+                    PathStepField pathStepField = pathField.Path[i] as PathStepField;
                     pathStepField.StepFieldObject = RecoverFieldObject(pathStepField.StepFieldObject);
                 }
                 return pathField;
@@ -851,10 +851,13 @@ namespace GraphView
             CompositeField compositeField = fieldObject as CompositeField;
             if (compositeField != null)
             {
-                foreach (KeyValuePair<string, FieldObject> pair in compositeField.CompositeFieldObject)
+                List<string> keyList = new List<string>(compositeField.CompositeFieldObject.Keys);
+                CompositeField newCompositeField = new CompositeField(compositeField.CompositeFieldObject, compositeField.DefaultProjectionKey);
+                foreach (string key in keyList)
                 {
-                    compositeField[pair.Key] = RecoverFieldObject(pair.Value);
+                    newCompositeField[key] = RecoverFieldObject(newCompositeField[key]);
                 }
+                return newCompositeField;
             }
 
             TreeField treeField = fieldObject as TreeField;

@@ -3,9 +3,6 @@ using System.Collections.Generic;
 using System.IO;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
-using System.Configuration;
-using System.Net;
-using System.Net.Sockets;
 using GraphView;
 
 namespace GraphViewProgram
@@ -47,10 +44,10 @@ namespace GraphViewProgram
             List<string> result = GraphTraversal.ExecuteQueryByDeserialization(serializationStr, partitionStr);
 
             // for Debug
-            //foreach (var r in result)
-            //{
-            //    Console.WriteLine(r);
-            //}
+            foreach (var r in result)
+            {
+                Console.WriteLine(r);
+            }
 
             SaveOutput(result, outputContainerSas);
         }
@@ -66,15 +63,15 @@ namespace GraphViewProgram
             using (System.IO.StreamWriter file = new System.IO.StreamWriter(outputFile))
             {
                 // The redundant output is for Debug.
-                file.WriteLine("------------------------------------------");
+                //file.WriteLine("------------------------------------------");
                 foreach (var row in result)
                 {
                     file.WriteLine(row);
                 }
 
-                file.WriteLine($"Task: {Environment.GetEnvironmentVariable("AZ_BATCH_TASK_ID")}" +
-                               $", Node: {Environment.GetEnvironmentVariable("AZ_BATCH_NODE_ID")}");
-                file.WriteLine("------------------------------------------");
+                //file.WriteLine($"Task: {Environment.GetEnvironmentVariable("AZ_BATCH_TASK_ID")}" +
+                //               $", Node: {Environment.GetEnvironmentVariable("AZ_BATCH_NODE_ID")}");
+                //file.WriteLine("------------------------------------------");
             }
 
             // Upload the output file to blob container in Azure Storage

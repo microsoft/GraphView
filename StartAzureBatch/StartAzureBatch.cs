@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Azure.Batch;
@@ -30,6 +31,9 @@ namespace StartAzureBatch
         public readonly string partitionByKey;
         public readonly int spilledEdgeThresholdViagraphAPI;
 
+        public bool IsSuccess { get; set; } = false;
+        public string Result { get; set; }
+
         public GraphViewAzureBatchJob()
         {
             //this.query = "g.V().has('name', 'marko').emit(__.has('label', 'person')).repeat(__.out()).values('name')";
@@ -46,6 +50,11 @@ namespace StartAzureBatch
             this.useReverseEdge = true;
             this.partitionByKey = "name";
             this.spilledEdgeThresholdViagraphAPI = 1;
+        }
+
+        public GraphViewAzureBatchJob(string query) : this()
+        {
+            this.query = query;
         }
 
     }
@@ -169,12 +178,13 @@ namespace StartAzureBatch
                 List<ResourceFile> resourceFiles = await UploadFilesToContainerAsync(blobClient, appContainerName, applicationFilePaths);
 
                 await this.CreateJobAsync(batchClient, job);
+                
                 string[] args = { "-file", compileResultPath, partitionPath, outputContainerSasUrl };
                 await this.AddTasksAsync(batchClient, job, nodeInfo, resourceFiles, args);
 
-                await MonitorTasks(batchClient, job.jobId, TimeSpan.FromMinutes(1));
+                job.IsSuccess = await MonitorTasks(batchClient, job.jobId, TimeSpan.FromMinutes(1));
 
-                await this.DownloadAndAggregateOutputAsync(blobClient, outputContainerName);
+                await this.DownloadAndAggregateOutputAsync(blobClient, outputContainerName, job);
 
                 // For Debug. Print stdout and stderr
                 PrintTaskOutput(batchClient, job);
@@ -182,7 +192,15 @@ namespace StartAzureBatch
                 await DeleteContainerAsync(blobClient, outputContainerName);
                 await DeleteContainerAsync(blobClient, appContainerName);
 
-                await batchClient.JobOperations.DeleteJobAsync(job.jobId);
+                try
+                {
+                    await batchClient.JobOperations.DeleteJobAsync(job.jobId);
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine(e);
+                }
+                
             }
         }
 
@@ -525,7 +543,7 @@ namespace StartAzureBatch
             return tasks;
         }
 
-        private async Task DownloadAndAggregateOutputAsync(CloudBlobClient blobClient, string outputContainerName)
+        private async Task DownloadAndAggregateOutputAsync(CloudBlobClient blobClient, string outputContainerName, GraphViewAzureBatchJob job)
         {
             Console.WriteLine("Downloading all files from container [{0}]...", outputContainerName);
 
@@ -550,7 +568,8 @@ namespace StartAzureBatch
             }
 
             Console.WriteLine("Aggregate result is as follows:");
-            Console.Write(result.ToString());
+            job.Result = result.ToString();
+            Console.Write(job.Result);
         }
 
         /// <summary>
@@ -649,6 +668,39 @@ namespace StartAzureBatch
             {
                 batchClient.JobOperations.DeleteJob(jobId);
             }
+        }
+
+        private void ClearResource()
+        {
+            CloudStorageAccount storageAccount = CloudStorageAccount.Parse(this.storageConnectionString);
+            CloudBlobClient blobClient = storageAccount.CreateCloudBlobClient();
+            foreach (CloudBlobContainer container in blobClient.ListContainers())
+            {
+                container.DeleteIfExists();
+            }
+
+            BatchSharedKeyCredentials cred = new BatchSharedKeyCredentials(this.batchAccountUrl, this.batchAccountName, this.batchAccountKey);
+            using (BatchClient batchClient = BatchClient.Open(cred))
+            {
+                foreach (CloudJob job in batchClient.JobOperations.ListJobs())
+                {
+                    job.Delete();
+                }
+            }
+        }
+
+        public static List<string> TestQuery(string query)
+        {
+            AzureBatchJobManager jobManager = new AzureBatchJobManager();
+            GraphViewAzureBatchJob graphViewJob = new GraphViewAzureBatchJob(query);
+
+            jobManager.RunQueryAsync(graphViewJob).Wait();
+
+            if (graphViewJob.IsSuccess)
+            {
+                return graphViewJob.Result.Split(new[] {"\r\n", "\r", "\n"}, StringSplitOptions.RemoveEmptyEntries).ToList();
+            }
+            throw new GraphViewException($"Run Query {query} failed!");
         }
     }
 }
