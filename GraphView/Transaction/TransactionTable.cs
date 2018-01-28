@@ -9,16 +9,14 @@ namespace GraphView.Transaction
     public enum TxStatus
     {
         Active,
-        Validating,
         Committed,
-        Aborted,
-        Terminated
+        Aborted
     }
 
     internal class TxTableEntry
     {
         public TxStatus Status;
-        public long BeginTimestamp;
+        public readonly long BeginTimestamp;
         public long EndTimestamp;
 
         public TxTableEntry(TxStatus txStatus, long beginTimestamp, long endTimestamp)

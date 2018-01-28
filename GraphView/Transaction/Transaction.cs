@@ -49,6 +49,128 @@ namespace GraphView.Transaction
         }
     }
 
+    internal class ReadSetEntry : Tuple<VersionKey, long, long>
+    {
+        internal ReadSetEntry(VersionKey key, long beginTimestamp, long endTimestamp)
+            : base(key, beginTimestamp, endTimestamp) { }
+
+        internal VersionKey Key
+        {
+            get
+            {
+                return this.Item1;
+            }
+        }
+
+        internal long BeginTimestamp
+        {
+            get
+            {
+                return this.Item2;
+            }
+        }
+
+        internal long EndTimestamp
+        {
+            get
+            {
+                return this.Item3;
+            }
+        }
+    }
+
+    internal class ScanSetEntry : Tuple<VersionKey, long>
+    {
+        internal ScanSetEntry(VersionKey key, long readTimestamp)
+            : base(key, readTimestamp) { }
+
+        internal VersionKey Key
+        {
+            get
+            {
+                return this.Item1;
+            }
+        }
+
+        internal long ReadTimestamp
+        {
+            get { return this.Item2; }
+        }
+    }
+
+    internal class WriteSetEntry : Tuple<VersionKey, long, long, bool>
+    {
+        internal WriteSetEntry(VersionKey key, long beginTimestamp, long endTimestamp, bool isOld)
+            : base(key, beginTimestamp, endTimestamp, isOld) { }
+
+        internal VersionKey Key
+        {
+            get
+            {
+                return this.Item1;
+            }
+        }
+
+        internal long BeginTimestamp
+        {
+            get
+            {
+                return this.Item2;
+            }
+        }
+
+        internal long EndTimestamp
+        {
+            get
+            {
+                return this.Item3;
+            }
+        }
+
+        internal bool IsOld
+        {
+            get
+            {
+                return this.Item4;
+            }
+        }
+    }
+
+    public class VersionKey : Tuple<string, string>
+    {
+        internal VersionKey(string tableId, string recordId)
+            : base(tableId, recordId) { }
+
+        internal string TableId
+        {
+            get
+            {
+                return this.Item1;
+            }
+        }
+
+        internal string RecordId
+        {
+            get
+            {
+                return this.Item2;
+            }
+        }
+
+        public override bool Equals(object obj)
+        {
+            if (obj == null || obj.GetType() != this.GetType())
+                return false;
+            VersionKey other = (VersionKey) obj;
+            return (this.Item1 == other.Item1) && (this.Item2 == other.Item2);
+        }
+
+        public override int GetHashCode()
+        {
+            return base.GetHashCode();
+        }
+    }
+
     public class Transaction
     {
         /// <summary>
@@ -57,14 +179,14 @@ namespace GraphView.Transaction
         private readonly LogStore logStore;
 
         /// <summary>
-        /// Transaction table for concurrency control
+        /// Version table for concurrency control
         /// </summary>
-        private readonly SingletonTxTable txTable;
+        private readonly IVersionTable versionTable;
 
         /// <summary>
-        /// Lock free hash table for concurrency control
+        /// Transaction table, keeping track of each transcation's status 
         /// </summary>
-        private readonly LockFreeHashTable hashTable;
+        private readonly ITxTable txTable;
 
         /// <summary>
         /// Transaction id assigned to this transaction
@@ -82,51 +204,94 @@ namespace GraphView.Transaction
         private long endTimestamp;
 
         /// <summary>
+        /// Read set, using for checking visibility of the versions read.
+        /// For every read operation, add the recordId, the begin and the end timestamp of the version we read to the readSet.
+        /// </summary>
+        private List<ReadSetEntry> readSet;
+
+        /// <summary>
+        /// Scan set, using for checking phantoms.
+        /// To do a index scan, a transaction T specifies an index I, a predicate P, abd a logical read time RT.
+        /// We only have one index (recordId) currently, just add the recordId and the readTimestamp to the scanSet.
+        /// </summary>
+        private List<ScanSetEntry> scanSet;
+
+        /// <summary>
+        /// Write set, using for
+        /// 1) logging new versions during commit
+        /// 2) updating the old and new versions' timestamps during commit
+        /// 3) locating old versions for garbage collection
+        /// Add the versions updated (old and new), versions deleted (old), and versions inserted (new) to the writeSet.
+        /// </summary>
+        private List<WriteSetEntry> writeSet;
+
+        /// <summary>
         /// A collection of records (indexed by their Ids) and the operations on them
         /// </summary>
         private Dictionary<string, List<TransactionEntry>> recordAccess;
 
-        public Transaction(long txId, long beginTimestamp, LogStore logStore, LockFreeHashTable hashTable, SingletonTxTable txTable)
+        public Transaction(long txId, long beginTimestamp, LogStore logStore, IVersionTable versionTable, ITxTable txTable)
         {
             this.txId = txId;
             this.beginTimestamp = beginTimestamp;
             this.logStore = logStore;
-            this.hashTable = hashTable;
+            this.versionTable = versionTable;
             this.txTable = txTable;
+
             this.endTimestamp = long.MinValue;
             this.recordAccess = new Dictionary<string, List<TransactionEntry>>();
-        }
 
-        public void InsertJson(string recordId, JObject record)
+            this.readSet = new List<ReadSetEntry>();
+            this.scanSet = new List<ScanSetEntry>();
+            this.writeSet = new List<WriteSetEntry>();
+
+            this.txTable.InsertNewTx(this.txId, this.beginTimestamp);
+        }
+        
+        /// <summary>
+        /// Insert a new record.
+        /// (1) Add the scan info to the scan set
+        /// (2) Find whether the record already exist.
+        /// (3) Insert and add info to write set, or, abort.
+        /// </summary>
+        public void InsertJson(VersionKey versionKey, JObject record, long readTimestamp)
         {
-            throw new NotImplementedException();
+            this.scanSet.Add(new ScanSetEntry(versionKey, readTimestamp));
+            if (this.versionTable.InsertVersion(versionKey, record, this.txId, readTimestamp))
+            {
+                //insert successfully
+                this.writeSet.Add(new WriteSetEntry(versionKey, this.txId, long.MaxValue, false));
+            }
+            //insert failed, because there is already a version with the same versionKey
+            this.Abort();
         }
 
         /// <summary>
-        /// read the legal version of record.
+        /// Read the legal record.
+        /// (1) Add the scan info to the scanSet.
+        /// (2) Try to get the legal version from versionTable.
+        /// (3) Add the read info to the readSet, or, abort.
         /// </summary>
-        public JObject ReadJson(string recordId)
+        public JObject ReadJson(VersionKey versionKey, long readTimestamp)
         {
-            List<VersionEntry> versionList = this.hashTable.GetScanList(recordId);
-            foreach (VersionEntry version in versionList)
+            this.scanSet.Add(new ScanSetEntry(versionKey, readTimestamp));
+            VersionEntry version = this.versionTable.GetVersion(versionKey, readTimestamp);
+            if (version == null)
             {
-                if (!(version.IsBeginTxId || version.IsEndTxId))
-                {
-                    if (this.beginTimestamp >= version.BeginTimestamp && this.beginTimestamp < version.EndTimestamp)
-                    {
-                        return version.Record;
-                    }
-                }
+                //can not find the record
+                this.Abort();
+                return null;
             }
-            throw new ObjectNotFoundException();
+            this.readSet.Add(new ReadSetEntry(versionKey, version.BeginTimestamp, version.EndTimestamp));
+            return version.Record;
         }
 
-        public void UpdateJson(string recordId, JObject record)
+        public void UpdateJson(VersionKey versionKey, JObject record)
         {
             throw new NotImplementedException();
         }
 
-        public void DeleteJson(string recordId)
+        public void DeleteJson(VersionKey versionKey)
         {
             throw new NotImplementedException();
         }
@@ -176,9 +341,13 @@ namespace GraphView.Transaction
             throw new NotImplementedException();
         }
 
+        /// <summary>
+        /// Abort this transaction.
+        /// This method is NOT fully completed.
+        /// </summary>
         public void Abort()
         {
-            throw new NotImplementedException();
+            this.txTable.UpdateTxStatusByTxId(this.txId, TxStatus.Aborted);
         }
     }
 }

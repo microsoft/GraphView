@@ -245,11 +245,11 @@
     <Compile Include="GraphViewQueryCompiler\Statistics.cs" />
     <Compile Include="GraphViewCommand.cs" />
     <Compile Include="GraphViewDBPortal\DocumentDBKeywords.cs" />
-    <Compile Include="Transaction\LockFreeHashTable.cs" />
+    <Compile Include="Transaction\TransactionTable.cs" />
+    <Compile Include="Transaction\VersionTable.cs" />
     <Compile Include="Transaction\LogStore.cs" />
     <Compile Include="Transaction\RecordQuery.cs" />
     <Compile Include="Transaction\Transaction.cs" />
-    <Compile Include="Transaction\TransactionTable.cs" />
     <Compile Include="Transaction\TxSequenceGenerator.cs" />
     <Compile Include="TSQL Syntax Tree\WControlFlow.cs" />
     <Compile Include="TSQL Syntax Tree\WCreateViewStatement.cs" />
