@@ -257,13 +257,14 @@ namespace GraphView.Transaction
         public void InsertJson(VersionKey versionKey, JObject record, long readTimestamp)
         {
             this.scanSet.Add(new ScanSetEntry(versionKey, readTimestamp));
-            if (this.versionTable.InsertVersion(versionKey, record, this.txId, readTimestamp))
+            if (!this.versionTable.InsertVersion(versionKey, record, this.txId, readTimestamp))
             {
-                //insert successfully
-                this.writeSet.Add(new WriteSetEntry(versionKey, this.txId, long.MaxValue, false));
+                //insert failed, because there is already a version with the same versionKey
+                this.Abort();
+                return;
             }
-            //insert failed, because there is already a version with the same versionKey
-            this.Abort();
+            //insert successfully
+            this.writeSet.Add(new WriteSetEntry(versionKey, this.txId, long.MaxValue, false));
         }
 
         /// <summary>
@@ -291,9 +292,23 @@ namespace GraphView.Transaction
             throw new NotImplementedException();
         }
 
-        public void DeleteJson(VersionKey versionKey)
+        /// <summary>
+        /// Delete a record.
+        /// </summary>
+        public void DeleteJson(VersionKey versionKey, long readTimestamp)
         {
-            throw new NotImplementedException();
+            this.scanSet.Add(new ScanSetEntry(versionKey, readTimestamp));
+            VersionEntry deletedVersion = null;
+            if (!this.versionTable.DeleteVersion(versionKey, this.txId, readTimestamp, out deletedVersion))
+            {
+                this.Abort();
+                return;
+            }
+            //delete successfully
+            if (deletedVersion != null)
+            {
+                this.writeSet.Add(new WriteSetEntry(versionKey, deletedVersion.BeginTimestamp, deletedVersion.EndTimestamp, true));
+            }
         }
 
         public JObject ReadJson(string recordId, JObject valueFromDataStore)

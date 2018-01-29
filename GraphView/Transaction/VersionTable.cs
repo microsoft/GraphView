@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Data;
 using System.Runtime.Remoting.Messaging;
+using System.Threading;
 using Newtonsoft.Json.Linq;
 
 namespace GraphView.Transaction
@@ -10,9 +11,9 @@ namespace GraphView.Transaction
     public class VersionEntry
     {
         private bool isBeginTxId;
-        private long beginTimestamp;
+        public long beginTimestamp;
         private bool isEndTxId;
-        private long endTimestamp;
+        public long endTimestamp;
         private readonly JObject record;
 
         public bool IsBeginTxId
@@ -88,6 +89,7 @@ namespace GraphView.Transaction
     {
         VersionEntry GetVersion(VersionKey versionKey, long readTimestamp);
         bool InsertVersion(VersionKey versionKey, JObject record, long txId, long readTimestamp);
+        bool DeleteVersion(VersionKey versionKey, long txId, long readTimestamp, out VersionEntry deletedVersion);
     }
 
     /// <summary>
@@ -99,7 +101,7 @@ namespace GraphView.Transaction
         private static volatile SingletonVersionDictionary instance;
         private static readonly object initlock = new object();
         private Dictionary<VersionKey, List<VersionEntry>> dict;
-        
+
         private SingletonVersionDictionary()
         {
             this.dict = new Dictionary<VersionKey, List<VersionEntry>>();
@@ -129,12 +131,11 @@ namespace GraphView.Transaction
         /// </summary>
         internal VersionEntry FindVersion(VersionKey versionKey, long readTimestamp)
         {
-            List<VersionEntry> versions = new List<VersionEntry>();
-            if (!dict.TryGetValue(versionKey, out versions))
+            if (!dict.ContainsKey(versionKey))
             {
                 throw new KeyNotFoundException();
             }
-            foreach (VersionEntry version in versions)
+            foreach (VersionEntry version in dict[versionKey])
             {
                 // case 1: both the version's begin and the end fields are timestamp.
                 // The version is visibly only if the read time is between its begin and end timestamp. 
@@ -208,9 +209,34 @@ namespace GraphView.Transaction
         /// <summary>
         /// Delete a version.
         /// </summary>
-        public void DeleteVersion(VersionKey versionKey, long readTimestamp)
+        public bool DeleteVersion(VersionKey versionKey, long txId, long readTimestamp, out VersionEntry deletedVersion)
         {
-            throw new NotImplementedException();
+            if (!dict.ContainsKey(versionKey))
+            {
+                //can not find the versionKey
+                deletedVersion = null;
+                return true;
+            }
+            foreach (VersionEntry version in dict[versionKey])
+            {
+                if (!version.IsEndTxId && version.EndTimestamp == long.MaxValue && readTimestamp >= version.BeginTimestamp)
+                {
+                    //the version is visible and updatable
+                    //Atomically set the version's end field to the transactionId
+                    if (long.MaxValue != Interlocked.CompareExchange(ref version.endTimestamp, txId, long.MaxValue))
+                    {
+                        //other transaction has already set the version's end field
+                        deletedVersion = null;
+                        return false;
+                    }
+                    //change the version's IsEndTxId to true
+                    version.IsEndTxId = true;
+                    deletedVersion = version;
+                    return true;
+                }
+            }
+            deletedVersion = null;
+            return true;
         }
     }
 }
