@@ -126,6 +126,13 @@ namespace StartAzureBatch
         {
             Console.WriteLine($"Query {job.query} start.");
 
+            Console.WriteLine("[compile query] start");
+            string compileStr = CompileQuery(job);
+            Console.WriteLine("[compile query] finish");
+
+            string compileResultPath = $"compileResult{job.jobId}";
+            File.WriteAllText(compileResultPath, compileStr);
+
             CloudStorageAccount storageAccount = CloudStorageAccount.Parse(this.storageConnectionString);
             CloudBlobClient blobClient = storageAccount.CreateCloudBlobClient();
 
@@ -134,13 +141,6 @@ namespace StartAzureBatch
 
             string outputContainerName = this.outputContainerNamePrefix + job.jobId;
             await CreateContainerIfNotExistAsync(blobClient, outputContainerName);
-            
-            Console.WriteLine("[compile query] start");
-            string compileStr = CompileQuery(job);
-            Console.WriteLine("[compile query] finish");
-
-            string compileResultPath = $"compileResult{job.jobId}";
-            File.WriteAllText(compileResultPath, compileStr);
             
             // Obtain a shared access signature that provides write access to the output container to which the tasks will upload their output.
             string outputContainerSasUrl = GetContainerSasUrl(blobClient, outputContainerName, SharedAccessBlobPermissions.Write);
@@ -182,7 +182,7 @@ namespace StartAzureBatch
                 string[] args = { "-file", compileResultPath, partitionPath, outputContainerSasUrl };
                 await this.AddTasksAsync(batchClient, job, nodeInfo, resourceFiles, args);
 
-                job.IsSuccess = await MonitorTasks(batchClient, job.jobId, TimeSpan.FromMinutes(1));
+                job.IsSuccess = await MonitorTasks(batchClient, job.jobId, TimeSpan.FromSeconds(30));
 
                 await this.DownloadAndAggregateOutputAsync(blobClient, outputContainerName, job);
 
@@ -651,6 +651,34 @@ namespace StartAzureBatch
         }
 
         // For Debug
+        public static void RunQueryLocal(string query)
+        {
+            AzureBatchJobManager jobManager = new AzureBatchJobManager();
+            GraphViewAzureBatchJob job = new GraphViewAzureBatchJob(query);
+
+            string compileStr = CompileQuery(job);
+
+            List<PartitionPlan> plans = new List<PartitionPlan>();
+            plans.Add(new PartitionPlan(
+                "_partition",
+                PartitionMethod.CompareEntire,
+                "127.0.0.1",
+                8000, // port 
+                new List<string> { "marko", "vadas", "lop", "josh", "ripple", "peter" }));
+            string partitionStr = PartitionPlan.SerializePatitionPlans(plans);
+
+            Environment.SetEnvironmentVariable("PARTITION_PLAN_INDEX", "0");
+
+            List<string> result = GraphTraversal.ExecuteQueryByDeserialization(compileStr, partitionStr);
+
+            // for Debug
+            foreach (var r in result)
+            {
+                Console.WriteLine(r);
+            }
+        }
+
+        // For Debug
         private void DeletePool()
         {
             BatchSharedKeyCredentials cred = new BatchSharedKeyCredentials(this.batchAccountUrl, this.batchAccountName, this.batchAccountKey);
@@ -670,6 +698,7 @@ namespace StartAzureBatch
             }
         }
 
+        // For Debug
         private void ClearResource()
         {
             CloudStorageAccount storageAccount = CloudStorageAccount.Parse(this.storageConnectionString);

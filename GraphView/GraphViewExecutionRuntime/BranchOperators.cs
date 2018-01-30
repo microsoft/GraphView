@@ -122,10 +122,7 @@ namespace GraphView
                     {
                         if (this.haveOutput.Contains(int.Parse(record.RetriveData(1).ToValue)))
                         {
-                            RawRecord inputRecord = new RawRecord();
-                            inputRecord.Append(record[0]);
-                            inputRecord.Append(record.GetRange(2));
-                            optionalInputs.Add(inputRecord);
+                            optionalInputs.Add(record.GetRange(2));
                         }
                     }
                     else
@@ -148,7 +145,7 @@ namespace GraphView
                     RawRecord record;
                     if (this.optionalTraversal.State() && (record = this.optionalTraversal.Next()) != null)
                     {
-                        return this.isParallel ? record.GetRange(1) : record;
+                        return record;
                     }
                     this.currentIndex++;
                 }
@@ -157,6 +154,16 @@ namespace GraphView
                     return this.isParallel
                         ? this.ConstructForwardingRecord(this.targetContainer[this.currentIndex++].GetRange(2))
                         : this.ConstructForwardingRecord(this.targetContainer[this.currentIndex++].GetRange(1));
+                }
+            }
+
+            // sync subTraversal and receive record from other node in parallel mode
+            if (this.isParallel && this.haveOutput.Count == 0)
+            {
+                RawRecord record;
+                if (this.optionalTraversal.State() && (record = this.optionalTraversal.Next()) != null)
+                {
+                    return record;
                 }
             }
 

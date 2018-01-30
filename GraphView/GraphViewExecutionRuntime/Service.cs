@@ -137,6 +137,8 @@ namespace GraphView
             {
                 if (this.needAttachTaskIndex)
                 {
+                    Debug.Assert(((StringField)record[0]).Value == "-1" || ((StringField)record[0]).Value == this.taskIndex.ToString());
+
                     ((StringField) record[0]).Value = this.taskIndex.ToString();
                 }
 
