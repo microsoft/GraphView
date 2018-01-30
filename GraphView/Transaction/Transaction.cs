@@ -204,17 +204,22 @@ namespace GraphView.Transaction
         private long endTimestamp;
 
         /// <summary>
+        /// The status of this transaction.
+        /// </summary>
+        private TxStatus txStatus;
+
+        /// <summary>
         /// Read set, using for checking visibility of the versions read.
         /// For every read operation, add the recordId, the begin and the end timestamp of the version we read to the readSet.
         /// </summary>
-        private List<ReadSetEntry> readSet;
+        private readonly List<ReadSetEntry> readSet;
 
         /// <summary>
         /// Scan set, using for checking phantoms.
         /// To do a index scan, a transaction T specifies an index I, a predicate P, abd a logical read time RT.
         /// We only have one index (recordId) currently, just add the recordId and the readTimestamp to the scanSet.
         /// </summary>
-        private List<ScanSetEntry> scanSet;
+        private readonly List<ScanSetEntry> scanSet;
 
         /// <summary>
         /// Write set, using for
@@ -223,7 +228,7 @@ namespace GraphView.Transaction
         /// 3) locating old versions for garbage collection
         /// Add the versions updated (old and new), versions deleted (old), and versions inserted (new) to the writeSet.
         /// </summary>
-        private List<WriteSetEntry> writeSet;
+        private readonly List<WriteSetEntry> writeSet;
 
         /// <summary>
         /// A collection of records (indexed by their Ids) and the operations on them
@@ -239,6 +244,7 @@ namespace GraphView.Transaction
             this.txTable = txTable;
 
             this.endTimestamp = long.MinValue;
+            this.txStatus = TxStatus.Active;
             this.recordAccess = new Dictionary<string, List<TransactionEntry>>();
 
             this.readSet = new List<ReadSetEntry>();
@@ -260,6 +266,7 @@ namespace GraphView.Transaction
             if (!this.versionTable.InsertVersion(versionKey, record, this.txId, readTimestamp))
             {
                 //insert failed, because there is already a version with the same versionKey
+                Console.WriteLine("Insert failed. There is already a version with the same versionKey.");
                 this.Abort();
                 return;
             }
@@ -280,6 +287,7 @@ namespace GraphView.Transaction
             if (version == null)
             {
                 //can not find the record
+                Console.WriteLine("Read failed.");
                 this.Abort();
                 return null;
             }
@@ -287,9 +295,34 @@ namespace GraphView.Transaction
             return version.Record;
         }
 
-        public void UpdateJson(VersionKey versionKey, JObject record)
+        /// <summary>
+        /// Update a record.
+        /// </summary>
+        public void UpdateJson(VersionKey versionKey, JObject record, long readTimestamp)
         {
-            throw new NotImplementedException();
+            this.scanSet.Add(new ScanSetEntry(versionKey, readTimestamp));
+            VersionEntry oldVersion = null;
+            VersionEntry newVersion = null;
+            if (!this.versionTable.UpdateVersion(versionKey, record, this.txId, readTimestamp, out oldVersion, out newVersion))
+            {
+                //update failed, two situation:
+                if (oldVersion != null)
+                {
+                    Console.WriteLine("Update failed. Other transaction has already set the version's end field.");
+                }
+                else
+                {
+                    Console.WriteLine("Update failed. Can not find the legal version to perform update.");
+                }
+                Abort();
+                return;
+            }
+            //update successfully, two situation:
+            if (oldVersion != null)
+            {
+                this.writeSet.Add(new WriteSetEntry(versionKey, oldVersion.BeginTimestamp, oldVersion.EndTimestamp, true));
+                this.writeSet.Add(new WriteSetEntry(versionKey, newVersion.BeginTimestamp, newVersion.EndTimestamp, false));
+            }
         }
 
         /// <summary>
@@ -301,6 +334,7 @@ namespace GraphView.Transaction
             VersionEntry deletedVersion = null;
             if (!this.versionTable.DeleteVersion(versionKey, this.txId, readTimestamp, out deletedVersion))
             {
+                Console.WriteLine("Delete failed. Other transaction has already set the version's end field.");
                 this.Abort();
                 return;
             }
@@ -351,17 +385,92 @@ namespace GraphView.Transaction
             throw new NotImplementedException();
         }
 
-        public void Commit()
+        /// <summary>
+        /// The transaction scans its ReadSet and for each version read, 
+        /// checks whether the version is still visible at the end of the transaction.
+        /// </summary>
+        internal bool ReadValidation()
+        {
+            foreach (ReadSetEntry readSetEntry in this.readSet)
+            {
+                if (!this.versionTable.CheckVersionVisibility(readSetEntry.Key, readSetEntry.BeginTimestamp, this.endTimestamp))
+                {
+                    Console.WriteLine("Read validation failed.");
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        /// <summary>
+        /// The transaction walks its ScanSet and repeats each scan,
+        /// looking for versions that came into existence during T’s lifetime and are visible as of the end of the transaction.
+        /// </summary>
+        internal bool PhantomValidation()
+        {
+            foreach (ScanSetEntry scanSetEntry in this.scanSet)
+            {
+                if (!this.versionTable.CheckPhantom(scanSetEntry.Key, scanSetEntry.ReadTimestamp, this.endTimestamp))
+                {
+                    Console.WriteLine("Check phantom failed.");
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        /// <summary>
+        /// Write changes to LogStore.
+        /// </summary>
+        internal void WriteChangestoLog()
         {
             throw new NotImplementedException();
         }
 
         /// <summary>
+        /// After complete all its normal processing, the transaction first acquires a end timestamp, then,
+        /// checks visibility of the versions read, checks for phantoms,
+        /// writes the new versions it created, and info about the deleted version to a persistent log,
+        /// propagates its end timestamp to the Begin and End fields of new and old versions, respectively, listed in its writeSet.
+        /// </summary>
+        public void Commit(long endTimestamp)
+        {
+            this.endTimestamp = endTimestamp;
+            //validation
+            if (!this.ReadValidation() || !this.PhantomValidation())
+            {
+                this.Abort();
+                return;
+            }
+            //logging
+            this.WriteChangestoLog();
+            //propagates endtimestamp to versionTable
+            foreach (WriteSetEntry writeSetEntry in this.writeSet)
+            {
+                if (!this.versionTable.UpdateCommittedVersionTimestamp(writeSetEntry.Key, this.txId, this.endTimestamp, writeSetEntry.IsOld))
+                {
+                    this.Abort();
+                    return;
+                }
+            }
+            //change the transaction's status
+            this.txStatus = TxStatus.Committed;
+            this.txTable.UpdateTxEndTimestampByTxId(this.txId, this.endTimestamp);
+            this.txTable.UpdateTxStatusByTxId(this.txId, TxStatus.Committed);
+        }
+
+        /// <summary>
         /// Abort this transaction.
-        /// This method is NOT fully completed.
         /// </summary>
         public void Abort()
         {
+            //update all changed version's timestamp
+            foreach (WriteSetEntry writeSetEntry in this.writeSet)
+            {
+                this.versionTable.UpdateAbortedVersionTimestamp(writeSetEntry.Key, this.txId, writeSetEntry.IsOld);
+            }
+            //change the transaction's status
+            this.txStatus = TxStatus.Aborted;
             this.txTable.UpdateTxStatusByTxId(this.txId, TxStatus.Aborted);
         }
     }
