@@ -723,14 +723,10 @@ namespace GraphView
                 }
                 else if (context.InBatchMode)
                 {
+                    projectOperator.AddSelectScalarElement(new FieldValue(0));
                     if (context.InParallelMode && context.SendReceiveMode == SendReceiveMode.SendThenSendBack)
                     {
-                        projectOperator.AddSelectScalarElement(new FieldValue(0));
                         projectOperator.AddSelectScalarElement(new FieldValue(1));
-                    }
-                    else
-                    {
-                        projectOperator.AddSelectScalarElement(new FieldValue(0));
                     }
                 }
 
@@ -1318,8 +1314,6 @@ namespace GraphView
                 // Set all sub-traversals' source to a same container, and turn on InBatchMode
                 QueryCompilationContext subcontext = new QueryCompilationContext(context);
                 subcontext.OuterContextOp.SetContainer(container);
-                subcontext.AddField(GremlinKeyword.IndexTableName, command.IndexColumnName, ColumnGraphType.Value, true);
-                subcontext.InBatchMode = true;
                 if (isParallel)
                 {
                     subcontext.SendReceiveMode = SendReceiveMode.SendThenSendBack;
@@ -1329,6 +1323,9 @@ namespace GraphView
                 {
                     subcontext.SendReceiveMode = SendReceiveMode.None;
                 }
+                subcontext.AddField(GremlinKeyword.IndexTableName, command.IndexColumnName, ColumnGraphType.Value, true);
+                subcontext.InBatchMode = true;
+                
                 if (index < context.LocalExecutionOrders.Count)
                 {
                     subcontext.CurrentExecutionOrder = context.LocalExecutionOrders[index];
@@ -1467,13 +1464,6 @@ namespace GraphView
             QueryCompilationContext targetSubContext = new QueryCompilationContext(context);
             Container targetContainer = new Container();
             targetSubContext.OuterContextOp.SetContainer(targetContainer);
-            targetSubContext.AddField(GremlinKeyword.IndexTableName, command.IndexColumnName, ColumnGraphType.Value, true);
-            targetSubContext.InBatchMode = true;
-            if (0 < context.LocalExecutionOrders.Count)
-            {
-                targetSubContext.CurrentExecutionOrder = context.LocalExecutionOrders[0];
-            }
-
             bool isParallel = context.InParallelMode && context.ParallelLevel.EnableSendThenSendBack;
             if (isParallel)
             {
@@ -1483,6 +1473,12 @@ namespace GraphView
             else
             {
                 targetSubContext.SendReceiveMode = SendReceiveMode.None;
+            }
+            targetSubContext.AddField(GremlinKeyword.IndexTableName, command.IndexColumnName, ColumnGraphType.Value, true);
+            targetSubContext.InBatchMode = true;
+            if (0 < context.LocalExecutionOrders.Count)
+            {
+                targetSubContext.CurrentExecutionOrder = context.LocalExecutionOrders[0];
             }
 
             GraphViewExecutionOperator targetSubqueryOp = optionalSelect.Compile(targetSubContext, command);
@@ -1574,13 +1570,6 @@ namespace GraphView
             QueryCompilationContext subcontext = new QueryCompilationContext(context);
             Container container = new Container();
             subcontext.OuterContextOp.SetContainer(container);
-            subcontext.AddField(GremlinKeyword.IndexTableName, command.IndexColumnName, ColumnGraphType.Value, true);
-            subcontext.InBatchMode = true;
-            if (0 < context.LocalExecutionOrders.Count)
-            {
-                subcontext.CurrentExecutionOrder = context.LocalExecutionOrders[0];
-            }
-
             bool isParallel = context.InParallelMode && context.ParallelLevel.EnableSendThenSendBack;
             if (isParallel)
             {
@@ -1590,6 +1579,12 @@ namespace GraphView
             else
             {
                 subcontext.SendReceiveMode = SendReceiveMode.None;
+            }
+            subcontext.AddField(GremlinKeyword.IndexTableName, command.IndexColumnName, ColumnGraphType.Value, true);
+            subcontext.InBatchMode = true;
+            if (0 < context.LocalExecutionOrders.Count)
+            {
+                subcontext.CurrentExecutionOrder = context.LocalExecutionOrders[0];
             }
 
             GraphViewExecutionOperator localTraversalOp = localSelect.Compile(subcontext, command);
@@ -1669,13 +1664,6 @@ namespace GraphView
             Container container = new Container();
             QueryCompilationContext subcontext = new QueryCompilationContext(context);
             subcontext.OuterContextOp.SetContainer(container);
-            subcontext.AddField(GremlinKeyword.IndexTableName, command.IndexColumnName, ColumnGraphType.Value, true);
-            subcontext.InBatchMode = true;
-            if (0 < context.LocalExecutionOrders.Count)
-            {
-                subcontext.CurrentExecutionOrder = context.LocalExecutionOrders[0];
-            }
-
             bool isParallel = context.InParallelMode && context.ParallelLevel.EnableSendThenSendBack;
             if (isParallel)
             {
@@ -1685,6 +1673,12 @@ namespace GraphView
             else
             {
                 subcontext.SendReceiveMode = SendReceiveMode.None;
+            }
+            subcontext.AddField(GremlinKeyword.IndexTableName, command.IndexColumnName, ColumnGraphType.Value, true);
+            subcontext.InBatchMode = true;
+            if (0 < context.LocalExecutionOrders.Count)
+            {
+                subcontext.CurrentExecutionOrder = context.LocalExecutionOrders[0];
             }
 
             GraphViewExecutionOperator flatMapTraversalOp = flatMapSelect.Compile(subcontext, command);
@@ -2664,13 +2658,6 @@ namespace GraphView
             Container container = new Container();
             QueryCompilationContext subcontext = new QueryCompilationContext(context);
             subcontext.OuterContextOp.SetContainer(container);
-            subcontext.AddField(GremlinKeyword.IndexTableName, command.IndexColumnName, ColumnGraphType.Value, true);
-            subcontext.InBatchMode = true;
-            if (0 < context.LocalExecutionOrders.Count)
-            {
-                subcontext.CurrentExecutionOrder = context.LocalExecutionOrders[0];
-            }
-
             bool isParallel = context.InParallelMode && context.ParallelLevel.EnableSendThenSendBack;
             if (isParallel)
             {
@@ -2680,6 +2667,12 @@ namespace GraphView
             else
             {
                 subcontext.SendReceiveMode = SendReceiveMode.None;
+            }
+            subcontext.AddField(GremlinKeyword.IndexTableName, command.IndexColumnName, ColumnGraphType.Value, true);
+            subcontext.InBatchMode = true;
+            if (0 < context.LocalExecutionOrders.Count)
+            {
+                subcontext.CurrentExecutionOrder = context.LocalExecutionOrders[0];
             }
 
             GraphViewExecutionOperator mapTraversalOp = mapSelect.Compile(subcontext, command);
@@ -3515,13 +3508,6 @@ namespace GraphView
             Container container = new Container();
             QueryCompilationContext targetSubContext = new QueryCompilationContext(context);
             targetSubContext.OuterContextOp.SetContainer(container);
-            targetSubContext.AddField(GremlinKeyword.IndexTableName, command.IndexColumnName, ColumnGraphType.Value, true);
-            targetSubContext.InBatchMode = true;
-            if (0 < context.LocalExecutionOrders.Count)
-            {
-                targetSubContext.CurrentExecutionOrder = context.LocalExecutionOrders[0];
-            }
-
             bool isParallel = context.InParallelMode && context.ParallelLevel.EnableSendThenSendBack;
             if (isParallel)
             {
@@ -3531,6 +3517,12 @@ namespace GraphView
             else
             {
                 targetSubContext.SendReceiveMode = SendReceiveMode.None;
+            }
+            targetSubContext.AddField(GremlinKeyword.IndexTableName, command.IndexColumnName, ColumnGraphType.Value, true);
+            targetSubContext.InBatchMode = true;
+            if (0 < context.LocalExecutionOrders.Count)
+            {
+                targetSubContext.CurrentExecutionOrder = context.LocalExecutionOrders[0];
             }
 
             GraphViewExecutionOperator targetSubqueryOp = targetSubquery.SubQueryExpr.Compile(targetSubContext, command);
@@ -3638,12 +3630,6 @@ namespace GraphView
             QueryCompilationContext targetContext = new QueryCompilationContext(context);
             targetContext.InBatchMode = true;
             targetContext.OuterContextOp.SetContainer(container);
-            targetContext.AddField(GremlinKeyword.IndexTableName, command.IndexColumnName, ColumnGraphType.Value, true);
-            if (0 < context.LocalExecutionOrders.Count)
-            {
-                targetContext.CurrentExecutionOrder = context.LocalExecutionOrders[0];
-            }
-
             bool isParallel = context.InParallelMode && context.ParallelLevel.EnableSendThenSendBack;
             if (isParallel)
             {
@@ -3653,6 +3639,11 @@ namespace GraphView
             else
             {
                 targetContext.SendReceiveMode = SendReceiveMode.None;
+            }
+            targetContext.AddField(GremlinKeyword.IndexTableName, command.IndexColumnName, ColumnGraphType.Value, true);
+            if (0 < context.LocalExecutionOrders.Count)
+            {
+                targetContext.CurrentExecutionOrder = context.LocalExecutionOrders[0];
             }
 
             GraphViewExecutionOperator targetSubqueryOp = targetSubquery.SubQueryExpr.Compile(targetContext, command);

@@ -137,14 +137,14 @@ namespace GraphView
             {
                 if (this.needAttachTaskIndex)
                 {
-                    Debug.Assert(((StringField)record[0]).Value == "-1" || ((StringField)record[0]).Value == this.taskIndex.ToString());
+                    Debug.Assert(((StringField)record[1]).Value == "-1" || ((StringField)record[1]).Value == this.taskIndex.ToString());
 
-                    ((StringField) record[0]).Value = this.taskIndex.ToString();
+                    ((StringField) record[1]).Value = this.taskIndex.ToString();
                 }
 
                 if (this.isSendBack)
                 {
-                    int index = int.Parse(record[0].ToValue);
+                    int index = int.Parse(record[1].ToValue);
                     if (index == this.taskIndex)
                     {
                         this.resultCount++;

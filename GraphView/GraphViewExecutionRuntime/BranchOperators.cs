@@ -90,11 +90,11 @@ namespace GraphView
                 while (this.inputOp.State() && (currentRecord = this.inputOp.Next()) != null)
                 {
                     RawRecord batchRawRecord = new RawRecord();
+                    batchRawRecord.Append(new StringField(inputBuffer.Count.ToString(), JsonDataType.Int));
                     if (this.isParallel)
                     {
                         batchRawRecord.Append(new StringField("-1", JsonDataType.Int));
                     }
-                    batchRawRecord.Append(new StringField(inputBuffer.Count.ToString(), JsonDataType.Int));
                     batchRawRecord.Append(currentRecord);
                     inputBuffer.Add(batchRawRecord);
                 }
@@ -112,25 +112,15 @@ namespace GraphView
                 RawRecord rec;
                 while (this.targetSubQueryOp.State() && (rec = this.targetSubQueryOp.Next()) != null)
                 {
-                    this.haveOutput.Add(int.Parse(rec.RetriveData(this.isParallel ? 1 : 0).ToValue));
+                    this.haveOutput.Add(int.Parse(rec.RetriveData(0).ToValue));
                 }
 
                 List<RawRecord> optionalInputs = new List<RawRecord>();
                 foreach (RawRecord record in inputBuffer)
                 {
-                    if (this.isParallel)
+                    if (this.haveOutput.Contains(int.Parse(record.RetriveData(0).ToValue)))
                     {
-                        if (this.haveOutput.Contains(int.Parse(record.RetriveData(1).ToValue)))
-                        {
-                            optionalInputs.Add(record.GetRange(2));
-                        }
-                    }
-                    else
-                    {
-                        if (this.haveOutput.Contains(int.Parse(record.RetriveData(0).ToValue)))
-                        {
-                            optionalInputs.Add(record.GetRange(1));
-                        }
+                        optionalInputs.Add(record.GetRange(this.isParallel ? 2 : 1));
                     }
                 }
                 this.optionalContainer.ResetTableCache(optionalInputs);
@@ -690,11 +680,11 @@ namespace GraphView
                 while (this.inputOp.State() && (currentRecord = this.inputOp.Next()) != null)
                 {
                     RawRecord batchRawRecord = new RawRecord();
+                    batchRawRecord.Append(new StringField(inputBuffer.Count.ToString(), JsonDataType.Int));
                     if (this.isParallel)
                     {
                         batchRawRecord.Append(new StringField("-1", JsonDataType.Int));
                     }
-                    batchRawRecord.Append(new StringField(inputBuffer.Count.ToString(), JsonDataType.Int));
                     batchRawRecord.Append(currentRecord);
                     inputBuffer.Add(batchRawRecord);
                     this.chooseBranch.Add(false);
@@ -713,7 +703,7 @@ namespace GraphView
                 RawRecord targetOutput;
                 while (this.targetSubQueryOp.State() && (targetOutput = this.targetSubQueryOp.Next()) != null)
                 {
-                    this.chooseBranch[int.Parse(targetOutput.RetriveData(this.isParallel ? 1 : 0).ToValue)] = true;
+                    this.chooseBranch[int.Parse(targetOutput.RetriveData(0).ToValue)] = true;
                 }
 
                 // determine which branch should the records apply
@@ -721,14 +711,13 @@ namespace GraphView
                 List<RawRecord> falseRawRecords = new List<RawRecord>();
                 foreach (RawRecord record in inputBuffer)
                 {
-                    int batchIndexPostition = this.isParallel ? 1 : 0;
-                    if (this.chooseBranch[int.Parse(record.RetriveData(batchIndexPostition).ToValue)])
+                    if (this.chooseBranch[int.Parse(record.RetriveData(0).ToValue)])
                     {
-                        trueRawRecords.Add(record.GetRange(batchIndexPostition + 1));
+                        trueRawRecords.Add(record.GetRange(this.isParallel ? 2 : 1));
                     }
                     else
                     {
-                        falseRawRecords.Add(record.GetRange(batchIndexPostition + 1));
+                        falseRawRecords.Add(record.GetRange(this.isParallel ? 2 : 1));
                     }
                 }
 
@@ -886,11 +875,11 @@ namespace GraphView
                 while (this.inputOp.State() && (inputRecord = this.inputOp.Next()) != null)
                 {
                     RawRecord batchRawRecord = new RawRecord();
+                    batchRawRecord.Append(new StringField(inputs.Count.ToString(), JsonDataType.Int));
                     if (this.isParallel)
                     {
                         batchRawRecord.Append(new StringField("-1", JsonDataType.Int));
                     }
-                    batchRawRecord.Append(new StringField(inputs.Count.ToString(), JsonDataType.Int));
                     batchRawRecord.Append(inputRecord);
                     inputs.Add(batchRawRecord);
                 }
@@ -909,13 +898,13 @@ namespace GraphView
                 RawRecord targetRecord;
                 while (this.targetSubOp.State() && (targetRecord = this.targetSubOp.Next()) != null)
                 {
-                    int batchIndexPostition = this.isParallel ? 1 : 0;
+                    int startIndex = this.isParallel ? 2 : 1;
                     // one input, one output. must one to one
-                    Debug.Assert(this.container[index][batchIndexPostition].ToValue == targetRecord[batchIndexPostition].ToValue,
+                    Debug.Assert(this.container[index][0].ToValue == targetRecord[0].ToValue,
                         "The provided traversal of choose() does not map to a value.");
 
-                    FieldObject value = targetRecord[batchIndexPostition + 1];
-                    RawRecord input = this.container[index].GetRange(batchIndexPostition + 1);
+                    FieldObject value = targetRecord[startIndex];
+                    RawRecord input = this.container[index].GetRange(startIndex);
                     for (int i = 0; i < this.traversalList.Count; i++)
                     {
                         if (this.traversalList[i].Item1.Equals(value))
