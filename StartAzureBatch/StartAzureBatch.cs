@@ -653,7 +653,6 @@ namespace StartAzureBatch
         // For Debug
         public static void RunQueryLocal(string query)
         {
-            AzureBatchJobManager jobManager = new AzureBatchJobManager();
             GraphViewAzureBatchJob job = new GraphViewAzureBatchJob(query);
 
             string compileStr = CompileQuery(job);

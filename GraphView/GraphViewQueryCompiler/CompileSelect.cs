@@ -1204,6 +1204,9 @@ namespace GraphView
                     subcontext.OuterContextOp.SetContainer(container);
                     subcontext.InBatchMode = context.InBatchMode;
                     subcontext.CarryOn = true;
+                    subcontext.SendReceiveMode = context.InParallelMode && context.ParallelLevel.EnableSendInSubTraversal
+                        ? SendReceiveMode.Send
+                        : SendReceiveMode.None;
                     if (index < context.LocalExecutionOrders.Count)
                     {
                         subcontext.CurrentExecutionOrder = context.LocalExecutionOrders[index];
@@ -1497,14 +1500,9 @@ namespace GraphView
             subcontext.CarryOn = true;
             subcontext.InBatchMode = context.InBatchMode;
 
-            if (context.InParallelMode && context.ParallelLevel.EnableSendInSubTraversal)
-            {
-                subcontext.SendReceiveMode = SendReceiveMode.Send;
-            }
-            else
-            {
-                subcontext.SendReceiveMode = SendReceiveMode.None;
-            }
+            subcontext.SendReceiveMode = context.InParallelMode && context.ParallelLevel.EnableSendInSubTraversal 
+                ? SendReceiveMode.Send 
+                : SendReceiveMode.None;
 
             if (0 < context.LocalExecutionOrders.Count)
             {
@@ -2298,6 +2296,9 @@ namespace GraphView
             rTableContext.OuterContextOp.SetContainer(innerContainer);
             rTableContext.InBatchMode = context.InBatchMode;
             rTableContext.CarryOn = true;
+            rTableContext.SendReceiveMode = context.InParallelMode && context.ParallelLevel.EnableSendInSubTraversal
+                ? SendReceiveMode.Send
+                : SendReceiveMode.None;
             if (1 < context.LocalExecutionOrders.Count)
             {
                 rTableContext.CurrentExecutionOrder = context.LocalExecutionOrders[1];
@@ -2306,7 +2307,7 @@ namespace GraphView
             GraphViewExecutionOperator innerOp = repeatSelect.Compile(rTableContext, command);
 
             bool useSendReceive = false;
-            if (rTableContext.InParallelMode && rTableContext.SendReceiveMode != SendReceiveMode.None)
+            if (rTableContext.InParallelMode && rTableContext.SendReceiveMode == SendReceiveMode.Send)
             {
                 useSendReceive = true;
                 SendOperator syncSendOp = new SendOperator(innerOp, false, true);
@@ -3546,6 +3547,9 @@ namespace GraphView
             trueSubContext.CarryOn = true;
             trueSubContext.InBatchMode = context.InBatchMode;
             trueSubContext.OuterContextOp.SetContainer(trueBranchContainer);
+            trueSubContext.SendReceiveMode = context.InParallelMode && context.ParallelLevel.EnableSendInSubTraversal
+                ? SendReceiveMode.Send
+                : SendReceiveMode.None;
             if (1 < context.LocalExecutionOrders.Count)
             {
                 trueSubContext.CurrentExecutionOrder = context.LocalExecutionOrders[1];
@@ -3558,6 +3562,9 @@ namespace GraphView
             falseSubContext.CarryOn = true;
             falseSubContext.InBatchMode = context.InBatchMode;
             falseSubContext.OuterContextOp.SetContainer(falseBranchContainer);
+            falseSubContext.SendReceiveMode = context.InParallelMode && context.ParallelLevel.EnableSendInSubTraversal
+                ? SendReceiveMode.Send
+                : SendReceiveMode.None;
             if (2 < context.LocalExecutionOrders.Count)
             {
                 falseSubContext.CurrentExecutionOrder = context.LocalExecutionOrders[2];
@@ -3687,6 +3694,9 @@ namespace GraphView
                 subcontext.CarryOn = true;
                 subcontext.InBatchMode = context.InBatchMode;
                 subcontext.OuterContextOp.SetContainer(optionContainer);
+                subcontext.SendReceiveMode = context.InParallelMode && context.ParallelLevel.EnableSendInSubTraversal
+                    ? SendReceiveMode.Send
+                    : SendReceiveMode.None;
                 if ((i+1)/2 < context.LocalExecutionOrders.Count)
                 {
                     subcontext.CurrentExecutionOrder = context.LocalExecutionOrders[(i+1)/2];

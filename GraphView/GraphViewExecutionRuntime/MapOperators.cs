@@ -26,6 +26,8 @@ namespace GraphView
         private HashSet<int> inputRecordSet;
 
         private readonly bool isParallel;
+        [NonSerialized]
+        private bool hasGlobalInput;
 
         public MapOperator(
             GraphViewExecutionOperator inputOp,
@@ -42,7 +44,7 @@ namespace GraphView
             this.batchSize = KW_DEFAULT_BATCH_SIZE;
 
             this.inputRecordSet = new HashSet<int>();
-
+            this.hasGlobalInput = false;
             this.Open();
         }
 
@@ -50,7 +52,7 @@ namespace GraphView
         {
             while (this.State())
             {
-                if (this.inputBatch.Any())
+                if (this.inputBatch.Any() || this.hasGlobalInput)
                 {
                     RawRecord subTraversalRecord;
                     while (this.mapTraversal.State() && (subTraversalRecord = this.mapTraversal.Next()) != null)
@@ -84,7 +86,13 @@ namespace GraphView
                     inputBatch.Add(batchRawRecord);
                 }
 
-                if (!inputBatch.Any())
+                this.hasGlobalInput = this.inputBatch.Any();
+                if (this.isParallel && !this.hasGlobalInput && this.inputOp is ReceiveOperator)
+                {
+                    this.hasGlobalInput |= ((ReceiveOperator)this.inputOp).HasGlobalResult();
+                }
+
+                if (!this.hasGlobalInput)
                 {
                     this.Close();
                     return null;
@@ -105,6 +113,7 @@ namespace GraphView
 
             this.inputBatch.Clear();
             this.inputRecordSet.Clear();
+            this.hasGlobalInput = false;
             this.Open();
         }
 
@@ -119,6 +128,7 @@ namespace GraphView
             this.inputBatch = new List<RawRecord>();
             this.batchSize = KW_DEFAULT_BATCH_SIZE;
             this.inputRecordSet = new HashSet<int>();
+            this.hasGlobalInput = false;
 
             this.container = new Container();
             EnumeratorOperator enumeratorOp = this.mapTraversal.GetFirstOperator() as EnumeratorOperator;
@@ -142,6 +152,8 @@ namespace GraphView
         private int batchSize;
 
         private readonly bool isParallel;
+        [NonSerialized]
+        private bool hasGlobalInput;
 
         public FlatMapOperator(
             GraphViewExecutionOperator inputOp,
@@ -157,7 +169,7 @@ namespace GraphView
             this.batchSize = batchSize;
 
             this.inputBatch = new List<RawRecord>();
-
+            this.hasGlobalInput = false;
             this.Open();
         }
 
@@ -165,7 +177,7 @@ namespace GraphView
         {
             while (this.State())
             {
-                if (this.inputBatch.Any())
+                if (this.inputBatch.Any() || this.hasGlobalInput)
                 {
                     RawRecord subTraversalRecord;
                     while (flatMapTraversal.State() && (subTraversalRecord = flatMapTraversal.Next()) != null)
@@ -193,7 +205,13 @@ namespace GraphView
                     inputBatch.Add(batchRawRecord);
                 }
 
-                if (!inputBatch.Any())
+                this.hasGlobalInput = this.inputBatch.Any();
+                if (this.isParallel && !this.hasGlobalInput && this.inputOp is ReceiveOperator)
+                {
+                    this.hasGlobalInput |= ((ReceiveOperator)this.inputOp).HasGlobalResult();
+                }
+
+                if (!this.hasGlobalInput)
                 {
                     this.Close();
                     return null;
@@ -212,6 +230,7 @@ namespace GraphView
             this.inputBatch.Clear();
             this.inputOp.ResetState();
             this.flatMapTraversal.ResetState();
+            this.hasGlobalInput = false;
             this.Open();
         }
 
@@ -224,6 +243,7 @@ namespace GraphView
         private void Reconstruct(StreamingContext context)
         {
             this.inputBatch = new List<RawRecord>();
+            this.hasGlobalInput = false;
 
             this.container = new Container();
             EnumeratorOperator enumeratorOp = this.flatMapTraversal.GetFirstOperator() as EnumeratorOperator;
@@ -255,6 +275,8 @@ namespace GraphView
         private int batchSize;
 
         private readonly bool isParallel;
+        [NonSerialized]
+        private bool hasGlobalInput;
 
         public LocalOperator(
             GraphViewExecutionOperator inputOp,
@@ -270,7 +292,7 @@ namespace GraphView
             this.batchSize = batchSize;
 
             this.inputBatch = new List<RawRecord>();
-            
+            this.hasGlobalInput = false;
             this.Open();
         }
 
@@ -278,7 +300,7 @@ namespace GraphView
         {
             while (this.State())
             {
-                if (this.inputBatch.Any())
+                if (this.inputBatch.Any() || this.hasGlobalInput)
                 {
                     RawRecord subTraversalRecord;
                     while (localTraversal.State() && (subTraversalRecord = localTraversal.Next()) != null)
@@ -293,7 +315,7 @@ namespace GraphView
 
                 this.inputBatch.Clear();
                 RawRecord inputRecord;
-                while (this.inputBatch.Count < this.batchSize && this.inputOp.State() && (inputRecord = inputOp.Next()) != null)
+                while (this.inputBatch.Count < this.batchSize && this.inputOp.State() && (inputRecord = this.inputOp.Next()) != null)
                 {
                     RawRecord batchRawRecord = new RawRecord();
                     if (this.isParallel)
@@ -303,10 +325,16 @@ namespace GraphView
                     batchRawRecord.Append(new StringField(this.inputBatch.Count.ToString(), JsonDataType.Int));
                     batchRawRecord.Append(inputRecord);
 
-                    inputBatch.Add(batchRawRecord);
+                    this.inputBatch.Add(batchRawRecord);
                 }
 
-                if (!inputBatch.Any())
+                this.hasGlobalInput = this.inputBatch.Any();
+                if (this.isParallel && !this.hasGlobalInput && this.inputOp is ReceiveOperator)
+                {
+                    this.hasGlobalInput |= ((ReceiveOperator) this.inputOp).HasGlobalResult();
+                }
+
+                if (!this.hasGlobalInput)
                 {
                     this.Close();
                     return null;
@@ -325,6 +353,7 @@ namespace GraphView
             this.inputBatch.Clear();
             this.inputOp.ResetState();
             this.localTraversal.ResetState();
+            this.hasGlobalInput = false;
             this.Open();
         }
 
@@ -337,6 +366,7 @@ namespace GraphView
         private void Reconstruct(StreamingContext context)
         {
             this.inputBatch = new List<RawRecord>();
+            this.hasGlobalInput = false;
 
             this.container = new Container();
             EnumeratorOperator enumeratorOp = this.localTraversal.GetFirstOperator() as EnumeratorOperator;
@@ -414,7 +444,7 @@ namespace GraphView
                     inputBatch.Add(batchRawRecord);
                 }
 
-                if (!inputBatch.Any())
+                if (!this.isParallel && !inputBatch.Any())
                 {
                     this.Close();
                     return null;
@@ -422,7 +452,7 @@ namespace GraphView
 
                 this.container.ResetTableCache(inputBatch);
                 int finishedCount = 0;
-
+                bool hasGlobalResult = false;
                 foreach (GraphViewExecutionOperator subTraversal in this.traversalList)
                 {
                     subTraversal.ResetState();
@@ -447,12 +477,25 @@ namespace GraphView
 
                     this.container.Delete(deleteIndex);
 
-                    if (finishedCount == this.container.Count)
+                    if (!this.isParallel && finishedCount == this.container.Count)
                     {
                         break;
                     }
+
+                    if (this.isParallel && !hasGlobalResult && subTraversal is ReceiveOperator)
+                    {
+                        hasGlobalResult |= ((ReceiveOperator) subTraversal).HasGlobalResult();
+                    }
                 }
 
+                hasGlobalResult |= this.outputBuffer.Count > 0;
+
+                if (this.isParallel && !hasGlobalResult)
+                {
+                    this.Close();
+                    return null;
+                }
+                
             }
 
             return null;
