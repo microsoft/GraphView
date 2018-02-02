@@ -307,6 +307,61 @@ namespace GraphView
         }
     }
 
+    internal class AggregateIntermadiateResult
+    {
+        private readonly string receiveHostId;
+
+        private readonly int currentTask;
+        private List<PartitionPlan> partitionPlans;
+
+        public AggregateIntermadiateResult(string receiveHostId, int currentTask, List<PartitionPlan> partitionPlans)
+        {
+            this.receiveHostId = receiveHostId;
+            this.currentTask = currentTask;
+            this.partitionPlans = partitionPlans;
+        }
+
+        public void Aggregate(List<IAggregateFunction> aggFuncs)
+        {
+            int targetTask = DetermineTargetTask();
+
+            if (this.currentTask == targetTask)
+            {
+                ReceiveHost receiveHost = new ReceiveHost(this.receiveHostId);
+                receiveHost.OpenHost();
+                List<string> messages = receiveHost.WaitReturnAllMessages();
+
+                foreach (string message in messages)
+                {
+                    List<IAggregateFunction> anotherAggFuncs =
+                        GraphViewSerializer.DeserializeWithDataContract<List<IAggregateFunction>>(message);
+                    for (int i = 0; i < aggFuncs.Count; i++)
+                    {
+                        aggFuncs[i].Merge(anotherAggFuncs[i]);
+                    }
+                }
+            }
+            else
+            {
+                string message = GraphViewSerializer.SerializeWithDataContract(aggFuncs);
+                SendClient sendClient = new SendClient(this.receiveHostId, this.partitionPlans);
+                sendClient.SendMessage(message, targetTask, this.currentTask);
+            }
+        }
+
+        // maybe use the amount of data that each task computes to determine target task.
+        private int DetermineTargetTask()
+        {
+            return 0;
+        }
+
+        private void SendIntermadiateResult()
+        {
+            
+        }
+
+    }
+
     [Serializable]
     internal abstract class GetPartitionMethod
     {

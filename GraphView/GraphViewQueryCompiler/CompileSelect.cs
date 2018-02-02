@@ -745,10 +745,12 @@ namespace GraphView
                 ProjectAggregation projectAggregationOp = context.InBatchMode ?
                     new ProjectAggregationInBatch(operatorChain.Any()
                         ? operatorChain.Last()
-                        : context.OuterContextOp) :
+                        : context.OuterContextOp,
+                        context.InParallelMode) :
                     new ProjectAggregation(operatorChain.Any()
                         ? operatorChain.Last()
-                        : context.OuterContextOp);
+                        : context.OuterContextOp,
+                        context.InParallelMode);
 
                 foreach (var selectScalar in selectScalarExprList)
                 {

@@ -17,6 +17,33 @@ namespace GraphView
         // Use IsNullMark to distinguish whether object is null or empty.
         private const string IsNullMark = "Null";
 
+        public static string SerializeWithDataContract<T>(T data)
+        {
+            using (MemoryStream memStream = new MemoryStream())
+            {
+                DataContractSerializer ser = new DataContractSerializer(typeof(T));
+                ser.WriteObject(memStream, data);
+
+                memStream.Position = 0;
+                StreamReader stringReader = new StreamReader(memStream);
+                return stringReader.ReadToEnd();
+            }
+        }
+
+        public static T DeserializeWithDataContract<T>(string serilizationStr)
+        {
+            using (MemoryStream stream = new MemoryStream())
+            {
+                StreamWriter writer = new StreamWriter(stream);
+                writer.Write(serilizationStr);
+                writer.Flush();
+                stream.Position = 0;
+
+                DataContractSerializer deser = new DataContractSerializer(typeof(T));
+                return (T)deser.ReadObject(stream);
+            }
+        }
+
         private static string SerializeWithSoapFormatter(object obj)
         {
             using (MemoryStream memStream = new MemoryStream())

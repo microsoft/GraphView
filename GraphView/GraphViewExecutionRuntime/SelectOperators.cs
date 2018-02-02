@@ -1183,23 +1183,25 @@ namespace GraphView
     {
         protected List<Tuple<IAggregateFunction, List<ScalarFunction>>> aggregationSpecs;
         protected GraphViewExecutionOperator inputOp;
+        protected readonly bool isParallel;
 
-        public ProjectAggregation(GraphViewExecutionOperator inputOp)
+        public ProjectAggregation(GraphViewExecutionOperator inputOp, bool isParallel = false)
         {
             this.inputOp = inputOp;
-            aggregationSpecs = new List<Tuple<IAggregateFunction, List<ScalarFunction>>>();
+            this.isParallel = isParallel;
+            this.aggregationSpecs = new List<Tuple<IAggregateFunction, List<ScalarFunction>>>();
             Open();
         }
 
         public void AddAggregateSpec(IAggregateFunction aggrFunc, List<ScalarFunction> aggrInput)
         {
-            aggregationSpecs.Add(new Tuple<IAggregateFunction, List<ScalarFunction>>(aggrFunc, aggrInput));
+            this.aggregationSpecs.Add(new Tuple<IAggregateFunction, List<ScalarFunction>>(aggrFunc, aggrInput));
         }
 
         public override void ResetState()
         {
-            inputOp.ResetState();
-            foreach (var aggr in aggregationSpecs)
+            this.inputOp.ResetState();
+            foreach (var aggr in this.aggregationSpecs)
             {
                 if (aggr.Item1 != null)
                 {
@@ -1216,7 +1218,7 @@ namespace GraphView
                 return null;
             }
 
-            foreach (var aggr in aggregationSpecs)
+            foreach (var aggr in this.aggregationSpecs)
             {
                 if (aggr.Item1 != null)
                 {
@@ -1225,9 +1227,9 @@ namespace GraphView
             }
 
             RawRecord inputRec = null;
-            while (inputOp.State() && (inputRec = inputOp.Next()) != null)
+            while (this.inputOp.State() && (inputRec = this.inputOp.Next()) != null)
             {
-                foreach (var aggr in aggregationSpecs)
+                foreach (var aggr in this.aggregationSpecs)
                 {
                     IAggregateFunction aggregate = aggr.Item1;
                     List<ScalarFunction> parameterFunctions = aggr.Item2;
@@ -1247,8 +1249,10 @@ namespace GraphView
                 }
             }
 
+            // todo
+
             RawRecord outputRec = new RawRecord();
-            foreach (var aggr in aggregationSpecs)
+            foreach (var aggr in this.aggregationSpecs)
             {
                 if (aggr.Item1 != null)
                 {
@@ -1272,12 +1276,14 @@ namespace GraphView
         public virtual void GetObjectData(SerializationInfo info, StreamingContext context)
         {
             info.AddValue("inputOp", this.inputOp, typeof(GraphViewExecutionOperator));
+            info.AddValue("isParallel", this.isParallel);
             GraphViewSerializer.SerializeListTupleList(info, "aggregationSpecs", this.aggregationSpecs);
         }
 
         protected ProjectAggregation(SerializationInfo info, StreamingContext context)
         {
             this.inputOp = (GraphViewExecutionOperator)info.GetValue("inputOp", typeof(GraphViewExecutionOperator));
+            this.isParallel = info.GetBoolean("isParallel");
             this.aggregationSpecs = GraphViewSerializer.DeserializeListTupleList<IAggregateFunction, ScalarFunction>(
                 info, "aggregationSpecs");
             this.Open();
@@ -1289,7 +1295,7 @@ namespace GraphView
     {
         private RawRecord firstRecordInGroup = null;
 
-        internal ProjectAggregationInBatch(GraphViewExecutionOperator inputOp) : base(inputOp)
+        internal ProjectAggregationInBatch(GraphViewExecutionOperator inputOp, bool isParallel) : base(inputOp, isParallel)
         { }
 
         public RawRecord GetNoAccumulateRecord(int index)
