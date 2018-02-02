@@ -79,6 +79,34 @@ namespace GraphView.Transaction
         }
     }
 
+    internal class ReadSetEntry2
+    {
+        internal object Key { get; private set; }
+        internal long Timestamp { get; private set; }
+
+        public ReadSetEntry2(object key, long timestamp)
+        {
+            this.Key = key;
+            this.Timestamp = timestamp;
+        }
+
+        public override int GetHashCode()
+        {
+            return this.Key.GetHashCode() ^ this.Timestamp.GetHashCode();
+        }
+
+        public override bool Equals(object obj)
+        {
+            ReadSetEntry2 entry = obj as ReadSetEntry2;
+            if (entry == null)
+            {
+                return false;
+            }
+
+            return this.Key == entry.Key && this.Timestamp == entry.Timestamp;
+        }
+    }
+
     internal class ScanSetEntry : Tuple<RecordKey, long>
     {
         internal ScanSetEntry(RecordKey key, long readTimestamp)
@@ -148,6 +176,7 @@ namespace GraphView.Transaction
         /// Version table for concurrency control
         /// </summary>
         private readonly VersionTable versionTable;
+        private readonly VersionDb versionDb;
 
         /// <summary>
         /// Transaction table, keeping track of each transcation's status 
@@ -179,6 +208,7 @@ namespace GraphView.Transaction
         /// For every read operation, add the recordId, the begin and the end timestamp of the version we read to the readSet.
         /// </summary>
         private readonly List<ReadSetEntry> readSet;
+        private readonly Dictionary<string, HashSet<ReadSetEntry2>> readSet2;
 
         /// <summary>
         /// Scan set, using for checking phantoms.
@@ -238,6 +268,15 @@ namespace GraphView.Transaction
             }
             //insert successfully
             this.writeSet.Add(new WriteSetEntry(versionKey, this.txId, long.MaxValue, false));
+        }
+
+        public void InsertJson(string tableId, object recordKey, JObject record, long readTimestamp)
+        {
+            if (!readSet2.ContainsKey(tableId))
+            {
+                readSet2.Add(tableId, new HashSet<ReadSetEntry2>());
+            }
+            readSet2[tableId].Add(new ReadSetEntry2(recordKey, readTimestamp));
         }
 
         /// <summary>
@@ -370,20 +409,13 @@ namespace GraphView.Transaction
 
         internal bool ReadValidation2()
         {
-            var groupedReadSet = this.readSet.GroupBy(e => e.Item1.Item1);
-            foreach (var readSetGroup in groupedReadSet)
+            foreach (string tableId in this.readSet2.Keys)
             {
-                string tableId = readSetGroup.Key;
-                foreach (ReadSetEntry readSetEntry in readSetGroup)
+                foreach (ReadSetEntry2 readEntry in this.readSet2[tableId])
                 {
-                    if (!this.versionTable.CheckVersionVisibility(
-                        readSetEntry.Key, readSetEntry.BeginTimestamp, this.endTimestamp))
-                    {
-                        Console.WriteLine("Read validation failed.");
-                        return false;
-                    }
                 }
             }
+            
             return true;
         }
 
