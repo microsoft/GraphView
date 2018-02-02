@@ -28,6 +28,7 @@ namespace GraphView
     {
         void Init();
         void Accumulate(params FieldObject[] values);
+        void Merge(IAggregateFunction aggFunc);
         FieldObject Terminate();
     }
 
@@ -45,6 +46,11 @@ namespace GraphView
         public void Init()
         {
             this.buffer = new List<FieldObject>();
+        }
+
+        public void Merge(IAggregateFunction aggFunc)
+        {
+            throw new NotImplementedException();
         }
 
         public FieldObject Terminate()
@@ -67,6 +73,11 @@ namespace GraphView
         public void Init()
         {
             this.count = 0;
+        }
+
+        public void Merge(IAggregateFunction aggFunc)
+        {
+            throw new NotImplementedException();
         }
 
         public FieldObject Terminate()
@@ -93,6 +104,11 @@ namespace GraphView
         public void Init()
         {
             this.sum = 0.0;
+        }
+
+        public void Merge(IAggregateFunction aggFunc)
+        {
+            throw new NotImplementedException();
         }
 
         public FieldObject Terminate()
@@ -126,6 +142,11 @@ namespace GraphView
             this.max = double.NaN;
         }
 
+        public void Merge(IAggregateFunction aggFunc)
+        {
+            throw new NotImplementedException();
+        }
+
         public FieldObject Terminate()
         {
             return new StringField(this.max.ToString(CultureInfo.InvariantCulture), JsonDataType.Double);
@@ -155,6 +176,11 @@ namespace GraphView
         public void Init()
         {
             this.min = double.NaN;
+        }
+
+        public void Merge(IAggregateFunction aggFunc)
+        {
+            throw new NotImplementedException();
         }
 
         public FieldObject Terminate()
@@ -193,6 +219,11 @@ namespace GraphView
         {
             return new StringField((this.sum / this.count).ToString(CultureInfo.InvariantCulture), JsonDataType.Double);
         }
+
+        public void Merge(IAggregateFunction aggFunc)
+        {
+            throw new NotImplementedException();
+        }
     }
 
     [Serializable]
@@ -218,6 +249,11 @@ namespace GraphView
         public void Init()
         {
             return;
+        }
+
+        public void Merge(IAggregateFunction aggFunc)
+        {
+            throw new NotImplementedException();
         }
 
         public FieldObject Terminate()
@@ -311,6 +347,11 @@ namespace GraphView
             this.treeState.Init();
         }
 
+        public void Merge(IAggregateFunction aggFunc)
+        {
+            throw new NotImplementedException();
+        }
+
         public FieldObject Terminate()
         {
             return this.treeState.root;
@@ -321,6 +362,7 @@ namespace GraphView
         {
             this.treeState = new TreeState("");
         }
+
     }
 
     internal class TreeState : AggregateState
@@ -368,6 +410,11 @@ namespace GraphView
             this.subgraphState.vertexIds.Add(edge.OutV);
 
             this.subgraphState.graph = null;
+        }
+
+        public void Merge(IAggregateFunction aggFunc)
+        {
+            throw new NotImplementedException();
         }
 
         public FieldObject Terminate()
@@ -587,6 +634,7 @@ namespace GraphView
             AdditionalSerializationInfo additionalInfo = (AdditionalSerializationInfo)context.Context;
             this.subgraphState = new SubgraphState(additionalInfo.Command, "");
         }
+
     }
 
     internal class SubgraphState : AggregateState
@@ -635,6 +683,11 @@ namespace GraphView
             this.collectionState.collectionField.Collection.Add(values[0]);
         }
 
+        public void Merge(IAggregateFunction aggFunc)
+        {
+            throw new NotImplementedException();
+        }
+
         public FieldObject Terminate()
         {
             return this.collectionState.collectionField;
@@ -645,6 +698,7 @@ namespace GraphView
         {
             this.collectionState = new CollectionState("");
         }
+
     }
 
     internal class CollectionState : AggregateState
@@ -703,6 +757,11 @@ namespace GraphView
             }
 
             this.groupState.groupedStates[groupByKey].Add(groupByValue);
+        }
+
+        public void Merge(IAggregateFunction aggFunc)
+        {
+            throw new NotImplementedException();
         }
 
         public FieldObject Terminate()
@@ -770,6 +829,7 @@ namespace GraphView
             EnumeratorOperator enumeratorOp = (this.aggregateOp.GetFirstOperator() as EnumeratorOperator);
             enumeratorOp.SetContainer(this.container);
         }
+
     }
 
     internal class GroupState : AggregateState
