@@ -245,6 +245,11 @@
     <Compile Include="GraphViewQueryCompiler\Statistics.cs" />
     <Compile Include="GraphViewCommand.cs" />
     <Compile Include="GraphViewDBPortal\DocumentDBKeywords.cs" />
+    <Compile Include="RecordRuntime\IDataStore.cs" />
+    <Compile Include="Transaction\RecordKey.cs" />
+    <Compile Include="Transaction\SingletonVersionDb.cs" />
+    <Compile Include="Transaction\SingletonVersionDictionary.cs" />
+    <Compile Include="Transaction\SingletonVersionTreeMap.cs" />
     <Compile Include="Transaction\TransactionTable.cs" />
     <Compile Include="Transaction\VersionTable.cs" />
     <Compile Include="Transaction\LogStore.cs" />

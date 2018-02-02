@@ -49,12 +49,12 @@ namespace GraphView.Transaction
         }
     }
 
-    internal class ReadSetEntry : Tuple<VersionKey, long, long>
+    internal class ReadSetEntry : Tuple<RecordKey, long, long>
     {
-        internal ReadSetEntry(VersionKey key, long beginTimestamp, long endTimestamp)
+        internal ReadSetEntry(RecordKey key, long beginTimestamp, long endTimestamp)
             : base(key, beginTimestamp, endTimestamp) { }
 
-        internal VersionKey Key
+        internal RecordKey Key
         {
             get
             {
@@ -79,12 +79,12 @@ namespace GraphView.Transaction
         }
     }
 
-    internal class ScanSetEntry : Tuple<VersionKey, long>
+    internal class ScanSetEntry : Tuple<RecordKey, long>
     {
-        internal ScanSetEntry(VersionKey key, long readTimestamp)
+        internal ScanSetEntry(RecordKey key, long readTimestamp)
             : base(key, readTimestamp) { }
 
-        internal VersionKey Key
+        internal RecordKey Key
         {
             get
             {
@@ -98,12 +98,12 @@ namespace GraphView.Transaction
         }
     }
 
-    internal class WriteSetEntry : Tuple<VersionKey, long, long, bool>
+    internal class WriteSetEntry : Tuple<RecordKey, long, long, bool>
     {
-        internal WriteSetEntry(VersionKey key, long beginTimestamp, long endTimestamp, bool isOld)
+        internal WriteSetEntry(RecordKey key, long beginTimestamp, long endTimestamp, bool isOld)
             : base(key, beginTimestamp, endTimestamp, isOld) { }
 
-        internal VersionKey Key
+        internal RecordKey Key
         {
             get
             {
@@ -135,41 +135,7 @@ namespace GraphView.Transaction
             }
         }
     }
-
-    public class VersionKey : Tuple<string, string>
-    {
-        internal VersionKey(string tableId, string recordId)
-            : base(tableId, recordId) { }
-
-        internal string TableId
-        {
-            get
-            {
-                return this.Item1;
-            }
-        }
-
-        internal string RecordId
-        {
-            get
-            {
-                return this.Item2;
-            }
-        }
-
-        public override bool Equals(object obj)
-        {
-            if (obj == null || obj.GetType() != this.GetType())
-                return false;
-            VersionKey other = (VersionKey) obj;
-            return (this.Item1 == other.Item1) && (this.Item2 == other.Item2);
-        }
-
-        public override int GetHashCode()
-        {
-            return base.GetHashCode();
-        }
-    }
+    
 
     public class Transaction
     {
@@ -181,12 +147,12 @@ namespace GraphView.Transaction
         /// <summary>
         /// Version table for concurrency control
         /// </summary>
-        private readonly IVersionTable versionTable;
+        private readonly VersionTable versionTable;
 
         /// <summary>
         /// Transaction table, keeping track of each transcation's status 
         /// </summary>
-        private readonly ITxTable txTable;
+        private readonly TransactionTable txTable;
 
         /// <summary>
         /// Transaction id assigned to this transaction
@@ -235,7 +201,7 @@ namespace GraphView.Transaction
         /// </summary>
         private Dictionary<string, List<TransactionEntry>> recordAccess;
 
-        public Transaction(long txId, long beginTimestamp, LogStore logStore, IVersionTable versionTable, ITxTable txTable)
+        public Transaction(long txId, long beginTimestamp, LogStore logStore, VersionTable versionTable, TransactionTable txTable)
         {
             this.txId = txId;
             this.beginTimestamp = beginTimestamp;
@@ -260,7 +226,7 @@ namespace GraphView.Transaction
         /// (2) Find whether the record already exist.
         /// (3) Insert and add info to write set, or, abort.
         /// </summary>
-        public void InsertJson(VersionKey versionKey, JObject record, long readTimestamp)
+        public void InsertJson(RecordKey versionKey, JObject record, long readTimestamp)
         {
             this.scanSet.Add(new ScanSetEntry(versionKey, readTimestamp));
             if (!this.versionTable.InsertVersion(versionKey, record, this.txId, readTimestamp))
@@ -280,7 +246,7 @@ namespace GraphView.Transaction
         /// (2) Try to get the legal version from versionTable.
         /// (3) Add the read info to the readSet, or, abort.
         /// </summary>
-        public JObject ReadJson(VersionKey versionKey, long readTimestamp)
+        public JObject ReadJson(RecordKey versionKey, long readTimestamp)
         {
             this.scanSet.Add(new ScanSetEntry(versionKey, readTimestamp));
             VersionEntry version = this.versionTable.GetVersion(versionKey, readTimestamp);
@@ -298,7 +264,7 @@ namespace GraphView.Transaction
         /// <summary>
         /// Update a record.
         /// </summary>
-        public void UpdateJson(VersionKey versionKey, JObject record, long readTimestamp)
+        public void UpdateJson(RecordKey versionKey, JObject record, long readTimestamp)
         {
             this.scanSet.Add(new ScanSetEntry(versionKey, readTimestamp));
             VersionEntry oldVersion = null;
@@ -328,7 +294,7 @@ namespace GraphView.Transaction
         /// <summary>
         /// Delete a record.
         /// </summary>
-        public void DeleteJson(VersionKey versionKey, long readTimestamp)
+        public void DeleteJson(RecordKey versionKey, long readTimestamp)
         {
             this.scanSet.Add(new ScanSetEntry(versionKey, readTimestamp));
             VersionEntry deletedVersion = null;
@@ -397,6 +363,25 @@ namespace GraphView.Transaction
                 {
                     Console.WriteLine("Read validation failed.");
                     return false;
+                }
+            }
+            return true;
+        }
+
+        internal bool ReadValidation2()
+        {
+            var groupedReadSet = this.readSet.GroupBy(e => e.Item1.Item1);
+            foreach (var readSetGroup in groupedReadSet)
+            {
+                string tableId = readSetGroup.Key;
+                foreach (ReadSetEntry readSetEntry in readSetGroup)
+                {
+                    if (!this.versionTable.CheckVersionVisibility(
+                        readSetEntry.Key, readSetEntry.BeginTimestamp, this.endTimestamp))
+                    {
+                        Console.WriteLine("Read validation failed.");
+                        return false;
+                    }
                 }
             }
             return true;

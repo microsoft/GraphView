@@ -3,6 +3,7 @@
 
 namespace GraphView.Transaction
 {
+    using System;
     using System.Collections.Generic;
     using System.Data.Linq;
 
@@ -30,19 +31,34 @@ namespace GraphView.Transaction
     /// <summary>
     /// An interface for the transaction table.
     /// </summary>
-    public interface ITxTable
+    public abstract class TransactionTable
     {
-        TxStatus GetTxStatusByTxId(long txId);
-        void UpdateTxStatusByTxId(long txId, TxStatus txStatus);
-        void InsertNewTx(long txId, long beginTimestamp);
-        void UpdateTxEndTimestampByTxId(long txId, long endTimestamp);
+        internal virtual TxStatus GetTxStatusByTxId(long txId)
+        {
+            throw new NotImplementedException();
+        }
+
+        internal virtual void UpdateTxStatusByTxId(long txId, TxStatus txStatus)
+        {
+            throw new NotImplementedException();
+        }
+
+        internal virtual void InsertNewTx(long txId, long beginTimestamp)
+        {
+            throw new NotImplementedException();
+        }
+
+        internal virtual void UpdateTxEndTimestampByTxId(long txId, long endTimestamp)
+        {
+            throw new NotImplementedException();
+        }
     }
 
     /// <summary>
     /// A singleton transaction table, which stores transaction state and timestamps.
     /// This table is globally visible.
     /// </summary>
-    public class SingletonTxTable : ITxTable
+    internal class SingletonTxTable : TransactionTable
     {
         private static volatile SingletonTxTable instSingletonTxTable;
         private static object initiLock = new object();
@@ -72,7 +88,7 @@ namespace GraphView.Transaction
             }
         }
 
-        public TxStatus GetTxStatusByTxId(long txId)
+        internal override TxStatus GetTxStatusByTxId(long txId)
         {
             TxTableEntry entry = null;
             if (this.table.TryGetValue(txId, out entry))
@@ -82,7 +98,7 @@ namespace GraphView.Transaction
             throw new KeyNotFoundException();
         }
 
-        public void UpdateTxStatusByTxId(long txId, TxStatus txStatus)
+        internal override void UpdateTxStatusByTxId(long txId, TxStatus txStatus)
         {
             if (this.table.ContainsKey(txId))
             {
@@ -91,7 +107,7 @@ namespace GraphView.Transaction
             throw new KeyNotFoundException();
         }
 
-        public void InsertNewTx(long txId, long beginTimestamp)
+        internal override void InsertNewTx(long txId, long beginTimestamp)
         {
             if (this.table.ContainsKey(txId))
             {
@@ -100,7 +116,7 @@ namespace GraphView.Transaction
             this.table.Add(txId, new TxTableEntry(TxStatus.Active, beginTimestamp, long.MinValue));
         }
 
-        public void UpdateTxEndTimestampByTxId(long txId, long endTimestamp)
+        internal override void UpdateTxEndTimestampByTxId(long txId, long endTimestamp)
         {
             if (this.table.ContainsKey(txId))
             {
