@@ -14,29 +14,296 @@ using static GraphView.DocumentDBKeywords;
 namespace GraphView
 {
     [ServiceContract]
-    internal interface IRawRecordService
+    internal interface IMessageService
     {
         [OperationContract]
-        void SendRawRecord(string message);
+        void SendMessage(string message);
+
+        [OperationContract]
+        void SendMessageWithSource(string message, int from);
 
         [OperationContract]
         void SendSignal(string message);
+
+        [OperationContract]
+        void SendSignalWithSource(string message, int from);
     }
 
-    internal class RawRecordService : IRawRecordService
+    internal class MessageService : IMessageService
     {
         // use concurrentQueue temporarily
         public ConcurrentQueue<string> Messages { get; } = new ConcurrentQueue<string>();
         public ConcurrentQueue<string> Signals { get; } = new ConcurrentQueue<string>();
+        public ConcurrentQueue<int> Sources { get; } = new ConcurrentQueue<int>();
 
-        public void SendRawRecord(string message)
+        public void SendMessage(string message)
         {
             Messages.Enqueue(message);
+        }
+
+        public void SendMessageWithSource(string message, int from)
+        {
+            Messages.Enqueue(message);
+            Sources.Enqueue(from);
         }
 
         public void SendSignal(string message)
         {
             Signals.Enqueue(message);
+        }
+
+        public void SendSignalWithSource(string message, int from)
+        {
+            Signals.Enqueue(message);
+            Sources.Enqueue(from);
+        }
+    }
+
+    [Serializable]
+    internal class SendClient
+    {
+        private string receiveHostId;
+        // if send data failed, sendOp will retry retryLimit times.
+        private readonly int retryLimit;
+        // if send data failed, sendOp will wait retryInterval milliseconds.
+        private readonly int retryInterval;
+
+        // Set following fields in deserialization
+        [NonSerialized]
+        private List<PartitionPlan> partitionPlans;
+
+        public SendClient(string receiveHostId)
+        {
+            this.receiveHostId = receiveHostId;
+            this.retryLimit = 100;
+            this.retryInterval = 10; // 5 ms
+        }
+
+        public SendClient(string receiveHostId, List<PartitionPlan> partitionPlans) : this(receiveHostId)
+        {
+            this.partitionPlans = partitionPlans;
+        }
+
+        private MessageServiceClient ConstructClient(int targetTask)
+        {
+            string ip = this.partitionPlans[targetTask].IP;
+            int port = this.partitionPlans[targetTask].Port;
+            UriBuilder uri = new UriBuilder("http", ip, port, this.receiveHostId + "/GraphView");
+            EndpointAddress endpointAddress = new EndpointAddress(uri.ToString());
+            WSHttpBinding binding = new WSHttpBinding();
+            binding.Security.Mode = SecurityMode.None;
+            return new MessageServiceClient(binding, endpointAddress);
+        }
+
+        public void SendMessage(string message, int targetTask)
+        {
+            MessageServiceClient client = ConstructClient(targetTask);
+
+            for (int i = 0; i < this.retryLimit; i++)
+            {
+                try
+                {
+                    client.SendMessage(message);
+                    return;
+                }
+                catch (Exception e)
+                {
+                    if (i == this.retryLimit - 1)
+                    {
+                        throw e;
+                    }
+                    System.Threading.Thread.Sleep(this.retryInterval);
+                }
+            }
+        }
+
+        public void SendMessage(string message, int targetTask, int currentTask)
+        {
+            MessageServiceClient client = ConstructClient(targetTask);
+
+            for (int i = 0; i < this.retryLimit; i++)
+            {
+                try
+                {
+                    client.SendMessageWithSource(message, currentTask);
+                    return;
+                }
+                catch (Exception e)
+                {
+                    if (i == this.retryLimit - 1)
+                    {
+                        throw e;
+                    }
+                    System.Threading.Thread.Sleep(this.retryInterval);
+                }
+            }
+        }
+
+        public void SendSignal(string signal, int targetTask)
+        {
+            MessageServiceClient client = ConstructClient(targetTask);
+
+            for (int i = 0; i < this.retryLimit; i++)
+            {
+                try
+                {
+                    client.SendSignal(signal);
+                    return;
+                }
+                catch (Exception e)
+                {
+                    if (i == this.retryLimit - 1)
+                    {
+                        throw e;
+                    }
+                    System.Threading.Thread.Sleep(this.retryInterval);
+                }
+            }
+        }
+
+        public void SendSignal(string signal, int targetTask, int currentTask)
+        {
+            MessageServiceClient client = ConstructClient(targetTask);
+
+            for (int i = 0; i < this.retryLimit; i++)
+            {
+                try
+                {
+                    client.SendSignalWithSource(signal, currentTask);
+                    return;
+                }
+                catch (Exception e)
+                {
+                    if (i == this.retryLimit - 1)
+                    {
+                        throw e;
+                    }
+                    System.Threading.Thread.Sleep(this.retryInterval);
+                }
+            }
+        }
+
+        public void SendRawRecord(RawRecord record, int targetTask)
+        {
+            string message = RawRecordMessage.CodeMessage(record);
+            SendMessage(message, targetTask);
+        }
+
+        public void SetReceiveHostId(string id)
+        {
+            this.receiveHostId = id;
+        }
+
+        [OnDeserialized]
+        private void Reconstruct(StreamingContext context)
+        {
+            AdditionalSerializationInfo additionalInfo = (AdditionalSerializationInfo)context.Context;
+            this.partitionPlans = additionalInfo.PartitionPlans;
+        }
+    }
+
+    [Serializable]
+    internal class ReceiveHost
+    {
+        private readonly string receiveHostId;
+        public string ReceiveHostId => receiveHostId;
+
+        [NonSerialized]
+        private ServiceHost selfHost;
+        [NonSerialized]
+        private MessageService service;
+
+        // Set following fields in deserialization
+        [NonSerialized]
+        private List<PartitionPlan> partitionPlans;
+        [NonSerialized]
+        private int currentTask;
+
+        public ReceiveHost(string receiveHostId)
+        {
+            this.receiveHostId = receiveHostId;
+            this.selfHost = null;
+        }
+
+        public bool TryGetMessage(out string message)
+        {
+            return this.service.Messages.TryDequeue(out message);
+        }
+
+        public bool TryGetSignal(out string signal)
+        {
+            return this.service.Signals.TryDequeue(out signal);
+        }
+
+        public void OpenHost()
+        {
+            PartitionPlan ownPartitionPlan = this.partitionPlans[this.currentTask];
+            UriBuilder uri = new UriBuilder("http", ownPartitionPlan.IP, ownPartitionPlan.Port, this.receiveHostId);
+            Uri baseAddress = uri.Uri;
+
+            WSHttpBinding binding = new WSHttpBinding();
+            binding.Security.Mode = SecurityMode.None;
+
+            this.selfHost = new ServiceHost(new MessageService(), baseAddress);
+            this.selfHost.AddServiceEndpoint(typeof(IMessageService), binding, "GraphView");
+
+            ServiceMetadataBehavior smb = new ServiceMetadataBehavior();
+            smb.HttpGetEnabled = true;
+            this.selfHost.Description.Behaviors.Add(smb);
+            this.selfHost.Description.Behaviors.Find<ServiceBehaviorAttribute>().InstanceContextMode =
+                InstanceContextMode.Single;
+
+            this.service = selfHost.SingletonInstance as MessageService;
+
+            selfHost.Open();
+        }
+
+        public List<string> WaitReturnAllMessages()
+        {
+            List<string> messages = new List<string>();
+            List<bool> hasReceived = Enumerable.Repeat(false, this.partitionPlans.Count).ToList();
+            hasReceived[this.currentTask] = true;
+
+            while (true)
+            {
+                string message;
+                while (this.service.Messages.TryDequeue(out message))
+                {
+                    messages.Add(message);
+                }
+
+                int from;
+                if (this.service.Sources.TryDequeue(out from))
+                {
+                    hasReceived[from] = true;
+                }
+
+                bool canReturn = true;
+                foreach (bool flag in hasReceived)
+                {
+                    if (!flag)
+                    {
+                        canReturn = false;
+                        break;
+                    }
+                }
+
+                if (canReturn)
+                {
+                    break;
+                }
+            }
+            return messages;
+        }
+
+        [OnDeserialized]
+        private void Reconstruct(StreamingContext context)
+        {
+            AdditionalSerializationInfo additionalInfo = (AdditionalSerializationInfo)context.Context;
+            this.partitionPlans = additionalInfo.PartitionPlans;
+            this.currentTask = additionalInfo.TaskIndex;
+
+            OpenHost();
         }
     }
 
@@ -201,7 +468,7 @@ namespace GraphView
             return null;
         }
 
-        private RawRecordServiceClient ConstructClient(int targetTaskIndex)
+        private MessageServiceClient ConstructClient(int targetTaskIndex)
         {
             string ip = this.partitionPlans[targetTaskIndex].IP;
             int port = this.partitionPlans[targetTaskIndex].Port;
@@ -209,19 +476,19 @@ namespace GraphView
             EndpointAddress endpointAddress = new EndpointAddress(uri.ToString());
             WSHttpBinding binding = new WSHttpBinding();
             binding.Security.Mode = SecurityMode.None;
-            return new RawRecordServiceClient(binding, endpointAddress);
+            return new MessageServiceClient(binding, endpointAddress);
         }
 
         private void SendRawRecord(RawRecord record, int targetTaskIndex)
         {
             string message = RawRecordMessage.CodeMessage(record);
-            RawRecordServiceClient client = ConstructClient(targetTaskIndex);
+            MessageServiceClient client = ConstructClient(targetTaskIndex);
 
             for (int i = 0; i < this.retryLimit; i++)
             {
                 try
                 {
-                    client.SendRawRecord(message);
+                    client.SendMessage(message);
                     return;
                 }
                 catch (Exception e)
@@ -237,7 +504,7 @@ namespace GraphView
 
         private void SendSignal(int targetTaskIndex, string signal)
         {
-            RawRecordServiceClient client = ConstructClient(targetTaskIndex);
+            MessageServiceClient client = ConstructClient(targetTaskIndex);
 
             for (int i = 0; i < this.retryLimit; i++)
             {
@@ -295,7 +562,7 @@ namespace GraphView
         [NonSerialized]
         private ServiceHost selfHost;
         [NonSerialized]
-        private RawRecordService service;
+        private MessageService service;
 
         [NonSerialized]
         private List<bool> hasBeenSignaled;
@@ -388,8 +655,8 @@ namespace GraphView
             WSHttpBinding binding = new WSHttpBinding();
             binding.Security.Mode = SecurityMode.None;
 
-            this.selfHost = new ServiceHost(new RawRecordService(), baseAddress);
-            this.selfHost.AddServiceEndpoint(typeof(IRawRecordService), binding, "RawRecordService");
+            this.selfHost = new ServiceHost(new MessageService(), baseAddress);
+            this.selfHost.AddServiceEndpoint(typeof(IMessageService), binding, "RawRecordService");
 
             ServiceMetadataBehavior smb = new ServiceMetadataBehavior();
             smb.HttpGetEnabled = true;
@@ -397,7 +664,7 @@ namespace GraphView
             this.selfHost.Description.Behaviors.Find<ServiceBehaviorAttribute>().InstanceContextMode =
                 InstanceContextMode.Single;
 
-            this.service = selfHost.SingletonInstance as RawRecordService;
+            this.service = selfHost.SingletonInstance as MessageService;
 
             selfHost.Open();
         }
@@ -449,11 +716,11 @@ namespace GraphView
     //{
     //    public static void Main(string[] args)
     //    {
-    //        Uri baseAddress = new Uri("http://localhost:8000/Host/"); ;
+    //        Uri baseAddress = new Uri("http://localhost:8000/Host1/");
 
-    //        ServiceHost selfHost = new ServiceHost(new RawRecordService(), baseAddress);
+    //        ServiceHost selfHost = new ServiceHost(new MessageService(), baseAddress);
 
-    //        selfHost.AddServiceEndpoint(typeof(IRawRecordService), new WSHttpBinding(), "1");
+    //        selfHost.AddServiceEndpoint(typeof(IMessageService), new WSHttpBinding(), "1");
 
     //        ServiceMetadataBehavior smb = new ServiceMetadataBehavior();
     //        smb.HttpGetEnabled = true;

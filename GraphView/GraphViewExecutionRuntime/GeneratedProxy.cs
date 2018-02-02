@@ -11,65 +11,87 @@
 
 
 [System.CodeDom.Compiler.GeneratedCodeAttribute("System.ServiceModel", "4.0.0.0")]
-[System.ServiceModel.ServiceContractAttribute(ConfigurationName="IRawRecordService")]
-public interface IRawRecordService
+[System.ServiceModel.ServiceContractAttribute(ConfigurationName="IMessageService")]
+public interface IMessageService
 {
     
-    [System.ServiceModel.OperationContractAttribute(Action="http://tempuri.org/IRawRecordService/SendRawRecord", ReplyAction="http://tempuri.org/IRawRecordService/SendRawRecordResponse")]
-    void SendRawRecord(string message);
+    [System.ServiceModel.OperationContractAttribute(Action="http://tempuri.org/IMessageService/SendMessage", ReplyAction="http://tempuri.org/IMessageService/SendMessageResponse")]
+    void SendMessage(string message);
     
-    [System.ServiceModel.OperationContractAttribute(Action="http://tempuri.org/IRawRecordService/SendRawRecord", ReplyAction="http://tempuri.org/IRawRecordService/SendRawRecordResponse")]
-    System.Threading.Tasks.Task SendRawRecordAsync(string message);
+    [System.ServiceModel.OperationContractAttribute(Action="http://tempuri.org/IMessageService/SendMessage", ReplyAction="http://tempuri.org/IMessageService/SendMessageResponse")]
+    System.Threading.Tasks.Task SendMessageAsync(string message);
     
-    [System.ServiceModel.OperationContractAttribute(Action="http://tempuri.org/IRawRecordService/SendSignal", ReplyAction="http://tempuri.org/IRawRecordService/SendSignalResponse")]
+    [System.ServiceModel.OperationContractAttribute(Action="http://tempuri.org/IMessageService/SendMessageWithSource", ReplyAction="http://tempuri.org/IMessageService/SendMessageWithSourceResponse")]
+    void SendMessageWithSource(string message, int from);
+    
+    [System.ServiceModel.OperationContractAttribute(Action="http://tempuri.org/IMessageService/SendMessageWithSource", ReplyAction="http://tempuri.org/IMessageService/SendMessageWithSourceResponse")]
+    System.Threading.Tasks.Task SendMessageWithSourceAsync(string message, int from);
+    
+    [System.ServiceModel.OperationContractAttribute(Action="http://tempuri.org/IMessageService/SendSignal", ReplyAction="http://tempuri.org/IMessageService/SendSignalResponse")]
     void SendSignal(string message);
     
-    [System.ServiceModel.OperationContractAttribute(Action="http://tempuri.org/IRawRecordService/SendSignal", ReplyAction="http://tempuri.org/IRawRecordService/SendSignalResponse")]
+    [System.ServiceModel.OperationContractAttribute(Action="http://tempuri.org/IMessageService/SendSignal", ReplyAction="http://tempuri.org/IMessageService/SendSignalResponse")]
     System.Threading.Tasks.Task SendSignalAsync(string message);
+    
+    [System.ServiceModel.OperationContractAttribute(Action="http://tempuri.org/IMessageService/SendSignalWithSource", ReplyAction="http://tempuri.org/IMessageService/SendSignalWithSourceResponse")]
+    void SendSignalWithSource(string message, int from);
+    
+    [System.ServiceModel.OperationContractAttribute(Action="http://tempuri.org/IMessageService/SendSignalWithSource", ReplyAction="http://tempuri.org/IMessageService/SendSignalWithSourceResponse")]
+    System.Threading.Tasks.Task SendSignalWithSourceAsync(string message, int from);
 }
 
 [System.CodeDom.Compiler.GeneratedCodeAttribute("System.ServiceModel", "4.0.0.0")]
-public interface IRawRecordServiceChannel : IRawRecordService, System.ServiceModel.IClientChannel
+public interface IMessageServiceChannel : IMessageService, System.ServiceModel.IClientChannel
 {
 }
 
 [System.Diagnostics.DebuggerStepThroughAttribute()]
 [System.CodeDom.Compiler.GeneratedCodeAttribute("System.ServiceModel", "4.0.0.0")]
-public partial class RawRecordServiceClient : System.ServiceModel.ClientBase<IRawRecordService>, IRawRecordService
+public partial class MessageServiceClient : System.ServiceModel.ClientBase<IMessageService>, IMessageService
 {
     
-    public RawRecordServiceClient()
+    public MessageServiceClient()
     {
     }
     
-    public RawRecordServiceClient(string endpointConfigurationName) : 
+    public MessageServiceClient(string endpointConfigurationName) : 
             base(endpointConfigurationName)
     {
     }
     
-    public RawRecordServiceClient(string endpointConfigurationName, string remoteAddress) : 
+    public MessageServiceClient(string endpointConfigurationName, string remoteAddress) : 
             base(endpointConfigurationName, remoteAddress)
     {
     }
     
-    public RawRecordServiceClient(string endpointConfigurationName, System.ServiceModel.EndpointAddress remoteAddress) : 
+    public MessageServiceClient(string endpointConfigurationName, System.ServiceModel.EndpointAddress remoteAddress) : 
             base(endpointConfigurationName, remoteAddress)
     {
     }
     
-    public RawRecordServiceClient(System.ServiceModel.Channels.Binding binding, System.ServiceModel.EndpointAddress remoteAddress) : 
+    public MessageServiceClient(System.ServiceModel.Channels.Binding binding, System.ServiceModel.EndpointAddress remoteAddress) : 
             base(binding, remoteAddress)
     {
     }
     
-    public void SendRawRecord(string message)
+    public void SendMessage(string message)
     {
-        base.Channel.SendRawRecord(message);
+        base.Channel.SendMessage(message);
     }
     
-    public System.Threading.Tasks.Task SendRawRecordAsync(string message)
+    public System.Threading.Tasks.Task SendMessageAsync(string message)
     {
-        return base.Channel.SendRawRecordAsync(message);
+        return base.Channel.SendMessageAsync(message);
+    }
+    
+    public void SendMessageWithSource(string message, int from)
+    {
+        base.Channel.SendMessageWithSource(message, from);
+    }
+    
+    public System.Threading.Tasks.Task SendMessageWithSourceAsync(string message, int from)
+    {
+        return base.Channel.SendMessageWithSourceAsync(message, from);
     }
     
     public void SendSignal(string message)
@@ -80,5 +102,15 @@ public partial class RawRecordServiceClient : System.ServiceModel.ClientBase<IRa
     public System.Threading.Tasks.Task SendSignalAsync(string message)
     {
         return base.Channel.SendSignalAsync(message);
+    }
+    
+    public void SendSignalWithSource(string message, int from)
+    {
+        base.Channel.SendSignalWithSource(message, from);
+    }
+    
+    public System.Threading.Tasks.Task SendSignalWithSourceAsync(string message, int from)
+    {
+        return base.Channel.SendSignalWithSourceAsync(message, from);
     }
 }
