@@ -19,148 +19,87 @@ namespace GraphView.Transaction
         Update
     }
 
-    internal class TransactionEntry : Tuple<object, OperationType, long>
+    internal class ReadSetEntry
     {
-        internal TransactionEntry(object record, OperationType otype, long seqNum)
-            : base(record, otype, seqNum) { }
+        internal object Key { get; }
+        internal long BeginTimestamp { get; }
 
-        internal object Record
-        {
-            get
-            {
-                return this.Item1;
-            }
-        }
-
-        internal OperationType OperationType
-        {
-            get
-            {
-                return this.Item2;
-            }
-        }
-
-        internal long SequenceNumber
-        {
-            get
-            {
-                return this.Item3;
-            }
-        }
-    }
-
-    internal class ReadSetEntry : Tuple<RecordKey, long, long>
-    {
-        internal ReadSetEntry(RecordKey key, long beginTimestamp, long endTimestamp)
-            : base(key, beginTimestamp, endTimestamp) { }
-
-        internal RecordKey Key
-        {
-            get
-            {
-                return this.Item1;
-            }
-        }
-
-        internal long BeginTimestamp
-        {
-            get
-            {
-                return this.Item2;
-            }
-        }
-
-        internal long EndTimestamp
-        {
-            get
-            {
-                return this.Item3;
-            }
-        }
-    }
-
-    internal class ReadSetEntry2
-    {
-        internal object Key { get; private set; }
-        internal long Timestamp { get; private set; }
-
-        public ReadSetEntry2(object key, long timestamp)
+        public ReadSetEntry(object key, long beginTimestamp)
         {
             this.Key = key;
-            this.Timestamp = timestamp;
+            this.BeginTimestamp = beginTimestamp;
         }
 
         public override int GetHashCode()
         {
-            return this.Key.GetHashCode() ^ this.Timestamp.GetHashCode();
+            return this.Key.GetHashCode() ^ this.BeginTimestamp.GetHashCode();
         }
 
         public override bool Equals(object obj)
         {
-            ReadSetEntry2 entry = obj as ReadSetEntry2;
+            ReadSetEntry entry = obj as ReadSetEntry;
             if (entry == null)
             {
                 return false;
             }
 
-            return this.Key == entry.Key && this.Timestamp == entry.Timestamp;
+            return this.Key == entry.Key && this.BeginTimestamp == entry.BeginTimestamp;
         }
     }
 
-    internal class ScanSetEntry : Tuple<RecordKey, long>
+    internal class ScanSetEntry
     {
-        internal ScanSetEntry(RecordKey key, long readTimestamp)
-            : base(key, readTimestamp) { }
+        internal object Key { get; }
+        internal long ReadTimestamp { get; }
 
-        internal RecordKey Key
+        public ScanSetEntry(object key, long readTimestamp)
         {
-            get
-            {
-                return this.Item1;
-            }
+            this.Key = key;
+            this.ReadTimestamp = readTimestamp;
         }
 
-        internal long ReadTimestamp
+        public override int GetHashCode()
         {
-            get { return this.Item2; }
+            return this.Key.GetHashCode() ^ this.ReadTimestamp.GetHashCode();
+        }
+
+        public override bool Equals(object obj)
+        {
+            ScanSetEntry entry = obj as ScanSetEntry;
+            if (entry == null)
+            {
+                return false;
+            }
+
+            return this.Key == entry.Key && this.ReadTimestamp == entry.ReadTimestamp;
         }
     }
 
-    internal class WriteSetEntry : Tuple<RecordKey, long, long, bool>
+    internal class WriteSetEntry
     {
-        internal WriteSetEntry(RecordKey key, long beginTimestamp, long endTimestamp, bool isOld)
-            : base(key, beginTimestamp, endTimestamp, isOld) { }
+        internal object Key { get; }
+        internal bool IsOld { get; }
 
-        internal RecordKey Key
+        public WriteSetEntry(object key, bool isOld)
         {
-            get
-            {
-                return this.Item1;
-            }
+            this.Key = key;
+            this.IsOld = isOld;
         }
 
-        internal long BeginTimestamp
+        public override int GetHashCode()
         {
-            get
-            {
-                return this.Item2;
-            }
+            return this.Key.GetHashCode() ^ this.IsOld.GetHashCode();
         }
 
-        internal long EndTimestamp
+        public override bool Equals(object obj)
         {
-            get
+            WriteSetEntry entry = obj as WriteSetEntry;
+            if (entry == null)
             {
-                return this.Item3;
+                return false;
             }
-        }
 
-        internal bool IsOld
-        {
-            get
-            {
-                return this.Item4;
-            }
+            return this.Key == entry.Key && this.IsOld == entry.IsOld;
         }
     }
     
@@ -173,9 +112,8 @@ namespace GraphView.Transaction
         private readonly LogStore logStore;
 
         /// <summary>
-        /// Version table for concurrency control
+        /// Version Db for concurrency control
         /// </summary>
-        private readonly VersionTable versionTable;
         private readonly VersionDb versionDb;
 
         /// <summary>
@@ -207,15 +145,14 @@ namespace GraphView.Transaction
         /// Read set, using for checking visibility of the versions read.
         /// For every read operation, add the recordId, the begin and the end timestamp of the version we read to the readSet.
         /// </summary>
-        private readonly List<ReadSetEntry> readSet;
-        private readonly Dictionary<string, HashSet<ReadSetEntry2>> readSet2;
+        private readonly Dictionary<string, HashSet<ReadSetEntry>> readSet;
 
         /// <summary>
         /// Scan set, using for checking phantoms.
         /// To do a index scan, a transaction T specifies an index I, a predicate P, abd a logical read time RT.
         /// We only have one index (recordId) currently, just add the recordId and the readTimestamp to the scanSet.
         /// </summary>
-        private readonly List<ScanSetEntry> scanSet;
+        private readonly Dictionary<string, HashSet<ScanSetEntry>> scanSet;
 
         /// <summary>
         /// Write set, using for
@@ -224,28 +161,22 @@ namespace GraphView.Transaction
         /// 3) locating old versions for garbage collection
         /// Add the versions updated (old and new), versions deleted (old), and versions inserted (new) to the writeSet.
         /// </summary>
-        private readonly List<WriteSetEntry> writeSet;
+        private readonly Dictionary<string, HashSet<WriteSetEntry>> writeSet;
 
-        /// <summary>
-        /// A collection of records (indexed by their Ids) and the operations on them
-        /// </summary>
-        private Dictionary<string, List<TransactionEntry>> recordAccess;
-
-        public Transaction(long txId, long beginTimestamp, LogStore logStore, VersionTable versionTable, TransactionTable txTable)
+        public Transaction(long txId, long beginTimestamp, LogStore logStore, VersionDb versionDb, TransactionTable txTable)
         {
             this.txId = txId;
             this.beginTimestamp = beginTimestamp;
             this.logStore = logStore;
-            this.versionTable = versionTable;
+            this.versionDb = versionDb;
             this.txTable = txTable;
 
             this.endTimestamp = long.MinValue;
             this.txStatus = TxStatus.Active;
-            this.recordAccess = new Dictionary<string, List<TransactionEntry>>();
 
-            this.readSet = new List<ReadSetEntry>();
-            this.scanSet = new List<ScanSetEntry>();
-            this.writeSet = new List<WriteSetEntry>();
+            this.readSet = new Dictionary<string, HashSet<ReadSetEntry>>();
+            this.scanSet = new Dictionary<string, HashSet<ScanSetEntry>>();
+            this.writeSet = new Dictionary<string, HashSet<WriteSetEntry>>();
 
             this.txTable.InsertNewTx(this.txId, this.beginTimestamp);
         }
@@ -254,29 +185,29 @@ namespace GraphView.Transaction
         /// Insert a new record.
         /// (1) Add the scan info to the scan set
         /// (2) Find whether the record already exist.
-        /// (3) Insert and add info to write set, or, abort.
+        /// (3) Insert, add info to write set, or, abort.
         /// </summary>
-        public void InsertJson(RecordKey versionKey, JObject record, long readTimestamp)
-        {
-            this.scanSet.Add(new ScanSetEntry(versionKey, readTimestamp));
-            if (!this.versionTable.InsertVersion(versionKey, record, this.txId, readTimestamp))
-            {
-                //insert failed, because there is already a version with the same versionKey
-                Console.WriteLine("Insert failed. There is already a version with the same versionKey.");
-                this.Abort();
-                return;
-            }
-            //insert successfully
-            this.writeSet.Add(new WriteSetEntry(versionKey, this.txId, long.MaxValue, false));
-        }
-
         public void InsertJson(string tableId, object recordKey, JObject record, long readTimestamp)
         {
-            if (!readSet2.ContainsKey(tableId))
+            if (!this.scanSet.ContainsKey(tableId))
             {
-                readSet2.Add(tableId, new HashSet<ReadSetEntry2>());
+                this.scanSet.Add(tableId, new HashSet<ScanSetEntry>());
             }
-            readSet2[tableId].Add(new ReadSetEntry2(recordKey, readTimestamp));
+            this.scanSet[tableId].Add(new ScanSetEntry(recordKey, readTimestamp));
+
+            if (!this.versionDb.InsertVersion(tableId, recordKey, record, this.txId, readTimestamp))
+            {
+                //insert failed, because there is already a version with the same versionKey
+                this.Abort();
+                throw new Exception($"Insert failed. Version with recordKey '{recordKey}' already exist.");
+            }
+
+            //insert successfully
+            if (!this.writeSet.ContainsKey(tableId))
+            {
+                this.writeSet.Add(tableId, new HashSet<WriteSetEntry>());
+            }
+            this.writeSet[tableId].Add(new WriteSetEntry(recordKey, false));
         }
 
         /// <summary>
@@ -285,68 +216,107 @@ namespace GraphView.Transaction
         /// (2) Try to get the legal version from versionTable.
         /// (3) Add the read info to the readSet, or, abort.
         /// </summary>
-        public JObject ReadJson(RecordKey versionKey, long readTimestamp)
+        public JObject ReadJson(string tableId, object recordKey, long readTimestamp)
         {
-            this.scanSet.Add(new ScanSetEntry(versionKey, readTimestamp));
-            VersionEntry version = this.versionTable.GetVersion(versionKey, readTimestamp);
+            if (!this.scanSet.ContainsKey(tableId))
+            {
+                this.scanSet.Add(tableId, new HashSet<ScanSetEntry>());
+            }
+            this.scanSet[tableId].Add(new ScanSetEntry(recordKey, readTimestamp));
+
+            VersionEntry version = this.versionDb.GetVersion(tableId, recordKey, readTimestamp);
+
             if (version == null)
             {
-                //can not find the record
-                Console.WriteLine("Read failed.");
-                this.Abort();
                 return null;
             }
-            this.readSet.Add(new ReadSetEntry(versionKey, version.BeginTimestamp, version.EndTimestamp));
+
+            if (!this.readSet.ContainsKey(tableId))
+            {
+                this.readSet.Add(tableId, new HashSet<ReadSetEntry>());
+            }
+            this.readSet[tableId].Add(new ReadSetEntry(recordKey, version.BeginTimestamp));
             return version.Record;
         }
 
         /// <summary>
         /// Update a record.
+        /// (1) Add the scan info to the scanSet.
+        /// (2) Try to altomically set the old version's endTimestamp, create and insert a new version
+        /// (3) Add the write info (old and new) to the writeSet.
         /// </summary>
-        public void UpdateJson(RecordKey versionKey, JObject record, long readTimestamp)
+        public void UpdateJson(string tableId, object recordKey, JObject record, long readTimestamp)
         {
-            this.scanSet.Add(new ScanSetEntry(versionKey, readTimestamp));
+            if (!this.scanSet.ContainsKey(tableId))
+            {
+                this.scanSet.Add(tableId, new HashSet<ScanSetEntry>());
+            }
+            this.scanSet[tableId].Add(new ScanSetEntry(recordKey, readTimestamp));
+
             VersionEntry oldVersion = null;
             VersionEntry newVersion = null;
-            if (!this.versionTable.UpdateVersion(versionKey, record, this.txId, readTimestamp, out oldVersion, out newVersion))
+            if (!this.versionDb.UpdateVersion(tableId, recordKey, record, this.txId, readTimestamp, out oldVersion, out newVersion))
             {
                 //update failed, two situation:
+                this.Abort();
                 if (oldVersion != null)
                 {
-                    Console.WriteLine("Update failed. Other transaction has already set the version's end field.");
+                    throw new Exception($"Update failed. Write-write conflict on the version with recordKey '{recordKey}'.");
                 }
                 else
                 {
-                    Console.WriteLine("Update failed. Can not find the legal version to perform update.");
+                    throw new Exception($"Update failed. Can not find the legal version with recordKey '{recordKey}'.");
                 }
-                Abort();
-                return;
             }
-            //update successfully, two situation:
-            if (oldVersion != null)
+            else
             {
-                this.writeSet.Add(new WriteSetEntry(versionKey, oldVersion.BeginTimestamp, oldVersion.EndTimestamp, true));
-                this.writeSet.Add(new WriteSetEntry(versionKey, newVersion.BeginTimestamp, newVersion.EndTimestamp, false));
+                //update successfully, two situation:
+                //case 1: the UpdateVersion() method change the old version and creat a new version,
+                //insert both the old and new write info to the writeSet.
+                if (oldVersion != null)
+                {
+                    if (!this.writeSet.ContainsKey(tableId))
+                    {
+                        this.writeSet.Add(tableId, new HashSet<WriteSetEntry>());
+                    }
+
+                    this.writeSet[tableId].Add(new WriteSetEntry(recordKey, true));
+                    this.writeSet[tableId].Add(new WriteSetEntry(recordKey, false));
+                }
+                //case 2: the UpdateVersion() method perform change on the new version directly,
+                //do nothing.
             }
         }
 
         /// <summary>
         /// Delete a record.
+        /// (1) Add the scan info to the scanSet.
+        /// (2) Try to delete a version from versionDb.
+        /// (3) If success, add the write info to the writeSet.
         /// </summary>
-        public void DeleteJson(RecordKey versionKey, long readTimestamp)
+        public void DeleteJson(string tableId, object recordKey, long readTimestamp)
         {
-            this.scanSet.Add(new ScanSetEntry(versionKey, readTimestamp));
-            VersionEntry deletedVersion = null;
-            if (!this.versionTable.DeleteVersion(versionKey, this.txId, readTimestamp, out deletedVersion))
+            if (!this.scanSet.ContainsKey(tableId))
             {
-                Console.WriteLine("Delete failed. Other transaction has already set the version's end field.");
+                this.scanSet.Add(tableId, new HashSet<ScanSetEntry>());
+            }
+            this.scanSet[tableId].Add(new ScanSetEntry(recordKey, readTimestamp));
+
+            VersionEntry deletedVersion = null;
+            if (!this.versionDb.DeleteVersion(tableId, recordKey, this.txId, readTimestamp, out deletedVersion))
+            {
                 this.Abort();
-                return;
+                throw new Exception($"Delete failed. Write-write conflict on the version with recordKey '{recordKey}'.");
             }
             //delete successfully
             if (deletedVersion != null)
             {
-                this.writeSet.Add(new WriteSetEntry(versionKey, deletedVersion.BeginTimestamp, deletedVersion.EndTimestamp, true));
+                if (!this.writeSet.ContainsKey(tableId))
+                {
+                    this.writeSet.Add(tableId, new HashSet<WriteSetEntry>());
+                }
+
+                this.writeSet[tableId].Add(new WriteSetEntry(recordKey, true));
             }
         }
 
@@ -394,46 +364,40 @@ namespace GraphView.Transaction
         /// The transaction scans its ReadSet and for each version read, 
         /// checks whether the version is still visible at the end of the transaction.
         /// </summary>
-        internal bool ReadValidation()
+        internal void ReadValidation()
         {
-            foreach (ReadSetEntry readSetEntry in this.readSet)
+            foreach (string tableId in this.readSet.Keys)
             {
-                if (!this.versionTable.CheckVersionVisibility(readSetEntry.Key, readSetEntry.BeginTimestamp, this.endTimestamp))
+                foreach (ReadSetEntry readEntry in this.readSet[tableId])
                 {
-                    Console.WriteLine("Read validation failed.");
-                    return false;
+                    if (!this.versionDb.CheckVersionVisibility(tableId, readEntry.Key, readEntry.BeginTimestamp,
+                        this.endTimestamp))
+                    {
+                        throw new Exception($"Read validation failed. " +
+                                            $"The version with tableId {tableId} recordKey {readEntry.Key} is not visible.");
+                    }
                 }
             }
-            return true;
-        }
-
-        internal bool ReadValidation2()
-        {
-            foreach (string tableId in this.readSet2.Keys)
-            {
-                foreach (ReadSetEntry2 readEntry in this.readSet2[tableId])
-                {
-                }
-            }
-            
-            return true;
         }
 
         /// <summary>
         /// The transaction walks its ScanSet and repeats each scan,
         /// looking for versions that came into existence during T’s lifetime and are visible as of the end of the transaction.
         /// </summary>
-        internal bool PhantomValidation()
+        internal void PhantomValidation()
         {
-            foreach (ScanSetEntry scanSetEntry in this.scanSet)
+            foreach (string tableId in this.scanSet.Keys)
             {
-                if (!this.versionTable.CheckPhantom(scanSetEntry.Key, scanSetEntry.ReadTimestamp, this.endTimestamp))
+                foreach (ScanSetEntry scanEntry in this.scanSet[tableId])
                 {
-                    Console.WriteLine("Check phantom failed.");
-                    return false;
+                    if (!this.versionDb.CheckPhantom(tableId, scanEntry.Key, scanEntry.ReadTimestamp,
+                        this.endTimestamp))
+                    {
+                        throw new Exception($"Check phantom failed. " +
+                                            $"Find new version with tableId {tableId} recordKey {scanEntry.Key}.");
+                    }
                 }
             }
-            return true;
         }
 
         /// <summary>
@@ -453,21 +417,35 @@ namespace GraphView.Transaction
         public void Commit(long endTimestamp)
         {
             this.endTimestamp = endTimestamp;
-            //validation
-            if (!this.ReadValidation() || !this.PhantomValidation())
+            //Read validation
+            try
+            {
+                this.ReadValidation();
+            }
+            catch (Exception e)
             {
                 this.Abort();
-                return;
+                throw;
+            }
+            //Check phantom
+            try
+            {
+                this.PhantomValidation();
+            }
+            catch (Exception e)
+            {
+                this.Abort();
+                throw;
             }
             //logging
             this.WriteChangestoLog();
             //propagates endtimestamp to versionTable
-            foreach (WriteSetEntry writeSetEntry in this.writeSet)
+            foreach (string tableId in this.writeSet.Keys)
             {
-                if (!this.versionTable.UpdateCommittedVersionTimestamp(writeSetEntry.Key, this.txId, this.endTimestamp, writeSetEntry.IsOld))
+                foreach (WriteSetEntry writeSetEntry in this.writeSet[tableId])
                 {
-                    this.Abort();
-                    return;
+                    this.versionDb.UpdateCommittedVersionTimestamp(tableId, writeSetEntry.Key, this.txId,
+                        this.endTimestamp, writeSetEntry.IsOld);
                 }
             }
             //change the transaction's status
@@ -482,9 +460,13 @@ namespace GraphView.Transaction
         public void Abort()
         {
             //update all changed version's timestamp
-            foreach (WriteSetEntry writeSetEntry in this.writeSet)
+            foreach (string tableId in this.writeSet.Keys)
             {
-                this.versionTable.UpdateAbortedVersionTimestamp(writeSetEntry.Key, this.txId, writeSetEntry.IsOld);
+                foreach (WriteSetEntry writeSetEntry in this.writeSet[tableId])
+                {
+                    this.versionDb.UpdateAbortedVersionTimestamp(tableId, writeSetEntry.Key, this.txId,
+                        writeSetEntry.IsOld);
+                }
             }
             //change the transaction's status
             this.txStatus = TxStatus.Aborted;

@@ -69,7 +69,7 @@ namespace GraphView.Transaction
         {
             get
             {
-                return (JObject)this.record;
+                return (JObject) this.record;
             }
             set
             {
@@ -87,20 +87,32 @@ namespace GraphView.Transaction
         }
     }
 
+    /// <summary>
+    /// A version Db for concurrency control.
+    /// </summary>
     public abstract class VersionDb
     {
-        internal virtual VersionEntry GetVersion(string tableId, object key, long readTimestamp)
+        internal virtual VersionEntry GetVersion(
+            string tableId, 
+            object recordKey, 
+            long readTimestamp)
         {
             throw new NotImplementedException();
         }
 
-        internal virtual bool InsertVersion(RecordKey versionKey, JObject record, long txId, long readTimestamp)
+        internal virtual bool InsertVersion(
+            string tableId, 
+            object recordKey, 
+            JObject record, 
+            long txId, 
+            long readTimestamp)
         {
             throw new NotImplementedException();
         }
 
         internal virtual bool DeleteVersion(
-            RecordKey versionKey,
+            string tableId,
+            object recordKey,
             long txId,
             long readTimestamp,
             out VersionEntry deletedVersion)
@@ -109,7 +121,8 @@ namespace GraphView.Transaction
         }
 
         internal virtual bool UpdateVersion(
-            RecordKey versionKey,
+            string tableId,
+            object recordKey,
             JObject record,
             long txId,
             long readTimestamp,
@@ -120,20 +133,26 @@ namespace GraphView.Transaction
         }
 
         internal virtual bool CheckVersionVisibility(
-            RecordKey readVersionKey,
+            string tableId,
+            object recordKey,
             long readVersionBeginTimestamp,
             long readTimestamp)
         {
             throw new NotImplementedException();
         }
 
-        internal virtual bool CheckPhantom(RecordKey scanVersionKey, long oldScanTime, long newScanTime)
+        internal virtual bool CheckPhantom(
+            string tableId,
+            object recordKey,
+            long oldScanTime, 
+            long newScanTime)
         {
             throw new NotImplementedException();
         }
 
-        internal virtual bool UpdateCommittedVersionTimestamp(
-            RecordKey writeVersionKey,
+        internal virtual void UpdateCommittedVersionTimestamp(
+            string tableId,
+            object recordKey,
             long txId,
             long endTimestamp,
             bool isOld)
@@ -141,7 +160,11 @@ namespace GraphView.Transaction
             throw new NotImplementedException();
         }
 
-        internal virtual void UpdateAbortedVersionTimestamp(RecordKey writeVersionKey, long txId, bool isOld)
+        internal virtual void UpdateAbortedVersionTimestamp(
+            string tableId,
+            object recordKey,
+            long txId, 
+            bool isOld)
         {
             throw new NotImplementedException();
         }
@@ -152,18 +175,18 @@ namespace GraphView.Transaction
     /// </summary>
     public abstract class VersionTable
     {
-        internal virtual VersionEntry GetVersion(RecordKey versionKey, long readTimestamp)
+        internal virtual VersionEntry GetVersion(object recordKey, long readTimestamp)
         {
             throw new NotImplementedException();
         }
 
-        internal virtual bool InsertVersion(RecordKey versionKey, JObject record, long txId, long readTimestamp)
+        internal virtual bool InsertVersion(object recordKey, JObject record, long txId, long readTimestamp)
         {
             throw new NotImplementedException();
         }
 
         internal virtual bool DeleteVersion(
-            RecordKey versionKey, 
+            object recordKey, 
             long txId, 
             long readTimestamp, 
             out VersionEntry deletedVersion)
@@ -172,7 +195,7 @@ namespace GraphView.Transaction
         }
 
         internal virtual bool UpdateVersion(
-            RecordKey versionKey, 
+            object recordKey, 
             JObject record, 
             long txId, 
             long readTimestamp, 
@@ -183,20 +206,20 @@ namespace GraphView.Transaction
         }
 
         internal virtual bool CheckVersionVisibility(
-            RecordKey readVersionKey, 
+            object recordKey, 
             long readVersionBeginTimestamp, 
             long readTimestamp)
         {
             throw new NotImplementedException();
         }
 
-        internal virtual bool CheckPhantom(RecordKey scanVersionKey, long oldScanTime, long newScanTime)
+        internal virtual bool CheckPhantom(object recordKey, long oldScanTime, long newScanTime)
         {
             throw new NotImplementedException();
         }
 
-        internal virtual bool UpdateCommittedVersionTimestamp(
-            RecordKey writeVersionKey, 
+        internal virtual void UpdateCommittedVersionTimestamp(
+            object recordKey, 
             long txId, 
             long endTimestamp, 
             bool isOld)
@@ -204,7 +227,7 @@ namespace GraphView.Transaction
             throw new NotImplementedException();
         }
 
-        internal virtual void UpdateAbortedVersionTimestamp(RecordKey writeVersionKey, long txId, bool isOld)
+        internal virtual void UpdateAbortedVersionTimestamp(object recordKey, long txId, bool isOld)
         {
             throw new NotImplementedException();
         }
