@@ -68,7 +68,6 @@ namespace GraphView
         // if send data failed, sendOp will wait retryInterval milliseconds.
         private readonly int retryInterval;
 
-        // Set following fields in deserialization
         [NonSerialized]
         private List<PartitionPlan> partitionPlans;
 
@@ -225,6 +224,14 @@ namespace GraphView
             this.selfHost = null;
         }
 
+        public ReceiveHost(string receiveHostId, int currentTask, List<PartitionPlan> partitionPlans)
+        {
+            this.receiveHostId = receiveHostId;
+            this.currentTask = currentTask;
+            this.partitionPlans = partitionPlans;
+            this.selfHost = null;
+        }
+
         public bool TryGetMessage(out string message)
         {
             return this.service.Messages.TryDequeue(out message);
@@ -266,16 +273,16 @@ namespace GraphView
 
             while (true)
             {
-                string message;
-                while (this.service.Messages.TryDequeue(out message))
-                {
-                    messages.Add(message);
-                }
-
                 int from;
                 if (this.service.Sources.TryDequeue(out from))
                 {
                     hasReceived[from] = true;
+                }
+
+                string message;
+                while (this.service.Messages.TryDequeue(out message))
+                {
+                    messages.Add(message);
                 }
 
                 bool canReturn = true;
@@ -321,31 +328,35 @@ namespace GraphView
             this.partitionPlans = partitionPlans;
         }
 
-        public void Aggregate(List<IAggregateFunction> aggFuncs)
+        public bool Aggregate(List<IAggregateFunction> aggFuncs)
         {
+            Console.WriteLine("Aggregate 1");
             int targetTask = DetermineTargetTask();
 
             if (this.currentTask == targetTask)
             {
-                ReceiveHost receiveHost = new ReceiveHost(this.receiveHostId);
+                Console.WriteLine("Aggregate 2");
+                ReceiveHost receiveHost = new ReceiveHost(this.receiveHostId, this.currentTask, this.partitionPlans);
                 receiveHost.OpenHost();
                 List<string> messages = receiveHost.WaitReturnAllMessages();
 
                 foreach (string message in messages)
                 {
-                    List<IAggregateFunction> anotherAggFuncs =
-                        GraphViewSerializer.DeserializeWithDataContract<List<IAggregateFunction>>(message);
+                    List<IAggregateFunction> anotherAggFuncs = DeserializeAggregateFunctions(message);
                     for (int i = 0; i < aggFuncs.Count; i++)
                     {
                         aggFuncs[i].Merge(anotherAggFuncs[i]);
                     }
                 }
+                return true;
             }
             else
             {
-                string message = GraphViewSerializer.SerializeWithDataContract(aggFuncs);
+                Console.WriteLine("Aggregate 3");
+                string message = SerializeAggregateFunctions(aggFuncs);
                 SendClient sendClient = new SendClient(this.receiveHostId, this.partitionPlans);
                 sendClient.SendMessage(message, targetTask, this.currentTask);
+                return false;
             }
         }
 
@@ -355,11 +366,66 @@ namespace GraphView
             return 0;
         }
 
-        private void SendIntermadiateResult()
+        public enum AggregateFunctionType
         {
-            
+            FoldFunction,
+            CountFunction,
+            SumFunction,
+            MaxFunction,
+            MinFunction,
+            MeanFunction,
+            CapFunction,
+            TreeFunction,
+            SubgraphFunction,
+            CollectionFunction,
+            GroupFunction
         }
 
+        public static string CombineSerializeResult(AggregateFunctionType type, string content)
+        {
+            return $"{type}:{content}";
+        }
+
+        private IAggregateFunction DeserializeAggregateFunction(string serializeResult)
+        {
+            string[] values = serializeResult.Split(new char[]{ ':' }, 2);
+            string type = values[0];
+            string content = values[1];
+
+            if (type.Equals(AggregateFunctionType.CountFunction.ToString()))
+            {
+                return CountFunction.DeserializeForAggregate(content);
+            }
+            else if (type.Equals(AggregateFunctionType.SumFunction.ToString()))
+            {
+                return SumFunction.DeserializeForAggregate(content);
+            }
+            else
+            {
+                throw new NotImplementedException();
+            }
+        }
+
+        private string SerializeAggregateFunctions(List<IAggregateFunction> aggFuncs)
+        {
+            List<string> resultList = new List<string>();
+            foreach (IAggregateFunction aggFunc in aggFuncs)
+            {
+                resultList.Add(aggFunc.SerializeForAggregate());
+            }
+            return GraphViewSerializer.SerializeWithDataContract(resultList);
+        }
+
+        private List<IAggregateFunction> DeserializeAggregateFunctions(string serializeResult)
+        {
+            List<string> aggStrs = GraphViewSerializer.DeserializeWithDataContract<List<string>>(serializeResult);
+            List<IAggregateFunction> aggFuncs = new List<IAggregateFunction>();
+            foreach (string aggStr in aggStrs)
+            {
+                aggFuncs.Add(DeserializeAggregateFunction(aggStr));
+            }
+            return aggFuncs;
+        }
     }
 
     [Serializable]

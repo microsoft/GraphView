@@ -1129,6 +1129,11 @@ namespace GraphView
 
         public override GraphViewExecutionOperator GetFirstOperator()
         {
+            if (this.inputOp == null)
+            {
+                return this.derivedQueryOp.GetFirstOperator();
+            }
+
             return this.inputOp.GetFirstOperator();
         }
 

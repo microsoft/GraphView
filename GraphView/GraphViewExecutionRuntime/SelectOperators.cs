@@ -1183,13 +1183,18 @@ namespace GraphView
     {
         protected List<Tuple<IAggregateFunction, List<ScalarFunction>>> aggregationSpecs;
         protected GraphViewExecutionOperator inputOp;
+
+        // Following member variables is about parallelism.
         protected readonly bool isParallel;
+        protected readonly string receiveHostId;
+        protected AggregateIntermadiateResult aggregateIntermadiateResult;
 
         public ProjectAggregation(GraphViewExecutionOperator inputOp, bool isParallel = false)
         {
             this.inputOp = inputOp;
             this.isParallel = isParallel;
             this.aggregationSpecs = new List<Tuple<IAggregateFunction, List<ScalarFunction>>>();
+            this.receiveHostId = Guid.NewGuid().ToString("N");
             Open();
         }
 
@@ -1250,22 +1255,35 @@ namespace GraphView
             }
 
             // todo
-
-            RawRecord outputRec = new RawRecord();
-            foreach (var aggr in this.aggregationSpecs)
+            bool hasResult = true;
+            if (this.isParallel)
             {
-                if (aggr.Item1 != null)
-                {
-                    outputRec.Append(aggr.Item1.Terminate());
-                }
-                else
-                {
-                    outputRec.Append((StringField)null);
-                }
+                hasResult = this.aggregateIntermadiateResult.Aggregate(this.aggregationSpecs.Select(tuple => tuple.Item1).ToList());
             }
 
-            Close();
-            return outputRec;
+            if (hasResult)
+            {
+                RawRecord outputRec = new RawRecord();
+                foreach (var aggr in this.aggregationSpecs)
+                {
+                    if (aggr.Item1 != null)
+                    {
+                        outputRec.Append(aggr.Item1.Terminate());
+                    }
+                    else
+                    {
+                        outputRec.Append((StringField)null);
+                    }
+                }
+
+                Close();
+                return outputRec;
+            }
+            else
+            {
+                Close();
+                return null;
+            }
         }
 
         public override GraphViewExecutionOperator GetFirstOperator()
@@ -1273,10 +1291,19 @@ namespace GraphView
             return this.inputOp.GetFirstOperator();
         }
 
+        [OnDeserialized]
+        private void Reconstruct(StreamingContext context)
+        {
+            AdditionalSerializationInfo additionalInfo = (AdditionalSerializationInfo)context.Context;
+            this.aggregateIntermadiateResult = 
+                new AggregateIntermadiateResult(this.receiveHostId, additionalInfo.TaskIndex, additionalInfo.PartitionPlans);
+        }
+
         public virtual void GetObjectData(SerializationInfo info, StreamingContext context)
         {
             info.AddValue("inputOp", this.inputOp, typeof(GraphViewExecutionOperator));
             info.AddValue("isParallel", this.isParallel);
+            info.AddValue("receiveHostId", this.receiveHostId);
             GraphViewSerializer.SerializeListTupleList(info, "aggregationSpecs", this.aggregationSpecs);
         }
 
@@ -1284,6 +1311,7 @@ namespace GraphView
         {
             this.inputOp = (GraphViewExecutionOperator)info.GetValue("inputOp", typeof(GraphViewExecutionOperator));
             this.isParallel = info.GetBoolean("isParallel");
+            this.receiveHostId = info.GetString("receiveHostId");
             this.aggregationSpecs = GraphViewSerializer.DeserializeListTupleList<IAggregateFunction, ScalarFunction>(
                 info, "aggregationSpecs");
             this.Open();
@@ -1328,75 +1356,93 @@ namespace GraphView
 
         public override RawRecord Next()
         {
-            if (this.firstRecordInGroup == null && this.State())
+            while (this.State())
             {
-                this.firstRecordInGroup = this.inputOp.Next();
-            }
-
-            if (this.firstRecordInGroup == null)
-            {
-                this.Close();
-                return null;
-            }
-
-            foreach (Tuple<IAggregateFunction, List<ScalarFunction>> aggr in this.aggregationSpecs)
-            {
-                if (aggr.Item1 == null)
+                if (this.firstRecordInGroup == null && this.State())
                 {
-                    continue;
+                    this.firstRecordInGroup = this.inputOp.Next();
                 }
 
-                aggr.Item1.Init();
-                FieldObject[] paraList = new FieldObject[aggr.Item2.Count];
-                for (int index = 0; index < aggr.Item2.Count; index++)
+                if (this.firstRecordInGroup == null)
                 {
-                    paraList[index] = aggr.Item2[index].Evaluate(this.firstRecordInGroup);
+                    this.Close();
+                    return null;
                 }
 
-                aggr.Item1.Accumulate(paraList);
-            }
-
-            RawRecord rec = this.inputOp.Next();
-            while (rec != null && rec[0].ToValue == this.firstRecordInGroup[0].ToValue)
-            {
                 foreach (Tuple<IAggregateFunction, List<ScalarFunction>> aggr in this.aggregationSpecs)
                 {
-                    IAggregateFunction aggregate = aggr.Item1;
-
-                    if (aggregate == null)
+                    if (aggr.Item1 == null)
                     {
                         continue;
                     }
 
+                    aggr.Item1.Init();
                     FieldObject[] paraList = new FieldObject[aggr.Item2.Count];
                     for (int index = 0; index < aggr.Item2.Count; index++)
                     {
-                        paraList[index] = aggr.Item2[index].Evaluate(rec);
+                        paraList[index] = aggr.Item2[index].Evaluate(this.firstRecordInGroup);
                     }
 
                     aggr.Item1.Accumulate(paraList);
                 }
 
-                rec = this.inputOp.Next();
+                RawRecord rec = this.inputOp.Next();
+                while (rec != null && rec[0].ToValue == this.firstRecordInGroup[0].ToValue)
+                {
+                    foreach (Tuple<IAggregateFunction, List<ScalarFunction>> aggr in this.aggregationSpecs)
+                    {
+                        IAggregateFunction aggregate = aggr.Item1;
+
+                        if (aggregate == null)
+                        {
+                            continue;
+                        }
+
+                        FieldObject[] paraList = new FieldObject[aggr.Item2.Count];
+                        for (int index = 0; index < aggr.Item2.Count; index++)
+                        {
+                            paraList[index] = aggr.Item2[index].Evaluate(rec);
+                        }
+
+                        aggr.Item1.Accumulate(paraList);
+                    }
+
+                    rec = this.inputOp.Next();
+                }
+
+                bool hasResult = true;
+                if (this.isParallel)
+                {
+                    hasResult = this.aggregateIntermadiateResult.Aggregate(this.aggregationSpecs.Select(tuple => tuple.Item1).ToList());
+                }
+
+                RawRecord outputRec = null;
+                if (hasResult)
+                {
+                    outputRec = new RawRecord();
+                    outputRec.Append(this.firstRecordInGroup[0]);
+                    foreach (Tuple<IAggregateFunction, List<ScalarFunction>> aggr in this.aggregationSpecs)
+                    {
+                        if (aggr.Item1 != null)
+                        {
+                            outputRec.Append(aggr.Item1.Terminate());
+                        }
+                        else
+                        {
+                            outputRec.Append((FieldObject)null);
+                        }
+                    }
+                }
+
+                this.firstRecordInGroup = rec;
+
+                if (hasResult)
+                {
+                    return outputRec;
+                }
             }
 
-            RawRecord outputRec = new RawRecord();
-            outputRec.Append(this.firstRecordInGroup[0]);
-            foreach (Tuple<IAggregateFunction, List<ScalarFunction>> aggr in this.aggregationSpecs)
-            {
-                if (aggr.Item1 != null)
-                {
-                    outputRec.Append(aggr.Item1.Terminate());
-                }
-                else
-                {
-                    outputRec.Append((FieldObject)null);
-                }
-            }
-
-            this.firstRecordInGroup = rec;
-
-            return outputRec;
+            return null;
         }
 
         public override void GetObjectData(SerializationInfo info, StreamingContext context)

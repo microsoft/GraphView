@@ -12,6 +12,11 @@ using static GraphView.DocumentDBKeywords;
 
 namespace GraphView
 {
+    [DataContract]
+    [KnownType(typeof(CollectionState))]
+    [KnownType(typeof(GroupState))]
+    [KnownType(typeof(TreeState))]
+    [KnownType(typeof(SubgraphState))]
     public abstract class AggregateState
     {
         internal readonly string tableAlias;
@@ -30,6 +35,9 @@ namespace GraphView
         void Accumulate(params FieldObject[] values);
         void Merge(IAggregateFunction aggFunc);
         FieldObject Terminate();
+
+        // use in parallel mode
+        string SerializeForAggregate();
     }
 
     [Serializable]
@@ -57,6 +65,21 @@ namespace GraphView
         {
             return new CollectionField(this.buffer);
         }
+
+        public string SerializeForAggregate()
+        {
+            string content = GraphViewSerializer.SerializeWithDataContract(this.buffer);
+            return AggregateIntermadiateResult.CombineSerializeResult(
+                AggregateIntermadiateResult.AggregateFunctionType.FoldFunction, content);
+        }
+
+        public static FoldFunction DeserializeForAggregate(string content)
+        {
+            return new FoldFunction()
+            {
+                buffer = GraphViewSerializer.DeserializeWithDataContract<List<FieldObject>>(content)
+            };
+        }
     }
 
     [Serializable]
@@ -77,12 +100,27 @@ namespace GraphView
 
         public void Merge(IAggregateFunction aggFunc)
         {
-            throw new NotImplementedException();
+            this.count += ((CountFunction) aggFunc).count;
         }
 
         public FieldObject Terminate()
         {
             return new StringField(this.count.ToString(), JsonDataType.Long);
+        }
+
+        public string SerializeForAggregate()
+        {
+            string content = this.count.ToString();
+            return AggregateIntermadiateResult.CombineSerializeResult(
+                AggregateIntermadiateResult.AggregateFunctionType.CountFunction, content);
+        }
+
+        public static CountFunction DeserializeForAggregate(string content)
+        {
+            return new CountFunction()
+            {
+                count = long.Parse(content)
+            };
         }
     }
 
@@ -108,12 +146,28 @@ namespace GraphView
 
         public void Merge(IAggregateFunction aggFunc)
         {
-            throw new NotImplementedException();
+            Console.WriteLine($"this:{this.sum}, para:{((SumFunction)aggFunc).sum}");
+            this.sum += ((SumFunction) aggFunc).sum;
         }
 
         public FieldObject Terminate()
         {
             return new StringField(this.sum.ToString(CultureInfo.InvariantCulture), JsonDataType.Double);
+        }
+
+        public string SerializeForAggregate()
+        {
+            string content = this.sum.ToString();
+            return AggregateIntermadiateResult.CombineSerializeResult(
+                AggregateIntermadiateResult.AggregateFunctionType.SumFunction, content);
+        }
+
+        public static SumFunction DeserializeForAggregate(string content)
+        {
+            return new SumFunction()
+            {
+                sum = double.Parse(content)
+            };
         }
     }
 
@@ -151,6 +205,21 @@ namespace GraphView
         {
             return new StringField(this.max.ToString(CultureInfo.InvariantCulture), JsonDataType.Double);
         }
+
+        public string SerializeForAggregate()
+        {
+            string content = this.max.ToString();
+            return AggregateIntermadiateResult.CombineSerializeResult(
+                AggregateIntermadiateResult.AggregateFunctionType.MaxFunction, content);
+        }
+
+        public static MaxFunction DeserializeForAggregate(string content)
+        {
+            return new MaxFunction()
+            {
+                max = double.Parse(content)
+            };
+        }
     }
 
     [Serializable]
@@ -186,6 +255,21 @@ namespace GraphView
         public FieldObject Terminate()
         {
             return new StringField(this.min.ToString(CultureInfo.InvariantCulture), JsonDataType.Double);
+        }
+
+        public string SerializeForAggregate()
+        {
+            string content = this.min.ToString();
+            return AggregateIntermadiateResult.CombineSerializeResult(
+                AggregateIntermadiateResult.AggregateFunctionType.MinFunction, content);
+        }
+
+        public static MinFunction DeserializeForAggregate(string content)
+        {
+            return new MinFunction()
+            {
+                min = double.Parse(content)
+            };
         }
     }
 
@@ -223,6 +307,23 @@ namespace GraphView
         public void Merge(IAggregateFunction aggFunc)
         {
             throw new NotImplementedException();
+        }
+
+        public string SerializeForAggregate()
+        {
+            string content = $"{this.sum},{this.count}";
+            return AggregateIntermadiateResult.CombineSerializeResult(
+                AggregateIntermadiateResult.AggregateFunctionType.MeanFunction, content);
+        }
+
+        public static MeanFunction DeserializeForAggregate(string content)
+        {
+            string[] values = content.Split(',');
+            return new MeanFunction()
+            {
+                sum = double.Parse(values[0]),
+                count = long.Parse(values[1])
+            };
         }
     }
 
@@ -297,6 +398,16 @@ namespace GraphView
                 this.sideEffectFunction.Add(new Tuple<string, IAggregateFunction>(label, additionalInfo.SideEffectFunctions[label]));
             }
         }
+
+        public string SerializeForAggregate()
+        {
+            throw new NotImplementedException();
+        }
+
+        public static CapFunction DeserializeForAggregate(string content)
+        {
+            throw new NotImplementedException();
+        }
     }
 
     [Serializable]
@@ -363,10 +474,21 @@ namespace GraphView
             this.treeState = new TreeState("");
         }
 
+        public string SerializeForAggregate()
+        {
+            throw new NotImplementedException();
+        }
+
+        public static TreeFunction DeserializeForAggregate(string content)
+        {
+            throw new NotImplementedException();
+        }
     }
 
+    [DataContract]
     internal class TreeState : AggregateState
     {
+        [DataMember]
         internal TreeField root;
 
         public TreeState(string tableAlias) : base(tableAlias)
@@ -635,13 +757,26 @@ namespace GraphView
             this.subgraphState = new SubgraphState(additionalInfo.Command, "");
         }
 
+        public string SerializeForAggregate()
+        {
+            throw new NotImplementedException();
+        }
+
+        public static SubgraphFunction DeserializeForAggregate(string content)
+        {
+            throw new NotImplementedException();
+        }
     }
 
+    [DataContract]
     internal class SubgraphState : AggregateState
     {
+        [DataMember]
         internal HashSet<string> edgeIds;
+        [DataMember]
         internal HashSet<string> vertexIds;
         internal GraphViewCommand command;
+        [DataMember]
         internal FieldObject graph;
 
         public SubgraphState(GraphViewCommand command, string tableAlias) : base(tableAlias)
@@ -699,10 +834,21 @@ namespace GraphView
             this.collectionState = new CollectionState("");
         }
 
+        public string SerializeForAggregate()
+        {
+            throw new NotImplementedException();
+        }
+
+        public static CollectionFunction DeserializeForAggregate(string content)
+        {
+            throw new NotImplementedException();
+        }
     }
 
+    [DataContract]
     internal class CollectionState : AggregateState
     {
+        [DataMember]
         internal CollectionField collectionField;
 
         public CollectionState(string tableAlias) : base(tableAlias)
@@ -830,11 +976,23 @@ namespace GraphView
             enumeratorOp.SetContainer(this.container);
         }
 
+        public string SerializeForAggregate()
+        {
+            throw new NotImplementedException();
+        }
+
+        public static GroupFunction DeserializeForAggregate(string content)
+        {
+            throw new NotImplementedException();
+        }
     }
 
+    [DataContract]
     internal class GroupState : AggregateState
     {
         internal Dictionary<FieldObject, List<RawRecord>> groupedStates;
+        [DataMember]
+        private Dictionary<FieldObject, List<string>> serializedGroupedStates;
 
         public GroupState(string tableAlias) : base(tableAlias)
         {
@@ -844,6 +1002,21 @@ namespace GraphView
         public override void Init()
         {
             this.groupedStates = new Dictionary<FieldObject, List<RawRecord>>();
+        }
+
+        [OnSerializing]
+        private void SerializeRawRecord(StreamingContext context)
+        {
+            // todo: serialze a List of RawRecord instead of one RawRecord.
+            this.serializedGroupedStates = new Dictionary<FieldObject, List<string>>();
+            foreach (KeyValuePair<FieldObject, List<RawRecord>> pair in this.groupedStates)
+            {
+                this.serializedGroupedStates[pair.Key] = new List<string>();
+                foreach (RawRecord rec in pair.Value)
+                {
+                    this.serializedGroupedStates[pair.Key].Add(RawRecordMessage.CodeMessage(rec));
+                }
+            }
         }
     }
 
