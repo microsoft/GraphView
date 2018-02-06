@@ -58,7 +58,7 @@ namespace GraphView
 
         public void Merge(IAggregateFunction aggFunc)
         {
-            throw new NotImplementedException();
+            this.buffer.AddRange(((FoldFunction)aggFunc).buffer);
         }
 
         public FieldObject Terminate()
@@ -146,7 +146,6 @@ namespace GraphView
 
         public void Merge(IAggregateFunction aggFunc)
         {
-            Console.WriteLine($"this:{this.sum}, para:{((SumFunction)aggFunc).sum}");
             this.sum += ((SumFunction) aggFunc).sum;
         }
 
@@ -157,7 +156,7 @@ namespace GraphView
 
         public string SerializeForAggregate()
         {
-            string content = this.sum.ToString();
+            string content = this.sum.ToString(CultureInfo.InvariantCulture);
             return AggregateIntermadiateResult.CombineSerializeResult(
                 AggregateIntermadiateResult.AggregateFunctionType.SumFunction, content);
         }
@@ -198,7 +197,16 @@ namespace GraphView
 
         public void Merge(IAggregateFunction aggFunc)
         {
-            throw new NotImplementedException();
+            double current = ((MaxFunction) aggFunc).max;
+            if (current.Equals(double.NaN))
+            {
+                return;
+            }
+
+            if (this.max.Equals(double.NaN) || this.max < current)
+            {
+                this.max = current;
+            }
         }
 
         public FieldObject Terminate()
@@ -208,7 +216,7 @@ namespace GraphView
 
         public string SerializeForAggregate()
         {
-            string content = this.max.ToString();
+            string content = this.max.ToString(CultureInfo.InvariantCulture);
             return AggregateIntermadiateResult.CombineSerializeResult(
                 AggregateIntermadiateResult.AggregateFunctionType.MaxFunction, content);
         }
@@ -249,7 +257,16 @@ namespace GraphView
 
         public void Merge(IAggregateFunction aggFunc)
         {
-            throw new NotImplementedException();
+            double current = ((MinFunction) aggFunc).min;
+            if (current.Equals(double.NaN))
+            {
+                return;
+            }
+
+            if (this.min.Equals(double.NaN) || current < this.min)
+            {
+                this.min = current;
+            }
         }
 
         public FieldObject Terminate()
@@ -259,7 +276,7 @@ namespace GraphView
 
         public string SerializeForAggregate()
         {
-            string content = this.min.ToString();
+            string content = this.min.ToString(CultureInfo.InvariantCulture);
             return AggregateIntermadiateResult.CombineSerializeResult(
                 AggregateIntermadiateResult.AggregateFunctionType.MinFunction, content);
         }
@@ -306,12 +323,14 @@ namespace GraphView
 
         public void Merge(IAggregateFunction aggFunc)
         {
-            throw new NotImplementedException();
+            MeanFunction meanFunc = (MeanFunction)aggFunc;
+            this.sum += meanFunc.sum;
+            this.count += meanFunc.count;
         }
 
         public string SerializeForAggregate()
         {
-            string content = $"{this.sum},{this.count}";
+            string content = $"{this.sum.ToString(CultureInfo.InvariantCulture)},{this.count}";
             return AggregateIntermadiateResult.CombineSerializeResult(
                 AggregateIntermadiateResult.AggregateFunctionType.MeanFunction, content);
         }
@@ -354,7 +373,11 @@ namespace GraphView
 
         public void Merge(IAggregateFunction aggFunc)
         {
-            throw new NotImplementedException();
+            CapFunction capFunc = (CapFunction) aggFunc;
+            for (int i = 0; i < this.sideEffectFunction.Count; i++)
+            {
+                this.sideEffectFunction[i].Item2.Merge(capFunc.sideEffectFunction[i].Item2);
+            }
         }
 
         public FieldObject Terminate()
@@ -401,12 +424,19 @@ namespace GraphView
 
         public string SerializeForAggregate()
         {
-            throw new NotImplementedException();
+            string content = AggregateIntermadiateResult.SerializeAggregateFunctions(
+                    this.sideEffectFunction.Select(tuple => tuple.Item2).ToList());
+            return AggregateIntermadiateResult.CombineSerializeResult(
+                AggregateIntermadiateResult.AggregateFunctionType.CapFunction, content);
         }
 
         public static CapFunction DeserializeForAggregate(string content)
         {
-            throw new NotImplementedException();
+            List<IAggregateFunction> aggFuncs = AggregateIntermadiateResult.DeserializeAggregateFunctions(content);
+            return new CapFunction()
+            {
+                sideEffectFunction = aggFuncs.Select(aggFunc => new Tuple<string, IAggregateFunction>("", aggFunc)).ToList()
+            };
         }
     }
 

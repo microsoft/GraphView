@@ -386,7 +386,7 @@ namespace GraphView
             return $"{type}:{content}";
         }
 
-        private IAggregateFunction DeserializeAggregateFunction(string serializeResult)
+        public static IAggregateFunction DeserializeAggregateFunction(string serializeResult)
         {
             string[] values = serializeResult.Split(new char[]{ ':' }, 2);
             string type = values[0];
@@ -406,7 +406,7 @@ namespace GraphView
             }
         }
 
-        private string SerializeAggregateFunctions(List<IAggregateFunction> aggFuncs)
+        public static string SerializeAggregateFunctions(List<IAggregateFunction> aggFuncs)
         {
             List<string> resultList = new List<string>();
             foreach (IAggregateFunction aggFunc in aggFuncs)
@@ -416,7 +416,7 @@ namespace GraphView
             return GraphViewSerializer.SerializeWithDataContract(resultList);
         }
 
-        private List<IAggregateFunction> DeserializeAggregateFunctions(string serializeResult)
+        public static List<IAggregateFunction> DeserializeAggregateFunctions(string serializeResult)
         {
             List<string> aggStrs = GraphViewSerializer.DeserializeWithDataContract<List<string>>(serializeResult);
             List<IAggregateFunction> aggFuncs = new List<IAggregateFunction>();
