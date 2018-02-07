@@ -68,16 +68,21 @@ namespace GraphView
 
         public string SerializeForAggregate()
         {
-            string content = GraphViewSerializer.SerializeWithDataContract(this.buffer);
+            // use RawRecord to wrap the FieldObjects
+            RawRecord record = new RawRecord();
+            record.Append(new CollectionField(this.buffer));
+            string content = RawRecordMessage.CodeMessage(record);
+
             return AggregateIntermadiateResult.CombineSerializeResult(
                 AggregateIntermadiateResult.AggregateFunctionType.FoldFunction, content);
         }
 
-        public static FoldFunction DeserializeForAggregate(string content)
+        public static FoldFunction DeserializeForAggregate(string content, GraphViewCommand command)
         {
+            RawRecord record = RawRecordMessage.DecodeMessage(content, command);
             return new FoldFunction()
             {
-                buffer = GraphViewSerializer.DeserializeWithDataContract<List<FieldObject>>(content)
+                buffer = ((CollectionField)record[0]).Collection
             };
         }
     }
