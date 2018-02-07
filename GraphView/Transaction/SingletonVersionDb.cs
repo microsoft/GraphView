@@ -12,12 +12,21 @@ namespace GraphView.Transaction
     using GraphView.RecordRuntime;
     using Newtonsoft.Json.Linq;
 
+    internal class IndexSpecification
+    {
+        // A list of properties to be indexed
+        IList<string> properties;
+    }
+
     internal class SingletonVersionDb : VersionDb, IVersionedDataStore
     {
         private static volatile SingletonVersionDb instance;
         private static readonly object initlock = new object();
         private readonly Dictionary<string, SingletonVersionTable> versionTables;
         private readonly object tableLock;
+
+        // A map from a table to its index tables
+        private Dictionary<string, IList<Tuple<string, IndexSpecification>>> indexMap;
 
         private SingletonVersionDb()
         {

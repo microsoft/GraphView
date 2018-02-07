@@ -33,6 +33,11 @@ namespace GraphView.Transaction
         {
             throw new NotImplementedException();
         }
+
+        public bool InsertJson(object key, JObject record, Transaction tx)
+        {
+            throw new NotImplementedException();
+        }
     }
 
     /// <summary>
