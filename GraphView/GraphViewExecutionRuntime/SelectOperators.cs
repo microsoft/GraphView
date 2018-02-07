@@ -1291,14 +1291,6 @@ namespace GraphView
             return this.inputOp.GetFirstOperator();
         }
 
-        [OnDeserialized]
-        private void Reconstruct(StreamingContext context)
-        {
-            AdditionalSerializationInfo additionalInfo = (AdditionalSerializationInfo)context.Context;
-            this.aggregateIntermadiateResult = 
-                new AggregateIntermadiateResult(this.receiveHostId, additionalInfo.TaskIndex, additionalInfo.PartitionPlans);
-        }
-
         public virtual void GetObjectData(SerializationInfo info, StreamingContext context)
         {
             info.AddValue("inputOp", this.inputOp, typeof(GraphViewExecutionOperator));
@@ -1314,6 +1306,9 @@ namespace GraphView
             this.receiveHostId = info.GetString("receiveHostId");
             this.aggregationSpecs = GraphViewSerializer.DeserializeListTupleList<IAggregateFunction, ScalarFunction>(
                 info, "aggregationSpecs");
+            AdditionalSerializationInfo additionalInfo = (AdditionalSerializationInfo)context.Context;
+            this.aggregateIntermadiateResult = new AggregateIntermadiateResult(this.receiveHostId,
+                additionalInfo.TaskIndex, additionalInfo.PartitionPlans, additionalInfo.Command);
             this.Open();
         }
     }

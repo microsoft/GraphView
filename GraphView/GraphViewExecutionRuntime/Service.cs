@@ -262,7 +262,7 @@ namespace GraphView
 
             this.service = selfHost.SingletonInstance as MessageService;
 
-            selfHost.Open();
+            this.selfHost.Open();
         }
 
         public List<string> WaitReturnAllMessages()
@@ -321,28 +321,42 @@ namespace GraphView
         private readonly int currentTask;
         private List<PartitionPlan> partitionPlans;
 
-        public AggregateIntermadiateResult(string receiveHostId, int currentTask, List<PartitionPlan> partitionPlans)
+        private GraphViewCommand command;
+
+        private ReceiveHost receiveHost;
+
+        public AggregateIntermadiateResult(string receiveHostId, int currentTask, List<PartitionPlan> partitionPlans, GraphViewCommand command)
         {
             this.receiveHostId = receiveHostId;
             this.currentTask = currentTask;
             this.partitionPlans = partitionPlans;
+            this.command = command;
         }
 
-        public bool Aggregate(List<IAggregateFunction> aggFuncs)
+        // For ProjectAggregation
+        public bool Aggregate(List<IAggregateFunction> allAggFuncs)
         {
-            Console.WriteLine("Aggregate 1");
+            List<IAggregateFunction> aggFuncs = allAggFuncs.Where(aggFunc => !(aggFunc is CapFunction)).ToList();
+            if (aggFuncs.Count == 0)
+            {
+                return true;
+            }
+
             int targetTask = DetermineTargetTask();
 
             if (this.currentTask == targetTask)
             {
-                Console.WriteLine("Aggregate 2");
-                ReceiveHost receiveHost = new ReceiveHost(this.receiveHostId, this.currentTask, this.partitionPlans);
-                receiveHost.OpenHost();
-                List<string> messages = receiveHost.WaitReturnAllMessages();
+                if (this.receiveHost == null)
+                {
+                    this.receiveHost = new ReceiveHost(this.receiveHostId, this.currentTask, this.partitionPlans);
+                    this.receiveHost.OpenHost();
+                }
+
+                List<string> messages = this.receiveHost.WaitReturnAllMessages();
 
                 foreach (string message in messages)
                 {
-                    List<IAggregateFunction> anotherAggFuncs = DeserializeAggregateFunctions(message);
+                    List<IAggregateFunction> anotherAggFuncs = DeserializeAggregateFunctions(message, this.command);
                     for (int i = 0; i < aggFuncs.Count; i++)
                     {
                         aggFuncs[i].Merge(anotherAggFuncs[i]);
@@ -352,7 +366,6 @@ namespace GraphView
             }
             else
             {
-                Console.WriteLine("Aggregate 3");
                 string message = SerializeAggregateFunctions(aggFuncs);
                 SendClient sendClient = new SendClient(this.receiveHostId, this.partitionPlans);
                 sendClient.SendMessage(message, targetTask, this.currentTask);
@@ -386,13 +399,17 @@ namespace GraphView
             return $"{type}:{content}";
         }
 
-        public static IAggregateFunction DeserializeAggregateFunction(string serializeResult)
+        public static IAggregateFunction DeserializeAggregateFunction(string serializeResult, GraphViewCommand command)
         {
             string[] values = serializeResult.Split(new char[]{ ':' }, 2);
             string type = values[0];
             string content = values[1];
 
-            if (type.Equals(AggregateFunctionType.CountFunction.ToString()))
+            if (type.Equals(AggregateFunctionType.FoldFunction.ToString()))
+            {
+                return FoldFunction.DeserializeForAggregate(content, command);
+            }
+            else if (type.Equals(AggregateFunctionType.CountFunction.ToString()))
             {
                 return CountFunction.DeserializeForAggregate(content);
             }
@@ -400,6 +417,38 @@ namespace GraphView
             {
                 return SumFunction.DeserializeForAggregate(content);
             }
+            else if (type.Equals(AggregateFunctionType.MaxFunction.ToString()))
+            {
+                return MaxFunction.DeserializeForAggregate(content);
+            }
+            else if (type.Equals(AggregateFunctionType.MinFunction.ToString()))
+            {
+                return MinFunction.DeserializeForAggregate(content);
+            }
+            else if (type.Equals(AggregateFunctionType.MeanFunction.ToString()))
+            {
+                return MeanFunction.DeserializeForAggregate(content);
+            }
+            //else if (type.Equals(AggregateFunctionType.CapFunction.ToString()))
+            //{
+            //    return CapFunction.DeserializeForAggregate(content, command);
+            //}
+            //else if (type.Equals(AggregateFunctionType.TreeFunction.ToString()))
+            //{
+            //    return TreeFunction.DeserializeForAggregate(content);
+            //}
+            //else if (type.Equals(AggregateFunctionType.SubgraphFunction.ToString()))
+            //{
+            //    return SubgraphFunction.DeserializeForAggregate(content);
+            //}
+            //else if (type.Equals(AggregateFunctionType.CollectionFunction.ToString()))
+            //{
+            //    return CollectionFunction.DeserializeForAggregate(content);
+            //}
+            //else if (type.Equals(AggregateFunctionType.GroupFunction.ToString()))
+            //{
+            //    return GroupFunction.DeserializeForAggregate(content);
+            //}
             else
             {
                 throw new NotImplementedException();
@@ -416,13 +465,13 @@ namespace GraphView
             return GraphViewSerializer.SerializeWithDataContract(resultList);
         }
 
-        public static List<IAggregateFunction> DeserializeAggregateFunctions(string serializeResult)
+        public static List<IAggregateFunction> DeserializeAggregateFunctions(string serializeResult, GraphViewCommand command)
         {
             List<string> aggStrs = GraphViewSerializer.DeserializeWithDataContract<List<string>>(serializeResult);
             List<IAggregateFunction> aggFuncs = new List<IAggregateFunction>();
             foreach (string aggStr in aggStrs)
             {
-                aggFuncs.Add(DeserializeAggregateFunction(aggStr));
+                aggFuncs.Add(DeserializeAggregateFunction(aggStr, command));
             }
             return aggFuncs;
         }

@@ -378,11 +378,12 @@ namespace GraphView
 
         public void Merge(IAggregateFunction aggFunc)
         {
-            CapFunction capFunc = (CapFunction) aggFunc;
-            for (int i = 0; i < this.sideEffectFunction.Count; i++)
-            {
-                this.sideEffectFunction[i].Item2.Merge(capFunc.sideEffectFunction[i].Item2);
-            }
+            throw new NotImplementedException();
+            //CapFunction capFunc = (CapFunction) aggFunc;
+            //for (int i = 0; i < this.sideEffectFunction.Count; i++)
+            //{
+            //    this.sideEffectFunction[i].Item2.Merge(capFunc.sideEffectFunction[i].Item2);
+            //}
         }
 
         public FieldObject Terminate()
@@ -429,19 +430,21 @@ namespace GraphView
 
         public string SerializeForAggregate()
         {
-            string content = AggregateIntermadiateResult.SerializeAggregateFunctions(
-                    this.sideEffectFunction.Select(tuple => tuple.Item2).ToList());
-            return AggregateIntermadiateResult.CombineSerializeResult(
-                AggregateIntermadiateResult.AggregateFunctionType.CapFunction, content);
+            throw new NotImplementedException();
+            //string content = AggregateIntermadiateResult.SerializeAggregateFunctions(
+            //        this.sideEffectFunction.Select(tuple => tuple.Item2).ToList());
+            //return AggregateIntermadiateResult.CombineSerializeResult(
+            //    AggregateIntermadiateResult.AggregateFunctionType.CapFunction, content);
         }
 
-        public static CapFunction DeserializeForAggregate(string content)
+        public static CapFunction DeserializeForAggregate(string content, GraphViewCommand command)
         {
-            List<IAggregateFunction> aggFuncs = AggregateIntermadiateResult.DeserializeAggregateFunctions(content);
-            return new CapFunction()
-            {
-                sideEffectFunction = aggFuncs.Select(aggFunc => new Tuple<string, IAggregateFunction>("", aggFunc)).ToList()
-            };
+            throw new NotImplementedException();
+            //List<IAggregateFunction> aggFuncs = AggregateIntermadiateResult.DeserializeAggregateFunctions(content, command);
+            //return new CapFunction()
+            //{
+            //    sideEffectFunction = aggFuncs.Select(aggFunc => new Tuple<string, IAggregateFunction>("", aggFunc)).ToList()
+            //};
         }
     }
 
