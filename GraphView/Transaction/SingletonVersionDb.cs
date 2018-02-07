@@ -104,7 +104,7 @@ namespace GraphView.Transaction
                 {
                     if (!this.versionTables.ContainsKey(tableId))
                     {
-                        this.versionTables[tableId] = new SingletonVersionDictionary();
+                        this.versionTables[tableId] = new SingletonVersionDictionary(tableId);
                     }
                 }
             }

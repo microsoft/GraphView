@@ -49,10 +49,11 @@ namespace GraphView.Transaction
         private readonly Dictionary<object, List<VersionEntry>> dict;
         private readonly object listLock;
 
-        public SingletonVersionDictionary()
+        public SingletonVersionDictionary(string tableId)
         {
             this.dict = new Dictionary<object, List<VersionEntry>>();
             this.listLock = new object();
+            this.TableId = tableId;
         }
 
         /// <summary>
@@ -410,7 +411,21 @@ namespace GraphView.Transaction
     {
         public new JObject GetJson(object key, Transaction tx)
         {
-            throw new NotImplementedException();
+            if (!this.dict.ContainsKey(key))
+            {
+                return null;
+            }
+            
+            foreach (VersionEntry versionEntry in this.dict[key])
+            {
+                if (this.CheckVersionVisibility(versionEntry, tx.BeginTimeStamp))
+                {
+                    tx.AddReadSet(this.TableId, key, versionEntry.BeginTimestamp);
+                    return (JObject)versionEntry.Record;
+                }
+            }
+
+            return null; 
         }
 
         public new IList<JObject> GetRangeJsons(object lowerKey, object upperKey, Transaction tx)

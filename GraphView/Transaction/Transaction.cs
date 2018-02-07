@@ -51,16 +51,19 @@ namespace GraphView.Transaction
     {
         internal object Key { get; }
         internal long ReadTimestamp { get; }
+        internal bool HasVisibleVersion { get; }
 
-        public ScanSetEntry(object key, long readTimestamp)
+        public ScanSetEntry(object key, long readTimestamp, bool hasVisibleVersion)
         {
             this.Key = key;
             this.ReadTimestamp = readTimestamp;
+            this.HasVisibleVersion = hasVisibleVersion;
         }
 
         public override int GetHashCode()
         {
-            return this.Key.GetHashCode() ^ this.ReadTimestamp.GetHashCode();
+            return this.Key.GetHashCode() ^ this.ReadTimestamp.GetHashCode() 
+                ^ HasVisibleVersion.GetHashCode();
         }
 
         public override bool Equals(object obj)
@@ -71,7 +74,8 @@ namespace GraphView.Transaction
                 return false;
             }
 
-            return this.Key == entry.Key && this.ReadTimestamp == entry.ReadTimestamp;
+            return this.Key == entry.Key && this.ReadTimestamp == entry.ReadTimestamp 
+                && this.HasVisibleVersion == entry.HasVisibleVersion;
         }
     }
 
@@ -135,6 +139,7 @@ namespace GraphView.Transaction
         /// </summary>
         private readonly long beginTimestamp;
 
+
         /// <summary>
         /// End timestamp assigned to this transaction
         /// </summary>
@@ -167,6 +172,14 @@ namespace GraphView.Transaction
         /// </summary>
         private readonly Dictionary<string, HashSet<WriteSetEntry>> writeSet;
 
+        public long BeginTimeStamp
+        {
+            get
+            {
+                return this.beginTimestamp;
+            }
+        }
+
         public Transaction(long txId, long beginTimestamp, LogStore logStore, VersionDb versionDb, TransactionTable txTable)
         {
             this.txId = txId;
@@ -184,7 +197,34 @@ namespace GraphView.Transaction
 
             this.txTable.InsertNewTx(this.txId, this.beginTimestamp);
         }
-        
+
+        public void AddReadSet(string tableId, object recordKey, long beginTimestamp)
+        {
+            if (!this.readSet.ContainsKey(tableId))
+            {
+                this.readSet.Add(tableId, new HashSet<ReadSetEntry>());
+            }
+            this.readSet[tableId].Add(new ReadSetEntry(recordKey, beginTimestamp));
+        }
+
+        public void AddScanSet(string tableId, object recordKey, long readTimestamp, bool hasVisibleVersion)
+        {
+            if (!this.scanSet.ContainsKey(tableId))
+            {
+                this.scanSet.Add(tableId, new HashSet<ScanSetEntry>());
+            }
+            this.scanSet[tableId].Add(new ScanSetEntry(recordKey, readTimestamp, hasVisibleVersion));
+        }
+
+        public void AddWriteSet(string tableId, object recordKey, long beginTimestamp, bool isOld)
+        {
+            if (!this.writeSet.ContainsKey(tableId))
+            {
+                this.writeSet.Add(tableId, new HashSet<WriteSetEntry>());
+            }
+            this.writeSet[tableId].Add(new WriteSetEntry(recordKey, beginTimestamp, isOld));
+        }
+
         /// <summary>
         /// Insert a new record.
         /// (1) Add the scan info to the scan set
@@ -193,18 +233,18 @@ namespace GraphView.Transaction
         /// </summary>
         public void InsertJson(string tableId, object recordKey, JObject record)
         {
-            if (!this.scanSet.ContainsKey(tableId))
-            {
-                this.scanSet.Add(tableId, new HashSet<ScanSetEntry>());
-            }
-            this.scanSet[tableId].Add(new ScanSetEntry(recordKey, this.beginTimestamp));
-
             if (!this.versionDb.InsertVersion(tableId, recordKey, record, this.txId, this.beginTimestamp))
             {
                 //insert failed, because there is already a visible version with the same versionKey
                 this.Abort();
                 throw new Exception($"Insert failed. Version with recordKey '{recordKey}' already exist.");
             }
+            //only for checking version phatom.
+            if (!this.scanSet.ContainsKey(tableId))
+            {
+                this.scanSet.Add(tableId, new HashSet<ScanSetEntry>());
+            }
+            this.scanSet[tableId].Add(new ScanSetEntry(recordKey, this.beginTimestamp, false));
 
             //insert successfully
             if (!this.writeSet.ContainsKey(tableId))
@@ -222,18 +262,23 @@ namespace GraphView.Transaction
         /// </summary>
         public JObject ReadJson(string tableId, object recordKey)
         {
-            if (!this.scanSet.ContainsKey(tableId))
-            {
-                this.scanSet.Add(tableId, new HashSet<ScanSetEntry>());
-            }
-            this.scanSet[tableId].Add(new ScanSetEntry(recordKey, this.beginTimestamp));
-
             VersionEntry version = this.versionDb.ReadVersion(tableId, recordKey, this.beginTimestamp);
 
             if (version == null)
             {
+                if (!this.scanSet.ContainsKey(tableId))
+                {
+                    this.scanSet.Add(tableId, new HashSet<ScanSetEntry>());
+                }
+                this.scanSet[tableId].Add(new ScanSetEntry(recordKey, this.beginTimestamp, false));
                 return null;
             }
+
+            if (!this.scanSet.ContainsKey(tableId))
+            {
+                this.scanSet.Add(tableId, new HashSet<ScanSetEntry>());
+            }
+            this.scanSet[tableId].Add(new ScanSetEntry(recordKey, this.beginTimestamp, true));
 
             if (!this.readSet.ContainsKey(tableId))
             {

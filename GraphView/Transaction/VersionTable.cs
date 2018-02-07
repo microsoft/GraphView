@@ -174,6 +174,20 @@ namespace GraphView.Transaction
     /// </summary>
     public abstract class VersionTable
     {
+        private string tableId;
+
+        public string TableId
+        {
+            get
+            {
+                return this.tableId;
+            }
+            set
+            {
+                this.tableId = value;
+            }
+        }
+
         internal virtual VersionEntry ReadVersion(object recordKey, long readTimestamp)
         {
             throw new NotImplementedException();
