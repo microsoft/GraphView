@@ -42,17 +42,67 @@ namespace GraphView.Transaction
     internal partial class SingletonVersionDictionary : SingletonVersionTable
     {
         private readonly Dictionary<object, List<VersionEntry>> dict;
+        private readonly object listLock;
 
         public SingletonVersionDictionary()
         {
             this.dict = new Dictionary<object, List<VersionEntry>>();
+            this.listLock = new object();
+        }
+
+        /// <summary>
+        /// Given a version and a read timestamp (or a TxId), check this version's visibility.
+        /// </summary>
+        internal bool CheckVersionVisibility(VersionEntry version, long readTimestamp)
+        {
+            //case 1: both begin and end fields are timestamp
+            //just checl whether readTimestamp is in the interval of the version's beginTimestamp and endTimestamp 
+            if (!version.IsBeginTxId && !version.IsEndTxId)
+            {
+                return readTimestamp > version.BeginTimestamp && readTimestamp < version.EndTimestamp;
+            }
+            //case 2: begin field is a TxId, end field is a timestamp
+            //just check whether this version is created by the same transaction
+            else if (version.IsBeginTxId && !version.IsEndTxId)
+            {
+                return version.BeginTimestamp == readTimestamp;
+            }
+            //case 3: begin field is a TxId, end field is a TxId
+            //this must must be deleted by the same transaction, not visible
+            else if (version.IsBeginTxId && version.IsEndTxId)
+            {
+                return false;
+            }
+            //case 4: begin field is a timestamp, end field is a TxId
+            //first check whether the readTimestamp > version's beginTimestamp
+            //then, check the version's end field
+            else
+            {
+                if (readTimestamp > version.BeginTimestamp)
+                {
+                    //this is the old version deleted by the same Transaction
+                    if (version.EndTimestamp == readTimestamp)
+                    {
+                        return false;
+                    }
+                    //other transaction can see this old version
+                    else
+                    {
+                        return true;
+                    }
+                }
+                else
+                {
+                    return false;
+                }
+            }
         }
 
         /// <summary>
         /// Given the recordKey and the readTimestamp, this method will first scan a list to check each version's visibility.
         /// If it finds the legal version, it will return the version, or, it will return null.
         /// </summary>
-        internal override VersionEntry GetVersion(object recordKey, long readTimestamp)
+        internal override VersionEntry ReadVersion(object recordKey, long readTimestamp)
         {
             if (!this.dict.ContainsKey(recordKey))
             {
@@ -61,32 +111,9 @@ namespace GraphView.Transaction
 
             foreach (VersionEntry version in this.dict[recordKey])
             {
-                // case 1: both the version's begin and the end fields are timestamp.
-                // The version is visibly only if the read time is between its begin and end timestamp. 
-                if (!version.IsBeginTxId && !version.IsEndTxId)
+                if (this.CheckVersionVisibility(version, readTimestamp))
                 {
-                    if (readTimestamp > version.BeginTimestamp && readTimestamp < version.EndTimestamp)
-                    {
-                        return version;
-                    }
-                }
-                // case 2: the version's begin field is TxId.
-                // The version is visible only if this version is created by the same transaction.
-                else if (version.IsBeginTxId)
-                {
-                    if (readTimestamp == version.BeginTimestamp)
-                    {
-                        return version;
-                    }
-                }
-                // case 3: only the version's end field is TxId.
-                // The version is visible only if its begin timestamp is smaller than the read time.
-                else
-                {
-                    if (readTimestamp >= version.BeginTimestamp)
-                    {
-                        return version;
-                    }
+                    return version;
                 }
             }
 
@@ -95,23 +122,33 @@ namespace GraphView.Transaction
 
         /// <summary>
         /// Given the recordKey, the record to insert, the transactionId, and the readTimestamp,
-        /// this method will first invoke GetVersion() to check whether the record already exists.
-        /// If the record does not exist, create and insert a new version to the dictionary and return true, or, it will return false.
+        /// this method will first tranverse the version list to check each version's visibility.
+        /// If no version is visible, create and insert a new version to the dictionary and return true, or, it will return false.
         /// </summary>
         internal override bool InsertVersion(object recordKey, JObject record, long txId, long readTimestamp)
         {
-            if (this.GetVersion(recordKey, readTimestamp) == null)
+            //the version list does not exist, create a new list
+            if (!this.dict.ContainsKey(recordKey))
             {
-                //insert
-                if (!this.dict.ContainsKey(recordKey))
+                lock (this.listLock)
                 {
-                    this.dict[recordKey] = new List<VersionEntry>();
+                    if (!this.dict.ContainsKey(recordKey))
+                    {
+                        this.dict[recordKey] = new List<VersionEntry>();
+                    }
                 }
-                this.dict[recordKey].Add(new VersionEntry(true, txId, false, long.MaxValue, record));
-                return true;
             }
-
-            return false;
+            //tranverse the list to check each version's visibility
+            foreach (VersionEntry version in this.dict[recordKey])
+            {
+                if (this.CheckVersionVisibility(version, readTimestamp))
+                {
+                    return false;
+                }
+            }
+            //no version is visible, insert the new version
+            this.dict[recordKey].Add(new VersionEntry(true, txId, false, long.MaxValue, record));
+            return true;
         }
 
         /// <summary>
@@ -126,42 +163,58 @@ namespace GraphView.Transaction
             out VersionEntry oldVersion, 
             out VersionEntry newVersion)
         {
+            //can not find any versions with the given versionKey, can not perform update, return false
             if (!this.dict.ContainsKey(recordKey))
             {
-                //can not find any versions with the given versionKey
                 oldVersion = null;
                 newVersion = null;
                 return false;
             }
+            //tranverse the version list, try to find the updatable version
             foreach (VersionEntry version in this.dict[recordKey])
             {
-                //A visible version is updatable if its end field equals infinity
-                if (!version.IsEndTxId && version.EndTimestamp == long.MaxValue && !version.IsBeginTxId && readTimestamp > version.BeginTimestamp)
+                //first check the version's visibility
+                if (!this.CheckVersionVisibility(version, readTimestamp))
                 {
-                    //the version is visible and updatable
-                    //Atomically set the version's end field to the transactionId
-                    if (long.MaxValue != Interlocked.CompareExchange(ref version.endTimestamp, txId, long.MaxValue))
-                    {
-                        //other transaction has already set the version's end field
-                        oldVersion = version;
-                        newVersion = null;
-                        return false;
-                    }
-                    //change the old version's end field successfully
-                    version.IsEndTxId = true;
-                    oldVersion = version;
-                    //creat a new version and add it to the versionTable.
-                    newVersion = new VersionEntry(true, txId, false, long.MaxValue, record);
-                    this.dict[recordKey].Add(newVersion);
-                    return true;
+                    continue;
                 }
-                //If this is already a new version created by the same transaction, just update on this new version.
-                else if (!version.IsEndTxId && version.EndTimestamp == long.MaxValue && version.IsBeginTxId && version.BeginTimestamp == txId)
+                //check the version's updatability
+                if (!version.IsEndTxId && version.EndTimestamp == long.MaxValue)
+                {
+                    //if the versiin's begin field is a timestamp, ATOMICALLY set the version's end timestamp to TxId,
+                    //creat and insert a new version
+                    if (!version.IsBeginTxId)
+                    {
+                        if (long.MaxValue != Interlocked.CompareExchange(ref version.endTimestamp, txId, long.MaxValue))
+                        {
+                            //other transaction has already set the version's end field
+                            oldVersion = version;
+                            newVersion = null;
+                            return false;
+                        }
+                        //ATOMICALLY change the old version's end field successfully
+                        version.IsEndTxId = true;
+                        oldVersion = version;
+                        //creat a new version and add it to the versionTable.
+                        newVersion = new VersionEntry(true, txId, false, long.MaxValue, record);
+                        this.dict[recordKey].Add(newVersion);
+                        return true;
+                    }
+                    //if the version's begin field is a TxId, change the record directly on this version
+                    else
+                    {
+                        oldVersion = null;
+                        version.Record = record;
+                        newVersion = version;
+                        return true;
+                    }
+                }
+                //a version is visible but not updatable, can not perform update, return false
+                else
                 {
                     oldVersion = null;
-                    version.Record = record;
-                    newVersion = version;
-                    return true;
+                    newVersion = null;
+                    return false;
                 }
             }
             //can not find the legal version to perform update
@@ -179,42 +232,64 @@ namespace GraphView.Transaction
             long readTimestamp, 
             out VersionEntry deletedVersion)
         {
+            //can not find any versions with the given versionKey, can not perform delete, return false
             if (!this.dict.ContainsKey(recordKey))
             {
-                //can not find any versions with the given versionKey
                 deletedVersion = null;
-                return true;
+                return false;
             }
-
+            //tranverse the version list, try to find the deletable version
             foreach (VersionEntry version in this.dict[recordKey])
             {
-                if (!version.IsEndTxId && version.EndTimestamp == long.MaxValue && readTimestamp >= version.BeginTimestamp)
+                //first check the version's visibility
+                if (!this.CheckVersionVisibility(version, readTimestamp))
                 {
-                    //the version is visible and updatable
-                    //Atomically set the version's end field to the transactionId
-                    if (long.MaxValue != Interlocked.CompareExchange(ref version.endTimestamp, txId, long.MaxValue))
+                    continue;
+                }
+                //check the version's updatability
+                if (!version.IsEndTxId && version.EndTimestamp == long.MaxValue)
+                {
+                    //if the versiin's begin field is a timestamp, ATOMICALLY set the version's end timestamp to TxId
+                    if (!version.IsBeginTxId)
                     {
-                        //other transaction has already set the version's end field
-                        deletedVersion = null;
-                        return false;
+                        if (long.MaxValue != Interlocked.CompareExchange(ref version.endTimestamp, txId, long.MaxValue))
+                        {
+                            //other transaction has already set the version's end field
+                            deletedVersion = version;
+                            return false;
+                        }
+                        //ATOMICALLY change the old version's end field successfully
+                        //change the version's IsEndTxId to true
+                        version.IsEndTxId = true;
+                        deletedVersion = version;
+                        return true;
                     }
-                    //change the version's IsEndTxId to true
-                    version.IsEndTxId = true;
-                    deletedVersion = version;
-                    return true;
+                    //if the version's begin field is a TxId, set the version's end timestamp to TxId directly
+                    else
+                    {
+                        deletedVersion = version;
+                        return true;
+                    }
+
+                }
+                //a version is visible but not deletable, can not perform delete, return false
+                else
+                {
+                    deletedVersion = null;
+                    return false;
                 }
             }
             //can not find the legal version to perform delete
             deletedVersion = null;
-            return true;
+            return false;
         }
 
         /// <summary>
         /// Check visibility of the version read before, used in validation phase.
-        /// Given a record's recordKey, the version's beginTimestamp, and the readTimestamp,
+        /// Given a record's recordKey, the version's beginTimestamp, the current readTimestamp, and the transaction Id
         /// First find the version then check whether it is still visible. 
         /// </summary>
-        internal override bool CheckVersionVisibility(object recordKey, long readVersionBeginTimestamp, long readTimestamp)
+        internal override bool CheckReadVisibility(object recordKey, long readVersionBeginTimestamp, long readTimestamp, long txId)
         {
             if (!this.dict.ContainsKey(recordKey))
             {
@@ -222,16 +297,23 @@ namespace GraphView.Transaction
             }
             foreach (VersionEntry version in this.dict[recordKey])
             {
-                if (version.BeginTimestamp == readVersionBeginTimestamp)
+                //case 1: the versin's begin field is a TxId, and this Id equals to the transaction's Id
+                if (version.IsBeginTxId && version.BeginTimestamp == txId)
                 {
-                    if (!version.IsBeginTxId && !version.IsEndTxId)
-                    {
-                        return readTimestamp < version.EndTimestamp;
-                    }
-                    else
+                    //check the visibility of this version, using the transaction's endTimestamp
+                    if (this.CheckVersionVisibility(version, readTimestamp))
                     {
                         return true;
                     }
+                    else
+                    {
+                        continue;
+                    }
+                }
+                //case 2: the version's begin field is a timestamp, and this timestamp equals to the read version's begin timestamp
+                else if (!version.IsBeginTxId && version.BeginTimestamp == readVersionBeginTimestamp)
+                {
+                    return this.CheckVersionVisibility(version, readTimestamp);
                 }
             }
             return false;
@@ -249,19 +331,14 @@ namespace GraphView.Transaction
             }
             foreach (VersionEntry version in this.dict[recordKey])
             {
-                //test whether the version's beginTimestamp is between two scan.
-                if (!version.IsBeginTxId && version.BeginTimestamp > oldScanTime && version.BeginTimestamp < newScanTime)
+                if (!version.IsBeginTxId)
                 {
-                    //case 1: the version's end field contains TxId
-                    //visible
-                    if (version.IsEndTxId)
+                    if (version.BeginTimestamp > oldScanTime && version.BeginTimestamp < newScanTime)
                     {
-                        return false;
-                    }
-                    //case 2:
-                    else if (version.EndTimestamp > newScanTime)
-                    {
-                        return false;
+                        if (this.CheckVersionVisibility(version, newScanTime))
+                        {
+                            return false;
+                        }
                     }
                 }
             }
@@ -272,27 +349,24 @@ namespace GraphView.Transaction
         /// After a transaction T commit,
         /// propagate a T's end timestamp to the Begin and End fields of new and old versions
         /// </summary>
-        internal override void UpdateCommittedVersionTimestamp(object recordKey, long txId, long endTimestamp, bool isOld)
+        internal override void UpdateCommittedVersionTimestamp(object recordKey, long txId, long endTimestamp)
         {
             if (!this.dict.ContainsKey(recordKey))
             {
                 return;
             }
+            //tranverse the whole version list and seach for versions that were modified by the transaction
             foreach (VersionEntry version in this.dict[recordKey])
             {
-                //old version
-                if (version.IsEndTxId && version.EndTimestamp == txId && isOld)
-                {
-                    version.EndTimestamp = endTimestamp;
-                    version.IsEndTxId = false;
-                    return;
-                }
-                //new version
-                else if (version.IsBeginTxId && version.BeginTimestamp == txId && !isOld)
+                if (version.IsBeginTxId && version.BeginTimestamp == txId)
                 {
                     version.BeginTimestamp = endTimestamp;
                     version.IsBeginTxId = false;
-                    return;
+                }
+                if (version.IsEndTxId && version.EndTimestamp == txId)
+                {
+                    version.EndTimestamp = endTimestamp;
+                    version.IsEndTxId = false;
                 }
             }
         }
@@ -302,27 +376,26 @@ namespace GraphView.Transaction
         /// T sets the Begin field of its new versions to infinity, thereby making them invisible to all transactions,
         /// and reset the End fields of its old versions to infinity.
         /// </summary>
-        internal override void UpdateAbortedVersionTimestamp(object recordId, long txId, bool isOld)
+        internal override void UpdateAbortedVersionTimestamp(object recordKey, long txId)
         {
-            if (!this.dict.ContainsKey(recordId))
+            if (!this.dict.ContainsKey(recordKey))
             {
                 return;
             }
-            foreach (VersionEntry version in this.dict[recordId])
+            //tranverse the whole version list and seach for versions that were modified by the transaction
+            foreach (VersionEntry version in this.dict[recordKey])
             {
                 //new version
-                if (version.IsBeginTxId && version.BeginTimestamp == txId && !isOld)
+                if (version.IsBeginTxId && version.BeginTimestamp == txId)
                 {
                     version.BeginTimestamp = long.MaxValue;
                     version.IsBeginTxId = false;
-                    return;
                 }
                 //old version
-                else if (version.IsEndTxId && version.EndTimestamp == txId && isOld)
+                else if (version.IsEndTxId && version.EndTimestamp == txId)
                 {
                     version.EndTimestamp = long.MaxValue;
                     version.IsEndTxId = false;
-                    return;
                 }
             }
         }

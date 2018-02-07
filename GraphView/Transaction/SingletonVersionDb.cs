@@ -17,10 +17,12 @@ namespace GraphView.Transaction
         private static volatile SingletonVersionDb instance;
         private static readonly object initlock = new object();
         private readonly Dictionary<string, SingletonVersionTable> versionTables;
+        private readonly object tableLock;
 
         private SingletonVersionDb()
         {
             this.versionTables = new Dictionary<string, SingletonVersionTable>();
+            this.tableLock = new object();
         }
 
         internal static SingletonVersionDb Instance
@@ -67,45 +69,38 @@ namespace GraphView.Transaction
         }
 
         /// <summary>
-        /// Get the legal version from one of the version table, if not find, return null. 
+        /// Read the legal version from one of the version table, if not find, return null. 
         /// </summary>
-        internal override VersionEntry GetVersion(string tableId, object recordKey, long readTimestamp)
+        internal override VersionEntry ReadVersion(string tableId, object recordKey, long readTimestamp)
         {
             if (!this.versionTables.ContainsKey(tableId))
             {
                 return null;
             }
 
-            return this.versionTables[tableId].GetVersion(recordKey, readTimestamp);
+            return this.versionTables[tableId].ReadVersion(recordKey, readTimestamp);
         }
 
         /// <summary>
         /// Insert a new version.
-        /// First invoke GetVersion() to check whether the record already exists.
-        /// If not, insert the version to one of the version table, using the version table's InsertVersion() method.
+        /// Insert the version to one of the version table, using the version table's InsertVersion() method.
         /// </summary>
         internal override bool InsertVersion(string tableId, object recordKey, JObject record, long txId, long readTimestamp)
         {
-            //Can not find the legal version, insert.
-            if (this.GetVersion(tableId, recordKey, readTimestamp) == null)
+            //If the corresponding version table does not exist, create a new one.
+            //Use lock to ensure thread synchronization.
+            if (!this.versionTables.ContainsKey(tableId))
             {
-                //If the corresponding version table does not exist, create a new one.
-                //Use lock to ensure thread synchronization.
-                if (!this.versionTables.ContainsKey(tableId))
+                lock (this.tableLock)
                 {
-                    lock (initlock)
+                    if (!this.versionTables.ContainsKey(tableId))
                     {
-                        if (!this.versionTables.ContainsKey(tableId))
-                        {
-                            this.versionTables[tableId] = new SingletonVersionDictionary();
-                        }
+                        this.versionTables[tableId] = new SingletonVersionDictionary();
                     }
                 }
-                //insert
-                return this.versionTables[tableId].InsertVersion(recordKey, record, txId, readTimestamp);
             }
-            //The version already exists.
-            return false;
+            //insert
+            return this.versionTables[tableId].InsertVersion(recordKey, record, txId, readTimestamp);
         }
 
         /// <summary>
@@ -133,7 +128,8 @@ namespace GraphView.Transaction
         /// First check the existence of the corresponding version table.
         /// If exists, delete the version, using the version table's DeleteVersion() method.
         /// </summary>
-        internal override bool DeleteVersion(string tableId, object recordKey, long txId, long readTimestamp, out VersionEntry deletedVersion)
+        internal override bool DeleteVersion(string tableId, object recordKey, long txId, long readTimestamp, 
+            out VersionEntry deletedVersion)
         {
             if (!this.versionTables.ContainsKey(tableId))
             {
@@ -150,7 +146,8 @@ namespace GraphView.Transaction
         /// First check the existence of the corresponding version table.
         /// If exists, check the version, using the version table's CheckVersionVisibility() method.
         /// </summary>
-        internal override bool CheckVersionVisibility(string tableId, object recordKey, long readVersionBeginTimestamp, long readTimestamp)
+        internal override bool CheckReadVisibility(string tableId, object recordKey, long readVersionBeginTimestamp, 
+            long readTimestamp, long txId)
         {
             if (!this.versionTables.ContainsKey(tableId))
             {
@@ -159,7 +156,7 @@ namespace GraphView.Transaction
             }
 
             return this.versionTables[tableId]
-                .CheckVersionVisibility(recordKey, readVersionBeginTimestamp, readTimestamp);
+                .CheckReadVisibility(recordKey, readVersionBeginTimestamp, readTimestamp, txId);
         }
 
         /// <summary>
@@ -182,7 +179,7 @@ namespace GraphView.Transaction
         /// First check the existence of the corresponding version table.
         /// If exists, udpate the version's timestamp, using the version table's UpdateCommittedVersionTimestamp() method.
         /// </summary>
-        internal override void UpdateCommittedVersionTimestamp(string tableId, object recordKey, long txId, long endTimestamp, bool isOld)
+        internal override void UpdateCommittedVersionTimestamp(string tableId, object recordKey, long txId, long endTimestamp)
         {
             if (!this.versionTables.ContainsKey(tableId))
             {
@@ -190,14 +187,14 @@ namespace GraphView.Transaction
                 return;
             }
 
-            this.versionTables[tableId].UpdateCommittedVersionTimestamp(recordKey, txId, endTimestamp, isOld);
+            this.versionTables[tableId].UpdateCommittedVersionTimestamp(recordKey, txId, endTimestamp);
         }
 
         /// <summary>
         /// First check the existence of the corresponding version table.
         /// If exists, udpate the version's timestamp, using the version table's UpdateAbortedVersionTimestamp() method.
         /// </summary>
-        internal override void UpdateAbortedVersionTimestamp(string tableId, object recordKey, long txId, bool isOld)
+        internal override void UpdateAbortedVersionTimestamp(string tableId, object recordKey, long txId)
         {
             if (!this.versionTables.ContainsKey(tableId))
             {
@@ -205,7 +202,7 @@ namespace GraphView.Transaction
                 return;
             }
 
-            this.versionTables[tableId].UpdateAbortedVersionTimestamp(recordKey, txId, isOld);
+            this.versionTables[tableId].UpdateAbortedVersionTimestamp(recordKey, txId);
         }
     }
 

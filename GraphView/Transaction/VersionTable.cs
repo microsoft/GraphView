@@ -92,7 +92,7 @@ namespace GraphView.Transaction
     /// </summary>
     public abstract class VersionDb
     {
-        internal virtual VersionEntry GetVersion(
+        internal virtual VersionEntry ReadVersion(
             string tableId, 
             object recordKey, 
             long readTimestamp)
@@ -132,11 +132,12 @@ namespace GraphView.Transaction
             throw new NotImplementedException();
         }
 
-        internal virtual bool CheckVersionVisibility(
+        internal virtual bool CheckReadVisibility(
             string tableId,
             object recordKey,
             long readVersionBeginTimestamp,
-            long readTimestamp)
+            long readTimestamp,
+            long txId)
         {
             throw new NotImplementedException();
         }
@@ -154,8 +155,7 @@ namespace GraphView.Transaction
             string tableId,
             object recordKey,
             long txId,
-            long endTimestamp,
-            bool isOld)
+            long endTimestamp)
         {
             throw new NotImplementedException();
         }
@@ -163,8 +163,7 @@ namespace GraphView.Transaction
         internal virtual void UpdateAbortedVersionTimestamp(
             string tableId,
             object recordKey,
-            long txId, 
-            bool isOld)
+            long txId)
         {
             throw new NotImplementedException();
         }
@@ -175,7 +174,7 @@ namespace GraphView.Transaction
     /// </summary>
     public abstract class VersionTable
     {
-        internal virtual VersionEntry GetVersion(object recordKey, long readTimestamp)
+        internal virtual VersionEntry ReadVersion(object recordKey, long readTimestamp)
         {
             throw new NotImplementedException();
         }
@@ -205,10 +204,11 @@ namespace GraphView.Transaction
             throw new NotImplementedException();
         }
 
-        internal virtual bool CheckVersionVisibility(
+        internal virtual bool CheckReadVisibility(
             object recordKey, 
             long readVersionBeginTimestamp, 
-            long readTimestamp)
+            long readTimestamp,
+            long txId)
         {
             throw new NotImplementedException();
         }
@@ -221,13 +221,12 @@ namespace GraphView.Transaction
         internal virtual void UpdateCommittedVersionTimestamp(
             object recordKey, 
             long txId, 
-            long endTimestamp, 
-            bool isOld)
+            long endTimestamp)
         {
             throw new NotImplementedException();
         }
 
-        internal virtual void UpdateAbortedVersionTimestamp(object recordKey, long txId, bool isOld)
+        internal virtual void UpdateAbortedVersionTimestamp(object recordKey, long txId)
         {
             throw new NotImplementedException();
         }

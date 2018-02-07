@@ -21,9 +21,9 @@ namespace GraphView.Transaction
     internal class SingletonTxSequenceGenerator : ITxSequenceGenerator
     {
         private static volatile SingletonTxSequenceGenerator instance;
-        private static object initiLock = new object();
+        private static readonly object initiLock = new object();
         private long sequenceNumber;
-        private object sequenceLock;
+        private readonly object sequenceLock;
 
         private SingletonTxSequenceGenerator()
         {

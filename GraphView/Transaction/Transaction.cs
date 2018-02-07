@@ -78,17 +78,20 @@ namespace GraphView.Transaction
     internal class WriteSetEntry
     {
         internal object Key { get; }
+        internal long BeginTimestamp { get; }
         internal bool IsOld { get; }
 
-        public WriteSetEntry(object key, bool isOld)
+        public WriteSetEntry(object key, long beginTimestamp, bool isOld)
         {
             this.Key = key;
+            this.BeginTimestamp = beginTimestamp;
             this.IsOld = isOld;
         }
 
         public override int GetHashCode()
         {
-            return this.Key.GetHashCode() ^ this.IsOld.GetHashCode();
+            return this.Key.GetHashCode() ^ this.BeginTimestamp.GetHashCode() 
+                                          ^ this.IsOld.GetHashCode();
         }
 
         public override bool Equals(object obj)
@@ -99,7 +102,8 @@ namespace GraphView.Transaction
                 return false;
             }
 
-            return this.Key == entry.Key && this.IsOld == entry.IsOld;
+            return this.Key == entry.Key && this.BeginTimestamp == entry.BeginTimestamp 
+                                         && this.IsOld == entry.IsOld;
         }
     }
     
@@ -187,17 +191,17 @@ namespace GraphView.Transaction
         /// (2) Find whether the record already exist.
         /// (3) Insert, add info to write set, or, abort.
         /// </summary>
-        public void InsertJson(string tableId, object recordKey, JObject record, long readTimestamp)
+        public void InsertJson(string tableId, object recordKey, JObject record)
         {
             if (!this.scanSet.ContainsKey(tableId))
             {
                 this.scanSet.Add(tableId, new HashSet<ScanSetEntry>());
             }
-            this.scanSet[tableId].Add(new ScanSetEntry(recordKey, readTimestamp));
+            this.scanSet[tableId].Add(new ScanSetEntry(recordKey, this.beginTimestamp));
 
-            if (!this.versionDb.InsertVersion(tableId, recordKey, record, this.txId, readTimestamp))
+            if (!this.versionDb.InsertVersion(tableId, recordKey, record, this.txId, this.beginTimestamp))
             {
-                //insert failed, because there is already a version with the same versionKey
+                //insert failed, because there is already a visible version with the same versionKey
                 this.Abort();
                 throw new Exception($"Insert failed. Version with recordKey '{recordKey}' already exist.");
             }
@@ -207,7 +211,7 @@ namespace GraphView.Transaction
             {
                 this.writeSet.Add(tableId, new HashSet<WriteSetEntry>());
             }
-            this.writeSet[tableId].Add(new WriteSetEntry(recordKey, false));
+            this.writeSet[tableId].Add(new WriteSetEntry(recordKey, this.txId, false));
         }
 
         /// <summary>
@@ -216,15 +220,15 @@ namespace GraphView.Transaction
         /// (2) Try to get the legal version from versionTable.
         /// (3) Add the read info to the readSet, or, abort.
         /// </summary>
-        public JObject ReadJson(string tableId, object recordKey, long readTimestamp)
+        public JObject ReadJson(string tableId, object recordKey)
         {
             if (!this.scanSet.ContainsKey(tableId))
             {
                 this.scanSet.Add(tableId, new HashSet<ScanSetEntry>());
             }
-            this.scanSet[tableId].Add(new ScanSetEntry(recordKey, readTimestamp));
+            this.scanSet[tableId].Add(new ScanSetEntry(recordKey, this.beginTimestamp));
 
-            VersionEntry version = this.versionDb.GetVersion(tableId, recordKey, readTimestamp);
+            VersionEntry version = this.versionDb.ReadVersion(tableId, recordKey, this.beginTimestamp);
 
             if (version == null)
             {
@@ -245,27 +249,22 @@ namespace GraphView.Transaction
         /// (2) Try to altomically set the old version's endTimestamp, create and insert a new version
         /// (3) Add the write info (old and new) to the writeSet.
         /// </summary>
-        public void UpdateJson(string tableId, object recordKey, JObject record, long readTimestamp)
+        public void UpdateJson(string tableId, object recordKey, JObject record)
         {
-            if (!this.scanSet.ContainsKey(tableId))
-            {
-                this.scanSet.Add(tableId, new HashSet<ScanSetEntry>());
-            }
-            this.scanSet[tableId].Add(new ScanSetEntry(recordKey, readTimestamp));
-
             VersionEntry oldVersion = null;
             VersionEntry newVersion = null;
-            if (!this.versionDb.UpdateVersion(tableId, recordKey, record, this.txId, readTimestamp, out oldVersion, out newVersion))
+            if (!this.versionDb.UpdateVersion(tableId, recordKey, record, this.txId, this.beginTimestamp, out oldVersion, out newVersion))
             {
                 //update failed, two situation:
                 this.Abort();
                 if (oldVersion != null)
                 {
-                    throw new Exception($"Update failed. Write-write conflict on the version with recordKey '{recordKey}'.");
+                    throw new Exception($"Update failed. Conflict on modifying the version with recordKey '{recordKey}'.");
                 }
                 else
                 {
-                    throw new Exception($"Update failed. Can not find the legal version with recordKey '{recordKey}'.");
+                    throw new Exception($"Update failed. Can not find the legal version with recordKey '{recordKey}', or" +
+                                        $" the version is only visible but not updatable.");
                 }
             }
             else
@@ -280,8 +279,8 @@ namespace GraphView.Transaction
                         this.writeSet.Add(tableId, new HashSet<WriteSetEntry>());
                     }
 
-                    this.writeSet[tableId].Add(new WriteSetEntry(recordKey, true));
-                    this.writeSet[tableId].Add(new WriteSetEntry(recordKey, false));
+                    this.writeSet[tableId].Add(new WriteSetEntry(recordKey, oldVersion.BeginTimestamp, true));
+                    this.writeSet[tableId].Add(new WriteSetEntry(recordKey, this.txId, false));
                 }
                 //case 2: the UpdateVersion() method perform change on the new version directly,
                 //do nothing.
@@ -294,29 +293,34 @@ namespace GraphView.Transaction
         /// (2) Try to delete a version from versionDb.
         /// (3) If success, add the write info to the writeSet.
         /// </summary>
-        public void DeleteJson(string tableId, object recordKey, long readTimestamp)
+        public void DeleteJson(string tableId, object recordKey)
         {
-            if (!this.scanSet.ContainsKey(tableId))
-            {
-                this.scanSet.Add(tableId, new HashSet<ScanSetEntry>());
-            }
-            this.scanSet[tableId].Add(new ScanSetEntry(recordKey, readTimestamp));
-
             VersionEntry deletedVersion = null;
-            if (!this.versionDb.DeleteVersion(tableId, recordKey, this.txId, readTimestamp, out deletedVersion))
+            if (!this.versionDb.DeleteVersion(tableId, recordKey, this.txId, this.beginTimestamp, out deletedVersion))
             {
                 this.Abort();
-                throw new Exception($"Delete failed. Write-write conflict on the version with recordKey '{recordKey}'.");
+                if (deletedVersion != null)
+                {
+                    throw new Exception($"Delete failed. Conflict on modifying the version with recordKey '{recordKey}'.");
+                }
+                else
+                {
+                    throw new Exception($"Delete failed. Can not find the legal version with recordKey '{recordKey}', or" +
+                                        $" the version is only visible but not deletable.");
+                }
             }
             //delete successfully
-            if (deletedVersion != null)
+            else
             {
-                if (!this.writeSet.ContainsKey(tableId))
+                if (deletedVersion != null)
                 {
-                    this.writeSet.Add(tableId, new HashSet<WriteSetEntry>());
-                }
+                    if (!this.writeSet.ContainsKey(tableId))
+                    {
+                        this.writeSet.Add(tableId, new HashSet<WriteSetEntry>());
+                    }
 
-                this.writeSet[tableId].Add(new WriteSetEntry(recordKey, true));
+                    this.writeSet[tableId].Add(new WriteSetEntry(recordKey, deletedVersion.BeginTimestamp, true));
+                }
             }
         }
 
@@ -370,8 +374,8 @@ namespace GraphView.Transaction
             {
                 foreach (ReadSetEntry readEntry in this.readSet[tableId])
                 {
-                    if (!this.versionDb.CheckVersionVisibility(tableId, readEntry.Key, readEntry.BeginTimestamp,
-                        this.endTimestamp))
+                    if (!this.versionDb.CheckReadVisibility(tableId, readEntry.Key, readEntry.BeginTimestamp,
+                        this.endTimestamp, this.txId))
                     {
                         throw new Exception($"Read validation failed. " +
                                             $"The version with tableId {tableId} recordKey {readEntry.Key} is not visible.");
@@ -445,7 +449,7 @@ namespace GraphView.Transaction
                 foreach (WriteSetEntry writeSetEntry in this.writeSet[tableId])
                 {
                     this.versionDb.UpdateCommittedVersionTimestamp(tableId, writeSetEntry.Key, this.txId,
-                        this.endTimestamp, writeSetEntry.IsOld);
+                        this.endTimestamp);
                 }
             }
             //change the transaction's status
@@ -464,8 +468,7 @@ namespace GraphView.Transaction
             {
                 foreach (WriteSetEntry writeSetEntry in this.writeSet[tableId])
                 {
-                    this.versionDb.UpdateAbortedVersionTimestamp(tableId, writeSetEntry.Key, this.txId,
-                        writeSetEntry.IsOld);
+                    this.versionDb.UpdateAbortedVersionTimestamp(tableId, writeSetEntry.Key, this.txId);
                 }
             }
             //change the transaction's status
