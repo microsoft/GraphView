@@ -172,7 +172,7 @@ namespace GraphView.Transaction
         /// </summary>
         private readonly Dictionary<string, HashSet<WriteSetEntry>> writeSet;
 
-        public long BeginTimeStamp
+        public long BeginTimestamp
         {
             get
             {

@@ -411,36 +411,126 @@ namespace GraphView.Transaction
     {
         public new JObject GetJson(object key, Transaction tx)
         {
-            if (!this.dict.ContainsKey(key))
+            VersionEntry versionEntry = this.GetVersionEntry(key, tx.BeginTimestamp);
+            if (versionEntry != null)
             {
-                return null;
-            }
-            
-            foreach (VersionEntry versionEntry in this.dict[key])
-            {
-                if (this.CheckVersionVisibility(versionEntry, tx.BeginTimeStamp))
-                {
-                    tx.AddReadSet(this.TableId, key, versionEntry.BeginTimestamp);
-                    return (JObject)versionEntry.Record;
-                }
+                tx.AddReadSet(this.TableId, key, versionEntry.BeginTimestamp);
+                return (JObject)versionEntry.Record;
             }
 
-            return null; 
+            return null;
         }
 
         public new IList<JObject> GetRangeJsons(object lowerKey, object upperKey, Transaction tx)
         {
-            throw new NotImplementedException();
+            List<JObject> jObjectValues = new List<JObject>();
+            IComparable lowerComparableKey = lowerKey as IComparable;
+            IComparable upperComparebleKey = upperKey as IComparable;
+
+            if (lowerComparableKey == null || upperComparebleKey == null)
+            {
+                throw new ArgumentException("lowerKey and upperKey must be comparable");
+            }
+
+            foreach (var key in this.dict.Keys)
+            {
+                IComparable comparableKey = key as IComparable;
+                if (comparableKey == null)
+                {
+                    throw new ArgumentException("recordKey must be comparable");
+                }
+
+                if (lowerComparableKey.CompareTo(comparableKey) <= 0 
+                    && upperComparebleKey.CompareTo(comparableKey) >= 0)
+                {
+                    VersionEntry versionEntry = this.GetVersionEntry(key, tx.BeginTimestamp);
+                    if (versionEntry == null)
+                    {
+                        // false means no visiable version for this key
+                        tx.AddScanSet(this.TableId, key, tx.BeginTimestamp, false);
+                    }
+                    else
+                    {
+                        jObjectValues.Add((JObject)versionEntry.Record);
+                        // true means we found a visiable version for this key
+                        tx.AddScanSet(this.TableId, key, tx.BeginTimestamp, true);
+                        tx.AddReadSet(this.TableId, key, tx.BeginTimestamp);
+                    }
+                }
+            }
+
+            return jObjectValues;
         }
 
         public new IList<object> GetRangeRecordKeyList(object lowerValue, object upperValue, Transaction tx)
         {
-            throw new NotImplementedException();
+            List<object> keyList = new List<object>();
+            IComparable lowerComparableValue = lowerValue as IComparable;
+            IComparable upperComparableValue = upperValue as IComparable;
+
+            if (lowerComparableValue == null || upperComparableValue == null)
+            {
+                throw new ArgumentException("lowerValue and upperValue must be comparable");
+            }
+
+            foreach (var key in this.dict.Keys)
+            {
+                VersionEntry versionEntry = this.GetVersionEntry(key, tx.BeginTimestamp);
+                if (versionEntry != null)
+                {
+                    IComparable comparableValue = versionEntry.Record as IComparable;
+                    if (comparableValue == null)
+                    {
+                        throw new ArgumentException("record must be comparable");
+                    }
+
+                    if (lowerComparableValue.CompareTo(comparableValue) <= 0 
+                        && upperComparableValue.CompareTo(comparableValue) >= 0)
+                    {
+                        keyList.Add(key);
+                        tx.AddReadSet(this.TableId, key, tx.BeginTimestamp);
+                        tx.AddScanSet(this.TableId, keyList, tx.BeginTimestamp, true);
+                    }
+                }
+            }
+
+            return keyList;
         }
 
         public new IList<object> GetRecordKeyList(object value, Transaction tx)
         {
-            throw new NotImplementedException();
+            List<object> keyList = new List<object>();
+            foreach (var key in this.dict.Keys)
+            {
+                VersionEntry versionEntry = this.GetVersionEntry(key, tx.BeginTimestamp);
+                if (versionEntry != null && versionEntry.Record.Equals(value))
+                {
+                    keyList.Add(key);
+                    tx.AddReadSet(this.TableId, key, tx.BeginTimestamp);
+                    // TODO: add to scanSet?
+                    tx.AddScanSet(this.TableId, key, tx.BeginTimestamp, true);
+                }
+            }
+
+            return keyList;
+        }
+
+        internal VersionEntry GetVersionEntry(object key, long readTimestamp)
+        {
+            if (!this.dict.ContainsKey(key))
+            {
+                return null;
+            }
+
+            foreach (VersionEntry versionEntry in this.dict[key])
+            {
+                if (this.CheckVersionVisibility(versionEntry, readTimestamp))
+                {
+                    return versionEntry;
+                }
+            }
+
+            return null;
         }
     }
 }

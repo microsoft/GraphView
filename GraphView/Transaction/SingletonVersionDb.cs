@@ -64,17 +64,31 @@ namespace GraphView.Transaction
 
         public IList<JObject> GetRangeJsons(string tableId, object lowerKey, object upperKey, Transaction tx)
         {
-            throw new NotImplementedException();
+            if (!this.versionTables.ContainsKey(tableId))
+            {
+                throw new ArgumentException($"Invalid table reference '{tableId}'");
+            }
+
+            return this.versionTables[tableId].GetRangeJsons(lowerKey, upperKey, tx);
         }
 
         public IList<object> GetRangeRecordKeyList(string tableId, object lowerValue, object upperValue, Transaction tx)
         {
-            throw new NotImplementedException();
+            if (!this.versionTables.ContainsKey(tableId))
+            {
+                throw new ArgumentException($"Invalid table reference '{tableId}'");
+            }
+
+            return this.versionTables[tableId].GetRangeRecordKeyList(lowerValue, upperValue, tx);
         }
 
         public IList<object> GetRecordKeyList(string tableId, object value, Transaction tx)
         {
-            throw new NotImplementedException();
+            if (!this.versionTables.ContainsKey(tableId))
+            {
+                throw new ArgumentException($"Invalid table reference '{tableId}'");
+            }
+            return this.versionTables[tableId].GetRecordKeyList(value, tx);
         }
 
         /// <summary>
