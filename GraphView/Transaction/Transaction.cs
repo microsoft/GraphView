@@ -239,19 +239,12 @@ namespace GraphView.Transaction
                 this.Abort();
                 throw new Exception($"Insert failed. Version with recordKey '{recordKey}' already exist.");
             }
-            //only for checking version phatom.
-            if (!this.scanSet.ContainsKey(tableId))
-            {
-                this.scanSet.Add(tableId, new HashSet<ScanSetEntry>());
-            }
-            this.scanSet[tableId].Add(new ScanSetEntry(recordKey, this.beginTimestamp, false));
 
             //insert successfully
-            if (!this.writeSet.ContainsKey(tableId))
-            {
-                this.writeSet.Add(tableId, new HashSet<WriteSetEntry>());
-            }
-            this.writeSet[tableId].Add(new WriteSetEntry(recordKey, this.txId, false));
+            //add the scan info to scanSet (check version phatom)
+            this.AddScanSet(tableId, recordKey, this.beginTimestamp, false);
+            //add the write info to writeSet
+            this.AddWriteSet(tableId, recordKey, this.txId, false);
         }
 
         /// <summary>
@@ -266,25 +259,14 @@ namespace GraphView.Transaction
 
             if (version == null)
             {
-                if (!this.scanSet.ContainsKey(tableId))
-                {
-                    this.scanSet.Add(tableId, new HashSet<ScanSetEntry>());
-                }
-                this.scanSet[tableId].Add(new ScanSetEntry(recordKey, this.beginTimestamp, false));
+                //can not find the legal version to read
+                this.AddScanSet(tableId, recordKey, this.beginTimestamp, false);
                 return null;
             }
 
-            if (!this.scanSet.ContainsKey(tableId))
-            {
-                this.scanSet.Add(tableId, new HashSet<ScanSetEntry>());
-            }
-            this.scanSet[tableId].Add(new ScanSetEntry(recordKey, this.beginTimestamp, true));
-
-            if (!this.readSet.ContainsKey(tableId))
-            {
-                this.readSet.Add(tableId, new HashSet<ReadSetEntry>());
-            }
-            this.readSet[tableId].Add(new ReadSetEntry(recordKey, version.BeginTimestamp));
+            //read successfully
+            this.AddScanSet(tableId, recordKey, this.beginTimestamp, true);
+            this.AddReadSet(tableId, recordKey, version.BeginTimestamp);
             return version.Record;
         }
 
@@ -319,13 +301,8 @@ namespace GraphView.Transaction
                 //insert both the old and new write info to the writeSet.
                 if (oldVersion != null)
                 {
-                    if (!this.writeSet.ContainsKey(tableId))
-                    {
-                        this.writeSet.Add(tableId, new HashSet<WriteSetEntry>());
-                    }
-
-                    this.writeSet[tableId].Add(new WriteSetEntry(recordKey, oldVersion.BeginTimestamp, true));
-                    this.writeSet[tableId].Add(new WriteSetEntry(recordKey, this.txId, false));
+                    this.AddWriteSet(tableId, recordKey, oldVersion.BeginTimestamp, true);
+                    this.AddWriteSet(tableId, recordKey, this.txId, false);
                 }
                 //case 2: the UpdateVersion() method perform change on the new version directly,
                 //do nothing.
@@ -359,12 +336,7 @@ namespace GraphView.Transaction
             {
                 if (deletedVersion != null)
                 {
-                    if (!this.writeSet.ContainsKey(tableId))
-                    {
-                        this.writeSet.Add(tableId, new HashSet<WriteSetEntry>());
-                    }
-
-                    this.writeSet[tableId].Add(new WriteSetEntry(recordKey, deletedVersion.BeginTimestamp, true));
+                    this.AddWriteSet(tableId, recordKey, deletedVersion.BeginTimestamp, true);
                 }
             }
         }

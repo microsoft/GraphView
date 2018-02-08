@@ -1,4 +1,6 @@
 ﻿
+using System.Windows.Forms;
+
 namespace GraphView.Transaction
 {
     using System;
@@ -10,7 +12,64 @@ namespace GraphView.Transaction
     using GraphView.RecordRuntime;
     using Newtonsoft.Json.Linq;
 
+    internal class VersionNode
+    {
+        public VersionEntry VersionEntry;
+        public VersionNode Next;
+    }
 
+    internal class VersionList
+    {
+        private VersionNode head;
+
+        public VersionList()
+        {
+            this.head = new VersionNode();
+            head.VersionEntry = new VersionEntry(false, long.MaxValue, false, long.MaxValue, null);
+            head.Next = null;
+        }
+
+        public void AddFirst(VersionEntry versionEntry)
+        {
+            VersionNode newNode = new VersionNode();
+            newNode.VersionEntry = versionEntry;
+
+            do
+            {
+                newNode.Next = this.head;
+            }
+            while (newNode.Next != Interlocked.CompareExchange(ref this.head, newNode, newNode.Next));
+        }
+
+        public bool ChangeNodeValue(VersionEntry oldVersion, VersionEntry newVersion)
+        {
+            VersionNode node = this.head;
+            while (node != null && node.VersionEntry.Record != null)
+            {
+                //try to find the old version
+                if (node.VersionEntry == oldVersion)
+                {
+                    return oldVersion == Interlocked.CompareExchange(ref node.VersionEntry, newVersion, oldVersion);
+                }
+                node = node.Next;
+            }
+
+            return false;
+        }
+
+        public IList<VersionEntry> CopyToList()
+        {
+            IList<VersionEntry> versionList = new List<VersionEntry>();
+            VersionNode node = this.head;
+            while (node != null && node.VersionEntry.Record != null)
+            {
+                versionList.Add(node.VersionEntry);
+                node = node.Next;
+            }
+
+            return versionList;
+        }
+    }
 
     internal abstract class SingletonVersionTable : VersionTable, IVersionedTableStore
     {
