@@ -746,11 +746,11 @@ namespace GraphView
                     new ProjectAggregationInBatch(operatorChain.Any()
                         ? operatorChain.Last()
                         : context.OuterContextOp,
-                        context.InParallelMode) :
+                        context.InParallelMode && context.NeedGlobalAggregate) :
                     new ProjectAggregation(operatorChain.Any()
                         ? operatorChain.Last()
                         : context.OuterContextOp,
-                        context.InParallelMode);
+                        context.InParallelMode && context.NeedGlobalAggregate);
 
                 foreach (var selectScalar in selectScalarExprList)
                 {
@@ -1316,6 +1316,7 @@ namespace GraphView
                 // Set all sub-traversals' source to a same container, and turn on InBatchMode
                 QueryCompilationContext subcontext = new QueryCompilationContext(context);
                 subcontext.OuterContextOp.SetContainer(container);
+                subcontext.NeedGlobalAggregate = false;
                 if (isParallel)
                 {
                     subcontext.SendReceiveMode = SendReceiveMode.SendThenSendBack;
@@ -1572,6 +1573,7 @@ namespace GraphView
             QueryCompilationContext subcontext = new QueryCompilationContext(context);
             Container container = new Container();
             subcontext.OuterContextOp.SetContainer(container);
+            subcontext.NeedGlobalAggregate = false;
             bool isParallel = context.InParallelMode && context.ParallelLevel.EnableSendThenSendBack;
             if (isParallel)
             {
@@ -1666,6 +1668,7 @@ namespace GraphView
             Container container = new Container();
             QueryCompilationContext subcontext = new QueryCompilationContext(context);
             subcontext.OuterContextOp.SetContainer(container);
+            subcontext.NeedGlobalAggregate = false;
             bool isParallel = context.InParallelMode && context.ParallelLevel.EnableSendThenSendBack;
             if (isParallel)
             {
@@ -2660,6 +2663,7 @@ namespace GraphView
             Container container = new Container();
             QueryCompilationContext subcontext = new QueryCompilationContext(context);
             subcontext.OuterContextOp.SetContainer(container);
+            subcontext.NeedGlobalAggregate = false;
             bool isParallel = context.InParallelMode && context.ParallelLevel.EnableSendThenSendBack;
             if (isParallel)
             {
