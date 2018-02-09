@@ -17,6 +17,12 @@
         IList<object> GetRecordKeyList(string tableId, object value, Transaction tx);
 
         IList<object> GetRangeRecordKeyList(string tableId, object lowerValue, object upperValue, Transaction tx);
+
+        bool InsertJson(string tableId, object key, JObject record, Transaction tx);
+
+        bool UpdateJson(string tableId, object key, JObject record, Transaction tx);
+
+        bool DeleteJson(string tableId, object key, Transaction tx);
     }
 
     internal interface IVersionedTableStore
@@ -30,6 +36,10 @@
         IList<object> GetRangeRecordKeyList(object lowerValue, object upperValue, Transaction tx);
 
         bool InsertJson(object key, JObject record, Transaction tx);
+
+        bool UpdateJson(object key, JObject record, Transaction tx);
+
+        bool DeleteJson(object key, Transaction tx);
     }
 
     internal interface IDataStore

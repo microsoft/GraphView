@@ -18,6 +18,23 @@ namespace GraphView.Transaction
         IList<string> properties;
     }
 
+    internal class IndexValue
+    {
+        private List<object> keys;
+        
+        public List<object> Keys
+        {
+            get
+            {
+                return keys;
+            }
+            set
+            {
+                this.keys = value;
+            }
+        }
+    }
+
     internal class SingletonVersionDb : VersionDb, IVersionedDataStore
     {
         private static volatile SingletonVersionDb instance;
@@ -52,6 +69,10 @@ namespace GraphView.Transaction
             }
         }
 
+        /// <summary>
+        /// Read a json object by tableId and recordKey
+        /// It will return the json object if found a visiable version, otherwise return null
+        /// </summary>
         public JObject GetJson(string tableId, object key, Transaction tx)
         {
             if (!this.versionTables.ContainsKey(tableId))
@@ -62,6 +83,10 @@ namespace GraphView.Transaction
             return this.versionTables[tableId].GetJson(key, tx);
         }
 
+        /// <summary>
+        /// Read a list of json objects whose key is between lowerKey and upperKey with tableId
+        /// It will return a list of json objects
+        /// </summary>
         public IList<JObject> GetRangeJsons(string tableId, object lowerKey, object upperKey, Transaction tx)
         {
             if (!this.versionTables.ContainsKey(tableId))
@@ -72,6 +97,10 @@ namespace GraphView.Transaction
             return this.versionTables[tableId].GetRangeJsons(lowerKey, upperKey, tx);
         }
 
+        /// <summary>
+        /// Read a list of keys whose value is between lowerValue and upperValues with tableId
+        /// It will return a list of keys objects
+        /// </summary>
         public IList<object> GetRangeRecordKeyList(string tableId, object lowerValue, object upperValue, Transaction tx)
         {
             if (!this.versionTables.ContainsKey(tableId))
@@ -82,6 +111,10 @@ namespace GraphView.Transaction
             return this.versionTables[tableId].GetRangeRecordKeyList(lowerValue, upperValue, tx);
         }
 
+        /// <summary>
+        /// Read a list of keys whose value is equal to value
+        /// It will return a list of keys if found such a value, otherwise it will return null
+        /// </summary>
         public IList<object> GetRecordKeyList(string tableId, object value, Transaction tx)
         {
             if (!this.versionTables.ContainsKey(tableId))
@@ -89,6 +122,45 @@ namespace GraphView.Transaction
                 throw new ArgumentException($"Invalid table reference '{tableId}'");
             }
             return this.versionTables[tableId].GetRecordKeyList(value, tx);
+        }
+
+        /// <summary>
+        /// insert a record by tableId and key
+        /// if it has been inserted, return true, otherwise return false
+        /// </summary>
+        public bool InsertJson(string tableId, object key, JObject record, Transaction tx)
+        {
+            if (!this.versionTables.ContainsKey(tableId))
+            {
+                throw new ArgumentException($"Invalid table reference '{tableId}'");
+            }
+            return this.versionTables[tableId].InsertJson(key, record, tx);
+        }
+
+        /// <summary>
+        /// update a record by tableId and key
+        /// if it has been updated, return true, otherwise return false
+        /// </summary>
+        public bool UpdateJson(string tableId, object key, JObject record, Transaction tx)
+        {
+            if (!this.versionTables.ContainsKey(tableId))
+            {
+                throw new ArgumentException($"Invalid table reference '{tableId}'");
+            }
+            return this.versionTables[tableId].UpdateJson(key, record, tx);
+        }
+
+        /// <summary>
+        /// delete a record by tableId and key
+        /// if it has been deleted, return true, otherwise return false
+        /// </summary>
+        public bool DeleteJson(string tableId, object key, Transaction tx)
+        {
+            if (!this.versionTables.ContainsKey(tableId))
+            {
+                throw new ArgumentException($"Invalid table reference '{tableId}'");
+            }
+            return this.versionTables[tableId].DeleteJson(key, tx);
         }
 
         /// <summary>

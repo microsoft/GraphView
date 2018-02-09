@@ -180,6 +180,14 @@ namespace GraphView.Transaction
             }
         }
 
+        public long TxId
+        {
+            get
+            {
+                return this.txId;
+            }
+        }
+
         public Transaction(long txId, long beginTimestamp, LogStore logStore, VersionDb versionDb, TransactionTable txTable)
         {
             this.txId = txId;

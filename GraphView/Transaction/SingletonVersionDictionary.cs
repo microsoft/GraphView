@@ -98,6 +98,16 @@ namespace GraphView.Transaction
         {
             throw new NotImplementedException();
         }
+
+        public bool UpdateJson(object key, JObject record, Transaction tx)
+        {
+            throw new NotImplementedException();
+        }
+
+        public bool DeleteJson(object key, Transaction tx)
+        {
+            throw new NotImplementedException();
+        }
     }
 
     /// <summary>
@@ -154,6 +164,7 @@ namespace GraphView.Transaction
     {
         /// <summary>
         /// Read a record from the given recordKey
+        /// return null if not found
         /// </summary>
         public new JObject GetJson(object key, Transaction tx)
         {
@@ -161,6 +172,7 @@ namespace GraphView.Transaction
             if (versionEntry != null)
             {
                 tx.AddReadSet(this.TableId, key, versionEntry.BeginTimestamp);
+                tx.AddScanSet(this.TableId, key, tx.BeginTimestamp, true);
                 return versionEntry.Record;
             }
 
@@ -186,7 +198,7 @@ namespace GraphView.Transaction
                 IComparable comparableKey = key as IComparable;
                 if (comparableKey == null)
                 {
-                    throw new ArgumentException("recordKey must be comparable");
+                    throw new RecordServiceException("recordKey must be comparable");
                 }
 
                 if (lowerComparableKey.CompareTo(comparableKey) <= 0 
@@ -203,7 +215,7 @@ namespace GraphView.Transaction
                         jObjectValues.Add(versionEntry.Record);
                         // true means we found a visiable version for this key
                         tx.AddScanSet(this.TableId, key, tx.BeginTimestamp, true);
-                        tx.AddReadSet(this.TableId, key, tx.BeginTimestamp);
+                        tx.AddReadSet(this.TableId, key, versionEntry.BeginTimestamp);
                     }
                 }
             }
@@ -246,16 +258,17 @@ namespace GraphView.Transaction
                     else
                     {
                         JObject record = versionEntry.Record;
-                        List<Object> keyList = record["keys"].ToList<object>();
-                        if (keyList == null)
+                        IndexValue indexValue = record.ToObject<IndexValue>();
+                        if (indexValue == null)
                         {
-                            throw new RecordServiceException("no keys property");
+                            throw new RecordServiceException(@"wrong format of index, should be 
+                                {""keys"":[""key1"", ""key2"", ...]}");
                         }
 
-                        keyHashset.UnionWith(keyList);
+                        keyHashset.UnionWith(indexValue.Keys);
                         // true means we found a visiable version for this key
                         tx.AddScanSet(this.TableId, key, tx.BeginTimestamp, true);
-                        tx.AddReadSet(this.TableId, key, tx.BeginTimestamp);
+                        tx.AddReadSet(this.TableId, key, versionEntry.BeginTimestamp);
                     }
                 }
             }
@@ -264,37 +277,101 @@ namespace GraphView.Transaction
         }
 
         /// <summary>
-        /// get all keys for a value in an index-based table
+        ///  This method will return all keys for a value in a index-table
         /// index format: value => [key1, key2, ...]
         /// </summary>
-        /// <returns></returns>
         public new IList<object> GetRecordKeyList(object value, Transaction tx)
         {
             VersionEntry versionEntry = this.GetVersionEntry(value, tx.BeginTimestamp);
             if (versionEntry != null)
             {
                 JObject record = versionEntry.Record;
-                List<Object> keyList = record["keys"].ToList<object>();
-                if (keyList == null)
+                IndexValue indexValue = record.ToObject<IndexValue>();
+                if (indexValue == null)
                 {
-                    throw new RecordServiceException("no keys property");
+                    throw new RecordServiceException(@"wrong format of index, should be 
+                                {""keys"":[""key1"", ""key2"", ...]}");
                 }
 
-                tx.AddReadSet(this.TableId, value, tx.BeginTimestamp);
-                return keyList;
+                tx.AddReadSet(this.TableId, value, versionEntry.BeginTimestamp);
+                tx.AddScanSet(this.TableId, value, tx.BeginTimestamp, true);
+
+                return indexValue.Keys;
             }
 
             return null;
         }
 
+        public new bool InsertJson(object key, JObject record, Transaction tx)
+        {
+            VersionEntry versionEntry = this.GetVersionEntry(key, tx.BeginTimestamp);
+            
+            // insert the version if we have not found a visiable version
+            if (versionEntry != null)
+            {
+                return false;
+            }
+
+            bool hasInserted = this.InsertVersion(key, record, tx.TxId, tx.BeginTimestamp);
+            if (hasInserted)
+            {
+                tx.AddScanSet(this.TableId, key, tx.BeginTimestamp, false);
+                tx.AddWriteSet(this.TableId, key, tx.TxId, false);
+            }
+            return hasInserted;
+        }
+
+        public new bool UpdateJson(object key, JObject record, Transaction tx)
+        {
+            VersionEntry versionEntry = this.GetVersionEntry(key, tx.BeginTimestamp);
+            if (versionEntry == null)
+            {
+                return false;
+            }
+
+            VersionEntry oldVersionEntry = null, newVersionEntry = null;
+            bool hasUpdated = this.UpdateVersion(key, record, tx.TxId, tx.BeginTimestamp, 
+                out oldVersionEntry, out newVersionEntry);
+            if (hasUpdated)
+            {
+                // pass the old version' begin timestamp to find old version
+                tx.AddWriteSet(this.TableId, key, oldVersionEntry.BeginTimestamp, true);
+                // pass the new version's begin timestamp to find the new version
+                tx.AddWriteSet(this.TableId, key, tx.TxId, false);
+            }
+            return hasUpdated;
+        }
+
+        public new bool DeleteJson(object key, Transaction tx)
+        {
+            VersionEntry versionEntry = this.GetVersionEntry(key, tx.BeginTimestamp);
+            if (versionEntry == null)
+            {
+                return false;
+            }
+
+            VersionEntry deletedVersionEntry = null;
+            bool hasDeleted = this.DeleteVersion(key, tx.TxId, tx.BeginTimestamp, out deletedVersionEntry);
+            if (hasDeleted)
+            {
+                // pass the old version's begin timestamp to find the old version
+                tx.AddWriteSet(this.TableId, key, versionEntry.BeginTimestamp, true);
+            }
+            return hasDeleted;
+        }
+        
+        /// <summary>
+        /// Get a visiable version entry from versionTable with the
+        /// </summary>
         internal VersionEntry GetVersionEntry(object key, long readTimestamp)
         {
-            if (!this.dict.ContainsKey(key))
+            IList<VersionEntry> versionEntryList = this.GetVersionList(key);
+            if (versionEntryList == null)
             {
                 return null;
             }
 
-            foreach (VersionEntry versionEntry in this.dict[key].ToList())
+            foreach (VersionEntry versionEntry in versionEntryList)
             {
                 if (this.CheckVersionVisibility(versionEntry, readTimestamp))
                 {
