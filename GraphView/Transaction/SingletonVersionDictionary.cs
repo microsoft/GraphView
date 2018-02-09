@@ -15,6 +15,7 @@ namespace GraphView.Transaction
     internal class VersionNode
     {
         public VersionEntry VersionEntry;
+        // TODO: confirm whether it's a reference variable
         public VersionNode Next;
     }
 
@@ -29,7 +30,7 @@ namespace GraphView.Transaction
             head.Next = null;
         }
 
-        public void AddFirst(VersionEntry versionEntry)
+        public void PushFront(VersionEntry versionEntry)
         {
             VersionNode newNode = new VersionNode();
             newNode.VersionEntry = versionEntry;
@@ -46,7 +47,7 @@ namespace GraphView.Transaction
             VersionNode node = this.head;
             while (node != null && node.VersionEntry.Record != null)
             {
-                //try to find the old version
+                // try to find the old version
                 if (node.VersionEntry == oldVersion)
                 {
                     return oldVersion == Interlocked.CompareExchange(ref node.VersionEntry, newVersion, oldVersion);
@@ -57,7 +58,7 @@ namespace GraphView.Transaction
             return false;
         }
 
-        public IList<VersionEntry> CopyToList()
+        public IList<VersionEntry> ToList()
         {
             IList<VersionEntry> versionList = new List<VersionEntry>();
             VersionNode node = this.head;
@@ -122,7 +123,7 @@ namespace GraphView.Transaction
                 return null;
             }
 
-            return this.dict[recordKey].CopyToList();
+            return this.dict[recordKey].ToList();
         }
 
         internal override void InsertAndUploadVersion(object recordKey, VersionEntry version)
@@ -139,7 +140,7 @@ namespace GraphView.Transaction
                 }
             }
 
-            this.dict[recordKey].AddFirst(version);
+            this.dict[recordKey].PushFront(version);
         }
 
         internal override bool UpdateAndUploadVersion(object recordKey, VersionEntry oldVersion, VersionEntry newVersion)
@@ -264,7 +265,7 @@ namespace GraphView.Transaction
                 return null;
             }
 
-            foreach (VersionEntry versionEntry in this.dict[key].CopyToList())
+            foreach (VersionEntry versionEntry in this.dict[key].ToList())
             {
                 if (this.CheckVersionVisibility(versionEntry, readTimestamp))
                 {

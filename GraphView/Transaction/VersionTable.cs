@@ -193,11 +193,13 @@ namespace GraphView.Transaction
             throw new NotImplementedException();
         }
 
+        // TODO: refactor function name
         internal virtual void InsertAndUploadVersion(object recordKey, VersionEntry version)
         {
             throw new NotImplementedException();
         }
 
+        // TODO: refactor function name
         internal virtual bool UpdateAndUploadVersion(object recordKey, VersionEntry oldVersion, VersionEntry newVersion)
         {
             throw new NotImplementedException();
