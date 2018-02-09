@@ -148,4 +148,17 @@ namespace GraphView
 
         protected NodeViewException(SerializationInfo info, StreamingContext context) : base(info, context) { }
     }
+
+    [Serializable]
+    public class RecordServiceException : GraphViewException
+    {
+        public RecordServiceException() { }
+        public RecordServiceException(string message) : base(message) { }
+
+        public RecordServiceException(string message, Exception innerException) :
+            base(message, innerException)
+        { }
+
+        protected RecordServiceException(SerializationInfo info, StreamingContext context) : base(info, context) { }
+    }
 }

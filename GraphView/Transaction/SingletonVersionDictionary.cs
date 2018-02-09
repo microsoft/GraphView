@@ -152,18 +152,24 @@ namespace GraphView.Transaction
 
     internal partial class SingletonVersionDictionary : IVersionedTableStore
     {
+        /// <summary>
+        /// Read a record from the given recordKey
+        /// </summary>
         public new JObject GetJson(object key, Transaction tx)
         {
             VersionEntry versionEntry = this.GetVersionEntry(key, tx.BeginTimestamp);
             if (versionEntry != null)
             {
                 tx.AddReadSet(this.TableId, key, versionEntry.BeginTimestamp);
-                return (JObject)versionEntry.Record;
+                return versionEntry.Record;
             }
 
             return null;
         }
 
+        /// <summary>
+        /// Read a list of records where their keys are between lowerKey and upperKey
+        /// </summary>
         public new IList<JObject> GetRangeJsons(object lowerKey, object upperKey, Transaction tx)
         {
             List<JObject> jObjectValues = new List<JObject>();
@@ -194,7 +200,7 @@ namespace GraphView.Transaction
                     }
                     else
                     {
-                        jObjectValues.Add((JObject)versionEntry.Record);
+                        jObjectValues.Add(versionEntry.Record);
                         // true means we found a visiable version for this key
                         tx.AddScanSet(this.TableId, key, tx.BeginTimestamp, true);
                         tx.AddReadSet(this.TableId, key, tx.BeginTimestamp);
@@ -205,9 +211,13 @@ namespace GraphView.Transaction
             return jObjectValues;
         }
 
+        /// <summary>
+        /// Get the union set of keys list for every value between lowerValue and uppperValue in index-table
+        /// index format: value => [key1, key2, ...]
+        /// </summary>
         public new IList<object> GetRangeRecordKeyList(object lowerValue, object upperValue, Transaction tx)
         {
-            List<object> keyList = new List<object>();
+            HashSet<object> keyHashset = new HashSet<object>();
             IComparable lowerComparableValue = lowerValue as IComparable;
             IComparable upperComparableValue = upperValue as IComparable;
 
@@ -218,44 +228,63 @@ namespace GraphView.Transaction
 
             foreach (var key in this.dict.Keys)
             {
-                VersionEntry versionEntry = this.GetVersionEntry(key, tx.BeginTimestamp);
-                if (versionEntry != null)
+                IComparable comparableKey = key as IComparable;
+                if (comparableKey == null)
                 {
-                    IComparable comparableValue = versionEntry.Record as IComparable;
-                    if (comparableValue == null)
-                    {
-                        throw new ArgumentException("record must be comparable");
-                    }
+                    throw new ArgumentException("recordKey must be comparable");
+                }
 
-                    if (lowerComparableValue.CompareTo(comparableValue) <= 0 
-                        && upperComparableValue.CompareTo(comparableValue) >= 0)
+                if (lowerComparableValue.CompareTo(comparableKey) <= 0
+                    && upperComparableValue.CompareTo(comparableKey) >= 0)
+                {
+                    VersionEntry versionEntry = this.GetVersionEntry(key, tx.BeginTimestamp);
+                    if (versionEntry == null)
                     {
-                        keyList.Add(key);
+                        // false means no visiable version for this key
+                        tx.AddScanSet(this.TableId, key, tx.BeginTimestamp, false);
+                    }
+                    else
+                    {
+                        JObject record = versionEntry.Record;
+                        List<Object> keyList = record["keys"].ToList<object>();
+                        if (keyList == null)
+                        {
+                            throw new RecordServiceException("no keys property");
+                        }
+
+                        keyHashset.UnionWith(keyList);
+                        // true means we found a visiable version for this key
+                        tx.AddScanSet(this.TableId, key, tx.BeginTimestamp, true);
                         tx.AddReadSet(this.TableId, key, tx.BeginTimestamp);
-                        tx.AddScanSet(this.TableId, keyList, tx.BeginTimestamp, true);
                     }
                 }
             }
 
-            return keyList;
+            return keyHashset.ToList<object>();
         }
 
+        /// <summary>
+        /// get all keys for a value in an index-based table
+        /// index format: value => [key1, key2, ...]
+        /// </summary>
+        /// <returns></returns>
         public new IList<object> GetRecordKeyList(object value, Transaction tx)
         {
-            List<object> keyList = new List<object>();
-            foreach (var key in this.dict.Keys)
+            VersionEntry versionEntry = this.GetVersionEntry(value, tx.BeginTimestamp);
+            if (versionEntry != null)
             {
-                VersionEntry versionEntry = this.GetVersionEntry(key, tx.BeginTimestamp);
-                if (versionEntry != null && versionEntry.Record.Equals(value))
+                JObject record = versionEntry.Record;
+                List<Object> keyList = record["keys"].ToList<object>();
+                if (keyList == null)
                 {
-                    keyList.Add(key);
-                    tx.AddReadSet(this.TableId, key, tx.BeginTimestamp);
-                    // TODO: add to scanSet?
-                    tx.AddScanSet(this.TableId, key, tx.BeginTimestamp, true);
+                    throw new RecordServiceException("no keys property");
                 }
+
+                tx.AddReadSet(this.TableId, value, tx.BeginTimestamp);
+                return keyList;
             }
 
-            return keyList;
+            return null;
         }
 
         internal VersionEntry GetVersionEntry(object key, long readTimestamp)
