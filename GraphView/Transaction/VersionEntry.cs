@@ -10,6 +10,8 @@
         private long endTimestamp;
         private object record;
 
+        public object RecordKey { get; private set; }
+
         public bool IsBeginTxId
         {
             get
@@ -70,13 +72,33 @@
             }
         }
 
-        public VersionEntry(bool isBeginTxId, long beginTimestamp, bool isEndTxId, long endTimestamp, JObject jObject)
+        public VersionEntry(
+            bool isBeginTxId, 
+            long beginTimestamp, 
+            bool isEndTxId, 
+            long endTimestamp, 
+            object recordKey, 
+            JObject jObject)
         {
             this.isBeginTxId = isBeginTxId;
             this.beginTimestamp = beginTimestamp;
             this.isEndTxId = isEndTxId;
             this.endTimestamp = endTimestamp;
+            this.RecordKey = recordKey;
             this.record = jObject;
+        }
+
+        public override bool Equals(object obj)
+        {
+            VersionEntry ventry = obj as VersionEntry;
+            if (ventry == null)
+            {
+                return false;
+            }
+
+            return this.RecordKey == ventry.RecordKey && 
+                this.IsBeginTxId == ventry.IsBeginTxId && 
+                this.BeginTimestamp == ventry.BeginTimestamp;
         }
     }
 }

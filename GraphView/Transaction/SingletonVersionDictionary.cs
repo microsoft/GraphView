@@ -25,14 +25,14 @@
             this.TableId = tableId;
         }
 
-        internal override IList<VersionEntry> GetVersionList(object recordKey)
+        internal override IEnumerable<VersionEntry> GetVersionList(object recordKey)
         {
             if (!this.dict.ContainsKey(recordKey))
             {
                 return null;
             }
 
-            return this.dict[recordKey].ToList();
+            return this.dict[recordKey];
         }
 
         internal override void InsertAndUploadVersion(object recordKey, VersionEntry version)
@@ -264,7 +264,7 @@
         /// </summary>
         internal VersionEntry GetVersionEntry(object key, long readTimestamp)
         {
-            IList<VersionEntry> versionEntryList = this.GetVersionList(key);
+            IEnumerable<VersionEntry> versionEntryList = this.GetVersionList(key);
             if (versionEntryList == null)
             {
                 return null;

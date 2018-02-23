@@ -28,7 +28,14 @@ namespace GraphView.Transaction
             }
         }
 
-        internal virtual IList<VersionEntry> GetVersionList(object recordKey)
+        /// <summary>
+        /// Given a reocrd key, returns the record's version list. 
+        /// It is desirable for the version table to only return a small fragment of the list  
+        /// that contains the version entry visible to the caller transaction. 
+        /// </summary>
+        /// <param name="recordKey">The record key</param>
+        /// <returns>A list of versions of the input record</returns>
+        internal virtual IEnumerable<VersionEntry> GetVersionList(object recordKey)
         {
             throw new NotImplementedException();
         }
@@ -46,8 +53,11 @@ namespace GraphView.Transaction
         }
 
         /// <summary>
-        /// Given a version and a read timestamp (or a TxId), check this version's visibility.
+        /// Given a record's version and a Tx's timestamp (or a TxId), check this version's visibility.
         /// </summary>
+        /// <param name="version">A version entry of a record</param>
+        /// <param name="readTimestamp">Tx's timestamp</param>
+        /// <returns>True, if the input version is visible to the transaction. False, otherwise.</returns>
         internal bool CheckVersionVisibility(VersionEntry version, long readTimestamp)
         {
             //case 1: both begin and end fields are timestamp
@@ -94,12 +104,15 @@ namespace GraphView.Transaction
         }
 
         /// <summary>
-        /// Given the recordKey and the readTimestamp, this method will first scan a list to check each version's visibility.
-        /// If it finds the legal version, it will return the version, or, it will return null.
+        /// Given a record key and a Tx's timestamp, scans the record's version list, 
+        /// checks each version's visibility, and returns a version entry visible to the transaction. 
         /// </summary>
+        /// <param name="recordKey">The record key</param>
+        /// <param name="readTimestamp">The transaction's timestamp</param>
+        /// <returns>The version entry visible to the Transaction. Null, if no entry exists.</returns>
         internal VersionEntry ReadVersion(object recordKey, long readTimestamp)
         {
-            IList<VersionEntry> versionList = this.GetVersionList(recordKey);
+            IEnumerable<VersionEntry> versionList = this.GetVersionList(recordKey);
 
             if (versionList == null)
             {
@@ -118,13 +131,16 @@ namespace GraphView.Transaction
         }
 
         /// <summary>
-        /// Given the recordKey, the record to insert, the transactionId, and the readTimestamp,
-        /// this method will first tranverse the version list to check each version's visibility.
-        /// If no version is visible, create and insert a new version to the dictionary and return true, or, it will return false.
+        ///  Given a record (with the key and the payload) and a Tx, inserts the record into the version table.
         /// </summary>
+        /// <param name="recordKey">The record key</param>
+        /// <param name="record">The record payload</param>
+        /// <param name="txId">Transaction Id</param>
+        /// <param name="readTimestamp">Transaction's timestamp</param>
+        /// <returns>True if the record does not exists in the version table; false; otherwise.</returns>
         internal bool InsertVersion(object recordKey, JObject record, long txId, long readTimestamp)
         {
-            IList<VersionEntry> versionList = this.GetVersionList(recordKey);
+            IEnumerable<VersionEntry> versionList = this.GetVersionList(recordKey);
 
             if (versionList != null)
             {
@@ -137,7 +153,7 @@ namespace GraphView.Transaction
                 }
             }
 
-            this.InsertAndUploadVersion(recordKey, new VersionEntry(true, txId, false, long.MaxValue, record));
+            this.InsertAndUploadVersion(recordKey, new VersionEntry(true, txId, false, long.MaxValue, recordKey, record));
             return true;
         }
 
@@ -153,7 +169,7 @@ namespace GraphView.Transaction
             out VersionEntry oldVersion, 
             out VersionEntry newVersion)
         {
-            IList<VersionEntry> versionList = this.GetVersionList(recordKey);
+            IEnumerable<VersionEntry> versionList = this.GetVersionList(recordKey);
 
             if (versionList == null)
             {
@@ -180,10 +196,16 @@ namespace GraphView.Transaction
                         //if (1) failed, other transaction has already set the version's end field, can not update.
                         //if (1) success, insert a new version
                         if (this.UpdateAndUploadVersion(recordKey, version,
-                            new VersionEntry(version.IsBeginTxId, version.BeginTimestamp, true, txId, version.Record)))
+                            new VersionEntry(
+                                version.IsBeginTxId, 
+                                version.BeginTimestamp, 
+                                true, 
+                                txId, 
+                                version.RecordKey, 
+                                version.Record)))
                         {
                             //(1) success
-                            newVersion = new VersionEntry(true, txId, false, long.MaxValue, record);
+                            newVersion = new VersionEntry(true, txId, false, long.MaxValue, recordKey, record);
                             this.InsertAndUploadVersion(recordKey, newVersion);
                             oldVersion = version;
                             return true;
@@ -198,7 +220,13 @@ namespace GraphView.Transaction
                     {
                         //change the record directly on this version
                         this.UpdateAndUploadVersion(recordKey, version,
-                            new VersionEntry(version.IsBeginTxId, version.BeginTimestamp, version.IsEndTxId, version.EndTimestamp, record));
+                            new VersionEntry(
+                                version.IsBeginTxId, 
+                                version.BeginTimestamp, 
+                                version.IsEndTxId, 
+                                version.EndTimestamp, 
+                                recordKey,
+                                record));
                         oldVersion = null;
                         version.Record = record;
                         newVersion = version;
@@ -228,7 +256,7 @@ namespace GraphView.Transaction
             long readTimestamp,
             out VersionEntry deletedVersion)
         {
-            IList<VersionEntry> versionList = this.GetVersionList(recordKey);
+            IEnumerable<VersionEntry> versionList = this.GetVersionList(recordKey);
 
             if (versionList == null)
             {
@@ -255,7 +283,13 @@ namespace GraphView.Transaction
                         //(1) ATOMICALLY set the version's end timestamp to TxId
                         //if (1) failed, other transaction has already set the version's end field, can not delete
                         if (this.UpdateAndUploadVersion(recordKey, version,
-                            new VersionEntry(version.IsBeginTxId, version.BeginTimestamp, true, txId, version.Record)))
+                            new VersionEntry(
+                                version.IsBeginTxId, 
+                                version.BeginTimestamp, 
+                                true, 
+                                txId, 
+                                version.RecordKey, 
+                                version.Record)))
                         {
                             //success
                             deletedVersion = version;
@@ -269,7 +303,13 @@ namespace GraphView.Transaction
                     else
                     {
                         this.UpdateAndUploadVersion(recordKey, version,
-                            new VersionEntry(version.IsBeginTxId, version.BeginTimestamp, true, txId, version.Record));
+                            new VersionEntry(
+                                version.IsBeginTxId, 
+                                version.BeginTimestamp, 
+                                true, 
+                                txId, 
+                                version.RecordKey, 
+                                version.Record));
                         deletedVersion = version;
                         return true;
                     }
@@ -297,7 +337,7 @@ namespace GraphView.Transaction
             long readTimestamp,
             long txId)
         {
-            IList<VersionEntry> versionList = this.GetVersionList(recordKey);
+            IEnumerable<VersionEntry> versionList = this.GetVersionList(recordKey);
 
             if (versionList == null)
             {
@@ -336,7 +376,7 @@ namespace GraphView.Transaction
         /// </summary>
         internal bool CheckPhantom(object recordKey, long oldScanTime, long newScanTime)
         {
-            IList<VersionEntry> versionList = this.GetVersionList(recordKey);
+            IEnumerable<VersionEntry> versionList = this.GetVersionList(recordKey);
 
             if (versionList == null)
             {
@@ -368,7 +408,7 @@ namespace GraphView.Transaction
             long txId, 
             long endTimestamp)
         {
-            IList<VersionEntry> versionList = this.GetVersionList(recordKey);
+            IEnumerable<VersionEntry> versionList = this.GetVersionList(recordKey);
 
             if (versionList != null)
             {
@@ -404,7 +444,7 @@ namespace GraphView.Transaction
         /// </summary>
         internal void UpdateAbortedVersionTimestamp(object recordKey, long txId)
         {
-            IList<VersionEntry> versionList = this.GetVersionList(recordKey);
+            IEnumerable<VersionEntry> versionList = this.GetVersionList(recordKey);
 
             if (versionList != null)
             {
@@ -415,14 +455,24 @@ namespace GraphView.Transaction
                     if (version.IsBeginTxId && version.BeginTimestamp == txId)
                     {
                         this.UpdateAndUploadVersion(recordKey, version,
-                            new VersionEntry(false, long.MaxValue, version.IsEndTxId, version.EndTimestamp,
+                            new VersionEntry(
+                                false, 
+                                long.MaxValue, 
+                                version.IsEndTxId, 
+                                version.EndTimestamp,
+                                version.RecordKey,
                                 version.Record));
                     }
                     //old version
                     else if (version.IsEndTxId && version.EndTimestamp == txId)
                     {
                         this.UpdateAndUploadVersion(recordKey, version,
-                            new VersionEntry(version.IsBeginTxId, version.BeginTimestamp, false, long.MaxValue,
+                            new VersionEntry(
+                                version.IsBeginTxId,
+                                version.BeginTimestamp,
+                                false,
+                                long.MaxValue,
+                                version.RecordKey,
                                 version.Record));
                     }
                 }

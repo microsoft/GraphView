@@ -260,6 +260,7 @@
     <Compile Include="Transaction\VersionDb.cs" />
     <Compile Include="Transaction\VersionEntry.cs" />
     <Compile Include="Transaction\VersionList.cs" />
+    <Compile Include="Transaction\VersionListEnumerator.cs" />
     <Compile Include="Transaction\VersionTable.cs" />
     <Compile Include="Transaction\LogStore.cs" />
     <Compile Include="Transaction\RecordQuery.cs" />

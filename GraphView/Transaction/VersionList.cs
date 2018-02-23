@@ -1,70 +1,67 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
+﻿
 namespace GraphView.Transaction
 {
+    using System;
+    using System.Collections;
+    using System.Collections.Generic;
     using System.Threading;
 
     internal class VersionNode
     {
-        public VersionEntry VersionEntry;
-        // TODO: confirm whether it's a reference variable
-        public VersionNode Next;
+        public VersionEntry versionEntry;
+        public VersionNode next;
+
+        public VersionNode(VersionEntry versionEntry)
+        {
+            this.versionEntry = versionEntry;
+            this.next = null;
+        }
     }
 
-    internal class VersionList
+    internal class VersionList : IEnumerable<VersionEntry>
     {
         private VersionNode head;
 
         public VersionList()
         {
-            this.head = new VersionNode();
-            head.VersionEntry = new VersionEntry(false, long.MaxValue, false, long.MaxValue, null);
-            head.Next = null;
+            this.head = new VersionNode(new VersionEntry(false, long.MaxValue, false, long.MaxValue, null, null));
         }
 
         public void PushFront(VersionEntry versionEntry)
         {
-            VersionNode newNode = new VersionNode();
-            newNode.VersionEntry = versionEntry;
+            VersionNode newNode = new VersionNode(versionEntry);
 
             do
             {
-                newNode.Next = this.head;
+                newNode.next = this.head;
             }
-            while (newNode.Next != Interlocked.CompareExchange(ref this.head, newNode, newNode.Next));
+            while (newNode.next != Interlocked.CompareExchange(ref this.head, newNode, newNode.next));
         }
 
         public bool ChangeNodeValue(VersionEntry oldVersion, VersionEntry newVersion)
         {
             VersionNode node = this.head;
-            while (node != null && node.VersionEntry.Record != null)
+            while (node != null && node.versionEntry.Record != null)
             {
                 // try to find the old version
-                if (node.VersionEntry == oldVersion)
+                if (node.versionEntry == oldVersion)
                 {
-                    return oldVersion == Interlocked.CompareExchange(ref node.VersionEntry, newVersion, oldVersion);
+                    return oldVersion == Interlocked.CompareExchange(ref node.versionEntry, newVersion, oldVersion);
                 }
-                node = node.Next;
+                node = node.next;
             }
 
             return false;
         }
 
-        public IList<VersionEntry> ToList()
+        public IEnumerator<VersionEntry> GetEnumerator()
         {
-            IList<VersionEntry> versionList = new List<VersionEntry>();
-            VersionNode node = this.head;
-            while (node != null && node.VersionEntry.Record != null)
-            {
-                versionList.Add(node.VersionEntry);
-                node = node.Next;
-            }
+            return new VersionListEnumerator(this.head);
+        }
 
-            return versionList;
+        IEnumerator IEnumerable.GetEnumerator()
+        {
+            return this.GetEnumerator();
         }
     }
 }
