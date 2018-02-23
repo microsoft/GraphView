@@ -1,7 +1,4 @@
-﻿using System.Data;
-using System.Windows.Forms;
-
-namespace GraphView.Transaction
+﻿namespace GraphView.Transaction
 {
     using System;
     using System.Collections.Generic;
@@ -11,106 +8,6 @@ namespace GraphView.Transaction
     using System.Threading.Tasks;
     using GraphView.GraphViewDBPortal;
     using Newtonsoft.Json.Linq;
-
-    internal enum OperationType
-    {
-        Insert,
-        Delete,
-        Update
-    }
-
-    internal class ReadSetEntry
-    {
-        internal object Key { get; }
-        internal long BeginTimestamp { get; }
-
-        public ReadSetEntry(object key, long beginTimestamp)
-        {
-            this.Key = key;
-            this.BeginTimestamp = beginTimestamp;
-        }
-
-        public override int GetHashCode()
-        {
-            return this.Key.GetHashCode() ^ this.BeginTimestamp.GetHashCode();
-        }
-
-        public override bool Equals(object obj)
-        {
-            ReadSetEntry entry = obj as ReadSetEntry;
-            if (entry == null)
-            {
-                return false;
-            }
-
-            return this.Key == entry.Key && this.BeginTimestamp == entry.BeginTimestamp;
-        }
-    }
-
-    internal class ScanSetEntry
-    {
-        internal object Key { get; }
-        internal long ReadTimestamp { get; }
-        internal bool HasVisibleVersion { get; }
-
-        public ScanSetEntry(object key, long readTimestamp, bool hasVisibleVersion)
-        {
-            this.Key = key;
-            this.ReadTimestamp = readTimestamp;
-            this.HasVisibleVersion = hasVisibleVersion;
-        }
-
-        public override int GetHashCode()
-        {
-            return this.Key.GetHashCode() ^ this.ReadTimestamp.GetHashCode() 
-                ^ HasVisibleVersion.GetHashCode();
-        }
-
-        public override bool Equals(object obj)
-        {
-            ScanSetEntry entry = obj as ScanSetEntry;
-            if (entry == null)
-            {
-                return false;
-            }
-
-            return this.Key == entry.Key && this.ReadTimestamp == entry.ReadTimestamp 
-                && this.HasVisibleVersion == entry.HasVisibleVersion;
-        }
-    }
-
-    internal class WriteSetEntry
-    {
-        internal object Key { get; }
-        internal long BeginTimestamp { get; }
-        internal bool IsOld { get; }
-
-        public WriteSetEntry(object key, long beginTimestamp, bool isOld)
-        {
-            this.Key = key;
-            this.BeginTimestamp = beginTimestamp;
-            this.IsOld = isOld;
-        }
-
-        public override int GetHashCode()
-        {
-            return this.Key.GetHashCode() ^ this.BeginTimestamp.GetHashCode() 
-                                          ^ this.IsOld.GetHashCode();
-        }
-
-        public override bool Equals(object obj)
-        {
-            WriteSetEntry entry = obj as WriteSetEntry;
-            if (entry == null)
-            {
-                return false;
-            }
-
-            return this.Key == entry.Key && this.BeginTimestamp == entry.BeginTimestamp 
-                                         && this.IsOld == entry.IsOld;
-        }
-    }
-    
 
     public class Transaction
     {

@@ -11,13 +11,7 @@ namespace GraphView.Transaction
     using System.Threading.Tasks;
     using GraphView.RecordRuntime;
     using Newtonsoft.Json.Linq;
-
-    internal class IndexSpecification
-    {
-        // A list of properties to be indexed
-        IList<string> properties;
-    }
-
+    
     internal class IndexValue
     {
         private List<object> keys;

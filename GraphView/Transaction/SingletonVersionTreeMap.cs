@@ -1,5 +1,4 @@
 ﻿
-
 namespace GraphView.Transaction
 {
     using System;

@@ -8,7 +8,7 @@
     using GraphView.Transaction;
     using Newtonsoft.Json.Linq;
 
-    internal interface IVersionedDataStore
+    public interface IVersionedDataStore
     {
         JObject GetJson(string tableId, object key, Transaction tx);
 
@@ -25,7 +25,7 @@
         bool DeleteJson(string tableId, object key, Transaction tx);
     }
 
-    internal interface IVersionedTableStore
+    public interface IVersionedTableStore
     {
         JObject GetJson(object key, Transaction tx);
 
@@ -42,7 +42,7 @@
         bool DeleteJson(object key, Transaction tx);
     }
 
-    internal interface IDataStore
+    public interface IDataStore
     {
         // Returns a list of base tables in the data store
         IList<string> GetTables();

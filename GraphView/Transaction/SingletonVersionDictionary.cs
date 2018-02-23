@@ -1,7 +1,4 @@
-﻿
-using System.Windows.Forms;
-
-namespace GraphView.Transaction
+﻿namespace GraphView.Transaction
 {
     using System;
     using System.Collections.Generic;
@@ -11,104 +8,6 @@ namespace GraphView.Transaction
     using System.Threading;
     using GraphView.RecordRuntime;
     using Newtonsoft.Json.Linq;
-
-    internal class VersionNode
-    {
-        public VersionEntry VersionEntry;
-        // TODO: confirm whether it's a reference variable
-        public VersionNode Next;
-    }
-
-    internal class VersionList
-    {
-        private VersionNode head;
-
-        public VersionList()
-        {
-            this.head = new VersionNode();
-            head.VersionEntry = new VersionEntry(false, long.MaxValue, false, long.MaxValue, null);
-            head.Next = null;
-        }
-
-        public void PushFront(VersionEntry versionEntry)
-        {
-            VersionNode newNode = new VersionNode();
-            newNode.VersionEntry = versionEntry;
-
-            do
-            {
-                newNode.Next = this.head;
-            }
-            while (newNode.Next != Interlocked.CompareExchange(ref this.head, newNode, newNode.Next));
-        }
-
-        public bool ChangeNodeValue(VersionEntry oldVersion, VersionEntry newVersion)
-        {
-            VersionNode node = this.head;
-            while (node != null && node.VersionEntry.Record != null)
-            {
-                // try to find the old version
-                if (node.VersionEntry == oldVersion)
-                {
-                    return oldVersion == Interlocked.CompareExchange(ref node.VersionEntry, newVersion, oldVersion);
-                }
-                node = node.Next;
-            }
-
-            return false;
-        }
-
-        public IList<VersionEntry> ToList()
-        {
-            IList<VersionEntry> versionList = new List<VersionEntry>();
-            VersionNode node = this.head;
-            while (node != null && node.VersionEntry.Record != null)
-            {
-                versionList.Add(node.VersionEntry);
-                node = node.Next;
-            }
-
-            return versionList;
-        }
-    }
-
-    internal abstract class SingletonVersionTable : VersionTable, IVersionedTableStore
-    {
-        public JObject GetJson(object key, Transaction tx)
-        {
-            throw new NotImplementedException();
-        }
-
-        public IList<JObject> GetRangeJsons(object lowerKey, object upperKey, Transaction tx)
-        {
-            throw new NotImplementedException();
-        }
-
-        public IList<object> GetRangeRecordKeyList(object lowerValue, object upperValue, Transaction tx)
-        {
-            throw new NotImplementedException();
-        }
-
-        public IList<object> GetRecordKeyList(object value, Transaction tx)
-        {
-            throw new NotImplementedException();
-        }
-
-        public bool InsertJson(object key, JObject record, Transaction tx)
-        {
-            throw new NotImplementedException();
-        }
-
-        public bool UpdateJson(object key, JObject record, Transaction tx)
-        {
-            throw new NotImplementedException();
-        }
-
-        public bool DeleteJson(object key, Transaction tx)
-        {
-            throw new NotImplementedException();
-        }
-    }
 
     /// <summary>
     /// A version table implementation in single machine environment.
