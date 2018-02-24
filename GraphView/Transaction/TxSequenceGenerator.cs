@@ -7,7 +7,7 @@ namespace GraphView.Transaction
     /// <summary>
     /// An interface for generating strictly-incremented sequence numbers for transactions
     /// </summary>
-    internal interface ITxSequenceGenerator
+    public interface ITxSequenceGenerator
     {
         long NextSequenceNumber();
     }
@@ -18,7 +18,7 @@ namespace GraphView.Transaction
     /// from the same machine, or generated sequence numbers are sync'ed across machines through a centralized source, 
     /// e.g., the underlying logging store.
     /// </summary>
-    internal class SingletonTxSequenceGenerator : ITxSequenceGenerator
+    public class SingletonTxSequenceGenerator : ITxSequenceGenerator
     {
         private static volatile SingletonTxSequenceGenerator instance;
         private static readonly object initiLock = new object();

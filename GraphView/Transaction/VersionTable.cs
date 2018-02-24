@@ -14,18 +14,11 @@ namespace GraphView.Transaction
     /// </summary>
     public abstract class VersionTable
     {
-        private string tableId;
+        public readonly string tableId;
 
-        public string TableId
+        public VersionTable(string tableId)
         {
-            get
-            {
-                return this.tableId;
-            }
-            set
-            {
-                this.tableId = value;
-            }
+            this.tableId = tableId;
         }
 
         /// <summary>
@@ -38,6 +31,11 @@ namespace GraphView.Transaction
         internal virtual IEnumerable<VersionEntry> GetVersionList(object recordKey)
         {
             throw new NotImplementedException();
+        }
+
+        internal virtual IEnumerable<VersionEntry> GetVersionList(object recordKey, long timestamp)
+        {
+            return this.GetVersionList(recordKey);
         }
 
         // TODO: refactor function name
@@ -112,7 +110,7 @@ namespace GraphView.Transaction
         /// <returns>The version entry visible to the Transaction. Null, if no entry exists.</returns>
         internal VersionEntry ReadVersion(object recordKey, long readTimestamp)
         {
-            IEnumerable<VersionEntry> versionList = this.GetVersionList(recordKey);
+            IEnumerable<VersionEntry> versionList = this.GetVersionList(recordKey, readTimestamp);
 
             if (versionList == null)
             {
@@ -140,17 +138,10 @@ namespace GraphView.Transaction
         /// <returns>True if the record does not exists in the version table; false; otherwise.</returns>
         internal bool InsertVersion(object recordKey, JObject record, long txId, long readTimestamp)
         {
-            IEnumerable<VersionEntry> versionList = this.GetVersionList(recordKey);
-
-            if (versionList != null)
+            VersionEntry visibleEntry = this.ReadVersion(recordKey, readTimestamp);
+            if (visibleEntry != null)
             {
-                foreach (VersionEntry version in versionList)
-                {
-                    if (this.CheckVersionVisibility(version, readTimestamp))
-                    {
-                        return false;
-                    }
-                }
+                return false;
             }
 
             this.InsertAndUploadVersion(recordKey, new VersionEntry(true, txId, false, long.MaxValue, recordKey, record));
@@ -169,7 +160,7 @@ namespace GraphView.Transaction
             out VersionEntry oldVersion, 
             out VersionEntry newVersion)
         {
-            IEnumerable<VersionEntry> versionList = this.GetVersionList(recordKey);
+            IEnumerable<VersionEntry> versionList = this.GetVersionList(recordKey, readTimestamp);
 
             if (versionList == null)
             {
@@ -228,7 +219,9 @@ namespace GraphView.Transaction
                                 recordKey,
                                 record));
                         oldVersion = null;
-                        version.Record = record;
+                        //
+                        // This is unnecessary. To double check with Zihan. 
+                        // version.Record = record;
                         newVersion = version;
                         return true;
                     }
@@ -256,7 +249,7 @@ namespace GraphView.Transaction
             long readTimestamp,
             out VersionEntry deletedVersion)
         {
-            IEnumerable<VersionEntry> versionList = this.GetVersionList(recordKey);
+            IEnumerable<VersionEntry> versionList = this.GetVersionList(recordKey, readTimestamp);
 
             if (versionList == null)
             {

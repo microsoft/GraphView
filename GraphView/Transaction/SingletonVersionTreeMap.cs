@@ -11,6 +11,8 @@ namespace GraphView.Transaction
 
     internal partial class SingletonVersionTreeMap : SingletonVersionTable
     {
+        public SingletonVersionTreeMap(string tableId) 
+            : base(tableId) { }
     }
 
     internal partial class SingletonVersionTreeMap : IVersionedTableStore

@@ -8,6 +8,9 @@ namespace GraphView.Transaction
 
     internal abstract class SingletonVersionTable : VersionTable, IVersionedTableStore
     {
+        public SingletonVersionTable(string tableId) 
+            : base(tableId) { }
+
         public JObject GetJson(object key, Transaction tx)
         {
             throw new NotImplementedException();

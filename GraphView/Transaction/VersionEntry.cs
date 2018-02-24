@@ -60,15 +60,19 @@
             }
         }
 
-        public JObject Record
+        public object Record
+        {
+            get
+            {
+                return this.record;
+            }
+        }
+
+        public JObject JsonRecord
         {
             get
             {
                 return (JObject)this.record;
-            }
-            set
-            {
-                this.record = value;
             }
         }
 
@@ -78,14 +82,14 @@
             bool isEndTxId, 
             long endTimestamp, 
             object recordKey, 
-            JObject jObject)
+            object record)
         {
             this.isBeginTxId = isBeginTxId;
             this.beginTimestamp = beginTimestamp;
             this.isEndTxId = isEndTxId;
             this.endTimestamp = endTimestamp;
             this.RecordKey = recordKey;
-            this.record = jObject;
+            this.record = record;
         }
 
         public override bool Equals(object obj)

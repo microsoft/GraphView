@@ -19,10 +19,10 @@
         private readonly object listLock;
 
         public SingletonVersionDictionary(string tableId)
+            : base(tableId)
         {
             this.dict = new Dictionary<object, VersionList>();
             this.listLock = new object();
-            this.TableId = tableId;
         }
 
         internal override IEnumerable<VersionEntry> GetVersionList(object recordKey)
@@ -70,9 +70,9 @@
             VersionEntry versionEntry = this.GetVersionEntry(key, tx.BeginTimestamp);
             if (versionEntry != null)
             {
-                tx.AddReadSet(this.TableId, key, versionEntry.BeginTimestamp);
-                tx.AddScanSet(this.TableId, key, tx.BeginTimestamp, true);
-                return versionEntry.Record;
+                tx.AddReadSet(this.tableId, key, versionEntry.BeginTimestamp);
+                tx.AddScanSet(this.tableId, key, tx.BeginTimestamp, true);
+                return versionEntry.JsonRecord;
             }
 
             return null;
@@ -107,14 +107,14 @@
                     if (versionEntry == null)
                     {
                         // false means no visiable version for this key
-                        tx.AddScanSet(this.TableId, key, tx.BeginTimestamp, false);
+                        tx.AddScanSet(this.tableId, key, tx.BeginTimestamp, false);
                     }
                     else
                     {
-                        jObjectValues.Add(versionEntry.Record);
+                        jObjectValues.Add(versionEntry.JsonRecord);
                         // true means we found a visiable version for this key
-                        tx.AddScanSet(this.TableId, key, tx.BeginTimestamp, true);
-                        tx.AddReadSet(this.TableId, key, versionEntry.BeginTimestamp);
+                        tx.AddScanSet(this.tableId, key, tx.BeginTimestamp, true);
+                        tx.AddReadSet(this.tableId, key, versionEntry.BeginTimestamp);
                     }
                 }
             }
@@ -152,11 +152,11 @@
                     if (versionEntry == null)
                     {
                         // false means no visiable version for this key
-                        tx.AddScanSet(this.TableId, key, tx.BeginTimestamp, false);
+                        tx.AddScanSet(this.tableId, key, tx.BeginTimestamp, false);
                     }
                     else
                     {
-                        JObject record = versionEntry.Record;
+                        JObject record = versionEntry.JsonRecord;
                         IndexValue indexValue = record.ToObject<IndexValue>();
                         if (indexValue == null)
                         {
@@ -166,8 +166,8 @@
 
                         keyHashset.UnionWith(indexValue.Keys);
                         // true means we found a visiable version for this key
-                        tx.AddScanSet(this.TableId, key, tx.BeginTimestamp, true);
-                        tx.AddReadSet(this.TableId, key, versionEntry.BeginTimestamp);
+                        tx.AddScanSet(this.tableId, key, tx.BeginTimestamp, true);
+                        tx.AddReadSet(this.tableId, key, versionEntry.BeginTimestamp);
                     }
                 }
             }
@@ -184,7 +184,7 @@
             VersionEntry versionEntry = this.GetVersionEntry(value, tx.BeginTimestamp);
             if (versionEntry != null)
             {
-                JObject record = versionEntry.Record;
+                JObject record = versionEntry.JsonRecord;
                 IndexValue indexValue = record.ToObject<IndexValue>();
                 if (indexValue == null)
                 {
@@ -192,8 +192,8 @@
                                 {""keys"":[""key1"", ""key2"", ...]}");
                 }
 
-                tx.AddReadSet(this.TableId, value, versionEntry.BeginTimestamp);
-                tx.AddScanSet(this.TableId, value, tx.BeginTimestamp, true);
+                tx.AddReadSet(this.tableId, value, versionEntry.BeginTimestamp);
+                tx.AddScanSet(this.tableId, value, tx.BeginTimestamp, true);
 
                 return indexValue.Keys;
             }
@@ -214,8 +214,8 @@
             bool hasInserted = this.InsertVersion(key, record, tx.TxId, tx.BeginTimestamp);
             if (hasInserted)
             {
-                tx.AddScanSet(this.TableId, key, tx.BeginTimestamp, false);
-                tx.AddWriteSet(this.TableId, key, tx.TxId, false);
+                tx.AddScanSet(this.tableId, key, tx.BeginTimestamp, false);
+                tx.AddWriteSet(this.tableId, key, tx.TxId, false);
             }
             return hasInserted;
         }
@@ -234,9 +234,9 @@
             if (hasUpdated)
             {
                 // pass the old version' begin timestamp to find old version
-                tx.AddWriteSet(this.TableId, key, oldVersionEntry.BeginTimestamp, true);
+                tx.AddWriteSet(this.tableId, key, oldVersionEntry.BeginTimestamp, true);
                 // pass the new version's begin timestamp to find the new version
-                tx.AddWriteSet(this.TableId, key, tx.TxId, false);
+                tx.AddWriteSet(this.tableId, key, tx.TxId, false);
             }
             return hasUpdated;
         }
@@ -254,7 +254,7 @@
             if (hasDeleted)
             {
                 // pass the old version's begin timestamp to find the old version
-                tx.AddWriteSet(this.TableId, key, versionEntry.BeginTimestamp, true);
+                tx.AddWriteSet(this.tableId, key, versionEntry.BeginTimestamp, true);
             }
             return hasDeleted;
         }

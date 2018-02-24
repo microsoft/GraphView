@@ -69,6 +69,8 @@
         /// </summary>
         private readonly Dictionary<string, HashSet<WriteSetEntry>> writeSet;
 
+        private readonly ITxSequenceGenerator seqGenerator;
+
         public long BeginTimestamp
         {
             get
@@ -89,6 +91,31 @@
         {
             this.txId = txId;
             this.beginTimestamp = beginTimestamp;
+            this.logStore = logStore;
+            this.versionDb = versionDb;
+            this.txTable = txTable;
+
+            this.endTimestamp = long.MinValue;
+            this.txStatus = TxStatus.Active;
+
+            this.readSet = new Dictionary<string, HashSet<ReadSetEntry>>();
+            this.scanSet = new Dictionary<string, HashSet<ScanSetEntry>>();
+            this.writeSet = new Dictionary<string, HashSet<WriteSetEntry>>();
+
+            this.txTable.InsertNewTx(this.txId, this.beginTimestamp);
+        }
+
+        public Transaction(
+            LogStore logStore, 
+            VersionDb versionDb, 
+            TransactionTable txTable, 
+            ITxSequenceGenerator seqGenerator)
+        {
+            this.seqGenerator = seqGenerator;
+
+            long sequenceNumber = this.seqGenerator.NextSequenceNumber();
+            this.txId = sequenceNumber;
+            this.beginTimestamp = sequenceNumber;
             this.logStore = logStore;
             this.versionDb = versionDb;
             this.txTable = txTable;
@@ -172,7 +199,7 @@
             //read successfully
             this.AddScanSet(tableId, recordKey, this.beginTimestamp, true);
             this.AddReadSet(tableId, recordKey, version.BeginTimestamp);
-            return version.Record;
+            return version.JsonRecord;
         }
 
         /// <summary>
@@ -334,6 +361,26 @@
             throw new NotImplementedException();
         }
 
+        public void Commit()
+        {
+            if (this.seqGenerator == null)
+            {
+                throw new Exception("Transaction cannot commit: transaction sequence number generator is not provided.");
+            }
+
+            long endTimestamp = -1;
+            try
+            {
+                endTimestamp = this.seqGenerator.NextSequenceNumber();
+            }
+            catch (Exception e)
+            {
+                throw new Exception("Failed to acquire the commit timestamp.", e);
+            }
+
+            this.Commit(endTimestamp);
+        }
+
         /// <summary>
         /// After complete all its normal processing, the transaction first acquires a end timestamp, then,
         /// checks visibility of the versions read, checks for phantoms,
@@ -351,7 +398,7 @@
             catch (Exception e)
             {
                 this.Abort();
-                throw;
+                throw e;
             }
             //Check phantom
             try
@@ -361,7 +408,7 @@
             catch (Exception e)
             {
                 this.Abort();
-                throw;
+                throw e;
             }
             //logging
             this.WriteChangestoLog();
