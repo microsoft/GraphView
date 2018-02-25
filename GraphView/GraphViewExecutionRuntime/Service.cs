@@ -519,11 +519,10 @@ namespace GraphView
     {
         private readonly GraphViewExecutionOperator inputOp;
         private string receiveOpId;
-        // if send data failed, sendOp will retry retryLimit times.
-        private readonly int retryLimit;
-        // if send data failed, sendOp will wait retryInterval milliseconds.
-        private readonly int retryInterval; 
-        
+
+        [NonSerialized]
+        private SendClient client;
+
         // The number of results that has been handled
         [NonSerialized]
         private int resultCount;
@@ -544,8 +543,6 @@ namespace GraphView
         private SendOperator(GraphViewExecutionOperator inputOp)
         {
             this.inputOp = inputOp;
-            this.retryLimit = 100;
-            this.retryInterval = 10; // 5 ms
             this.Open();
         }
 
@@ -589,7 +586,7 @@ namespace GraphView
                     }
                     else
                     {
-                        SendRawRecord(record, index);
+                        this.client.SendRawRecord(record, index);
                     }
                 }
                 else if (this.isSync)
@@ -613,7 +610,7 @@ namespace GraphView
                         }
                         if (this.partitionPlans[i].BelongToPartitionPlan(partition))
                         {
-                            SendRawRecord(record, i);
+                            this.client.SendRawRecord(record, i);
                             break;
                         }
                         if (i == this.partitionPlans.Count - 1)
@@ -631,67 +628,11 @@ namespace GraphView
                     continue;
                 }
                 string message = $"{this.taskIndex},{this.resultCount}";
-                SendSignal(i, message);
+                this.client.SendSignal(message, i);
             }
 
             this.Close();
             return null;
-        }
-
-        private MessageServiceClient ConstructClient(int targetTaskIndex)
-        {
-            string ip = this.partitionPlans[targetTaskIndex].IP;
-            int port = this.partitionPlans[targetTaskIndex].Port;
-            UriBuilder uri = new UriBuilder("http", ip, port, this.receiveOpId + "/RawRecordService");
-            EndpointAddress endpointAddress = new EndpointAddress(uri.ToString());
-            WSHttpBinding binding = new WSHttpBinding();
-            binding.Security.Mode = SecurityMode.None;
-            return new MessageServiceClient(binding, endpointAddress);
-        }
-
-        private void SendRawRecord(RawRecord record, int targetTaskIndex)
-        {
-            string message = RawRecordMessage.CodeMessage(record);
-            MessageServiceClient client = ConstructClient(targetTaskIndex);
-
-            for (int i = 0; i < this.retryLimit; i++)
-            {
-                try
-                {
-                    client.SendMessage(message);
-                    return;
-                }
-                catch (Exception e)
-                {
-                    if (i == this.retryLimit - 1)
-                    {
-                        throw e;
-                    }
-                    System.Threading.Thread.Sleep(this.retryInterval);
-                }
-            }
-        }
-
-        private void SendSignal(int targetTaskIndex, string signal)
-        {
-            MessageServiceClient client = ConstructClient(targetTaskIndex);
-
-            for (int i = 0; i < this.retryLimit; i++)
-            {
-                try
-                {
-                    client.SendSignal(signal);
-                    return;
-                }
-                catch (Exception e)
-                {
-                    if (i == this.retryLimit - 1)
-                    {
-                        throw e;
-                    }
-                    System.Threading.Thread.Sleep(this.retryInterval);
-                }
-            }
         }
 
         public void SetReceiveOpId(string id)
@@ -718,6 +659,8 @@ namespace GraphView
             this.partitionPlans = additionalInfo.PartitionPlans;
             this.taskIndex = additionalInfo.TaskIndex;
             this.resultCount = 0;
+
+            this.client = new SendClient(this.receiveOpId, this.partitionPlans);
         }
     }
 
@@ -730,9 +673,7 @@ namespace GraphView
         private readonly bool needFetchRawRecord;
 
         [NonSerialized]
-        private ServiceHost selfHost;
-        [NonSerialized]
-        private MessageService service;
+        private ReceiveHost receiveHost;
 
         [NonSerialized]
         private List<bool> hasBeenSignaled;
@@ -754,18 +695,11 @@ namespace GraphView
             this.inputOp.SetReceiveOpId(this.id);
             this.needFetchRawRecord = needFetchRawRecord;
 
-            this.selfHost = null;
-
             this.Open();
         }
 
         public override RawRecord Next()
         {
-            if (this.selfHost == null)
-            {
-                this.OpenHost();
-            }
-
             RawRecord record;
             if (this.inputOp.State() && (record = this.inputOp.Next()) != null)
             {
@@ -780,14 +714,14 @@ namespace GraphView
                 if (this.needFetchRawRecord)
                 {
                     string message;
-                    if (this.service.Messages.TryDequeue(out message))
+                    if (this.receiveHost.TryGetMessage(out message))
                     {
                         return RawRecordMessage.DecodeMessage(message, this.command);
                     }
                 }
 
                 string acknowledge;
-                while (this.service.Signals.TryDequeue(out acknowledge))
+                while (this.receiveHost.TryGetSignal(out acknowledge))
                 {
                     string[] messages = acknowledge.Split(',');
                     int ackTaskId = Int32.Parse(messages[0]);
@@ -814,29 +748,6 @@ namespace GraphView
 
             this.Close();
             return null;
-        }
-
-        private void OpenHost()
-        {
-            PartitionPlan ownPartitionPlan = this.partitionPlans[this.taskIndex];
-            UriBuilder uri = new UriBuilder("http", ownPartitionPlan.IP, ownPartitionPlan.Port, this.id);
-            Uri baseAddress = uri.Uri;
-
-            WSHttpBinding binding = new WSHttpBinding();
-            binding.Security.Mode = SecurityMode.None;
-
-            this.selfHost = new ServiceHost(new MessageService(), baseAddress);
-            this.selfHost.AddServiceEndpoint(typeof(IMessageService), binding, "RawRecordService");
-
-            ServiceMetadataBehavior smb = new ServiceMetadataBehavior();
-            smb.HttpGetEnabled = true;
-            this.selfHost.Description.Behaviors.Add(smb);
-            this.selfHost.Description.Behaviors.Find<ServiceBehaviorAttribute>().InstanceContextMode =
-                InstanceContextMode.Single;
-
-            this.service = selfHost.SingletonInstance as MessageService;
-
-            selfHost.Open();
         }
 
         public bool HasGlobalResult()
@@ -873,11 +784,12 @@ namespace GraphView
             this.partitionPlans = additionalInfo.PartitionPlans;
             this.taskIndex = additionalInfo.TaskIndex;
 
-            this.selfHost = null;
-
             this.hasBeenSignaled = Enumerable.Repeat(false, this.partitionPlans.Count).ToList();
             this.hasBeenSignaled[this.taskIndex] = true;
             this.resultCountList = Enumerable.Repeat(0, this.partitionPlans.Count).ToList();
+
+            this.receiveHost = new ReceiveHost(this.id, this.taskIndex, this.partitionPlans);
+            this.receiveHost.OpenHost();
         }
     }
 
