@@ -2622,7 +2622,8 @@ namespace GraphView
         }
         internal RawRecord(RawRecord rhs)
         {
-            fieldValues = new List<FieldObject>(rhs.fieldValues);
+            this.fieldValues = new List<FieldObject>(rhs.fieldValues);
+            this.lastBelongTask = rhs.lastBelongTask;
         }
         internal RawRecord(int num)
         {
@@ -2685,6 +2686,10 @@ namespace GraphView
 
         [DataMember]
         internal List<FieldObject> fieldValues;
+
+        // For parallel
+        [DataMember]
+        internal int lastBelongTask;
     }
 
 

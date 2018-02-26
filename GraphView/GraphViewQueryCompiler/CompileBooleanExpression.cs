@@ -141,6 +141,7 @@ namespace GraphView
             subContext.OuterContextOp.SetContainer(container);
             subContext.AddField(GremlinKeyword.IndexTableName, command.IndexColumnName, ColumnGraphType.Value, true);
             subContext.InBatchMode = true;
+            subContext.NeedGlobalAggregate = false;
             // Close it temporarily
             if (subContext.InParallelMode)
             {

@@ -501,19 +501,11 @@ namespace GraphView
                             GetPartitionMethodForTraversalOp getPartitionMethod = new GetPartitionMethodForTraversalOp(edgeFieldIndex, traversalType);
                             if (context.InParallelMode && context.SendReceiveMode != SendReceiveMode.None)
                             {
-                                if (context.SendReceiveMode == SendReceiveMode.Send)
-                                {
-                                    SendOperator sendOperator = new SendOperator(context.CurrentExecutionOperator, getPartitionMethod, false);
-                                    ReceiveOperator receiveOperator = new ReceiveOperator(sendOperator);
-                                    currentExecutionOperator = receiveOperator;
-                                }
-                                else if(context.SendReceiveMode == SendReceiveMode.SendThenSendBack)
-                                {
-                                    context.NeedSendBack = true;
-                                    SendOperator sendOperator = new SendOperator(context.CurrentExecutionOperator, getPartitionMethod, true);
-                                    ReceiveOperator receiveOperator = new ReceiveOperator(sendOperator);
-                                    currentExecutionOperator = receiveOperator;
-                                }
+                                context.HasSendOp = true;
+                                SendOperator sendOperator = new SendOperator(context.CurrentExecutionOperator, getPartitionMethod, 
+                                    context.SendReceiveMode == SendReceiveMode.SendThenSendBack);
+                                ReceiveOperator receiveOperator = new ReceiveOperator(sendOperator);
+                                currentExecutionOperator = receiveOperator;
                             }
 
                             op = new TraversalOperator(
@@ -562,19 +554,11 @@ namespace GraphView
                             GetPartitionMethodForTraversalOp getPartitionMethod = new GetPartitionMethodForTraversalOp(edgeFieldIndex, traversalType);
                             if (context.InParallelMode && context.SendReceiveMode != SendReceiveMode.None)
                             {
-                                if (context.SendReceiveMode == SendReceiveMode.Send)
-                                {
-                                    SendOperator sendOperator = new SendOperator(context.CurrentExecutionOperator, getPartitionMethod, false);
-                                    ReceiveOperator receiveOperator = new ReceiveOperator(sendOperator);
-                                    currentExecutionOperator = receiveOperator;
-                                }
-                                else if (context.SendReceiveMode == SendReceiveMode.SendThenSendBack)
-                                {
-                                    context.NeedSendBack = true;
-                                    SendOperator sendOperator = new SendOperator(context.CurrentExecutionOperator, getPartitionMethod, true);
-                                    ReceiveOperator receiveOperator = new ReceiveOperator(sendOperator);
-                                    currentExecutionOperator = receiveOperator;
-                                }
+                                context.HasSendOp = true;
+                                SendOperator sendOperator = new SendOperator(context.CurrentExecutionOperator, getPartitionMethod, 
+                                    context.SendReceiveMode == SendReceiveMode.SendThenSendBack);
+                                ReceiveOperator receiveOperator = new ReceiveOperator(sendOperator);
+                                currentExecutionOperator = receiveOperator;
                             }
                             op = new TraversalOperator(
                                 currentExecutionOperator,
@@ -742,14 +726,22 @@ namespace GraphView
             }
             else
             {
+                GraphViewExecutionOperator inputOp = operatorChain.Any()
+                    ? operatorChain.Last()
+                    : context.OuterContextOp;
+                if (context.InParallelMode && !context.NeedGlobalAggregate && context.HasSendOp)
+                {
+                    SendOperator sendOp = new SendOperator(inputOp, true, false, true);
+                    ReceiveOperator receiveOp = new ReceiveOperator(sendOp);
+                    operatorChain.Add(sendOp);
+                    operatorChain.Add(receiveOp);
+                    inputOp = receiveOp;
+                }
+
                 ProjectAggregation projectAggregationOp = context.InBatchMode ?
-                    new ProjectAggregationInBatch(operatorChain.Any()
-                        ? operatorChain.Last()
-                        : context.OuterContextOp,
+                    new ProjectAggregationInBatch(inputOp,
                         context.InParallelMode && context.NeedGlobalAggregate) :
-                    new ProjectAggregation(operatorChain.Any()
-                        ? operatorChain.Last()
-                        : context.OuterContextOp,
+                    new ProjectAggregation(inputOp,
                         context.InParallelMode && context.NeedGlobalAggregate);
 
                 foreach (var selectScalar in selectScalarExprList)
@@ -1334,7 +1326,7 @@ namespace GraphView
                     subcontext.CurrentExecutionOrder = context.LocalExecutionOrders[index];
                 }
                 GraphViewExecutionOperator traversalOp = scalarSubquery.SubQueryExpr.Compile(subcontext, command);
-                if (isParallel && subcontext.NeedSendBack)
+                if (isParallel && subcontext.HasSendOp)
                 {
                     SendOperator sendOperator = new SendOperator(traversalOp, true);
                     ReceiveOperator receiveOperator = new ReceiveOperator(sendOperator);
@@ -1486,7 +1478,7 @@ namespace GraphView
 
             GraphViewExecutionOperator targetSubqueryOp = optionalSelect.Compile(targetSubContext, command);
 
-            if (isParallel && targetSubContext.NeedSendBack)
+            if (isParallel && targetSubContext.HasSendOp)
             {
                 SendOperator sendOperator = new SendOperator(targetSubqueryOp, true);
                 ReceiveOperator receiveOperator = new ReceiveOperator(sendOperator);
@@ -1593,7 +1585,7 @@ namespace GraphView
 
             GraphViewExecutionOperator localTraversalOp = localSelect.Compile(subcontext, command);
 
-            if (isParallel && subcontext.NeedSendBack)
+            if (isParallel && subcontext.HasSendOp)
             {
                 SendOperator sendOperator = new SendOperator(localTraversalOp, true);
                 ReceiveOperator receiveOperator = new ReceiveOperator(sendOperator);
@@ -1688,7 +1680,7 @@ namespace GraphView
 
             GraphViewExecutionOperator flatMapTraversalOp = flatMapSelect.Compile(subcontext, command);
 
-            if (isParallel && subcontext.NeedSendBack)
+            if (isParallel && subcontext.HasSendOp)
             {
                 SendOperator sendOperator = new SendOperator(flatMapTraversalOp, true);
                 ReceiveOperator receiveOperator = new ReceiveOperator(sendOperator);
@@ -1855,19 +1847,11 @@ namespace GraphView
             GetPartitionMethodForTraversalOp getPartitionMethod = new GetPartitionMethodForTraversalOp(edgeFieldIndex, traversalType);
             if (context.InParallelMode && context.SendReceiveMode != SendReceiveMode.None)
             {
-                if (context.SendReceiveMode == SendReceiveMode.Send)
-                {
-                    SendOperator sendOperator = new SendOperator(context.CurrentExecutionOperator, getPartitionMethod, false);
-                    ReceiveOperator receiveOperator = new ReceiveOperator(sendOperator);
-                    currentExecutionOperator = receiveOperator;
-                }
-                else if (context.SendReceiveMode == SendReceiveMode.SendThenSendBack)
-                {
-                    context.NeedSendBack = true;
-                    SendOperator sendOperator = new SendOperator(context.CurrentExecutionOperator, getPartitionMethod, true);
-                    ReceiveOperator receiveOperator = new ReceiveOperator(sendOperator);
-                    currentExecutionOperator = receiveOperator;
-                }
+                context.HasSendOp = true;
+                SendOperator sendOperator = new SendOperator(context.CurrentExecutionOperator, getPartitionMethod, 
+                    context.SendReceiveMode == SendReceiveMode.SendThenSendBack);
+                ReceiveOperator receiveOperator = new ReceiveOperator(sendOperator);
+                currentExecutionOperator = receiveOperator;
             }
 
             TraversalOperator traversalOp = new TraversalOperator(
@@ -2683,7 +2667,7 @@ namespace GraphView
 
             GraphViewExecutionOperator mapTraversalOp = mapSelect.Compile(subcontext, command);
 
-            if (isParallel && subcontext.NeedSendBack)
+            if (isParallel && subcontext.HasSendOp)
             {
                 SendOperator sendOperator = new SendOperator(mapTraversalOp, true);
                 ReceiveOperator receiveOperator = new ReceiveOperator(sendOperator);
@@ -2997,6 +2981,12 @@ namespace GraphView
             {
                 derivedTableContext.CurrentExecutionOrder = context.LocalExecutionOrders[0];
             }
+
+            if (derivedTableContext.InParallelMode && derivedTableContext.SendReceiveMode == SendReceiveMode.SendThenSendBack)
+            {
+                derivedTableContext.SendReceiveMode = SendReceiveMode.Send;
+            }
+
             GraphViewExecutionOperator subQueryOp = derivedSelectQueryBlock.Compile(derivedTableContext, command);
 
             ProjectAggregationInBatch projectAggregationInBatchOp = null;
@@ -3533,7 +3523,7 @@ namespace GraphView
 
             GraphViewExecutionOperator targetSubqueryOp = targetSubquery.SubQueryExpr.Compile(targetSubContext, command);
 
-            if (isParallel && targetSubContext.NeedSendBack)
+            if (isParallel && targetSubContext.HasSendOp)
             {
                 SendOperator sendOperator = new SendOperator(targetSubqueryOp, true);
                 ReceiveOperator receiveOperator = new ReceiveOperator(sendOperator);
@@ -3654,7 +3644,7 @@ namespace GraphView
 
             GraphViewExecutionOperator targetSubqueryOp = targetSubquery.SubQueryExpr.Compile(targetContext, command);
 
-            if (isParallel && targetContext.NeedSendBack)
+            if (isParallel && targetContext.HasSendOp)
             {
                 SendOperator sendOperator = new SendOperator(targetSubqueryOp, true);
                 ReceiveOperator receiveOperator = new ReceiveOperator(sendOperator);

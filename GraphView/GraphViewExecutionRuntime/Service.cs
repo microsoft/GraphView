@@ -533,6 +533,7 @@ namespace GraphView
         private readonly bool needAttachTaskIndex;
         private readonly bool isSendBack;
         private readonly bool isSync;
+        private readonly bool useLastBelongTask;
 
         // Set following fields in deserialization
         [NonSerialized]
@@ -555,13 +556,14 @@ namespace GraphView
             this.isSync = false;
         }
 
-        public SendOperator(GraphViewExecutionOperator inputOp, bool isSendBack, bool isSync = false)
+        public SendOperator(GraphViewExecutionOperator inputOp, bool isSendBack, bool isSync = false, bool useLastBelongTask = false)
             : this(inputOp)
         {
             this.getPartitionMethod = null;
             this.needAttachTaskIndex = false;
             this.isSendBack = isSendBack;
             this.isSync = isSync;
+            this.useLastBelongTask = useLastBelongTask;
         }
 
         public override RawRecord Next()
@@ -578,7 +580,7 @@ namespace GraphView
 
                 if (this.isSendBack)
                 {
-                    int index = int.Parse(record[1].ToValue);
+                    int index = this.useLastBelongTask ? record.lastBelongTask : int.Parse(record[1].ToValue);
                     if (index == this.taskIndex)
                     {
                         this.resultCount++;
@@ -596,6 +598,8 @@ namespace GraphView
                 }
                 else
                 {
+                    record.lastBelongTask = this.taskIndex;
+
                     string partition = this.getPartitionMethod.GetPartition(record);
                     if (this.partitionPlans[this.taskIndex].BelongToPartitionPlan(partition))
                     {
@@ -1099,7 +1103,7 @@ namespace GraphView
             }
         }
 
-        public RawRecord ReconstructRawRecord(GraphViewCommand command)
+        private RawRecord ReconstructRawRecord(GraphViewCommand command)
         {
             this.vertexFields = new Dictionary<string, VertexField>();
             this.forwardEdgeFields = new Dictionary<string, EdgeField>();
@@ -1149,6 +1153,8 @@ namespace GraphView
             {
                 correctRecord.Append(RecoverFieldObject(this.record[i]));
             }
+            correctRecord.lastBelongTask = this.record.lastBelongTask;
+
             return correctRecord;
         }
 
