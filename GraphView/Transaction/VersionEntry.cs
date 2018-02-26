@@ -11,7 +11,7 @@
         private long beginTimestamp;
         private bool isEndTxId;
         private long endTimestamp;
-        private object record;
+        private readonly object record;
 
         public object RecordKey { get; private set; }
 
@@ -125,8 +125,7 @@
                 return false;
             }
 
-            return this.RecordKey == ventry.RecordKey && 
-                this.IsBeginTxId == ventry.IsBeginTxId && 
+            return this.RecordKey == ventry.RecordKey &&
                 this.BeginTimestamp == ventry.BeginTimestamp;
         }
 

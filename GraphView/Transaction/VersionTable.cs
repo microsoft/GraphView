@@ -38,13 +38,11 @@ namespace GraphView.Transaction
             return this.GetVersionList(recordKey);
         }
 
-        // TODO: refactor function name
         internal virtual void InsertAndUploadVersion(object recordKey, VersionEntry version)
         {
             throw new NotImplementedException();
         }
 
-        // TODO: refactor function name
         internal virtual bool UpdateAndUploadVersion(object recordKey, VersionEntry oldVersion, VersionEntry newVersion)
         {
             throw new NotImplementedException();
@@ -139,6 +137,7 @@ namespace GraphView.Transaction
         internal bool InsertVersion(object recordKey, JObject record, long txId, long readTimestamp)
         {
             VersionEntry visibleEntry = this.ReadVersion(recordKey, readTimestamp);
+
             if (visibleEntry != null)
             {
                 return false;
@@ -160,84 +159,69 @@ namespace GraphView.Transaction
             out VersionEntry oldVersion, 
             out VersionEntry newVersion)
         {
-            IEnumerable<VersionEntry> versionList = this.GetVersionList(recordKey, readTimestamp);
+            VersionEntry visibleEntry = this.ReadVersion(recordKey, readTimestamp);
 
-            if (versionList == null)
+            //no version is visible
+            if (visibleEntry == null)
             {
                 oldVersion = null;
                 newVersion = null;
                 return false;
             }
 
-            foreach (VersionEntry version in versionList)
+            //check the version's updatability
+            if (!visibleEntry.IsEndTxId && visibleEntry.EndTimestamp == long.MaxValue)
             {
-                //first check the version's visibility
-                if (!this.CheckVersionVisibility(version, readTimestamp))
+                //updatable, two case:
+                //case 1: the version's begin field is a timestamp
+                if (!visibleEntry.IsBeginTxId)
                 {
-                    continue;
-                }
-                //check the version's updatability
-                if (!version.IsEndTxId && version.EndTimestamp == long.MaxValue)
-                {
-                    //updatable, two case:
-                    //case 1: if the version's begin field is a timestamp, 
-                    if (!version.IsBeginTxId)
+                    oldVersion = visibleEntry;
+                    //(1) ATOMICALLY set the version's end timestamp to TxId, make it an old version.
+                    if (this.UpdateAndUploadVersion(recordKey, visibleEntry,
+                        new VersionEntry(
+                            visibleEntry.IsBeginTxId,
+                            visibleEntry.BeginTimestamp,
+                            true,
+                            txId,
+                            visibleEntry.RecordKey,
+                            visibleEntry.Record)))
                     {
-                        //(1) ATOMICALLY set the version's end timestamp to TxId,
-                        //if (1) failed, other transaction has already set the version's end field, can not update.
                         //if (1) success, insert a new version
-                        if (this.UpdateAndUploadVersion(recordKey, version,
-                            new VersionEntry(
-                                version.IsBeginTxId, 
-                                version.BeginTimestamp, 
-                                true, 
-                                txId, 
-                                version.RecordKey, 
-                                version.Record)))
-                        {
-                            //(1) success
-                            newVersion = new VersionEntry(true, txId, false, long.MaxValue, recordKey, record);
-                            this.InsertAndUploadVersion(recordKey, newVersion);
-                            oldVersion = version;
-                            return true;
-                        }
-                        //(1) failed
-                        oldVersion = version;
+                        newVersion = new VersionEntry(true, txId, false, long.MaxValue, recordKey, record);
+                        this.InsertAndUploadVersion(recordKey, newVersion);
+                        return true;
+                    }
+                    else
+                    {
+                        //if (1) failed, other transaction has already set the version's end field, can not update.
                         newVersion = null;
                         return false;
                     }
-                    //case 2: if the version's begin field is a TxId
-                    else
-                    {
-                        //change the record directly on this version
-                        this.UpdateAndUploadVersion(recordKey, version,
-                            new VersionEntry(
-                                version.IsBeginTxId, 
-                                version.BeginTimestamp, 
-                                version.IsEndTxId, 
-                                version.EndTimestamp, 
-                                recordKey,
-                                record));
-                        oldVersion = null;
-                        //
-                        // This is unnecessary. To double check with Zihan. 
-                        // version.Record = record;
-                        newVersion = version;
-                        return true;
-                    }
                 }
-                //a version is visible but not updatable, can not perform update, return false
+                //case 2: if the version's begin field is a TxId
                 else
                 {
                     oldVersion = null;
-                    newVersion = null;
-                    return false;
+                    newVersion = new VersionEntry(
+                        visibleEntry.IsBeginTxId,
+                        visibleEntry.BeginTimestamp,
+                        visibleEntry.IsEndTxId,
+                        visibleEntry.EndTimestamp,
+                        recordKey,
+                        record);
+                    //change the record directly on this version
+                    this.UpdateAndUploadVersion(recordKey, visibleEntry, newVersion);
+                    return true;
                 }
             }
-            //can not find the legal version to perform update
-            oldVersion = null;
-            newVersion = null;
-            return false;
+            //a version is visible but not updatable, can not perform update, return false
+            else
+            {
+                oldVersion = null;
+                newVersion = null;
+                return false;
+            }
         }
 
         /// <summary>
@@ -249,74 +233,62 @@ namespace GraphView.Transaction
             long readTimestamp,
             out VersionEntry deletedVersion)
         {
-            IEnumerable<VersionEntry> versionList = this.GetVersionList(recordKey, readTimestamp);
+            VersionEntry visibleEntry = this.ReadVersion(recordKey, readTimestamp);
 
-            if (versionList == null)
+            //no version is visible
+            if (visibleEntry == null)
             {
                 deletedVersion = null;
                 return false;
             }
 
-            //tranverse the version list, try to find the deletable version
-            foreach (VersionEntry version in versionList)
+            //check the version's deletability
+            if (!visibleEntry.IsEndTxId && visibleEntry.EndTimestamp == long.MaxValue)
             {
-                //first check the version's visibility
-                if (!this.CheckVersionVisibility(version, readTimestamp))
+                deletedVersion = visibleEntry;
+                //deletable, two case:
+                //case 1: the version's begin field is a timestamp
+                if (!visibleEntry.IsBeginTxId)
                 {
-                    continue;
-                }
-                //check the version's updatability
-                if (!version.IsEndTxId && version.EndTimestamp == long.MaxValue)
-                {
-                    //deletable, two case:
-                    //case 1: if the version's begin field is a timestamp, 
-                    if (!version.IsBeginTxId)
+                    //(1) ATOMICALLY set the version's end timestamp to TxId
+                    if (this.UpdateAndUploadVersion(recordKey, visibleEntry,
+                        new VersionEntry(
+                            visibleEntry.IsBeginTxId,
+                            visibleEntry.BeginTimestamp,
+                            true,
+                            txId,
+                            visibleEntry.RecordKey,
+                            visibleEntry.Record)))
                     {
-                        //if the versiin's begin field is a timestamp
-                        //(1) ATOMICALLY set the version's end timestamp to TxId
-                        //if (1) failed, other transaction has already set the version's end field, can not delete
-                        if (this.UpdateAndUploadVersion(recordKey, version,
-                            new VersionEntry(
-                                version.IsBeginTxId, 
-                                version.BeginTimestamp, 
-                                true, 
-                                txId, 
-                                version.RecordKey, 
-                                version.Record)))
-                        {
-                            //success
-                            deletedVersion = version;
-                            return true;
-                        }
-                        //failed
-                        deletedVersion = version;
-                        return false;
-                    }
-                    //case 2: if the version's begin field is a TxId, set the version's end timestamp to TxId directly
-                    else
-                    {
-                        this.UpdateAndUploadVersion(recordKey, version,
-                            new VersionEntry(
-                                version.IsBeginTxId, 
-                                version.BeginTimestamp, 
-                                true, 
-                                txId, 
-                                version.RecordKey, 
-                                version.Record));
-                        deletedVersion = version;
+                        //if (1) success, delete successfully
                         return true;
                     }
+                    else
+                    {
+                        //if (1) failed, other transaction has already set the version's end field, can not delete
+                        return false;
+                    }
                 }
-                //a version is visible but not deletable, can not perform delete, return false
+                //case 2: if the version's begin field is a TxId, set the version's end timestamp to TxId directly
                 else
                 {
-                    deletedVersion = null;
-                    return false;
+                    this.UpdateAndUploadVersion(recordKey, visibleEntry,
+                        new VersionEntry(
+                            visibleEntry.IsBeginTxId,
+                            visibleEntry.BeginTimestamp,
+                            true,
+                            txId,
+                            visibleEntry.RecordKey,
+                            visibleEntry.Record));
+                    return true;
                 }
             }
-            //can not find the legal version to perform delete
-            deletedVersion = null;
-            return false;
+            //a version is visible but not deletable, can not perform delete, return false
+            else
+            {
+                deletedVersion = null;
+                return false;
+            }
         }
 
         /// <summary>
