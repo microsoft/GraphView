@@ -11,25 +11,8 @@ namespace GraphView.Transaction
     using System.Threading.Tasks;
     using GraphView.RecordRuntime;
     using Newtonsoft.Json.Linq;
-    
-    internal class IndexValue
-    {
-        private List<object> keys;
-        
-        public List<object> Keys
-        {
-            get
-            {
-                return keys;
-            }
-            set
-            {
-                this.keys = value;
-            }
-        }
-    }
 
-    internal class SingletonVersionDb : VersionDb, IVersionedDataStore
+    internal partial class SingletonVersionDb : VersionDb, IVersionedDataStore
     {
         private static volatile SingletonVersionDb instance;
         private static readonly object initlock = new object();
@@ -217,7 +200,7 @@ namespace GraphView.Transaction
         /// First check the existence of the corresponding version table.
         /// If exists, delete the version, using the version table's DeleteVersion() method.
         /// </summary>
-        internal override bool DeleteVersion(string tableId, object recordKey, long txId, long readTimestamp, 
+        internal override bool DeleteVersion(string tableId, object recordKey, long txId, long readTimestamp,
             out VersionEntry deletedVersion)
         {
             if (!this.versionTables.ContainsKey(tableId))
@@ -235,7 +218,7 @@ namespace GraphView.Transaction
         /// First check the existence of the corresponding version table.
         /// If exists, check the version, using the version table's CheckVersionVisibility() method.
         /// </summary>
-        internal override bool CheckReadVisibility(string tableId, object recordKey, long readVersionBeginTimestamp, 
+        internal override bool CheckReadVisibility(string tableId, object recordKey, long readVersionBeginTimestamp,
             long readTimestamp, long txId)
         {
             if (!this.versionTables.ContainsKey(tableId))
@@ -295,4 +278,20 @@ namespace GraphView.Transaction
         }
     }
 
+    internal partial class SingletonVersionDb : IDataStore
+    {
+        public IList<Tuple<string, IndexSpecification>> GetIndexTables(string tableId)
+        {
+            if (!indexMap.ContainsKey(tableId))
+            {
+                throw new ArgumentException($"Invalid table reference '{tableId}'");
+            }
+            return this.indexMap[tableId];
+        }
+
+        public IList<string> GetTables()
+        {
+            return this.versionTables.Keys.ToList();
+        }
+    }
 }

@@ -1,8 +1,11 @@
 ﻿namespace GraphView.Transaction
 {
     using Newtonsoft.Json.Linq;
+    using System.Runtime.Serialization;
+    using System;
 
-    internal class VersionEntry
+    [Serializable]
+    internal class VersionEntry : ISerializable
     {
         private bool isBeginTxId;
         private long beginTimestamp;
@@ -92,6 +95,28 @@
             this.record = record;
         }
 
+        // The special constructor is used to deserialize values.
+        public VersionEntry(SerializationInfo info, StreamingContext context)
+        {
+            this.isBeginTxId = (bool) info.GetValue("isBeginTxId", typeof(bool));
+            this.beginTimestamp = (long) info.GetValue("beginTimestamp", typeof(long));
+            this.isEndTxId = (bool) info.GetValue("isEndTxId", typeof(bool));
+            this.endTimestamp = (long) info.GetValue("endTimestamp", typeof(long));
+            this.record = info.GetValue("record", typeof(object));
+        }
+
+        public override int GetHashCode()
+        {
+            int hash = 17;
+            hash = hash * 23 + this.IsBeginTxId.GetHashCode();
+            hash = hash * 23 + this.BeginTimestamp.GetHashCode();
+            hash = hash * 23 + this.IsEndTxId.GetHashCode();
+            hash = hash * 23 + this.EndTimestamp.GetHashCode();
+            hash = hash * 23 + this.Record.GetHashCode();
+
+            return hash;
+        }
+
         public override bool Equals(object obj)
         {
             VersionEntry ventry = obj as VersionEntry;
@@ -103,6 +128,15 @@
             return this.RecordKey == ventry.RecordKey && 
                 this.IsBeginTxId == ventry.IsBeginTxId && 
                 this.BeginTimestamp == ventry.BeginTimestamp;
+        }
+
+        public void GetObjectData(SerializationInfo info, StreamingContext context)
+        {
+            info.AddValue("isBeginTxId", this.IsBeginTxId, typeof(bool));
+            info.AddValue("beginTimestamp", this.BeginTimestamp, typeof(long));
+            info.AddValue("isEndTxId", this.IsEndTxId, typeof(bool));
+            info.AddValue("endTimestamp", this.EndTimestamp, typeof(long));
+            info.AddValue("record", this.Record, typeof(object));
         }
     }
 }

@@ -19,7 +19,11 @@ namespace GraphView.Transaction
 
         public override int GetHashCode()
         {
-            return this.Key.GetHashCode() ^ this.BeginTimestamp.GetHashCode();
+            int hash = 17;
+            hash = hash * 23 + this.Key.GetHashCode();
+            hash = hash * 23 + this.BeginTimestamp.GetHashCode();
+
+            return hash;
         }
 
         public override bool Equals(object obj)
