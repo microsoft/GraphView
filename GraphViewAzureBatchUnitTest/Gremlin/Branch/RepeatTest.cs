@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Newtonsoft.Json;
 
 namespace GraphViewAzureBatchUnitTest.Gremlin.Branch
 {
@@ -185,17 +186,49 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Branch
         }
 
         [TestMethod]
+        [Ignore]
         public void VerticesRepeatGroupCountMByNameOutTimes2CapM()
         {
             string query = "g.V().repeat(__.groupCount('m').by('name').out()).times(2).cap('m')";
-            // todo
+            List<string> result = StartAzureBatch.AzureBatchJobManager.TestQuery(query);
+            Console.WriteLine("-------------Test Result-------------");
+            foreach (string res in result)
+            {
+                Console.WriteLine(res);
+            }
+
+            Assert.AreEqual(1, result.Count);
+            dynamic results = JsonConvert.DeserializeObject<dynamic>(result[0]);
+            Assert.AreEqual(1, results.Count);
+            Assert.AreEqual(2, (int)results[0]["ripple"]);
+            Assert.AreEqual(1, (int)results[0]["peter"]);
+            Assert.AreEqual(2, (int)results[0]["vadas"]);
+            Assert.AreEqual(2, (int)results[0]["josh"]);
+            Assert.AreEqual(4, (int)results[0]["lop"]);
+            Assert.AreEqual(1, (int)results[0]["marko"]);
         }
 
         [TestMethod]
+        [Ignore]
         public void VerticesRepeatBothTimes10AsAOutAsBSelectAB()
         {
             string query = "g.V().repeat(__.both()).times(10).as('a').out().as('b').select('a', 'b')";
-            // todo
+            List<string> result = StartAzureBatch.AzureBatchJobManager.TestQuery(query);
+            Console.WriteLine("-------------Test Result-------------");
+            foreach (string res in result)
+            {
+                Console.WriteLine(res);
+            }
+
+            int counter = 0;
+            dynamic results = JsonConvert.DeserializeObject<dynamic>(result[0]);
+            foreach (var res in results)
+            {
+                Assert.IsTrue(res["a"] != null);
+                Assert.IsTrue(res["b"] != null);
+                counter++;
+            }
+            Assert.IsTrue(counter == 43958);
         }
 
         [TestMethod]

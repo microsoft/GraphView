@@ -90,19 +90,44 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Branch
         }
 
         [TestMethod]
+        [Ignore]
         public void ChooseIfPersonThenUnionOutLangOutAndOutNameElseInLabelGroupCount()
         {
             string query =
                 "g.V().choose(__.label().is('person'), union(__.out().values('lang'), __.out().values('name')), __.in().label()).groupCount()";
-            // todo
+            List<string> result = StartAzureBatch.AzureBatchJobManager.TestQuery(query);
+            Console.WriteLine("-------------Test Result-------------");
+            foreach (string res in result)
+            {
+                Console.WriteLine(res);
+            }
+
+            dynamic results = JsonConvert.DeserializeObject<dynamic>(result.FirstOrDefault());
+            Assert.AreEqual(4, (int)results[0]["java"]);
+            Assert.AreEqual(1, (int)results[0]["ripple"]);
+            Assert.AreEqual(4, (int)results[0]["person"]);
+            Assert.AreEqual(1, (int)results[0]["vadas"]);
+            Assert.AreEqual(1, (int)results[0]["josh"]);
+            Assert.AreEqual(3, (int)results[0]["lop"]);
         }
 
         [TestMethod]
+        [Ignore]
         public void UnionRepeatUnionOutCreatedInCreatedTimes2RepeatUnionInCreatedOutCreatedTimes2LabelGroupCount()
         {
             string query =
                 "g.V().union(__.repeat(__.union(__.out('created'), __.in('created'))).times(2), __.repeat(__.union(__.in('created'), __.out('created'))).times(2)).label().groupCount()";
-            // todo
+            List<string> results = StartAzureBatch.AzureBatchJobManager.TestQuery(query);
+            Console.WriteLine("-------------Test Result-------------");
+            foreach (string res in results)
+            {
+                Console.WriteLine(res);
+            }
+
+            dynamic result = JsonConvert.DeserializeObject<dynamic>(results.FirstOrDefault());
+
+            Assert.AreEqual(12, (int)result[0]["software"]);
+            Assert.AreEqual(20, (int)result[0]["person"]);
         }
 
 
@@ -111,22 +136,40 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Branch
         {
             string query =
                 "g.V().has('name', within('marko', 'vadas')).local(__.union(__.outE().count(), __.inE().count(), __.outE().values('weight').sum()))";
-            // todo
+            List<string> results = StartAzureBatch.AzureBatchJobManager.TestQuery(query);
+            Console.WriteLine("-------------Test Result-------------");
+            foreach (string res in results)
+            {
+                Console.WriteLine(res);
+            }
+            CheckUnOrderedResults(new double[] { 0d, 0d, 0d, 3d, 1d, 1.9d }, results.Select(value => double.Parse(value)).ToList());
         }
 
         [TestMethod]
         public void HasVId1VId2UnionOutECountInECountOutEWeightSum()
         {
             string query =
-                "g.V().has('name', within('marko', 'vadas')).union(__.outE().count, __.inE().count, __.outE().values('weight').sum())";
-            // todo
+                "g.V().has('name', within('marko', 'vadas')).union(__.outE().count(), __.inE().count(), __.outE().values('weight').sum())";
+            List<string> results = StartAzureBatch.AzureBatchJobManager.TestQuery(query);
+            Console.WriteLine("-------------Test Result-------------");
+            foreach (string res in results)
+            {
+                Console.WriteLine(res);
+            }
+            CheckUnOrderedResults(new double[] { 3d, 1.9d, 1d }, results.Select(value => double.Parse(value)).ToList());
         }
 
         [TestMethod]
         public void UnionWithoutBranch()
         {
             string query = "g.V().union().V().count()";
-            // todo
+            List<string> results = StartAzureBatch.AzureBatchJobManager.TestQuery(query);
+            Console.WriteLine("-------------Test Result-------------");
+            foreach (string res in results)
+            {
+                Console.WriteLine(res);
+            }
+            CheckUnOrderedResults(new string[] { "0" }, results);
         }
     }
 }

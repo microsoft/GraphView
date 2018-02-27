@@ -123,11 +123,8 @@ namespace GraphView
             QueryCompilationContext subContext = new QueryCompilationContext(context);
             Container container = new Container();
             subContext.OuterContextOp.SetContainer(container);
-            // Close it temporarily
-            if (subContext.InParallelMode)
-            {
-                subContext.SendReceiveMode = SendReceiveMode.None;
-            }
+            subContext.NeedGlobalAggregate = false;
+
             GraphViewExecutionOperator subQueryOp = Subquery.SubQueryExpr.Compile(subContext, command);
             ExistsFunction existsFunc = new ExistsFunction(subQueryOp, container);
 
@@ -142,11 +139,7 @@ namespace GraphView
             subContext.AddField(GremlinKeyword.IndexTableName, command.IndexColumnName, ColumnGraphType.Value, true);
             subContext.InBatchMode = true;
             subContext.NeedGlobalAggregate = false;
-            // Close it temporarily
-            if (subContext.InParallelMode)
-            {
-                subContext.SendReceiveMode = SendReceiveMode.None;
-            }
+
             GraphViewExecutionOperator subQueryOp = this.Subquery.SubQueryExpr.Compile(subContext, command);
             ExistsFunction existsFunc = new ExistsFunction(subQueryOp, container);
 

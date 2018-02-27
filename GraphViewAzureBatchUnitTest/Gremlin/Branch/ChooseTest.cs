@@ -15,7 +15,13 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Branch
         public void get_g_V_chooseXout_countX_optionX2L__nameX_optionX3L__valueMapX()
         {
             string query = "g.V().choose(__.out().count()).option(2, __.values('name')).option(3, __.valueMap())";
-            // todo
+            List<string> results = StartAzureBatch.AzureBatchJobManager.TestQuery(query);
+            Console.WriteLine("-------------Test Result-------------");
+            foreach (string result in results)
+            {
+                Console.WriteLine(result);
+            }
+            CheckUnOrderedResults(new[] { "[name:[marko], age:[29]]", "josh"}, results);
         }
 
         [TestMethod]
@@ -48,7 +54,13 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Branch
         public void get_g_V_chooseXoutXknowsX_count_isXgtX0XX__outXknowsXX_name()
         {
             string query = "g.V().choose(__.out('knows').count().is(gt(0)), __.out('knows')).values('name')";
-            // todo
+            List<string> result = StartAzureBatch.AzureBatchJobManager.TestQuery(query);
+            Console.WriteLine("-------------Test Result-------------");
+            foreach (string row in result)
+            {
+                Console.WriteLine(row);
+            }
+            CheckUnOrderedResults(new[] { "vadas", "josh", "vadas", "josh", "peter", "lop", "ripple" }, result);
         }
     }
 }

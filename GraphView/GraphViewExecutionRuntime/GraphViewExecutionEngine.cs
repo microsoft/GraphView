@@ -1691,7 +1691,7 @@ namespace GraphView
         }
 
 
-        public bool IsReverse => bool.Parse(this.EdgeJObject.Property(KW_EDGEDOC_ISREVERSE)?.Value.ToString() ?? "false");
+        public bool IsReverse => this.EdgeJObject.Property(KW_EDGE_SRCV) != null;
 
         [OnSerializing]
         private void SetValuesOnSerializing(StreamingContext context)

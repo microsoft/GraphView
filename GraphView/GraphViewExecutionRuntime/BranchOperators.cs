@@ -760,6 +760,21 @@ namespace GraphView
                 }
             }
 
+            if (this.isParallel)
+            {
+                RawRecord record;
+
+                if (this.trueBranchTraversalOp.State() && (record = this.trueBranchTraversalOp.Next()) != null)
+                {
+                    return record;
+                }
+
+                if (this.falseBranchTraversalOp.State() && (record = this.falseBranchTraversalOp.Next()) != null)
+                {
+                    return record;
+                }
+            }
+
             this.Close();
             return null;
         }
