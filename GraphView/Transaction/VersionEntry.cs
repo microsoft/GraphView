@@ -13,7 +13,24 @@
         private long endTimestamp;
         private readonly object record;
 
-        public object RecordKey { get; private set; }
+        private readonly object recordKey;
+        private readonly long versionKey;
+
+        public object RecordKey
+        {
+            get
+            {
+                return this.recordKey;
+            }
+        }
+        
+        public long VersionKey
+        {
+            get
+            {
+                return this.versionKey;
+            }
+        }
 
         public bool IsBeginTxId
         {
@@ -24,7 +41,7 @@
             set
             {
                 this.isBeginTxId = value;
-            }
+            } 
         }
 
         public long BeginTimestamp
@@ -91,8 +108,10 @@
             this.beginTimestamp = beginTimestamp;
             this.isEndTxId = isEndTxId;
             this.endTimestamp = endTimestamp;
-            this.RecordKey = recordKey;
             this.record = record;
+
+            this.recordKey = recordKey;
+            this.versionKey = beginTimestamp;
         }
 
         // The special constructor is used to deserialize values.
@@ -103,16 +122,16 @@
             this.isEndTxId = (bool) info.GetValue("isEndTxId", typeof(bool));
             this.endTimestamp = (long) info.GetValue("endTimestamp", typeof(long));
             this.record = info.GetValue("record", typeof(object));
+
+            this.recordKey = info.GetValue("recordKey", typeof(object));
+            this.versionKey = (long) info.GetValue("versionKey", typeof(long));
         }
 
         public override int GetHashCode()
         {
             int hash = 17;
-            hash = hash * 23 + this.IsBeginTxId.GetHashCode();
-            hash = hash * 23 + this.BeginTimestamp.GetHashCode();
-            hash = hash * 23 + this.IsEndTxId.GetHashCode();
-            hash = hash * 23 + this.EndTimestamp.GetHashCode();
-            hash = hash * 23 + this.Record.GetHashCode();
+            hash = hash * 23 + this.VersionKey.GetHashCode();
+            hash = hash * 23 + this.RecordKey.GetHashCode();
 
             return hash;
         }
@@ -125,8 +144,8 @@
                 return false;
             }
 
-            return this.RecordKey == ventry.RecordKey &&
-                this.BeginTimestamp == ventry.BeginTimestamp;
+            return this.VersionKey == ventry.VersionKey &&
+                this.RecordKey == ventry.RecordKey;
         }
 
         public void GetObjectData(SerializationInfo info, StreamingContext context)
@@ -136,6 +155,9 @@
             info.AddValue("isEndTxId", this.IsEndTxId, typeof(bool));
             info.AddValue("endTimestamp", this.EndTimestamp, typeof(long));
             info.AddValue("record", this.Record, typeof(object));
+
+            info.AddValue("recordKey", this.RecordKey, typeof(object));
+            info.AddValue("versionKey", this.VersionKey, typeof(long));
         }
     }
 }
