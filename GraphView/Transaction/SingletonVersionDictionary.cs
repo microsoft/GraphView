@@ -57,6 +57,10 @@
             return this.dict[recordKey].ChangeNodeValue(oldVersion, newVersion);
         }
 
+        internal override void DeleteVersionEntry(object recordKey, long versionKey)
+        {
+            this.dict[recordKey].DeleteNode(recordKey, versionKey);
+        }
     }
 
     internal partial class SingletonVersionDictionary : IVersionedTableStore

@@ -48,6 +48,11 @@ namespace GraphView.Transaction
             throw new NotImplementedException();
         }
 
+        internal virtual void DeleteVersionEntry(object recordKey, long versionKey)
+        {
+            throw new NotImplementedException();
+        }
+
         /// <summary>
         /// Given a record's version and a Tx's timestamp (or a TxId), check this version's visibility.
         /// </summary>
@@ -269,17 +274,12 @@ namespace GraphView.Transaction
                         return false;
                     }
                 }
-                //case 2: if the version's begin field is a TxId, set the version's end timestamp to TxId directly
+                //case 2: if the version's begin field is a TxId
+                //this version is created by the same transaction, and the transaction want to delete it.
+                //Delete this version entry directly.
                 else
                 {
-                    this.UpdateAndUploadVersion(recordKey, visibleEntry,
-                        new VersionEntry(
-                            visibleEntry.IsBeginTxId,
-                            visibleEntry.BeginTimestamp,
-                            true,
-                            txId,
-                            visibleEntry.RecordKey,
-                            visibleEntry.Record));
+                    this.DeleteVersionEntry(recordKey, visibleEntry.VersionKey);
                     return true;
                 }
             }
