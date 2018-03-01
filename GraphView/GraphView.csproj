@@ -58,6 +58,22 @@
       <HintPath>..\packages\Newtonsoft.Json.6.0.8\lib\net45\Newtonsoft.Json.dll</HintPath>
       <Private>True</Private>
     </Reference>
+    <Reference Include="ServiceStack.Common, Version=5.0.0.0, Culture=neutral, PublicKeyToken=02c12cbda47e6587, processorArchitecture=MSIL">
+      <HintPath>..\packages\ServiceStack.Common.5.0.2\lib\net45\ServiceStack.Common.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="ServiceStack.Interfaces, Version=5.0.0.0, Culture=neutral, PublicKeyToken=02c12cbda47e6587, processorArchitecture=MSIL">
+      <HintPath>..\packages\ServiceStack.Interfaces.5.0.2\lib\net45\ServiceStack.Interfaces.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="ServiceStack.Redis, Version=5.0.0.0, Culture=neutral, PublicKeyToken=02c12cbda47e6587, processorArchitecture=MSIL">
+      <HintPath>..\packages\ServiceStack.Redis.5.0.2\lib\net45\ServiceStack.Redis.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="ServiceStack.Text, Version=5.0.0.0, Culture=neutral, PublicKeyToken=02c12cbda47e6587, processorArchitecture=MSIL">
+      <HintPath>..\packages\ServiceStack.Text.5.0.2\lib\net45\ServiceStack.Text.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Data.Entity" />
@@ -248,6 +264,10 @@
     <Compile Include="RecordRuntime\IDataStore.cs" />
     <Compile Include="RecordRuntime\IndexSpecification.cs" />
     <Compile Include="Transaction\ReadSetEntry.cs" />
+    <Compile Include="Transaction\RedisDbIndexSequenceGenerator.cs" />
+    <Compile Include="Transaction\RedisClientManager.cs" />
+    <Compile Include="Transaction\RedisVersionDb.cs" />
+    <Compile Include="Transaction\RedisVersionTable.cs" />
     <Compile Include="Transaction\ScanSetEntry.cs" />
     <Compile Include="Transaction\SingletonTxTable.cs" />
     <Compile Include="Transaction\SingletonVersionDb.cs" />
@@ -259,6 +279,7 @@
     <Compile Include="Transaction\TxTableEntry.cs" />
     <Compile Include="Transaction\VersionDb.cs" />
     <Compile Include="Transaction\VersionEntry.cs" />
+    <Compile Include="Transaction\VersionEntrySerializer.cs" />
     <Compile Include="Transaction\VersionList.cs" />
     <Compile Include="Transaction\VersionListEnumerator.cs" />
     <Compile Include="Transaction\VersionTable.cs" />
@@ -309,6 +330,7 @@
     <Service Include="{508349B6-6B84-4DF5-91F0-309BEEBAD82D}" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="app.config" />
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup />
