@@ -12,7 +12,7 @@
     /// 1. Definition of fields of RedisVersionDb
     /// 2. Implementation of private methods of redis operation, all those operations are atomic operations
     /// </summary>
-    internal partial class RedisVersionDb : VersionDb, IVersionedDataStore
+    internal partial class RedisVersionDb : VersionDb
     {
         /// <summary>
         /// The meta data of redisVersionDb will be stored in database META_DB_INDEX in Redis
@@ -230,21 +230,15 @@
     /// </summary>
     internal partial class RedisVersionDb
     {
-        internal override VersionEntry ReadVersion(string tableId, object recordKey, long readTimestamp)
+        internal override VersionTable GetVersionTable(string tableId)
         {
-            RedisVersionTable versionTable = this.GetRedisVersionTable(tableId);
-            if (versionTable == null)
-            {
-                throw new ArgumentException($"Invalid tableId reference '{tableId }'");
-            }
-
-            return versionTable.ReadVersion(recordKey, readTimestamp);
+            return base.GetVersionTable(tableId);
         }
 
         // Two thread-safe options should be ensured
         // 1. ensure the safty of versionTableMap's operations
         // 2. ensure that no more than a thread add versionTable to redis
-        internal override bool InsertVersion(string tableId, object recordKey, JObject record, long txId,
+        internal override bool InsertVersion(string tableId, object recordKey, object record, long txId,
             long readTimestamp)
         {
             RedisVersionTable versionTable = this.GetRedisVersionTable(tableId);
@@ -263,113 +257,6 @@
             }
 
             return versionTable.InsertVersion(recordKey, record, txId, readTimestamp);
-        }
-
-        internal override bool UpdateVersion(string tableId, object recordKey, JObject record, long txId,
-            long readTimestamp, out VersionEntry oldVersion, out VersionEntry newVersion)
-        {
-            RedisVersionTable versionTable = this.GetRedisVersionTable(tableId);
-            if (versionTable == null)
-            {
-                throw new ArgumentException($"Invalid tableId reference '{tableId }'");
-            }
-            return versionTable.UpdateVersion(recordKey, record, txId, readTimestamp, out oldVersion,
-                out newVersion);
-        }
-
-        internal override bool DeleteVersion(string tableId, object recordKey, long txId, long readTimestamp,
-            out VersionEntry deletedVersion)
-        {
-            RedisVersionTable versionTable = this.GetRedisVersionTable(tableId);
-            if (versionTable == null)
-            {
-                throw new ArgumentException($"Invalid tableId reference '{tableId }'");
-            }
-            return versionTable.DeleteVersion(recordKey, txId, readTimestamp, out deletedVersion);
-        }
-
-        internal override bool CheckPhantom(string tableId, object recordKey, long oldScanTime,
-            long newScanTime)
-        {
-            RedisVersionTable versionTable = this.GetRedisVersionTable(tableId);
-            if (versionTable == null)
-            {
-                throw new ArgumentException($"Invalid tableId reference '{tableId }'");
-            }
-            return versionTable.CheckPhantom(recordKey, oldScanTime, newScanTime);
-        }
-
-        internal override bool CheckReadVisibility(string tableId, object recordKey, long readVersionBeginTimestamp,
-            long readTimestamp, long txId)
-        {
-            RedisVersionTable versionTable = this.GetRedisVersionTable(tableId);
-            if (versionTable == null)
-            {
-                throw new ArgumentException($"Invalid tableId reference '{tableId }'");
-            }
-            return versionTable.CheckReadVisibility(recordKey, readVersionBeginTimestamp, readTimestamp, txId);
-        }
-
-        internal override void UpdateCommittedVersionTimestamp(string tableId, object recordKey, long txId,
-            long endTimestamp)
-        {
-            RedisVersionTable versionTable = this.GetRedisVersionTable(tableId);
-            if (versionTable == null)
-            {
-                throw new ArgumentException($"Invalid tableId reference '{tableId }'");
-            }
-            versionTable.UpdateCommittedVersionTimestamp(recordKey, txId, endTimestamp);
-        }
-
-        internal override void UpdateAbortedVersionTimestamp(string tableId, object recordKey, long txId)
-        {
-            RedisVersionTable versionTable = this.GetRedisVersionTable(tableId);
-            if (versionTable == null)
-            {
-                throw new ArgumentException($"Invalid tableId reference '{tableId }'");
-            }
-            versionTable.UpdateAbortedVersionTimestamp(recordKey, txId);
-        }
-    }
-
-    /// <summary>
-    /// Implementation of IVersionedDataStore
-    /// </summary>
-    internal partial class RedisVersionDb
-    {
-        public bool DeleteJson(string tableId, object key, Transaction tx)
-        {
-            throw new NotImplementedException();
-        }
-
-        public JObject GetJson(string tableId, object key, Transaction tx)
-        {
-            throw new NotImplementedException();
-        }
-
-        public IList<JObject> GetRangeJsons(string tableId, object lowerKey, object upperKey, Transaction tx)
-        {
-            throw new NotImplementedException();
-        }
-
-        public IList<object> GetRangeRecordKeyList(string tableId, object lowerValue, object upperValue, Transaction tx)
-        {
-            throw new NotImplementedException();
-        }
-
-        public IList<object> GetRecordKeyList(string tableId, object value, Transaction tx)
-        {
-            throw new NotImplementedException();
-        }
-
-        public bool InsertJson(string tableId, object key, JObject record, Transaction tx)
-        {
-            throw new NotImplementedException();
-        }
-
-        public bool UpdateJson(string tableId, object key, JObject record, Transaction tx)
-        {
-            throw new NotImplementedException();
         }
     }
 

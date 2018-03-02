@@ -6,13 +6,14 @@ using System.Runtime.Remoting.Messaging;
 using System.Threading;
 using Microsoft.SqlServer.TransactSql.ScriptDom;
 using Newtonsoft.Json.Linq;
+using GraphView.RecordRuntime;
 
 namespace GraphView.Transaction
 {
     /// <summary>
     /// A version table for concurrency control.
     /// </summary>
-    public abstract class VersionTable
+    public abstract partial class VersionTable
     {
         public readonly string tableId;
 
@@ -52,7 +53,10 @@ namespace GraphView.Transaction
         {
             throw new NotImplementedException();
         }
+    }
 
+    public abstract partial class VersionTable
+    {
         /// <summary>
         /// Given a record's version and a Tx's timestamp (or a TxId), check this version's visibility.
         /// </summary>
@@ -139,7 +143,7 @@ namespace GraphView.Transaction
         /// <param name="txId">Transaction Id</param>
         /// <param name="readTimestamp">Transaction's timestamp</param>
         /// <returns>True if the record does not exists in the version table; false; otherwise.</returns>
-        internal bool InsertVersion(object recordKey, JObject record, long txId, long readTimestamp)
+        internal bool InsertVersion(object recordKey, object record, long txId, long readTimestamp)
         {
             VersionEntry visibleEntry = this.ReadVersion(recordKey, readTimestamp);
 
@@ -158,7 +162,7 @@ namespace GraphView.Transaction
         /// </summary>
         internal bool UpdateVersion(
             object recordKey, 
-            JObject record, 
+            object record, 
             long txId, 
             long readTimestamp, 
             out VersionEntry oldVersion, 
@@ -445,4 +449,14 @@ namespace GraphView.Transaction
         }
     }
 
+    public abstract partial class VersionTable : IVersionedTableStore
+    {
+        public abstract bool DeleteJson(object key, Transaction tx);
+        public abstract JObject GetJson(object key, Transaction tx);
+        public abstract IList<JObject> GetRangeJsons(object lowerKey, object upperKey, Transaction tx);
+        public abstract IList<object> GetRangeRecordKeyList(object lowerValue, object upperValue, Transaction tx);
+        public abstract IList<object> GetRecordKeyList(object value, Transaction tx);
+        public abstract bool InsertJson(object key, JObject record, Transaction tx);
+        public abstract bool UpdateJson(object key, JObject record, Transaction tx);
+    }
 }

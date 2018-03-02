@@ -13,31 +13,66 @@ namespace GraphView.Transaction
     {
         public SingletonVersionTreeMap(string tableId) 
             : base(tableId) { }
+
+        internal override IEnumerable<VersionEntry> GetVersionList(object recordKey)
+        {
+            return base.GetVersionList(recordKey);
+        }
+
+        internal override IEnumerable<VersionEntry> GetVersionList(object recordKey, long timestamp)
+        {
+            return base.GetVersionList(recordKey, timestamp);
+        }
+
+        internal override void InsertAndUploadVersion(object recordKey, VersionEntry version)
+        {
+            base.InsertAndUploadVersion(recordKey, version);
+        }
+
+        internal override bool UpdateAndUploadVersion(object recordKey, VersionEntry oldVersion, VersionEntry newVersion)
+        {
+            return base.UpdateAndUploadVersion(recordKey, oldVersion, newVersion);
+        }
+
+        internal override void DeleteVersionEntry(object recordKey, long versionKey)
+        {
+            base.DeleteVersionEntry(recordKey, versionKey);
+        }
     }
 
-    internal partial class SingletonVersionTreeMap : IVersionedTableStore
+    internal partial class SingletonVersionTreeMap : SingletonVersionTable
     {
-        public new JObject GetJson(object key, Transaction tx)
+        public override bool DeleteJson(object key, Transaction tx)
         {
             throw new NotImplementedException();
         }
 
-        public new IList<JObject> GetRangeJsons(object lowerKey, object upperKey, Transaction tx)
+        public override JObject GetJson(object key, Transaction tx)
         {
             throw new NotImplementedException();
         }
 
-        public new IList<object> GetRangeRecordKeyList(object lowerValue, object upperValue, Transaction tx)
+        public override IList<JObject> GetRangeJsons(object lowerKey, object upperKey, Transaction tx)
         {
             throw new NotImplementedException();
         }
 
-        public new IList<object> GetRecordKeyList(object value, Transaction tx)
+        public override IList<object> GetRangeRecordKeyList(object lowerValue, object upperValue, Transaction tx)
         {
             throw new NotImplementedException();
         }
 
-        public new bool InsertJson(object key, JObject record, Transaction tx)
+        public override IList<object> GetRecordKeyList(object value, Transaction tx)
+        {
+            throw new NotImplementedException();
+        }
+
+        public override bool InsertJson(object key, JObject record, Transaction tx)
+        {
+            throw new NotImplementedException();
+        }
+
+        public override bool UpdateJson(object key, JObject record, Transaction tx)
         {
             throw new NotImplementedException();
         }

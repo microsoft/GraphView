@@ -2,10 +2,7 @@
 {
     using System;
     using System.Collections.Generic;
-    using System.Data;
     using System.Linq;
-    using System.Text;
-    using System.Threading;
     using GraphView.RecordRuntime;
     using Newtonsoft.Json.Linq;
 
@@ -63,13 +60,13 @@
         }
     }
 
-    internal partial class SingletonVersionDictionary : IVersionedTableStore
+    internal partial class SingletonVersionDictionary
     {
         /// <summary>
         /// Read a record from the given recordKey
         /// return null if not found
         /// </summary>
-        public new JObject GetJson(object key, Transaction tx)
+        public override JObject GetJson(object key, Transaction tx)
         {
             VersionEntry versionEntry = this.GetVersionEntry(key, tx.BeginTimestamp);
             if (versionEntry != null)
@@ -85,7 +82,7 @@
         /// <summary>
         /// Read a list of records where their keys are between lowerKey and upperKey
         /// </summary>
-        public new IList<JObject> GetRangeJsons(object lowerKey, object upperKey, Transaction tx)
+        public override IList<JObject> GetRangeJsons(object lowerKey, object upperKey, Transaction tx)
         {
             List<JObject> jObjectValues = new List<JObject>();
             IComparable lowerComparableKey = lowerKey as IComparable;
@@ -130,7 +127,7 @@
         /// Get the union set of keys list for every value between lowerValue and uppperValue in index-table
         /// index format: value => [key1, key2, ...]
         /// </summary>
-        public new IList<object> GetRangeRecordKeyList(object lowerValue, object upperValue, Transaction tx)
+        public override IList<object> GetRangeRecordKeyList(object lowerValue, object upperValue, Transaction tx)
         {
             HashSet<object> keyHashset = new HashSet<object>();
             IComparable lowerComparableValue = lowerValue as IComparable;
@@ -183,7 +180,7 @@
         ///  This method will return all keys for a value in a index-table
         /// index format: value => [key1, key2, ...]
         /// </summary>
-        public new IList<object> GetRecordKeyList(object value, Transaction tx)
+        public override IList<object> GetRecordKeyList(object value, Transaction tx)
         {
             VersionEntry versionEntry = this.GetVersionEntry(value, tx.BeginTimestamp);
             if (versionEntry != null)
@@ -205,7 +202,7 @@
             return null;
         }
 
-        public new bool InsertJson(object key, JObject record, Transaction tx)
+        public override bool InsertJson(object key, JObject record, Transaction tx)
         {
             VersionEntry versionEntry = this.GetVersionEntry(key, tx.BeginTimestamp);
             
@@ -224,7 +221,7 @@
             return hasInserted;
         }
 
-        public new bool UpdateJson(object key, JObject record, Transaction tx)
+        public override bool UpdateJson(object key, JObject record, Transaction tx)
         {
             VersionEntry versionEntry = this.GetVersionEntry(key, tx.BeginTimestamp);
             if (versionEntry == null)
@@ -245,7 +242,7 @@
             return hasUpdated;
         }
 
-        public new bool DeleteJson(object key, Transaction tx)
+        public override bool DeleteJson(object key, Transaction tx)
         {
             VersionEntry versionEntry = this.GetVersionEntry(key, tx.BeginTimestamp);
             if (versionEntry == null)

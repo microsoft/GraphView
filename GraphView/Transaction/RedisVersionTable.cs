@@ -106,39 +106,39 @@
     /// <summary>
     /// The implemetation of IVersionTableStore part
     /// </summary>
-    internal partial class RedisVersionTable : IVersionedTableStore
-    {
-        public bool DeleteJson(object key, Transaction tx)
+    internal partial class RedisVersionTable
+    { 
+        public override bool DeleteJson(object key, Transaction tx)
         {
             throw new NotImplementedException();
         }
 
-        public JObject GetJson(object key, Transaction tx)
+        public override JObject GetJson(object key, Transaction tx)
         {
             throw new NotImplementedException();
         }
 
-        public IList<JObject> GetRangeJsons(object lowerKey, object upperKey, Transaction tx)
+        public override IList<JObject> GetRangeJsons(object lowerKey, object upperKey, Transaction tx)
         {
             throw new NotImplementedException();
         }
 
-        public IList<object> GetRangeRecordKeyList(object lowerValue, object upperValue, Transaction tx)
+        public override IList<object> GetRangeRecordKeyList(object lowerValue, object upperValue, Transaction tx)
         {
             throw new NotImplementedException();
         }
 
-        public IList<object> GetRecordKeyList(object value, Transaction tx)
+        public override IList<object> GetRecordKeyList(object value, Transaction tx)
         {
             throw new NotImplementedException();
         }
 
-        public bool InsertJson(object key, JObject record, Transaction tx)
+        public override bool InsertJson(object key, JObject record, Transaction tx)
         {
             throw new NotImplementedException();
         }
 
-        public bool UpdateJson(object key, JObject record, Transaction tx)
+        public override bool UpdateJson(object key, JObject record, Transaction tx)
         {
             throw new NotImplementedException();
         }
