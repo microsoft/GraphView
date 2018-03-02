@@ -8,8 +8,8 @@ namespace GraphView.Transaction
 
     internal class VersionNode
     {
-        public VersionEntry versionEntry;
-        public VersionNode next;
+        public volatile VersionEntry versionEntry;
+        public volatile VersionNode next;
 
         public VersionNode(VersionEntry versionEntry)
         {
