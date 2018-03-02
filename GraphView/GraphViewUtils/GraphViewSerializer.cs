@@ -92,13 +92,16 @@ namespace GraphView
             string opString = SerializeWithSoapFormatter(op);
 
             // To combine three string into one string.
-            SerializationString serializationString = new SerializationString(commandString, sideEffectString, opString);
+            SerializationString serializationString = new SerializationString(commandString, sideEffectString, opString, GremlinKeyword.TableDefaultColumnName);
             return SerializeWithSoapFormatter(serializationString);
         }
 
         public static Tuple<GraphViewCommand, GraphViewExecutionOperator> Deserialize(string serializationString, string partitionString)
         {
             SerializationString serializationStringObj = (SerializationString)DeserializeWithSoapFormatter(serializationString);
+
+            GremlinKeyword.TableDefaultColumnName = serializationStringObj.tableDefaultColumnName;
+            DocumentDBKeywords.KW_TABLE_DEFAULT_COLUMN_NAME = GremlinKeyword.TableDefaultColumnName;
 
             GraphViewCommand command = (GraphViewCommand)DeserializeWithSoapFormatter(serializationStringObj.commandString);
 
@@ -797,11 +800,15 @@ namespace GraphView
         public string sideEffectString;
         public string opString;
 
-        public SerializationString(string commandString, string sideEffectString, string opString)
+        public string tableDefaultColumnName;
+
+        public SerializationString(string commandString, string sideEffectString, string opString, string tableDefaultColumnName)
         {
             this.commandString = commandString;
             this.sideEffectString = sideEffectString;
             this.opString = opString;
+
+            this.tableDefaultColumnName = tableDefaultColumnName;
         }
     }
 }
