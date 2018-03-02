@@ -148,14 +148,14 @@
                 this.RecordKey == ventry.RecordKey;
         }
 
-        public bool isSameWith(VersionEntry other)
+        public bool ContentEqual(VersionEntry other)
         {
-            return this.Equals(other) &&
-                this.isBeginTxId == other.IsBeginTxId &&
-                this.beginTimestamp == other.BeginTimestamp &&
-                this.IsEndTxId == other.IsEndTxId &&
-                this.endTimestamp == other.EndTimestamp &&
-                this.record.Equals(other.Record);
+            return this.versionKey == other.VersionKey &&
+                   this.recordKey == other.recordKey &&
+                   this.isBeginTxId == other.IsBeginTxId &&
+                   this.beginTimestamp == other.BeginTimestamp &&
+                   this.IsEndTxId == other.IsEndTxId &&
+                   this.endTimestamp == other.EndTimestamp;
         }
 
         public void GetObjectData(SerializationInfo info, StreamingContext context)

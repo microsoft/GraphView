@@ -74,7 +74,7 @@
             this.RedisClient.HSet(hashKey, key, value);
         }
 
-        internal override bool UpdateAndUploadVersion(object recordKey, VersionEntry oldVersion, VersionEntry newVersion)
+        internal override bool UpdateAndUploadVersion(object recordKey, long versionKey, VersionEntry oldVersion, VersionEntry newVersion)
         {
             if (this.RedisClient == null)
             {
@@ -83,7 +83,7 @@
 
             string hashKeyStr = recordKey as string;
             byte[] hashKey = Encoding.ASCII.GetBytes(hashKeyStr);
-            byte[] field = BitConverter.GetBytes(oldVersion.VersionKey);
+            byte[] field = BitConverter.GetBytes(versionKey);
             byte[] newValue = VersionEntrySerializer.SerializeToBytes(newVersion);
             byte[] oldValue = VersionEntrySerializer.SerializeToBytes(oldVersion);
 

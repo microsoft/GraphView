@@ -67,10 +67,6 @@ namespace GraphView.Transaction
             }
         }
 
-        //Todo: Redesign the parameter.
-        //This method and the corresponding interface UpdateAndUploadVersion() need discussion.
-        //Still need more info about the old version. 
-        //This method can not work correctly at this time.
         public bool ChangeNodeValue(object recordKey, long versionKey, VersionEntry toBeChangedVersion, VersionEntry newVersion)
         {
             VersionNode node = this.head;
@@ -80,7 +76,7 @@ namespace GraphView.Transaction
                 if (node.versionEntry.RecordKey == recordKey && node.versionEntry.VersionKey == versionKey)
                 {
                     VersionEntry oldVersion = node.versionEntry;
-                    if (toBeChangedVersion.isSameWith(oldVersion))
+                    if (toBeChangedVersion.ContentEqual(oldVersion))
                     {
                         return oldVersion == Interlocked.CompareExchange(ref node.versionEntry, newVersion, oldVersion);
                     }
@@ -88,22 +84,6 @@ namespace GraphView.Transaction
                     {
                         return false;
                     }
-                }
-                node = node.next;
-            }
-
-            return false;
-        }
-
-        public bool ChangeNodeValue(VersionEntry oldVersion, VersionEntry newVersion)
-        {
-            VersionNode node = this.head;
-            while (node != null && node.versionEntry.Record != null)
-            {
-                // try to find the old version
-                if (node.versionEntry == oldVersion)
-                {
-                    return oldVersion == Interlocked.CompareExchange(ref node.versionEntry, newVersion, oldVersion);
                 }
                 node = node.next;
             }

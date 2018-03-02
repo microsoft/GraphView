@@ -15,6 +15,11 @@ namespace GraphView.Transaction
             throw new NotImplementedException();
         }
 
+        internal virtual long GetTxEndTimestampByTxId(long txId)
+        {
+            throw new NotImplementedException();
+        }
+
         internal virtual void UpdateTxStatusByTxId(long txId, TxStatus txStatus)
         {
             throw new NotImplementedException();
@@ -30,7 +35,4 @@ namespace GraphView.Transaction
             throw new NotImplementedException();
         }
     }
-
-    
-
 }

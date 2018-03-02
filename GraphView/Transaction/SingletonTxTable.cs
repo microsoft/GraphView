@@ -48,6 +48,16 @@ namespace GraphView.Transaction
             throw new KeyNotFoundException();
         }
 
+        internal override long GetTxEndTimestampByTxId(long txId)
+        {
+            TxTableEntry entry = null;
+            if (this.table.TryGetValue(txId, out entry))
+            {
+                return entry.EndTimestamp;
+            }
+            throw new KeyNotFoundException();
+        }
+
         internal override void UpdateTxStatusByTxId(long txId, TxStatus txStatus)
         {
             if (this.table.ContainsKey(txId))

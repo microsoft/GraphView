@@ -49,9 +49,9 @@
             this.dict[recordKey].PushFront(version);
         }
 
-        internal override bool UpdateAndUploadVersion(object recordKey, VersionEntry oldVersion, VersionEntry newVersion)
+        internal override bool UpdateAndUploadVersion(object recordKey, long versionKey, VersionEntry toBeChangedVersion, VersionEntry newVersion)
         {
-            return this.dict[recordKey].ChangeNodeValue(oldVersion, newVersion);
+            return this.dict[recordKey].ChangeNodeValue(recordKey, versionKey, toBeChangedVersion, newVersion);
         }
 
         internal override void DeleteVersionEntry(object recordKey, long versionKey)

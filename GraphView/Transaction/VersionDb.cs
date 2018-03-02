@@ -109,7 +109,8 @@ namespace GraphView.Transaction
             object recordKey,
             long readVersionBeginTimestamp,
             long readTimestamp,
-            long txId)
+            long txId,
+            TransactionTable txTable)
         {
             VersionTable versionTable = this.GetVersionTable(tableId);
             if (versionTable == null)
@@ -117,7 +118,7 @@ namespace GraphView.Transaction
                 return false;
             }
             return versionTable.CheckReadVisibility(recordKey, readVersionBeginTimestamp,
-                readTimestamp, txId);
+                readTimestamp, txId, txTable);
         }
 
         /// <summary>
@@ -129,14 +130,16 @@ namespace GraphView.Transaction
             string tableId,
             object recordKey,
             long oldScanTime,
-            long newScanTime)
+            long newScanTime,
+            long txId,
+            TransactionTable txTable)
         {
             VersionTable versionTable = this.GetVersionTable(tableId);
             if (versionTable == null)
             {
                 return true;
             }
-            return versionTable.CheckPhantom(recordKey, oldScanTime, newScanTime);
+            return versionTable.CheckPhantom(recordKey, oldScanTime, newScanTime, txId, txTable);
         }
 
         /// <summary>

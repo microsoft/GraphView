@@ -44,7 +44,7 @@ namespace GraphView.Transaction
             throw new NotImplementedException();
         }
 
-        internal virtual bool UpdateAndUploadVersion(object recordKey, VersionEntry oldVersion, VersionEntry newVersion)
+        internal virtual bool UpdateAndUploadVersion(object recordKey, long versionKey, VersionEntry oldVersion, VersionEntry newVersion)
         {
             throw new NotImplementedException();
         }
@@ -66,7 +66,7 @@ namespace GraphView.Transaction
         internal bool CheckVersionVisibility(VersionEntry version, long readTimestamp)
         {
             //case 1: both begin and end fields are timestamp
-            //just checl whether readTimestamp is in the interval of the version's beginTimestamp and endTimestamp 
+            //just check whether readTimestamp is in the interval of the version's beginTimestamp and endTimestamp 
             if (!version.IsBeginTxId && !version.IsEndTxId)
             {
                 return readTimestamp > version.BeginTimestamp && readTimestamp < version.EndTimestamp;
@@ -104,6 +104,74 @@ namespace GraphView.Transaction
                 else
                 {
                     return false;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Given a record's version and a Tx's end timestamp, check this version's visibility.
+        /// </summary>
+        /// <param name="version">A version entry of a record</param>
+        /// <param name="readTimestamp">Tx's end timestamp</param>
+        /// <param name="txId">Tx's id.</param>
+        /// <param name="txTable">Transaction table.</param>
+        /// <returns>True, if the input version is visible to the transaction. False, otherwise.</returns>
+        internal bool ValidateVersionVisiblity(VersionEntry version, long readTimestamp, long txId, TransactionTable txTable)
+        {
+            //case 1: both begin and end fields are timestamp
+            //just check whether readTimestamp is in the interval of the version's beginTimestamp and endTimestamp
+            if (!version.IsBeginTxId && !version.IsEndTxId)
+            {
+                return readTimestamp > version.BeginTimestamp && readTimestamp < version.EndTimestamp;
+            }
+            //case 2: begin field is a TxId, end field is a timestamp
+            //if the version is created by the same transaction, visible
+            //if not, check the tx's status.
+            else if (version.IsBeginTxId && !version.IsEndTxId)
+            {
+                if (version.BeginTimestamp == txId)
+                {
+                    return true;
+                }
+                else
+                {
+                    if (txTable.GetTxStatusByTxId(version.BeginTimestamp) == TxStatus.Committed)
+                    {
+                        return readTimestamp > txTable.GetTxEndTimestampByTxId(txId) &&
+                               readTimestamp < version.EndTimestamp;
+                    }
+                    else
+                    {
+                        return false;
+                    }
+                }
+            }
+            //case 3: begin field is a TxId, end field is a TxId
+            //this must must be deleted by the same transaction, not visible
+            else if (version.IsBeginTxId && version.IsEndTxId)
+            {
+                return false;
+            }
+            //case 4: begin field is a timestamp, end field is a TxId
+            //first check whether the readTimestamp > version's beginTimestamp
+            //then, check the version's end field
+            else
+            {
+                if (version.EndTimestamp == txId)
+                {
+                    return false;
+                }
+                else
+                {
+                    if (txTable.GetTxStatusByTxId(version.EndTimestamp) == TxStatus.Committed)
+                    {
+                        return readTimestamp > version.BeginTimestamp &&
+                               readTimestamp < txTable.GetTxEndTimestampByTxId(version.EndTimestamp);
+                    }
+                    else
+                    {
+                        return readTimestamp > version.BeginTimestamp;
+                    }
                 }
             }
         }
@@ -187,7 +255,7 @@ namespace GraphView.Transaction
                 {
                     oldVersion = visibleEntry;
                     //(1) ATOMICALLY set the version's end timestamp to TxId, make it an old version.
-                    if (this.UpdateAndUploadVersion(recordKey, visibleEntry,
+                    if (this.UpdateAndUploadVersion(recordKey, visibleEntry.VersionKey, visibleEntry,
                         new VersionEntry(
                             visibleEntry.IsBeginTxId,
                             visibleEntry.BeginTimestamp,
@@ -220,7 +288,7 @@ namespace GraphView.Transaction
                         recordKey,
                         record);
                     //change the record directly on this version
-                    this.UpdateAndUploadVersion(recordKey, visibleEntry, newVersion);
+                    this.UpdateAndUploadVersion(recordKey, visibleEntry.VersionKey, visibleEntry, newVersion);
                     return true;
                 }
             }
@@ -260,7 +328,7 @@ namespace GraphView.Transaction
                 if (!visibleEntry.IsBeginTxId)
                 {
                     //(1) ATOMICALLY set the version's end timestamp to TxId
-                    if (this.UpdateAndUploadVersion(recordKey, visibleEntry,
+                    if (this.UpdateAndUploadVersion(recordKey, visibleEntry.VersionKey, visibleEntry,
                         new VersionEntry(
                             visibleEntry.IsBeginTxId,
                             visibleEntry.BeginTimestamp,
@@ -297,14 +365,15 @@ namespace GraphView.Transaction
 
         /// <summary>
         /// Check visibility of the version read before, used in validation phase.
-        /// Given a record's recordKey, the version's beginTimestamp, the current readTimestamp, and the transaction Id
+        /// Given a record's recordKey, the version's versionKey, the current readTimestamp (tx's end timestamp), and the transaction Id
         /// First find the version then check whether it is stil visible. 
         /// </summary>
         internal bool CheckReadVisibility(
             object recordKey, 
-            long readVersionBeginTimestamp, 
-            long readTimestamp,
-            long txId)
+            long versionKey, 
+            long txEndTimestamp,
+            long txId,
+            TransactionTable txTable)
         {
             IEnumerable<VersionEntry> versionList = this.GetVersionList(recordKey);
 
@@ -315,23 +384,9 @@ namespace GraphView.Transaction
 
             foreach (VersionEntry version in versionList)
             {
-                //case 1: the versin's begin field is a TxId, and this Id equals to the transaction's Id
-                if (version.IsBeginTxId && version.BeginTimestamp == txId)
+                if (version.RecordKey == recordKey && version.VersionKey == versionKey)
                 {
-                    //check the visibility of this version, using the transaction's endTimestamp
-                    if (this.CheckVersionVisibility(version, readTimestamp))
-                    {
-                        return true;
-                    }
-                    else
-                    {
-                        continue;
-                    }
-                }
-                //case 2: the version's begin field is a timestamp, and this timestamp equals to the read version's begin timestamp
-                else if (!version.IsBeginTxId && version.BeginTimestamp == readVersionBeginTimestamp)
-                {
-                    return this.CheckVersionVisibility(version, readTimestamp);
+                    return this.ValidateVersionVisiblity(version, txEndTimestamp, txId, txTable);
                 }
             }
 
@@ -343,7 +398,7 @@ namespace GraphView.Transaction
         /// Only check for version phantom currently. Check key phantom is NOT implemented.
         /// Look for versions that came into existence during T’s lifetime and are visible as of the end of the transaction.
         /// </summary>
-        internal bool CheckPhantom(object recordKey, long oldScanTime, long newScanTime)
+        internal bool CheckPhantom(object recordKey, long oldScanTime, long newScanTime, long txId, TransactionTable txTable)
         {
             IEnumerable<VersionEntry> versionList = this.GetVersionList(recordKey);
 
@@ -354,15 +409,21 @@ namespace GraphView.Transaction
 
             foreach (VersionEntry version in versionList)
             {
-                if (!version.IsBeginTxId)
+                long versionBeginTimestamp = long.MaxValue;
+                if (version.IsBeginTxId)
                 {
-                    if (version.BeginTimestamp > oldScanTime && version.BeginTimestamp < newScanTime)
-                    {
-                        if (this.CheckVersionVisibility(version, newScanTime))
-                        {
-                            return false;
-                        }
-                    }
+                    versionBeginTimestamp = version.BeginTimestamp;
+                }
+                else if (txTable.GetTxStatusByTxId(version.BeginTimestamp) == TxStatus.Committed)
+                {
+                    versionBeginTimestamp = txTable.GetTxEndTimestampByTxId(version.BeginTimestamp);
+                }
+
+                if (versionBeginTimestamp > oldScanTime &&
+                    versionBeginTimestamp < newScanTime &&
+                    this.ValidateVersionVisiblity(version, newScanTime, txId, txTable))
+                {
+                    return false;
                 }
             }
             return true;
@@ -400,7 +461,7 @@ namespace GraphView.Transaction
                             commitedVersion.EndTimestamp = endTimestamp;
                         }
 
-                        this.UpdateAndUploadVersion(recordKey, version, commitedVersion);
+                        this.UpdateAndUploadVersion(recordKey, version.VersionKey, version, commitedVersion);
                     }
                 }
             }
@@ -423,7 +484,7 @@ namespace GraphView.Transaction
                     //new version
                     if (version.IsBeginTxId && version.BeginTimestamp == txId)
                     {
-                        this.UpdateAndUploadVersion(recordKey, version,
+                        this.UpdateAndUploadVersion(recordKey, version.VersionKey, version,
                             new VersionEntry(
                                 false, 
                                 long.MaxValue, 
@@ -435,7 +496,7 @@ namespace GraphView.Transaction
                     //old version
                     else if (version.IsEndTxId && version.EndTimestamp == txId)
                     {
-                        this.UpdateAndUploadVersion(recordKey, version,
+                        this.UpdateAndUploadVersion(recordKey, version.VersionKey, version,
                             new VersionEntry(
                                 version.IsBeginTxId,
                                 version.BeginTimestamp,

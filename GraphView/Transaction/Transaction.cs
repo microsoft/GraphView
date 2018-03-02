@@ -324,7 +324,7 @@
                 foreach (ReadSetEntry readEntry in this.readSet[tableId])
                 {
                     if (!this.versionDb.CheckReadVisibility(tableId, readEntry.Key, readEntry.BeginTimestamp,
-                        this.endTimestamp, this.txId))
+                        this.endTimestamp, this.txId, this.txTable))
                     {
                         throw new Exception($"Read validation failed. " +
                                             $"The version with tableId {tableId} recordKey {readEntry.Key} is not visible.");
@@ -343,8 +343,13 @@
             {
                 foreach (ScanSetEntry scanEntry in this.scanSet[tableId])
                 {
-                    if (!this.versionDb.CheckPhantom(tableId, scanEntry.Key, scanEntry.ReadTimestamp,
-                        this.endTimestamp))
+                    if (!this.versionDb.CheckPhantom(
+                        tableId, 
+                        scanEntry.Key, 
+                        scanEntry.ReadTimestamp,
+                        this.endTimestamp,
+                        this.txId,
+                        this.txTable))
                     {
                         throw new Exception($"Check phantom failed. " +
                                             $"Find new version with tableId {tableId} recordKey {scanEntry.Key}.");
@@ -412,6 +417,10 @@
             }
             //logging
             this.WriteChangestoLog();
+            //change the transaction's status
+            this.txStatus = TxStatus.Committed;
+            this.txTable.UpdateTxEndTimestampByTxId(this.txId, this.endTimestamp);
+            this.txTable.UpdateTxStatusByTxId(this.txId, TxStatus.Committed);
             //propagates endtimestamp to versionTable
             foreach (string tableId in this.writeSet.Keys)
             {
@@ -421,10 +430,6 @@
                         this.endTimestamp);
                 }
             }
-            //change the transaction's status
-            this.txStatus = TxStatus.Committed;
-            this.txTable.UpdateTxEndTimestampByTxId(this.txId, this.endTimestamp);
-            this.txTable.UpdateTxStatusByTxId(this.txId, TxStatus.Committed);
         }
 
         /// <summary>
@@ -432,6 +437,9 @@
         /// </summary>
         public void Abort()
         {
+            //change the transaction's status
+            this.txStatus = TxStatus.Aborted;
+            this.txTable.UpdateTxStatusByTxId(this.txId, TxStatus.Aborted);
             //update all changed version's timestamp
             foreach (string tableId in this.writeSet.Keys)
             {
@@ -440,9 +448,6 @@
                     this.versionDb.UpdateAbortedVersionTimestamp(tableId, writeSetEntry.Key, this.txId);
                 }
             }
-            //change the transaction's status
-            this.txStatus = TxStatus.Aborted;
-            this.txTable.UpdateTxStatusByTxId(this.txId, TxStatus.Aborted);
         }
     }
 }

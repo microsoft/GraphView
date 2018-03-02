@@ -51,6 +51,11 @@ namespace GraphView.Transaction
     {
         internal override VersionTable GetVersionTable(string tableId)
         {
+            if (!this.versionTables.ContainsKey(tableId))
+            {
+                return null;
+            }
+
             return this.versionTables[tableId];
         }
 
@@ -73,7 +78,7 @@ namespace GraphView.Transaction
                     }
                 }
             }
-            return versionTable.InsertVersion(recordKey, record, txId, readTimestamp);
+            return this.GetVersionTable(tableId).InsertVersion(recordKey, record, txId, readTimestamp);
         }
     }
 
