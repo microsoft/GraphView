@@ -264,7 +264,6 @@
     <Compile Include="RecordRuntime\IDataStore.cs" />
     <Compile Include="RecordRuntime\IndexSpecification.cs" />
     <Compile Include="Transaction\ReadSetEntry.cs" />
-    <Compile Include="Transaction\RedisDbIndexSequenceGenerator.cs" />
     <Compile Include="Transaction\RedisClientManager.cs" />
     <Compile Include="Transaction\RedisVersionDb.cs" />
     <Compile Include="Transaction\RedisVersionTable.cs" />

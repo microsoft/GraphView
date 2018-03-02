@@ -4,9 +4,7 @@
     using System;
     using System.Collections.Generic;
     using System.Text;
-    using Newtonsoft.Json.Linq;
     using ServiceStack.Redis;
-    using System.Threading;
 
     /// <summary>
     /// 1. Definition of fields of RedisVersionDb
@@ -22,11 +20,6 @@
         /// </summary>
         private static readonly string META_TABLE_KEY = "meta:tables:hashset";
         private static readonly long META_DB_INDEX = 0;
-
-        /// <summary>
-        /// The generator of redis database index
-        /// </summary>
-        private readonly RedisDbIndexSequenceGenerator dbIndexGenerator;
 
         /// <summary>
         /// the map from tableId to redis version table
@@ -49,15 +42,6 @@
         private static readonly object initLock = new object();
 
         /// <summary>
-        /// There are more reads and less write to versionTableMap in redisVersionDb
-        /// 1. For most of operations, they need get redisVersionTable from versionTableMap and keep going
-        /// 2. Only addVersionTable or deleteVersionTable will write the dictionary
-        /// ReaderWriterLock is more suitable for the scene comparsed with ConCurrentDictionary
-        /// Based on MSDN documents, ReaderWriterLockSlim is more effective than ReaderWriterLock
-        /// </summary>
-        private ReaderWriterLockSlim versionTableMapLock;
-
-        /// <summary>
         /// Get RedisClient from the redis connection pool
         /// </summary>
         private RedisNativeClient RedisClient
@@ -68,18 +52,10 @@
             }
         }
 
-        private RedisVersionDb() : this(RedisDbIndexSequenceGenerator.Instance)
-        {
-            
-        }
-
-        private RedisVersionDb(RedisDbIndexSequenceGenerator dbIndexGenerator)
+        private RedisVersionDb()
         { 
-            this.dbIndexGenerator = dbIndexGenerator;
             this.tableLock = new object();
-
             this.versionTableMap = new Dictionary<string, RedisVersionTable>();
-            this.versionTableMapLock = new ReaderWriterLockSlim();
         }
 
         internal static RedisVersionDb Instance
@@ -100,6 +76,44 @@
             } 
         }
 
+        public bool AddVersionTable(string tableId, long redisDbIndex)
+        {
+            this.RedisClient.ChangeDb(RedisVersionDb.META_DB_INDEX);
+
+            byte[] keyBytes = Encoding.ASCII.GetBytes(tableId);
+            byte[] valueBytes = BitConverter.GetBytes(redisDbIndex);
+
+            long result = this.RedisClient.HSet(RedisVersionDb.META_TABLE_KEY, keyBytes, valueBytes);
+
+            return result == 1;
+        }
+
+        /// <summary>
+        /// Delete version table from meta data table
+        /// </summary>
+        /// <param name="tableId"></param>
+        /// <returns></returns>
+        public bool DeleteVersionTable(string tableId)
+        {
+            this.RedisClient.ChangeDb(RedisVersionDb.META_DB_INDEX);
+
+            byte[] keyBytes = Encoding.ASCII.GetBytes(tableId);
+            long result = this.RedisClient.HDel(RedisVersionDb.META_TABLE_KEY, keyBytes);
+
+            if (this.versionTableMap.ContainsKey(tableId))
+            {
+                lock (this.tableLock)
+                {
+                    if (this.versionTableMap.ContainsKey(tableId))
+                    {
+                        this.versionTableMap.RemoveKey(tableId);
+                    }
+                }
+            }
+   
+            return result == 1;
+        }
+
         /// <summary>
         /// Get a versionTable instance by tableId from Dictionary or Redis
         /// </summary>
@@ -116,27 +130,19 @@
                 }
                 RedisVersionTable versionTable = new RedisVersionTable(tableId, redisDbIndex.Value);
 
-                // add write lock to ensure thread safe write
-                versionTableMapLock.EnterWriteLock();
-                try
+                if (!this.versionTableMap.ContainsKey(tableId))
                 {
-                    this.versionTableMap[tableId] = versionTable;
+                    lock (this.tableLock)
+                    {
+                        if (!this.versionTableMap.ContainsKey(tableId))
+                        {
+                            this.versionTableMap[tableId] = versionTable;
+                        }
+                    }
                 }
-                finally
-                {
-                    versionTableMapLock.ExitWriteLock();
-                }
+                this.versionTableMap[tableId] = versionTable;
             }
-
-            versionTableMapLock.EnterReadLock();
-            try
-            {
-                return this.versionTableMap[tableId];
-            }
-            finally
-            {
-                versionTableMapLock.ExitReadLock();
-            }
+            return this.versionTableMap[tableId];
         }
 
         /// <summary>
@@ -159,45 +165,6 @@
             }
 
             return BitConverter.ToInt64(valueBytes, 0);
-        }
-
-        protected bool AddVersionTable(string tableId)
-        {
-            this.RedisClient.ChangeDb(RedisVersionDb.META_DB_INDEX);
-
-            long redisDbIndex = this.dbIndexGenerator.NextSequenceNumber();
-            byte[] keyBytes = Encoding.ASCII.GetBytes(tableId);
-            byte[] valueBytes = BitConverter.GetBytes(redisDbIndex);
-
-            long result = this.RedisClient.HSet(RedisVersionDb.META_TABLE_KEY, keyBytes, valueBytes);
-
-            return result == 1;
-        }
-
-        /// <summary>
-        /// Delete version table from meta data
-        /// </summary>
-        /// <param name="tableId"></param>
-        /// <returns></returns>
-        protected bool DeleteVersionTable(string tableId)
-        {
-            this.RedisClient.ChangeDb(RedisVersionDb.META_DB_INDEX);
-
-            byte[] keyBytes = Encoding.ASCII.GetBytes(tableId);
-
-            long result = this.RedisClient.HDel(RedisVersionDb.META_TABLE_KEY, keyBytes);
-
-            versionTableMapLock.EnterWriteLock();
-            try
-            {
-                this.versionTableMap.RemoveKey(tableId);
-            }
-            finally
-            {
-                versionTableMapLock.ExitWriteLock();
-            }
-            // TODO: add lock and delete version table at the same time
-            return result == 1;
         }
 
         /// <summary>
@@ -232,30 +199,18 @@
     {
         internal override VersionTable GetVersionTable(string tableId)
         {
-            return base.GetVersionTable(tableId);
+            return this.GetRedisVersionTable(tableId);
         }
 
-        // Two thread-safe options should be ensured
-        // 1. ensure the safty of versionTableMap's operations
-        // 2. ensure that no more than a thread add versionTable to redis
+        // End user must add the versionTable at first and then call the insertVersion method
         internal override bool InsertVersion(string tableId, object recordKey, object record, long txId,
             long readTimestamp)
         {
             RedisVersionTable versionTable = this.GetRedisVersionTable(tableId);
-            // Create a new table if the table doesn't exists
-            // use the lock to guarantee thread synchronization
             if (versionTable == null)
             {
-                lock (this.tableLock)
-                {
-                    if (this.GetRedisVersionTable(tableId) == null)
-                    {
-                        this.AddVersionTable(tableId);
-                    }
-                }
-                versionTable = this.GetRedisVersionTable(tableId);
+                return false;
             }
-
             return versionTable.InsertVersion(recordKey, record, txId, readTimestamp);
         }
     }

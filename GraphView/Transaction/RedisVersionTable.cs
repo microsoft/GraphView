@@ -5,6 +5,7 @@
     using ServiceStack.Redis;
     using RecordRuntime;
     using Newtonsoft.Json.Linq;
+    using System.Text;
 
     internal partial class RedisVersionTable : VersionTable
     {
@@ -80,11 +81,13 @@
                 throw new ArgumentException("redisClient is null");
             }
 
-            string hashKey = recordKey as string;
-            byte[] key = BitConverter.GetBytes(oldVersion.VersionKey);
-            byte[] value = VersionEntrySerializer.SerializeToBytes(newVersion);
+            string hashKeyStr = recordKey as string;
+            byte[] hashKey = Encoding.ASCII.GetBytes(hashKeyStr);
+            byte[] field = BitConverter.GetBytes(oldVersion.VersionKey);
+            byte[] newValue = VersionEntrySerializer.SerializeToBytes(newVersion);
+            byte[] oldValue = VersionEntrySerializer.SerializeToBytes(oldVersion);
 
-            long result = this.RedisClient.HSet(hashKey, key, value);
+            long result = this.RedisHSetCAS(hashKey, field, oldValue, newValue);
 
             return result == 0;
         }
@@ -100,6 +103,38 @@
             byte[] key = BitConverter.GetBytes(versionKey);
 
             this.RedisClient.HDel(hashKey, key);
+        }
+
+        /// <summary>
+        /// Implement a HGET cas operation by EVAL commmand in redis
+        /// The redis will compare its own value with oldValue, if they are same, it will set to newValue.
+        /// Otherwise, it will return false
+        /// </summary>
+        /// <param name="hashKey">The hashset key in redis</param>
+        /// <param name="field">The field name in redis</param>
+        /// <param name="oldValue">The value will be checked </param>
+        /// <param name="newValue">The value will be updated </param>
+        /// <returns></returns>
+        private long RedisHSetCAS(byte[] hashKey, byte[] field, byte[] oldValue, byte[] newValue)
+        {
+            /*
+             -- eval 'lua_code' 1 hashkey field oldValue newValue
+             local ver = redis.call('HGET', KEYS[1], ARGV[1]);
+             if not ver or ver == ARGV[2] then
+                 return redis.call('HSET', KEYS[1], ARGV[1], ARGV[3]);
+             end
+             return 0
+            */
+            string luaBody = @"local ver = redis.call('HGET', KEYS[1], ARGV[1]); if not ver or ver == ARGV[2]
+                then return redis.call('HSET', KEYS[1], ARGV[1], ARGV[3]); end return 0";
+            byte[][] keysAndArgs = new byte[][] { hashKey, field, oldValue, newValue };
+
+            byte[][] resultBytes = this.RedisClient.Eval(luaBody, 1, keysAndArgs);
+            if (resultBytes == null)
+            {
+                return 0;
+            }
+            return BitConverter.ToInt64(resultBytes[0], 0);
         }
     }
 
