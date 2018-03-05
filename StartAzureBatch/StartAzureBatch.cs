@@ -16,23 +16,37 @@ namespace StartAzureBatch
 {
     public class GraphViewAzureBatchJob
     {
-        public readonly string query;
+        internal GraphTraversal traversal;
+        public GraphTraversal Traversal
+        {
+            get
+            {
+                return traversal;
+            }
+            set
+            {
+                traversal = value;
+                this.jobId = Guid.NewGuid().ToString("N");
+            }
+        }
 
-        public readonly string jobId;
+        internal readonly string query;
 
-        public readonly int parallelism;
+        internal string jobId;
+
+        internal readonly int parallelism;
 
         // CosmosDB account credentials
-        public readonly string docDBEndPoint;
-        public readonly string docDBKey;
-        public readonly string docDBDatabaseId;
-        public readonly string docDBCollectionId;
-        public readonly bool useReverseEdge;
-        public readonly string partitionByKey;
-        public readonly int spilledEdgeThresholdViagraphAPI;
+        internal readonly string docDBEndPoint;
+        internal readonly string docDBKey;
+        internal readonly string docDBDatabaseId;
+        internal readonly string docDBCollectionId;
+        internal readonly bool useReverseEdge;
+        internal readonly string partitionByKey;
+        internal readonly int spilledEdgeThresholdViagraphAPI;
 
-        public bool IsSuccess { get; set; } = false;
-        public string Result { get; set; }
+        internal bool IsSuccess { get; set; } = false;
+        internal string Result { get; set; }
 
         public GraphViewAzureBatchJob()
         {
@@ -55,6 +69,14 @@ namespace StartAzureBatch
         public GraphViewAzureBatchJob(string query) : this()
         {
             this.query = query;
+        }
+
+        public GraphViewCommand GetCommand()
+        {
+            GraphViewConnection connection = new GraphViewConnection(
+                this.docDBEndPoint, this.docDBKey, this.docDBDatabaseId, this.docDBCollectionId,
+                GraphType.GraphAPIOnly, this.useReverseEdge, this.spilledEdgeThresholdViagraphAPI, this.partitionByKey);
+            return new GraphViewCommand(connection);
         }
 
     }
@@ -206,13 +228,16 @@ namespace StartAzureBatch
 
         private static string CompileQuery(GraphViewAzureBatchJob job)
         {
-            GraphViewConnection connection = new GraphViewConnection(
-                job.docDBEndPoint, job.docDBKey, job.docDBDatabaseId, job.docDBCollectionId,
-                GraphType.GraphAPIOnly, job.useReverseEdge, job.spilledEdgeThresholdViagraphAPI, job.partitionByKey);
-            GraphViewCommand command = new GraphViewCommand(connection);
-
-            command.CommandText = job.query;
-            return command.CompileAndSerialize();
+            if (job.Traversal != null)
+            {
+                return job.Traversal.CompileAndSerialize();
+            }
+            else
+            {
+                GraphViewCommand command = job.GetCommand();
+                command.CommandText = job.query;
+                return command.CompileAndSerialize();
+            }
         }
 
         private List<Tuple<string, string>> AllocateComputeNode(BatchClient batchClient, GraphViewAzureBatchJob job)
@@ -729,6 +754,19 @@ namespace StartAzureBatch
                 return graphViewJob.Result.Split(new[] {"\r\n", "\r", "\n"}, StringSplitOptions.RemoveEmptyEntries).ToList();
             }
             throw new GraphViewException($"Run Query {query} failed!");
+        }
+
+        public static List<string> TestQuery(GraphViewAzureBatchJob graphViewJob)
+        {
+            AzureBatchJobManager jobManager = new AzureBatchJobManager();
+
+            jobManager.RunQueryAsync(graphViewJob).Wait();
+
+            if (graphViewJob.IsSuccess)
+            {
+                return graphViewJob.Result.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.RemoveEmptyEntries).ToList();
+            }
+            throw new GraphViewException("Run Query failed!");
         }
     }
 }

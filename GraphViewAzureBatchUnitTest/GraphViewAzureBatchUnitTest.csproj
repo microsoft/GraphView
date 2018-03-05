@@ -55,14 +55,38 @@
     <Compile Include="Gremlin\CustomTest.cs" />
     <Compile Include="Gremlin\Filter\AndTest.cs" />
     <Compile Include="Gremlin\Filter\CoinTest.cs" />
+    <Compile Include="Gremlin\Filter\SampleTest.cs" />
+    <Compile Include="Gremlin\Filter\RangeTest.cs" />
+    <Compile Include="Gremlin\Filter\LimitTest.cs" />
+    <Compile Include="Gremlin\Filter\DedupTest.cs" />
     <Compile Include="Gremlin\Filter\FilterTest.cs" />
+    <Compile Include="Gremlin\Filter\HasTest.cs" />
+    <Compile Include="Gremlin\Filter\IsTest.cs" />
+    <Compile Include="Gremlin\Filter\WhereTest.cs" />
     <Compile Include="Gremlin\Map\CoalesceTest.cs" />
+    <Compile Include="Gremlin\Map\StoreTest.cs" />
+    <Compile Include="Gremlin\Map\TreeTest.cs" />
+    <Compile Include="Gremlin\Map\UnfoldTest.cs" />
+    <Compile Include="Gremlin\Map\SelectTest.cs" />
+    <Compile Include="Gremlin\Map\ProjectTest.cs" />
+    <Compile Include="Gremlin\Map\PropertiesTest.cs" />
+    <Compile Include="Gremlin\Map\PathTest.cs" />
+    <Compile Include="Gremlin\Map\FoldTest.cs" />
+    <Compile Include="Gremlin\Map\GroupTest.cs" />
+    <Compile Include="Gremlin\Map\OrTest.cs" />
+    <Compile Include="Gremlin\Map\InjectTest.cs" />
+    <Compile Include="Gremlin\Map\ConstantTest.cs" />
     <Compile Include="Gremlin\Map\FlatMapTest.cs" />
     <Compile Include="Gremlin\Map\LocalTest.cs" />
     <Compile Include="Gremlin\Map\MapTest.cs" />
+    <Compile Include="Gremlin\SideEffect\SubgraphTest.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\GraphView\GraphView.csproj">
+      <Project>{33cadc4a-376f-489b-8357-be60d8f6186a}</Project>
+      <Name>GraphView</Name>
+    </ProjectReference>
     <ProjectReference Include="..\StartAzureBatch\StartAzureBatch.csproj">
       <Project>{ad320481-fdb0-4257-a550-40e3524bad84}</Project>
       <Name>StartAzureBatch</Name>
@@ -71,9 +95,7 @@
   <ItemGroup>
     <Service Include="{82A7F48D-3B50-4B1E-B82E-3ADA8210C358}" />
   </ItemGroup>
-  <ItemGroup>
-    <Folder Include="Gremlin\SideEffect\" />
-  </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.

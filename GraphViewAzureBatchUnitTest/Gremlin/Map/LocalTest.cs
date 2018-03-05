@@ -13,16 +13,15 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Map
         public void VerticesLocalOutECount()
         {
             string query = "g.V().local(__.outE().count())";
-            // todo
-            //List<string> results = StartAzureBatch.AzureBatchJobManager.TestQuery(query);
-            //Console.WriteLine("-------------Test Result-------------");
-            //foreach (string result in results)
-            //{
-            //    Console.WriteLine(result);
-            //}
-            //var convertResult = results.Select(r => int.Parse(r));
-            //var expectedResult = new List<int> { 3, 0, 0, 0, 1, 2 };
-            //CheckUnOrderedResults(expectedResult, convertResult);
+            List<string> results = StartAzureBatch.AzureBatchJobManager.TestQuery(query);
+            Console.WriteLine("-------------Test Result-------------");
+            foreach (string result in results)
+            {
+                Console.WriteLine(result);
+            }
+            var convertResult = results.Select(r => int.Parse(r));
+            var expectedResult = new List<int> { 3, 0, 0, 0, 1, 2 };
+            CheckUnOrderedResults(expectedResult, convertResult);
         }
 
         [TestMethod]

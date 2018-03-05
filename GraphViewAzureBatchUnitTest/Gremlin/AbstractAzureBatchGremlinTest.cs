@@ -1,16 +1,24 @@
 ﻿using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
+using GraphView;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using StartAzureBatch;
 
 namespace GraphViewAzureBatchUnitTest.Gremlin
 {
     [TestClass]
     public class AbstractAzureBatchGremlinTest
     {
+        protected GraphViewAzureBatchJob job;
+
         [TestInitialize]
-        public void Setup() { }
+        public void Setup()
+        {
+            this.job = new GraphViewAzureBatchJob();
+        }
 
         [TestCleanup]
         public void Cleanup() { }
@@ -83,6 +91,66 @@ namespace GraphViewAzureBatchUnitTest.Gremlin
                 hashMap[listVal]++;
             }
             return hashMap;
+        }
+
+        public string ConvertToVertexId(GraphViewCommand command, string name)
+        {
+            Debug.Assert(job.Traversal == null);
+            OutputFormat originalFormat = command.OutputFormat;
+            command.OutputFormat = OutputFormat.Regular;
+
+            job.Traversal = command.g().V().Has("name", name).Id();
+            string id = StartAzureBatch.AzureBatchJobManager.TestQuery(job).FirstOrDefault();
+
+            job.Traversal = null;
+            command.OutputFormat = originalFormat;
+
+            return id;
+        }
+
+        public string ConvertToEdgeId(GraphViewCommand command, string outVertexName, string edgeLabel, string inVertexName)
+        {
+            Debug.Assert(job.Traversal == null);
+            OutputFormat originalFormat = command.OutputFormat;
+            command.OutputFormat = OutputFormat.Regular;
+
+            job.Traversal = command.g().V().Has("name", outVertexName).OutE(edgeLabel).As("e").InV().Has("name", inVertexName).Select("e").Values("id");
+            string id = StartAzureBatch.AzureBatchJobManager.TestQuery(job).FirstOrDefault();
+
+            job.Traversal = null;
+            command.OutputFormat = originalFormat;
+
+            return id;
+        }
+
+        public string ConvertToPropertyId(GraphViewCommand command, string vertexName, string property, string propertyValue)
+        {
+            Debug.Assert(job.Traversal == null);
+            OutputFormat originalFormat = command.OutputFormat;
+            command.OutputFormat = OutputFormat.Regular;
+
+            job.Traversal = command.g().V().Has("name", vertexName).Properties(property).HasValue(propertyValue).Id();
+            string propertyId = StartAzureBatch.AzureBatchJobManager.TestQuery(job).FirstOrDefault();
+
+            job.Traversal = null;
+            command.OutputFormat = originalFormat;
+
+            return propertyId;
+        }
+
+        public string getVertexString(GraphViewCommand command, string vertexName)
+        {
+            Debug.Assert(job.Traversal == null);
+            command.OutputFormat = OutputFormat.GraphSON;
+            job.Traversal = command.g().V().Has("name", vertexName);
+            string result = StartAzureBatch.AzureBatchJobManager.TestQuery(job).FirstOrDefault();
+            job.Traversal = null;
+            return JsonConvert.DeserializeObject<dynamic>(result).First.ToString();
+        }
+
+        public static List<string> ConvertToList(dynamic result)
+        {
+            return ((JArray)result).Select(p => p.ToString()).ToList();
         }
     }
 }

@@ -29,14 +29,13 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Map
         public void g_V_mapXselectXaXX()
         {
             string query = "g.V().as('a').map(__.select('a'))";
-            // todo 
-            //List<string> results = StartAzureBatch.AzureBatchJobManager.TestQuery(query);
-            //Console.WriteLine("-------------Test Result-------------");
-            //foreach (string result in results)
-            //{
-            //    Console.WriteLine(result);
-            //}
-            //Assert.IsTrue(results.Count == 6);
+            List<string> results = StartAzureBatch.AzureBatchJobManager.TestQuery(query);
+            Console.WriteLine("-------------Test Result-------------");
+            foreach (string result in results)
+            {
+                Console.WriteLine(result);
+            }
+            Assert.IsTrue(results.Count == 6);
         }
     }
 }
