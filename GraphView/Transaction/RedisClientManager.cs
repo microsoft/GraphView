@@ -13,40 +13,34 @@
     /// Can extract IRedisClient and IRedisNativeClient from this redis client manager 
     /// </summary>
     internal class RedisClientManager
-    {
-        private static volatile RedisClientManager instance;
+    { 
         private static readonly object initLock = new object();
-        private readonly RedisManagerPool redisManagerPool;
+        private static IRedisClientsManager redisManagerPool;
 
-        private RedisClientManager()
-        {
-            // TODO: read redis config from config files
-            string redisConnectionString = "";
-            this.redisManagerPool = new RedisManagerPool(redisConnectionString);
-        }
-
-        internal static RedisClientManager Instance
+        internal static IRedisClientsManager Instance
         {
             get
             {
-                if (RedisClientManager.instance == null)
+                if (RedisClientManager.redisManagerPool == null)
                 {
                     lock (RedisClientManager.initLock)
                     {
-                        if (RedisClientManager.instance == null)
+                        if (RedisClientManager.redisManagerPool == null)
                         {
-                            RedisClientManager.instance = new RedisClientManager();
+                            // TODO: read redis config from config files
+                            string redisConnectionString = "";
+                            RedisClientManager.redisManagerPool = new RedisManagerPool(redisConnectionString);
                         }
                     }
                 }
 
-                return RedisClientManager.instance;
+                return RedisClientManager.redisManagerPool;
             }
         }
 
         internal RedisClient GetRedisClient()
         {
-            IRedisClient redisClient = RedisClientManager.Instance.redisManagerPool.GetClient();
+            IRedisClient redisClient = RedisClientManager.redisManagerPool.GetClient();
             return (RedisClient)redisClient;
         }
     }

@@ -17,11 +17,11 @@
         /// <summary>
         /// Get redisClient from the client pool
         /// </summary>
-        private RedisNativeClient RedisClient
+        private IRedisClientsManager RedisManager
         {
             get
             {
-                return RedisClientManager.Instance.GetRedisClient();
+                return RedisClientManager.Instance;
             }
         }
 
@@ -33,76 +33,76 @@
 
         internal override IEnumerable<VersionEntry> GetVersionList(object recordKey)
         {
-            if (this.RedisClient == null)
+            using (RedisClient redisClient = (RedisClient) this.RedisManager.GetClient())
             {
-                throw new ArgumentException($"redisClient is null");
-            }
+                redisClient.ChangeDb(this.redisDbIndex);
 
-            string hashKey = recordKey as string;
-            byte[][] versionBytes = this.RedisClient.HGetAll(hashKey);
-           
-            if (versionBytes == null)
-            {
-                throw new ArgumentException("Invalid recordKey reference '{recordKey}'");
-            }
+                string hashKey = recordKey as string;
+                byte[][] versionBytes = redisClient.HGetAll(hashKey);
 
-            List<VersionEntry> versionList = new List<VersionEntry>();
-            foreach (byte[] bytes in versionBytes)
-            {
-                VersionEntry versionEntry = VersionEntrySerializer.DeserializeFromBytes(bytes);
-                versionList.Add(versionEntry);
+                if (versionBytes == null)
+                {
+                    throw new ArgumentException("Invalid recordKey reference '{recordKey}'");
+                }
+
+                List<VersionEntry> versionList = new List<VersionEntry>();
+                foreach (byte[] bytes in versionBytes)
+                {
+                    VersionEntry versionEntry = VersionEntrySerializer.DeserializeFromBytes(bytes);
+                    versionList.Add(versionEntry);
+                }
+                return versionList;
             }
-            return versionList;
         }
 
         internal override IEnumerable<VersionEntry> GetVersionList(object recordKey, long timestamp)
         {
-            return base.GetVersionList(recordKey, timestamp);
+            return this.GetVersionList(recordKey);
         }
 
         internal override void InsertAndUploadVersion(object recordKey, VersionEntry version)
         {
-            if (this.RedisClient == null)
+            using (RedisClient redisClient = (RedisClient) this.RedisManager.GetClient())
             {
-                throw new ArgumentException($"redisClient is null");
+                redisClient.ChangeDb(this.redisDbIndex);
+
+                string hashKey = recordKey as string;
+                byte[] key = BitConverter.GetBytes(version.VersionKey);
+                byte[] value = VersionEntrySerializer.SerializeToBytes(version);
+
+                redisClient.HSet(hashKey, key, value);
             }
-
-            string hashKey = recordKey as string;
-            byte[] key = BitConverter.GetBytes(version.VersionKey);
-            byte[] value = VersionEntrySerializer.SerializeToBytes(version);
-
-            this.RedisClient.HSet(hashKey, key, value);
         }
 
         internal override bool UpdateAndUploadVersion(object recordKey, long versionKey, VersionEntry oldVersion, VersionEntry newVersion)
         {
-            if (this.RedisClient == null)
+            using (RedisClient redisClient = (RedisClient) this.RedisManager.GetClient())
             {
-                throw new ArgumentException("redisClient is null");
-            }
+                redisClient.ChangeDb(this.redisDbIndex);
 
-            string hashKeyStr = recordKey as string;
-            byte[] hashKey = Encoding.ASCII.GetBytes(hashKeyStr);
-            byte[] field = BitConverter.GetBytes(versionKey);
-            byte[] newValue = VersionEntrySerializer.SerializeToBytes(newVersion);
-            byte[] oldValue = VersionEntrySerializer.SerializeToBytes(oldVersion);
+                string hashKeyStr = recordKey as string;
+                byte[] hashKey = Encoding.ASCII.GetBytes(hashKeyStr);
+                byte[] field = BitConverter.GetBytes(versionKey);
+                byte[] newValue = VersionEntrySerializer.SerializeToBytes(newVersion);
+                byte[] oldValue = VersionEntrySerializer.SerializeToBytes(oldVersion);
 
-            long result = this.RedisHSetCAS(hashKey, field, oldValue, newValue);
+                long result = this.RedisHSetCAS(hashKey, field, oldValue, newValue);
 
-            return result == 0;
+                return result == 0;
+            } 
         }
 
         internal override void DeleteVersionEntry(object recordKey, long versionKey)
         {
-            if (this.RedisClient == null)
+            using (RedisClient redisClient = (RedisClient) this.RedisManager.GetClient())
             {
-                throw new ArgumentException("redisClient is null");
+                redisClient.ChangeDb(this.redisDbIndex);
+
+                string hashKey = recordKey as string;
+                byte[] key = BitConverter.GetBytes(versionKey);
+
+                redisClient.HDel(hashKey, key);
             }
-
-            string hashKey = recordKey as string;
-            byte[] key = BitConverter.GetBytes(versionKey);
-
-            this.RedisClient.HDel(hashKey, key);
         }
 
         /// <summary>
@@ -117,24 +117,28 @@
         /// <returns></returns>
         private long RedisHSetCAS(byte[] hashKey, byte[] field, byte[] oldValue, byte[] newValue)
         {
-            /*
-             -- eval 'lua_code' 1 hashkey field oldValue newValue
-             local ver = redis.call('HGET', KEYS[1], ARGV[1]);
-             if not ver or ver == ARGV[2] then
-                 return redis.call('HSET', KEYS[1], ARGV[1], ARGV[3]);
-             end
-             return 0
-            */
-            string luaBody = @"local ver = redis.call('HGET', KEYS[1], ARGV[1]); if not ver or ver == ARGV[2]
-                then return redis.call('HSET', KEYS[1], ARGV[1], ARGV[3]); end return 0";
-            byte[][] keysAndArgs = new byte[][] { hashKey, field, oldValue, newValue };
-
-            byte[][] resultBytes = this.RedisClient.Eval(luaBody, 1, keysAndArgs);
-            if (resultBytes == null)
+            using (RedisClient redisClient = (RedisClient) this.RedisManager.GetClient())
             {
-                return 0;
+                redisClient.ChangeDb(this.redisDbIndex);
+                /*
+                 -- eval 'lua_code' 1 hashkey field oldValue newValue
+                 local ver = redis.call('HGET', KEYS[1], ARGV[1]);
+                 if not ver or ver == ARGV[2] then
+                     return redis.call('HSET', KEYS[1], ARGV[1], ARGV[3]);
+                 end
+                 return 0
+                */
+                string luaBody = @"local ver = redis.call('HGET', KEYS[1], ARGV[1]); if not ver or ver == ARGV[2]
+                then return redis.call('HSET', KEYS[1], ARGV[1], ARGV[3]); end return 0";
+                byte[][] keysAndArgs = new byte[][] { hashKey, field, oldValue, newValue };
+
+                byte[][] resultBytes = redisClient.Eval(luaBody, 1, keysAndArgs);
+                if (resultBytes == null)
+                {
+                    return 0;
+                }
+                return BitConverter.ToInt64(resultBytes[0], 0);
             }
-            return BitConverter.ToInt64(resultBytes[0], 0);
         }
     }
 

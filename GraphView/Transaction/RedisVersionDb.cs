@@ -44,11 +44,11 @@
         /// <summary>
         /// Get RedisClient from the redis connection pool
         /// </summary>
-        private RedisNativeClient RedisClient
+        private IRedisClientsManager RedisManager
         {
             get
             {
-                return RedisClientManager.Instance.GetRedisClient();
+                return RedisClientManager.Instance;
             }
         }
 
@@ -78,14 +78,17 @@
 
         public bool AddVersionTable(string tableId, long redisDbIndex)
         {
-            this.RedisClient.ChangeDb(RedisVersionDb.META_DB_INDEX);
+            using (RedisClient redisClient = (RedisClient) this.RedisManager.GetClient())
+            {
+                redisClient.ChangeDb(RedisVersionDb.META_DB_INDEX);
 
-            byte[] keyBytes = Encoding.ASCII.GetBytes(tableId);
-            byte[] valueBytes = BitConverter.GetBytes(redisDbIndex);
+                byte[] keyBytes = Encoding.ASCII.GetBytes(tableId);
+                byte[] valueBytes = BitConverter.GetBytes(redisDbIndex);
 
-            long result = this.RedisClient.HSet(RedisVersionDb.META_TABLE_KEY, keyBytes, valueBytes);
+                long result = redisClient.HSet(RedisVersionDb.META_TABLE_KEY, keyBytes, valueBytes);
 
-            return result == 1;
+                return result == 1;
+            }
         }
 
         /// <summary>
@@ -95,23 +98,27 @@
         /// <returns></returns>
         public bool DeleteVersionTable(string tableId)
         {
-            this.RedisClient.ChangeDb(RedisVersionDb.META_DB_INDEX);
-
-            byte[] keyBytes = Encoding.ASCII.GetBytes(tableId);
-            long result = this.RedisClient.HDel(RedisVersionDb.META_TABLE_KEY, keyBytes);
-
-            if (this.versionTableMap.ContainsKey(tableId))
+            using (RedisClient redisClient = (RedisClient) this.RedisManager.GetClient())
             {
-                lock (this.tableLock)
+
+                redisClient.ChangeDb(RedisVersionDb.META_DB_INDEX);
+
+                byte[] keyBytes = Encoding.ASCII.GetBytes(tableId);
+                long result = redisClient.HDel(RedisVersionDb.META_TABLE_KEY, keyBytes);
+
+                if (this.versionTableMap.ContainsKey(tableId))
                 {
-                    if (this.versionTableMap.ContainsKey(tableId))
+                    lock (this.tableLock)
                     {
-                        this.versionTableMap.RemoveKey(tableId);
+                        if (this.versionTableMap.ContainsKey(tableId))
+                        {
+                            this.versionTableMap.RemoveKey(tableId);
+                        }
                     }
                 }
+
+                return result == 1;
             }
-   
-            return result == 1;
         }
 
         /// <summary>
@@ -154,17 +161,21 @@
         /// <returns></returns>
         protected long? GetTableRedisDbIndex(string tableId)
         {
-            this.RedisClient.ChangeDb(RedisVersionDb.META_DB_INDEX);
-
-            byte[] keyBytes = Encoding.ASCII.GetBytes(tableId);
-            byte[] valueBytes = this.RedisClient.HGet(RedisVersionDb.META_TABLE_KEY, keyBytes);
-
-            if (valueBytes == null)
+            using (RedisClient redisClient = (RedisClient)this.RedisManager.GetClient())
             {
-                return null;
-            }
 
-            return BitConverter.ToInt64(valueBytes, 0);
+                redisClient.ChangeDb(RedisVersionDb.META_DB_INDEX);
+
+                byte[] keyBytes = Encoding.ASCII.GetBytes(tableId);
+                byte[] valueBytes = redisClient.HGet(RedisVersionDb.META_TABLE_KEY, keyBytes);
+
+                if (valueBytes == null)
+                {
+                    return null;
+                }
+
+                return BitConverter.ToInt64(valueBytes, 0);
+            }
         }
 
         /// <summary>
@@ -173,22 +184,25 @@
         /// <returns></returns>
         protected IList<string> GetAllVersionTables()
         {
-            this.RedisClient.ChangeDb(RedisVersionDb.META_DB_INDEX);
-
-            byte[][] keysBytes = this.RedisClient.HKeys(RedisVersionDb.META_TABLE_KEY);
-            if (keysBytes == null)
+            using (RedisClient redisClient = (RedisClient) this.RedisManager.GetClient())
             {
-                throw new ArgumentException("Invalid META_TABLE_KEY reference '{RedisVersionDb.META_TABLE_KEY}'");
-            }
+                redisClient.ChangeDb(RedisVersionDb.META_DB_INDEX);
 
-            List<string> tableIdList = new List<string>();
-            foreach (byte[] keyBytes in keysBytes)
-            {
-                string tableId = Encoding.ASCII.GetString(keyBytes);
-                tableIdList.Add(tableId);
-            }
+                byte[][] keysBytes = redisClient.HKeys(RedisVersionDb.META_TABLE_KEY);
+                if (keysBytes == null)
+                {
+                    throw new ArgumentException("Invalid META_TABLE_KEY reference '{RedisVersionDb.META_TABLE_KEY}'");
+                }
 
-            return tableIdList;
+                List<string> tableIdList = new List<string>();
+                foreach (byte[] keyBytes in keysBytes)
+                {
+                    string tableId = Encoding.ASCII.GetString(keyBytes);
+                    tableIdList.Add(tableId);
+                }
+
+                return tableIdList;
+            }
         }
     }
 
