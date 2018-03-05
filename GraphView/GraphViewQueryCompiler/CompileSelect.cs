@@ -648,8 +648,22 @@ namespace GraphView
                     else if (tableReference is WSchemaObjectFunctionTableReference)
                     {
                         WSchemaObjectFunctionTableReference functionTableReference = tableReference as WSchemaObjectFunctionTableReference;
+
+                        if (context.InParallelMode && functionTableReference is WGroupTableReference 
+                                                   && !context.NeedGlobalAggregate 
+                                                   && context.HasSendOp)
+                        {
+                            SendOperator sendOp = new SendOperator(context.CurrentExecutionOperator, true, false, true);
+                            ReceiveOperator receiveOp = new ReceiveOperator(sendOp);
+                            operatorChain.Add(sendOp);
+                            operatorChain.Add(receiveOp);
+                            context.CurrentExecutionOperator = receiveOp;
+                            context.HasSendOp = false;
+                        }
+
                         op = functionTableReference.Compile(context, command);
                         context.TableReferences.Add(alias);
+
                         operatorChain.Add(op);
                         context.CurrentExecutionOperator = operatorChain.Last();
                     }
@@ -2919,6 +2933,7 @@ namespace GraphView
             QueryCompilationContext subcontext = new QueryCompilationContext(context);
             Container container = new Container();
             subcontext.OuterContextOp.SetContainer(container);
+            subcontext.NeedGlobalAggregate = false;
             if (0 < context.LocalExecutionOrders.Count)
             {
                 subcontext.CurrentExecutionOrder = context.LocalExecutionOrders[0];
@@ -2940,7 +2955,7 @@ namespace GraphView
                         groupKeyFunction,
                         container, aggregateOp,
                         this.IsProjectingACollection,
-                        context.RawRecordLayout.Count);
+                        context.RawRecordLayout.Count, context.InParallelMode && context.NeedGlobalAggregate);
 
                 context.CurrentExecutionOperator = groupOp;
 

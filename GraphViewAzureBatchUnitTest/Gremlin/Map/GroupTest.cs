@@ -60,7 +60,6 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Map
             {
                 GraphViewCommand.OutputFormat = OutputFormat.Regular;
                 this.job.Traversal = GraphViewCommand.g().V().As("a").In().Select("a").GroupCount().Unfold().Select(GremlinKeyword.Column.Keys).Out().ValueMap();
-                //this.job.Traversal = GraphViewCommand.g().V().As("a").In().Select("a").GroupCount().Unfold().Select(GremlinKeyword.Column.Keys).ValueMap();
                 List<string> results = StartAzureBatch.AzureBatchJobManager.TestQuery(this.job);
 
                 foreach (var result in results)

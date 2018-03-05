@@ -1025,12 +1025,9 @@ namespace GraphView
         }
     }
 
-    [DataContract]
     internal class GroupState : AggregateState
     {
         internal Dictionary<FieldObject, List<RawRecord>> groupedStates;
-        [DataMember]
-        private Dictionary<FieldObject, List<string>> serializedGroupedStates;
 
         public GroupState(string tableAlias) : base(tableAlias)
         {
@@ -1042,19 +1039,57 @@ namespace GraphView
             this.groupedStates = new Dictionary<FieldObject, List<RawRecord>>();
         }
 
-        [OnSerializing]
-        private void SerializeRawRecord(StreamingContext context)
+        public void Merge(GroupState groupState)
         {
-            // todo: serialze a List of RawRecord instead of one RawRecord.
-            this.serializedGroupedStates = new Dictionary<FieldObject, List<string>>();
-            foreach (KeyValuePair<FieldObject, List<RawRecord>> pair in this.groupedStates)
+            foreach (KeyValuePair<FieldObject, List<RawRecord>> pair in groupState.groupedStates)
             {
-                this.serializedGroupedStates[pair.Key] = new List<string>();
-                foreach (RawRecord rec in pair.Value)
+                if (!this.groupedStates.ContainsKey(pair.Key))
                 {
-                    this.serializedGroupedStates[pair.Key].Add(RawRecordMessage.CodeMessage(rec));
+                    this.groupedStates[pair.Key] = pair.Value;
+                }
+                else
+                {
+                    this.groupedStates[pair.Key].AddRange(pair.Value);
                 }
             }
+        }
+
+        public string Serialize()
+        {
+            Dictionary<string, List<string>> internalResult = new Dictionary<string, List<string>>();
+            foreach (KeyValuePair<FieldObject, List<RawRecord>> pair in this.groupedStates)
+            {
+                RawRecord record = new RawRecord();
+                record.Append(pair.Key);
+                string key = RawRecordMessage.CodeMessage(record);
+
+                internalResult[key] = new List<string>();
+                foreach (RawRecord rec in pair.Value)
+                {
+                    internalResult[key].Add(RawRecordMessage.CodeMessage(rec));
+                }
+            }
+
+            return GraphViewSerializer.SerializeWithDataContract(internalResult);
+        }
+
+        public static GroupState Deserialize(GraphViewCommand command, string serializeResult)
+        {
+            Dictionary<string, List<string>> internalResult =
+                GraphViewSerializer.DeserializeWithDataContract<Dictionary<string, List<string>>>(serializeResult);
+            Dictionary<FieldObject, List<RawRecord>> states = new Dictionary<FieldObject, List<RawRecord>>();
+            foreach (KeyValuePair<string, List<string>> pair in internalResult)
+            {
+                RawRecord record = RawRecordMessage.DecodeMessage(pair.Key, command);
+                FieldObject key = record[0];
+
+                states[key] = new List<RawRecord>();
+                foreach (string recStr in pair.Value)
+                {
+                    states[key].Add(RawRecordMessage.DecodeMessage(recStr, command));
+                }
+            }
+            return new GroupState("") { groupedStates = states };
         }
     }
 
@@ -1209,13 +1244,20 @@ namespace GraphView
         [NonSerialized]
         protected Dictionary<FieldObject, List<RawRecord>> groupedStates;
 
+        // Following member variables is about parallelism.
+        private readonly bool isParallel;
+        private readonly string receiveHostId;
+        [NonSerialized]
+        private AggregateIntermadiateResult aggregateIntermadiateResult;
+
         public GroupOperator(
             GraphViewExecutionOperator inputOp,
             ScalarFunction groupByKeyFunction,
             Container container,
             GraphViewExecutionOperator aggregateOp,
             bool isProjectingACollection,
-            int carryOnCount)
+            int carryOnCount,
+            bool isParallel)
         {
             this.inputOp = inputOp;
 
@@ -1228,6 +1270,10 @@ namespace GraphView
             this.carryOnCount = carryOnCount;
 
             this.groupedStates = new Dictionary<FieldObject, List<RawRecord>>();
+
+            this.isParallel = isParallel;
+            this.receiveHostId = Guid.NewGuid().ToString("N");
+
             this.Open();
         }
 
@@ -1255,8 +1301,20 @@ namespace GraphView
                 this.groupedStates[groupByKey].Add(r);
             }
 
-            MapField result = new MapField(this.groupedStates.Count);
+            bool hasResult = true;
+            if (this.isParallel)
+            {
+                hasResult = this.aggregateIntermadiateResult.Aggregate(new GroupState("") {groupedStates = this.groupedStates});
+            }
 
+            if (!hasResult)
+            {
+                Close();
+                return null;
+            }
+
+            MapField result = new MapField(this.groupedStates.Count);
+            
             if (this.isProjectingACollection)
             {
                 foreach (FieldObject key in groupedStates.Keys)
@@ -1340,6 +1398,13 @@ namespace GraphView
             this.container = new Container();
             EnumeratorOperator enumeratorOp = this.aggregateOp.GetFirstOperator() as EnumeratorOperator;
             enumeratorOp.SetContainer(this.container);
+
+            if (this.isParallel)
+            {
+                AdditionalSerializationInfo additionalInfo = (AdditionalSerializationInfo)context.Context;
+                this.aggregateIntermadiateResult = new AggregateIntermadiateResult(this.receiveHostId,
+                    additionalInfo.TaskIndex, additionalInfo.PartitionPlans, additionalInfo.Command);
+            }
         }
     }
 
@@ -1358,7 +1423,7 @@ namespace GraphView
             bool isProjectingACollection,
             int carryOnCount)
             : base(inputOp, groupByKeyFunction, container, aggregateOp,
-                isProjectingACollection, carryOnCount)
+                isProjectingACollection, carryOnCount, false)
         {
             this.processedGroupIndex = 0;
         }

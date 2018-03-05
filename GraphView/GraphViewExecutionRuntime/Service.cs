@@ -373,6 +373,42 @@ namespace GraphView
             }
         }
 
+        public bool Aggregate(AggregateState aggregateState)
+        {
+            GroupState groupState = aggregateState as GroupState;
+            if (groupState != null)
+            {
+                int targetTask = DetermineTargetTask();
+
+                if (this.currentTask == targetTask)
+                {
+                    if (this.receiveHost == null)
+                    {
+                        this.receiveHost = new ReceiveHost(this.receiveHostId, this.currentTask, this.partitionPlans);
+                        this.receiveHost.OpenHost();
+                    }
+
+                    List<string> messages = this.receiveHost.WaitReturnAllMessages();
+
+                    foreach (string message in messages)
+                    {
+                        GroupState anotherState = GroupState.Deserialize(this.command, message);
+                        groupState.Merge(anotherState);
+                    }
+                    return true;
+                }
+                else
+                {
+                    string message = groupState.Serialize();
+                    SendClient sendClient = new SendClient(this.receiveHostId, this.partitionPlans);
+                    sendClient.SendMessage(message, targetTask, this.currentTask);
+                    return false;
+                }
+            }
+
+            throw new NotImplementedException();
+        }
+
         // maybe use the amount of data that each task computes to determine target task.
         private int DetermineTargetTask()
         {
@@ -920,6 +956,14 @@ namespace GraphView
                 {
                     AnalysisFieldObject(field);
                 }
+                return;
+            }
+
+            EntryField entryField = fieldObject as EntryField;
+            if (entryField != null)
+            {
+                AnalysisFieldObject(entryField.Key);
+                AnalysisFieldObject(entryField.Value);
                 return;
             }
 
