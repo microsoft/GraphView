@@ -750,11 +750,11 @@ namespace GraphView
                     operatorChain.Add(sendOp);
                     operatorChain.Add(receiveOp);
                     inputOp = receiveOp;
+                    context.HasSendOp = false;
                 }
 
                 ProjectAggregation projectAggregationOp = context.InBatchMode ?
-                    new ProjectAggregationInBatch(inputOp,
-                        context.InParallelMode && context.NeedGlobalAggregate) :
+                    new ProjectAggregationInBatch(inputOp) :
                     new ProjectAggregation(inputOp,
                         context.InParallelMode && context.NeedGlobalAggregate);
 

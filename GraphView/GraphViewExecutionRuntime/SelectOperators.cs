@@ -1185,9 +1185,9 @@ namespace GraphView
         protected GraphViewExecutionOperator inputOp;
 
         // Following member variables is about parallelism.
-        protected readonly bool isParallel;
-        protected readonly string receiveHostId;
-        protected AggregateIntermadiateResult aggregateIntermadiateResult;
+        private readonly bool isParallel;
+        private readonly string receiveHostId;
+        private AggregateIntermadiateResult aggregateIntermadiateResult;
 
         public ProjectAggregation(GraphViewExecutionOperator inputOp, bool isParallel = false)
         {
@@ -1254,7 +1254,6 @@ namespace GraphView
                 }
             }
 
-            // todo
             bool hasResult = true;
             if (this.isParallel)
             {
@@ -1306,9 +1305,14 @@ namespace GraphView
             this.receiveHostId = info.GetString("receiveHostId");
             this.aggregationSpecs = GraphViewSerializer.DeserializeListTupleList<IAggregateFunction, ScalarFunction>(
                 info, "aggregationSpecs");
-            AdditionalSerializationInfo additionalInfo = (AdditionalSerializationInfo)context.Context;
-            this.aggregateIntermadiateResult = new AggregateIntermadiateResult(this.receiveHostId,
-                additionalInfo.TaskIndex, additionalInfo.PartitionPlans, additionalInfo.Command);
+
+            if (this.isParallel)
+            {
+                AdditionalSerializationInfo additionalInfo = (AdditionalSerializationInfo)context.Context;
+                this.aggregateIntermadiateResult = new AggregateIntermadiateResult(this.receiveHostId,
+                    additionalInfo.TaskIndex, additionalInfo.PartitionPlans, additionalInfo.Command);
+            }
+            
             this.Open();
         }
     }
@@ -1318,7 +1322,7 @@ namespace GraphView
     {
         private RawRecord firstRecordInGroup = null;
 
-        internal ProjectAggregationInBatch(GraphViewExecutionOperator inputOp, bool isParallel) : base(inputOp, isParallel)
+        internal ProjectAggregationInBatch(GraphViewExecutionOperator inputOp) : base(inputOp, false)
         { }
 
         public RawRecord GetNoAccumulateRecord(int index)
@@ -1405,36 +1409,23 @@ namespace GraphView
                     rec = this.inputOp.Next();
                 }
 
-                bool hasResult = true;
-                if (this.isParallel)
+                RawRecord outputRec = new RawRecord();
+                outputRec.Append(this.firstRecordInGroup[0]);
+                foreach (Tuple<IAggregateFunction, List<ScalarFunction>> aggr in this.aggregationSpecs)
                 {
-                    hasResult = this.aggregateIntermadiateResult.Aggregate(this.aggregationSpecs.Select(tuple => tuple.Item1).ToList());
-                }
-
-                RawRecord outputRec = null;
-                if (hasResult)
-                {
-                    outputRec = new RawRecord();
-                    outputRec.Append(this.firstRecordInGroup[0]);
-                    foreach (Tuple<IAggregateFunction, List<ScalarFunction>> aggr in this.aggregationSpecs)
+                    if (aggr.Item1 != null)
                     {
-                        if (aggr.Item1 != null)
-                        {
-                            outputRec.Append(aggr.Item1.Terminate());
-                        }
-                        else
-                        {
-                            outputRec.Append((FieldObject)null);
-                        }
+                        outputRec.Append(aggr.Item1.Terminate());
+                    }
+                    else
+                    {
+                        outputRec.Append((FieldObject)null);
                     }
                 }
 
                 this.firstRecordInGroup = rec;
 
-                if (hasResult)
-                {
-                    return outputRec;
-                }
+                return outputRec;
             }
 
             return null;
