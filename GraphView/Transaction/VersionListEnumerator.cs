@@ -6,7 +6,7 @@ namespace GraphView.Transaction
 
     internal class VersionListEnumerator : IEnumerator<VersionEntry>
     {
-        private VersionNode head;
+        private readonly VersionNode head;
         private VersionNode currentNode;
 
         public VersionListEnumerator(VersionNode head)
@@ -15,7 +15,7 @@ namespace GraphView.Transaction
             this.currentNode = head;
         }
 
-        public VersionEntry Current => this.currentNode.versionEntry;
+        public VersionEntry Current => this.currentNode.VersionEntry;
 
         object IEnumerator.Current => this.Current;
 
@@ -26,7 +26,7 @@ namespace GraphView.Transaction
 
         public bool MoveNext()
         {
-            this.currentNode = this.currentNode.next;
+            this.currentNode = this.currentNode.NextNode;
             return this.currentNode == null;
         }
 
