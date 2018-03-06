@@ -3066,7 +3066,7 @@ namespace GraphView
             QueryDerivedTableOperator queryDerivedTableOp =
                 context.InBatchMode
                     ? new QueryDerivedInBatchOperator(context.CurrentExecutionOperator, subQueryOp, container,
-                        projectAggregationInBatchOp, context.RawRecordLayout.Count)
+                        projectAggregationInBatchOp, context.RawRecordLayout.Count, context.InParallelMode && context.ParallelLevel.EnableSendThenSendBack ? 2 : 1)
                     : new QueryDerivedTableOperator(context.CurrentExecutionOperator, subQueryOp, container,
                         context.RawRecordLayout.Count);
 

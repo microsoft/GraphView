@@ -1170,16 +1170,22 @@ namespace GraphView
         [NonSerialized]
         private SortedDictionary<int, RawRecord> outputBuffer;
 
+        // If in parallel mode, RawRecord prefixLength is 2 (batchId, taskId). 
+        // otherwise, RawRecord prefixLength is 1 (batchId).
+        private readonly int prefixLen;
+
         public QueryDerivedInBatchOperator(
             GraphViewExecutionOperator inputOp,
             GraphViewExecutionOperator derivedQueryOp,
             Container container,
             ProjectAggregationInBatch projectAggregationInBatchOp,
-            int carryOnCount)
+            int carryOnCount,
+            int prefixLen)
             : base(inputOp, derivedQueryOp, container, carryOnCount)
         {
             this.projectAggregationInBatchOp = projectAggregationInBatchOp;
             this.outputBuffer = new SortedDictionary<int, RawRecord>();
+            this.prefixLen = prefixLen;
         }
 
         public override RawRecord Next()
@@ -1191,7 +1197,7 @@ namespace GraphView
                 while (this.inputOp.State() && (inputRec = this.inputOp.Next()) != null)
                 {
                     inputRecords.Add(inputRec);
-                    this.outputBuffer[int.Parse(inputRec[0].ToValue)] = null;
+                    this.outputBuffer[int.Parse(inputRec[0].ToValue)] = inputRec.GetRange(0, this.prefixLen);
                 }
 
                 this.container.ResetTableCache(inputRecords);
@@ -1201,14 +1207,16 @@ namespace GraphView
             while (this.derivedQueryOp.State() && (derivedRecord = this.derivedQueryOp.Next()) != null)
             {
                 RawRecord returnRecord = new RawRecord();
-                returnRecord.Append(derivedRecord[0]);
-                for (int i = 1; i < this.carryOnCount; i++)
+                int batchId = int.Parse(derivedRecord[0].ToValue);
+                returnRecord.Append(this.outputBuffer[batchId].GetRange(0, this.prefixLen));
+                
+                for (int i = this.prefixLen; i < this.carryOnCount; i++)
                 {
                     returnRecord.Append((FieldObject)null);
                 }
                 returnRecord.Append(derivedRecord.GetRange(1));
 
-                this.outputBuffer[int.Parse(derivedRecord[0].ToValue)] = returnRecord;
+                this.outputBuffer[batchId] = returnRecord;
             }
 
             foreach (KeyValuePair<int, RawRecord> kvPair in this.outputBuffer)
@@ -1216,12 +1224,12 @@ namespace GraphView
                 int batchId = kvPair.Key;
                 RawRecord returnRecord = kvPair.Value;
                 // batch index was lost during sub-traversal, but aggregateOp must have output.
-                if (returnRecord == null)
+                if (returnRecord.Length == this.prefixLen)
                 {
                     RawRecord noAccumulateRec = this.projectAggregationInBatchOp.GetNoAccumulateRecord(batchId);
                     returnRecord = new RawRecord();
-                    returnRecord.Append(noAccumulateRec[0]);
-                    for (int i = 1; i < this.carryOnCount; i++)
+                    returnRecord.Append(this.outputBuffer[batchId].GetRange(0, this.prefixLen));
+                    for (int i = this.prefixLen; i < this.carryOnCount; i++)
                     {
                         returnRecord.Append((FieldObject)null);
                     }
