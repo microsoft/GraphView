@@ -19,11 +19,6 @@ namespace GraphView.Transaction
             return base.GetVersionList(recordKey);
         }
 
-        internal override IEnumerable<VersionEntry> GetVersionList(object recordKey, long timestamp)
-        {
-            return base.GetVersionList(recordKey, timestamp);
-        }
-
         internal override void InsertAndUploadVersion(object recordKey, VersionEntry version)
         {
             base.InsertAndUploadVersion(recordKey, version);

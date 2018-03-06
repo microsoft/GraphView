@@ -59,11 +59,18 @@
             return versionList;
         }
 
-        internal override IEnumerable<VersionEntry> GetVersionList(
+        // This method should be overriden for Cassandra
+        internal override VersionEntry GetVersionEntryByTimestamp(
             object recordKey,
             long timestamp)
         {
-            return this.GetVersionList(recordKey);
+            throw new NotImplementedException();
+        }
+
+        // This method should be overriden for Cassandra
+        internal override VersionEntry GetVersionEntryByKey(object recordKey, long versionKey)
+        {
+            throw new NotImplementedException();
         }
 
         internal override void InsertAndUploadVersion(

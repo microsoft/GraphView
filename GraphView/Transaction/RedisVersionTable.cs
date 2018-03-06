@@ -55,9 +55,10 @@
             }
         }
 
-        internal override IEnumerable<VersionEntry> GetVersionList(object recordKey, long timestamp)
+        // This method should be overriden for Redis
+        internal override VersionEntry GetVersionEntryByKey(object recordKey, long versionKey)
         {
-            return this.GetVersionList(recordKey);
+            throw new NotImplementedException();
         }
 
         internal override void InsertAndUploadVersion(object recordKey, VersionEntry version)
