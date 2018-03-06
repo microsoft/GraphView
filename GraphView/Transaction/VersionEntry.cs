@@ -114,6 +114,26 @@
             this.versionKey = beginTimestamp;
         }
 
+        // The constructor is used to reconstruct object from serialized values
+        public VersionEntry(
+            bool isBeginTxId,
+            long beginTimestamp,
+            bool isEndTxId,
+            long endTimestamp,
+            object recordKey,
+            long versionKey,
+            object record)
+        {
+            this.isBeginTxId = isBeginTxId;
+            this.beginTimestamp = beginTimestamp;
+            this.isEndTxId = isEndTxId;
+            this.endTimestamp = endTimestamp;
+            this.record = record;
+
+            this.recordKey = recordKey;
+            this.versionKey = versionKey;
+        }
+
         // The special constructor is used to deserialize values.
         public VersionEntry(SerializationInfo info, StreamingContext context)
         {
