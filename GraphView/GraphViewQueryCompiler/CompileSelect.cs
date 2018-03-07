@@ -1377,7 +1377,7 @@ namespace GraphView
                     subcontext.CurrentExecutionOrder = context.LocalExecutionOrders[index];
                 }
                 GraphViewExecutionOperator traversalOp = scalarSubquery.SubQueryExpr.Compile(subcontext, command);
-                if (isParallel && subcontext.HasSendOp)
+                if (isParallel)
                 {
                     SendOperator sendOperator = new SendOperator(traversalOp, true);
                     ReceiveOperator receiveOperator = new ReceiveOperator(sendOperator);
@@ -1530,7 +1530,7 @@ namespace GraphView
 
             GraphViewExecutionOperator targetSubqueryOp = optionalSelect.Compile(targetSubContext, command);
 
-            if (isParallel && targetSubContext.HasSendOp)
+            if (isParallel)
             {
                 SendOperator sendOperator = new SendOperator(targetSubqueryOp, true);
                 ReceiveOperator receiveOperator = new ReceiveOperator(sendOperator);
@@ -1637,7 +1637,7 @@ namespace GraphView
 
             GraphViewExecutionOperator localTraversalOp = localSelect.Compile(subcontext, command);
 
-            if (isParallel && subcontext.HasSendOp)
+            if (isParallel)
             {
                 SendOperator sendOperator = new SendOperator(localTraversalOp, true);
                 ReceiveOperator receiveOperator = new ReceiveOperator(sendOperator);
@@ -1732,7 +1732,7 @@ namespace GraphView
 
             GraphViewExecutionOperator flatMapTraversalOp = flatMapSelect.Compile(subcontext, command);
 
-            if (isParallel && subcontext.HasSendOp)
+            if (isParallel)
             {
                 SendOperator sendOperator = new SendOperator(flatMapTraversalOp, true);
                 ReceiveOperator receiveOperator = new ReceiveOperator(sendOperator);
@@ -2733,7 +2733,7 @@ namespace GraphView
 
             GraphViewExecutionOperator mapTraversalOp = mapSelect.Compile(subcontext, command);
 
-            if (isParallel && subcontext.HasSendOp)
+            if (isParallel)
             {
                 SendOperator sendOperator = new SendOperator(mapTraversalOp, true);
                 ReceiveOperator receiveOperator = new ReceiveOperator(sendOperator);
@@ -3591,7 +3591,7 @@ namespace GraphView
 
             GraphViewExecutionOperator targetSubqueryOp = targetSubquery.SubQueryExpr.Compile(targetSubContext, command);
 
-            if (isParallel && targetSubContext.HasSendOp)
+            if (isParallel)
             {
                 SendOperator sendOperator = new SendOperator(targetSubqueryOp, true);
                 ReceiveOperator receiveOperator = new ReceiveOperator(sendOperator);
@@ -3713,7 +3713,7 @@ namespace GraphView
 
             GraphViewExecutionOperator targetSubqueryOp = targetSubquery.SubQueryExpr.Compile(targetContext, command);
 
-            if (isParallel && targetContext.HasSendOp)
+            if (isParallel)
             {
                 SendOperator sendOperator = new SendOperator(targetSubqueryOp, true);
                 ReceiveOperator receiveOperator = new ReceiveOperator(sendOperator);
