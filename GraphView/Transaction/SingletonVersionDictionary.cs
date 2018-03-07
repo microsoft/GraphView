@@ -32,7 +32,7 @@
             return this.dict[recordKey];
         }
 
-        internal override void InsertAndUploadVersion(object recordKey, VersionEntry version)
+        internal override bool InsertAndUploadVersion(object recordKey, VersionEntry version)
         {
             //the version list does not exist, create a new list
             if (!this.dict.ContainsKey(recordKey))
@@ -47,6 +47,7 @@
             }
 
             this.dict[recordKey].PushFront(version);
+            return true;
         }
 
         internal override bool UpdateAndUploadVersion(object recordKey, long versionKey, VersionEntry toBeChangedVersion, VersionEntry newVersion)
@@ -54,9 +55,10 @@
             return this.dict[recordKey].ChangeNodeValue(recordKey, versionKey, toBeChangedVersion, newVersion);
         }
 
-        internal override void DeleteVersionEntry(object recordKey, long versionKey)
+        internal override bool DeleteVersionEntry(object recordKey, long versionKey)
         {
             this.dict[recordKey].DeleteNode(recordKey, versionKey);
+            return true;
         }
     }
 

@@ -74,20 +74,31 @@
         {
             using (ISession session = this.CassandraCluster.Connect())
             {
-                // The idea without "IF EXISTS" check is that we could catch the
-                // exception in the upper level if there is a duplicated table.
-                // Otherwise, the table creatation sentence will not create a table with
-                // the same name and return true sliently, which is what we expect.
-                RowSet rowSet = session.Execute(
-                    $@"CREATE TABLE '{tableId}' (
-                        record_key blob,
+                RowSet rowSet;
+                try
+                {
+                    // The idea without "IF EXISTS" check is that we could catch the
+                    // exception in the upper level if there is a duplicated table.
+                    // Otherwise, the table creatation sentence will not create a table with
+                    // the same name and return true sliently, which is what we expect.
+                    rowSet = session.Execute($@"
+                    CREATE TABLE '{tableId}'(
+                        record_key varchar,
                         version_key bigint,
                         is_begin_tx_id boolean,
                         begin_timestamp bigint,
-                        id_end_tx_id boolean,
+                        is_end_tx_id boolean,
                         end_timestamp bigint,
-                        record blob,
-                        PRIMARY KEY(record_key, version_key));");
+                        record varchar,
+                        PRIMARY KEY(record_key, version_key)
+                    ) WITH CLUSTERING ORDER BY(begin_timestamp DESC);");
+                    
+                }
+                catch (DriverException e)
+                {
+                    return false;
+                }
+
                 // extract result from rowSet
                 return true;
             }
@@ -102,7 +113,15 @@
         {
             using (ISession session = this.CassandraCluster.Connect())
             {
-                RowSet rowSet = session.Execute($@"DROP TABLE IF EXISTS '{tableId}'");
+                RowSet rowSet;
+                try
+                {
+                   rowSet = session.Execute($@"DROP TABLE IF EXISTS '{tableId}'");
+                }
+                catch(DriverException e)
+                {
+                    return false;
+                }
                 
                 if (this.versionTableMap.ContainsKey(tableId))
                 {
@@ -148,7 +167,17 @@
                         "system_schema", "system_distributed", "system_traces");
                 }
 
-                RowSet rowSet = session.Execute(statement);
+                RowSet rowSet;
+                
+                try
+                {
+                    rowSet = session.Execute(statement);
+                }
+                catch (DriverException e)
+                {
+                    return versionTables;
+                }
+               
                 foreach (Row row in rowSet)
                 {
                     string rowKeySpace = row.GetValue<string>("keyspace_name");
@@ -176,7 +205,17 @@
                     system_schema.tables WHERE keyspace_name = ? and table_name = ?");
 
                     Statement statement = preStatement.Bind(items[0], items[1]);
-                    RowSet rowSet = session.Execute(statement);
+                    RowSet rowSet;
+                    
+                    try
+                    {
+                        rowSet = session.Execute(statement);
+                    }
+                    catch (DriverException e)
+                    {
+                        // can not load table
+                        return null;
+                    }
 
                     bool tableExist = false;
                     if (rowSet != null)

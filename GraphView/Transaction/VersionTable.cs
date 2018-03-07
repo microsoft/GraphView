@@ -108,7 +108,7 @@ namespace GraphView.Transaction
             throw new NotImplementedException();
         }
 
-        internal virtual void InsertAndUploadVersion(object recordKey, VersionEntry version)
+        internal virtual bool InsertAndUploadVersion(object recordKey, VersionEntry version)
         {
             throw new NotImplementedException();
         }
@@ -118,7 +118,7 @@ namespace GraphView.Transaction
             throw new NotImplementedException();
         }
 
-        internal virtual void DeleteVersionEntry(object recordKey, long versionKey)
+        internal virtual bool DeleteVersionEntry(object recordKey, long versionKey)
         {
             throw new NotImplementedException();
         }

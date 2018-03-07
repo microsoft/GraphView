@@ -13,17 +13,17 @@
     /// <summary>
     /// A version table implementation in cassandra.
     /// The storage format of version table
-    ///     // blob: Arbitrary bytes (no validation), expressed as hexadecimal
-    ///     CREATE TABLE versionList(
-    ///         record_key blob,
-    ///         version_key bigint,
-    ///         is_begin_tx_id boolean,
-    ///         begin_timestamp bigint,
-    ///         id_end_tx_id boolean,
-    ///         end_timestamp bigint,
-    ///         record blob,
-    ///         PRIMARY KEY (record_key, version_key)
-    /// );
+    /// // blob: Arbitrary bytes (no validation), expressed as hexadecimal
+    /// CREATE TABLE version_table (
+    ///     record_key blob,
+    ///     version_key bigint,
+    ///     is_begin_tx_id boolean,
+    ///     begin_timestamp bigint,
+    ///     is_end_tx_id boolean,
+    ///     end_timestamp bigint,
+    ///     record blob,
+    ///     PRIMARY KEY(record_key, version_key)
+    /// ) WITH CLUSTERING ORDER BY(version_key DESC);
     /// </summary>
     internal partial class CassandraVersionTable : VersionTable
     {
@@ -42,38 +42,116 @@
         { 
         }
 
+        /// <summary>
+        /// Return a version list by record key
+        /// </summary>
+        /// <param name="recordKey"></param>
+        /// <returns></returns>
         internal override IEnumerable<VersionEntry> GetVersionList(object recordKey)
         {
             List<VersionEntry> versionList = new List<VersionEntry>();
             using (ISession session = this.CassandraCluster.Connect())
             {
-                RowSet rowSet = session.Execute($"SELECT * FROM '{this.tableId}'");
+                PreparedStatement preStatement = session.Prepare($@"SELECT * 
+                    FROM '{this.tableId}' WHERE record_key = ?");
+                Statement statement = preStatement.Bind(recordKey);
 
-                foreach (Row row in rowSet)
+                RowSet rowSet;
+                try
+                {
+                    rowSet = session.Execute(statement);
+                }
+                catch (DriverException e)
+                {
+                    return versionList;
+                }
+
+                foreach (Row row in rowSet) 
                 {
                     VersionEntry versionEntry = this.GetVersionEntryFromRow(row);
                     versionList.Add(versionEntry);
                 }
-           
             }
             return versionList;
         }
 
-        // This method should be overriden for Cassandra
+        /// <summary>
+        /// Return a visiable version entry from the list by a record key and timestamp
+        /// TODO: how to handle the case that there are several insertions at the sametime
+        /// </summary>
+        /// <param name="recordKey">The recordKey</param>
+        /// <param name="timestamp">The read timestamp</param>
+        /// <returns>A version entry or null</returns>
         internal override VersionEntry GetVersionEntryByTimestamp(
             object recordKey,
             long timestamp)
         {
-            throw new NotImplementedException();
+            using (ISession session = this.CassandraCluster.Connect())
+            {
+                PreparedStatement preStatement = session.Prepare($@"SELECT * FROM '{this.tableId}' 
+                    WHERE record_key = ? AND version_key <= ? ORDER BY version_key DESC LIMIT 2;");
+                Statement statement = preStatement.Bind(recordKey, timestamp);
+                RowSet rowSet;
+
+                try
+                {
+                    rowSet = session.Execute(statement);
+                }
+                catch (DriverException e)
+                {
+                    // If the cql query throw an exception, return null
+                    return null;
+                }
+
+                foreach (Row row in rowSet)
+                {
+                    VersionEntry versionEntry = this.GetVersionEntryFromRow(row);
+                    if (this.CheckVersionVisibility(versionEntry, timestamp))
+                    {
+                        return versionEntry;
+                    }
+                }
+            }
+
+            return null;
         }
 
         // This method should be overriden for Cassandra
+        /// <summary>
+        /// Return a version entry by record key and version key
+        /// </summary>
+        /// <param name="recordKey"></param>
+        /// <param name="versionKey"></param>
+        /// <returns>a version entry or null</returns>
         internal override VersionEntry GetVersionEntryByKey(object recordKey, long versionKey)
         {
-            throw new NotImplementedException();
+            using (ISession session = this.CassandraCluster.Connect())
+            {
+                PreparedStatement preStatement = session.Prepare($@"SELECT * FROM
+                    '{this.tableId}' WHERE record_key = ? and version_key = ?");
+                Statement statement = preStatement.Bind(recordKey, versionKey);
+                RowSet rowSet;
+                
+                try
+                {
+                    rowSet = session.Execute(statement);
+                }
+                catch (DriverException e)
+                {
+                    return null;
+                }
+                
+                // there will be only a version entry in the result set
+                foreach (Row row in rowSet)
+                {
+                    VersionEntry versionEntry = this.GetVersionEntryFromRow(row);
+                    return versionEntry;
+                }
+                return null;
+            }
         }
 
-        internal override void InsertAndUploadVersion(
+        internal override bool InsertAndUploadVersion(
             object recordKey,
             VersionEntry version)
         {
@@ -88,8 +166,19 @@
                     version.IsBeginTxId, version.BeginTimestamp, version.IsEndTxId,
                     version.EndTimestamp, version.Record);
 
-                RowSet rowSet = session.Execute(statement);
-            } 
+                RowSet rowSet;
+                try
+                {
+                    rowSet = session.Execute(statement);
+                }
+                catch (DriverException e)
+                {
+                    return false;
+                }
+
+                // TODO: check result set
+                return true;
+            }
         }
 
         internal override bool UpdateAndUploadVersion(
@@ -108,28 +197,47 @@
                     end_timestamp = ?, record = ? 
                     WHERE record_key = ? and version_key = ? 
                     IF is_begin_tx_id = ? and begin_timestamp = ? 
-                    and is_end_tx_id = ? and end_timestamp = ? and record = ?");
+                    and is_end_tx_id = ? and end_timestamp = ?");
                 
                 Statement statement = preStatement.Bind (
                     newVersion.IsBeginTxId, newVersion.BeginTimestamp, 
                     newVersion.IsEndTxId, newVersion.EndTimestamp, newVersion.Record,
                     recordKey, versionKey,
                     oldVersion.IsBeginTxId, oldVersion.BeginTimestamp, 
-                    oldVersion.IsEndTxId, oldVersion.EndTimestamp, oldVersion.Record);
+                    oldVersion.IsEndTxId, oldVersion.EndTimestamp);
 
-                RowSet rowSet = session.Execute(statement);
+                RowSet rowSet;
+                try
+                {
+                    rowSet = session.Execute(statement);
+                }
+                catch (DriverException e)
+                {
+                    return false;
+                }
                 return true;
             }
         }
 
-        internal override void DeleteVersionEntry(object recordKey, long versionKey)
+        internal override bool DeleteVersionEntry(object recordKey, long versionKey)
         {
             using (ISession session = this.CassandraCluster.Connect())
             {
                 PreparedStatement preStatement = session.
                     Prepare($@"DELETE FROM '{this.tableId}' WHERE record_key = ? and version_key = ?");
-                Statement statement = preStatement.Bind( recordKey, versionKey);
-                RowSet rowSet = session.Execute(statement);
+                Statement statement = preStatement.Bind(recordKey, versionKey);
+
+                RowSet rowSet;
+                try
+                {
+                    rowSet = session.Execute(statement);
+                }
+                catch (DriverException e)
+                {
+                    return false;
+                }
+
+                return true;
             }
         }
 

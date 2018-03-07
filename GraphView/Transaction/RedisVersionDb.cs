@@ -163,7 +163,6 @@
         {
             using (RedisClient redisClient = (RedisClient)this.RedisManager.GetClient())
             {
-
                 redisClient.ChangeDb(RedisVersionDb.META_DB_INDEX);
 
                 byte[] keyBytes = Encoding.ASCII.GetBytes(tableId);

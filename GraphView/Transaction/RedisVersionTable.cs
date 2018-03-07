@@ -58,10 +58,24 @@
         // This method should be overriden for Redis
         internal override VersionEntry GetVersionEntryByKey(object recordKey, long versionKey)
         {
-            throw new NotImplementedException();
+            using (RedisClient redisClient = (RedisClient) this.RedisManager.GetClient())
+            {
+                redisClient.ChangeDb(this.redisDbIndex);
+
+                string hashKey = recordKey as string;
+                byte[] key = BitConverter.GetBytes(versionKey);
+
+                byte[] valueBytes = redisClient.HGet(hashKey, key);
+                if (valueBytes == null)
+                {
+                    return null;
+                }
+
+                return VersionEntrySerializer.DeserializeFromBytes(valueBytes);
+            }
         }
 
-        internal override void InsertAndUploadVersion(object recordKey, VersionEntry version)
+        internal override bool InsertAndUploadVersion(object recordKey, VersionEntry version)
         {
             using (RedisClient redisClient = (RedisClient) this.RedisManager.GetClient())
             {
@@ -71,7 +85,10 @@
                 byte[] key = BitConverter.GetBytes(version.VersionKey);
                 byte[] value = VersionEntrySerializer.SerializeToBytes(version);
 
-                redisClient.HSet(hashKey, key, value);
+                // result == 1, insert a new version key
+                // result == 0, update an existed version key
+                long result = redisClient.HSet(hashKey, key, value);
+                return result == 1;
             }
         }
 
@@ -88,12 +105,12 @@
                 byte[] oldValue = VersionEntrySerializer.SerializeToBytes(oldVersion);
 
                 long result = this.RedisHSetCAS(hashKey, field, oldValue, newValue);
-
+                // CAS succeeds with return as 0
                 return result == 0;
             } 
         }
 
-        internal override void DeleteVersionEntry(object recordKey, long versionKey)
+        internal override bool DeleteVersionEntry(object recordKey, long versionKey)
         {
             using (RedisClient redisClient = (RedisClient) this.RedisManager.GetClient())
             {
@@ -102,7 +119,8 @@
                 string hashKey = recordKey as string;
                 byte[] key = BitConverter.GetBytes(versionKey);
 
-                redisClient.HDel(hashKey, key);
+                long result = redisClient.HDel(hashKey, key);
+                return result == 1;
             }
         }
 
@@ -115,7 +133,12 @@
         /// <param name="field">The field name in redis</param>
         /// <param name="oldValue">The value will be checked </param>
         /// <param name="newValue">The value will be updated </param>
-        /// <returns></returns>
+        /// <returns>
+        /// 0: comparsion succeeds and updated an existed version
+        /// 1: comparsion succeeds and inserted a new version
+        /// 2: comparsion fails
+        /// 3: other errors, which means the command runs error
+        /// </returns>
         private long RedisHSetCAS(byte[] hashKey, byte[] field, byte[] oldValue, byte[] newValue)
         {
             using (RedisClient redisClient = (RedisClient) this.RedisManager.GetClient())
@@ -127,16 +150,16 @@
                  if not ver or ver == ARGV[2] then
                      return redis.call('HSET', KEYS[1], ARGV[1], ARGV[3]);
                  end
-                 return 0
+                 return 2
                 */
                 string luaBody = @"local ver = redis.call('HGET', KEYS[1], ARGV[1]); if not ver or ver == ARGV[2]
-                then return redis.call('HSET', KEYS[1], ARGV[1], ARGV[3]); end return 0";
+                then return redis.call('HSET', KEYS[1], ARGV[1], ARGV[3]); end return 2";
                 byte[][] keysAndArgs = new byte[][] { hashKey, field, oldValue, newValue };
 
                 byte[][] resultBytes = redisClient.Eval(luaBody, 1, keysAndArgs);
                 if (resultBytes == null)
                 {
-                    return 0;
+                    return 3;
                 }
                 return BitConverter.ToInt64(resultBytes[0], 0);
             }

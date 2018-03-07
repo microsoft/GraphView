@@ -19,9 +19,9 @@ namespace GraphView.Transaction
             return base.GetVersionList(recordKey);
         }
 
-        internal override void InsertAndUploadVersion(object recordKey, VersionEntry version)
+        internal override bool InsertAndUploadVersion(object recordKey, VersionEntry version)
         {
-            base.InsertAndUploadVersion(recordKey, version);
+            return base.InsertAndUploadVersion(recordKey, version);
         }
 
         internal override bool UpdateAndUploadVersion(object recordKey, long versionKey, VersionEntry oldVersion, VersionEntry newVersion)
@@ -29,9 +29,9 @@ namespace GraphView.Transaction
             return base.UpdateAndUploadVersion(recordKey, versionKey, oldVersion, newVersion);
         }
 
-        internal override void DeleteVersionEntry(object recordKey, long versionKey)
+        internal override bool DeleteVersionEntry(object recordKey, long versionKey)
         {
-            base.DeleteVersionEntry(recordKey, versionKey);
+            return base.DeleteVersionEntry(recordKey, versionKey);
         }
     }
 
