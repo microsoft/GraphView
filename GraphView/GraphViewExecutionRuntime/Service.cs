@@ -565,11 +565,17 @@ namespace GraphView
 
         public int ResultCount => this.resultCount;
 
+        internal enum SendType
+        {
+            Send,
+            SendAndAttachTaskId,
+            SendBack,
+            LastSendBack,
+            Sync,
+        }
+
         private readonly GetPartitionMethod getPartitionMethod;
-        private readonly bool needAttachTaskIndex;
-        private readonly bool isSendBack;
-        private readonly bool isSync;
-        private readonly bool useLastBelongTask;
+        private readonly SendType sendType;
 
         // Set following fields in deserialization
         [NonSerialized]
@@ -587,19 +593,14 @@ namespace GraphView
             : this(inputOp)
         {
             this.getPartitionMethod = getPartitionMethod;
-            this.needAttachTaskIndex = needSendBack;
-            this.isSendBack = false;
-            this.isSync = false;
+            this.sendType = needSendBack ? SendType.SendAndAttachTaskId : SendType.Send;
         }
 
-        public SendOperator(GraphViewExecutionOperator inputOp, bool isSendBack, bool isSync = false, bool useLastBelongTask = false)
+        public SendOperator(GraphViewExecutionOperator inputOp, SendType sendType)
             : this(inputOp)
         {
-            this.getPartitionMethod = null;
-            this.needAttachTaskIndex = false;
-            this.isSendBack = isSendBack;
-            this.isSync = isSync;
-            this.useLastBelongTask = useLastBelongTask;
+            Debug.Assert(sendType != SendType.Send || sendType != SendType.SendAndAttachTaskId);
+            this.sendType = sendType;
         }
 
         public override RawRecord Next()
@@ -607,58 +608,67 @@ namespace GraphView
             RawRecord record;
             while (this.inputOp.State() && (record = this.inputOp.Next()) != null)
             {
-                if (this.needAttachTaskIndex)
+                switch (this.sendType)
                 {
-                    Debug.Assert(((StringField)record[1]).Value == "-1" || ((StringField)record[1]).Value == this.taskIndex.ToString());
-
-                    ((StringField) record[1]).Value = this.taskIndex.ToString();
-                }
-
-                if (this.isSendBack)
-                {
-                    int index = this.useLastBelongTask ? record.lastBelongTask : int.Parse(record[1].ToValue);
-                    if (index == this.taskIndex)
-                    {
+                    case SendType.Sync:
                         this.resultCount++;
                         return record;
-                    }
-                    else
-                    {
-                        this.client.SendRawRecord(record, index);
-                    }
+                        break;
+                    case SendType.SendBack:
+                    case SendType.LastSendBack:
+                        int index = int.Parse(record[1].ToValue);
+                        if (index == this.taskIndex || index == -1)
+                        {
+                            this.resultCount++;
+                            return record;
+                        }
+                        else
+                        {
+                            this.client.SendRawRecord(record, index);
+                        }
+                        break;
+                    case SendType.SendAndAttachTaskId:
+                    case SendType.Send:
+                        if (this.sendType == SendType.SendAndAttachTaskId)
+                        {
+                            Debug.Assert(((StringField)record[1]).Value == "-1" || ((StringField)record[1]).Value == this.taskIndex.ToString());
+                            ((StringField)record[1]).Value = this.taskIndex.ToString();
+                        }
+                        string partition = this.getPartitionMethod.GetPartition(record);
+                        if (this.partitionPlans[this.taskIndex].BelongToPartitionPlan(partition))
+                        {
+                            this.resultCount++;
+                            return record;
+                        }
+                        for (int i = 0; i < this.partitionPlans.Count; i++)
+                        {
+                            if (i == this.taskIndex)
+                            {
+                                continue;
+                            }
+                            if (this.partitionPlans[i].BelongToPartitionPlan(partition))
+                            {
+                                this.client.SendRawRecord(record, i);
+                                break;
+                            }
+                            if (i == this.partitionPlans.Count - 1)
+                            {
+                                throw new GraphViewException($"This partition does not belong to any partition plan! partition:{ partition }");
+                            }
+                        }
+                        break;
                 }
-                else if (this.isSync)
-                {
-                    this.resultCount++;
-                    return record;
-                }
-                else
-                {
-                    record.lastBelongTask = this.taskIndex;
+            }
 
-                    string partition = this.getPartitionMethod.GetPartition(record);
-                    if (this.partitionPlans[this.taskIndex].BelongToPartitionPlan(partition))
-                    {
-                        this.resultCount++;
-                        return record;
-                    }
-                    for (int i = 0; i < this.partitionPlans.Count; i++)
-                    {
-                        if (i == this.taskIndex)
-                        {
-                            continue;
-                        }
-                        if (this.partitionPlans[i].BelongToPartitionPlan(partition))
-                        {
-                            this.client.SendRawRecord(record, i);
-                            break;
-                        }
-                        if (i == this.partitionPlans.Count - 1)
-                        {
-                            throw new GraphViewException($"This partition does not belong to any partition plan! partition:{ partition }");
-                        }
-                    }
-                }
+            string signal;
+            if (this.sendType == SendType.LastSendBack)
+            {
+                EnumeratorOperator enumeratorOp = this.GetFirstOperator() as EnumeratorOperator;
+                signal = $"{this.taskIndex},{this.resultCount},{enumeratorOp.ContainerHasMoreInput()}";
+            }
+            else
+            {
+                signal = $"{this.taskIndex},{this.resultCount}";
             }
 
             for (int i = 0; i < this.partitionPlans.Count; i++)
@@ -719,6 +729,8 @@ namespace GraphView
         private List<bool> hasBeenSignaled;
         [NonSerialized]
         private List<int> resultCountList;
+        [NonSerialized]
+        private bool otherContainerHasMoreInput;
 
         // Set following fields in deserialization
         [NonSerialized]
@@ -766,6 +778,10 @@ namespace GraphView
                     string[] messages = acknowledge.Split(',');
                     int ackTaskId = Int32.Parse(messages[0]);
                     int ackResultCount = Int32.Parse(messages[1]);
+                    if (messages.Length == 3)
+                    {
+                        this.otherContainerHasMoreInput |= Boolean.Parse(messages[2]);
+                    }
 
                     this.hasBeenSignaled[ackTaskId] = true;
                     this.resultCountList[ackTaskId] = ackResultCount;
@@ -802,6 +818,11 @@ namespace GraphView
             return false;
         }
 
+        public bool OtherContainerHasMoreResult()
+        {
+            return this.otherContainerHasMoreInput;
+        }
+
         public override GraphViewExecutionOperator GetFirstOperator()
         {
             return this.inputOp.GetFirstOperator();
@@ -814,6 +835,7 @@ namespace GraphView
             this.hasBeenSignaled = Enumerable.Repeat(false, this.partitionPlans.Count).ToList();
             this.hasBeenSignaled[this.taskIndex] = true;
             this.resultCountList = Enumerable.Repeat(0, this.partitionPlans.Count).ToList();
+            this.otherContainerHasMoreInput = false;
         }
 
         [OnDeserialized]
@@ -827,6 +849,7 @@ namespace GraphView
             this.hasBeenSignaled = Enumerable.Repeat(false, this.partitionPlans.Count).ToList();
             this.hasBeenSignaled[this.taskIndex] = true;
             this.resultCountList = Enumerable.Repeat(0, this.partitionPlans.Count).ToList();
+            this.otherContainerHasMoreInput = false;
 
             this.receiveHost = new ReceiveHost(this.id, this.taskIndex, this.partitionPlans);
             this.receiveHost.OpenHost();

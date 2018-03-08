@@ -14,6 +14,9 @@ namespace GraphView
         protected List<RawRecord> tableCache;
         public int Count => this.tableCache.Count;
 
+        // For parallel
+        public bool HasMoreInput { get; set; }
+
         public Container()
         {
             this.tableCache = new List<RawRecord>();
@@ -191,6 +194,12 @@ namespace GraphView
             {
                 this.container = aContainer;
             }
+        }
+
+        // For parallel. To determine if map-type operator should be closed.
+        public bool ContainerHasMoreInput()
+        {
+            return this.container.HasMoreInput;
         }
 
         public override RawRecord Next()

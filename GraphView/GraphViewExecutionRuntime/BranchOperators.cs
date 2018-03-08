@@ -99,7 +99,7 @@ namespace GraphView
                     inputBuffer.Add(batchRawRecord);
                 }
 
-                if (!inputBuffer.Any())
+                if (!inputBuffer.Any() && !this.isParallel)
                 {
                     this.Close();
                     this.needInitialize = false;
