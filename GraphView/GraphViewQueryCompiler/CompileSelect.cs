@@ -490,13 +490,13 @@ namespace GraphView
                             if (nodeCondition != null)
                             {
                                 // close parallel mode temporarily
-                                SendReceiveMode sendReceiveMode = context.SendReceiveMode;
-                                context.SendReceiveMode = SendReceiveMode.None;
+                                bool inParallelMode = context.InParallelMode;
+                                context.InParallelMode = false;
 
                                 booleanFunction = nodeCondition.CompileToFunction(queryCompilationContext, command);
 
                                 // recover parallel mode
-                                context.SendReceiveMode = sendReceiveMode;
+                                context.InParallelMode = inParallelMode;
                             }
 
                             GraphViewExecutionOperator currentExecutionOperator = context.CurrentExecutionOperator;
@@ -553,13 +553,13 @@ namespace GraphView
                             if (nodeCondition != null)
                             {
                                 // close parallel mode temporarily
-                                SendReceiveMode sendReceiveMode = context.SendReceiveMode;
-                                context.SendReceiveMode = SendReceiveMode.None;
+                                bool inParallelMode = context.InParallelMode;
+                                context.InParallelMode = false;
 
                                 booleanFunction = nodeCondition.CompileToFunction(queryCompilationContext, command);
 
                                 // recover parallel mode
-                                context.SendReceiveMode = sendReceiveMode;
+                                context.InParallelMode = inParallelMode;
                             }
 
                             GraphViewExecutionOperator currentExecutionOperator = context.CurrentExecutionOperator;
@@ -895,8 +895,8 @@ namespace GraphView
             if (booleanExpressions.Any())
             {
                 // close parallel mode temporarily
-                SendReceiveMode sendReceiveMode = context.SendReceiveMode;
-                context.SendReceiveMode = SendReceiveMode.None;
+                bool inParallelMode = context.InParallelMode;
+                context.InParallelMode = false;
 
                 operatorChain.Add(
                     new FilterInBatchOperator(
@@ -905,7 +905,7 @@ namespace GraphView
                 context.CurrentExecutionOperator = operatorChain.Last();
 
                 // recover parallel mode
-                context.SendReceiveMode = sendReceiveMode;
+                context.InParallelMode = inParallelMode;
             }
         }
 
@@ -954,8 +954,8 @@ namespace GraphView
                         WBooleanExpression edgePredicates = edge.RetrievePredicatesExpression();
 
                         // close parallel mode temporarily
-                        SendReceiveMode sendReceiveMode = context.SendReceiveMode;
-                        context.SendReceiveMode = SendReceiveMode.None;
+                        bool inParallelMode = context.InParallelMode;
+                        context.InParallelMode = false;
 
                         chain.Add(new AdjacencyListDecoder(
                             chain.Last(),
@@ -966,7 +966,7 @@ namespace GraphView
                             edge.Properties, command, context.RawRecordLayout.Count + edge.Properties.Count));
 
                         // recover parallel mode
-                        context.SendReceiveMode = sendReceiveMode;
+                        context.InParallelMode = inParallelMode;
 
                         // Update edge's context info
                         context.TableReferences.Add(edge.LinkAlias);
@@ -992,8 +992,8 @@ namespace GraphView
                         WBooleanExpression edgePredicates = edge.RetrievePredicatesExpression();
 
                         // close parallel mode temporarily
-                        SendReceiveMode sendReceiveMode = context.SendReceiveMode;
-                        context.SendReceiveMode = SendReceiveMode.None;
+                        bool inParallelMode = context.InParallelMode;
+                        context.InParallelMode = false;
 
                         chain.Add(new AdjacencyListDecoder(
                             chain.Last(),
@@ -1004,7 +1004,7 @@ namespace GraphView
                             edge.Properties, command, context.RawRecordLayout.Count + edge.Properties.Count));
 
                         // recover parallel mode
-                        context.SendReceiveMode = sendReceiveMode;
+                        context.InParallelMode = inParallelMode;
 
                         // Update edge's context info
                         context.TableReferences.Add(edge.LinkAlias);
@@ -1892,13 +1892,13 @@ namespace GraphView
             if (nodeCondition != null)
             {
                 // close parallel mode temporarily
-                SendReceiveMode sendReceiveMode = context.SendReceiveMode;
-                context.SendReceiveMode = SendReceiveMode.None;
+                bool inParallelMode = context.InParallelMode;
+                context.InParallelMode = false;
 
                 booleanFunction = nodeCondition.CompileToFunction(queryCompilationContext, command);
 
                 // recover parallel mode
-                context.SendReceiveMode = sendReceiveMode;
+                context.InParallelMode = inParallelMode;
             }
 
             GraphViewExecutionOperator currentExecutionOperator = context.CurrentExecutionOperator;
@@ -2328,8 +2328,7 @@ namespace GraphView
             bool emitFront = repeatCondition.EmitContext;
 
             // close parallel mode temporarily
-            SendReceiveMode sendReceiveMode = context.SendReceiveMode;
-            context.SendReceiveMode = SendReceiveMode.None;
+            rTableContext.InParallelMode = false;
 
             // compile until
             BooleanFunction terminationCondition = repeatCondition.TerminationCondition?.CompileToBatchFunction(rTableContext, command);
@@ -2338,7 +2337,7 @@ namespace GraphView
             BooleanFunction emitCondition = repeatCondition.EmitCondition?.CompileToBatchFunction(rTableContext, command);
 
             // recover parallel mode
-            context.SendReceiveMode = sendReceiveMode;
+            rTableContext.InParallelMode = context.InParallelMode;
 
             // compile sub-traversal
             Container innerContainer = new Container();
@@ -4024,15 +4023,15 @@ namespace GraphView
             WBooleanExpression condition = caseExpression.WhenClauses[0].WhenExpression;
 
             // close parallel mode temporarily
-            SendReceiveMode sendReceiveMode = context.SendReceiveMode;
-            context.SendReceiveMode = SendReceiveMode.None;
+            bool inParallelMode = context.InParallelMode;
+            context.InParallelMode = false;
 
             BooleanFunction func = context.InBatchMode
                 ? condition.CompileToBatchFunction(context, command)
                 : condition.CompileToFunction(context, command);
 
             // recover parallel mode
-            context.SendReceiveMode = sendReceiveMode;
+            context.InParallelMode = inParallelMode;
 
             GraphViewExecutionOperator filterOp = context.InBatchMode
                 ? (GraphViewExecutionOperator) new FilterInBatchOperator(context.CurrentExecutionOperator, func)

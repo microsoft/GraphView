@@ -21,11 +21,10 @@ namespace GraphView
             QueryCompilationContext subContext = new QueryCompilationContext(context);
             Container container = new Container();
             subContext.OuterContextOp.SetContainer(container);
-            // Close it temporarily
-            if (subContext.InParallelMode)
-            {
-                subContext.SendReceiveMode = SendReceiveMode.None;
-            }
+
+            // Close parallel mode temporarily
+            subContext.InParallelMode = false;
+
             GraphViewExecutionOperator subQueryOp = SubQueryExpr.Compile(subContext, command);
             return new ScalarSubqueryFunction(subQueryOp, container);
         }
