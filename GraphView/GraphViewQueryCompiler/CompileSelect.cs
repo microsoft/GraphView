@@ -508,7 +508,6 @@ namespace GraphView
                             GetPartitionMethodForTraversalOp getPartitionMethod = new GetPartitionMethodForTraversalOp(edgeFieldIndex, traversalType);
                             if (context.InParallelMode && context.SendReceiveMode != SendReceiveMode.None)
                             {
-                                context.HasSendOp = true;
                                 SendOperator sendOperator = new SendOperator(context.CurrentExecutionOperator, getPartitionMethod, 
                                     context.SendReceiveMode == SendReceiveMode.SendThenSendBack);
                                 ReceiveOperator receiveOperator = new ReceiveOperator(sendOperator);
@@ -568,7 +567,6 @@ namespace GraphView
                             GetPartitionMethodForTraversalOp getPartitionMethod = new GetPartitionMethodForTraversalOp(edgeFieldIndex, traversalType);
                             if (context.InParallelMode && context.SendReceiveMode != SendReceiveMode.None)
                             {
-                                context.HasSendOp = true;
                                 SendOperator sendOperator = new SendOperator(context.CurrentExecutionOperator, getPartitionMethod, 
                                     context.SendReceiveMode == SendReceiveMode.SendThenSendBack);
                                 ReceiveOperator receiveOperator = new ReceiveOperator(sendOperator);
@@ -649,16 +647,28 @@ namespace GraphView
                     {
                         WSchemaObjectFunctionTableReference functionTableReference = tableReference as WSchemaObjectFunctionTableReference;
 
-                        if (context.InParallelMode && functionTableReference is WGroupTableReference 
-                                                   && !context.NeedGlobalAggregate 
-                                                   && context.HasSendOp)
+                        if (context.InParallelMode)
                         {
-                            SendOperator sendOp = new SendOperator(context.CurrentExecutionOperator, true, false, true);
-                            ReceiveOperator receiveOp = new ReceiveOperator(sendOp);
-                            operatorChain.Add(sendOp);
-                            operatorChain.Add(receiveOp);
-                            context.CurrentExecutionOperator = receiveOp;
-                            context.HasSendOp = false;
+                            if (context.InBatchMode && (functionTableReference is WUnionTableReference || 
+                                                        functionTableReference is WOptionalTableReference ||
+                                                        functionTableReference is WRepeatTableReference ||
+                                                        functionTableReference is WChooseTableReference ||
+                                                        functionTableReference is WChooseWithOptionsTableReference))
+                            {
+                                SendOperator sendOp = new SendOperator(context.CurrentExecutionOperator, SendOperator.SendType.SendBack);
+                                ReceiveOperator receiveOp = new ReceiveOperator(sendOp);
+                                operatorChain.Add(sendOp);
+                                operatorChain.Add(receiveOp);
+                                context.CurrentExecutionOperator = receiveOp;
+                            }
+                            else if (!context.NeedGlobalAggregate && functionTableReference is WGroupTableReference)
+                            {
+                                SendOperator sendOp = new SendOperator(context.CurrentExecutionOperator, SendOperator.SendType.SendBack);
+                                ReceiveOperator receiveOp = new ReceiveOperator(sendOp);
+                                operatorChain.Add(sendOp);
+                                operatorChain.Add(receiveOp);
+                                context.CurrentExecutionOperator = receiveOp;
+                            }
                         }
 
                         op = functionTableReference.Compile(context, command);
@@ -757,14 +767,13 @@ namespace GraphView
                 GraphViewExecutionOperator inputOp = operatorChain.Any()
                     ? operatorChain.Last()
                     : context.OuterContextOp;
-                if (context.InParallelMode && !context.NeedGlobalAggregate && context.HasSendOp)
+                if (context.InParallelMode && !context.NeedGlobalAggregate)
                 {
-                    SendOperator sendOp = new SendOperator(inputOp, true, false, true);
+                    SendOperator sendOp = new SendOperator(inputOp, SendOperator.SendType.SendBack);
                     ReceiveOperator receiveOp = new ReceiveOperator(sendOp);
                     operatorChain.Add(sendOp);
                     operatorChain.Add(receiveOp);
                     inputOp = receiveOp;
-                    context.HasSendOp = false;
                 }
 
                 ProjectAggregation projectAggregationOp = context.InBatchMode ?
@@ -1246,7 +1255,7 @@ namespace GraphView
                     subcontext.InBatchMode = context.InBatchMode;
                     subcontext.CarryOn = true;
                     subcontext.SendReceiveMode = context.InParallelMode && context.ParallelLevel.EnableSendInSubTraversal
-                        ? SendReceiveMode.Send
+                        ? context.SendReceiveMode
                         : SendReceiveMode.None;
                     if (index < context.LocalExecutionOrders.Count)
                     {
@@ -1379,7 +1388,7 @@ namespace GraphView
                 GraphViewExecutionOperator traversalOp = scalarSubquery.SubQueryExpr.Compile(subcontext, command);
                 if (isParallel)
                 {
-                    SendOperator sendOperator = new SendOperator(traversalOp, true);
+                    SendOperator sendOperator = new SendOperator(traversalOp, SendOperator.SendType.LastSendBack);
                     ReceiveOperator receiveOperator = new ReceiveOperator(sendOperator);
                     traversalOp = receiveOperator;
                 }
@@ -1532,7 +1541,7 @@ namespace GraphView
 
             if (isParallel)
             {
-                SendOperator sendOperator = new SendOperator(targetSubqueryOp, true);
+                SendOperator sendOperator = new SendOperator(targetSubqueryOp, SendOperator.SendType.LastSendBack);
                 ReceiveOperator receiveOperator = new ReceiveOperator(sendOperator);
                 targetSubqueryOp = receiveOperator;
             }
@@ -1544,7 +1553,7 @@ namespace GraphView
             subcontext.InBatchMode = context.InBatchMode;
 
             subcontext.SendReceiveMode = context.InParallelMode && context.ParallelLevel.EnableSendInSubTraversal 
-                ? SendReceiveMode.Send 
+                ? context.SendReceiveMode
                 : SendReceiveMode.None;
 
             if (0 < context.LocalExecutionOrders.Count)
@@ -1639,7 +1648,7 @@ namespace GraphView
 
             if (isParallel)
             {
-                SendOperator sendOperator = new SendOperator(localTraversalOp, true);
+                SendOperator sendOperator = new SendOperator(localTraversalOp, SendOperator.SendType.LastSendBack);
                 ReceiveOperator receiveOperator = new ReceiveOperator(sendOperator);
                 localTraversalOp = receiveOperator;
             }
@@ -1734,7 +1743,7 @@ namespace GraphView
 
             if (isParallel)
             {
-                SendOperator sendOperator = new SendOperator(flatMapTraversalOp, true);
+                SendOperator sendOperator = new SendOperator(flatMapTraversalOp, SendOperator.SendType.LastSendBack);
                 ReceiveOperator receiveOperator = new ReceiveOperator(sendOperator);
                 flatMapTraversalOp = receiveOperator;
             }
@@ -1906,7 +1915,6 @@ namespace GraphView
             GetPartitionMethodForTraversalOp getPartitionMethod = new GetPartitionMethodForTraversalOp(edgeFieldIndex, traversalType);
             if (context.InParallelMode && context.SendReceiveMode != SendReceiveMode.None)
             {
-                context.HasSendOp = true;
                 SendOperator sendOperator = new SendOperator(context.CurrentExecutionOperator, getPartitionMethod, 
                     context.SendReceiveMode == SendReceiveMode.SendThenSendBack);
                 ReceiveOperator receiveOperator = new ReceiveOperator(sendOperator);
@@ -2345,7 +2353,7 @@ namespace GraphView
             rTableContext.InBatchMode = context.InBatchMode;
             rTableContext.CarryOn = true;
             rTableContext.SendReceiveMode = context.InParallelMode && context.ParallelLevel.EnableSendInSubTraversal
-                ? SendReceiveMode.Send
+                ? context.SendReceiveMode
                 : SendReceiveMode.None;
             if (1 < context.LocalExecutionOrders.Count)
             {
@@ -2355,10 +2363,10 @@ namespace GraphView
             GraphViewExecutionOperator innerOp = repeatSelect.Compile(rTableContext, command);
 
             bool useSendReceive = false;
-            if (rTableContext.InParallelMode && rTableContext.SendReceiveMode == SendReceiveMode.Send)
+            if (rTableContext.InParallelMode && rTableContext.SendReceiveMode != SendReceiveMode.None)
             {
                 useSendReceive = true;
-                SendOperator syncSendOp = new SendOperator(innerOp, false, true);
+                SendOperator syncSendOp = new SendOperator(innerOp, SendOperator.SendType.Sync);
                 ReceiveOperator syncReceiveOp = new ReceiveOperator(syncSendOp, false);
                 innerOp = syncReceiveOp;
             }
@@ -2734,7 +2742,7 @@ namespace GraphView
 
             if (isParallel)
             {
-                SendOperator sendOperator = new SendOperator(mapTraversalOp, true);
+                SendOperator sendOperator = new SendOperator(mapTraversalOp, SendOperator.SendType.LastSendBack);
                 ReceiveOperator receiveOperator = new ReceiveOperator(sendOperator);
                 mapTraversalOp = receiveOperator;
             }
@@ -3046,11 +3054,6 @@ namespace GraphView
             if (0 < context.LocalExecutionOrders.Count)
             {
                 derivedTableContext.CurrentExecutionOrder = context.LocalExecutionOrders[0];
-            }
-
-            if (derivedTableContext.InParallelMode && derivedTableContext.SendReceiveMode == SendReceiveMode.SendThenSendBack)
-            {
-                derivedTableContext.SendReceiveMode = SendReceiveMode.Send;
             }
 
             GraphViewExecutionOperator subQueryOp = derivedSelectQueryBlock.Compile(derivedTableContext, command);
@@ -3592,7 +3595,7 @@ namespace GraphView
 
             if (isParallel)
             {
-                SendOperator sendOperator = new SendOperator(targetSubqueryOp, true);
+                SendOperator sendOperator = new SendOperator(targetSubqueryOp, SendOperator.SendType.LastSendBack);
                 ReceiveOperator receiveOperator = new ReceiveOperator(sendOperator);
                 targetSubqueryOp = receiveOperator;
             }
@@ -3603,7 +3606,7 @@ namespace GraphView
             trueSubContext.InBatchMode = context.InBatchMode;
             trueSubContext.OuterContextOp.SetContainer(trueBranchContainer);
             trueSubContext.SendReceiveMode = context.InParallelMode && context.ParallelLevel.EnableSendInSubTraversal
-                ? SendReceiveMode.Send
+                ? context.SendReceiveMode
                 : SendReceiveMode.None;
             if (1 < context.LocalExecutionOrders.Count)
             {
@@ -3618,7 +3621,7 @@ namespace GraphView
             falseSubContext.InBatchMode = context.InBatchMode;
             falseSubContext.OuterContextOp.SetContainer(falseBranchContainer);
             falseSubContext.SendReceiveMode = context.InParallelMode && context.ParallelLevel.EnableSendInSubTraversal
-                ? SendReceiveMode.Send
+                ? context.SendReceiveMode
                 : SendReceiveMode.None;
             if (2 < context.LocalExecutionOrders.Count)
             {
@@ -3714,7 +3717,7 @@ namespace GraphView
 
             if (isParallel)
             {
-                SendOperator sendOperator = new SendOperator(targetSubqueryOp, true);
+                SendOperator sendOperator = new SendOperator(targetSubqueryOp, SendOperator.SendType.LastSendBack);
                 ReceiveOperator receiveOperator = new ReceiveOperator(sendOperator);
                 targetSubqueryOp = receiveOperator;
             }
@@ -3750,7 +3753,7 @@ namespace GraphView
                 subcontext.InBatchMode = context.InBatchMode;
                 subcontext.OuterContextOp.SetContainer(optionContainer);
                 subcontext.SendReceiveMode = context.InParallelMode && context.ParallelLevel.EnableSendInSubTraversal
-                    ? SendReceiveMode.Send
+                    ? context.SendReceiveMode
                     : SendReceiveMode.None;
                 if ((i+1)/2 < context.LocalExecutionOrders.Count)
                 {

@@ -145,8 +145,6 @@ namespace GraphView
 
         public ParallelLevel ParallelLevel { get; set; }
 
-        public bool HasSendOp { get; set; }
-
         public bool NeedGlobalAggregate { get; set; }
 
         public Dictionary<WColumnReferenceExpression, int> ParentContextRawRecordLayout { get; private set; }
@@ -167,7 +165,6 @@ namespace GraphView
             this.SideEffectFunctions = new Dictionary<string, IAggregateFunction>();
             this.CarryOn = false;
             this.InParallelMode = false;
-            this.HasSendOp = false;
             this.NeedGlobalAggregate = true;
             this.Containers = new List<Container>();
             this.CurrentExecutionOrder = new ExecutionOrder();
@@ -186,7 +183,6 @@ namespace GraphView
             this.InParallelMode = parentContext.InParallelMode;
             this.SendReceiveMode = parentContext.SendReceiveMode;
             this.ParallelLevel = parentContext.ParallelLevel;
-            this.HasSendOp = false;
             this.NeedGlobalAggregate = parentContext.NeedGlobalAggregate;
             this.ParentContextRawRecordLayout = new Dictionary<WColumnReferenceExpression, int>(
                 parentContext.RawRecordLayout, new WColumnReferenceExpressionComparer());
@@ -212,7 +208,6 @@ namespace GraphView
             this.CurrentExecutionOrder = new ExecutionOrder();
             this.LocalExecutionOrders = new List<ExecutionOrder>();
             this.InParallelMode = false;
-            this.HasSendOp = false;
             this.NeedGlobalAggregate = true;
         }
 
