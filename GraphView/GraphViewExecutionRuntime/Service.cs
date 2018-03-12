@@ -75,7 +75,7 @@ namespace GraphView
         {
             this.receiveHostId = receiveHostId;
             this.retryLimit = 100;
-            this.retryInterval = 10; // 5 ms
+            this.retryInterval = 10; // 10 ms
         }
 
         public SendClient(string receiveHostId, List<PartitionPlan> partitionPlans) : this(receiveHostId)
@@ -250,6 +250,9 @@ namespace GraphView
 
             WSHttpBinding binding = new WSHttpBinding();
             binding.Security.Mode = SecurityMode.None;
+            // Set the max size of message.
+            // If message is larger than this limit, WCF will return error "(413) Request Entity Too Large."
+            binding.MaxReceivedMessageSize = 10485760; // 10 Mb
 
             this.selfHost = new ServiceHost(new MessageService(), baseAddress);
             this.selfHost.AddServiceEndpoint(typeof(IMessageService), binding, "GraphView");
