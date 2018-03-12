@@ -649,11 +649,20 @@ namespace GraphView
 
                         if (context.InParallelMode)
                         {
-                            if (context.InBatchMode && (functionTableReference is WUnionTableReference || 
-                                                        functionTableReference is WOptionalTableReference ||
-                                                        functionTableReference is WRepeatTableReference ||
-                                                        functionTableReference is WChooseTableReference ||
-                                                        functionTableReference is WChooseWithOptionsTableReference))
+                            if (context.InBatchMode && (
+                                    // branch-type operator
+                                    functionTableReference is WUnionTableReference ||
+                                    functionTableReference is WOptionalTableReference ||
+                                    functionTableReference is WRepeatTableReference ||
+                                    functionTableReference is WChooseTableReference ||
+                                    functionTableReference is WChooseWithOptionsTableReference ||
+                                    // groupOp
+                                    functionTableReference is WGroupTableReference ||
+                                    // dedup/range(limit)/sample/order
+                                    functionTableReference is WDedupGlobalTableReference ||
+                                    functionTableReference is WRangeGlobalTableReference ||
+                                    functionTableReference is WSampleGlobalTableReference ||
+                                    functionTableReference is WOrderGlobalTableReference))
                             {
                                 SendOperator sendOp = new SendOperator(context.CurrentExecutionOperator, SendOperator.SendType.SendBack);
                                 ReceiveOperator receiveOp = new ReceiveOperator(sendOp);
@@ -661,9 +670,21 @@ namespace GraphView
                                 operatorChain.Add(receiveOp);
                                 context.CurrentExecutionOperator = receiveOp;
                             }
-                            else if (!context.NeedGlobalAggregate && functionTableReference is WGroupTableReference)
+                            else if (!context.InBatchMode && (
+                                         functionTableReference is WDedupGlobalTableReference ||
+                                         functionTableReference is WSampleGlobalTableReference ||
+                                         functionTableReference is WOrderGlobalTableReference))
                             {
-                                SendOperator sendOp = new SendOperator(context.CurrentExecutionOperator, SendOperator.SendType.SendBack);
+                                SendOperator sendOp = new SendOperator(context.CurrentExecutionOperator, SendOperator.SendType.Aggregate);
+                                ReceiveOperator receiveOp = new ReceiveOperator(sendOp);
+                                operatorChain.Add(sendOp);
+                                operatorChain.Add(receiveOp);
+                                context.CurrentExecutionOperator = receiveOp;
+                            }
+                            else if (!context.InBatchMode && functionTableReference is WRangeGlobalTableReference)
+                            {
+                                int maxCount = ((WRangeGlobalTableReference) functionTableReference).GetCount();
+                                SendOperator sendOp = new SendOperator(context.CurrentExecutionOperator, maxCount, 0);
                                 ReceiveOperator receiveOp = new ReceiveOperator(sendOp);
                                 operatorChain.Add(sendOp);
                                 operatorChain.Add(receiveOp);
@@ -2940,7 +2961,7 @@ namespace GraphView
             QueryCompilationContext subcontext = new QueryCompilationContext(context);
             Container container = new Container();
             subcontext.OuterContextOp.SetContainer(container);
-            subcontext.NeedGlobalAggregate = false;
+            subcontext.InParallelMode = false;
             if (0 < context.LocalExecutionOrders.Count)
             {
                 subcontext.CurrentExecutionOrder = context.LocalExecutionOrders[0];
@@ -3367,6 +3388,39 @@ namespace GraphView
                 context.CurrentExecutionOperator = rangeOp;
 
                 return rangeOp;
+            }
+        }
+
+        internal int GetCount()
+        {
+            int lowEnd = int.Parse((Parameters[0] as WValueExpression).Value);
+            int highEnd = int.Parse((Parameters[1] as WValueExpression).Value);
+            int tailFlag = int.Parse((Parameters[2] as WValueExpression).Value);
+            bool isTail = tailFlag > 0;
+
+            if (isTail)
+            {
+                return highEnd < 0 ? 1 : highEnd;
+            }
+            else
+            {
+                if ((lowEnd > highEnd && highEnd >= 0) || (lowEnd >= 0 && highEnd < -1))
+                {
+                    throw new QueryCompilationException(string.Format("Not a legal range: [{0}, {1}]", lowEnd, highEnd));
+                }
+
+                int startIndex = lowEnd < 0 ? 0 : lowEnd;
+                int count;
+                if (highEnd == -1)
+                {
+                    count = -1;
+                }
+                else if ((count = highEnd - startIndex) < 0)
+                {
+                    count = 0;
+                }
+
+                return count;
             }
         }
     }

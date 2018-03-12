@@ -1706,12 +1706,15 @@ namespace GraphView
         [NonSerialized]
         protected int index;
 
-        internal RangeOperator(GraphViewExecutionOperator inputOp, int startIndex, int count)
+        private bool isParallel;
+
+        internal RangeOperator(GraphViewExecutionOperator inputOp, int startIndex, int count, bool isParallel = false)
         {
             this.inputOp = inputOp;
             this.startIndex = startIndex;
             this.highEnd = count == -1 ? -1 : startIndex + count;
             this.index = 0;
+            this.isParallel = isParallel;
             this.Open();
         }
 
@@ -1746,6 +1749,12 @@ namespace GraphView
         {
             this.inputOp.ResetState();
             this.index = 0;
+
+            if (this.isParallel)
+            {
+                this.index = this.startIndex;
+            }
+
             this.Open();
         }
 
@@ -1758,6 +1767,12 @@ namespace GraphView
         private void Reconstruct(StreamingContext context)
         {
             this.index = 0;
+
+            if (this.isParallel)
+            {
+                this.index = this.startIndex;
+            }
+
             this.Open();
         }
     }
@@ -2006,12 +2021,15 @@ namespace GraphView
         [NonSerialized]
         protected List<RawRecord> buffer; 
 
-        internal TailOperator(GraphViewExecutionOperator inputOp, int lastN)
+        private bool isParallel;
+
+        internal TailOperator(GraphViewExecutionOperator inputOp, int lastN, bool isParallel = false)
         {
             this.inputOp = inputOp;
             this.lastN = lastN;
             this.count = 0;
             this.buffer = new List<RawRecord>();
+            this.isParallel = isParallel;
 
             this.Open();
         }
@@ -2020,24 +2038,40 @@ namespace GraphView
         {
             RawRecord srcRecord = null;
 
-            while (this.inputOp.State() && (srcRecord = this.inputOp.Next()) != null)
+            if (this.isParallel)
             {
-                buffer.Add(srcRecord);
+                while (this.inputOp.State() && (srcRecord = this.inputOp.Next()) != null)
+                {
+                    if (this.count < this.lastN)
+                    {
+                        this.count++;
+                        return srcRecord;
+                    }
+                    break;
+                }
             }
-
-            //
-            // Reutn records from [buffer.Count - lastN, buffer.Count)
-            //
-
-            int startIndex = buffer.Count < lastN ? 0 : buffer.Count - lastN;
-            int index = startIndex + this.count++;
-            while (index < buffer.Count)
+            else
             {
-                return buffer[index];
-            } 
+                while (this.inputOp.State() && (srcRecord = this.inputOp.Next()) != null)
+                {
+                    buffer.Add(srcRecord);
+                }
 
+                //
+                // Reutn records from [buffer.Count - lastN, buffer.Count)
+                //
+
+                int startIndex = buffer.Count < lastN ? 0 : buffer.Count - lastN;
+                int index = startIndex + this.count++;
+                while (index < buffer.Count)
+                {
+                    return buffer[index];
+                }
+
+                this.buffer.Clear();
+            }
+           
             this.Close();
-            this.buffer.Clear();
             return null;
         }
 

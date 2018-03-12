@@ -572,10 +572,14 @@ namespace GraphView
         {
             Send,
             SendAndAttachTaskId,
+            Aggregate,
             SendBack,
             LastSendBack,
             Sync,
         }
+
+        private int maxCount;
+        public int AggregateTarget { get; private set; } = -1;
 
         private readonly GetPartitionMethod getPartitionMethod;
         private readonly SendType sendType;
@@ -602,8 +606,16 @@ namespace GraphView
         public SendOperator(GraphViewExecutionOperator inputOp, SendType sendType)
             : this(inputOp)
         {
-            Debug.Assert(sendType != SendType.Send || sendType != SendType.SendAndAttachTaskId);
+            Debug.Assert(sendType != SendType.Send && sendType != SendType.SendAndAttachTaskId);
             this.sendType = sendType;
+        }
+
+        public SendOperator(GraphViewExecutionOperator inputOp, int maxCount, int aggregateTarget)
+            : this(inputOp)
+        {
+            this.sendType = SendType.Aggregate;
+            this.maxCount = maxCount;
+            this.AggregateTarget = aggregateTarget;
         }
 
         public override RawRecord Next()
@@ -611,6 +623,8 @@ namespace GraphView
             RawRecord record;
             while (this.inputOp.State() && (record = this.inputOp.Next()) != null)
             {
+                bool canClose = false;
+
                 switch (this.sendType)
                 {
                     case SendType.Sync:
@@ -660,6 +674,29 @@ namespace GraphView
                             }
                         }
                         break;
+                    case SendType.Aggregate:
+                        // The meaning of this.resultCount in this type is different from other modes.
+                        if (this.maxCount != -1 && this.resultCount == this.maxCount)
+                        {
+                            canClose = true;
+                        }
+                        this.resultCount++;
+
+                        if (this.AggregateTarget == this.taskIndex)
+                        {
+                            return record;
+                        }
+                        else
+                        {
+                            this.client.SendRawRecord(record, this.AggregateTarget);
+                        }
+
+                        break;
+                }
+
+                if (canClose)
+                {
+                    break;
                 }
             }
 
@@ -837,6 +874,10 @@ namespace GraphView
             this.inputOp.ResetState();
             this.hasBeenSignaled = Enumerable.Repeat(false, this.partitionPlans.Count).ToList();
             this.hasBeenSignaled[this.taskIndex] = true;
+            if (this.inputOp.AggregateTarget != -1)
+            {
+                this.hasBeenSignaled[this.inputOp.AggregateTarget] = true;
+            }
             this.resultCountList = Enumerable.Repeat(0, this.partitionPlans.Count).ToList();
             this.otherContainerHasMoreInput = false;
         }
@@ -851,6 +892,10 @@ namespace GraphView
 
             this.hasBeenSignaled = Enumerable.Repeat(false, this.partitionPlans.Count).ToList();
             this.hasBeenSignaled[this.taskIndex] = true;
+            if (this.inputOp.AggregateTarget != -1)
+            {
+                this.hasBeenSignaled[this.inputOp.AggregateTarget] = true;
+            }
             this.resultCountList = Enumerable.Repeat(0, this.partitionPlans.Count).ToList();
             this.otherContainerHasMoreInput = false;
 
