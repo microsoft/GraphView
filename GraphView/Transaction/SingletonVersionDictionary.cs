@@ -29,7 +29,29 @@
                 return null;
             }
 
-            return this.dict[recordKey];
+            List<VersionEntry> versionList = new List<VersionEntry>();
+            while (true)
+            {
+                VersionNode current = this.dict[recordKey].Head;
+                versionList.Clear();
+                do
+                {
+                    if (current.NextNode == null)
+                    {
+                        //arrive at the end of the list, return the version list
+                        return versionList;
+                    }
+
+                    if ((current.State & 0x0F).Equals(0x0F))
+                    {
+                        //if current node is being deleted, rescan the list from head.
+                        break;
+                    }
+
+                    versionList.Add(current.VersionEntry);
+                    current = current.NextNode;
+                } while (true);
+            }
         }
 
         internal override bool InsertAndUploadVersion(object recordKey, VersionEntry version)

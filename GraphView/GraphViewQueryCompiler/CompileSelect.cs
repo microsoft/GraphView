@@ -1,4 +1,4 @@
-﻿#define USE_SERIALIZE
+﻿//#define TEST_SERIALIZE
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -1077,7 +1077,7 @@ namespace GraphView
                 priorContext = statementContext;
             }
 
-#if USE_SERIALIZE
+#if TEST_SERIALIZE
             string serString = GraphViewSerializer.Serialize(command, priorContext.SideEffectFunctions, op);
             Tuple<GraphViewCommand, GraphViewExecutionOperator> deserTuple = GraphViewSerializer.Deserialize(serString);
 
