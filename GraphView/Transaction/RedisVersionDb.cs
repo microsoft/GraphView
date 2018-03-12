@@ -13,13 +13,26 @@
     internal partial class RedisVersionDb : VersionDb
     {
         /// <summary>
-        /// The meta data of redisVersionDb will be stored in database META_DB_INDEX in Redis
-        /// Map from tableId to dbIndex will be stored in a hashset data structure
-        /// META_TABLE_KEY: the name of hashset in redis
-        /// META_DB_INDEX : the defaule database index of redis
+        /// The defalut hashset key for the meta table
+        /// meta table is a map of tableId to redisDbIndex
+        /// </summary>          
+        public static readonly string META_TABLE_KEY = "meta:tables:hashset";
+
+        /// <summary>
+        /// The defalut hashset key for the lua script command
+        /// meta_script is a map from script_name to sha1
         /// </summary>
-        private static readonly string META_TABLE_KEY = "meta:tables:hashset";
-        private static readonly long META_DB_INDEX = 0;
+        public static readonly string META_SCRIPT_KEY = "meta:scripts:hashset";
+
+        /// <summary>
+        /// The default meta database index
+        /// </summary>
+        public static readonly long META_DB_INDEX = 0;
+
+        /// <summary>
+        /// The default transaction database index
+        /// </summary>
+        public static readonly long TRANSACTION_DB_INDEX = 1;
 
         /// <summary>
         /// the map from tableId to redis version table
@@ -56,6 +69,8 @@
         { 
             this.tableLock = new object();
             this.versionTableMap = new Dictionary<string, RedisVersionTable>();
+
+            this.checkAndRegisterScripts();
         }
 
         internal static RedisVersionDb Instance
@@ -203,6 +218,77 @@
                 return tableIdList;
             }
         }
+
+        /// <summary>
+        /// For every possible lua scripts command, check if it has been in the redis cache.
+        /// If it has not been loaded into the cache, then register and load it
+        /// </summary>
+        protected void checkAndRegisterScripts()
+        {
+            // implement the cas for hset command
+            // 0: comparsion succeeds and updated an existed version
+            // 1: comparsion succeeds and inserted a new version
+            // 2: comparsion fails
+            // 3: other errors, which means the command runs error
+            /*
+                 -- eval 'lua_code' 1 hashkey field oldValue newValue
+                 local ver = redis.call('HGET', KEYS[1], ARGV[1]);
+                 if not ver or ver == ARGV[2] then
+                     return redis.call('HSET', KEYS[1], ARGV[1], ARGV[3]);
+                 end
+                 return 2
+                */
+            string HSetCAS = @"local ver = redis.call('HGET', KEYS[1], ARGV[1]); if not ver or ver == ARGV[2]
+                then return redis.call('HSET', KEYS[1], ARGV[1], ARGV[3]); end return 2";
+            this.RegisterLuaScripts("HSET_CAS", HSetCAS);
+
+            // Other lua commands
+        }
+
+        /// <summary>
+        /// Register common lua scripts to the cache avoidoing update scripts 
+        /// every time, which will reduce the bandwidth
+        /// </summary>
+        /// <returns>true or false</returns>
+        private bool RegisterLuaScripts(string scriptKey, string luaBody)
+        {
+            using (RedisClient redisClient = (RedisClient) this.RedisManager.GetClient())
+            {
+                redisClient.ChangeDb(RedisVersionDb.META_DB_INDEX);
+
+                // Extract the command sha1
+                byte[] scriptKeyBytes = Encoding.UTF8.GetBytes(scriptKey);
+                byte[] shaBytes = redisClient.HGet(RedisVersionDb.META_SCRIPT_KEY, scriptKeyBytes);
+
+                // We will register the lua script only if the sha1 isn't in script table or sha1 is not in the redis cache 
+                bool hasRegistered = false;
+                if (shaBytes != null)
+                {
+                    byte[][] returnBytes = redisClient.ScriptExists(new byte[][] { shaBytes });
+                    if (returnBytes != null)
+                    {
+                        // The return value == 1 means scripts have been registered
+                        hasRegistered = BitConverter.ToInt64(returnBytes[0], 0) == 1;
+                    }
+                }
+
+                // Register the lua scripts when it has not been registered
+                if (!hasRegistered)
+                {
+                    // register and load the script
+                    byte[] scriptSha1Bytes = redisClient.ScriptLoad(luaBody);
+                    if (scriptSha1Bytes == null)
+                    {
+                        return false;
+                    }
+                    // insert into the script hashset
+                    long result = redisClient.HSet(RedisVersionDb.META_SCRIPT_KEY, scriptKeyBytes, scriptSha1Bytes);
+                    return result == 1;
+                }
+
+                return true;
+            }
+        }
     }
 
     /// <summary>
@@ -233,6 +319,16 @@
     /// </summary>
     internal partial class RedisVersionDb : IDataStore
     {
+        public bool CreateTable(string tableId)
+        {
+            throw new NotImplementedException();
+        }
+
+        public bool DeleteTable(string tableId)
+        {
+            throw new NotImplementedException();
+        }
+
         public IList<Tuple<string, IndexSpecification>> GetIndexTables(string tableId)
         {
             throw new NotImplementedException();
@@ -241,6 +337,76 @@
         public IList<string> GetTables()
         {
             return this.GetAllVersionTables();
+        }
+    }
+
+    internal partial class RedisVersionDb : ITransactionStore
+    {
+        public bool DeleteTransaction(long txId)
+        {
+            using (RedisClient redisClient = (RedisClient) this.RedisManager.GetClient())
+            {
+                redisClient.ChangeDb(RedisVersionDb.TRANSACTION_DB_INDEX);
+                long result = redisClient.Del(txId.ToString());
+                return result == 1;
+            }   
+        }
+
+        public bool InsertTransaction(Transaction tx)
+        {
+            if (tx == null)
+            {
+                return false;
+            }
+
+            using (RedisClient redisClient = (RedisClient)this.RedisManager.GetClient())
+            {
+                redisClient.ChangeDb(RedisVersionDb.TRANSACTION_DB_INDEX);
+                byte[] value = TransactionSerializer.SerializeToBytes(tx);
+                // TODO: can't get the set result
+                redisClient.Set(tx.TxId.ToString(), value);
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        /// Read a transaction from redis with txId
+        /// </summary>
+        /// <param name="txId"></param>
+        /// <returns></returns>
+        public Transaction ReadTransaction(long txId)
+        {
+            using (RedisClient redisClient = (RedisClient)this.RedisManager.GetClient())
+            {
+                redisClient.ChangeDb(RedisVersionDb.TRANSACTION_DB_INDEX);
+                byte[] value = redisClient.Get(txId.ToString());
+                if (value == null)
+                {
+                    return null;
+                }
+
+                return TransactionSerializer.DeserializeFromBytes(value);
+            }
+        }
+
+        /// <summary>
+        /// update a transaction to=
+        /// </summary>
+        /// <param name="txId">The transaction Id</param>
+        /// <param name="newTx">The updated transaction</param>
+        /// <param name="oldTx">The previous transaction</param>
+        /// <returns></returns>
+        public bool UpdateTransaction(long txId, Transaction newTx, Transaction oldTx)
+        {
+            using (RedisClient redisClient = (RedisClient) this.RedisManager.GetClient())
+            {
+                redisClient.ChangeDb(RedisVersionDb.TRANSACTION_DB_INDEX);
+                byte[] value = TransactionSerializer.SerializeToBytes(newTx);
+                // TODO: get set result
+                redisClient.Set(txId.ToString(), value);
+            }
+            return true;
         }
     }
 }

@@ -84,6 +84,16 @@ namespace GraphView.Transaction
 
     internal partial class SingletonVersionDb : IDataStore
     {
+        public bool CreateTable(string tableId)
+        {
+            throw new NotImplementedException();
+        }
+
+        public bool DeleteTable(string tableId)
+        {
+            throw new NotImplementedException();
+        }
+
         public IList<Tuple<string, IndexSpecification>> GetIndexTables(string tableId)
         {
             if (!indexMap.ContainsKey(tableId))

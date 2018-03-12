@@ -47,6 +47,12 @@
         // Returns a list of base tables in the data store
         IList<string> GetTables();
 
+        // create a table with the given tableId
+        bool CreateTable(string tableId);
+
+        // delete a table with the given tableId
+        bool DeleteTable(string tableId);
+
         // Given a base table Id, returns its index tables
         IList<Tuple<string, IndexSpecification>> GetIndexTables(string tableId);
     }

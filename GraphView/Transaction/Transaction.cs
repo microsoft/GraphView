@@ -8,6 +8,7 @@
     using System.Threading.Tasks;
     using GraphView.GraphViewDBPortal;
     using Newtonsoft.Json.Linq;
+    using System.Runtime.Serialization;
 
     public class Transaction
     {
@@ -128,6 +129,28 @@
             this.writeSet = new Dictionary<string, HashSet<WriteSetEntry>>();
 
             this.txTable.InsertNewTx(this.txId, this.beginTimestamp);
+        }
+
+        // The special constructor is used to deserialize values.
+        public Transaction(SerializationInfo info, StreamingContext context)
+        {
+            this.logStore = (LogStore) info.GetValue("logStore", typeof(LogStore));
+            this.versionDb = (VersionDb) info.GetValue("versionDb", typeof(VersionDb));
+            
+            this.txId = (long) info.GetValue("txId", typeof(long));
+            this.beginTimestamp = (long) info.GetValue("beginTimestamp", typeof(long));
+            this.endTimestamp = (long) info.GetValue("endTimestamp", typeof(long));
+            this.txStatus = (TxStatus) info.GetValue("txStatus", typeof(TxStatus));
+
+            this.readSet = (Dictionary<string, HashSet<ReadSetEntry>>)info.
+                GetValue("readSet", typeof(Dictionary<string, HashSet<ReadSetEntry>>));
+            this.scanSet = (Dictionary<string, HashSet<ScanSetEntry>>)info.
+                GetValue("scanSet", typeof(Dictionary<string, HashSet<ScanSetEntry>>));
+            this.writeSet = (Dictionary<string, HashSet<WriteSetEntry>>)info.
+                GetValue("writeSet", typeof(Dictionary<string, HashSet<WriteSetEntry>>));
+
+            this.seqGenerator = (ITxSequenceGenerator) info.
+                GetValue("seqGenerator", typeof(ITxSequenceGenerator));
         }
 
         public void AddReadSet(string tableId, object recordKey, long beginTimestamp)
@@ -448,6 +471,29 @@
                     this.versionDb.UpdateAbortedVersionTimestamp(tableId, writeSetEntry.Key, this.txId);
                 }
             }
+        }
+
+        /// <summary>
+        /// Serializer Interface
+        /// TODO: ignore the txTable since it will be dropped from the transaction
+        /// </summary>
+        /// <param name="info"></param>
+        /// <param name="context"></param>
+        public void GetObjectData(SerializationInfo info, StreamingContext context)
+        {
+            info.AddValue("logStore", this.logStore, typeof(LogStore));
+            info.AddValue("versionDb", this.versionDb, typeof(VersionDb));
+            // info.AddValue("txTableId", this.txTable, typeof(TransactionTable));
+            info.AddValue("txId", this.txId, typeof(long));
+            info.AddValue("beginTimestamp", this.beginTimestamp, typeof(long));
+            info.AddValue("endTimestamp", this.endTimestamp, typeof(long));
+            info.AddValue("txStatus", this.txStatus, typeof(TxStatus));
+
+            info.AddValue("readSet", this.readSet, typeof(Dictionary<string, HashSet<ReadSetEntry>>));
+            info.AddValue("scanSet", this.scanSet, typeof(Dictionary<string, HashSet<ScanSetEntry>>));
+            info.AddValue("writeSet", this.writeSet, typeof(Dictionary<string, HashSet<WriteSetEntry>>));
+
+            info.AddValue("seqGenerator", this.seqGenerator, typeof(ITxSequenceGenerator));
         }
     }
 }

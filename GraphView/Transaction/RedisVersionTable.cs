@@ -96,6 +96,18 @@
         {
             using (RedisClient redisClient = (RedisClient) this.RedisManager.GetClient())
             {
+                // change to the meta db
+                redisClient.ChangeDb(RedisVersionDb.META_DB_INDEX);
+
+                byte[] scriptKeyBytes = Encoding.ASCII.GetBytes("HSET_CAS");
+                byte[] scriptSha1Bytes = redisClient.HGet(RedisVersionDb.META_SCRIPT_KEY, scriptKeyBytes);
+                // Can not get the script sha from meta table
+                if (scriptSha1Bytes == null)
+                {
+                    return false;
+                }
+
+                // change to the current db
                 redisClient.ChangeDb(this.redisDbIndex);
 
                 string hashKeyStr = recordKey as string;
@@ -103,8 +115,11 @@
                 byte[] field = BitConverter.GetBytes(versionKey);
                 byte[] newValue = VersionEntrySerializer.SerializeToBytes(newVersion);
                 byte[] oldValue = VersionEntrySerializer.SerializeToBytes(oldVersion);
+                
+                string scriptSha1 = Encoding.ASCII.GetString(scriptSha1Bytes);
+                byte[][] keysAndArgs = new byte[][] { hashKey, field, oldValue, newValue };
 
-                long result = this.RedisHSetCAS(hashKey, field, oldValue, newValue);
+                long result = redisClient.EvalShaInt(scriptSha1, 1, keysAndArgs);
                 // CAS succeeds with return as 0
                 return result == 0;
             } 

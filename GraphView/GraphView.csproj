@@ -287,6 +287,7 @@
     <Compile Include="Transaction\CassandraClusterManager.cs" />
     <Compile Include="Transaction\CassandraVersionDb.cs" />
     <Compile Include="Transaction\CassandraVersionTable.cs" />
+    <Compile Include="Transaction\ITransactionStore.cs" />
     <Compile Include="Transaction\ReadSetEntry.cs" />
     <Compile Include="Transaction\RedisClientManager.cs" />
     <Compile Include="Transaction\RedisVersionDb.cs" />
@@ -297,6 +298,7 @@
     <Compile Include="Transaction\SingletonVersionDictionary.cs" />
     <Compile Include="Transaction\SingletonVersionTable.cs" />
     <Compile Include="Transaction\SingletonVersionTreeMap.cs" />
+    <Compile Include="Transaction\TransactionSerializer.cs" />
     <Compile Include="Transaction\TransactionTable.cs" />
     <Compile Include="Transaction\TxStatus.cs" />
     <Compile Include="Transaction\TxTableEntry.cs" />

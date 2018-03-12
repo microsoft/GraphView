@@ -274,6 +274,16 @@
 
     internal partial class CassandraVersionDb : IDataStore
     {
+        public bool CreateTable(string tableId)
+        {
+            throw new NotImplementedException();
+        }
+
+        public bool DeleteTable(string tableId)
+        {
+            throw new NotImplementedException();
+        }
+
         public IList<Tuple<string, IndexSpecification>> GetIndexTables(string tableId)
         {
             throw new NotImplementedException();
