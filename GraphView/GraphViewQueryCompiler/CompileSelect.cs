@@ -2559,7 +2559,7 @@ namespace GraphView
             }
 
             InjectOperator injectOp = new InjectOperator(context.CurrentExecutionOperator, context.RawRecordLayout.Count, injectColumnIndex,
-                injectValues, this.IsList, GremlinKeyword.TableDefaultColumnName);
+                injectValues, this.IsList, GremlinKeyword.TableDefaultColumnName, context.InParallelMode && !context.InBatchMode);
             context.CurrentExecutionOperator = injectOp;
 
             //

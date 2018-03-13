@@ -134,6 +134,12 @@ namespace GraphView
                 return new Tuple<GraphViewCommand, GraphViewExecutionOperator>(command, op);
             }
 
+            InjectOperator injectOp = firstOp as InjectOperator;
+            if (injectOp != null)
+            {
+                return new Tuple<GraphViewCommand, GraphViewExecutionOperator>(command, op);
+            }
+
             throw new GraphViewException("Can not support this kind of query in parallel mode. First step must be V() or E()");
         }
 

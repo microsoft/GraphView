@@ -2315,13 +2315,17 @@ namespace GraphView
 
         private bool hasInjected;
 
+        private readonly bool isParallel;
+        private readonly int taskId;
+
         public InjectOperator(
             GraphViewExecutionOperator inputOp,
             int inputRecordColumnsCount,
             int injectColumnIndex,
             List<ScalarFunction> injectValues,
             bool isList,
-            string defalutProjectionKey
+            string defalutProjectionKey,
+            bool isParallel = false
             )
         {
             this.inputOp = inputOp;
@@ -2331,6 +2335,7 @@ namespace GraphView
             this.isList = isList;
             this.defaultProjectionKey = defalutProjectionKey;
             this.hasInjected = false;
+            this.isParallel = isParallel;
 
             this.Open();
         }
@@ -2425,13 +2430,13 @@ namespace GraphView
         public override void ResetState()
         {
             this.inputOp?.ResetState();
-            this.hasInjected = false;
+            this.hasInjected = this.isParallel && this.taskId != 0;
             this.Open();
         }
 
         public override GraphViewExecutionOperator GetFirstOperator()
         {
-            return this.inputOp.GetFirstOperator();
+            return this.inputOp?.GetFirstOperator() ?? this;
         }
 
         public void GetObjectData(SerializationInfo info, StreamingContext context)
@@ -2441,6 +2446,7 @@ namespace GraphView
             info.AddValue("injectColumnIndex", this.injectColumnIndex);
             info.AddValue("isList", this.isList);
             info.AddValue("defaultProjectionKey", this.defaultProjectionKey);
+            info.AddValue("isParallel", this.isParallel);
             GraphViewSerializer.SerializeList(info, "injectValues", this.injectValues);
         }
 
@@ -2452,7 +2458,14 @@ namespace GraphView
             this.isList = info.GetBoolean("isList");
             this.defaultProjectionKey = info.GetString("defaultProjectionKey");
             this.injectValues = GraphViewSerializer.DeserializeList<ScalarFunction>(info, "injectValues");
-            this.hasInjected = false;
+            this.isParallel = info.GetBoolean("isParallel");
+            if (this.isParallel)
+            {
+                AdditionalSerializationInfo additionalInfo = (AdditionalSerializationInfo)context.Context;
+                this.taskId = additionalInfo.TaskIndex;
+            }
+            this.hasInjected = this.isParallel && this.taskId != 0;
+
             this.Open();
         }
     }
