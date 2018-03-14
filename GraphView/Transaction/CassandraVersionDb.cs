@@ -260,15 +260,15 @@
             return this.GetCassandraVersionTable(tableId);
         }
 
-        internal override bool InsertVersion(string tableId, object recordKey,
-            object record, long txId, long readTimestamp)
+        internal override bool InsertVersion(string tableId, object recordKey, object record,
+            long txId, long readTimestamp, TransactionTable txTable, ref DependencyTable depTable)
         {
             VersionTable versionTable = this.GetVersionTable(tableId);
             if (versionTable == null)
             {
                 return false;
             }
-            return versionTable.InsertVersion(recordKey, record, txId, readTimestamp);
+            return versionTable.InsertVersion(recordKey, record, txId, readTimestamp, txTable, ref depTable);
         }
     }
 

@@ -104,21 +104,24 @@ namespace GraphView.Transaction
             }
         }
 
-        public void PushFront(VersionEntry versionEntry)
+        public bool PushFront(VersionEntry versionEntry)
         {
             VersionNode newNode = new VersionNode(versionEntry);
 
             while (true)
             {
                 VersionNode oldHead = this.Head;
-                //check the head node's tag is 0xF0 or not
-                if ((this.Head.State & 0x0F).Equals(0))
+                if (oldHead.VersionEntry.IsBeginTxId && !oldHead.VersionEntry.IsEndTxId &&
+                    oldHead.VersionEntry.EndTimestamp == long.MaxValue)
                 {
-                    newNode.nextPointer = new VersionNextPointer(this.Head, 0x00);                   
-                    if (oldHead == Interlocked.CompareExchange<VersionNode>(ref this.head, newNode, oldHead))
-                    {
-                        return;
-                    }
+                    //a new version has already been inserted
+                    return false;
+                }
+                //check the head node's tag is 0xF0 or not
+                if ((oldHead.State & 0x0F).Equals(0))
+                {
+                    newNode.nextPointer = new VersionNextPointer(oldHead, 0x00);
+                    return oldHead == Interlocked.CompareExchange<VersionNode>(ref this.head, newNode, oldHead);
                 }
             }
         }

@@ -72,6 +72,8 @@
 
         private readonly ITxSequenceGenerator seqGenerator;
 
+        public DependencyTable depTable;
+
         public long BeginTimestamp
         {
             get
@@ -88,13 +90,13 @@
             }
         }
 
-        public Transaction(long txId, long beginTimestamp, LogStore logStore, VersionDb versionDb, TransactionTable txTable)
+        public Transaction(long txId, long beginTimestamp, LogStore logStore, VersionDb versionDb)
         {
             this.txId = txId;
             this.beginTimestamp = beginTimestamp;
             this.logStore = logStore;
             this.versionDb = versionDb;
-            this.txTable = txTable;
+            this.txTable = versionDb.GetTransactionTable();
 
             this.endTimestamp = long.MinValue;
             this.txStatus = TxStatus.Active;
@@ -104,12 +106,12 @@
             this.writeSet = new Dictionary<string, HashSet<WriteSetEntry>>();
 
             this.txTable.InsertNewTx(this.txId, this.beginTimestamp);
+            this.depTable = new DependencyTable();
         }
 
         public Transaction(
             LogStore logStore, 
-            VersionDb versionDb, 
-            TransactionTable txTable, 
+            VersionDb versionDb,
             ITxSequenceGenerator seqGenerator)
         {
             this.seqGenerator = seqGenerator;
@@ -119,7 +121,7 @@
             this.beginTimestamp = sequenceNumber;
             this.logStore = logStore;
             this.versionDb = versionDb;
-            this.txTable = txTable;
+            this.txTable = versionDb.GetTransactionTable();
 
             this.endTimestamp = long.MinValue;
             this.txStatus = TxStatus.Active;
@@ -127,6 +129,8 @@
             this.readSet = new Dictionary<string, HashSet<ReadSetEntry>>();
             this.scanSet = new Dictionary<string, HashSet<ScanSetEntry>>();
             this.writeSet = new Dictionary<string, HashSet<WriteSetEntry>>();
+
+            this.depTable = new DependencyTable();
 
             this.txTable.InsertNewTx(this.txId, this.beginTimestamp);
         }
@@ -151,15 +155,18 @@
 
             this.seqGenerator = (ITxSequenceGenerator) info.
                 GetValue("seqGenerator", typeof(ITxSequenceGenerator));
+
+            this.txTable = this.versionDb.GetTransactionTable();
+            this.depTable = (DependencyTable) info.GetValue("depTable", typeof(DependencyTable));
         }
 
-        public void AddReadSet(string tableId, object recordKey, long beginTimestamp)
+        public void AddReadSet(string tableId, object recordKey, long versionKey)
         {
             if (!this.readSet.ContainsKey(tableId))
             {
                 this.readSet.Add(tableId, new HashSet<ReadSetEntry>());
             }
-            this.readSet[tableId].Add(new ReadSetEntry(recordKey, beginTimestamp));
+            this.readSet[tableId].Add(new ReadSetEntry(recordKey, versionKey));
         }
 
         public void AddScanSet(string tableId, object recordKey, long readTimestamp, bool hasVisibleVersion)
@@ -171,24 +178,24 @@
             this.scanSet[tableId].Add(new ScanSetEntry(recordKey, readTimestamp, hasVisibleVersion));
         }
 
-        public void AddWriteSet(string tableId, object recordKey, long beginTimestamp, bool isOld)
+        public void AddWriteSet(string tableId, object recordKey, long versionKey, bool isOld)
         {
             if (!this.writeSet.ContainsKey(tableId))
             {
                 this.writeSet.Add(tableId, new HashSet<WriteSetEntry>());
             }
-            this.writeSet[tableId].Add(new WriteSetEntry(recordKey, beginTimestamp, isOld));
+            this.writeSet[tableId].Add(new WriteSetEntry(recordKey, versionKey, isOld));
         }
 
         /// <summary>
         /// Insert a new record.
-        /// (1) Add the scan info to the scan set
-        /// (2) Find whether the record already exist.
-        /// (3) Insert, add info to write set, or, abort.
+        /// (1) Find whether the record already exist.
+        /// (2) Insert, add info to write set, or, abort.
         /// </summary>
         public void InsertJson(string tableId, object recordKey, JObject record)
         {
-            if (!this.versionDb.InsertVersion(tableId, recordKey, record, this.txId, this.beginTimestamp))
+            if (!this.versionDb.InsertVersion(tableId, recordKey, record, this.txId,
+                this.beginTimestamp, this.txTable, ref this.depTable))
             {
                 //insert failed, because there is already a visible version with the same versionKey
                 this.Abort();
@@ -196,9 +203,8 @@
             }
 
             //insert successfully
-            //add the scan info to scanSet (check version phatom)
-            this.AddScanSet(tableId, recordKey, this.beginTimestamp, false);
             //add the write info to writeSet
+            this.AddScanSet(tableId, recordKey, this.beginTimestamp, false);
             this.AddWriteSet(tableId, recordKey, this.txId, false);
         }
 
@@ -210,7 +216,8 @@
         /// </summary>
         public JObject ReadJson(string tableId, object recordKey)
         {
-            VersionEntry version = this.versionDb.ReadVersion(tableId, recordKey, this.beginTimestamp);
+            VersionEntry version = this.versionDb.ReadVersion(tableId, recordKey,
+                this.beginTimestamp,this.txTable, ref this.depTable);
 
             if (version == null)
             {
@@ -220,8 +227,8 @@
             }
 
             //read successfully
-            this.AddScanSet(tableId, recordKey, this.beginTimestamp, true);
-            this.AddReadSet(tableId, recordKey, version.BeginTimestamp);
+            //this.AddScanSet(tableId, recordKey, this.beginTimestamp, true);
+            this.AddReadSet(tableId, recordKey, version.VersionKey);
             return version.JsonRecord;
         }
 
@@ -235,13 +242,21 @@
         {
             VersionEntry oldVersion = null;
             VersionEntry newVersion = null;
-            if (!this.versionDb.UpdateVersion(tableId, recordKey, record, this.txId, this.beginTimestamp, out oldVersion, out newVersion))
+            if (!this.versionDb.UpdateVersion(tableId, recordKey, record, this.txId, this.beginTimestamp,
+                this.txTable, ref this.depTable, out oldVersion, out newVersion))
             {
-                //update failed, two situation:
+                //update failed:
                 this.Abort();
                 if (oldVersion != null)
                 {
-                    throw new Exception($"Update failed. Conflict on modifying the version with recordKey '{recordKey}'.");
+                    if (newVersion == null)
+                    {
+                        throw new Exception($"Update failed. Conflict on modifying the version's end field with recordKey '{recordKey}'.");
+                    }
+                    else
+                    {
+                        throw new Exception($"Update failed. Other transaction is trying to insert version with recordKey '{recordKey}'.");
+                    }
                 }
                 else
                 {
@@ -256,7 +271,7 @@
                 //insert both the old and new write info to the writeSet.
                 if (oldVersion != null)
                 {
-                    this.AddWriteSet(tableId, recordKey, oldVersion.BeginTimestamp, true);
+                    this.AddWriteSet(tableId, recordKey, oldVersion.VersionKey, true);
                     this.AddWriteSet(tableId, recordKey, this.txId, false);
                 }
                 //case 2: the UpdateVersion() method perform change on the new version directly,
@@ -273,7 +288,8 @@
         public void DeleteJson(string tableId, object recordKey)
         {
             VersionEntry deletedVersion = null;
-            if (!this.versionDb.DeleteVersion(tableId, recordKey, this.txId, this.beginTimestamp, out deletedVersion))
+            if (!this.versionDb.DeleteVersion(tableId, recordKey, this.txId, this.beginTimestamp,
+                this.txTable, ref this.depTable, out deletedVersion))
             {
                 this.Abort();
                 if (deletedVersion != null)
@@ -291,7 +307,7 @@
             {
                 if (deletedVersion != null)
                 {
-                    this.AddWriteSet(tableId, recordKey, deletedVersion.BeginTimestamp, true);
+                    this.AddWriteSet(tableId, recordKey, deletedVersion.VersionKey, true);
                 }
             }
         }
@@ -340,27 +356,28 @@
         /// The transaction scans its ReadSet and for each version read, 
         /// checks whether the version is still visible at the end of the transaction.
         /// </summary>
-        internal void ReadValidation()
+        internal bool ReadValidation()
         {
             foreach (string tableId in this.readSet.Keys)
             {
                 foreach (ReadSetEntry readEntry in this.readSet[tableId])
                 {
                     if (!this.versionDb.CheckReadVisibility(tableId, readEntry.Key, readEntry.BeginTimestamp,
-                        this.endTimestamp, this.txId, this.txTable))
+                        this.endTimestamp, this.txId, this.txTable, ref this.depTable))
                     {
-                        throw new Exception($"Read validation failed. " +
-                                            $"The version with tableId {tableId} recordKey {readEntry.Key} is not visible.");
+                        return false;
                     }
                 }
             }
+
+            return true;
         }
 
         /// <summary>
         /// The transaction walks its ScanSet and repeats each scan,
         /// looking for versions that came into existence during T’s lifetime and are visible as of the end of the transaction.
         /// </summary>
-        internal void PhantomValidation()
+        internal bool PhantomValidation()
         {
             foreach (string tableId in this.scanSet.Keys)
             {
@@ -374,11 +391,37 @@
                         this.txId,
                         this.txTable))
                     {
-                        throw new Exception($"Check phantom failed. " +
-                                            $"Find new version with tableId {tableId} recordKey {scanEntry.Key}.");
+                        return false;
                     }
                 }
             }
+
+            return true;
+        }
+
+        internal bool WaitForDependency()
+        {
+            IEnumerable<Tuple<long, bool>> depSet = this.depTable.GetDependencyByTxId(this.txId);
+
+            foreach (Tuple<long, bool> dep in depSet)
+            {
+                do
+                {
+                    TxStatus status = this.txTable.GetTxStatusByTxId(dep.Item1);
+                    if (status == TxStatus.Committed && dep.Item2 ||
+                        status == TxStatus.Aborted && !dep.Item2)
+                    {
+                        break;
+                    }
+                    else if (status == TxStatus.Aborted && dep.Item2 ||
+                             status == TxStatus.Committed && !dep.Item2)
+                    {
+                        return false;
+                    }
+                } while (true);
+            }
+
+            return true;
         }
 
         /// <summary>
@@ -406,6 +449,10 @@
                 throw new Exception("Failed to acquire the commit timestamp.", e);
             }
 
+            this.txStatus = TxStatus.Preparing;
+            this.txTable.UpdateTxEndTimestampByTxId(this.txId, endTimestamp);
+            this.txTable.UpdateTxStatusByTxId(this.txId, TxStatus.Preparing);
+
             this.Commit(endTimestamp);
         }
 
@@ -419,24 +466,22 @@
         {
             this.endTimestamp = endTimestamp;
             //Read validation
-            try
-            {
-                this.ReadValidation();
-            }
-            catch (Exception e)
+            if (!this.ReadValidation())
             {
                 this.Abort();
-                throw e;
+                return;
             }
             //Check phantom
-            try
-            {
-                this.PhantomValidation();
-            }
-            catch (Exception e)
+            if (!this.PhantomValidation())
             {
                 this.Abort();
-                throw e;
+                return;
+            }
+            //Wait for Commit Dependency
+            if (!this.WaitForDependency())
+            {
+                this.Abort();
+                return;
             }
             //logging
             this.WriteChangestoLog();
@@ -449,8 +494,8 @@
             {
                 foreach (WriteSetEntry writeSetEntry in this.writeSet[tableId])
                 {
-                    this.versionDb.UpdateCommittedVersionTimestamp(tableId, writeSetEntry.Key, this.txId,
-                        this.endTimestamp);
+                    this.versionDb.UpdateCommittedVersionTimestamp(tableId, writeSetEntry.Key, 
+                        writeSetEntry.BeginTimestamp, this.txId, this.endTimestamp);
                 }
             }
         }
@@ -468,7 +513,8 @@
             {
                 foreach (WriteSetEntry writeSetEntry in this.writeSet[tableId])
                 {
-                    this.versionDb.UpdateAbortedVersionTimestamp(tableId, writeSetEntry.Key, this.txId);
+                    this.versionDb.UpdateAbortedVersionTimestamp(tableId, writeSetEntry.Key, 
+                        writeSetEntry.BeginTimestamp, this.txId);
                 }
             }
         }
@@ -494,6 +540,8 @@
             info.AddValue("writeSet", this.writeSet, typeof(Dictionary<string, HashSet<WriteSetEntry>>));
 
             info.AddValue("seqGenerator", this.seqGenerator, typeof(ITxSequenceGenerator));
+
+            info.AddValue("depTable", this.depTable, typeof(DependencyTable));
         }
     }
 }

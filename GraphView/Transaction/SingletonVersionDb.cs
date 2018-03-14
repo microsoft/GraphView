@@ -19,6 +19,8 @@ namespace GraphView.Transaction
         private readonly Dictionary<string, SingletonVersionTable> versionTables;
         private readonly object tableLock;
 
+        private readonly SingletonTxTable instSingletonTxTable;
+
         // A map from a table to its index tables
         private Dictionary<string, IList<Tuple<string, IndexSpecification>>> indexMap;
 
@@ -26,6 +28,7 @@ namespace GraphView.Transaction
         {
             this.versionTables = new Dictionary<string, SingletonVersionTable>();
             this.tableLock = new object();
+            this.instSingletonTxTable = SingletonTxTable.InstSingletonTxTable;
         }
 
         internal static SingletonVersionDb Instance
@@ -45,6 +48,11 @@ namespace GraphView.Transaction
                 return SingletonVersionDb.instance;
             }
         }
+
+        internal override TransactionTable GetTransactionTable()
+        {
+            return this.instSingletonTxTable;
+        }
     }
 
     internal partial class SingletonVersionDb
@@ -63,7 +71,9 @@ namespace GraphView.Transaction
             object recordKey,
             object record,
             long txId,
-            long readTimestamp)
+            long readTimestamp,
+            TransactionTable txTable,
+            ref DependencyTable depTable)
         {
             VersionTable versionTable = this.GetVersionTable(tableId);
             //If the corresponding version table does not exist, create a new one.
@@ -74,11 +84,11 @@ namespace GraphView.Transaction
                 {
                     if (this.GetVersionTable(tableId) == null)
                     {
-                        this.versionTables[tableId] = new SingletonVersionDictionary(tableId);
+                        this.versionTables[tableId] = new SingletonVersionDictionary(tableId, this.instSingletonTxTable);
                     }
                 }
             }
-            return this.GetVersionTable(tableId).InsertVersion(recordKey, record, txId, readTimestamp);
+            return this.GetVersionTable(tableId).InsertVersion(recordKey, record, txId, readTimestamp, txTable, ref depTable);
         }
     }
 

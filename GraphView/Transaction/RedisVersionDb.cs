@@ -303,14 +303,14 @@
 
         // End user must add the versionTable at first and then call the insertVersion method
         internal override bool InsertVersion(string tableId, object recordKey, object record, long txId,
-            long readTimestamp)
+            long readTimestamp, TransactionTable txTable, ref DependencyTable depTable)
         {
             RedisVersionTable versionTable = this.GetRedisVersionTable(tableId);
             if (versionTable == null)
             {
                 return false;
             }
-            return versionTable.InsertVersion(recordKey, record, txId, readTimestamp);
+            return versionTable.InsertVersion(recordKey, record, txId, readTimestamp, txTable, ref depTable);
         }
     }
 

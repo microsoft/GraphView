@@ -27,14 +27,16 @@ namespace GraphView.Transaction
         internal virtual VersionEntry ReadVersion(
             string tableId,
             object recordKey,
-            long readTimestamp)
+            long readTimestamp,
+            TransactionTable txTable,
+            ref DependencyTable depTable)
         {
             VersionTable versionTable = this.GetVersionTable(tableId);
             if (versionTable == null)
             {
                 return null;
             }
-            return versionTable.ReadVersion(recordKey, readTimestamp);
+            return versionTable.ReadVersion(recordKey, readTimestamp, txTable, ref depTable);
         }
 
         /// <summary>
@@ -47,7 +49,9 @@ namespace GraphView.Transaction
             object recordKey,
             object record,
             long txId,
-            long readTimestamp)
+            long readTimestamp,
+            TransactionTable txTable,
+            ref DependencyTable depTable)
         {
             throw new NotImplementedException();
         }
@@ -62,15 +66,17 @@ namespace GraphView.Transaction
             object recordKey,
             long txId,
             long readTimestamp,
+            TransactionTable txTable,
+            ref DependencyTable depTable,
             out VersionEntry deletedVersion)
         {
             VersionTable versionTable = this.GetVersionTable(tableId);
             if (versionTable == null)
             {
                 deletedVersion = null;
-                return true;
+                return false;
             }
-            return versionTable.DeleteVersion(recordKey, txId, readTimestamp, out deletedVersion);
+            return versionTable.DeleteVersion(recordKey, txId, readTimestamp, txTable, ref depTable, out deletedVersion);
         }
 
         /// <summary>
@@ -84,6 +90,8 @@ namespace GraphView.Transaction
             object record,
             long txId,
             long readTimestamp,
+            TransactionTable txTable,
+            ref DependencyTable depTable,
             out VersionEntry oldVersion,
             out VersionEntry newVersion)
         {
@@ -95,7 +103,7 @@ namespace GraphView.Transaction
                 newVersion = null;
                 return false;
             }
-            return versionTable.UpdateVersion(recordKey, record, txId, readTimestamp, 
+            return versionTable.UpdateVersion(recordKey, record, txId, readTimestamp, txTable, ref depTable,
                 out oldVersion, out newVersion);
         }
 
@@ -107,18 +115,19 @@ namespace GraphView.Transaction
         internal virtual bool CheckReadVisibility(
             string tableId,
             object recordKey,
-            long readVersionBeginTimestamp,
-            long readTimestamp,
+            long versionKey,
+            long txEndTimestamp,
             long txId,
-            TransactionTable txTable)
+            TransactionTable txTable,
+            ref DependencyTable depTable)
         {
             VersionTable versionTable = this.GetVersionTable(tableId);
             if (versionTable == null)
             {
                 return false;
             }
-            return versionTable.CheckReadVisibility(recordKey, readVersionBeginTimestamp,
-                readTimestamp, txId, txTable);
+            return versionTable.CheckReadVisibility(recordKey, versionKey,
+                txEndTimestamp, txId, txTable, ref depTable);
         }
 
         /// <summary>
@@ -149,6 +158,7 @@ namespace GraphView.Transaction
         internal virtual void UpdateCommittedVersionTimestamp(
             string tableId,
             object recordKey,
+            long versionKey,
             long txId,
             long endTimestamp)
         {
@@ -157,7 +167,7 @@ namespace GraphView.Transaction
             {
                 return;
             }
-            versionTable.UpdateCommittedVersionTimestamp(recordKey, txId, endTimestamp);
+            versionTable.UpdateCommittedVersionTimestamp(recordKey, versionKey, txId, endTimestamp);
         }
 
         /// <summary>
@@ -167,6 +177,7 @@ namespace GraphView.Transaction
         internal virtual void UpdateAbortedVersionTimestamp(
             string tableId,
             object recordKey,
+            long versionKey,
             long txId)
         {
             VersionTable versionTable = this.GetVersionTable(tableId);
@@ -174,7 +185,12 @@ namespace GraphView.Transaction
             {
                 return;
             }
-            versionTable.UpdateAbortedVersionTimestamp(recordKey, txId);
+            versionTable.UpdateAbortedVersionTimestamp(recordKey, versionKey, txId);
+        }
+
+        internal virtual TransactionTable GetTransactionTable()
+        {
+            throw new NotImplementedException();
         }
     }
 

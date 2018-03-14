@@ -84,7 +84,9 @@
         /// <returns>A version entry or null</returns>
         internal override VersionEntry GetVersionEntryByTimestamp(
             object recordKey,
-            long timestamp)
+            long timestamp,
+            TransactionTable txTable,
+            ref DependencyTable depTable)
         {
             using (ISession session = this.CassandraCluster.Connect())
             {
@@ -106,7 +108,7 @@
                 foreach (Row row in rowSet)
                 {
                     VersionEntry versionEntry = this.GetVersionEntryFromRow(row);
-                    if (this.CheckVersionVisibility(versionEntry, timestamp))
+                    if (this.CheckVersionVisibility(versionEntry, timestamp, txTable, ref depTable))
                     {
                         return versionEntry;
                     }

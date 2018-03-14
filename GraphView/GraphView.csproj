@@ -287,6 +287,7 @@
     <Compile Include="Transaction\CassandraClusterManager.cs" />
     <Compile Include="Transaction\CassandraVersionDb.cs" />
     <Compile Include="Transaction\CassandraVersionTable.cs" />
+    <Compile Include="Transaction\DependencyTable.cs" />
     <Compile Include="Transaction\ITransactionStore.cs" />
     <Compile Include="Transaction\ReadSetEntry.cs" />
     <Compile Include="Transaction\RedisClientManager.cs" />

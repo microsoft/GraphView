@@ -15,11 +15,14 @@
         private readonly Dictionary<object, VersionList> dict;
         private readonly object listLock;
 
-        public SingletonVersionDictionary(string tableId)
+        private readonly TransactionTable txTable;
+
+        public SingletonVersionDictionary(string tableId, TransactionTable txTable)
             : base(tableId)
         {
             this.dict = new Dictionary<object, VersionList>();
             this.listLock = new object();
+            this.txTable = txTable;
         }
 
         internal override IEnumerable<VersionEntry> GetVersionList(object recordKey)
@@ -68,8 +71,7 @@
                 }
             }
 
-            this.dict[recordKey].PushFront(version);
-            return true;
+            return this.dict[recordKey].PushFront(version);
         }
 
         internal override bool UpdateAndUploadVersion(object recordKey, long versionKey, VersionEntry toBeChangedVersion, VersionEntry newVersion)
@@ -79,8 +81,7 @@
 
         internal override bool DeleteVersionEntry(object recordKey, long versionKey)
         {
-            this.dict[recordKey].DeleteNode(recordKey, versionKey);
-            return true;
+            return this.dict[recordKey].DeleteNode(recordKey, versionKey);
         }
     }
 
@@ -92,7 +93,8 @@
         /// </summary>
         public override JObject GetJson(object key, Transaction tx)
         {
-            VersionEntry versionEntry = this.GetVersionEntry(key, tx.BeginTimestamp);
+            VersionEntry versionEntry =
+                this.GetVersionEntryByTimestamp(key, tx.BeginTimestamp, this.txTable, ref tx.depTable);
             if (versionEntry != null)
             {
                 tx.AddReadSet(this.tableId, key, versionEntry.BeginTimestamp);
@@ -128,7 +130,8 @@
                 if (lowerComparableKey.CompareTo(comparableKey) <= 0 
                     && upperComparebleKey.CompareTo(comparableKey) >= 0)
                 {
-                    VersionEntry versionEntry = this.GetVersionEntry(key, tx.BeginTimestamp);
+                    VersionEntry versionEntry =
+                        this.GetVersionEntryByTimestamp(key, tx.BeginTimestamp, this.txTable, ref tx.depTable);
                     if (versionEntry == null)
                     {
                         // false means no visiable version for this key
@@ -173,7 +176,8 @@
                 if (lowerComparableValue.CompareTo(comparableKey) <= 0
                     && upperComparableValue.CompareTo(comparableKey) >= 0)
                 {
-                    VersionEntry versionEntry = this.GetVersionEntry(key, tx.BeginTimestamp);
+                    VersionEntry versionEntry =
+    this.GetVersionEntryByTimestamp(key, tx.BeginTimestamp, this.txTable, ref tx.depTable);
                     if (versionEntry == null)
                     {
                         // false means no visiable version for this key
@@ -206,7 +210,8 @@
         /// </summary>
         public override IList<object> GetRecordKeyList(object value, Transaction tx)
         {
-            VersionEntry versionEntry = this.GetVersionEntry(value, tx.BeginTimestamp);
+            VersionEntry versionEntry =
+                this.GetVersionEntryByTimestamp(value, tx.BeginTimestamp, this.txTable, ref tx.depTable);
             if (versionEntry != null)
             {
                 JObject record = versionEntry.JsonRecord;
@@ -228,15 +233,16 @@
 
         public override bool InsertJson(object key, JObject record, Transaction tx)
         {
-            VersionEntry versionEntry = this.GetVersionEntry(key, tx.BeginTimestamp);
-            
+            VersionEntry versionEntry =
+                this.GetVersionEntryByTimestamp(key, tx.BeginTimestamp, this.txTable, ref tx.depTable);
+
             // insert the version if we have not found a visiable version
             if (versionEntry != null)
             {
                 return false;
             }
 
-            bool hasInserted = this.InsertVersion(key, record, tx.TxId, tx.BeginTimestamp);
+            bool hasInserted = this.InsertVersion(key, record, tx.TxId, tx.BeginTimestamp, this.txTable, ref tx.depTable);
             if (hasInserted)
             {
                 tx.AddScanSet(this.tableId, key, tx.BeginTimestamp, false);
@@ -247,14 +253,16 @@
 
         public override bool UpdateJson(object key, JObject record, Transaction tx)
         {
-            VersionEntry versionEntry = this.GetVersionEntry(key, tx.BeginTimestamp);
+            VersionEntry versionEntry =
+                this.GetVersionEntryByTimestamp(key, tx.BeginTimestamp, this.txTable, ref tx.depTable);
             if (versionEntry == null)
             {
                 return false;
             }
 
             VersionEntry oldVersionEntry = null, newVersionEntry = null;
-            bool hasUpdated = this.UpdateVersion(key, record, tx.TxId, tx.BeginTimestamp, 
+            bool hasUpdated = this.UpdateVersion(key, record, tx.TxId, tx.BeginTimestamp,
+                this.txTable, ref tx.depTable,
                 out oldVersionEntry, out newVersionEntry);
             if (hasUpdated)
             {
@@ -268,42 +276,22 @@
 
         public override bool DeleteJson(object key, Transaction tx)
         {
-            VersionEntry versionEntry = this.GetVersionEntry(key, tx.BeginTimestamp);
+            VersionEntry versionEntry =
+                this.GetVersionEntryByTimestamp(key, tx.BeginTimestamp, this.txTable, ref tx.depTable);
             if (versionEntry == null)
             {
                 return false;
             }
 
             VersionEntry deletedVersionEntry = null;
-            bool hasDeleted = this.DeleteVersion(key, tx.TxId, tx.BeginTimestamp, out deletedVersionEntry);
+            bool hasDeleted = this.DeleteVersion(key, tx.TxId, tx.BeginTimestamp,
+                this.txTable, ref tx.depTable, out deletedVersionEntry);
             if (hasDeleted)
             {
                 // pass the old version's begin timestamp to find the old version
                 tx.AddWriteSet(this.tableId, key, versionEntry.BeginTimestamp, true);
             }
             return hasDeleted;
-        }
-        
-        /// <summary>
-        /// Get a visiable version entry from versionTable with the
-        /// </summary>
-        internal VersionEntry GetVersionEntry(object key, long readTimestamp)
-        {
-            IEnumerable<VersionEntry> versionEntryList = this.GetVersionList(key);
-            if (versionEntryList == null)
-            {
-                return null;
-            }
-
-            foreach (VersionEntry versionEntry in versionEntryList)
-            {
-                if (this.CheckVersionVisibility(versionEntry, readTimestamp))
-                {
-                    return versionEntry;
-                }
-            }
-
-            return null;
         }
     }
 }
