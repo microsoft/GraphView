@@ -2508,6 +2508,11 @@ namespace GraphView
 
         public override int GetHashCode()
         {
+            if (this.SearchInfo != null)
+            {
+                return this.SearchInfo.GetHashCode();
+            }
+
             return this["id"].ToValue.GetHashCode();
         }
     }
@@ -2516,7 +2521,7 @@ namespace GraphView
     internal class TreeField : FieldObject
     {
         [DataMember]
-        public FieldObject NodeObject { get; }
+        public FieldObject NodeObject { get; private set; }
         [DataMember]
         public Dictionary<FieldObject, TreeField> Children { get; private set; }
 
@@ -2623,7 +2628,6 @@ namespace GraphView
         internal RawRecord(RawRecord rhs)
         {
             this.fieldValues = new List<FieldObject>(rhs.fieldValues);
-            this.lastBelongTask = rhs.lastBelongTask;
         }
         internal RawRecord(int num)
         {
@@ -2687,9 +2691,6 @@ namespace GraphView
         [DataMember]
         internal List<FieldObject> fieldValues;
 
-        // For parallel
-        [DataMember]
-        internal int lastBelongTask;
     }
 
 

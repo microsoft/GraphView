@@ -468,29 +468,14 @@ namespace GraphView
             {
                 return MeanFunction.DeserializeForAggregate(content);
             }
-            //else if (type.Equals(AggregateFunctionType.CapFunction.ToString()))
-            //{
-            //    return CapFunction.DeserializeForAggregate(content, command);
-            //}
-            //else if (type.Equals(AggregateFunctionType.TreeFunction.ToString()))
-            //{
-            //    return TreeFunction.DeserializeForAggregate(content);
-            //}
-            //else if (type.Equals(AggregateFunctionType.SubgraphFunction.ToString()))
-            //{
-            //    return SubgraphFunction.DeserializeForAggregate(content);
-            //}
-            //else if (type.Equals(AggregateFunctionType.CollectionFunction.ToString()))
-            //{
-            //    return CollectionFunction.DeserializeForAggregate(content);
-            //}
-            //else if (type.Equals(AggregateFunctionType.GroupFunction.ToString()))
-            //{
-            //    return GroupFunction.DeserializeForAggregate(content);
-            //}
+            // case: tree(). that is, tree step without sideEffectKey. And tree step is not inBatchMode.
+            else if (type.Equals(AggregateFunctionType.TreeFunction.ToString()))
+            {
+                return TreeFunction.DeserializeForAggregate(content, command);
+            }
             else
             {
-                throw new NotImplementedException();
+                throw new GraphViewException("Should not arrive here.");
             }
         }
 
@@ -1074,7 +1059,7 @@ namespace GraphView
                 while (queue.Count > 0)
                 {
                     TreeField treeNode = queue.Dequeue();
-                    AnalysisFieldObject(treeNode);
+                    AnalysisFieldObject(treeNode.NodeObject);
                     foreach (TreeField childNode in treeNode.Children.Values)
                     {
                         queue.Enqueue(childNode);
@@ -1268,7 +1253,6 @@ namespace GraphView
             {
                 correctRecord.Append(RecoverFieldObject(this.record[i]));
             }
-            correctRecord.lastBelongTask = this.record.lastBelongTask;
 
             return correctRecord;
         }

@@ -498,7 +498,24 @@ namespace GraphView
 
         public void Merge(IAggregateFunction aggFunc)
         {
-            throw new NotImplementedException();
+            TreeField tree = ((TreeFunction) aggFunc).treeState.root;
+            MergeTree(this.treeState.root, tree);
+        }
+
+        private void MergeTree(TreeField tree1, TreeField tree2)
+        {
+            foreach (KeyValuePair<FieldObject, TreeField> child2 in tree2.Children)
+            {
+                TreeField child1;
+                if (tree1.Children.TryGetValue(child2.Key, out child1))
+                {
+                    MergeTree(child1, child2.Value);
+                }
+                else
+                {
+                    tree1.Children[child2.Key] = child2.Value;
+                }
+            }
         }
 
         public FieldObject Terminate()
@@ -514,12 +531,19 @@ namespace GraphView
 
         public string SerializeForAggregate()
         {
-            throw new NotImplementedException();
+            // use RawRecord to wrap the FieldObjects
+            RawRecord record = new RawRecord();
+            record.Append(this.treeState.root);
+            string content = RawRecordMessage.CodeMessage(record);
+
+            return AggregateIntermadiateResult.CombineSerializeResult(
+                AggregateIntermadiateResult.AggregateFunctionType.TreeFunction, content);
         }
 
-        public static TreeFunction DeserializeForAggregate(string content)
+        public static TreeFunction DeserializeForAggregate(string content, GraphViewCommand command)
         {
-            throw new NotImplementedException();
+            RawRecord record = RawRecordMessage.DecodeMessage(content, command);
+            return new TreeFunction(new TreeState("") { root = (TreeField) record[0] });
         }
     }
 
@@ -814,7 +838,6 @@ namespace GraphView
         [DataMember]
         internal HashSet<string> vertexIds;
         internal GraphViewCommand command;
-        [DataMember]
         internal FieldObject graph;
 
         public SubgraphState(GraphViewCommand command, string tableAlias) : base(tableAlias)
@@ -883,10 +906,8 @@ namespace GraphView
         }
     }
 
-    [DataContract]
     internal class CollectionState : AggregateState
     {
-        [DataMember]
         internal CollectionField collectionField;
 
         public CollectionState(string tableAlias) : base(tableAlias)
