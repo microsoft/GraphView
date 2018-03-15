@@ -558,8 +558,8 @@ namespace GraphView
             Send,
             SendAndAttachTaskId,
             Aggregate,
+            AggregateSideEffect,
             SendBack,
-            LastSendBack,
             Sync,
         }
 
@@ -591,16 +591,17 @@ namespace GraphView
         public SendOperator(GraphViewExecutionOperator inputOp, SendType sendType)
             : this(inputOp)
         {
-            Debug.Assert(sendType != SendType.Send && sendType != SendType.SendAndAttachTaskId);
+            Debug.Assert(sendType == SendType.SendBack || sendType == SendType.Sync);
             this.sendType = sendType;
         }
 
-        public SendOperator(GraphViewExecutionOperator inputOp, int maxCount, int aggregateTarget)
+        public SendOperator(GraphViewExecutionOperator inputOp, SendType sendType, int aggregateTarget, int maxCount = -1)
             : this(inputOp)
         {
-            this.sendType = SendType.Aggregate;
-            this.maxCount = maxCount;
+            Debug.Assert(sendType == SendType.Aggregate || sendType == SendType.AggregateSideEffect);
+            this.sendType = sendType;
             this.AggregateTarget = aggregateTarget;
+            this.maxCount = maxCount;
         }
 
         public override RawRecord Next()
@@ -617,7 +618,6 @@ namespace GraphView
                         return record;
                         break;
                     case SendType.SendBack:
-                    case SendType.LastSendBack:
                         int index = int.Parse(record[1].ToValue);
                         if (index == this.taskIndex || index == -1)
                         {
@@ -631,9 +631,8 @@ namespace GraphView
                         break;
                     case SendType.SendAndAttachTaskId:
                     case SendType.Send:
-                        if (this.sendType == SendType.SendAndAttachTaskId)
+                        if (this.sendType == SendType.SendAndAttachTaskId && ((StringField)record[1]).Value == "-1")
                         {
-                            Debug.Assert(((StringField)record[1]).Value == "-1" || ((StringField)record[1]).Value == this.taskIndex.ToString());
                             ((StringField)record[1]).Value = this.taskIndex.ToString();
                         }
                         string partition = this.getPartitionMethod.GetPartition(record);
@@ -677,6 +676,19 @@ namespace GraphView
                         }
 
                         break;
+                    case SendType.AggregateSideEffect:
+                        if (this.AggregateTarget == this.taskIndex)
+                        {
+                            return record;
+                        }
+                        else
+                        {
+                            record.NeedReturn = false;
+                            this.client.SendRawRecord(record, this.AggregateTarget);
+                            record.NeedReturn = true;
+                            return record;
+                        }
+                        break;
                 }
 
                 if (canClose)
@@ -686,7 +698,7 @@ namespace GraphView
             }
 
             string signal;
-            if (this.sendType == SendType.LastSendBack)
+            if (this.sendType == SendType.SendBack)
             {
                 EnumeratorOperator enumeratorOp = this.GetFirstOperator() as EnumeratorOperator;
                 signal = $"{this.taskIndex},{this.resultCount},{enumeratorOp.ContainerHasMoreInput()}";
@@ -702,8 +714,7 @@ namespace GraphView
                 {
                     continue;
                 }
-                string message = $"{this.taskIndex},{this.resultCount}";
-                this.client.SendSignal(message, i);
+                this.client.SendSignal(signal, i);
             }
 
             this.Close();
@@ -923,9 +934,9 @@ namespace GraphView
         private Dictionary<string, string> vertices;
         //                           jsonString, otherV, otherVPartition
         [DataMember]
-        private Dictionary<string, Tuple<string, string, string>> forwardEdges;
+        private Dictionary<string, string> forwardEdges;
         [DataMember]
-        private Dictionary<string, Tuple<string, string, string>> backwardEdges;
+        private Dictionary<string,string> backwardEdges;
 
         [DataMember]
         private RawRecord record;
@@ -966,8 +977,8 @@ namespace GraphView
         {
             this.record = record;
             this.vertices = new Dictionary<string, string>();
-            this.forwardEdges = new Dictionary<string, Tuple<string, string, string>>();
-            this.backwardEdges = new Dictionary<string, Tuple<string, string, string>>();
+            this.forwardEdges = new Dictionary<string, string>();
+            this.backwardEdges = new Dictionary<string, string>();
 
             // analysis record
             for (int i = 0; i < record.Length; i++)
@@ -1141,8 +1152,7 @@ namespace GraphView
             {
                 if (!this.forwardEdges.ContainsKey(edgeId))
                 {
-                    this.forwardEdges[edgeId] = new Tuple<string,string,string>(
-                        edgeField.EdgeJObject.ToString(), edgeField.OtherV, edgeField.OtherVPartition);
+                    this.forwardEdges[edgeId] = edgeField.Serialize();
                 }
                 //string vertexId = edgeField.InV;
                 //VertexField vertex;
@@ -1173,8 +1183,7 @@ namespace GraphView
             {
                 if (!this.backwardEdges.ContainsKey(edgeId))
                 {
-                    this.backwardEdges[edgeId] = new Tuple<string, string, string>(
-                        edgeField.EdgeJObject.ToString(), edgeField.OtherV, edgeField.OtherVPartition);
+                    this.backwardEdges[edgeId] = edgeField.Serialize();
                 }
                 //string vertexId = edgeField.OutV;
                 //VertexField vertex;
@@ -1220,32 +1229,14 @@ namespace GraphView
                 this.vertexFields[pair.Key] = vertex;
             }
 
-            foreach (KeyValuePair<string, Tuple<string, string, string>> pair in this.forwardEdges)
+            foreach (KeyValuePair<string, string> pair in this.forwardEdges)
             {
-                JObject edgeJObject = JObject.Parse(pair.Value.Item1);
-                string outVId = (string)edgeJObject[KW_EDGE_SRCV];
-                string outVLable = (string)edgeJObject[KW_EDGE_SRCV_LABEL];
-                string outVPartition = (string)edgeJObject[KW_EDGE_SRCV_PARTITION];
-                string edgeDocId = (string)edgeJObject[KW_DOC_ID];
-
-                //this.vertexFields[outVId].AdjacencyList.TryAddEdgeField(pair.Key,
-                //    () => EdgeField.ConstructForwardEdgeField(outVId, outVLable, outVPartition, edgeDocId, edgeJObject));
-                EdgeField edgeField = EdgeField.ConstructForwardEdgeField(outVId, outVLable, outVPartition, edgeDocId, edgeJObject);
-                this.forwardEdgeFields[pair.Key] = new EdgeField(edgeField, pair.Value.Item2, pair.Value.Item3);
+                this.forwardEdgeFields[pair.Key] = EdgeField.Deserialize(pair.Value);
             }
 
-            foreach (KeyValuePair<string, Tuple<string, string, string>> pair in this.backwardEdges)
+            foreach (KeyValuePair<string, string> pair in this.backwardEdges)
             {
-                JObject edgeJObject = JObject.Parse(pair.Value.Item1);
-                string inVId = (string)edgeJObject[KW_EDGE_SINKV];
-                string inVLable = (string)edgeJObject[KW_EDGE_SINKV_LABEL];
-                string inVPartition = (string)edgeJObject[KW_EDGE_SINKV_PARTITION];
-                string edgeDocId = (string)edgeJObject[KW_DOC_ID];
-
-                //this.vertexFields[inVId].RevAdjacencyList.TryAddEdgeField(pair.Key,
-                //    () => EdgeField.ConstructBackwardEdgeField(inVId, inVLable, inVPartition, edgeDocId, edgeJObject));
-                EdgeField edgeField = EdgeField.ConstructBackwardEdgeField(inVId, inVLable, inVPartition, edgeDocId, edgeJObject);
-                this.backwardEdgeFields[pair.Key] = new EdgeField(edgeField, pair.Value.Item2, pair.Value.Item3);
+                this.backwardEdgeFields[pair.Key] = EdgeField.Deserialize(pair.Value);
             }
 
             RawRecord correctRecord = new RawRecord();
@@ -1253,6 +1244,8 @@ namespace GraphView
             {
                 correctRecord.Append(RecoverFieldObject(this.record[i]));
             }
+
+            correctRecord.NeedReturn = this.record.NeedReturn;
 
             return correctRecord;
         }

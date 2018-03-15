@@ -821,21 +821,21 @@ namespace GraphView
 
         public string SerializeForAggregate()
         {
-            throw new NotImplementedException();
+            string content = GraphViewSerializer.SerializeWithDataContract(this.subgraphState);
+            return AggregateIntermadiateResult.CombineSerializeResult(
+                AggregateIntermadiateResult.AggregateFunctionType.SubgraphFunction, content);
         }
 
         public static SubgraphFunction DeserializeForAggregate(string content)
         {
-            throw new NotImplementedException();
+            SubgraphState state = GraphViewSerializer.DeserializeWithDataContract<SubgraphState>(content);
+            return new SubgraphFunction(state);
         }
     }
 
-    [DataContract]
     internal class SubgraphState : AggregateState
     {
-        [DataMember]
         internal HashSet<string> edgeIds;
-        [DataMember]
         internal HashSet<string> vertexIds;
         internal GraphViewCommand command;
         internal FieldObject graph;
@@ -1124,28 +1124,46 @@ namespace GraphView
         private ScalarFunction groupByKeyFunction;
         private readonly string sideEffectKey;
 
+        private readonly bool isParallel;
+        private int targetTask;
+        [NonSerialized]
+        private int taskId;
+
         public GroupSideEffectOperator(
             GraphViewExecutionOperator inputOp,
             GroupFunction groupFunction,
             string sideEffectKey,
-            ScalarFunction groupByKeyFunction)
+            ScalarFunction groupByKeyFunction,
+            int targetTask = -1)
         {
             this.inputOp = inputOp;
             this.groupFunction = groupFunction;
             this.groupByKeyFunction = groupByKeyFunction;
             this.sideEffectKey = sideEffectKey;
+
+            if (targetTask != -1)
+            {
+                this.isParallel = true;
+                this.targetTask = targetTask;
+            }
+
             this.Open();
         }
 
         public override RawRecord Next()
         {
-            if (this.inputOp.State())
+            while (this.inputOp.State())
             {
                 RawRecord r = this.inputOp.Next();
                 if (r == null)
                 {
                     this.Close();
                     return null;
+                }
+
+                if (this.isParallel && this.targetTask != this.taskId)
+                {
+                    return r;
                 }
 
                 FieldObject groupByKey = this.groupByKeyFunction.Evaluate(r);
@@ -1156,7 +1174,11 @@ namespace GraphView
                 }
 
                 this.groupFunction.Accumulate(new Object[]{ groupByKey, r });
-                return r;
+
+                if (!this.isParallel || r.NeedReturn)
+                {
+                    return r;
+                }
             }
 
             this.Close();
@@ -1179,6 +1201,7 @@ namespace GraphView
         {
             AdditionalSerializationInfo additionalInfo = (AdditionalSerializationInfo)context.Context;
             this.groupFunction = (GroupFunction)additionalInfo.SideEffectFunctions[this.sideEffectKey];
+            this.taskId = additionalInfo.TaskIndex;
         }
     }
 
@@ -1191,28 +1214,46 @@ namespace GraphView
         private int pathIndex;
         private readonly string sideEffectKey;
 
+        private readonly bool isParallel;
+        private int targetTask;
+        [NonSerialized]
+        private int taskId;
+
         public TreeSideEffectOperator(
             GraphViewExecutionOperator inputOp,
             TreeFunction treeFunction,
             string sideEffectKey,
-            int pathIndex)
+            int pathIndex,
+            int targetTask = -1)
         {
             this.inputOp = inputOp;
             this.treeFunction = treeFunction;
             this.pathIndex = pathIndex;
             this.sideEffectKey = sideEffectKey;
+
+            if (targetTask != -1)
+            {
+                this.isParallel = true;
+                this.targetTask = targetTask;
+            }
             this.Open();
         }
 
+
         public override RawRecord Next()
         {
-            if (this.inputOp.State())
+            while (this.inputOp.State())
             {
                 RawRecord r = this.inputOp.Next();
                 if (r == null)
                 {
                     this.Close();
                     return null;
+                }
+
+                if (this.isParallel && this.targetTask != this.taskId)
+                {
+                    return r;
                 }
 
                 PathField path = r[this.pathIndex] as PathField;
@@ -1225,7 +1266,11 @@ namespace GraphView
                 {
                     this.Close();
                 }
-                return r;
+
+                if (!this.isParallel || r.NeedReturn)
+                {
+                    return r;
+                }
             }
 
             return null;
@@ -1247,6 +1292,7 @@ namespace GraphView
         {
             AdditionalSerializationInfo additionalInfo = (AdditionalSerializationInfo)context.Context;
             this.treeFunction = (TreeFunction)additionalInfo.SideEffectFunctions[this.sideEffectKey];
+            this.taskId = additionalInfo.TaskIndex;
         }
     }
 

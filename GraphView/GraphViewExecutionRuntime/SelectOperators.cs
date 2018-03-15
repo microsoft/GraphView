@@ -4679,14 +4679,25 @@ namespace GraphView
 
         private readonly string sideEffectKey;
 
+        private readonly bool isParallel;
+        private int targetTask;
+        [NonSerialized]
+        private int taskId;
+
         public SubgraphOperator(GraphViewExecutionOperator inputOp, ScalarFunction getTargetFieldFunction, 
-            SubgraphFunction aggregateState, string sideEffectKey)
+            SubgraphFunction aggregateState, string sideEffectKey, int targetTask = -1)
         {
             this.inputOp = inputOp;
             this.aggregateState = aggregateState;
             this.getSubgraphEdgeFunction = getTargetFieldFunction;
             this.outputBuffer = new Queue<RawRecord>();
             this.sideEffectKey = sideEffectKey;
+
+            if (targetTask != -1)
+            {
+                this.isParallel = true;
+                this.targetTask = targetTask;
+            }
             this.Open();
         }
 
@@ -4707,6 +4718,12 @@ namespace GraphView
                 RawRecord r = null;
                 while (inputOp.State() && (r = inputOp.Next()) != null)
                 {
+                    if (this.isParallel && this.taskId != this.targetTask)
+                    {
+                        this.outputBuffer.Enqueue(r);
+                        continue;
+                    }
+
                     RawRecord result = new RawRecord(r);
 
                     FieldObject aggregateObject = getSubgraphEdgeFunction.Evaluate(r);
@@ -4718,7 +4735,10 @@ namespace GraphView
 
                     this.aggregateState.Accumulate(aggregateObject);
 
-                    this.outputBuffer.Enqueue(result);
+                    if (!this.isParallel || r.NeedReturn)
+                    {
+                        this.outputBuffer.Enqueue(result);
+                    }
                 }
 
                 if (!this.outputBuffer.Any())
@@ -4749,6 +4769,7 @@ namespace GraphView
             this.outputBuffer = new Queue<RawRecord>();
             AdditionalSerializationInfo additionalInfo = (AdditionalSerializationInfo)context.Context;
             this.aggregateState = (SubgraphFunction)additionalInfo.SideEffectFunctions[this.sideEffectKey];
+            this.taskId = additionalInfo.TaskIndex;
         }
     }
 }

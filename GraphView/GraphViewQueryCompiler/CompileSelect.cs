@@ -657,7 +657,7 @@ namespace GraphView
                                     functionTableReference is WChooseTableReference ||
                                     functionTableReference is WChooseWithOptionsTableReference ||
                                     // groupOp
-                                    functionTableReference is WGroupTableReference ||
+                                    functionTableReference is WGroupTableReference && !((WGroupTableReference)functionTableReference).IsSideEffect() ||
                                     // dedup/range(limit)/sample/order
                                     functionTableReference is WDedupGlobalTableReference ||
                                     functionTableReference is WRangeGlobalTableReference ||
@@ -675,7 +675,7 @@ namespace GraphView
                                          functionTableReference is WSampleGlobalTableReference ||
                                          functionTableReference is WOrderGlobalTableReference))
                             {
-                                SendOperator sendOp = new SendOperator(context.CurrentExecutionOperator, SendOperator.SendType.Aggregate);
+                                SendOperator sendOp = new SendOperator(context.CurrentExecutionOperator, SendOperator.SendType.Aggregate, 0);
                                 ReceiveOperator receiveOp = new ReceiveOperator(sendOp);
                                 operatorChain.Add(sendOp);
                                 operatorChain.Add(receiveOp);
@@ -684,7 +684,17 @@ namespace GraphView
                             else if (!context.InBatchMode && functionTableReference is WRangeGlobalTableReference)
                             {
                                 int maxCount = ((WRangeGlobalTableReference) functionTableReference).GetCount();
-                                SendOperator sendOp = new SendOperator(context.CurrentExecutionOperator, maxCount, 0);
+                                SendOperator sendOp = new SendOperator(context.CurrentExecutionOperator, SendOperator.SendType.Aggregate, 0, maxCount);
+                                ReceiveOperator receiveOp = new ReceiveOperator(sendOp);
+                                operatorChain.Add(sendOp);
+                                operatorChain.Add(receiveOp);
+                                context.CurrentExecutionOperator = receiveOp;
+                            }
+                            else if (functionTableReference is WGroupTableReference && ((WGroupTableReference) functionTableReference).IsSideEffect() ||
+                                     functionTableReference is WTreeTableReference ||
+                                     functionTableReference is WSubgraphTableReference)
+                            {
+                                SendOperator sendOp = new SendOperator(context.CurrentExecutionOperator, SendOperator.SendType.AggregateSideEffect, 0);
                                 ReceiveOperator receiveOp = new ReceiveOperator(sendOp);
                                 operatorChain.Add(sendOp);
                                 operatorChain.Add(receiveOp);
@@ -1409,7 +1419,7 @@ namespace GraphView
                 GraphViewExecutionOperator traversalOp = scalarSubquery.SubQueryExpr.Compile(subcontext, command);
                 if (isParallel)
                 {
-                    SendOperator sendOperator = new SendOperator(traversalOp, SendOperator.SendType.LastSendBack);
+                    SendOperator sendOperator = new SendOperator(traversalOp, SendOperator.SendType.SendBack);
                     ReceiveOperator receiveOperator = new ReceiveOperator(sendOperator);
                     traversalOp = receiveOperator;
                 }
@@ -1562,7 +1572,7 @@ namespace GraphView
 
             if (isParallel)
             {
-                SendOperator sendOperator = new SendOperator(targetSubqueryOp, SendOperator.SendType.LastSendBack);
+                SendOperator sendOperator = new SendOperator(targetSubqueryOp, SendOperator.SendType.SendBack);
                 ReceiveOperator receiveOperator = new ReceiveOperator(sendOperator);
                 targetSubqueryOp = receiveOperator;
             }
@@ -1669,7 +1679,7 @@ namespace GraphView
 
             if (isParallel)
             {
-                SendOperator sendOperator = new SendOperator(localTraversalOp, SendOperator.SendType.LastSendBack);
+                SendOperator sendOperator = new SendOperator(localTraversalOp, SendOperator.SendType.SendBack);
                 ReceiveOperator receiveOperator = new ReceiveOperator(sendOperator);
                 localTraversalOp = receiveOperator;
             }
@@ -1764,7 +1774,7 @@ namespace GraphView
 
             if (isParallel)
             {
-                SendOperator sendOperator = new SendOperator(flatMapTraversalOp, SendOperator.SendType.LastSendBack);
+                SendOperator sendOperator = new SendOperator(flatMapTraversalOp, SendOperator.SendType.SendBack);
                 ReceiveOperator receiveOperator = new ReceiveOperator(sendOperator);
                 flatMapTraversalOp = receiveOperator;
             }
@@ -2702,7 +2712,8 @@ namespace GraphView
             SubgraphFunction subgraphFunction = new SubgraphFunction(sideEffectState as SubgraphState);
             context.SideEffectFunctions[sideEffectKey] = subgraphFunction;
 
-            SubgraphOperator subgraphOp = new SubgraphOperator(context.CurrentExecutionOperator, getSubgraphObjectFunction, subgraphFunction, sideEffectKey);
+            SubgraphOperator subgraphOp = new SubgraphOperator(context.CurrentExecutionOperator, getSubgraphObjectFunction, subgraphFunction, sideEffectKey,
+                context.InParallelMode ? 0 : -1);
             context.CurrentExecutionOperator = subgraphOp;
             // TODO: Change to correct ColumnGraphType
             context.AddField(Alias.Value, GremlinKeyword.TableDefaultColumnName, ColumnGraphType.Value);
@@ -2763,7 +2774,7 @@ namespace GraphView
 
             if (isParallel)
             {
-                SendOperator sendOperator = new SendOperator(mapTraversalOp, SendOperator.SendType.LastSendBack);
+                SendOperator sendOperator = new SendOperator(mapTraversalOp, SendOperator.SendType.SendBack);
                 ReceiveOperator receiveOperator = new ReceiveOperator(sendOperator);
                 mapTraversalOp = receiveOperator;
             }
@@ -2940,7 +2951,7 @@ namespace GraphView
             TreeFunction treeFunction = new TreeFunction(sideEffectState as TreeState);
             context.SideEffectFunctions[sideEffectKey] = treeFunction;
             TreeSideEffectOperator treeSideEffectOp = new TreeSideEffectOperator(
-                context.CurrentExecutionOperator, treeFunction, sideEffectKey, pathIndex);
+                context.CurrentExecutionOperator, treeFunction, sideEffectKey, pathIndex, context.InParallelMode ? 0 : -1);
 
             context.CurrentExecutionOperator = treeSideEffectOp;
 
@@ -3019,12 +3030,18 @@ namespace GraphView
                 GroupFunction groupFunction = new GroupFunction(sideEffectState as GroupState, aggregateOp, container, this.IsProjectingACollection);
                 context.SideEffectFunctions[groupParameter.Value] = groupFunction;
                 GroupSideEffectOperator groupSideEffectOp = new GroupSideEffectOperator(
-                    context.CurrentExecutionOperator, groupFunction, groupParameter.Value, groupKeyFunction);
+                    context.CurrentExecutionOperator, groupFunction, groupParameter.Value, groupKeyFunction, context.InParallelMode ? 0 : -1);
 
                 context.CurrentExecutionOperator = groupSideEffectOp;
 
                 return groupSideEffectOp;
             }
+        }
+
+        internal bool IsSideEffect()
+        {
+            WValueExpression groupParameter = Parameters[0] as WValueExpression;
+            return !(!groupParameter.SingleQuoted && groupParameter.Value.Equals("null", StringComparison.OrdinalIgnoreCase));
         }
 
         internal override ExecutionOrder GetLocalExecutionOrder(ExecutionOrder parentExecutionOrder)
@@ -3649,7 +3666,7 @@ namespace GraphView
 
             if (isParallel)
             {
-                SendOperator sendOperator = new SendOperator(targetSubqueryOp, SendOperator.SendType.LastSendBack);
+                SendOperator sendOperator = new SendOperator(targetSubqueryOp, SendOperator.SendType.SendBack);
                 ReceiveOperator receiveOperator = new ReceiveOperator(sendOperator);
                 targetSubqueryOp = receiveOperator;
             }
@@ -3771,7 +3788,7 @@ namespace GraphView
 
             if (isParallel)
             {
-                SendOperator sendOperator = new SendOperator(targetSubqueryOp, SendOperator.SendType.LastSendBack);
+                SendOperator sendOperator = new SendOperator(targetSubqueryOp, SendOperator.SendType.SendBack);
                 ReceiveOperator receiveOperator = new ReceiveOperator(sendOperator);
                 targetSubqueryOp = receiveOperator;
             }

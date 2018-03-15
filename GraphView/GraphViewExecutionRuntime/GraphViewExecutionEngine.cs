@@ -1619,6 +1619,11 @@ namespace GraphView
 
         public override int GetHashCode()
         {
+            if (this.SearchInfo != null)
+            {
+                return this.SearchInfo.Item1.GetHashCode();
+            }
+
             return this.EdgeId.GetHashCode();
         }
 
@@ -1697,6 +1702,57 @@ namespace GraphView
         private void SetValuesOnSerializing(StreamingContext context)
         {
             this.SearchInfo = new Tuple<string, bool>(this.EdgeId, this.IsReverse);
+        }
+
+        public string Serialize()
+        {
+            List<string> properties = new List<string>();
+            properties.Add(this.OutV);
+            properties.Add(this.OutVLabel);
+            properties.Add(this.OutVPartition);
+            properties.Add(this.InV);
+            properties.Add(this.InVLabel);
+            properties.Add(this.InVPartition);
+            properties.Add(this.EdgeDocID);
+            properties.Add(this.EdgeJObject.ToString());
+            properties.Add(this.OtherV);
+            properties.Add(this.OtherVPartition);
+            return JsonConvert.SerializeObject(properties);
+        }
+
+        public static EdgeField Deserialize(string jsonStr)
+        {
+            List<string> properties = JsonConvert.DeserializeObject<List<string>>(jsonStr);
+            EdgeField edgeField = new EdgeField
+            {
+                OutV = properties[0],
+                OutVLabel = properties[1],
+                OutVPartition = properties[2],
+                InV = properties[3],
+                InVLabel = properties[4],
+                InVPartition = properties[5],
+                EdgeDocID = properties[6],
+                EdgeJObject = JObject.Parse(properties[7])
+            };
+
+            if (properties[8] != null)
+            {
+                edgeField = new EdgeField(edgeField, properties[8], properties[9]);
+            }
+
+            foreach (JProperty property in edgeField.EdgeJObject.Properties())
+            {
+                edgeField.EdgeProperties.Add(property.Name, new EdgePropertyField(property, edgeField));
+
+                switch (property.Name)
+                {
+                    case KW_EDGE_LABEL:
+                        edgeField.Label = property.Value.ToString();
+                        break;
+                }
+            }
+
+            return edgeField;
         }
     }
 
@@ -2691,6 +2747,7 @@ namespace GraphView
         [DataMember]
         internal List<FieldObject> fieldValues;
 
+        internal bool NeedReturn = true;
     }
 
 
