@@ -555,12 +555,12 @@ namespace GraphView
 
         internal enum SendType
         {
-            Send,
-            SendAndAttachTaskId,
-            Aggregate,
-            AggregateSideEffect,
-            SendBack,
-            Sync,
+            Send, // send records, not attach taskId (don't need send back)
+            SendAndAttachTaskId, // send records and attach taskId (need send back)
+            Aggregate, // everyone send records to a fixed target task except the target task. (only used before dedup/range/sample/order)
+            AggregateSideEffect, // everyone send record copys to a fixed target task except the target task. (only used before groupSideEffectOp/treeSideEffectOp/subgraphOp)
+            SendBack, // send back records according to taskId attached in the RawRecord.(record[0] is batch id, record[1] is task id) 
+            Sync, // return records directly. not send records to other tasks. (only used in the end of repeat subtraversal)
         }
 
         private int maxCount;
