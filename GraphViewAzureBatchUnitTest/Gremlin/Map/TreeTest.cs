@@ -25,9 +25,10 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Map
                 graphCommand.OutputFormat = OutputFormat.GraphSON;
                 this.job.Traversal = graphCommand.g().V().Out().Out().Tree().By(GraphTraversal.__().Id());
 
-                this.AssertCommonC(graphCommand);
+                AssertCommonC(graphCommand);
+
             }
-        }
+}
 
         /// <summary>
         /// Port of the g_V_out_out_tree() UT from org/apache/tinkerpop/gremlin/process/traversal/step/sideEffect/TreeTest.java.
@@ -41,7 +42,7 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Map
                 graphCommand.OutputFormat = OutputFormat.GraphSON;
                 this.job.Traversal = graphCommand.g().V().Out().Out().Tree();
 
-                this.AssertCommonC(graphCommand);
+                AssertCommonC(graphCommand);
             }
         }
 
@@ -56,13 +57,32 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Map
             {
                 graphCommand.OutputFormat = OutputFormat.GraphSON;
                 this.job.Traversal = graphCommand.g().V().Out().Out().Tree("a").Cap("a");
-                this.AssertCommonC(graphCommand);
+
+                AssertCommonC(graphCommand);
+            }
+        }
+
+
+
+        /// <summary>
+        /// Port of the g_V_out_out_out_tree() UT from org/apache/tinkerpop/gremlin/process/traversal/step/sideEffect/TreeTest.java.
+        /// Equivalent gremlin: "g.V().out().out().out().tree()"
+        /// </summary>
+        [TestMethod]
+        public void VerticesOutOutOutTree()
+        {
+            using (GraphViewCommand graphCommand = this.job.GetCommand())
+            {
+                this.job.Traversal = graphCommand.g().V().Out().Out().Out().Tree();
+                List<string> result = StartAzureBatch.AzureBatchJobManager.TestQuery(this.job);
+                dynamic results = JsonConvert.DeserializeObject<dynamic>(result[0]);
+
+                Assert.AreEqual(0, results.Count);
             }
         }
 
         private void AssertCommonC(GraphViewCommand graphCommand)
         {
-            string vertexId = this.ConvertToVertexId(graphCommand, "marko");
             List<string> result = StartAzureBatch.AzureBatchJobManager.TestQuery(this.job);
             dynamic results = JsonConvert.DeserializeObject<dynamic>(result[0]);
 
@@ -105,23 +125,6 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Map
                 }
             }
             return null;
-        }
-
-        /// <summary>
-        /// Port of the g_V_out_out_out_tree() UT from org/apache/tinkerpop/gremlin/process/traversal/step/sideEffect/TreeTest.java.
-        /// Equivalent gremlin: "g.V().out().out().out().tree()"
-        /// </summary>
-        [TestMethod]
-        public void VerticesOutOutOutTree()
-        {
-            using (GraphViewCommand graphCommand = this.job.GetCommand())
-            {
-                this.job.Traversal = graphCommand.g().V().Out().Out().Out().Tree();
-                List<string> result = StartAzureBatch.AzureBatchJobManager.TestQuery(this.job);
-                dynamic results = JsonConvert.DeserializeObject<dynamic>(result[0]);
-
-                Assert.AreEqual(0, results.Count);
-            }
         }
     }
 }

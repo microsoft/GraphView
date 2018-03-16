@@ -64,6 +64,7 @@
     <Compile Include="Gremlin\Filter\IsTest.cs" />
     <Compile Include="Gremlin\Filter\WhereTest.cs" />
     <Compile Include="Gremlin\Map\CoalesceTest.cs" />
+    <Compile Include="Gremlin\Map\CountTest.cs" />
     <Compile Include="Gremlin\Map\StoreTest.cs" />
     <Compile Include="Gremlin\Map\TreeTest.cs" />
     <Compile Include="Gremlin\Map\UnfoldTest.cs" />

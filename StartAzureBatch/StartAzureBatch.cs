@@ -270,13 +270,13 @@ namespace StartAzureBatch
                 "_partition", 
                 PartitionMethod.CompareEntire, nodeInfo[0].Item1, 
                 8000, // port 
-                new List<string>{"marko", "vadas", "lop"}));
+                new List<string>{"marko", "vadas"}));
 
             plans.Add(new PartitionPlan(
                 "_partition",
                 PartitionMethod.CompareEntire, nodeInfo[1].Item1,
                 8000, // port
-                new List<string> { "josh", "ripple", "peter" }));
+                new List<string> { "josh", "ripple", "peter", "lop" }));
 
             return PartitionPlan.SerializePatitionPlans(plans);
         }

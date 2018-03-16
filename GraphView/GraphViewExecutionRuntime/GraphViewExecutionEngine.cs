@@ -2744,6 +2744,17 @@ namespace GraphView
 
         internal FieldObject this[int index] => this.fieldValues[index];
 
+        // For Debug
+        internal void PrintContent(string tag)
+        {
+            Console.WriteLine($"begin------{tag}----------");
+            for (int i = 0; i < this.fieldValues.Count; i++)
+            {
+                Console.WriteLine($"{i}-[{this.fieldValues[i]?.GetType()}]:{this.fieldValues[i]?.ToValue ?? "null"}");
+            }
+            Console.WriteLine($"-----------{tag}-------end");
+        }
+
         [DataMember]
         internal List<FieldObject> fieldValues;
 

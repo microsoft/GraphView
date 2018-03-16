@@ -95,16 +95,30 @@ namespace GraphViewAzureBatchUnitTest.Gremlin
 
         public string ConvertToVertexId(GraphViewCommand command, string name)
         {
-            Debug.Assert(job.Traversal == null);
+            // To save time
+            switch (name)
+            {
+                case "marko":
+                    return "dummy";
+                case "vadas":
+                    return "特殊符号";
+                case "lop":
+                    return "这是一个中文ID";
+                case "josh":
+                    return "引号";
+                case "ripple":
+                    return "中文English";
+            }
+
+            GraphTraversal originalTraversal = job.Traversal;
             OutputFormat originalFormat = command.OutputFormat;
             command.OutputFormat = OutputFormat.Regular;
 
             job.Traversal = command.g().V().Has("name", name).Id();
             string id = StartAzureBatch.AzureBatchJobManager.TestQuery(job).FirstOrDefault();
 
-            job.Traversal = null;
             command.OutputFormat = originalFormat;
-
+            job.Traversal = originalTraversal;
             return id;
         }
 

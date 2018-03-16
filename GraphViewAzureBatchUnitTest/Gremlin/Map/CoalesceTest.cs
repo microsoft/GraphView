@@ -55,18 +55,17 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Map
         public void CoalesceWithGroupCount()
         {
             string query = "g.V().coalesce(__.out('likes'), __.out('knows'), __.out('created')).groupCount().by('name')";
-            // todo
-            //List<string> results = StartAzureBatch.AzureBatchJobManager.TestQuery(query);
-            //Console.WriteLine("-------------Test Result-------------");
-            //foreach (string result in results)
-            //{
-            //    Console.WriteLine(result);
-            //}
-            //var convertResults = JsonConvert.DeserializeObject<dynamic>(results.FirstOrDefault());
-            //Assert.AreEqual(1, (int)convertResults[0]["josh"]);
-            //Assert.AreEqual(2, (int)convertResults[0]["lop"]);
-            //Assert.AreEqual(1, (int)convertResults[0]["ripple"]);
-            //Assert.AreEqual(1, (int)convertResults[0]["vadas"]);
+            List<string> results = StartAzureBatch.AzureBatchJobManager.TestQuery(query);
+            Console.WriteLine("-------------Test Result-------------");
+            foreach (string result in results)
+            {
+                Console.WriteLine(result);
+            }
+            var convertResults = JsonConvert.DeserializeObject<dynamic>(results.FirstOrDefault());
+            Assert.AreEqual(1, (int)convertResults[0]["josh"]);
+            Assert.AreEqual(2, (int)convertResults[0]["lop"]);
+            Assert.AreEqual(1, (int)convertResults[0]["ripple"]);
+            Assert.AreEqual(1, (int)convertResults[0]["vadas"]);
         }
 
         [TestMethod]

@@ -31,9 +31,14 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Barrier
             {
                 var traversal = graphCommand.g().V().GroupCount("a").By(GremlinKeyword.T.Label).GroupCount("b").By(GraphTraversal.__().OutE().Count()).Cap("a", "b");
                 var result = traversal.Next();
-
+                foreach (var res in result)
+                {
+                    Console.WriteLine(res);
+                }
                 Assert.AreEqual(1, result.Count);
-                Assert.AreEqual("[a:[person:4, software:2], b:[3:1, 0:3, 2:1, 1:1]]", result[0]);
+                // [a:[person:4, software:2], b:[3:1, 0:3, 2:1, 1:1]]
+                Assert.IsTrue(result[0].Contains("a:[person:4, software:2]"));
+                Assert.IsTrue(result[0].Contains("3:1") && result[0].Contains("0:3") && result[0].Contains("2:1") && result[0].Contains("1:1"));
             }
         }
 
