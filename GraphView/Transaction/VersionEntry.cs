@@ -7,14 +7,12 @@
     [Serializable]
     internal class VersionEntry : ISerializable
     {
-        private bool isBeginTxId;
-        private long beginTimestamp;
-        private bool isEndTxId;
-        private long endTimestamp;
-        private readonly object record;
-
         private readonly object recordKey;
         private readonly long versionKey;
+        private long beginTimestamp;
+        private long endTimestamp;
+        private readonly object record;
+        private long maxCommitTs;
 
         public object RecordKey
         {
@@ -32,18 +30,6 @@
             }
         }
 
-        public bool IsBeginTxId
-        {
-            get
-            {
-                return this.isBeginTxId;
-            }
-            set
-            {
-                this.isBeginTxId = value;
-            } 
-        }
-
         public long BeginTimestamp
         {
             get
@@ -53,18 +39,6 @@
             set
             {
                 this.beginTimestamp = value;
-            }
-        }
-
-        public bool IsEndTxId
-        {
-            get
-            {
-                return this.isEndTxId;
-            }
-            set
-            {
-                this.isEndTxId = value;
             }
         }
 
@@ -88,6 +62,14 @@
             }
         }
 
+        public long MaxCommitTs
+        {
+            get
+            {
+                return this.maxCommitTs;
+            }
+        }
+
         public JObject JsonRecord
         {
             get
@@ -104,14 +86,7 @@
             object recordKey, 
             object record)
         {
-            this.isBeginTxId = isBeginTxId;
-            this.beginTimestamp = beginTimestamp;
-            this.isEndTxId = isEndTxId;
-            this.endTimestamp = endTimestamp;
-            this.record = record;
-
-            this.recordKey = recordKey;
-            this.versionKey = beginTimestamp;
+            
         }
 
         // The constructor is used to reconstruct object from serialized values
@@ -124,27 +99,14 @@
             long versionKey,
             object record)
         {
-            this.isBeginTxId = isBeginTxId;
-            this.beginTimestamp = beginTimestamp;
-            this.isEndTxId = isEndTxId;
-            this.endTimestamp = endTimestamp;
-            this.record = record;
 
-            this.recordKey = recordKey;
-            this.versionKey = versionKey;
         }
+           
 
         // The special constructor is used to deserialize values.
         public VersionEntry(SerializationInfo info, StreamingContext context)
         {
-            this.isBeginTxId = (bool) info.GetValue("isBeginTxId", typeof(bool));
-            this.beginTimestamp = (long) info.GetValue("beginTimestamp", typeof(long));
-            this.isEndTxId = (bool) info.GetValue("isEndTxId", typeof(bool));
-            this.endTimestamp = (long) info.GetValue("endTimestamp", typeof(long));
-            this.record = info.GetValue("record", typeof(object));
-
-            this.recordKey = info.GetValue("recordKey", typeof(object));
-            this.versionKey = (long) info.GetValue("versionKey", typeof(long));
+         
         }
 
         public override int GetHashCode()
@@ -170,24 +132,12 @@
 
         public bool ContentEqual(VersionEntry other)
         {
-            return this.versionKey == other.VersionKey &&
-                   this.recordKey == other.recordKey &&
-                   this.isBeginTxId == other.IsBeginTxId &&
-                   this.beginTimestamp == other.BeginTimestamp &&
-                   this.IsEndTxId == other.IsEndTxId &&
-                   this.endTimestamp == other.EndTimestamp;
+            return false;
         }
 
         public void GetObjectData(SerializationInfo info, StreamingContext context)
         {
-            info.AddValue("isBeginTxId", this.IsBeginTxId, typeof(bool));
-            info.AddValue("beginTimestamp", this.BeginTimestamp, typeof(long));
-            info.AddValue("isEndTxId", this.IsEndTxId, typeof(bool));
-            info.AddValue("endTimestamp", this.EndTimestamp, typeof(long));
-            info.AddValue("record", this.Record, typeof(object));
-
-            info.AddValue("recordKey", this.RecordKey, typeof(object));
-            info.AddValue("versionKey", this.VersionKey, typeof(long));
+           
         }
     }
 }

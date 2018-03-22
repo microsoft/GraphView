@@ -25,11 +25,6 @@
             throw new NotImplementedException();
         }
 
-        public virtual IEnumerable<JObject> ReadJson(RecordQuery recordQuery)
-        {
-            throw new NotImplementedException();
-        }
-
         public virtual void WriteJson(JObject record)
         {
             throw new NotImplementedException();

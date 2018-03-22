@@ -15,5 +15,9 @@
         bool UpdateTransaction(long txId, Transaction newTx, Transaction oldTx);
 
         bool DeleteTransaction(long txId);
+
+        long SetCommitTime(long txId, long lowerBound, long upperBound);
+
+        bool SetMaxCommitLowerBound(long txId, long lowerBound);
     }
 }

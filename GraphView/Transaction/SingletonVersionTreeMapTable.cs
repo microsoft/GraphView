@@ -1,7 +1,4 @@
 ﻿
-
-using System.Runtime.InteropServices.WindowsRuntime;
-
 namespace GraphView.Transaction
 {
     using System;
@@ -12,8 +9,10 @@ namespace GraphView.Transaction
     using GraphView.RecordRuntime;
     using Newtonsoft.Json.Linq;
 
-    internal partial class SingletonVersionDb : VersionDb
+    internal partial class SingletonVersionTreeMapTable : VersionTable
     {
-        
+        public SingletonVersionTreeMapTable(string tableId) : base(tableId)
+        {
+        }
     }
 }
