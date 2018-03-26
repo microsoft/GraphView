@@ -252,7 +252,7 @@
         /// <returns>true or false</returns>
         private bool RegisterLuaScripts(string scriptKey, string luaBody)
         {
-            using (RedisClient redisClient = (RedisClient) this.RedisManager.GetClient())
+            using (RedisClient redisClient = (RedisClient)this.RedisManager.GetClient())
             {
                 redisClient.ChangeDb(RedisVersionDb.META_DB_INDEX);
 
@@ -288,6 +288,39 @@
 
                 return true;
             }
+        }
+    }
+
+    internal partial class RedisVersionDb
+    {
+        public override TxStatus GetTxStatusByTxId(long txId)
+        {
+            throw new NotImplementedException();
+        }
+
+        public override void InsertNewTx(long txId)
+        {
+            throw new NotImplementedException();
+        }
+
+        public override long SetCommitTime(long txId, long lowerBound, long upperBound)
+        {
+            throw new NotImplementedException();
+        }
+
+        public override bool SetMaxCommitLowerBound(long txId, long lowerBound)
+        {
+            throw new NotImplementedException();
+        }
+
+        public override void UpdateTxStatus(long txId)
+        {
+            throw new NotImplementedException();
+        }
+
+        public override long GetCommitTime(long txId)
+        {
+            throw new NotImplementedException();
         }
     }
 }

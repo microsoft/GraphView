@@ -14,6 +14,39 @@ namespace GraphView.Transaction
 
     internal partial class SingletonVersionDb : VersionDb
     {
-        
+
+    }
+
+    internal partial class SingletonVersionDb
+    {
+        public override TxStatus GetTxStatusByTxId(long txId)
+        {
+            throw new NotImplementedException();
+        }
+
+        public override void InsertNewTx(long txId)
+        {
+            throw new NotImplementedException();
+        }
+
+        public override long SetCommitTime(long txId, long lowerBound, long upperBound)
+        {
+            throw new NotImplementedException();
+        }
+
+        public override bool SetMaxCommitLowerBound(long txId, long lowerBound)
+        {
+            throw new NotImplementedException();
+        }
+
+        public override void UpdateTxStatus(long txId)
+        {
+            throw new NotImplementedException();
+        }
+
+        public override long GetCommitTime(long txId)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

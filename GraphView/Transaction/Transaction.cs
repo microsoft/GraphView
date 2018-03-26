@@ -23,6 +23,13 @@
         private readonly VersionDb versionDb;
 
         /// <summary>
+        /// The version db is used to store transaction status
+        /// It's can be easily to try different combinations, 
+        /// like version entries in cassandra(versionDb), transaction in redis(transactionDb)
+        /// </summary>
+        private readonly VersionDb transactionDb;
+
+        /// <summary>
         /// Transaction id assigned to this transaction
         /// </summary>
         private readonly long txId;
@@ -31,10 +38,6 @@
         /// The status of this transaction.
         /// </summary>
         private TxStatus txStatus;
-
-        private long commitTime;
-
-        private long commitLowerBound;
 
         /// <summary>
         /// Read set, using for checking visibility of the versions read.

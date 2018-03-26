@@ -8,20 +8,20 @@ namespace GraphView.Transaction
 {
     internal class ReadSetEntry
     {
-        internal object Key { get; }
-        internal long BeginTimestamp { get; }
+        internal object RecordKey { get; set; }
+        internal long VersionKey { get; set; }
 
-        public ReadSetEntry(object key, long beginTimestamp)
+        public ReadSetEntry(object recordKey, long versionKey)
         {
-            this.Key = key;
-            this.BeginTimestamp = beginTimestamp;
+            this.RecordKey = recordKey;
+            this.VersionKey = versionKey;
         }
 
         public override int GetHashCode()
         {
             int hash = 17;
-            hash = hash * 23 + this.Key.GetHashCode();
-            hash = hash * 23 + this.BeginTimestamp.GetHashCode();
+            hash = hash * 23 + this.RecordKey.GetHashCode();
+            hash = hash * 23 + this.VersionKey.GetHashCode();
 
             return hash;
         }
@@ -34,7 +34,7 @@ namespace GraphView.Transaction
                 return false;
             }
 
-            return this.Key == entry.Key && this.BeginTimestamp == entry.BeginTimestamp;
+            return this.RecordKey == entry.RecordKey && this.VersionKey == entry.VersionKey;
         }
     }
 }

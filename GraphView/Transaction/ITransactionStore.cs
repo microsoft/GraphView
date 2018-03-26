@@ -8,15 +8,15 @@
 
     interface ITransactionStore
     {
-        Transaction ReadTransaction(long txId);
+        void InsertNewTx(long txId);
 
-        bool InsertTransaction(Transaction tx);
+        TxStatus GetTxStatusByTxId(long txId);
 
-        bool UpdateTransaction(long txId, Transaction newTx, Transaction oldTx);
-
-        bool DeleteTransaction(long txId);
+        void UpdateTxStatus(long txId);
 
         long SetCommitTime(long txId, long lowerBound, long upperBound);
+
+        long GetCommitTime(long txId);
 
         bool SetMaxCommitLowerBound(long txId, long lowerBound);
     }

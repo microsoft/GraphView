@@ -4,8 +4,7 @@
     using System.Runtime.Serialization;
     using System;
 
-    [Serializable]
-    internal class VersionEntry : ISerializable
+    internal class VersionEntry
     {
         private readonly object recordKey;
         private readonly long versionKey;
@@ -133,11 +132,6 @@
         public bool ContentEqual(VersionEntry other)
         {
             return false;
-        }
-
-        public void GetObjectData(SerializationInfo info, StreamingContext context)
-        {
-           
         }
     }
 }
