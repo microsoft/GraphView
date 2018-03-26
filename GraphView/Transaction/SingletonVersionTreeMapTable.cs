@@ -9,9 +9,9 @@ namespace GraphView.Transaction
     using GraphView.RecordRuntime;
     using Newtonsoft.Json.Linq;
 
-    internal partial class SingletonVersionTreeMapTable : VersionTable
+    internal partial class SingletonTreeMapVersionTable : VersionTable
     {
-        public SingletonVersionTreeMapTable(string tableId) : base(tableId)
+        public SingletonTreeMapVersionTable(string tableId) : base(tableId)
         {
         }
     }

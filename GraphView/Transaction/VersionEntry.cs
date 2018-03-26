@@ -4,13 +4,15 @@
     using System.Runtime.Serialization;
     using System;
 
-    internal class VersionEntry
+    [Serializable]
+    internal class VersionEntry : ISerializable, ICloneable
     {
         private readonly object recordKey;
         private readonly long versionKey;
         private long beginTimestamp;
         private long endTimestamp;
         private readonly object record;
+        private long txId;
         private long maxCommitTs;
 
         public object RecordKey
@@ -20,12 +22,32 @@
                 return this.recordKey;
             }
         }
-        
+
         public long VersionKey
         {
             get
             {
                 return this.versionKey;
+            }
+        }
+
+        public object Record
+        {
+            get
+            {
+                return this.record;
+            }
+        }
+
+        public long TxId
+        {
+            get
+            {
+                return this.txId;
+            }
+            set
+            {
+                this.txId = value;
             }
         }
 
@@ -53,19 +75,15 @@
             }
         }
 
-        public object Record
-        {
-            get
-            {
-                return this.record;
-            }
-        }
-
         public long MaxCommitTs
         {
             get
             {
                 return this.maxCommitTs;
+            }
+            set
+            {
+                this.maxCommitTs = value;
             }
         }
 
@@ -78,34 +96,32 @@
         }
 
         public VersionEntry(
-            bool isBeginTxId, 
-            long beginTimestamp, 
-            bool isEndTxId, 
-            long endTimestamp, 
-            object recordKey, 
-            object record)
-        {
-            
-        }
-
-        // The constructor is used to reconstruct object from serialized values
-        public VersionEntry(
-            bool isBeginTxId,
-            long beginTimestamp,
-            bool isEndTxId,
-            long endTimestamp,
             object recordKey,
             long versionKey,
-            object record)
+            object record,
+            long txId,
+            long beginTimestamp,
+            long endTimestamp,
+            long maxCommitTs)
         {
+            this.recordKey = recordKey;
+            this.versionKey = versionKey;
+            this.record = record;
+            this.txId = txId;
+            this.beginTimestamp = beginTimestamp;
+            this.endTimestamp = endTimestamp;
+            this.maxCommitTs = maxCommitTs;
+        } 
 
-        }
-           
-
-        // The special constructor is used to deserialize values.
         public VersionEntry(SerializationInfo info, StreamingContext context)
         {
-         
+            this.recordKey = info.GetValue("recordKey", typeof(object));
+            this.versionKey = (long) info.GetValue("versionKey", typeof(long));
+            this.beginTimestamp = (long)info.GetValue("beginTimestamp", typeof(long));
+            this.endTimestamp = (long)info.GetValue("endTimestamp", typeof(long));
+            this.txId = (long)info.GetValue("txId", typeof(long));
+            this.maxCommitTs = (long)info.GetValue("maxCommitTs", typeof(long));
+            this.record = info.GetValue("record", typeof(long));
         }
 
         public override int GetHashCode()
@@ -131,7 +147,33 @@
 
         public bool ContentEqual(VersionEntry other)
         {
-            return false;
+            if (other == null)
+            {
+                return false;
+            }
+
+            return this.versionKey == other.VersionKey &&
+                   this.txId == other.TxId &&
+                   this.beginTimestamp == other.BeginTimestamp &&
+                   this.endTimestamp == other.EndTimestamp &&
+                   this.maxCommitTs == other.MaxCommitTs;
+        }
+
+        public void GetObjectData(SerializationInfo info, StreamingContext context)
+        {
+            info.AddValue("recordKey", this.recordKey, typeof(object));
+            info.AddValue("versionKey", this.versionKey, typeof(long));
+            info.AddValue("beginTimestamp", this.beginTimestamp, typeof(long));
+            info.AddValue("endTimestamp", this.endTimestamp, typeof(long));
+            info.AddValue("txId", this.txId, typeof(long));
+            info.AddValue("record", this.record, typeof(object));
+            info.AddValue("maxCommitTs", this.maxCommitTs, typeof(long));
+        }
+
+        public object Clone()
+        {
+            return new VersionEntry(this.recordKey, this.versionKey, this.record,
+                this.txId, this.beginTimestamp, this.endTimestamp, this.maxCommitTs);
         }
     }
 }

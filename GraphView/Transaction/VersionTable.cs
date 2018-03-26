@@ -32,12 +32,29 @@ namespace GraphView.Transaction
         /// <returns></returns>
         internal virtual VersionEntry GetRecentVersionEntry(object recordKey)
         {
-            throw new NotImplementedException();
+            IEnumerable<VersionEntry> versionList = this.GetVersionList(recordKey);
+            foreach (VersionEntry entry in versionList)
+            {
+                if ((entry.EndTimestamp == long.MaxValue && entry.TxId == -1) ||
+                    (entry.EndTimestamp != long.MaxValue && entry.TxId != -1))
+                {
+                    return entry;
+                }
+            }
+            return null;
         }
-
+                                                                 
         internal virtual VersionEntry GetVersionEntryByKey(object recordKey, long versionKey)
         {
-            throw new NotImplementedException();
+            IEnumerable<VersionEntry> versionList = this.GetVersionList(recordKey);
+            foreach (VersionEntry entry in versionList)
+            {
+                if (entry.VersionKey == versionKey)
+                {
+                    return entry;
+                }
+            }
+            return null;
         }
 
         /// <summary>
@@ -74,6 +91,24 @@ namespace GraphView.Transaction
         }
 
         internal virtual bool DeleteVersionEntry(object recordKey, long versionKey)
+        {
+            throw new NotImplementedException();
+        }
+    }
+
+    public abstract partial class VersionTable
+    {
+        internal bool UploadRecordByKey(object recordKey, VersionEntry oldVersion, VersionEntry newVersion)
+        {
+            throw new NotImplementedException();
+        }
+
+        internal void UpdateCommittedVersionTimestamp(object recordKey, long versionKey, long commitTimestamp, long txId)
+        {
+            throw new NotImplementedException();
+        }
+
+        internal void UpdateAbortedVersionTimestamp(object recordKey, long versionKey, long txId)
         {
             throw new NotImplementedException();
         }

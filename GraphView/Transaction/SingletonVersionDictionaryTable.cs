@@ -10,9 +10,9 @@
     /// A version table implementation in single machine environment.
     /// Use a Dictionary.
     /// </summary>
-    internal partial class SingletonVersionDictionaryTable : VersionTable
+    internal partial class SingletonDictionaryVersionTable : VersionTable
     {
-        public SingletonVersionDictionaryTable(string tableId) : base(tableId)
+        public SingletonDictionaryVersionTable(string tableId) : base(tableId)
         {
 
         }
