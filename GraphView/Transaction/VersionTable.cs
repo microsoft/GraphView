@@ -30,14 +30,17 @@ namespace GraphView.Transaction
         /// </summary>
         /// <param name="recordKey"></param>
         /// <returns></returns>
-        internal virtual VersionEntry GetRecentVersionEntry(object recordKey)
+        internal virtual VersionEntry GetRecentVersionEntry(object recordKey, out long largestVersionKey)
         {
             IEnumerable<VersionEntry> versionList = this.GetVersionList(recordKey);
+            largestVersionKey = -1;
             foreach (VersionEntry entry in versionList)
             {
+                largestVersionKey = largestVersionKey < entry.VersionKey ? entry.VersionKey : largestVersionKey;
                 if ((entry.EndTimestamp == long.MaxValue && entry.TxId == -1) ||
                     (entry.EndTimestamp != long.MaxValue && entry.TxId != -1))
                 {
+                    largestVersionKey = entry.VersionKey;
                     return entry;
                 }
             }

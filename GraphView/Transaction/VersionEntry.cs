@@ -11,7 +11,7 @@
         private readonly long versionKey;
         private long beginTimestamp;
         private long endTimestamp;
-        private readonly object record;
+        private object record;
         private long txId;
         private long maxCommitTs;
 
@@ -36,6 +36,10 @@
             get
             {
                 return this.record;
+            }
+            set
+            {
+                this.record = value;
             }
         }
 

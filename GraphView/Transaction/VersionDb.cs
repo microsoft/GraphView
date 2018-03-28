@@ -29,15 +29,16 @@ namespace GraphView.Transaction
     /// </summary>
     public abstract partial class VersionDb
     {
-        internal virtual VersionEntry GetRecentVersionEntry(string tableId, object recordKey)
+        internal virtual VersionEntry GetRecentVersionEntry(string tableId, object recordKey, out long largestVersionKey)
         {
             VersionTable versionTable = this.GetVersionTable(tableId);
             if (versionTable == null)
             {
+                largestVersionKey = -1;
                 return null;
             }
 
-            return versionTable.GetRecentVersionEntry(recordKey);
+            return versionTable.GetRecentVersionEntry(recordKey, out largestVersionKey);
         }
 
         internal virtual VersionEntry GetVersionEntryByKey(string tableId, object recordKey, long versionKey)
