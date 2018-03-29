@@ -92,8 +92,7 @@ namespace GraphView.Transaction
 
         public VersionList()
         {
-            this.head = new VersionNode(new VersionEntry(null, -1, null, -1, long.MaxValue, long.MaxValue, 0),
-                                        new VersionNextPointer(null, 0x00));
+            throw new NotImplementedException();
         }
 
         internal VersionNode Head

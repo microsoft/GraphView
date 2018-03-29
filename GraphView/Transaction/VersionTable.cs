@@ -32,19 +32,7 @@ namespace GraphView.Transaction
         /// <returns></returns>
         internal virtual VersionEntry GetRecentVersionEntry(object recordKey, out long largestVersionKey)
         {
-            IEnumerable<VersionEntry> versionList = this.GetVersionList(recordKey);
-            largestVersionKey = -1;
-            foreach (VersionEntry entry in versionList)
-            {
-                largestVersionKey = largestVersionKey < entry.VersionKey ? entry.VersionKey : largestVersionKey;
-                if ((entry.EndTimestamp == long.MaxValue && entry.TxId == -1) ||
-                    (entry.EndTimestamp != long.MaxValue && entry.TxId != -1))
-                {
-                    largestVersionKey = entry.VersionKey;
-                    return entry;
-                }
-            }
-            return null;
+            throw new NotImplementedException();
         }
                                                                  
         internal virtual VersionEntry GetVersionEntryByKey(object recordKey, long versionKey)
@@ -60,56 +48,26 @@ namespace GraphView.Transaction
             return null;
         }
 
-        internal virtual bool UpdateVersionMaxCommitTs(object recordKey, long versionKey, VersionEntry versionEntry, long commitTime)
+        internal virtual long ReplaceVersionEntry(object recordKey, long versionKey, long txId)
         {
             throw new NotImplementedException();
         }
 
-        /// <summary>
-        /// To ensure the insertion works well in critical section, we use some shared variables to simulate locks.
-        /// Here we take the previous versionKey as the shared variable. 
-        /// </summary>
-        /// <param name="recordKey"></param>
-        /// <param name="version"></param>
-        /// <param name="preVersion">To en</param>
-        /// <returns></returns>
-        internal virtual bool InsertAndUploadVersion(object recordKey, VersionEntry version, long preVersionKey)
+        internal virtual bool UploadVersionEntry(object recordKey, long versionKey, VersionEntry versionEntry)
         {
             throw new NotImplementedException();
         }
 
-        internal virtual bool UpdateAndUploadVersion(object recordKey, long versionKey, VersionEntry oldVersion, VersionEntry newVersion)
+        internal virtual bool UploadPayload(object recordKey, long versionKey, Payload payload)
+        {
+            throw new NotImplementedException();
+        }
+        internal virtual VersionEntry UpdateVersionMaxCommitTs(object recordKey, long versionKey, long commitTime)
         {
             throw new NotImplementedException();
         }
 
         internal virtual bool DeleteVersionEntry(object recordKey, long versionKey)
-        {
-            throw new NotImplementedException();
-        }
-    }
-
-    public abstract partial class VersionTable
-    {
-        //this method integrate the InsertAndUploadVersion() and UpdateAndUploadVersion().
-        internal bool UploadRecordByKey(object recordKey, VersionEntry oldVersion, VersionEntry newVersion)
-        {
-            if (oldVersion == null)
-            {
-                //just insert
-                return this.InsertAndUploadVersion(recordKey, newVersion, newVersion.VersionKey - 1);
-            }
-            //upload the old version when update
-            return this.UpdateAndUploadVersion(recordKey, oldVersion.VersionKey, oldVersion, newVersion);
-        }
-
-        //change the the committed version's begin/end Ts from txId to tx's commitTs.
-        internal void UpdateCommittedVersionTimestamp(object recordKey, long versionKey, long commitTimestamp, long txId, bool isOld)
-        {
-            throw new NotImplementedException();
-        }
-
-        internal void UpdateAbortedVersionTimestamp(object recordKey, long versionKey, long txId, bool isOld)
         {
             throw new NotImplementedException();
         }

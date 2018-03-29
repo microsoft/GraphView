@@ -70,7 +70,7 @@ namespace GraphView.Transaction
             throw new NotImplementedException();
         }
 
-        internal override bool UpdateCommitTsLowerBound(long txId, long lowerBound)
+        internal override long UpdateCommitLowerBound(long txId, long lowerBound)
         {
             throw new NotImplementedException();
         }
