@@ -60,30 +60,20 @@ namespace GraphView.Transaction
             return null;
         }
 
-        /// <summary>
-        /// In negotiation phase, if no another transaction is updating tx, make sure future tx's who
-        /// update x have CommitTs greater than the commitTime of current transaction
-        /// </summary>
-        /// <param name="recordKey"></param>
-        /// <param name="versionKey"></param>
-        /// <param name="commitTime">Current transaction's commit time</param>
-        /// <returns></returns>
-        internal virtual bool UpdateVersionMaxCommitTs(object recordKey, long versionKey, long commitTime)
+        internal virtual bool UpdateVersionMaxCommitTs(object recordKey, long versionKey, VersionEntry versionEntry, long commitTime)
         {
             throw new NotImplementedException();
         }
 
         /// <summary>
         /// To ensure the insertion works well in critical section, we use some shared variables to simulate locks.
-        /// Here we take the previous version as the shared variable. 
-        /// (1) If it's an insertion operation from the upper level, preVersion should be a version entry with the maximum version Key
-        /// (2) If it's a update operation, preVersion should be the old version who has been modified by Tx
+        /// Here we take the previous versionKey as the shared variable. 
         /// </summary>
         /// <param name="recordKey"></param>
         /// <param name="version"></param>
         /// <param name="preVersion">To en</param>
         /// <returns></returns>
-        internal virtual bool InsertAndUploadVersion(object recordKey, VersionEntry version, VersionEntry preVersion)
+        internal virtual bool InsertAndUploadVersion(object recordKey, VersionEntry version, long preVersionKey)
         {
             throw new NotImplementedException();
         }
@@ -101,17 +91,25 @@ namespace GraphView.Transaction
 
     public abstract partial class VersionTable
     {
+        //this method integrate the InsertAndUploadVersion() and UpdateAndUploadVersion().
         internal bool UploadRecordByKey(object recordKey, VersionEntry oldVersion, VersionEntry newVersion)
         {
-            throw new NotImplementedException();
+            if (oldVersion == null)
+            {
+                //just insert
+                return this.InsertAndUploadVersion(recordKey, newVersion, newVersion.VersionKey - 1);
+            }
+            //upload the old version when update
+            return this.UpdateAndUploadVersion(recordKey, oldVersion.VersionKey, oldVersion, newVersion);
         }
 
-        internal void UpdateCommittedVersionTimestamp(object recordKey, long versionKey, long commitTimestamp, long txId)
+        //change the the committed version's begin/end Ts from txId to tx's commitTs.
+        internal void UpdateCommittedVersionTimestamp(object recordKey, long versionKey, long commitTimestamp, long txId, bool isOld)
         {
             throw new NotImplementedException();
         }
 
-        internal void UpdateAbortedVersionTimestamp(object recordKey, long versionKey, long txId)
+        internal void UpdateAbortedVersionTimestamp(object recordKey, long versionKey, long txId, bool isOld)
         {
             throw new NotImplementedException();
         }

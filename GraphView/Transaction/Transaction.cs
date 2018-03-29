@@ -35,9 +35,10 @@ namespace GraphView.Transaction
         /// </summary>
         private TxStatus txStatus;
 
+        private long commitTs;
+
         /// <summary>
         /// Read set, using for checking visibility of the versions read.
-        /// For every read operation, add the recordId, the begin and the end timestamp of the version we read to the readSet.
         /// </summary>
         private readonly Dictionary<string, Dictionary<object, VersionEntry>> readSet;
 
@@ -50,6 +51,14 @@ namespace GraphView.Transaction
         /// </summary>
         private readonly Dictionary<string, Dictionary<object, List<VersionEntry>>> writeSet;
 
+        /// <summary>
+        /// Use this tuple to track the last version we have uploaded to the version table successfully.
+        /// Item1: tableId
+        /// Item2: recordKey
+        /// Item3: versionKey
+        /// </summary>
+        private Tuple<string, object, long> uploadProgress;
+
         public Transaction(LogStore logStore, VersionDb versionDb)
         {
             this.logStore = logStore;
@@ -59,6 +68,9 @@ namespace GraphView.Transaction
 
             this.txId = this.versionDb.InsertNewTx();
             this.txStatus = TxStatus.Ongoing;
+
+            this.commitTs = -1;
+            this.uploadProgress = null;
         }
 
     }
@@ -74,45 +86,260 @@ namespace GraphView.Transaction
     {
         internal long GetBeginTimestamp()
         {
-            throw new NotImplementedException();
+            long maxReadTimestamp = 0;
+            //Tranverse the readSet to get the begin timestamp
+            foreach (string tableId in this.readSet.Keys)
+            {
+                foreach (object recordKey in this.readSet[tableId].Keys)
+                {
+                    long currentBeginTimestamp = readSet[tableId][recordKey].BeginTimestamp;
+                    if (maxReadTimestamp < currentBeginTimestamp)
+                    {
+                        maxReadTimestamp = currentBeginTimestamp;
+                    } 
+                }
+            }
+
+            return maxReadTimestamp;
         }
 
         internal bool UploadLocalWriteRecords()
         {
-            throw new NotImplementedException();
+            foreach (string tableId in this.writeSet.Keys)
+            {
+                foreach (object recordKey in this.writeSet[tableId].Keys)
+                {
+                    if (this.writeSet[tableId][recordKey].Count() == 2)
+                    {
+                        //update
+                        //first try upload the old version
+                        if (!this.versionDb.UploadRecordByKey(tableId, recordKey, 
+                            this.readSet[tableId][recordKey],
+                            this.writeSet[tableId][recordKey].First()))
+                        {
+                            this.Abort();
+                            return false;
+                        }
+                        this.uploadProgress = new Tuple<string, object, long>(
+                            tableId, recordKey, this.writeSet[tableId][recordKey].First().VersionKey);
+                        //then upload the new version
+                        if (!this.versionDb.UploadRecordByKey(tableId, recordKey,
+                            null,
+                            this.writeSet[tableId][recordKey].Last()))
+                        {
+                            this.Abort();
+                            return false;
+                        }
+                        this.uploadProgress = new Tuple<string, object, long>(tableId, recordKey,
+                            this.writeSet[tableId][recordKey].Last().VersionKey);
+                    }
+                    else if (this.writeSet[tableId][recordKey].First().EndTimestamp != long.MaxValue)
+                    {
+                        //delete
+                        if (!this.versionDb.UploadRecordByKey(tableId, recordKey,
+                            this.readSet[tableId][recordKey],
+                            this.writeSet[tableId][recordKey].First()))
+                        {
+                            this.Abort();
+                            return false;
+                        }
+                        this.uploadProgress = new Tuple<string, object, long>(
+                            tableId, recordKey, this.writeSet[tableId][recordKey].First().VersionKey);
+                    }
+                    else
+                    {
+                        //insert
+                        if (!this.versionDb.UploadRecordByKey(tableId, recordKey,
+                            null,
+                            this.writeSet[tableId][recordKey].First()))
+                        {
+                            this.Abort();
+                            return false;
+                        }
+                        this.uploadProgress = new Tuple<string, object, long>(
+                            tableId, recordKey, this.writeSet[tableId][recordKey].First().VersionKey);
+                    }
+                }
+            }
+
+            return true;
         }
 
-        internal long GetCommitTimestamp()
+        internal void GetCommitTimestamp()
         {
-            throw new NotImplementedException();
+            long lowerBound = this.GetBeginTimestamp();
+            //just check the old version's maxCommitTs in writeSet
+            foreach (string tableId in this.writeSet.Keys)
+            {
+                foreach (object recordKey in this.writeSet[tableId].Keys)
+                {
+                    if (this.writeSet[tableId][recordKey].First().EndTimestamp != long.MaxValue)
+                    {
+                        long maxCommitTs = this.writeSet[tableId][recordKey].First().MaxCommitTs;
+                        if (lowerBound < maxCommitTs)
+                        {
+                            lowerBound = maxCommitTs;
+                        }
+                    }
+                }
+            }
+
+            this.commitTs = this.versionDb.GetAndSetCommitTime(this.txId, lowerBound);
         }
 
         internal bool Validate()
         {
-            throw new NotImplementedException();
-        }
+            foreach (string tableId in this.readSet.Keys)
+            {
+                foreach (object recordKey in this.readSet[tableId].Keys)
+                {
+                    VersionEntry reReadVersion = this.versionDb.GetVersionEntryByKey(tableId, recordKey, 
+                        this.readSet[tableId][recordKey].VersionKey);
+                    if (reReadVersion.TxId == -1)
+                    {
+                        //A committed version
+                        if (this.commitTs > reReadVersion.EndTimestamp)
+                        {
+                            this.Abort();
+                            return false;
+                        }
+                        //try to update the version's maxCommitTs
 
-        internal bool UpdateVersionMaxCommitTs()
-        {
-            throw new NotImplementedException();
-        }
+                    }
+                    else
+                    {
+                        TxTableEntry txEntry = this.versionDb.GetTxTableEntry(reReadVersion.TxId);
+                        //check the tx's status
+                        if (txEntry.Status == TxStatus.Committed)
+                        {
+                            if (this.commitTs > reReadVersion.EndTimestamp)
+                            {
+                                this.Abort();
+                                return false;
+                            }
+                            //try to update the version's maxCommitTs
 
-        internal bool UpdateTxCommitLowerBound()
-        {
-            throw new NotImplementedException();
+                        }
+                        else if (txEntry.Status == TxStatus.Aborted)
+                        {
+                            //try to update the version's maxCommitTs
+
+                        }
+                        else if (txEntry.CommitTime == -1)
+                        {
+                            if (!this.versionDb.UpdateCommitTsLowerBound(reReadVersion.TxId, this.commitTs + 1))
+                            {
+                                this.Abort();
+                                return false;
+                            }
+                            //try to update the version's maxCommitTs
+
+                        }
+                        else
+                        {
+                            if (this.commitTs > txEntry.CommitTime)
+                            {
+                                this.Abort();
+                                return false;
+                            }
+                            //try to update the version's maxCommitTs
+
+                        }
+                    }
+
+                    if (!this.versionDb.UpdateVersionMaxCommitTs(tableId, recordKey, 
+                        reReadVersion.VersionKey,
+                        reReadVersion,
+                        this.commitTs))
+                    {
+                        this.Abort();
+                        return false;
+                    }
+                }
+            }
+
+            return true;
         }
 
         internal void Abort()
         {
-            throw new NotImplementedException();
+            this.txStatus = TxStatus.Aborted;
+            this.versionDb.UpdateTxStatus(this.txId, TxStatus.Aborted);
+
+            this.PostProcessing();
         }
 
         internal void PostProcessing()
         {
-            throw new NotImplementedException();
+            if (this.txStatus == TxStatus.Committed)
+            {
+                foreach (string tableId in this.writeSet.Keys)
+                {
+                    foreach (object recordKey in this.writeSet[tableId].Keys)
+                    {
+                        foreach (VersionEntry entry in this.writeSet[tableId][recordKey])
+                        {
+                            bool isOld = entry.EndTimestamp != long.MaxValue;
+                            this.versionDb.UpdateCommittedVersionTimestamp(
+                                tableId, recordKey, entry.VersionKey, this.commitTs, this.txId, isOld);
+                        }
+                    }
+                }
+            }
+            else
+            {
+                //if the uploadProgress is null, 
+                //the tx abort before Uploading phase,
+                //no version is uploaded to DB, do nothing
+                if (this.uploadProgress != null)
+                {
+                    foreach (string tableId in this.writeSet.Keys)
+                    {
+                        foreach (object recordKey in this.writeSet[tableId].Keys)
+                        {
+                            foreach (VersionEntry entry in this.writeSet[tableId][recordKey])
+                            {
+                                bool isOld = entry.EndTimestamp != long.MaxValue;
+                                this.versionDb.UpdateAbortedVersionTimestamp(
+                                    tableId, recordKey, entry.VersionKey, this.txId, isOld);
+
+                                if (tableId == this.uploadProgress.Item1 &&
+                                    recordKey == this.uploadProgress.Item2 &&
+                                    entry.VersionKey == this.uploadProgress.Item3)
+                                {
+                                    return;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
 
-        internal void Commit()
+        internal bool Commit()
+        {
+            if (!this.UploadLocalWriteRecords())
+            {
+                return false;
+            }
+
+            this.GetCommitTimestamp();
+
+            if (!this.Validate())
+            {
+                return false;
+            }
+
+            this.WriteChangetoLog();
+            this.txStatus = TxStatus.Committed;
+            this.versionDb.UpdateTxStatus(this.txId, TxStatus.Committed);
+            
+            this.PostProcessing();
+
+            return true;
+        }
+
+        internal void WriteChangetoLog()
         {
             throw new NotImplementedException();
         }

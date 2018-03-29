@@ -56,11 +56,8 @@ namespace GraphView.Transaction
         /// In negotiation phase, if no another transaction is updating tx, make sure future tx's who
         /// update x have CommitTs greater than the commitTime of current transaction
         /// </summary>
-        /// <param name="recordKey"></param>
-        /// <param name="versionKey"></param>
-        /// <param name="commitTime">Current transaction's commit time</param>
         /// <returns></returns>
-        internal virtual bool UpdateVersionMaxCommitTs(string tableId, object recordKey, long versionKey, long commitTime)
+        internal virtual bool UpdateVersionMaxCommitTs(string tableId, object recordKey, long versionKey, VersionEntry versionEntry, long commitTime)
         {
             VersionTable versionTable = this.GetVersionTable(tableId);
             if (versionTable == null)
@@ -68,7 +65,7 @@ namespace GraphView.Transaction
                 return false;
             }
 
-            return versionTable.UpdateVersionMaxCommitTs(recordKey, versionKey, commitTime);
+            return versionTable.UpdateVersionMaxCommitTs(recordKey, versionKey, versionEntry, commitTime);
         }
 
         internal bool UploadRecordByKey(string tableId, object recordKey, VersionEntry oldVersion, VersionEntry newVersion)
@@ -82,7 +79,8 @@ namespace GraphView.Transaction
             return versionTable.UploadRecordByKey(recordKey, oldVersion, newVersion);
         }
 
-        internal void UpdateCommittedVersionTimestamp(string tableId, object recordKey, long versionKey, long commitTimestamp, long txId)
+        internal void UpdateCommittedVersionTimestamp(string tableId, object recordKey, 
+            long versionKey, long commitTimestamp, long txId, bool isOld)
         {
             VersionTable versionTable = this.GetVersionTable(tableId);
             if (versionTable == null)
@@ -90,17 +88,18 @@ namespace GraphView.Transaction
                 return;
             }
 
-            versionTable.UpdateCommittedVersionTimestamp(recordKey, versionKey, commitTimestamp, txId);
+            versionTable.UpdateCommittedVersionTimestamp(recordKey, versionKey, commitTimestamp, txId, isOld);
         }
 
-        internal void UpdateAbortedVersionTimestamp(string tableId, object recordKey, long versionKey, long txId)
+        internal void UpdateAbortedVersionTimestamp(string tableId, object recordKey, 
+            long versionKey, long txId, bool isOld)
         {
             VersionTable versionTable = this.GetVersionTable(tableId);
             if (versionTable == null)
             {
                 return;
             }
-            versionTable.UpdateAbortedVersionTimestamp(recordKey, versionKey, txId);
+            versionTable.UpdateAbortedVersionTimestamp(recordKey, versionKey, txId, isOld);
         }
     }
 
@@ -130,6 +129,10 @@ namespace GraphView.Transaction
             throw new NotImplementedException();
         }
 
+        //return true if: (1) successfully set the CommitTsLowerBound to lowerBound, or
+        //                (2) the CommitTsLowerBound has already >= lowerBound, or
+        //                (3) the CommitTs != -1 && CommitTs >= lowerBound
+        //return false if: the CommitTs != -1 && the CommitTs < lowerBound
         internal virtual bool UpdateCommitTsLowerBound(long txId, long lowerBound)
         {
             throw new NotImplementedException();
