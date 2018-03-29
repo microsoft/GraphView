@@ -12,6 +12,20 @@ namespace GraphView.Transaction
     using Newtonsoft.Json.Linq;
     using System.Runtime.Serialization;
 
+    internal class ReadSetEntry
+    {
+        internal long BeginTimestamp { get; private set; }
+        internal long EndTimestamp { get; private set; }
+        internal object Record { get; private set; }
+
+        public ReadSetEntry(long begin, long end, object record)
+        {
+            this.BeginTimestamp = begin;
+            this.EndTimestamp = end;
+            this.Record = record;
+        }
+    }
+
     public partial class Transaction
     {
         /// <summary>
@@ -51,6 +65,13 @@ namespace GraphView.Transaction
         /// </summary>
         private readonly Dictionary<string, Dictionary<object, List<VersionEntry>>> writeSet;
 
+        private readonly Dictionary<string, Dictionary<object, object>> writeSet2;
+
+        /// <summary>
+        /// A set of version entries that need to be rolled back upon abortion
+        /// </summary>
+        private readonly Dictionary<string, HashSet<object>> rollbackSet;
+ 
         /// <summary>
         /// Use this tuple to track the last version we have uploaded to the version table successfully.
         /// Item1: tableId
@@ -105,10 +126,59 @@ namespace GraphView.Transaction
 
         internal bool UploadLocalWriteRecords()
         {
+            foreach (string tableId in this.writeSet2.Keys)
+            {
+                foreach (object recordKey in this.writeSet2[tableId])
+                {
+                    if (this.readSet.ContainsKey(tableId) && this.readSet[tableId].ContainsKey(recordKey))
+                    {
+                        // Upload the new version entry when the new image is not null
+                        if (this.writeSet2[tableId][recordKey] != null)
+                        {
+                            VersionEntry newImageEntry = new VersionEntry(
+                                recordKey,
+                                this.readSet[tableId][recordKey].VersionKey + 1,
+                                this.writeSet2[tableId][recordKey],
+                                txId,
+                                -1,
+                                -1,
+                                0);
+
+                            // Call VersionDB API to upload
+                            if (!this.versionDb.UploadRecordByKey(tableId, recordKey, null, newImageEntry))
+                            {
+                                return false;
+                            }
+                        }
+
+                        // Replace the old tail in the version list with an entry whose txId is set to the current tx
+                        VersionEntry newTailEntry = new VersionEntry(
+                            recordKey,
+                            this.readSet[tableId][recordKey].VersionKey,
+                            this.readSet[tableId][recordKey].Record,
+                            this.txId,
+                            this.readSet[tableId][recordKey].BeginTimestamp,
+                            this.readSet[tableId][recordKey].EndTimestamp,
+                            this.readSet[tableId][recordKey].MaxCommitTs);
+
+                        if (!this.versionDb.UploadRecordByKey(tableId, recordKey, this.readSet[tableId][recordKey], newTailEntry))
+                        {
+                            return false;
+                        }
+                    }
+                    else
+                    {
+
+                    }
+                }
+            }
+
+
             foreach (string tableId in this.writeSet.Keys)
             {
                 foreach (object recordKey in this.writeSet[tableId].Keys)
                 {
+
                     if (this.writeSet[tableId][recordKey].Count() == 2)
                     {
                         //update
