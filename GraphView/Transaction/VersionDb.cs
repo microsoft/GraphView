@@ -13,7 +13,7 @@ namespace GraphView.Transaction
             throw new NotImplementedException();
         }
 
-        internal virtual VersionTable CreateVersionTable(string tableId)
+        internal virtual VersionTable CreateVersionTable(string tableId, long redisDbIndex = 0)
         {
             throw new NotImplementedException();
         }
@@ -98,6 +98,19 @@ namespace GraphView.Transaction
         internal virtual long UpdateCommitLowerBound(long txId, long commitTs)
         {
             throw new NotImplementedException();
+        }
+    }
+
+    public abstract partial class VersionDb
+    {
+        protected virtual long RandomLong(long min = 0, long max = long.MaxValue)
+        {
+            Random rand = new Random();
+            byte[] buf = new byte[8];
+            rand.NextBytes(buf);
+            long longRand = BitConverter.ToInt64(buf, 0);
+
+            return (Math.Abs(longRand % (max - min)) + min);
         }
     }
 }

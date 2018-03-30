@@ -66,6 +66,14 @@ namespace GraphView.Transaction
             this.commitLowerBound = 0;
         }
 
+        public TxTableEntry(long txId, TxStatus status, long commitTime, long commitLowerBound)
+        {
+            this.txId = txId;
+            this.status = status;
+            this.commitTime = commitTime;
+            this.commitLowerBound = commitLowerBound;
+        }
+
         public override int GetHashCode()
         {
             return this.txId.GetHashCode();   

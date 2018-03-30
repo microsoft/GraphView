@@ -1,6 +1,5 @@
 ﻿namespace GraphView.Transaction
 {
-    using RecordRuntime;
     using System;
     using System.Collections.Generic;
     using System.Text;
@@ -54,6 +53,7 @@
         /// </summary>
         private static readonly object initLock = new object();
 
+
         /// <summary>
         /// Get RedisClient from the redis connection pool
         /// </summary>
@@ -65,12 +65,18 @@
             }
         }
 
+        private RedisLuaScriptManager RedisLuaManager
+        {
+            get
+            {
+                return RedisLuaScriptManager.Instance;
+            }
+        }
+
         private RedisVersionDb()
         { 
             this.tableLock = new object();
             this.versionTableMap = new Dictionary<string, RedisVersionTable>();
-
-            this.checkAndRegisterScripts();
         }
 
         internal static RedisVersionDb Instance
@@ -91,9 +97,37 @@
             } 
         }
 
-        public bool AddVersionTable(string tableId, long redisDbIndex)
+        /// <summary>
+        /// Get redisDbIndex from meta hashset by tableId
+        /// Take the System.Nullable<long> to wrap the return result, 
+        ///     as it could return null if the table has not been found
+        /// </summary>
+        /// <param name="tableId"></param>
+        /// <returns></returns>
+        protected long? GetTableRedisDbIndex(string tableId)
         {
-            using (RedisClient redisClient = (RedisClient) this.RedisManager.GetClient())
+            using (RedisClient redisClient = (RedisClient)this.RedisManager.GetClient())
+            {
+                redisClient.ChangeDb(RedisVersionDb.META_DB_INDEX);
+
+                byte[] keyBytes = Encoding.ASCII.GetBytes(tableId);
+                byte[] valueBytes = redisClient.HGet(RedisVersionDb.META_TABLE_KEY, keyBytes);
+
+                if (valueBytes == null)
+                {
+                    return null;
+                }
+
+                return BitConverter.ToInt64(valueBytes, 0);
+            }
+        }
+    }
+
+    internal partial class RedisVersionDb
+    {
+        internal override VersionTable CreateVersionTable(string tableId, long redisDbIndex)
+        {
+            using (RedisClient redisClient = (RedisClient)this.RedisManager.GetClient())
             {
                 redisClient.ChangeDb(RedisVersionDb.META_DB_INDEX);
 
@@ -102,49 +136,14 @@
 
                 long result = redisClient.HSet(RedisVersionDb.META_TABLE_KEY, keyBytes, valueBytes);
 
-                return result == 1;
+                return this.GetVersionTable(tableId);
             }
         }
 
-        /// <summary>
-        /// Delete version table from meta data table
-        /// </summary>
-        /// <param name="tableId"></param>
-        /// <returns></returns>
-        public bool DeleteVersionTable(string tableId)
-        {
-            using (RedisClient redisClient = (RedisClient) this.RedisManager.GetClient())
-            {
-
-                redisClient.ChangeDb(RedisVersionDb.META_DB_INDEX);
-
-                byte[] keyBytes = Encoding.ASCII.GetBytes(tableId);
-                long result = redisClient.HDel(RedisVersionDb.META_TABLE_KEY, keyBytes);
-
-                if (this.versionTableMap.ContainsKey(tableId))
-                {
-                    lock (this.tableLock)
-                    {
-                        if (this.versionTableMap.ContainsKey(tableId))
-                        {
-                            this.versionTableMap.RemoveKey(tableId);
-                        }
-                    }
-                }
-
-                return result == 1;
-            }
-        }
-
-        /// <summary>
-        /// Get a versionTable instance by tableId from Dictionary or Redis
-        /// </summary>
-        /// <param name="tableId"></param>
-        /// <returns></returns>
-        protected RedisVersionTable GetRedisVersionTable(string tableId)
+        internal override VersionTable GetVersionTable(string tableId)
         {
             if (!this.versionTableMap.ContainsKey(tableId))
-            { 
+            {
                 long? redisDbIndex = this.GetTableRedisDbIndex(tableId);
                 if (redisDbIndex == null)
                 {
@@ -167,132 +166,169 @@
             return this.versionTableMap[tableId];
         }
 
-        /// <summary>
-        /// Get redisDbIndex from meta hashset by tableId
-        /// Take the System.Nullable<long> to wrap the return result, 
-        ///     as it could return null if the table has not beed found
-        /// </summary>
-        /// <param name="tableId"></param>
-        /// <returns></returns>
-        protected long? GetTableRedisDbIndex(string tableId)
+        internal override bool DeleteTable(string tableId)
         {
             using (RedisClient redisClient = (RedisClient)this.RedisManager.GetClient())
             {
+
                 redisClient.ChangeDb(RedisVersionDb.META_DB_INDEX);
 
                 byte[] keyBytes = Encoding.ASCII.GetBytes(tableId);
-                byte[] valueBytes = redisClient.HGet(RedisVersionDb.META_TABLE_KEY, keyBytes);
+                long result = redisClient.HDel(RedisVersionDb.META_TABLE_KEY, keyBytes);
 
+                if (this.versionTableMap.ContainsKey(tableId))
+                {
+                    lock (this.tableLock)
+                    {
+                        if (this.versionTableMap.ContainsKey(tableId))
+                        {
+                            this.versionTableMap.RemoveKey(tableId);
+                        }
+                    }
+                }
+
+                return result == 1;
+            }
+        }
+    }
+
+    /// <summary>
+    /// This part is the implementation of transaction store interfaces in redis version db
+    /// TxTableEntry will be stored as a hashset in redis, and txId will be the hashId.
+    /// We store in this format based on the fact we should always view and update status, 
+    /// commit_time and commit_lower_bound. The hashset will be with better performance
+    /// than parsing and unparsing binary data.
+    /// </summary>
+    internal partial class RedisVersionDb
+    {
+        /// <summary>
+        /// Get a unique transaction Id and store the txTableEntry into the redis
+        /// This will be implemented in two steps:
+        /// 1. try a random txId and ensure that it is unique in redis with the command HSETNX
+        ///    If it is a unique id, set it in hset to occupy it with the same atomic operation
+        /// 2. set other fields of txTableEntry 
+        /// </summary>
+        /// <returns>a transaction Id</returns>
+        internal override long InsertNewTx()
+        {
+            using (RedisClient redisClient = (RedisClient)this.RedisManager.GetClient())
+            {
+                redisClient.ChangeDb(RedisVersionDb.TRANSACTION_DB_INDEX);
+
+                long txId = 0, ret = 0;
+                do
+                {
+                    txId = this.RandomLong();
+
+                    string hashId = txId.ToString();
+                    byte[] keyBytes = Encoding.ASCII.GetBytes("tx_id");
+                    byte[] valueBytes = BitConverter.GetBytes(txId);
+
+                    // If the hashId doesn't exist or field doesn't exist, return 1
+                    // otherwise return 0
+                    ret = redisClient.HSetNX(hashId, keyBytes, valueBytes);
+                } while (ret == 0);
+
+                TxTableEntry txTableEntry = new TxTableEntry(txId);
+
+                byte[][] keysBytes =
+                {
+                    Encoding.ASCII.GetBytes("status"),
+                    Encoding.ASCII.GetBytes("commit_time"),
+                    Encoding.ASCII.GetBytes("commit_lower_bound")
+                };
+
+                byte[][] valuesBytes =
+                {
+                    BitConverter.GetBytes((int) txTableEntry.Status),
+                    BitConverter.GetBytes(txTableEntry.CommitTime),
+                    BitConverter.GetBytes(txTableEntry.CommitLowerBound)
+                };
+
+                redisClient.HMSet(txId.ToString(), keysBytes, valuesBytes);
+                return txId;
+            }
+        }
+
+        internal override TxTableEntry GetTxTableEntry(long txId)
+        {
+            using (RedisClient redisClient = (RedisClient)this.RedisManager.GetClient())
+            {
+                redisClient.ChangeDb(RedisVersionDb.TRANSACTION_DB_INDEX);
+
+                string hashId = txId.ToString();
+                byte[][] keyBytes =
+                {
+                    Encoding.ASCII.GetBytes("status"),
+                    Encoding.ASCII.GetBytes("commit_time"),
+                    Encoding.ASCII.GetBytes("commit_lower_bound")
+                };
+
+                byte[][] valueBytes = redisClient.HMGet(hashId, keyBytes);
                 if (valueBytes == null)
                 {
                     return null;
                 }
 
-                return BitConverter.ToInt64(valueBytes, 0);
+                return new TxTableEntry(
+                    txId,
+                    (TxStatus) BitConverter.ToInt32(valueBytes[0], 0),
+                    BitConverter.ToInt64(valueBytes[1], 0),
+                    BitConverter.ToInt64(valueBytes[2],0));
             }
         }
 
-        /// <summary>
-        /// Get all tableIds from meta data hashset
-        /// </summary>
-        /// <returns></returns>
-        protected IList<string> GetAllVersionTables()
-        {
-            using (RedisClient redisClient = (RedisClient) this.RedisManager.GetClient())
-            {
-                redisClient.ChangeDb(RedisVersionDb.META_DB_INDEX);
-
-                byte[][] keysBytes = redisClient.HKeys(RedisVersionDb.META_TABLE_KEY);
-                if (keysBytes == null)
-                {
-                    throw new ArgumentException("Invalid META_TABLE_KEY reference '{RedisVersionDb.META_TABLE_KEY}'");
-                }
-
-                List<string> tableIdList = new List<string>();
-                foreach (byte[] keyBytes in keysBytes)
-                {
-                    string tableId = Encoding.ASCII.GetString(keyBytes);
-                    tableIdList.Add(tableId);
-                }
-
-                return tableIdList;
-            }
-        }
-
-        /// <summary>
-        /// For every possible lua scripts command, check if it has been in the redis cache.
-        /// If it has not been loaded into the cache, then register and load it
-        /// </summary>
-        protected void checkAndRegisterScripts()
-        {
-            // implement the cas for hset command
-            // 0: comparsion succeeds and updated an existed version
-            // 1: comparsion succeeds and inserted a new version
-            // 2: comparsion fails
-            // 3: other errors, which means the command runs error
-            /*
-                 -- eval 'lua_code' 1 hashkey field oldValue newValue
-                 local ver = redis.call('HGET', KEYS[1], ARGV[1]);
-                 if not ver or ver == ARGV[2] then
-                     return redis.call('HSET', KEYS[1], ARGV[1], ARGV[3]);
-                 end
-                 return 2
-                */
-            string HSetCAS = @"local ver = redis.call('HGET', KEYS[1], ARGV[1]); if not ver or ver == ARGV[2]
-                then return redis.call('HSET', KEYS[1], ARGV[1], ARGV[3]); end return 2";
-            this.RegisterLuaScripts("HSET_CAS", HSetCAS);
-
-            // Other lua commands
-        }
-
-        /// <summary>
-        /// Register common lua scripts to the cache avoidoing update scripts 
-        /// every time, which will reduce the bandwidth
-        /// </summary>
-        /// <returns>true or false</returns>
-        private bool RegisterLuaScripts(string scriptKey, string luaBody)
+        internal override void UpdateTxStatus(long txId, TxStatus status)
         {
             using (RedisClient redisClient = (RedisClient)this.RedisManager.GetClient())
             {
-                redisClient.ChangeDb(RedisVersionDb.META_DB_INDEX);
+                redisClient.ChangeDb(RedisVersionDb.TRANSACTION_DB_INDEX);
 
-                // Extract the command sha1
-                byte[] scriptKeyBytes = Encoding.UTF8.GetBytes(scriptKey);
-                byte[] shaBytes = redisClient.HGet(RedisVersionDb.META_SCRIPT_KEY, scriptKeyBytes);
+                string hashId = txId.ToString();
+                byte[] keyBytes = Encoding.ASCII.GetBytes("status");
+                byte[] valueBytes = BitConverter.GetBytes((int) status);
 
-                // We will register the lua script only if the sha1 isn't in script table or sha1 is not in the redis cache 
-                bool hasRegistered = false;
-                if (shaBytes != null)
-                {
-                    byte[][] returnBytes = redisClient.ScriptExists(new byte[][] { shaBytes });
-                    if (returnBytes != null)
-                    {
-                        // The return value == 1 means scripts have been registered
-                        hasRegistered = BitConverter.ToInt64(returnBytes[0], 0) == 1;
-                    }
-                }
-
-                // Register the lua scripts when it has not been registered
-                if (!hasRegistered)
-                {
-                    // register and load the script
-                    byte[] scriptSha1Bytes = redisClient.ScriptLoad(luaBody);
-                    if (scriptSha1Bytes == null)
-                    {
-                        return false;
-                    }
-                    // insert into the script hashset
-                    long result = redisClient.HSet(RedisVersionDb.META_SCRIPT_KEY, scriptKeyBytes, scriptSha1Bytes);
-                    return result == 1;
-                }
-
-                return true;
+                long ret = redisClient.HSet(hashId, keyBytes, valueBytes);
             }
         }
-    }
 
-    internal partial class RedisVersionDb
-    {
-        
+        internal override long GetAndSetCommitTime(long txId, long lowerBound)
+        {
+            using (RedisClient redisClient = (RedisClient)this.RedisManager.GetClient())
+            {
+                redisClient.ChangeDb(RedisVersionDb.TRANSACTION_DB_INDEX);
+
+                string sha1 = this.RedisLuaManager.GetLuaScriptSha1("GET_SET_COMMIT_TIME");
+                byte[][] keys =
+                {
+                    BitConverter.GetBytes(txId),
+                    BitConverter.GetBytes(lowerBound),
+                };
+
+                //TODO: handle the case return value is -2 (some errors happened)
+                long ret = redisClient.EvalShaInt(sha1, 1, keys);
+                return ret;
+            }
+        }
+
+        internal override long UpdateCommitLowerBound(long txId, long commitTs)
+        {
+            using (RedisClient redisClient = (RedisClient)this.RedisManager.GetClient())
+            {
+                redisClient.ChangeDb(RedisVersionDb.TRANSACTION_DB_INDEX);
+
+                string sha1 = this.RedisLuaManager.GetLuaScriptSha1("UPDATE_COMMIT_LOWER_BOUND");
+                byte[][] keys =
+                {
+                    BitConverter.GetBytes(txId),
+                    BitConverter.GetBytes(commitTs),
+                };
+
+                long ret = redisClient.EvalShaInt(sha1, 1, keys);
+                // if ret >= -1, it means the correct txId's commitTime
+                // TODO: if ret == -1, it means there are some troubles in redis, please to hand it
+                return ret;
+            }
+        }
     }
 }

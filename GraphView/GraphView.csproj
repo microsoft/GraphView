@@ -284,11 +284,13 @@
     <Compile Include="GraphViewDBPortal\DocumentDBKeywords.cs" />
     <Compile Include="RecordRuntime\IDataStore.cs" />
     <Compile Include="RecordRuntime\IndexSpecification.cs" />
+    <Compile Include="Transaction\BytesSerializer.cs" />
     <Compile Include="Transaction\CassandraClusterManager.cs" />
     <Compile Include="Transaction\CassandraVersionDb.cs" />
     <Compile Include="Transaction\CassandraVersionTable.cs" />
     <Compile Include="Transaction\Payload.cs" />
     <Compile Include="Transaction\RedisClientManager.cs" />
+    <Compile Include="Transaction\RedisLuaScriptManager.cs" />
     <Compile Include="Transaction\RedisVersionDb.cs" />
     <Compile Include="Transaction\RedisVersionTable.cs" />
     <Compile Include="Transaction\SingletonVersionDb.cs" />
