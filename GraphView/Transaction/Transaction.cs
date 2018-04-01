@@ -233,6 +233,11 @@ namespace GraphView.Transaction
         {
             throw new NotImplementedException();
         }
+
+        public bool ReadAndInitialize(string tableId, object recordKey)
+        {
+            throw new NotImplementedException();
+        }
     }
 }
 

@@ -34,6 +34,11 @@ namespace GraphView.Transaction
         {
             throw new NotImplementedException();
         }
+
+        internal virtual bool CheckVisibility(VersionEntry versionEntry)
+        {
+            throw new NotImplementedException();
+        }
                                                                  
         internal virtual VersionEntry GetVersionEntryByKey(object recordKey, long versionKey)
         {
@@ -48,20 +53,42 @@ namespace GraphView.Transaction
             return null;
         }
 
-        internal virtual long ReplaceVersionEntry(object recordKey, long versionKey, long txId)
+        internal virtual VersionEntry ReadAndInitialize(object recordKey, out long largestVersionKey)
         {
             throw new NotImplementedException();
         }
 
-        internal virtual bool UploadVersionEntry(object recordKey, long versionKey, VersionEntry versionEntry)
+        internal virtual long ReplaceVersionEntryTxId(object recordKey, long versionKey, long txId)
         {
             throw new NotImplementedException();
         }
 
-        internal virtual bool UploadPayload(object recordKey, long versionKey, Payload payload)
+        /// <summary>
+        /// Upload a new version entry when insert or update a version
+        /// </summary>
+        /// <param name="recordKey"></param>
+        /// <param name="versionKey"></param>
+        /// <param name="versionEntry"></param>
+        /// <returns></returns>
+        internal virtual bool UploadNewVersionEntry(object recordKey, long versionKey, VersionEntry versionEntry)
         {
             throw new NotImplementedException();
         }
+
+        /// <summary>
+        /// It will be called when the postprocessing is ongoing. In general, we only need
+        /// to replace the beginTimestamp and endTimestamp, and no need to update record.
+        /// 
+        /// In case of some other storages, we must replace the whole [begin, end, record] even 
+        /// we just want to change begin and end. Thus, here we also put the record in param list
+        /// to keep the interface extensiable.
+        /// </summary>
+        /// <returns></returns>
+        internal virtual bool ReplacePayload(object recordKey, long versionKey, long beginTimestamp, long endTimestamp, object record)
+        {
+            throw new NotImplementedException();
+        }
+
         internal virtual VersionEntry UpdateVersionMaxCommitTs(object recordKey, long versionKey, long commitTime)
         {
             throw new NotImplementedException();

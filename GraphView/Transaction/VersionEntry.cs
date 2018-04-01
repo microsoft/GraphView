@@ -2,72 +2,52 @@
 
 namespace GraphView.Transaction
 {
-    using Newtonsoft.Json.Linq;
     using System.Runtime.Serialization;
     using System;
+    using System.Collections.Generic;
 
-    [Serializable]
-    internal class VersionEntry : ISerializable, ICloneable
+    internal class VersionEntry
     {
-        private readonly Payload payload;
-        private long txId;
-        private long maxCommitTs;
+        internal object RecordKey { get; }
+        internal long VersionKey { get; }
+        internal long BeginTimestamp { get; }
+        internal long EndTimestamp { get; }
+        internal object Record { get; }
+        internal long TxId { get; }
+        internal long MaxCommitTs { get; }
 
-        public object RecordKey
-        {
-            get
-            {
-                return this.payload.RecordKey;
-            }
-        }
-
-        public long VersionKey
-        {
-            get
-            {
-                return this.payload.VersionKey;
-            }
-        }
-
-        public long TxId
-        {
-            get
-            {
-                return this.txId;
-            }
-            set
-            {
-                this.txId = value;
-            }
-        }
-
-        public long MaxCommitTs
-        {
-            get
-            {
-                return this.maxCommitTs;
-            }
-            set
-            {
-                this.maxCommitTs = value;
-            }
-        }
 
         public VersionEntry(
-            Payload payload,
+            object recordKey,
+            long versionKey,
+            long beginTimestamp,
+            long endTimestamp,
+            object record,
             long txId,
             long maxCommitTs)
         {
-            this.payload = payload;
-            this.txId = txId;
-            this.maxCommitTs = maxCommitTs;
-        } 
+            this.RecordKey = recordKey;
+            this.VersionKey = versionKey;
+            this.BeginTimestamp = beginTimestamp;
+            this.EndTimestamp = endTimestamp;
+            this.Record = record;
+            this.TxId = txId;
+            this.MaxCommitTs = maxCommitTs;
+        }
 
-        public VersionEntry(SerializationInfo info, StreamingContext context)
+        public VersionEntry(
+            object recordKey,
+            long versionKey,
+            object record,
+            long txId)
         {
-            this.payload = (Payload)info.GetValue("payload", typeof(Payload));
-            this.txId = (long)info.GetValue("txId", typeof(long));
-            this.maxCommitTs = (long)info.GetValue("maxCommitTs", typeof(long));
+            this.RecordKey = recordKey;
+            this.VersionKey = versionKey;
+            this.BeginTimestamp = -1L;
+            this.EndTimestamp = -1L;
+            this.Record = record;
+            this.TxId = txId;
+            this.MaxCommitTs = 0;
         }
 
         public override int GetHashCode()
@@ -91,16 +71,48 @@ namespace GraphView.Transaction
                 this.RecordKey == ventry.RecordKey;
         }
 
-        public void GetObjectData(SerializationInfo info, StreamingContext context)
+        /// <summary>
+        /// Serialize essential properties in version entry to bytes array
+        /// </summary>
+        /// 
+        /// The format of bytes stream is like:
+        /// ------- 8 bytes------ ------- 8 bytes---- --- 8 bytes------ 8 bytes----- --X bytes----
+        /// [beginTimestamp bytes][endTimestamp bytes][txId bytes][maxCommitTs bytes][record bytes]
+        /// 
+        /// <returns>a byte array</returns>
+        public static byte[] Serialize(long beginTimestamp, long endTimestamp, long txId, long maxCommitTs, object record)
         {
-            info.AddValue("payload", this.payload, typeof(Payload));
-            info.AddValue("txId", this.txId, typeof(long));
-            info.AddValue("maxCommitTs", this.maxCommitTs, typeof(long));
+            List<byte> byteList = new List<byte>();
+
+            byteList.AddRange(BitConverter.GetBytes(beginTimestamp));
+            byteList.AddRange(BitConverter.GetBytes(endTimestamp));
+            byteList.AddRange(BitConverter.GetBytes(txId));
+            byteList.AddRange(BitConverter.GetBytes(maxCommitTs));
+            byteList.AddRange(BytesSerializer.Serialize(record));
+
+            return byteList.ToArray();
         }
 
-        public object Clone()
+        /// <summary>
+        /// Deserialize a version entry by the given recordKey, versionKey and content bytes
+        /// </summary>
+        /// <param name="recordKey"></param>
+        /// <param name="versionKey"></param>
+        /// <param name="bytes"></param>
+        /// <returns></returns>
+        public static VersionEntry Deserialize(object recordKey, long versionKey, byte[] bytes)
         {
-            return new VersionEntry(this.payload, this.txId, this.maxCommitTs);
+            long beginTimestamp = BitConverter.ToInt64(bytes, 0);
+            long endTimestamp = BitConverter.ToInt64(bytes, 8);
+            long txId = BitConverter.ToInt64(bytes, 2*8);
+            long maxCommitTs = BitConverter.ToInt64(bytes, 3*8);
+
+            byte[] recordBytes = new byte[bytes.Length - 4*8];
+            Buffer.BlockCopy(bytes, 4*8, recordBytes, 0, recordBytes.Length);
+            object record = BytesSerializer.Deserialize(recordBytes);
+
+            return new VersionEntry(recordKey, versionKey, beginTimestamp, endTimestamp,
+                record, txId, maxCommitTs);
         }
     }
 }

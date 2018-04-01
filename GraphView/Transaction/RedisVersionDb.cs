@@ -54,6 +54,24 @@
         private static readonly object initLock = new object();
 
 
+        // <summary>
+        /// The bytes of -1 in long type, should mind that it must be a long type with 8 bytes
+        /// It's used to compare txId or as a return value in lua script
+        /// </summary>
+        public static readonly byte[] NEGATIVE_ONE_BYTES = BitConverter.GetBytes(-1L);
+
+        // <summary>
+        /// The bytes of -2 in long type, should mind that it must be a long type with 8 bytes
+        /// It's used to be a return value of some errors in lua
+        /// </summary>
+        public static readonly byte[] NEGATIVE_TWO_BYTES = BitConverter.GetBytes(-2L);
+
+        // <summary>
+        /// The bytes of -2 in long type, should mind that it must be a long type with 8 bytes
+        /// It's used to be a return value of successful operations
+        /// </summary
+        public static readonly byte[] ZERO_BYTES = BitConverter.GetBytes(0L);
+
         /// <summary>
         /// Get RedisClient from the redis connection pool
         /// </summary>
@@ -182,7 +200,7 @@
                     {
                         if (this.versionTableMap.ContainsKey(tableId))
                         {
-                            this.versionTableMap.RemoveKey(tableId);
+                            this.versionTableMap.Remove(tableId);
                         }
                     }
                 }
@@ -198,6 +216,12 @@
     /// We store in this format based on the fact we should always view and update status, 
     /// commit_time and commit_lower_bound. The hashset will be with better performance
     /// than parsing and unparsing binary data.
+    /// 
+    /// THING TO MIND: HSETNX in ServiceStack.Redis only supports a string as hashId
+    /// To use this HSETNX, we should take txId.toString() as the hashId whereever we want
+    /// to operate the TxTableEntry in redis.
+    /// 
+    /// IT'S IMPORTANT!!!!
     /// </summary>
     internal partial class RedisVersionDb
     {
@@ -265,7 +289,7 @@
                 };
 
                 byte[][] valueBytes = redisClient.HMGet(hashId, keyBytes);
-                if (valueBytes == null)
+                if (valueBytes == null || valueBytes.Length == 0)
                 {
                     return null;
                 }
@@ -298,16 +322,28 @@
             {
                 redisClient.ChangeDb(RedisVersionDb.TRANSACTION_DB_INDEX);
 
+                string hashId = txId.ToString();
                 string sha1 = this.RedisLuaManager.GetLuaScriptSha1("GET_SET_COMMIT_TIME");
                 byte[][] keys =
                 {
-                    BitConverter.GetBytes(txId),
+                    Encoding.ASCII.GetBytes(hashId),
                     BitConverter.GetBytes(lowerBound),
                 };
 
-                //TODO: handle the case return value is -2 (some errors happened)
-                long ret = redisClient.EvalShaInt(sha1, 1, keys);
-                return ret;
+                try
+                {
+                    byte[][] returnBytes = redisClient.EvalSha(sha1, 1, keys);
+                    if (returnBytes == null || returnBytes.Length == 0)
+                    {
+                        return -1;
+                    }
+
+                    return BitConverter.ToInt64(returnBytes[1], 0);
+                }
+                catch (RedisResponseException e)
+                {
+                    return -1;
+                }
             }
         }
 
@@ -317,17 +353,36 @@
             {
                 redisClient.ChangeDb(RedisVersionDb.TRANSACTION_DB_INDEX);
 
+                string hashId = txId.ToString();
                 string sha1 = this.RedisLuaManager.GetLuaScriptSha1("UPDATE_COMMIT_LOWER_BOUND");
                 byte[][] keys =
                 {
-                    BitConverter.GetBytes(txId),
+                    Encoding.ASCII.GetBytes(hashId),
                     BitConverter.GetBytes(commitTs),
                 };
 
-                long ret = redisClient.EvalShaInt(sha1, 1, keys);
-                // if ret >= -1, it means the correct txId's commitTime
-                // TODO: if ret == -1, it means there are some troubles in redis, please to hand it
-                return ret;
+                try
+                {
+                    byte[][] returnBytes = redisClient.EvalSha(sha1, 1, keys);
+                    if (returnBytes == null || returnBytes.Length == 0)
+                    {
+                        // TODO: throw exceptions
+                    }
+
+                    long ret = BitConverter.ToInt64(returnBytes[1], 0);
+                    // There must be some errors happened inside the lua
+                    if (ret == -2)
+                    {
+                        // TODO
+                    }
+
+                    return ret;
+                }
+                catch (RedisResponseException e)
+                {
+                    // TODO
+                    return -1;
+                }
             }
         }
     }

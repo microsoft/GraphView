@@ -154,51 +154,128 @@
         /// GET_SET_COMMIT_TIME
         ////////////////////////////////////////////////////////////////
         /*
-         *  -- eval lua_script 1 txId try_commit_time
-            local data = redis.call("HMGET", KEYS[1], "commit_time", "commit_lower_bound")
-            if not data then
-                return -2
+         *  -- eval lua_script 1 txId try_commit_time -1
+            local try_commit_time = ARGV[1]
+            local negative_one = ARGV[2]
+
+            local tx_entry = redis.call('HMGET', KEYS[1], 'commit_time', 'commit_lower_bound')
+
+            if not tx_entry then
+                return negative_one
             end
 
-            local try_commit_time = tonumber(ARGV[1])
-            local commit_time = data[1]
-            local commit_lower_bound = data[2]
+            local commit_time = tx_entry[1]
+            local commit_lower_bound = tx_entry[2]
 
-            if tonumber(commit_time) == -1 and 
-                tonumber(commit_lower_bound) <= try_commit_time then
-    
+            if commit_time == negative_one and 
+                string.byte(commit_lower_bound) <= string.byte(try_commit_time) then
                 local ret = redis.call("HSET", KEYS[1], "commit_time", try_commit_time)
                 if ret == 0 then
                     return try_commit_time
                 end
-                return -2
+                return negative_one
             end
-            return -1
+            return negative_one
          */
 
         ////////////////////////////////////////////////////////////////
         /// UPDATE_COMMIT_LOWER_BOUND
         ////////////////////////////////////////////////////////////////
         /*
-         * -- eval lua_script 1 txId commit_time
+         * -- eval lua_script 1 txId commit_time -1 -2
+            local commit_time = ARGV[1]
+            local negative_one = ARGV[2]
+            local negative_two = ARGV[3]
+
             local data = redis.call('HMGET', KEYS[1], 'commit_time', 'commit_lower_bound')
             if not data then
-                return -2
+                return negative_two
             end
 
-            local commit_time = tonumber(ARGV[1])
             local tx_commit_time = data[1]
             local commit_lower_bound = data[2]
 
-            if tonumber(tx_commit_time) == -1 and 
-                tonumber(commit_lower_bound) < commit_time then
+            if tx_commit_time == negative_one and 
+                string.byte(commit_lower_bound) < string.byte(commit_time) then
                 local ret = redis.call('HSET', KEYS[1], 'commit_lower_bound', commit_time)
                 if ret ~= 0 then
-                    return -2
+                    return negative_two
                 end
             end
 
             return tx_commit_time
         */
+
+        ////////////////////////////////////////////////////////////////
+        /// UPDATE_VERSION_MAX_COMMIT_TS
+        ////////////////////////////////////////////////////////////////
+        /*
+         * -- eval lua 1 record_key, version_key commit_time -1
+            local entry = redis.call('HGET', KEYS[1], ARGV[1])
+            if not entry then
+                return ARGV[3]
+            end
+
+            local tx_id = string.sub(entry, 2*8+1, 3*8)
+            local max_commit_ts = string.sub(entry, 3*8+1, 4*8)
+
+            -- cann't compare strings directly, "2" < "15" will return false 
+            if tx_id == ARGV[3] and string.byte(max_commit_ts) < string.byte(ARGV[2]) then
+                local new_version_entry = string.sub(entry, 1, 3*8) .. ARGV[2] .. string.sub(entry, 4*8+1, string.len(entry))
+                local ret = redis.call('HSET', KEYS[1], ARGV[1], new_version_entry);
+                if ret == nil then
+                    return ARGV[3]
+                end
+                return new_version_entry
+            else
+                return entry
+            end
+        */
+
+        ////////////////////////////////////////////////////////////////
+        /// REPLACE_VERSION_ENTRY_TXID
+        ////////////////////////////////////////////////////////////////
+        /*
+         * -- eval lua 1 record_key version_key txId -1
+            local entry = redis.call('HGET', KEYS[1], ARGV[1])
+            if not entry then
+                return ARGV[3]
+            end
+
+            local tx_id = string.sub(entry, 2*8+1, 3*8)
+            local max_commit_ts = string.sub(entry, 3*8+1, 4*8)
+
+            if tx_id == ARGV[3] then
+                local new_version_entry = string.sub(entry, 1, 2*8) .. ARGV[2] .. string.sub(entry, 3*8+1, string.len(entry))
+                local ret = redis.call('HSET', KEYS[1], ARGV[1], new_version_entry);
+                if ret == nil then
+                    return ARGV[3]
+                end
+                return max_commit_ts
+            else
+                return ARGV[3]
+            end
+         */
+
+        ////////////////////////////////////////////////////////////////
+        /// REPLACE_PAYLOAD
+        ////////////////////////////////////////////////////////////////
+        /*
+         * -- eval lua 1 record_key version_key beginTimestamp endTimestamp -1 0
+            local negative_one = ARGV[4]
+            local zero = ARGV[5]
+
+            local entry = redis.call('HGET', KEYS[1], ARGV[1])
+            if not entry then
+                return negative_one
+            end
+
+            local new_entry = ARGV[2] .. ARGV[3] .. string.sub(entry, 2*8+1, string.len(entry))
+            local ret = redis.call('HSET', KEYS[1], ARGV[1], new_entry)
+            if ret == 0 then
+                return zero
+            end
+            return negative_one
+         */
     }
 }

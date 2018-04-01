@@ -29,7 +29,8 @@
                         {
                             // TODO: read redis config from config files
                             string redisConnectionString = "";
-                            RedisClientManager.redisManagerPool = new RedisManagerPool(redisConnectionString);
+                            RedisClientManager.redisManagerPool = 
+                                new PooledRedisClientManager(new string[] { redisConnectionString});
                         }
                     }
                 }

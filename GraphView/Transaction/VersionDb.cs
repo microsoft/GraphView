@@ -52,6 +52,39 @@ namespace GraphView.Transaction
             return versionTable.GetVersionEntryByKey(recordKey, versionKey);
         }
 
+        internal virtual long ReplaceVersionEntryTxId(string tableId, object recordKey, long versionKey, long txId)
+        {
+            VersionTable versionTable = this.GetVersionTable(tableId);
+            if (versionTable == null)
+            {
+                return -1;
+            }
+
+            return versionTable.ReplaceVersionEntryTxId(recordKey, versionKey, txId);
+        }
+
+        internal virtual bool UploadNewVersionEntry(string tableId, object recordKey, long versionKey, VersionEntry versionEntry)
+        {
+            VersionTable versionTable = this.GetVersionTable(tableId);
+            if (versionTable == null)
+            {
+                return false;
+            }
+
+            return versionTable.UploadNewVersionEntry(recordKey, versionKey, versionEntry);
+        }
+
+        internal virtual bool ReplacePayload(string tableId, object recordKey, long versionKey, long beginTimestamp, long endTimestamp, object record)
+        {
+            VersionTable versionTable = this.GetVersionTable(tableId);
+            if (versionTable == null)
+            {
+                return false;
+            }
+
+            return versionTable.ReplacePayload(recordKey, versionKey, beginTimestamp, endTimestamp, record);
+        }
+
         /// <summary>
         /// In negotiation phase, if no another transaction is updating tx, make sure future tx's who
         /// update x have CommitTs greater than the commitTime of current transaction
@@ -66,6 +99,29 @@ namespace GraphView.Transaction
             }
 
             return versionTable.UpdateVersionMaxCommitTs(recordKey, versionKey, commitTime);
+        }
+
+        internal virtual bool DeleteVersionEntry(string tableId, object recordKey, long versionKey)
+        {
+            VersionTable versionTable = this.GetVersionTable(tableId);
+            if (versionTable == null)
+            {
+                return false;
+            }
+
+            return versionTable.DeleteVersionEntry(recordKey, versionKey);
+        }
+        
+        internal virtual VersionEntry ReadAndInitialize(string tableId, object recordKey, out long largestVersionKey)
+        {
+            VersionTable versionTable = this.GetVersionTable(tableId);
+            if (versionTable == null) 
+            {
+                largestVersionKey = -1;
+                return null;
+            }
+
+            return versionTable.ReadAndInitialize(recordKey, out largestVersionKey);
         }
     }
 
