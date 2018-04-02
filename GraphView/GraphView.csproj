@@ -364,6 +364,11 @@
   <ItemGroup>
     <None Include="app.config" />
     <None Include="packages.config" />
+    <EmbeddedResource Include="Resources\RedisLua\GET_AND_SET_COMMIT_TIME.lua" />
+    <EmbeddedResource Include="Resources\RedisLua\UPDATE_VERSION_MAX_COMMIT_TS.lua" />
+    <EmbeddedResource Include="Resources\RedisLua\UPDATE_COMMIT_TS_LOWER_BOUND.lua" />
+    <EmbeddedResource Include="Resources\RedisLua\REPLACE_VERSION_ENTRY_TXID.lua" />
+    <EmbeddedResource Include="Resources\RedisLua\REPLACE_PAYLOAD.lua" />
   </ItemGroup>
   <ItemGroup />
   <ItemGroup>
