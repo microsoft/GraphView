@@ -20,7 +20,7 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Map
         [TestMethod]
         public void VerticesOutOutTreeById()
         {
-            using (GraphViewCommand graphCommand = this.job.GetCommand())
+            using (GraphViewCommand graphCommand = this.job.Command)
             {
                 graphCommand.OutputFormat = OutputFormat.GraphSON;
                 this.job.Traversal = graphCommand.g().V().Out().Out().Tree().By(GraphTraversal.__().Id());
@@ -37,7 +37,7 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Map
         [TestMethod]
         public void VerticesOutOutTree()
         {
-            using (GraphViewCommand graphCommand = this.job.GetCommand())
+            using (GraphViewCommand graphCommand = this.job.Command)
             {
                 graphCommand.OutputFormat = OutputFormat.GraphSON;
                 this.job.Traversal = graphCommand.g().V().Out().Out().Tree();
@@ -53,7 +53,7 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Map
         [TestMethod]
         public void VerticesOutOutTreeACapA()
         {
-            using (GraphViewCommand graphCommand = this.job.GetCommand())
+            using (GraphViewCommand graphCommand = this.job.Command)
             {
                 graphCommand.OutputFormat = OutputFormat.GraphSON;
                 this.job.Traversal = graphCommand.g().V().Out().Out().Tree("a").Cap("a");
@@ -71,10 +71,10 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Map
         [TestMethod]
         public void VerticesOutOutOutTree()
         {
-            using (GraphViewCommand graphCommand = this.job.GetCommand())
+            using (GraphViewCommand graphCommand = this.job.Command)
             {
                 this.job.Traversal = graphCommand.g().V().Out().Out().Out().Tree();
-                List<string> result = StartAzureBatch.AzureBatchJobManager.TestQuery(this.job);
+                List<string> result = this.jobManager.TestQuery(this.job);
                 dynamic results = JsonConvert.DeserializeObject<dynamic>(result[0]);
 
                 Assert.AreEqual(0, results.Count);
@@ -83,7 +83,7 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Map
 
         private void AssertCommonC(GraphViewCommand graphCommand)
         {
-            List<string> result = StartAzureBatch.AzureBatchJobManager.TestQuery(this.job);
+            List<string> result = this.jobManager.TestQuery(this.job);
             dynamic results = JsonConvert.DeserializeObject<dynamic>(result[0]);
 
             Assert.AreEqual(1, results.Count);

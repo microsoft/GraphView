@@ -20,14 +20,14 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Map
         [TestMethod]
         public void get_g_VX1X_name_path()
         {
-            using (GraphViewCommand graphCommand = this.job.GetCommand())
+            using (GraphViewCommand graphCommand = this.job.Command)
             {
                 graphCommand.OutputFormat = OutputFormat.Regular;
                 string vertexId1 = this.ConvertToVertexId(graphCommand, "marko");
 
                 graphCommand.OutputFormat = OutputFormat.GraphSON;
                 this.job.Traversal = graphCommand.g().V(vertexId1).Values("name").Path();
-                List<string> results = StartAzureBatch.AzureBatchJobManager.TestQuery(this.job);
+                List<string> results = this.jobManager.TestQuery(this.job);
                 dynamic result = JsonConvert.DeserializeObject<dynamic>(results.FirstOrDefault())[0];
 
                 Assert.AreEqual(vertexId1, (string)result["objects"][0].id);
@@ -42,14 +42,14 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Map
         [TestMethod]
         public void get_g_VX1X_out_path_byXageX_byXnameX()
         {
-            using (GraphViewCommand graphCommand = this.job.GetCommand())
+            using (GraphViewCommand graphCommand = this.job.Command)
             {
                 graphCommand.OutputFormat = OutputFormat.Regular;
                 string vertexId1 = this.ConvertToVertexId(graphCommand, "marko");
 
                 graphCommand.OutputFormat = OutputFormat.GraphSON;
                 this.job.Traversal = graphCommand.g().V(vertexId1).Out().Path().By("age").By("name");
-                dynamic results = JsonConvert.DeserializeObject<dynamic>(StartAzureBatch.AzureBatchJobManager.TestQuery(this.job).FirstOrDefault());
+                dynamic results = JsonConvert.DeserializeObject<dynamic>(this.jobManager.TestQuery(this.job).FirstOrDefault());
 
                 Assert.AreEqual(3, results.Count);
                 List<string> expected = new List<string>();
@@ -68,14 +68,14 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Map
         [TestMethod]
         public void get_g_V_repeatXoutX_timesX2X_path_by_byXnameX_byXlangX()
         {
-            using (GraphViewCommand graphCommand = this.job.GetCommand())
+            using (GraphViewCommand graphCommand = this.job.Command)
             {
                 graphCommand.OutputFormat = OutputFormat.GraphSON;
                 var vertex = this.getVertexString(graphCommand, "marko");
 
                 this.job.Traversal =
                     graphCommand.g().V().Repeat(GraphTraversal.__().Out()).Times(2).Path().By().By("name").By("lang");
-                dynamic results = JsonConvert.DeserializeObject<dynamic>(StartAzureBatch.AzureBatchJobManager.TestQuery(this.job).FirstOrDefault());
+                dynamic results = JsonConvert.DeserializeObject<dynamic>(this.jobManager.TestQuery(this.job).FirstOrDefault());
 
                 Assert.AreEqual(2, results.Count);
                 List<string> actualList = new List<string>();
@@ -101,14 +101,14 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Map
         [TestMethod]
         public void get_g_V_out_out_path_byXnameX_byXageX()
         {
-            using (GraphViewCommand graphCommand = this.job.GetCommand())
+            using (GraphViewCommand graphCommand = this.job.Command)
             {
                 graphCommand.OutputFormat = OutputFormat.GraphSON;
 
                 this.job.Traversal =
                     graphCommand.g().V().Out().Out().Path().By("name").By("age");
 
-                dynamic results = JsonConvert.DeserializeObject<dynamic>(StartAzureBatch.AzureBatchJobManager.TestQuery(this.job).FirstOrDefault());
+                dynamic results = JsonConvert.DeserializeObject<dynamic>(this.jobManager.TestQuery(this.job).FirstOrDefault());
 
                 Assert.AreEqual(2, results.Count);
 
@@ -143,7 +143,7 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Map
         [TestMethod]
         public void get_g_V_asXaX_hasXname_markoX_asXbX_hasXage_29X_asXcX_path()
         {
-            using (GraphViewCommand graphCommand = this.job.GetCommand())
+            using (GraphViewCommand graphCommand = this.job.Command)
             {
                 graphCommand.OutputFormat = OutputFormat.GraphSON;
                 var vertex = this.getVertexString(graphCommand, "marko");
@@ -151,7 +151,7 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Map
                 this.job.Traversal =
                     graphCommand.g().V().As("a").Has("name", "marko").As("b").Has("age", 29).As("c").Path();
 
-                dynamic results = JsonConvert.DeserializeObject<dynamic>(StartAzureBatch.AzureBatchJobManager.TestQuery(this.job).FirstOrDefault());
+                dynamic results = JsonConvert.DeserializeObject<dynamic>(this.jobManager.TestQuery(this.job).FirstOrDefault());
 
                 Assert.AreEqual(1, results[0]["objects"].Count);
                 Assert.AreEqual(vertex, results[0]["objects"][0].ToString());
@@ -161,7 +161,7 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Map
         [TestMethod]
         public void PathFromToTest()
         {
-            using (GraphViewCommand graphCommand = this.job.GetCommand())
+            using (GraphViewCommand graphCommand = this.job.Command)
             {
                 graphCommand.OutputFormat = OutputFormat.Regular;
 
@@ -172,7 +172,7 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Map
                 this.job.Traversal =
                     graphCommand.g().V(vertexId).As("a").Out().As("a").In().As("b").Out().As("c").In().As("d").Out()
                         .As("d").CyclicPath().From("a").To("c").SimplePath().From("c").To("d").Path();
-                var results = StartAzureBatch.AzureBatchJobManager.TestQuery(this.job);
+                var results = this.jobManager.TestQuery(this.job);
                 Assert.AreEqual(13, results.Count);
             }
         }

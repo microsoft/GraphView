@@ -20,7 +20,7 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Map
         [TestMethod]
         public void HasLabelPersonProjectABByOutECountByAge()
         {
-            using (GraphViewCommand graphCommand = this.job.GetCommand())
+            using (GraphViewCommand graphCommand = this.job.Command)
             {
                 graphCommand.OutputFormat = OutputFormat.GraphSON;
 
@@ -29,7 +29,7 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Map
                                                    .By(GraphTraversal.__().OutE().Count())
                                                    .By("age");
 
-                dynamic results = JsonConvert.DeserializeObject<dynamic>(StartAzureBatch.AzureBatchJobManager.TestQuery(this.job).FirstOrDefault());
+                dynamic results = JsonConvert.DeserializeObject<dynamic>(this.jobManager.TestQuery(this.job).FirstOrDefault());
 
                 List<string> ans = new List<string>();
                 foreach (dynamic result in results)
@@ -59,7 +59,7 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Map
         [TestMethod]
         public void VerticesOutCreatedProjectABByNameByInCreatedCountOrderBySelectB()
         {
-            using (GraphViewCommand graphCommand = this.job.GetCommand())
+            using (GraphViewCommand graphCommand = this.job.Command)
             {
                 this.job.Traversal = graphCommand.g().V().Out("created")
                                                     .Project("a", "b")
@@ -70,7 +70,7 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Map
                                                               GremlinKeyword.Order.Decr)
                                                     .Select("a");
 
-                List<string> result = StartAzureBatch.AzureBatchJobManager.TestQuery(this.job);
+                List<string> result = this.jobManager.TestQuery(this.job);
 
                 CheckUnOrderedResults(new[] { "lop", "lop", "lop", "ripple" }, result);
             }
@@ -79,11 +79,11 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Map
         [TestMethod]
         public void ProjectWithoutByClause()
         {
-            using (GraphViewCommand graphCommand = this.job.GetCommand())
+            using (GraphViewCommand graphCommand = this.job.Command)
             {
                 this.job.Traversal = graphCommand.g().V().Project("a").Select("a").Values("name");
 
-                List<string> result = StartAzureBatch.AzureBatchJobManager.TestQuery(this.job);
+                List<string> result = this.jobManager.TestQuery(this.job);
 
                 CheckUnOrderedResults(new[] { "marko", "vadas", "lop", "josh", "ripple", "peter" }, result);
             }

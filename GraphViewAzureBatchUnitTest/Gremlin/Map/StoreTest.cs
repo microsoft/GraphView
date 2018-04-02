@@ -20,10 +20,14 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Map
         [TestMethod]
         public void VerticesStoreAByNameOutCapA()
         {
-            using (GraphViewCommand graphCommand = this.job.GetCommand())
+            using (GraphViewCommand graphCommand = this.job.Command)
             {
                 this.job.Traversal = graphCommand.g().V().Store("a").By("name").Out().Cap("a");
-                var result = StartAzureBatch.AzureBatchJobManager.TestQuery(this.job).First().Trim('[', ']').Split(',').Select(r => r.Trim(' '));
+                List<string> result = new List<string>();
+                foreach (string res in this.jobManager.TestQuery(this.job))
+                {
+                    result.AddRange(res.Trim('[', ']').Split(',').Select(r => r.Trim(' ')));
+                }
                 var expectedResult = new List<string> { "marko", "josh", "peter", "lop", "ripple", "vadas" };
                 CheckUnOrderedResults(expectedResult, result);
             }
@@ -33,19 +37,19 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Map
         /// Port of the g_VX1X_storeXaX_byXnameX_out_storeXaX_byXnameX_name_capXaX UT from org/apache/tinkerpop/gremlin/process/traversal/step/sideEffect/StoreTest.java.
         /// Equivalent gremlin: "g.V(v1Id).store('a').by('name').out().store('a').by('name').name.cap('a')", "v1Id", v1Id
         /// </summary>
-        /// <remarks>
-        /// WorkItem: https://msdata.visualstudio.com/DocumentDB/_workitems/edit/40056
-        /// </remarks>
         [TestMethod]
-        [TestCategory("Ignore")] // P0: regression
         public void VertexWithIdStoreAByNameOutStoreAByNameValuesNameCapA()
         {
-            using (GraphViewCommand graphCommand = this.job.GetCommand())
+            using (GraphViewCommand graphCommand = this.job.Command)
             {
                 string markoVertexId = this.ConvertToVertexId(graphCommand, "marko");
                 this.job.Traversal = graphCommand.g().V(markoVertexId).Store("a").By("name").Out().Store("a").By("name").Values("name").Cap("a");
 
-                var result = StartAzureBatch.AzureBatchJobManager.TestQuery(this.job).First().Trim('[', ']').Split(',').Select(r => r.Trim(' '));
+                List<string> result = new List<string>();
+                foreach (string res in this.jobManager.TestQuery(this.job))
+                {
+                    result.AddRange(res.Trim('[', ']').Split(',').Select(r => r.Trim(' ')));
+                }
                 var expectedResult = new List<string> { "marko", "josh", "vadas", "lop" };
                 CheckUnOrderedResults(expectedResult, result);
             }
@@ -62,11 +66,14 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Map
         [TestCategory("Ignore")] // P0: regression
         public void VerticesStoreAByOutECountOutOutStoreAByInECreatedValuesWeightSumCapA()
         {
-            using (GraphViewCommand graphCommand = this.job.GetCommand())
+            using (GraphViewCommand graphCommand = this.job.Command)
             {
                 this.job.Traversal = graphCommand.g().V().Store("a").By(GraphTraversal.__().OutE("created").Count()).Out().Out().Store("a").By(GraphTraversal.__().InE("created").Values("weight").Sum()).Cap("a");
-
-                var result = StartAzureBatch.AzureBatchJobManager.TestQuery(this.job).First().Trim('[', ']').Split(',').Select(r => r.Trim(' '));
+                List<string> result = new List<string>();
+                foreach (string res in this.jobManager.TestQuery(this.job))
+                {
+                    result.AddRange(res.Trim('[', ']').Split(',').Select(r => r.Trim(' ')));
+                }
                 var expectedResult = new List<string> { "2", "1", "1", "1", "1", "0", "0", "0" };
                 CheckUnOrderedResults(expectedResult, result);
             }

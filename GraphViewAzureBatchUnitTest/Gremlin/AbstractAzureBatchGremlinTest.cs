@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Configuration;
 using System.Diagnostics;
 using System.Linq;
 using GraphView;
@@ -12,16 +13,63 @@ namespace GraphViewAzureBatchUnitTest.Gremlin
     [TestClass]
     public class AbstractAzureBatchGremlinTest
     {
+        protected AzureBatchJobManager jobManager;
         protected GraphViewAzureBatchJob job;
+
+        internal const bool TEST_USE_REVERSE_EDGE = true;
+        internal const string TEST_PARTITION_BY_KEY = "name";
+        internal const int TEST_SPILLED_EDGE_THRESHOLD_VIAGRAPHAPI = 1;
 
         [TestInitialize]
         public void Setup()
         {
-            this.job = new GraphViewAzureBatchJob();
+            string batchAccountName = ConfigurationManager.AppSettings["BatchAccountName"];
+            string batchAccountKey = ConfigurationManager.AppSettings["BatchAccountKey"];
+            string batchAccountUrl = ConfigurationManager.AppSettings["BatchAccountUrl"];
+            string storageAccountName = ConfigurationManager.AppSettings["StorageAccountName"];
+            string storageAccountKey = ConfigurationManager.AppSettings["StorageAccountKey"];
+            string poolId = "GraphViewPool";
+
+            this.jobManager = new AzureBatchJobManager(batchAccountName, batchAccountKey, batchAccountUrl,
+                storageAccountName, storageAccountKey, poolId);
+
+            int parallelism = 2;
+            string docDBEndPoint = ConfigurationManager.AppSettings["DocDBEndPoint"];
+            string docDBKey = ConfigurationManager.AppSettings["DocDBKey"];
+            string docDBDatabaseId = ConfigurationManager.AppSettings["DocDBDatabaseId"];
+            string docDBCollectionId = ConfigurationManager.AppSettings["DocDBCollectionId"];
+
+            this.job = new GraphViewAzureBatchJob(parallelism, docDBEndPoint, docDBKey, docDBDatabaseId, docDBCollectionId,
+                AbstractAzureBatchGremlinTest.TEST_USE_REVERSE_EDGE, AbstractAzureBatchGremlinTest.TEST_PARTITION_BY_KEY,
+                AbstractAzureBatchGremlinTest.TEST_SPILLED_EDGE_THRESHOLD_VIAGRAPHAPI);
+
+            //If test graph doesn't exist in the cosmosDb, create test graph.
+            //GraphViewCommand graphCommand = this.job.Command;
+            //graphCommand.g().AddV("person").Property("id", "dummy").Property("name", "marko").Property("age", 29).Next();
+            //graphCommand.g().AddV("person").Property("id", "特殊符号").Property("name", "vadas").Property("age", 27).Next();
+            //graphCommand.g().AddV("software").Property("id", "这是一个中文ID").Property("name", "lop").Property("lang", "java").Next();
+            //graphCommand.g().AddV("person").Property("id", "引号").Property("name", "josh").Property("age", 32).Next();
+            //graphCommand.g().AddV("software").Property("id", "中文English").Property("name", "ripple").Property("lang", "java").Next();
+            //graphCommand.g().AddV("person").Property("name", "peter").Property("age", 35).Next();  // Auto generate document id
+            //graphCommand.g().V().Has("name", "marko").AddE("knows").Property("weight", 0.5d).To(graphCommand.g().V().Has("name", "vadas")).Next();
+            //graphCommand.g().V().Has("name", "marko").AddE("knows").Property("weight", 1.0d).To(graphCommand.g().V().Has("name", "josh")).Next();
+            //graphCommand.g().V().Has("name", "marko").AddE("created").Property("weight", 0.4d).To(graphCommand.g().V().Has("name", "lop")).Next();
+            //graphCommand.g().V().Has("name", "josh").AddE("created").Property("weight", 1.0d).To(graphCommand.g().V().Has("name", "ripple")).Next();
+            //graphCommand.g().V().Has("name", "josh").AddE("created").Property("weight", 0.4d).To(graphCommand.g().V().Has("name", "lop")).Next();
+            //graphCommand.g().V().Has("name", "peter").AddE("created").Property("weight", 0.2d).To(graphCommand.g().V().Has("name", "lop")).Next();
         }
 
         [TestCleanup]
-        public void Cleanup() { }
+        public void Cleanup()
+        {
+            //string docDBEndPoint = ConfigurationManager.AppSettings["DocDBEndPoint"];
+            //string docDBKey = ConfigurationManager.AppSettings["DocDBKey"];
+            //string docDBDatabaseId = ConfigurationManager.AppSettings["DocDBDatabaseId"];
+            //string docDBCollectionId = ConfigurationManager.AppSettings["DocDBCollectionId"];
+            //GraphViewConnection.ResetGraphAPICollection(docDBEndPoint, docDBKey, docDBDatabaseId, docDBCollectionId,
+            //    AbstractAzureBatchGremlinTest.TEST_USE_REVERSE_EDGE, AbstractAzureBatchGremlinTest.TEST_SPILLED_EDGE_THRESHOLD_VIAGRAPHAPI,
+            //    AbstractAzureBatchGremlinTest.TEST_PARTITION_BY_KEY);
+        }
 
         public static void CheckUnOrderedResults<T>(IEnumerable<T> expected, IEnumerable<T> actual)
         {
@@ -115,7 +163,7 @@ namespace GraphViewAzureBatchUnitTest.Gremlin
             command.OutputFormat = OutputFormat.Regular;
 
             job.Traversal = command.g().V().Has("name", name).Id();
-            string id = StartAzureBatch.AzureBatchJobManager.TestQuery(job).FirstOrDefault();
+            string id = this.jobManager.TestQuery(job).FirstOrDefault();
 
             command.OutputFormat = originalFormat;
             job.Traversal = originalTraversal;
@@ -129,7 +177,7 @@ namespace GraphViewAzureBatchUnitTest.Gremlin
             command.OutputFormat = OutputFormat.Regular;
 
             job.Traversal = command.g().V().Has("name", outVertexName).OutE(edgeLabel).As("e").InV().Has("name", inVertexName).Select("e").Values("id");
-            string id = StartAzureBatch.AzureBatchJobManager.TestQuery(job).FirstOrDefault();
+            string id = this.jobManager.TestQuery(job).FirstOrDefault();
 
             job.Traversal = null;
             command.OutputFormat = originalFormat;
@@ -144,7 +192,7 @@ namespace GraphViewAzureBatchUnitTest.Gremlin
             command.OutputFormat = OutputFormat.Regular;
 
             job.Traversal = command.g().V().Has("name", vertexName).Properties(property).HasValue(propertyValue).Id();
-            string propertyId = StartAzureBatch.AzureBatchJobManager.TestQuery(job).FirstOrDefault();
+            string propertyId = this.jobManager.TestQuery(job).FirstOrDefault();
 
             job.Traversal = null;
             command.OutputFormat = originalFormat;
@@ -157,7 +205,7 @@ namespace GraphViewAzureBatchUnitTest.Gremlin
             Debug.Assert(job.Traversal == null);
             command.OutputFormat = OutputFormat.GraphSON;
             job.Traversal = command.g().V().Has("name", vertexName);
-            string result = StartAzureBatch.AzureBatchJobManager.TestQuery(job).FirstOrDefault();
+            string result = this.jobManager.TestQuery(job).FirstOrDefault();
             job.Traversal = null;
             return JsonConvert.DeserializeObject<dynamic>(result).First.ToString();
         }
@@ -165,6 +213,19 @@ namespace GraphViewAzureBatchUnitTest.Gremlin
         public static List<string> ConvertToList(dynamic result)
         {
             return ((JArray)result).Select(p => p.ToString()).ToList();
+        }
+
+        public static string GetLongestResult(List<string> results)
+        {
+            string longest = results.FirstOrDefault();
+            foreach (string res in results)
+            {
+                if (res.Length > longest.Length)
+                {
+                    longest = res;
+                }
+            }
+            return longest;
         }
     }
 }

@@ -30,7 +30,21 @@ namespace StartAzureBatch
             }
         }
 
-        internal readonly string query;
+        internal string query;
+        public String Query
+        {
+            get
+            {
+                return query;
+            }
+            set
+            {
+                query = value;
+                this.jobId = Guid.NewGuid().ToString("N");
+            }
+        }
+
+        public GraphViewCommand Command { get; }
 
         internal string jobId;
 
@@ -45,40 +59,28 @@ namespace StartAzureBatch
         internal readonly string partitionByKey;
         internal readonly int spilledEdgeThresholdViagraphAPI;
 
+        public int TimeLimit { get; set; } = 60; // Time limit of this query in seconds.
         internal bool IsSuccess { get; set; } = false;
         internal string Result { get; set; }
 
-        public GraphViewAzureBatchJob()
+        public GraphViewAzureBatchJob(int parallelism, string docDBEndPoint, string docDBKey, string docDBDatabaseId,
+            string docDBCollectionId, bool useReverseEdge, string partitionByKey, int spilledEdgeThresholdViagraphAPI)
         {
-            //this.query = "g.V().has('name', 'marko').emit(__.has('label', 'person')).repeat(__.out()).values('name')";
-            this.query = "g.V().has('name', 'marko').repeat(__.out()).until(__.outE().count().is(0)).values('name')";
+            this.parallelism = parallelism;
 
-            this.jobId = Guid.NewGuid().ToString("N");
+            this.docDBEndPoint = docDBEndPoint;
+            this.docDBKey = docDBKey;
+            this.docDBDatabaseId = docDBDatabaseId;
+            this.docDBCollectionId = docDBCollectionId;
+            this.useReverseEdge = useReverseEdge;
+            this.partitionByKey = partitionByKey;
+            this.spilledEdgeThresholdViagraphAPI = spilledEdgeThresholdViagraphAPI;
 
-            this.parallelism = 2;
-
-            this.docDBEndPoint = "";
-            this.docDBKey = "";
-            this.docDBDatabaseId = "GroupMatch";
-            this.docDBCollectionId = "Modern";
-            this.useReverseEdge = true;
-            this.partitionByKey = "name";
-            this.spilledEdgeThresholdViagraphAPI = 1;
-        }
-
-        public GraphViewAzureBatchJob(string query) : this()
-        {
-            this.query = query;
-        }
-
-        public GraphViewCommand GetCommand()
-        {
             GraphViewConnection connection = new GraphViewConnection(
                 this.docDBEndPoint, this.docDBKey, this.docDBDatabaseId, this.docDBCollectionId,
                 GraphType.GraphAPIOnly, this.useReverseEdge, this.spilledEdgeThresholdViagraphAPI, this.partitionByKey);
-            return new GraphViewCommand(connection);
+            this.Command = new GraphViewCommand(connection);
         }
-
     }
 
     public class AzureBatchJobManager
@@ -100,15 +102,15 @@ namespace StartAzureBatch
         private readonly string denpendencyPath;
         private readonly string exeName;
 
-        public AzureBatchJobManager()
+        public AzureBatchJobManager(string batchAccountName, string batchAccountKey, string batchAccountUrl, string storageAccountName, string storageAccountKey, string poolId)
         {
-            this.batchAccountName = "";
-            this.batchAccountKey = "";
-            this.batchAccountUrl = "";
+            this.batchAccountName = batchAccountName;
+            this.batchAccountKey = batchAccountKey;
+            this.batchAccountUrl = batchAccountUrl;
 
-            this.storageConnectionString = "DefaultEndpointsProtocol=https;AccountName=;AccountKey=";
+            this.storageConnectionString = $"DefaultEndpointsProtocol=https;AccountName={storageAccountName};AccountKey={storageAccountKey}";
 
-            this.poolId = "GraphViewPool";
+            this.poolId = poolId;
 
             this.outputContainerNamePrefix = "output";
             this.appContainerNamePrefix = "application";
@@ -119,34 +121,9 @@ namespace StartAzureBatch
             this.CreatePoolIfNotExistAsync().Wait();
         }
 
-        public static void Main(string[] args)
-        {
-            try
-            {
-                AzureBatchJobManager jobManager = new AzureBatchJobManager();
-                GraphViewAzureBatchJob graphViewJob = new GraphViewAzureBatchJob();
-
-                jobManager.RunQueryAsync(graphViewJob).Wait();
-            }
-            catch (AggregateException ae)
-            {
-                Console.WriteLine();
-                Console.WriteLine("One or more exceptions occurred.");
-                Console.WriteLine();
-
-                PrintAggregateException(ae);
-            }
-            finally
-            {
-                Console.WriteLine();
-                Console.WriteLine("Sample complete, hit ENTER to exit...");
-                Console.ReadLine();
-            }
-        }
-
         private async Task RunQueryAsync(GraphViewAzureBatchJob job)
         {
-            Console.WriteLine($"Query {job.query} start.");
+            Console.WriteLine($"Query start.");
 
             Console.WriteLine("[compile query] start");
             string compileStr = CompileQuery(job);
@@ -171,7 +148,7 @@ namespace StartAzureBatch
             using (BatchClient batchClient = BatchClient.Open(cred))
             {
                 //          IP   , AffinityId
-                List<Tuple<string, string>> nodeInfo =  this.AllocateComputeNode(batchClient, job);
+                List<Tuple<string, string>> nodeInfo = this.AllocateComputeNode(batchClient, job);
 
                 Console.WriteLine("[make partition plan] start");
                 string partitionStr = MakePartitionPlan(nodeInfo, job);
@@ -204,7 +181,7 @@ namespace StartAzureBatch
                 string[] args = { "-file", compileResultPath, partitionPath, outputContainerSasUrl };
                 await this.AddTasksAsync(batchClient, job, nodeInfo, resourceFiles, args);
 
-                job.IsSuccess = await MonitorTasks(batchClient, job.jobId, TimeSpan.FromSeconds(30));
+                job.IsSuccess = await MonitorTasks(batchClient, job.jobId, TimeSpan.FromSeconds(job.TimeLimit));
 
                 await this.DownloadAndAggregateOutputAsync(blobClient, outputContainerName, job);
 
@@ -234,8 +211,8 @@ namespace StartAzureBatch
             }
             else
             {
-                GraphViewCommand command = job.GetCommand();
-                command.CommandText = job.query;
+                GraphViewCommand command = job.Command;
+                command.CommandText = job.Query;
                 return command.CompileAndSerialize();
             }
         }
@@ -676,33 +653,6 @@ namespace StartAzureBatch
         }
 
         // For Debug
-        public static void RunQueryLocal(string query)
-        {
-            GraphViewAzureBatchJob job = new GraphViewAzureBatchJob(query);
-
-            string compileStr = CompileQuery(job);
-
-            List<PartitionPlan> plans = new List<PartitionPlan>();
-            plans.Add(new PartitionPlan(
-                "_partition",
-                PartitionMethod.CompareEntire,
-                "127.0.0.1",
-                8000, // port 
-                new List<string> { "marko", "vadas", "lop", "josh", "ripple", "peter" }));
-            string partitionStr = PartitionPlan.SerializePatitionPlans(plans);
-
-            Environment.SetEnvironmentVariable("PARTITION_PLAN_INDEX", "0");
-
-            List<string> result = GraphTraversal.ExecuteQueryByDeserialization(compileStr, partitionStr);
-
-            // for Debug
-            foreach (var r in result)
-            {
-                Console.WriteLine(r);
-            }
-        }
-
-        // For Debug
         private void DeletePool()
         {
             BatchSharedKeyCredentials cred = new BatchSharedKeyCredentials(this.batchAccountUrl, this.batchAccountName, this.batchAccountKey);
@@ -723,7 +673,7 @@ namespace StartAzureBatch
         }
 
         // For Debug
-        private void ClearResource()
+        public void ClearResource()
         {
             CloudStorageAccount storageAccount = CloudStorageAccount.Parse(this.storageConnectionString);
             CloudBlobClient blobClient = storageAccount.CreateCloudBlobClient();
@@ -742,29 +692,40 @@ namespace StartAzureBatch
             }
         }
 
-        public static List<string> TestQuery(string query)
+        public List<string> TestQuery(GraphViewAzureBatchJob graphViewJob)
         {
-            AzureBatchJobManager jobManager = new AzureBatchJobManager();
-            GraphViewAzureBatchJob graphViewJob = new GraphViewAzureBatchJob(query);
-
-            jobManager.RunQueryAsync(graphViewJob).Wait();
+            this.RunQueryAsync(graphViewJob).Wait();
 
             if (graphViewJob.IsSuccess)
             {
-                return graphViewJob.Result.Split(new[] {"\r\n", "\r", "\n"}, StringSplitOptions.RemoveEmptyEntries).ToList();
-            }
-            throw new GraphViewException($"Run Query {query} failed!");
-        }
+                List<string> result = graphViewJob.Result.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.RemoveEmptyEntries).ToList();
 
-        public static List<string> TestQuery(GraphViewAzureBatchJob graphViewJob)
-        {
-            AzureBatchJobManager jobManager = new AzureBatchJobManager();
+                graphViewJob.traversal = null;
+                graphViewJob.query = null;
 
-            jobManager.RunQueryAsync(graphViewJob).Wait();
+                // todo: If the result is set-type.(like aggregate/store). the result need be merged.
+                // todo: If the result is global-map-type.(like groupCount('x').cap('x')). need remove redundant results.
 
-            if (graphViewJob.IsSuccess)
-            {
-                return graphViewJob.Result.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.RemoveEmptyEntries).ToList();
+                if (graphViewJob.Command.OutputFormat == OutputFormat.GraphSON)
+                {
+                    string mergeRes = "[";
+                    foreach (string res in result)
+                    {
+                        if (res == "[]")
+                        {
+                            continue;
+                        }
+                        if (mergeRes.Length > 1)
+                        {
+                            mergeRes += ", ";
+                        }
+                        mergeRes += res.Substring(1, res.Length - 2);
+                    }
+                    mergeRes += "]";
+                    return new List<string>() { mergeRes };
+                }
+
+                return result;
             }
             throw new GraphViewException("Run Query failed!");
         }

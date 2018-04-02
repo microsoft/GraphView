@@ -1,4 +1,5 @@
-﻿using System;
+﻿//#define PRINT_SEND_TIME
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -96,6 +97,9 @@ namespace GraphView
 
         public void SendMessage(string message, int targetTask)
         {
+#if PRINT_SEND_TIME
+            var watch = System.Diagnostics.Stopwatch.StartNew();
+#endif
             MessageServiceClient client = ConstructClient(targetTask);
 
             for (int i = 0; i < this.retryLimit; i++)
@@ -103,6 +107,10 @@ namespace GraphView
                 try
                 {
                     client.SendMessage(message);
+#if  PRINT_SEND_TIME
+                    watch.Stop();
+                    Console.WriteLine($"SendMessage use time:{watch.ElapsedMilliseconds}, message length:{message.Length}, retry number:{i}");
+#endif
                     return;
                 }
                 catch (Exception e)
@@ -118,6 +126,9 @@ namespace GraphView
 
         public void SendMessage(string message, int targetTask, int currentTask)
         {
+#if PRINT_SEND_TIME
+            var watch = System.Diagnostics.Stopwatch.StartNew();
+#endif
             MessageServiceClient client = ConstructClient(targetTask);
 
             for (int i = 0; i < this.retryLimit; i++)
@@ -125,6 +136,10 @@ namespace GraphView
                 try
                 {
                     client.SendMessageWithSource(message, currentTask);
+#if PRINT_SEND_TIME
+                    watch.Stop();
+                    Console.WriteLine($"SendMessage use time:{watch.ElapsedMilliseconds}, message length:{message.Length}, retry number:{i}");
+#endif
                     return;
                 }
                 catch (Exception e)
@@ -140,6 +155,9 @@ namespace GraphView
 
         public void SendSignal(string signal, int targetTask)
         {
+#if PRINT_SEND_TIME
+            var watch = System.Diagnostics.Stopwatch.StartNew();
+#endif
             MessageServiceClient client = ConstructClient(targetTask);
 
             for (int i = 0; i < this.retryLimit; i++)
@@ -147,6 +165,10 @@ namespace GraphView
                 try
                 {
                     client.SendSignal(signal);
+#if PRINT_SEND_TIME
+                    watch.Stop();
+                    Console.WriteLine($"SendSignal use time:{watch.ElapsedMilliseconds}, retry number:{i}");
+#endif
                     return;
                 }
                 catch (Exception e)
@@ -162,6 +184,9 @@ namespace GraphView
 
         public void SendSignal(string signal, int targetTask, int currentTask)
         {
+#if PRINT_SEND_TIME
+            var watch = System.Diagnostics.Stopwatch.StartNew();
+#endif
             MessageServiceClient client = ConstructClient(targetTask);
 
             for (int i = 0; i < this.retryLimit; i++)
@@ -169,6 +194,10 @@ namespace GraphView
                 try
                 {
                     client.SendSignalWithSource(signal, currentTask);
+#if PRINT_SEND_TIME
+                    watch.Stop();
+                    Console.WriteLine($"SendSignal use time:{watch.ElapsedMilliseconds}, retry number:{i}");
+#endif
                     return;
                 }
                 catch (Exception e)
@@ -927,6 +956,11 @@ namespace GraphView
     //    }
     //}
 
+    // bug: If PropertyField exists in MapField, the program might throw exception.
+    // Because MapField is a dictionary, When deserialize MapField in RawRecord, GetHashCode() will be invoked.
+    // However, PropertyField only has SearchInfo data, GetHashCode() will throw exception.
+    // And VertexField has similar problem in test "g_V_Group_by_select".
+    // todo: resolve this bug.
     [DataContract]
     internal class RawRecordMessage
     {
@@ -947,6 +981,9 @@ namespace GraphView
 
         public static string CodeMessage(RawRecord record)
         {
+#if PRINT_SEND_TIME
+            var watch = System.Diagnostics.Stopwatch.StartNew();
+#endif
             using (MemoryStream memStream = new MemoryStream())
             {
                 DataContractSerializer ser = new DataContractSerializer(typeof(RawRecordMessage));
@@ -954,12 +991,20 @@ namespace GraphView
 
                 memStream.Position = 0;
                 StreamReader stringReader = new StreamReader(memStream);
-                return stringReader.ReadToEnd();
+                string message = stringReader.ReadToEnd();
+#if PRINT_SEND_TIME
+                watch.Stop();
+                Console.WriteLine($"CodeMessage use time:{watch.ElapsedMilliseconds}");
+#endif
+                return message;
             }
         }
 
         public static RawRecord DecodeMessage(string message, GraphViewCommand command)
         {
+#if PRINT_SEND_TIME
+            var watch = System.Diagnostics.Stopwatch.StartNew();
+#endif
             using (MemoryStream stream = new MemoryStream())
             {
                 StreamWriter writer = new StreamWriter(stream);
@@ -969,7 +1014,12 @@ namespace GraphView
 
                 DataContractSerializer deser = new DataContractSerializer(typeof(RawRecordMessage));
                 RawRecordMessage rawRecordMessage = (RawRecordMessage)deser.ReadObject(stream);
-                return rawRecordMessage.ReconstructRawRecord(command);
+                RawRecord record = rawRecordMessage.ReconstructRawRecord(command);
+#if PRINT_SEND_TIME
+                watch.Stop();
+                Console.WriteLine($"DecodeMessage use time:{watch.ElapsedMilliseconds}");
+#endif
+                return record;
             }
         }
 

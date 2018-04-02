@@ -20,7 +20,7 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Map
         [TestMethod]
         public void HasVertexIdAsAOutKnowsAsBSelectAB()
         {
-            using (GraphViewCommand graphCommand = this.job.GetCommand())
+            using (GraphViewCommand graphCommand = this.job.Command)
             {
                 string markoVertexId = this.ConvertToVertexId(graphCommand, "marko");
                 string vadasVertexId = this.ConvertToVertexId(graphCommand, "vadas");
@@ -32,7 +32,7 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Map
                     .Out("knows").As("b")
                     .Select("a", "b");
 
-                List<string> result = StartAzureBatch.AzureBatchJobManager.TestQuery(this.job);
+                List<string> result = this.jobManager.TestQuery(this.job);
 
                 dynamic dynamicResult = JsonConvert.DeserializeObject<dynamic>(result.FirstOrDefault());
                 Assert.AreEqual(2, dynamicResult.Count);
@@ -52,7 +52,7 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Map
         [TestMethod]
         public void HasVertexIdAsAOutKnowsAsBSelectABByName()
         {
-            using (GraphViewCommand graphCommand = this.job.GetCommand())
+            using (GraphViewCommand graphCommand = this.job.Command)
             {
                 string markoVertexId = this.ConvertToVertexId(graphCommand, "marko");
 
@@ -62,7 +62,7 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Map
                     .Out("knows").As("b")
                     .Select("a", "b").By("name");
 
-                List<string> result = StartAzureBatch.AzureBatchJobManager.TestQuery(this.job);
+                List<string> result = this.jobManager.TestQuery(this.job);
                 dynamic dynamicResult = JsonConvert.DeserializeObject<dynamic>(result.FirstOrDefault());
 
                 Assert.AreEqual(2, dynamicResult.Count);
@@ -81,7 +81,7 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Map
         [TestMethod]
         public void HasVertexIdAsAOutKnowsAsBSelectA()
         {
-            using (GraphViewCommand graphCommand = this.job.GetCommand())
+            using (GraphViewCommand graphCommand = this.job.Command)
             {
                 string markoVertexId = this.ConvertToVertexId(graphCommand, "marko");
 
@@ -91,7 +91,7 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Map
                     .Out("knows").As("b")
                     .Select("a");
 
-                List<string> result = StartAzureBatch.AzureBatchJobManager.TestQuery(this.job);
+                List<string> result = this.jobManager.TestQuery(this.job);
                 dynamic dynamicResult = JsonConvert.DeserializeObject<dynamic>(result.FirstOrDefault());
 
                 Assert.AreEqual(2, dynamicResult.Count);
@@ -109,7 +109,7 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Map
         [TestMethod]
         public void HasVertexIdAsAOutKnowsAsBSelectAByName()
         {
-            using (GraphViewCommand graphCommand = this.job.GetCommand())
+            using (GraphViewCommand graphCommand = this.job.Command)
             {
                 string markoVertexId = this.ConvertToVertexId(graphCommand, "marko");
 
@@ -119,7 +119,7 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Map
                     .Out("knows").As("b")
                     .Select("a").By("name");
 
-                List<string> result = StartAzureBatch.AzureBatchJobManager.TestQuery(this.job);
+                List<string> result = this.jobManager.TestQuery(this.job);
                 dynamic dynamicResult = JsonConvert.DeserializeObject<dynamic>(result.FirstOrDefault());
 
                 Assert.AreEqual(2, dynamicResult.Count);
@@ -137,7 +137,7 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Map
         [TestMethod]
         public void VerticesAsAOutAsBSelectABByName()
         {
-            using (GraphViewCommand graphCommand = this.job.GetCommand())
+            using (GraphViewCommand graphCommand = this.job.Command)
             {
                 graphCommand.OutputFormat = OutputFormat.GraphSON;
                 this.job.Traversal = graphCommand.g().V()
@@ -145,7 +145,7 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Map
                     .Out().As("b")
                     .Select("a", "b").By("name");
 
-                List<string> result = StartAzureBatch.AzureBatchJobManager.TestQuery(this.job);
+                List<string> result = this.jobManager.TestQuery(this.job);
                 dynamic dynamicResult = JsonConvert.DeserializeObject<dynamic>(result.FirstOrDefault());
                 List<string> ans = new List<string>();
                 foreach (var temp in dynamicResult)
@@ -164,7 +164,7 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Map
         [TestMethod]
         public void VerticesAsAOutAggregateXAsBSelectABByName()
         {
-            using (GraphViewCommand graphCommand = this.job.GetCommand())
+            using (GraphViewCommand graphCommand = this.job.Command)
             {
                 graphCommand.OutputFormat = OutputFormat.GraphSON;
                 this.job.Traversal = graphCommand.g().V()
@@ -172,7 +172,7 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Map
                     .Out().Aggregate("x").As("b")
                     .Select("a", "b").By("name");
 
-                List<string> result = StartAzureBatch.AzureBatchJobManager.TestQuery(this.job);
+                List<string> result = this.jobManager.TestQuery(this.job);
                 dynamic dynamicResult = JsonConvert.DeserializeObject<dynamic>(result.FirstOrDefault());
 
                 List<string> ans = new List<string>();
@@ -192,7 +192,7 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Map
         [TestMethod]
         public void VerticesAsAValuesNameOrderAsBSelectABByNameBy()
         {
-            using (GraphViewCommand graphCommand = this.job.GetCommand())
+            using (GraphViewCommand graphCommand = this.job.Command)
             {
                 graphCommand.OutputFormat = OutputFormat.GraphSON;
                 this.job.Traversal = graphCommand.g().V()
@@ -201,7 +201,7 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Map
                     .Order().As("b").Select("a", "b").By("name")
                     .By();
 
-                List<string> result = StartAzureBatch.AzureBatchJobManager.TestQuery(this.job);
+                List<string> result = this.jobManager.TestQuery(this.job);
                 dynamic dynamicResult = JsonConvert.DeserializeObject<dynamic>(result.FirstOrDefault());
                 List<string> ans = new List<string>();
                 foreach (var temp in dynamicResult)
@@ -230,14 +230,14 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Map
         [TestMethod]
         public void HasNameIsMarkoAsASelectA()
         {
-            using (GraphViewCommand graphCommand = this.job.GetCommand())
+            using (GraphViewCommand graphCommand = this.job.Command)
             {
                 graphCommand.OutputFormat = OutputFormat.GraphSON;
                 this.job.Traversal = graphCommand.g().V()
                     .Has("name", GraphTraversal.__().Is("marko"))
                     .As("a").Select("a");
 
-                List<string> result = StartAzureBatch.AzureBatchJobManager.TestQuery(this.job);
+                List<string> result = this.jobManager.TestQuery(this.job);
                 dynamic dynamicResult = JsonConvert.DeserializeObject<dynamic>(result.FirstOrDefault());
                 Assert.AreEqual(1, dynamicResult.Count);
                 Assert.AreEqual(ConvertToVertexId(graphCommand, "marko"), (string) dynamicResult[0]["id"]);
@@ -251,14 +251,14 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Map
         [TestMethod]
         public void HasLabelPersonAsPMapBothELabelGroupCountAsRSelectPR()
         {
-            using (GraphViewCommand graphCommand = this.job.GetCommand())
+            using (GraphViewCommand graphCommand = this.job.Command)
             {
                 graphCommand.OutputFormat = OutputFormat.GraphSON;
                 this.job.Traversal = graphCommand.g().V()
                     .HasLabel("person").As("p")
                     .Map(GraphTraversal.__().BothE().Label().GroupCount()).As("r").Select("p", "r");
 
-                var results = StartAzureBatch.AzureBatchJobManager.TestQuery(this.job);
+                var results = this.jobManager.TestQuery(this.job);
                 dynamic dynamicResult = JsonConvert.DeserializeObject<dynamic>(results.FirstOrDefault());
 
                 Assert.AreEqual(4, dynamicResult.Count);
@@ -297,7 +297,7 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Map
         [TestMethod]
         public void ChooseOutECountIs0AsAsBChooseSelectASelectASelectB()
         {
-            using (GraphViewCommand graphCommand = this.job.GetCommand())
+            using (GraphViewCommand graphCommand = this.job.Command)
             {
                 graphCommand.OutputFormat = OutputFormat.GraphSON;
                 this.job.Traversal = graphCommand.g().V().Choose(
@@ -309,7 +309,7 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Map
                         GraphTraversal.__().Select("a"),
                         GraphTraversal.__().Select("b"));
 
-                var results = StartAzureBatch.AzureBatchJobManager.TestQuery(this.job);
+                var results = this.jobManager.TestQuery(this.job);
                 dynamic dynamicResult = JsonConvert.DeserializeObject<dynamic>(results.FirstOrDefault());
 
                 int counter = 0;
@@ -344,14 +344,14 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Map
         [TestMethod]
         public void HasVertexIdAsHereOutSelectHere()
         {
-            using (GraphViewCommand graphCommand = this.job.GetCommand())
+            using (GraphViewCommand graphCommand = this.job.Command)
             {
                 string vertexId1 = this.ConvertToVertexId(graphCommand, "marko");
 
                 graphCommand.OutputFormat = OutputFormat.GraphSON;
                 this.job.Traversal = graphCommand.g().V().HasId(vertexId1).As("here").Out().Select("here");
 
-                List<string> result = StartAzureBatch.AzureBatchJobManager.TestQuery(this.job);
+                List<string> result = this.jobManager.TestQuery(this.job);
                 dynamic dynamicResult = JsonConvert.DeserializeObject<dynamic>(result.FirstOrDefault());
 
                 Assert.AreEqual(3, dynamicResult.Count);
@@ -369,7 +369,7 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Map
         [TestMethod]
         public void HasVertexIdOutAsHereHasLangJavaSelectHere()
         {
-            using (GraphViewCommand graphCommand = this.job.GetCommand())
+            using (GraphViewCommand graphCommand = this.job.Command)
             {
                 string vertexId1 = this.ConvertToVertexId(graphCommand, "josh");
 
@@ -377,7 +377,7 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Map
                 this.job.Traversal = graphCommand.g().V().HasId(vertexId1).Out().As("here").Has("lang", "java")
                     .Select("here");
 
-                List<string> result = StartAzureBatch.AzureBatchJobManager.TestQuery(this.job);
+                List<string> result = this.jobManager.TestQuery(this.job);
                 dynamic dynamicResult = JsonConvert.DeserializeObject<dynamic>(result.FirstOrDefault());
 
                 Assert.AreEqual(2, dynamicResult.Count);
@@ -398,7 +398,7 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Map
         [TestMethod]
         public void HasVertexIdOutEAsHereInVHasNameVadasSelectHere()
         {
-            using (GraphViewCommand graphCommand = this.job.GetCommand())
+            using (GraphViewCommand graphCommand = this.job.Command)
             {
                 string vertexId1 = this.ConvertToVertexId(graphCommand, "marko");
                 string vertexId2 = this.ConvertToVertexId(graphCommand, "vadas");
@@ -406,7 +406,7 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Map
                 graphCommand.OutputFormat = OutputFormat.GraphSON;
                 this.job.Traversal = graphCommand.g().V().HasId(vertexId1).OutE().As("here").InV().Has("name", "vadas")
                     .Select("here");
-                List<string> result = StartAzureBatch.AzureBatchJobManager.TestQuery(this.job);
+                List<string> result = this.jobManager.TestQuery(this.job);
                 dynamic dynamicResult = JsonConvert.DeserializeObject<dynamic>(result.FirstOrDefault());
 
                 Assert.AreEqual(1, dynamicResult.Count);
@@ -425,13 +425,13 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Map
         [TestMethod]
         public void HasVertexIdOutAsHereHasLangJavaSelectHereName()
         {
-            using (GraphViewCommand graphCommand = this.job.GetCommand())
+            using (GraphViewCommand graphCommand = this.job.Command)
             {
                 string vertexId1 = this.ConvertToVertexId(graphCommand, "josh");
                 this.job.Traversal = graphCommand.g().V().HasId(vertexId1).Out().As("here").Has("lang", "java")
                     .Select("here").Values("name");
 
-                List<string> result = StartAzureBatch.AzureBatchJobManager.TestQuery(this.job);
+                List<string> result = this.jobManager.TestQuery(this.job);
                 Assert.AreEqual(2, result.Count);
                 Assert.IsTrue(result.Contains("ripple"));
                 Assert.IsTrue(result.Contains("lop"));
@@ -445,7 +445,7 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Map
         [TestMethod]
         public void HasVertexIdOutEKnowsHasWeight1AsHereInVHasNameJoshSelectHere()
         {
-            using (GraphViewCommand graphCommand = this.job.GetCommand())
+            using (GraphViewCommand graphCommand = this.job.Command)
             {
                 string vertexId1 = this.ConvertToVertexId(graphCommand, "marko");
 
@@ -453,7 +453,7 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Map
                 this.job.Traversal = graphCommand.g().V().HasId(vertexId1).OutE("knows").Has("weight", 1.0d).As("here")
                     .InV().Has("name", "josh").Select("here");
 
-                List<string> result = StartAzureBatch.AzureBatchJobManager.TestQuery(this.job);
+                List<string> result = this.jobManager.TestQuery(this.job);
                 dynamic dynamicResult = JsonConvert.DeserializeObject<dynamic>(result.FirstOrDefault());
                 AssertCommonB(dynamicResult);
             }
@@ -466,7 +466,7 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Map
         [TestMethod]
         public void HasVertexIdOutEKnowsAsHereHasWeight1AsFakeInVHasNameJoshSelectHere()
         {
-            using (GraphViewCommand graphCommand = this.job.GetCommand())
+            using (GraphViewCommand graphCommand = this.job.Command)
             {
                 string vertexId1 = this.ConvertToVertexId(graphCommand, "marko");
 
@@ -474,7 +474,7 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Map
                 this.job.Traversal = graphCommand.g().V().HasId(vertexId1).OutE("knows").As("here").Has("weight", 1.0d)
                     .As("fake").InV().Has("name", "josh").Select("here");
 
-                List<string> result = StartAzureBatch.AzureBatchJobManager.TestQuery(this.job);
+                List<string> result = this.jobManager.TestQuery(this.job);
                 dynamic dynamicResult = JsonConvert.DeserializeObject<dynamic>(result.FirstOrDefault());
                 AssertCommonB(dynamicResult);
             }
@@ -487,12 +487,12 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Map
         [TestMethod]
         public void VerticesAsHereOutValuesNameSelectHere()
         {
-            using (GraphViewCommand graphCommand = this.job.GetCommand())
+            using (GraphViewCommand graphCommand = this.job.Command)
             {
                 this.job.Traversal = graphCommand.g().V().As("here").Out().Values("name").Select("here").Values("name");
 
                 // NOTE: actual tests for complete vertice, but here we just validate that the names are correct. We can do so since the names are unique.
-                List<string> result = StartAzureBatch.AzureBatchJobManager.TestQuery(this.job);
+                List<string> result = this.jobManager.TestQuery(this.job);
                 var expectedResult = new List<string> {"marko", "marko", "marko", "josh", "josh", "peter"};
                 CheckUnOrderedResults(expectedResult, result);
             }
@@ -505,13 +505,13 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Map
         [TestMethod]
         public void VerticesAsAHasNameMarkoAsBAsCSelectABCByByNameByAge()
         {
-            using (GraphViewCommand graphCommand = this.job.GetCommand())
+            using (GraphViewCommand graphCommand = this.job.Command)
             {
                 graphCommand.OutputFormat = OutputFormat.GraphSON;
                 this.job.Traversal = graphCommand.g().V().As("a").Has("name", "marko").As("b").As("c")
                     .Select("a", "b", "c").By().By("name").By("age");
 
-                List<string> result = StartAzureBatch.AzureBatchJobManager.TestQuery(this.job);
+                List<string> result = this.jobManager.TestQuery(this.job);
                 dynamic dynamicResult = JsonConvert.DeserializeObject<dynamic>(result.FirstOrDefault());
 
                 Assert.AreEqual(1, dynamicResult.Count);
@@ -533,14 +533,14 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Map
         public void
             HasLabelSoftwareAsNameAsLanguageAsCreatorsSelectNameLanguageCreatorsByNameByLangByInCreatedValuesNameFoldOrderLocal()
         {
-            using (GraphViewCommand graphCommand = this.job.GetCommand())
+            using (GraphViewCommand graphCommand = this.job.Command)
             {
                 graphCommand.OutputFormat = OutputFormat.GraphSON;
                 this.job.Traversal = graphCommand.g().V().HasLabel("software").As("name").As("language").As("creators")
                     .Select("name", "language", "creators").By("name").By("lang").By(GraphTraversal.__().In("created")
                         .Values("name").Fold().Order(GremlinKeyword.Scope.Local));
 
-                var results = StartAzureBatch.AzureBatchJobManager.TestQuery(this.job);
+                var results = this.jobManager.TestQuery(this.job);
                 dynamic dynamicResult = JsonConvert.DeserializeObject<dynamic>(results.FirstOrDefault());
 
                 Assert.AreEqual(2, dynamicResult.Count);
@@ -571,7 +571,7 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Map
         [TestMethod]
         public void VerticesSelectA()
         {
-            using (GraphViewCommand graphCommand = this.job.GetCommand())
+            using (GraphViewCommand graphCommand = this.job.Command)
             {
                 GremlinKeyword.Pop?[] pops =
                     {null, GremlinKeyword.Pop.All, GremlinKeyword.Pop.First, GremlinKeyword.Pop.Last};
@@ -580,7 +580,7 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Map
                     var root = graphCommand.g().V();
                     this.job.Traversal = (!pop.HasValue) ? root.Select("a") : root.Select(pop.Value, "a");
 
-                    List<string> result = StartAzureBatch.AzureBatchJobManager.TestQuery(this.job);
+                    List<string> result = this.jobManager.TestQuery(this.job);
                     Assert.AreEqual(0, result.Count);
                 }
             }
@@ -598,13 +598,13 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Map
         [TestMethod]
         public void VerticesUntilOutOutRepeatInAsASelectAByTailLocalName()
         {
-            using (GraphViewCommand graphCommand = this.job.GetCommand())
+            using (GraphViewCommand graphCommand = this.job.Command)
             {
                 this.job.Traversal = graphCommand.g().V().Until(GraphTraversal.__().Out().Out())
                     .Repeat(GraphTraversal.__().In().As("a")).Select("a")
                     .By(GraphTraversal.__().Tail(GremlinKeyword.Scope.Local).Unfold().Values("name"));
 
-                var results = StartAzureBatch.AzureBatchJobManager.TestQuery(this.job);
+                var results = this.jobManager.TestQuery(this.job);
                 Assert.AreEqual(5, results.Count);
                 foreach (var result in results)
                 {
@@ -620,13 +620,13 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Map
         [TestMethod]
         public void VerticesUntilOutOutRepeatInAsAInAsBSelectABByName()
         {
-            using (GraphViewCommand graphCommand = this.job.GetCommand())
+            using (GraphViewCommand graphCommand = this.job.Command)
             {
                 graphCommand.OutputFormat = OutputFormat.GraphSON;
                 this.job.Traversal = graphCommand.g().V().Until(GraphTraversal.__().Out().Out())
                     .Repeat(GraphTraversal.__().In().As("a").In().As("b")).Select("a", "b").By("name");
 
-                List<string> result = StartAzureBatch.AzureBatchJobManager.TestQuery(this.job);
+                List<string> result = this.jobManager.TestQuery(this.job);
                 dynamic dynamicResult = JsonConvert.DeserializeObject<dynamic>(result.FirstOrDefault());
 
                 Assert.AreEqual(2, dynamicResult.Count);
@@ -645,12 +645,12 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Map
         [TestMethod]
         public void VerticesAsAWhereOutKnowsSelectA()
         {
-            using (GraphViewCommand graphCommand = this.job.GetCommand())
+            using (GraphViewCommand graphCommand = this.job.Command)
             {
                 graphCommand.OutputFormat = OutputFormat.GraphSON;
                 this.job.Traversal = graphCommand.g().V().As("a").Where(GraphTraversal.__().Out("knows")).Select("a");
 
-                List<string> result = StartAzureBatch.AzureBatchJobManager.TestQuery(this.job);
+                List<string> result = this.jobManager.TestQuery(this.job);
                 dynamic dynamicResult = JsonConvert.DeserializeObject<dynamic>(result.FirstOrDefault());
 
                 Assert.AreEqual(1, dynamicResult.Count);
@@ -666,11 +666,11 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Map
         [TestMethod]
         public void VerticesOutEValuesWeightGroupCountSelectKeys()
         {
-            using (GraphViewCommand graphCommand = this.job.GetCommand())
+            using (GraphViewCommand graphCommand = this.job.Command)
             {
                 this.job.Traversal = graphCommand.g().V().OutE().Values("weight").GroupCount()
                     .Select(GremlinKeyword.Column.Keys).Unfold();
-                var results = StartAzureBatch.AzureBatchJobManager.TestQuery(this.job);
+                var results = this.jobManager.TestQuery(this.job);
 
                 CheckUnOrderedResults(new[] {"0.5", "1", "0.4", "0.2"}, results);
             }
@@ -685,11 +685,11 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Map
         [TestMethod]
         public void VerticesOutEValuesWeightGroupCountSelectValues()
         {
-            using (GraphViewCommand graphCommand = this.job.GetCommand())
+            using (GraphViewCommand graphCommand = this.job.Command)
             {
                 this.job.Traversal = graphCommand.g().V().OutE().Values("weight").GroupCount()
                     .Select(GremlinKeyword.Column.Values).Unfold();
-                var results = StartAzureBatch.AzureBatchJobManager.TestQuery(this.job);
+                var results = this.jobManager.TestQuery(this.job);
 
                 CheckUnOrderedResults(new[] {"1", "1", "2", "2"}, results);
             }
@@ -705,13 +705,13 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Map
         [TestMethod]
         public void VerticesAsAOutKnowsAsBLocalSelectABByName()
         {
-            using (GraphViewCommand graphCommand = this.job.GetCommand())
+            using (GraphViewCommand graphCommand = this.job.Command)
             {
                 graphCommand.OutputFormat = OutputFormat.GraphSON;
                 this.job.Traversal = graphCommand.g().V().As("a").Out("knows").As("b")
                     .Local(GraphTraversal.__().Select("a", "b").By("name"));
 
-                List<string> result = StartAzureBatch.AzureBatchJobManager.TestQuery(this.job);
+                List<string> result = this.jobManager.TestQuery(this.job);
                 dynamic dynamicResult = JsonConvert.DeserializeObject<dynamic>(result.FirstOrDefault());
 
                 Assert.AreEqual(2, dynamicResult.Count);

@@ -21,11 +21,11 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Filter
         [TestMethod]
         public void VIdOutLimit2()
         {
-            using (GraphViewCommand graphCommand = this.job.GetCommand())
+            using (GraphViewCommand graphCommand = this.job.Command)
             {
                 this.job.Traversal = graphCommand.g().V().Has("name", "marko").Out().Has("name").Limit(2);
 
-                var result = StartAzureBatch.AzureBatchJobManager.TestQuery(this.job);
+                var result = this.jobManager.TestQuery(this.job);
                 Assert.AreEqual(2, result.Count);
             }
         }
@@ -37,11 +37,11 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Filter
         [TestMethod]
         public void LocalOutELimit1InVLimit3()
         {
-            using (GraphViewCommand graphCommand = this.job.GetCommand())
+            using (GraphViewCommand graphCommand = this.job.Command)
             {
                 this.job.Traversal = graphCommand.g().V().Local(GraphTraversal.__().OutE().Limit(1)).InV().Limit(3);
 
-                var result = StartAzureBatch.AzureBatchJobManager.TestQuery(this.job);
+                var result = this.jobManager.TestQuery(this.job);
                 Assert.AreEqual(3, result.Count);
             }
         }
@@ -53,11 +53,11 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Filter
         [TestMethod]
         public void VIdOutKnowsOutECreatedRange0_1InV()
         {
-            using (GraphViewCommand graphCommand = this.job.GetCommand())
+            using (GraphViewCommand graphCommand = this.job.Command)
             {
                 this.job.Traversal = graphCommand.g().V().Has("name", "marko").Out("knows").OutE("created").Range(0, 1).InV().Values("name");
 
-                var results = StartAzureBatch.AzureBatchJobManager.TestQuery(this.job);
+                var results = this.jobManager.TestQuery(this.job);
                 Assert.AreEqual(1, results.Count);
                 Assert.AreEqual(true, string.Equals(results.FirstOrDefault(), "lop") || string.Equals(results.FirstOrDefault(), "ripple"));
             }
@@ -70,11 +70,11 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Filter
         [TestMethod]
         public void VIdOutKnowsOutCreatedRange0_1()
         {
-            using (GraphViewCommand graphCommand = this.job.GetCommand())
+            using (GraphViewCommand graphCommand = this.job.Command)
             {
                 this.job.Traversal = graphCommand.g().V().Has("name", "marko").Out("knows").Out("created").Range(0, 1).Values("name");
 
-                var results = StartAzureBatch.AzureBatchJobManager.TestQuery(this.job);
+                var results = this.jobManager.TestQuery(this.job);
                 Assert.AreEqual(1, results.Count);
                 Assert.AreEqual(true, string.Equals(results.FirstOrDefault(), "lop") || string.Equals(results.FirstOrDefault(), "ripple"));
             }
@@ -87,11 +87,11 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Filter
         [TestMethod]
         public void VIdOutCreatedInCreatedRange1_3()
         {
-            using (GraphViewCommand graphCommand = this.job.GetCommand())
+            using (GraphViewCommand graphCommand = this.job.Command)
             {
                 this.job.Traversal = graphCommand.g().V().Has("name", "marko").Out("created").In("created").Range(1, 3).Values("name");
 
-                var results = StartAzureBatch.AzureBatchJobManager.TestQuery(this.job);
+                var results = this.jobManager.TestQuery(this.job);
                 Assert.AreEqual(2, results.Count);
                 Assert.AreEqual(true, string.Equals(results.FirstOrDefault(), "marko") || string.Equals(results.FirstOrDefault(), "josh") || string.Equals(results.FirstOrDefault(), "peter"));
             }
@@ -104,11 +104,11 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Filter
         [TestMethod]
         public void VIdOutCreatedInECreatedRange1_3OutV()
         {
-            using (GraphViewCommand graphCommand = this.job.GetCommand())
+            using (GraphViewCommand graphCommand = this.job.Command)
             {
                 this.job.Traversal = graphCommand.g().V().Has("name", "marko").Out("created").InE("created").Range(1, 3).OutV().Values("name");
 
-                var results = StartAzureBatch.AzureBatchJobManager.TestQuery(this.job);
+                var results = this.jobManager.TestQuery(this.job);
                 Assert.AreEqual(2, results.Count);
                 Assert.AreEqual(true, string.Equals(results.FirstOrDefault(), "marko") || string.Equals(results.FirstOrDefault(), "josh") || string.Equals(results.FirstOrDefault(), "peter"));
             }
@@ -121,11 +121,11 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Filter
         [TestMethod]
         public void RepeatBothTimes3Range5_11()
         {
-            using (GraphViewCommand graphCommand = this.job.GetCommand())
+            using (GraphViewCommand graphCommand = this.job.Command)
             {
                 this.job.Traversal = graphCommand.g().V().Repeat(GraphTraversal.__().Both()).Times(3).Range(5, 11);
 
-                var results = StartAzureBatch.AzureBatchJobManager.TestQuery(this.job);
+                var results = this.jobManager.TestQuery(this.job);
                 Assert.AreEqual(6, results.Count);
             }
         }
@@ -137,11 +137,11 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Filter
         [TestMethod]
         public void AsAInAsAInASASelectAByUnfoldValuesNameFoldLimitLocal_2()
         {
-            using (GraphViewCommand graphCommand = this.job.GetCommand())
+            using (GraphViewCommand graphCommand = this.job.Command)
             {
                 graphCommand.OutputFormat = OutputFormat.GraphSON;
                 this.job.Traversal = graphCommand.g().V().As("a").In().As("a").In().As("a").Select("a").By(GraphTraversal.__().Unfold().Values("name").Fold()).Limit(GremlinKeyword.Scope.Local, 2);
-                dynamic results = JsonConvert.DeserializeObject<dynamic>(StartAzureBatch.AzureBatchJobManager.TestQuery(this.job).FirstOrDefault());
+                dynamic results = JsonConvert.DeserializeObject<dynamic>(this.jobManager.TestQuery(this.job).FirstOrDefault());
                 CheckUnOrderedResults(new[] { "lop,josh", "ripple,josh" }, ((JArray)results).Select(p => $"{p[0]},{p[1]}").ToList());
             }
         }
@@ -153,10 +153,10 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Filter
         [TestMethod]
         public void AsAInAsAInASASelectAByUnfoldValuesNameFoldLimitLocal_1()
         {
-            using (GraphViewCommand graphCommand = this.job.GetCommand())
+            using (GraphViewCommand graphCommand = this.job.Command)
             {
                 this.job.Traversal = graphCommand.g().V().As("a").In().As("a").In().As("a").Select("a").By(GraphTraversal.__().Unfold().Values("name").Fold()).Limit(GremlinKeyword.Scope.Local, 1);
-                var results = StartAzureBatch.AzureBatchJobManager.TestQuery(this.job);
+                var results = this.jobManager.TestQuery(this.job);
 
                 CheckUnOrderedResults(new[] { "lop", "ripple" }, results);
             }
@@ -169,11 +169,11 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Filter
         [TestMethod]
         public void AsAOutAsAOutASASelectAByUnfoldValuesNameFoldLimitRangeLocal_1_3()
         {
-            using (GraphViewCommand graphCommand = this.job.GetCommand())
+            using (GraphViewCommand graphCommand = this.job.Command)
             {
                 graphCommand.OutputFormat = OutputFormat.GraphSON;
                 this.job.Traversal = graphCommand.g().V().As("a").Out().As("a").Out().As("a").Select("a").By(GraphTraversal.__().Unfold().Values("name").Fold()).Range(GremlinKeyword.Scope.Local, 1, 3);
-                dynamic results = JsonConvert.DeserializeObject<dynamic>(StartAzureBatch.AzureBatchJobManager.TestQuery(this.job).FirstOrDefault());
+                dynamic results = JsonConvert.DeserializeObject<dynamic>(this.jobManager.TestQuery(this.job).FirstOrDefault());
                 CheckUnOrderedResults(new[] { "josh,ripple", "josh,lop" }, ((JArray)results).Select(p => $"{p[0]},{p[1]}").ToList());
             }
         }
@@ -185,10 +185,10 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Filter
         [TestMethod]
         public void AsAOutAsAOutASASelectAByUnfoldValuesNameFoldLimitRangeLocal_1_2()
         {
-            using (GraphViewCommand graphCommand = this.job.GetCommand())
+            using (GraphViewCommand graphCommand = this.job.Command)
             {
                 this.job.Traversal = graphCommand.g().V().As("a").Out().As("a").Out().As("a").Select("a").By(GraphTraversal.__().Unfold().Values("name").Fold()).Range(GremlinKeyword.Scope.Local, 1, 2);
-                CheckUnOrderedResults(new[] { "josh", "josh" }, StartAzureBatch.AzureBatchJobManager.TestQuery(this.job));
+                CheckUnOrderedResults(new[] { "josh", "josh" }, this.jobManager.TestQuery(this.job));
             }
         }
 
@@ -199,10 +199,10 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Filter
         [TestMethod]
         public void AsAOutAsAOutASASelectAByUnfoldValuesNameFoldLimitRangeLocal_4_5()
         {
-            using (GraphViewCommand graphCommand = this.job.GetCommand())
+            using (GraphViewCommand graphCommand = this.job.Command)
             {
                 this.job.Traversal = graphCommand.g().V().As("a").Out().As("a").Out().As("a").Select("a").By(GraphTraversal.__().Unfold().Values("name").Fold()).Range(GremlinKeyword.Scope.Local, 4, 5);
-                Assert.IsTrue(StartAzureBatch.AzureBatchJobManager.TestQuery(this.job).Count == 0);
+                Assert.IsTrue(this.jobManager.TestQuery(this.job).Count == 0);
             }
         }
 
@@ -213,11 +213,11 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Filter
         [TestMethod]
         public void AsAInAsBInASCSelectA_B_CByNameLimitLocal_2()
         {
-            using (GraphViewCommand graphCommand = this.job.GetCommand())
+            using (GraphViewCommand graphCommand = this.job.Command)
             {
                 graphCommand.OutputFormat = OutputFormat.GraphSON;
                 this.job.Traversal = graphCommand.g().V().As("a").In().As("b").In().As("c").Select("a", "b", "c").By("name").Limit(GremlinKeyword.Scope.Local, 2);
-                dynamic results = JsonConvert.DeserializeObject<dynamic>(StartAzureBatch.AzureBatchJobManager.TestQuery(this.job).FirstOrDefault());
+                dynamic results = JsonConvert.DeserializeObject<dynamic>(this.jobManager.TestQuery(this.job).FirstOrDefault());
                 CheckUnOrderedResults(new[] { "lop,josh", "ripple,josh" }, ((JArray)results).Select(p => $"{p["a"]},{p["b"]}").ToList());
             }
         }
@@ -229,11 +229,11 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Filter
         [TestMethod]
         public void AsAInAsBInASCSelectA_B_CByNameLimitLocal_1()
         {
-            using (GraphViewCommand graphCommand = this.job.GetCommand())
+            using (GraphViewCommand graphCommand = this.job.Command)
             {
                 graphCommand.OutputFormat = OutputFormat.GraphSON;
                 this.job.Traversal = graphCommand.g().V().As("a").In().As("b").In().As("c").Select("a", "b", "c").By("name").Limit(GremlinKeyword.Scope.Local, 1);
-                dynamic results = JsonConvert.DeserializeObject<dynamic>(StartAzureBatch.AzureBatchJobManager.TestQuery(this.job).FirstOrDefault());
+                dynamic results = JsonConvert.DeserializeObject<dynamic>(this.jobManager.TestQuery(this.job).FirstOrDefault());
                 CheckUnOrderedResults(new[] { "lop", "ripple" }, ((JArray)results).Select(p => (string)p["a"]).ToList());
             }
         }
@@ -245,11 +245,11 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Filter
         [TestMethod]
         public void AsAOutAsBOutASCSelectA_B_CByNameRangeLocal_1_3()
         {
-            using (GraphViewCommand graphCommand = this.job.GetCommand())
+            using (GraphViewCommand graphCommand = this.job.Command)
             {
                 graphCommand.OutputFormat = OutputFormat.GraphSON;
                 this.job.Traversal = graphCommand.g().V().As("a").Out().As("b").Out().As("c").Select("a", "b", "c").By("name").Range(GremlinKeyword.Scope.Local, 1, 3);
-                dynamic results = JsonConvert.DeserializeObject<dynamic>(StartAzureBatch.AzureBatchJobManager.TestQuery(this.job).FirstOrDefault());
+                dynamic results = JsonConvert.DeserializeObject<dynamic>(this.jobManager.TestQuery(this.job).FirstOrDefault());
                 CheckUnOrderedResults(new[] { "josh,ripple", "josh,lop" }, ((JArray)results).Select(p => $"{p["b"]},{p["c"]}").ToList());
             }
         }
@@ -261,11 +261,11 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Filter
         [TestMethod]
         public void AsAOutAsBOutASCSelectA_B_CByNameRangeLocal_1_2()
         {
-            using (GraphViewCommand graphCommand = this.job.GetCommand())
+            using (GraphViewCommand graphCommand = this.job.Command)
             {
                 graphCommand.OutputFormat = OutputFormat.GraphSON;
                 this.job.Traversal = graphCommand.g().V().As("a").Out().As("b").Out().As("c").Select("a", "b", "c").By("name")/*.Range(GremlinKeyword.Scope.Local, 1, 2)*/;
-                dynamic results = JsonConvert.DeserializeObject<dynamic>(StartAzureBatch.AzureBatchJobManager.TestQuery(this.job).FirstOrDefault());
+                dynamic results = JsonConvert.DeserializeObject<dynamic>(this.jobManager.TestQuery(this.job).FirstOrDefault());
                 CheckUnOrderedResults(new[] { "josh", "josh" }, ((JArray)results).Select(p => p["b"].ToString()).ToList());
             }
         }
@@ -273,11 +273,11 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Filter
         [TestMethod]
         public void RangeLocalProjection()
         {
-            using (GraphViewCommand command = this.job.GetCommand())
+            using (GraphViewCommand command = this.job.Command)
             {
                 this.job.Traversal = command.g()
                     .V().Fold().Range(GremlinKeyword.Scope.Local, 2, 5).Unfold().Values("name");
-                var result = StartAzureBatch.AzureBatchJobManager.TestQuery(this.job);
+                var result = this.jobManager.TestQuery(this.job);
                 Debug.Assert(result.Count == 3);
             }
         }

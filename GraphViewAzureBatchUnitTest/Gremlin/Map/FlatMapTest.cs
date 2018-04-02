@@ -13,26 +13,18 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Map
         [TestMethod]
         public void FlatMapWithSelect()
         {
-            string query = "g.V().as('a').flatMap(__.select('a'))";
-            List<string> results = StartAzureBatch.AzureBatchJobManager.TestQuery(query);
-            Console.WriteLine("-------------Test Result-------------");
-            foreach (string result in results)
-            {
-                Console.WriteLine(result);
-            }
+            this.job.Query = "g.V().as('a').flatMap(__.select('a'))";
+            List<string> results = this.jobManager.TestQuery(this.job);
+
             Assert.AreEqual(6, results.Count);
         }
 
         [TestMethod]
         public void FlatMapOut()
         {
-            string query = "g.V().flatMap(__.out()).values('name')";
-            List<string> results = StartAzureBatch.AzureBatchJobManager.TestQuery(query);
-            Console.WriteLine("-------------Test Result-------------");
-            foreach (string result in results)
-            {
-                Console.WriteLine(result);
-            }
+            this.job.Query = "g.V().flatMap(__.out()).values('name')";
+            List<string> results = this.jobManager.TestQuery(this.job);
+
             List<string> correctResults = new List<string>
             {
                 "lop",

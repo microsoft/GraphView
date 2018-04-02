@@ -21,11 +21,11 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Map
         [TestMethod]
         public void BasicFold()
         {
-            using (GraphViewCommand graphCommand = this.job.GetCommand())
+            using (GraphViewCommand graphCommand = this.job.Command)
             {
                 graphCommand.OutputFormat = OutputFormat.GraphSON;
                 this.job.Traversal = graphCommand.g().V().Fold();
-                List<string> results = StartAzureBatch.AzureBatchJobManager.TestQuery(this.job);
+                List<string> results = this.jobManager.TestQuery(this.job);
                 dynamic result = JsonConvert.DeserializeObject<dynamic>(results.FirstOrDefault());
                 graphCommand.OutputFormat = OutputFormat.Regular;
 
@@ -42,13 +42,12 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Map
         [TestMethod]
         public void FoldThenUnfold()
         {
-            using (GraphViewCommand graphCommand = this.job.GetCommand())
+            using (GraphViewCommand graphCommand = this.job.Command)
             {
                 graphCommand.OutputFormat = OutputFormat.GraphSON;
                 this.job.Traversal = graphCommand.g().V().Fold().Unfold();
-                List<string> results = StartAzureBatch.AzureBatchJobManager.TestQuery(this.job);
+                List<string> results = this.jobManager.TestQuery(this.job);
                 dynamic result = JsonConvert.DeserializeObject<dynamic>(results.FirstOrDefault());
-                graphCommand.OutputFormat = OutputFormat.Regular;
 
                 Assert.AreEqual(6, ((JArray)result).Count);
             }

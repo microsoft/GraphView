@@ -21,13 +21,13 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Map
         [TestMethod]
         public void VerticesHasAgePropertiesHasIdNameIdValue()
         {
-            using (GraphViewCommand graphCommand = this.job.GetCommand())
+            using (GraphViewCommand graphCommand = this.job.Command)
             {
                 string markoNameVertexPropertyId = this.ConvertToPropertyId(graphCommand, "marko", "name", "marko");
 
                 this.job.Traversal = graphCommand.g().V().Has("age").Properties().Has("id", markoNameVertexPropertyId).Value();
 
-                List<string> result = StartAzureBatch.AzureBatchJobManager.TestQuery(this.job);
+                List<string> result = this.jobManager.TestQuery(this.job);
 
                 Assert.AreEqual(1, result.Count);
                 Assert.AreEqual("marko", result.First());
@@ -44,11 +44,11 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Map
         [TestMethod]
         public void VerticesHasAgePropertiesName()
         {
-            using (GraphViewCommand graphCommand = this.job.GetCommand())
+            using (GraphViewCommand graphCommand = this.job.Command)
             {
                 this.job.Traversal = graphCommand.g().V().Has("age").Properties("name");
 
-                List<string> result = StartAzureBatch.AzureBatchJobManager.TestQuery(this.job);
+                List<string> result = this.jobManager.TestQuery(this.job);
 
                 Assert.AreEqual(4, result.Count);
 

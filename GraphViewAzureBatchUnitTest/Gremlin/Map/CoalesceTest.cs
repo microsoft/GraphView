@@ -4,6 +4,7 @@ using System.Linq;
 using System.Reflection.Emit;
 using System.Text;
 using System.Threading.Tasks;
+using GraphView;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Newtonsoft.Json;
 
@@ -15,70 +16,59 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Map
         [TestMethod]
         public void CoalesceWithNonexistentTraversals()
         {
-            string query = "g.V().coalesce(__.out('foo'), __.out('bar'))";
-            List<string> results = StartAzureBatch.AzureBatchJobManager.TestQuery(query);
-            Console.WriteLine("-------------Test Result-------------");
-            foreach (string result in results)
-            {
-                Console.WriteLine(result);
-            }
+            this.job.Query = "g.V().coalesce(__.out('foo'), __.out('bar'))";
+            List<string> results = this.jobManager.TestQuery(this.job);
+
             Assert.IsFalse(results.Any());
         }
 
         [TestMethod]
         public void CoalesceWithTwoTraversals()
         {
-            string query = "g.V().has('name', 'marko').coalesce(__.out('knows'), __.out('created')).values('name')";
-            List<string> results = StartAzureBatch.AzureBatchJobManager.TestQuery(query);
-            Console.WriteLine("-------------Test Result-------------");
-            foreach (string result in results)
-            {
-                Console.WriteLine(result);
-            }
+            this.job.Query = "g.V().has('name', 'marko').coalesce(__.out('knows'), __.out('created')).values('name')";
+            List<string> results = this.jobManager.TestQuery(this.job);
+
             CheckUnOrderedResults(new string[] { "josh", "vadas" }, results);
         }
 
         [TestMethod]
         public void CoalesceWithTraversalsInDifferentOrder()
         {
-            string query = "g.V().has('name', 'marko').coalesce(__.out('created'), __.out('knows')).values('name')";
-            List<string> results = StartAzureBatch.AzureBatchJobManager.TestQuery(query);
-            Console.WriteLine("-------------Test Result-------------");
-            foreach (string result in results)
-            {
-                Console.WriteLine(result);
-            }
+            this.job.Query = "g.V().has('name', 'marko').coalesce(__.out('created'), __.out('knows')).values('name')";
+            List<string> results = this.jobManager.TestQuery(this.job);
+
             CheckUnOrderedResults(new string[] { "lop" }, results);
         }
 
         [TestMethod]
         public void CoalesceWithGroupCount()
         {
-            string query = "g.V().coalesce(__.out('likes'), __.out('knows'), __.out('created')).groupCount().by('name')";
-            List<string> results = StartAzureBatch.AzureBatchJobManager.TestQuery(query);
-            Console.WriteLine("-------------Test Result-------------");
-            foreach (string result in results)
+            using (GraphViewCommand graphViewCommand = this.job.Command)
             {
-                Console.WriteLine(result);
+                graphViewCommand.OutputFormat = OutputFormat.GraphSON;
+                this.job.Traversal = graphViewCommand.g().V()
+                    .Coalesce(
+                        GraphTraversal.__().Out("likes"),
+                        GraphTraversal.__().Out("knows"),
+                        GraphTraversal.__().Out("created"))
+                    .GroupCount()
+                    .By("name");
+
+                var result = JsonConvert.DeserializeObject<dynamic>(this.jobManager.TestQuery(this.job).FirstOrDefault());
+                Assert.AreEqual(1, (int)result[0]["josh"]);
+                Assert.AreEqual(2, (int)result[0]["lop"]);
+                Assert.AreEqual(1, (int)result[0]["ripple"]);
+                Assert.AreEqual(1, (int)result[0]["vadas"]);
             }
-            var convertResults = JsonConvert.DeserializeObject<dynamic>(results.FirstOrDefault());
-            Assert.AreEqual(1, (int)convertResults[0]["josh"]);
-            Assert.AreEqual(2, (int)convertResults[0]["lop"]);
-            Assert.AreEqual(1, (int)convertResults[0]["ripple"]);
-            Assert.AreEqual(1, (int)convertResults[0]["vadas"]);
         }
 
         [TestMethod]
         public void CoalesceWithPath()
         {
             // gremlin: g.V().coalesce(__.outE('knows'), __.outE('created')).otherV().path().by('name').by(label)
-            string query = "g.V().coalesce(__.outE('knows'), __.outE('created')).otherV().path().by('name').by('label')";
-            List<string> results = StartAzureBatch.AzureBatchJobManager.TestQuery(query);
-            Console.WriteLine("-------------Test Result-------------");
-            foreach (string row in results)
-            {
-                Console.WriteLine(row);
-            }
+            this.job.Query = "g.V().coalesce(__.outE('knows'), __.outE('created')).otherV().path().by('name').by('label')";
+            List<string> results = this.jobManager.TestQuery(this.job);
+
             Assert.IsTrue(results.Count == 5);
             List<string> correctResults = new List<string>
             {

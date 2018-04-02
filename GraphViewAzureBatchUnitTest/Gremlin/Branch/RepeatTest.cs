@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using GraphView;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Newtonsoft.Json;
 
@@ -14,13 +15,9 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Branch
         [TestMethod]
         public void VerticesRepeatOutTimes2EmitPath()
         {
-            string query = "g.V().repeat(__.out()).times(2).emit().path().by('name')";
-            List<string> results = StartAzureBatch.AzureBatchJobManager.TestQuery(query);
-            Console.WriteLine("-------------Test Result-------------");
-            foreach (string result in results)
-            {
-                Console.WriteLine(result);
-            }
+            this.job.Query = "g.V().repeat(__.out()).times(2).emit().path().by('name')";
+            List<string> results = this.jobManager.TestQuery(this.job);
+
             List<string> correctResults = new List<string>
             {
                 "[marko, lop]",
@@ -38,13 +35,9 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Branch
         [TestMethod]
         public void VerticesRepeatOutTimes2RepeatInTimes2ValuesName()
         {
-            string query = "g.V().repeat(__.out()).times(2).repeat(__.in()).times(2).values('name')";
-            List<string> results = StartAzureBatch.AzureBatchJobManager.TestQuery(query);
-            Console.WriteLine("-------------Test Result-------------");
-            foreach (string result in results)
-            {
-                Console.WriteLine(result);
-            }
+            this.job.Query = "g.V().repeat(__.out()).times(2).repeat(__.in()).times(2).values('name')";
+            List<string> results = this.jobManager.TestQuery(this.job);
+
             List<string> correctResults = new List<string> { "marko", "marko" };
             CheckUnOrderedResults(correctResults, results);
         }
@@ -52,13 +45,9 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Branch
         [TestMethod]
         public void VerticesRepeatOutTimes2()
         {
-            string query = "g.V().repeat(__.out()).times(2).values('name')";
-            List<string> results = StartAzureBatch.AzureBatchJobManager.TestQuery(query);
-            Console.WriteLine("-------------Test Result-------------");
-            foreach (string result in results)
-            {
-                Console.WriteLine(result);
-            }
+            this.job.Query = "g.V().repeat(__.out()).times(2).values('name')";
+            List<string> results = this.jobManager.TestQuery(this.job);
+
             List<string> correctResults = new List<string> { "ripple", "lop" };
             CheckUnOrderedResults(correctResults, results);
         }
@@ -66,13 +55,8 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Branch
         [TestMethod]
         public void VerticesRepeatOutTimes2Emit()
         {
-            string query = "g.V().repeat(__.out()).times(2).emit().values('name')";
-            List<string> results = StartAzureBatch.AzureBatchJobManager.TestQuery(query);
-            Console.WriteLine("-------------Test Result-------------");
-            foreach (string result in results)
-            {
-                Console.WriteLine(result);
-            }
+            this.job.Query = "g.V().repeat(__.out()).times(2).emit().values('name')";
+            List<string> results = this.jobManager.TestQuery(this.job);
 
             Dictionary<string, long> map = new Dictionary<string, long>();
             foreach (string name in results)
@@ -96,13 +80,9 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Branch
         [TestMethod]
         public void HasVertexIdTimes2RepeatOutValuesName()
         {
-            string query = "g.V().has('name', 'marko').times(2).repeat(__.out()).values('name')";
-            List<string> results = StartAzureBatch.AzureBatchJobManager.TestQuery(query);
-            Console.WriteLine("-------------Test Result-------------");
-            foreach (string result in results)
-            {
-                Console.WriteLine(result);
-            }
+            this.job.Query = "g.V().has('name', 'marko').times(2).repeat(__.out()).values('name')";
+            List<string> results = this.jobManager.TestQuery(this.job);
+
             List<string> correctResults = new List<string> { "ripple", "lop" };
             CheckUnOrderedResults(correctResults, results);
         }
@@ -110,13 +90,9 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Branch
         [TestMethod]
         public void VerticesEmitTimes2RepeatOutPath()
         {
-            string query = "g.V().emit().times(2).repeat(__.out()).path().by('name')";
-            List<string> results = StartAzureBatch.AzureBatchJobManager.TestQuery(query);
-            Console.WriteLine("-------------Test Result-------------");
-            foreach (string result in results)
-            {
-                Console.WriteLine(result);
-            }
+            this.job.Query = "g.V().emit().times(2).repeat(__.out()).path().by('name')";
+            List<string> results = this.jobManager.TestQuery(this.job);
+
             List<string> correctResults = new List<string>
             {
                 "[marko]",
@@ -141,13 +117,9 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Branch
         [TestMethod]
         public void VerticesEmitRepeatOutTimes2Path()
         {
-            string query = "g.V().emit().repeat(__.out()).times(2).path().by('name')";
-            List<string> results = StartAzureBatch.AzureBatchJobManager.TestQuery(query);
-            Console.WriteLine("-------------Test Result-------------");
-            foreach (string result in results)
-            {
-                Console.WriteLine(result);
-            }
+            this.job.Query = "g.V().emit().repeat(__.out()).times(2).path().by('name')";
+            List<string> results = this.jobManager.TestQuery(this.job);
+
             List<string> correctResults = new List<string>
             {
                 "[marko]",
@@ -171,13 +143,9 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Branch
         [TestMethod]
         public void HasVertexIdEmitHasLabelPersonRepeatOutValuesName()
         {
-            string query = "g.V().has('name', 'marko').emit(__.hasLabel('person')).repeat(__.out()).values('name')";
-            List<string> results = StartAzureBatch.AzureBatchJobManager.TestQuery(query);
-            Console.WriteLine("-------------Test Result-------------");
-            foreach (string result in results)
-            {
-                Console.WriteLine(result);
-            }
+            this.job.Query = "g.V().has('name', 'marko').emit(__.hasLabel('person')).repeat(__.out()).values('name')";
+            List<string> results = this.jobManager.TestQuery(this.job);
+
             List<string> correctResults = new List<string>
             {
                 "marko", "josh", "vadas"
@@ -186,75 +154,59 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Branch
         }
 
         [TestMethod]
-        [Ignore]
         public void VerticesRepeatGroupCountMByNameOutTimes2CapM()
         {
-            string query = "g.V().repeat(__.groupCount('m').by('name').out()).times(2).cap('m')";
-            List<string> result = StartAzureBatch.AzureBatchJobManager.TestQuery(query);
-            Console.WriteLine("-------------Test Result-------------");
-            foreach (string res in result)
+            using (GraphViewCommand graphCommand = this.job.Command)
             {
-                Console.WriteLine(res);
+                graphCommand.OutputFormat = OutputFormat.GraphSON;
+                this.job.Traversal = graphCommand.g().V().Repeat(GraphTraversal.__().GroupCount("m").By("name").Out()).Times(2).Cap("m");
+                dynamic results = JsonConvert.DeserializeObject<dynamic>(this.jobManager.TestQuery(this.job)[0]);
+                Assert.AreEqual(1, results.Count);
+                var result = results[0];
+                Assert.AreEqual(2, (int)result["ripple"]);
+                Assert.AreEqual(1, (int)result["peter"]);
+                Assert.AreEqual(2, (int)result["vadas"]);
+                Assert.AreEqual(2, (int)result["josh"]);
+                Assert.AreEqual(4, (int)result["lop"]);
+                Assert.AreEqual(1, (int)result["marko"]);
             }
-
-            Assert.AreEqual(1, result.Count);
-            dynamic results = JsonConvert.DeserializeObject<dynamic>(result[0]);
-            Assert.AreEqual(1, results.Count);
-            Assert.AreEqual(2, (int)results[0]["ripple"]);
-            Assert.AreEqual(1, (int)results[0]["peter"]);
-            Assert.AreEqual(2, (int)results[0]["vadas"]);
-            Assert.AreEqual(2, (int)results[0]["josh"]);
-            Assert.AreEqual(4, (int)results[0]["lop"]);
-            Assert.AreEqual(1, (int)results[0]["marko"]);
         }
 
         [TestMethod]
-        [Ignore]
         public void VerticesRepeatBothTimes10AsAOutAsBSelectAB()
         {
-            string query = "g.V().repeat(__.both()).times(10).as('a').out().as('b').select('a', 'b')";
-            List<string> result = StartAzureBatch.AzureBatchJobManager.TestQuery(query);
-            Console.WriteLine("-------------Test Result-------------");
-            foreach (string res in result)
+            using (GraphViewCommand graphCommand = this.job.Command)
             {
-                Console.WriteLine(res);
-            }
+                graphCommand.OutputFormat = OutputFormat.GraphSON;
+                this.job.Traversal = graphCommand.g().V().Repeat(GraphTraversal.__().Both()).Times(3).As("a").Out().As("b").Select("a", "b");
 
-            int counter = 0;
-            dynamic results = JsonConvert.DeserializeObject<dynamic>(result[0]);
-            foreach (var res in results)
-            {
-                Assert.IsTrue(res["a"] != null);
-                Assert.IsTrue(res["b"] != null);
-                counter++;
+                int counter = 0;
+                dynamic results = JsonConvert.DeserializeObject<dynamic>(this.jobManager.TestQuery(this.job)[0]);
+                foreach (var result in results)
+                {
+                    Assert.IsTrue(result["a"] != null);
+                    Assert.IsTrue(result["b"] != null);
+                    counter++;
+                }
+                Assert.IsTrue(counter == 92);
             }
-            Assert.IsTrue(counter == 43958);
         }
 
         [TestMethod]
         public void HasVertexIdRepeatOutUntilOutECountIs0ValuesName()
         {
-            string query = "g.V().has('name', 'marko').repeat(__.out()).until(__.outE().count().is(0)).values('name')";
-            List<string> results = StartAzureBatch.AzureBatchJobManager.TestQuery(query);
-            Console.WriteLine("-------------Test Result-------------");
-            foreach (string result in results)
-            {
-                Console.WriteLine(result);
-            }
-            List<string> correctResults = new List<string> {"lop", "lop", "ripple", "vadas"};
+            this.job.Query = "g.V().has('name', 'marko').repeat(__.out()).until(__.outE().count().is(0)).values('name')";
+            List<string> results = this.jobManager.TestQuery(this.job);
+
+            List<string> correctResults = new List<string> { "lop", "lop", "ripple", "vadas" };
             CheckUnOrderedResults(correctResults, results);
         }
 
         [TestMethod]
         public void RepeatTimes2Repeat()
         {
-            string query = "g.V().repeat(__.out()).times(2).repeat(__.in()).values('name')";
-            List<string> results = StartAzureBatch.AzureBatchJobManager.TestQuery(query);
-            Console.WriteLine("-------------Test Result-------------");
-            foreach (string result in results)
-            {
-                Console.WriteLine(result);
-            }
+            this.job.Query = "g.V().repeat(__.out()).times(2).repeat(__.in()).values('name')";
+            List<string> results = this.jobManager.TestQuery(this.job);
 
             CheckUnOrderedResults(new string[] { }, results);
         }
@@ -262,13 +214,8 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Branch
         [TestMethod]
         public void RepeatTimesLessThanZero()
         {
-            string query = "g.V().repeat(__.out()).times(-1).values('name')";
-            List<string> results = StartAzureBatch.AzureBatchJobManager.TestQuery(query);
-            Console.WriteLine("-------------Test Result-------------");
-            foreach (string result in results)
-            {
-                Console.WriteLine(result);
-            }
+            this.job.Query = "g.V().repeat(__.out()).times(-1).values('name')";
+            List<string> results = this.jobManager.TestQuery(this.job);
 
             CheckUnOrderedResults(new string[] { "lop", "lop", "lop", "vadas", "josh", "ripple" }, results);
         }

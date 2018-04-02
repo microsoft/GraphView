@@ -20,13 +20,13 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Map
         [TestMethod]
         public void LocalOutEFoldUnfold()
         {
-            using (GraphViewCommand graphCommand = this.job.GetCommand())
+            using (GraphViewCommand graphCommand = this.job.Command)
             {
                 graphCommand.OutputFormat = OutputFormat.GraphSON;
 
                 this.job.Traversal = graphCommand.g().V().Local(GraphTraversal.__().OutE().Fold()).Unfold();
 
-                List<string> result = StartAzureBatch.AzureBatchJobManager.TestQuery(this.job);
+                List<string> result = this.jobManager.TestQuery(this.job);
                 dynamic dynamicResult = JsonConvert.DeserializeObject<dynamic>(result.FirstOrDefault());
                 HashSet<string> edgeIds = new HashSet<string>();
 
@@ -47,15 +47,14 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Map
         [TestMethod]
         public void HasVIdRepeatBothSimplePathUntilHasIdVPathByNameUnfold()
         {
-            using (GraphViewCommand graphCommand = this.job.GetCommand())
+            using (GraphViewCommand graphCommand = this.job.Command)
             {
                 string vertexId1 = this.ConvertToVertexId(graphCommand, "marko");
                 string vertexId2 = this.ConvertToVertexId(graphCommand, "peter");
 
                 this.job.Traversal = graphCommand.g().V().HasId(vertexId1).Repeat(GraphTraversal.__().Both().SimplePath()).Until(GraphTraversal.__().HasId(vertexId2)).Path().By("name").Unfold();
 
-
-                List<string> result = StartAzureBatch.AzureBatchJobManager.TestQuery(this.job);
+                List<string> result = this.jobManager.TestQuery(this.job);
 
                 CheckUnOrderedResults(new[] { "marko", "lop", "peter", "marko", "josh", "lop", "peter" }, result);
             }

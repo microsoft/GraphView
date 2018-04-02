@@ -14,13 +14,9 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Map
         [TestMethod]
         public void g_VX1X_mapXnameX()
         {
-            string query = "g.V().has('name', 'marko').map(__.values('name'))";
-            List<string> results = StartAzureBatch.AzureBatchJobManager.TestQuery(query);
-            Console.WriteLine("-------------Test Result-------------");
-            foreach (string result in results)
-            {
-                Console.WriteLine(result);
-            }
+            this.job.Query = "g.V().has('name', 'marko').map(__.values('name'))";
+            List<string> results = this.jobManager.TestQuery(this.job);
+
             Assert.IsTrue(results.Count == 1);
             Assert.IsTrue(results[0] == "marko");
         }
@@ -28,13 +24,9 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Map
         [TestMethod]
         public void g_V_mapXselectXaXX()
         {
-            string query = "g.V().as('a').map(__.select('a'))";
-            List<string> results = StartAzureBatch.AzureBatchJobManager.TestQuery(query);
-            Console.WriteLine("-------------Test Result-------------");
-            foreach (string result in results)
-            {
-                Console.WriteLine(result);
-            }
+            this.job.Query = "g.V().as('a').map(__.select('a'))";
+            List<string> results = this.jobManager.TestQuery(this.job);
+
             Assert.IsTrue(results.Count == 6);
         }
     }

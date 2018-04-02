@@ -2988,7 +2988,8 @@ namespace GraphView
                         groupKeyFunction,
                         container, aggregateOp,
                         this.IsProjectingACollection,
-                        context.RawRecordLayout.Count)
+                        context.RawRecordLayout.Count,
+                        context.InParallelMode && context.ParallelLevel.EnableSendThenSendBack)
                     : new GroupOperator(
                         context.CurrentExecutionOperator,
                         groupKeyFunction,

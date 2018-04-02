@@ -163,7 +163,7 @@ namespace GraphView
                 info.GetValue(name, typeof(string));
                 return true;
             }
-            catch (Exception e)
+            catch (Exception)
             {
                 return false;
             }
@@ -202,7 +202,7 @@ namespace GraphView
                     list.Add(item);
                     index++;
                 }
-                catch (SerializationException e)
+                catch (SerializationException)
                 {
                     return list;
                 }
@@ -243,7 +243,7 @@ namespace GraphView
                     list.Add(new Tuple<T1, T2>(item1, item2));
                     index++;
                 }
-                catch (SerializationException e)
+                catch (SerializationException)
                 {
                     return list;
                 }
@@ -319,7 +319,7 @@ namespace GraphView
                     set.Add(item);
                     index++;
                 }
-                catch (SerializationException e)
+                catch (SerializationException)
                 {
                     return set;
                 }
@@ -432,7 +432,7 @@ namespace GraphView
                     dict.Add(key, value);
                     index++;
                 }
-                catch (SerializationException e)
+                catch (SerializationException)
                 {
                     return dict;
                 }
@@ -477,7 +477,7 @@ namespace GraphView
                     dict.Add(key, new Tuple<T2, T3>(value1, value2));
                     index++;
                 }
-                catch (SerializationException e)
+                catch (SerializationException)
                 {
                     return dict;
                 }
@@ -520,7 +520,7 @@ namespace GraphView
                     dict.Add(key, value);
                     index++;
                 }
-                catch (SerializationException e)
+                catch (SerializationException)
                 {
                     return dict;
                 }

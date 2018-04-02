@@ -10,8 +10,11 @@ namespace GraphViewAzureBatchUnitTest.Gremlin
         [TestMethod]
         public void Test1()
         {
-            string query = "g.V().has('name', 'marko').emit(__.has('label', 'person')).repeat(__.out ()).values('name')";
-            List<string> results = StartAzureBatch.AzureBatchJobManager.TestQuery(query);
+            //this.job.Query = "g.V()";
+            this.job.Traversal = this.job.Command.g().V();
+
+            List<string> results = this.jobManager.TestQuery(this.job);
+
             Console.WriteLine("-------------Test Result-------------");
             foreach (string result in results)
             {

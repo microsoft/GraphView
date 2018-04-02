@@ -21,7 +21,7 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Filter
         [TestMethod]
         public void DedupLocalScope()
         {
-            using (GraphViewCommand GraphViewCommand = this.job.GetCommand())
+            using (GraphViewCommand GraphViewCommand = this.job.Command)
             {
                 this.job.Traversal = GraphViewCommand.g().V()
                     .Out()
@@ -30,7 +30,7 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Filter
                     .Fold()
                     .Dedup(GremlinKeyword.Scope.Local)
                     .Unfold();
-                var result = StartAzureBatch.AzureBatchJobManager.TestQuery(this.job);
+                var result = this.jobManager.TestQuery(this.job);
 
                 CheckUnOrderedResults(new string[] { "marko", "josh", "peter" }, result);
             }
@@ -44,7 +44,7 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Filter
         [TestMethod]
         public void DedupLocalMultipleLabels()
         {
-            using (GraphViewCommand GraphViewCommand = this.job.GetCommand())
+            using (GraphViewCommand GraphViewCommand = this.job.Command)
             {
                 GraphViewCommand.OutputFormat = OutputFormat.GraphSON;
                 this.job.Traversal = GraphViewCommand.g().V()
@@ -57,7 +57,7 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Filter
                     .Fold()
                     .Dedup(GremlinKeyword.Scope.Local, "x", "y")
                     .Unfold();
-                dynamic result = JsonConvert.DeserializeObject<dynamic>(StartAzureBatch.AzureBatchJobManager.TestQuery(this.job).FirstOrDefault());
+                dynamic result = JsonConvert.DeserializeObject<dynamic>(this.jobManager.TestQuery(this.job).FirstOrDefault());
                 List<string> expected = new List<string>
                 {
                     "lop,marko",
@@ -79,13 +79,13 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Filter
         [TestMethod]
         public void DedupWithBoth()
         {
-            using (GraphViewCommand GraphViewCommand = this.job.GetCommand())
+            using (GraphViewCommand GraphViewCommand = this.job.Command)
             {
                 this.job.Traversal = GraphViewCommand.g().V()
                     .Both()
                     .Dedup()
                     .Values("name");
-                var result = StartAzureBatch.AzureBatchJobManager.TestQuery(this.job);
+                var result = this.jobManager.TestQuery(this.job);
 
                 CheckUnOrderedResults(new string[] { "vadas", "josh", "lop", "marko", "peter", "ripple" }, result);
             }
@@ -99,7 +99,7 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Filter
         [TestMethod]
         public void DedupBy()
         {
-            using (GraphViewCommand GraphViewCommand = this.job.GetCommand())
+            using (GraphViewCommand GraphViewCommand = this.job.Command)
             {
                 this.job.Traversal = GraphViewCommand.g().V()
                     .Both()
@@ -107,7 +107,7 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Filter
                     .Dedup()
                     .By("lang")
                     .Values("name");
-                var result = StartAzureBatch.AzureBatchJobManager.TestQuery(this.job);
+                var result = this.jobManager.TestQuery(this.job);
 
                 Assert.IsTrue(result.Contains("lop") || result.Contains("ripple"));
             }
@@ -121,14 +121,14 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Filter
         [TestMethod]
         public void DedupLargeAmountStrings()
         {
-            using (GraphViewCommand GraphViewCommand = this.job.GetCommand())
+            using (GraphViewCommand GraphViewCommand = this.job.Command)
             {
                 this.job.Traversal = GraphViewCommand.g().V()
                     .Both()
                     .Both()
                     .Values("name")
                     .Dedup();
-                var result = StartAzureBatch.AzureBatchJobManager.TestQuery(this.job);
+                var result = this.jobManager.TestQuery(this.job);
 
                 CheckUnOrderedResults(new string[] { "vadas", "josh", "lop", "marko", "peter", "ripple" }, result);
             }
@@ -142,14 +142,14 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Filter
         [TestMethod]
         public void DedupLargeAmountVertexes()
         {
-            using (GraphViewCommand GraphViewCommand = this.job.GetCommand())
+            using (GraphViewCommand GraphViewCommand = this.job.Command)
             {
                 GraphViewCommand.OutputFormat = OutputFormat.GraphSON;
                 this.job.Traversal = GraphViewCommand.g().V()
                     .Both()
                     .Both()
                     .Dedup();
-                dynamic result = JsonConvert.DeserializeObject<dynamic>(StartAzureBatch.AzureBatchJobManager.TestQuery(this.job).FirstOrDefault());
+                dynamic result = JsonConvert.DeserializeObject<dynamic>(this.jobManager.TestQuery(this.job).FirstOrDefault());
                 GraphViewCommand.OutputFormat = OutputFormat.Regular;
 
                 var names = new List<string>();
@@ -170,14 +170,14 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Filter
         [TestMethod]
         public void DedupByLabel()
         {
-            using (GraphViewCommand GraphViewCommand = this.job.GetCommand())
+            using (GraphViewCommand GraphViewCommand = this.job.Command)
             {
                 this.job.Traversal = GraphViewCommand.g().V()
                     .Both()
                     .Both()
                     .Dedup()
                     .By("label");
-                var result = StartAzureBatch.AzureBatchJobManager.TestQuery(this.job);
+                var result = this.jobManager.TestQuery(this.job);
 
                 Assert.AreEqual(2, result.Count());
             }
@@ -191,7 +191,7 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Filter
         [TestMethod]
         public void DedupInsideBy()
         {
-            using (GraphViewCommand GraphViewCommand = this.job.GetCommand())
+            using (GraphViewCommand GraphViewCommand = this.job.Command)
             {
                 GraphViewCommand.OutputFormat = OutputFormat.GraphSON;
                 this.job.Traversal = GraphViewCommand.g().V()
@@ -202,7 +202,7 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Filter
                         .Dedup()
                         .Fold());
 
-                dynamic result = JsonConvert.DeserializeObject<dynamic>(StartAzureBatch.AzureBatchJobManager.TestQuery(this.job).FirstOrDefault());
+                dynamic result = JsonConvert.DeserializeObject<dynamic>(this.jobManager.TestQuery(this.job).FirstOrDefault());
 
                 Assert.AreEqual(1, result.Count);
                 CheckUnOrderedResults(new double[] { 0.2, 0.4, 1.0 }, ((JArray)result[0]["software"]).Select(p => (double)p).ToList());
@@ -218,7 +218,7 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Filter
         [TestMethod]
         public void DedupMultipleLabels()
         {
-            using (GraphViewCommand GraphViewCommand = this.job.GetCommand())
+            using (GraphViewCommand GraphViewCommand = this.job.Command)
             {
                 GraphViewCommand.OutputFormat = OutputFormat.GraphSON;
                 this.job.Traversal = GraphViewCommand.g().V()
@@ -228,7 +228,7 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Filter
                     .Dedup("a", "b")
                     .By("label")
                     .Select("a", "b");
-                dynamic result = JsonConvert.DeserializeObject<dynamic>(StartAzureBatch.AzureBatchJobManager.TestQuery(this.job).FirstOrDefault());
+                dynamic result = JsonConvert.DeserializeObject<dynamic>(this.jobManager.TestQuery(this.job).FirstOrDefault());
                 Assert.AreEqual(3, result.Count);
 
                 IEnumerable<string> resultInString = ((JArray)result).Select(d => string.Format("{0},{1}", (string)d["a"]["label"], (string)d["b"]["label"]));
@@ -245,7 +245,7 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Filter
         [TestMethod]
         public void DedupTwoOutOfThreeLabels()
         {
-            using (GraphViewCommand GraphViewCommand = this.job.GetCommand())
+            using (GraphViewCommand GraphViewCommand = this.job.Command)
             {
                 GraphViewCommand.OutputFormat = OutputFormat.GraphSON;
                 this.job.Traversal = GraphViewCommand.g().V()
@@ -258,7 +258,7 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Filter
                     .Path()
                     .By("name");
 
-                dynamic results = JsonConvert.DeserializeObject<dynamic>(StartAzureBatch.AzureBatchJobManager.TestQuery(this.job).FirstOrDefault());
+                dynamic results = JsonConvert.DeserializeObject<dynamic>(this.jobManager.TestQuery(this.job).FirstOrDefault());
 
                 List<string[]> AandBinPath = new List<string[]>();
 
@@ -306,7 +306,7 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Filter
         [TestMethod]
         public void DedupWithOrder()
         {
-            using (GraphViewCommand GraphViewCommand = this.job.GetCommand())
+            using (GraphViewCommand GraphViewCommand = this.job.Command)
             {
                 this.job.Traversal = GraphViewCommand.g().V()
                     .OutE()
@@ -319,7 +319,7 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Filter
                     .Select("v")
                     .Values("name")
                     .Dedup();
-                var result = StartAzureBatch.AzureBatchJobManager.TestQuery(this.job);
+                var result = this.jobManager.TestQuery(this.job);
 
                 CheckUnOrderedResults(new string[] { "lop", "vadas", "josh", "ripple" }, result);
             }
@@ -333,7 +333,7 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Filter
         [TestMethod]
         public void DedupByAnonymousTraversal()
         {
-            using (GraphViewCommand GraphViewCommand = this.job.GetCommand())
+            using (GraphViewCommand GraphViewCommand = this.job.Command)
             {
                 this.job.Traversal = GraphViewCommand.g().V()
                     .Both()
@@ -343,7 +343,7 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Filter
                         .OutE()
                         .Count())
                     .Values("name");
-                var result = StartAzureBatch.AzureBatchJobManager.TestQuery(this.job);
+                var result = this.jobManager.TestQuery(this.job);
 
                 Assert.AreEqual(4, result.Count());
                 Assert.IsTrue(result.Contains("josh"));
@@ -361,7 +361,7 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Filter
         [TestMethod]
         public void DedupWithGroupCount()
         {
-            using (GraphViewCommand GraphViewCommand = this.job.GetCommand())
+            using (GraphViewCommand GraphViewCommand = this.job.Command)
             {
                 GraphViewCommand.OutputFormat = OutputFormat.Regular;
                 this.job.Traversal = GraphViewCommand.g().V()
@@ -369,7 +369,7 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Filter
                     .Select(GremlinKeyword.Column.Values)
                     .Unfold()
                     .Dedup();
-                var result = StartAzureBatch.AzureBatchJobManager.TestQuery(this.job);
+                var result = this.jobManager.TestQuery(this.job);
 
                 CheckUnOrderedResults(new string[] { "1" }, result);
             }
@@ -381,10 +381,9 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Filter
         /// Gremlin: g.V().as("a").repeat(both()).times(3).emit().values("name").as("b").group().by(select("a")).by(select("b").dedup().order().fold()).select(values).<Collection<String>>unfold().dedup();
         /// </summary>
         [TestMethod]
-        public void 
-            TwoDedups()
+        public void TwoDedups()
         {
-            using (GraphViewCommand GraphViewCommand = this.job.GetCommand())
+            using (GraphViewCommand GraphViewCommand = this.job.Command)
             {
                 GraphViewCommand.OutputFormat = OutputFormat.GraphSON;
                 this.job.Traversal = GraphViewCommand.g().V()
@@ -404,7 +403,7 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Filter
                     .Unfold()
                     .Dedup();
 
-                dynamic result = JsonConvert.DeserializeObject<dynamic>(StartAzureBatch.AzureBatchJobManager.TestQuery(this.job).FirstOrDefault());
+                dynamic result = JsonConvert.DeserializeObject<dynamic>(this.jobManager.TestQuery(this.job).FirstOrDefault());
                 var temp = ((JArray)result[0]).Select(j => j.ToString()).ToList();
                 CollectionAssert.AreEqual(new string[] { "josh", "lop", "marko", "peter", "ripple", "vadas" }, temp);
             }
@@ -417,16 +416,14 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Filter
         [TestMethod]
         public void DedupInsideRepeat()
         {
-            using (GraphViewCommand GraphViewCommand = this.job.GetCommand())
+            using (GraphViewCommand GraphViewCommand = this.job.Command)
             {
-                // TODO: Repeat(Dedup()) does not work
-
                 this.job.Traversal = GraphViewCommand.g().V()
                     .Repeat(GraphTraversal.__().Dedup())
                     .Times(2)
                     .Values("name");
 
-                var result = StartAzureBatch.AzureBatchJobManager.TestQuery(this.job);
+                var result = this.jobManager.TestQuery(this.job);
 
                 CheckUnOrderedResults(new string[] { "marko", "vadas", "lop", "josh", "ripple", "peter" }, result);
             }

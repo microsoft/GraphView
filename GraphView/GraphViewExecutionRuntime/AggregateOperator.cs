@@ -1312,7 +1312,7 @@ namespace GraphView
         protected Dictionary<FieldObject, List<RawRecord>> groupedStates;
 
         // Following member variables is about parallelism.
-        private readonly bool isParallel;
+        protected readonly bool isParallel;
         private readonly string receiveHostId;
         [NonSerialized]
         private AggregateIntermadiateResult aggregateIntermadiateResult;
@@ -1488,9 +1488,10 @@ namespace GraphView
             Container container,
             GraphViewExecutionOperator aggregateOp,
             bool isProjectingACollection,
-            int carryOnCount)
+            int carryOnCount, 
+            bool isParallel)
             : base(inputOp, groupByKeyFunction, container, aggregateOp,
-                isProjectingACollection, carryOnCount, false)
+                isProjectingACollection, carryOnCount, isParallel)
         {
             this.processedGroupIndex = 0;
         }
@@ -1519,6 +1520,12 @@ namespace GraphView
                 }
                 noGroupRecord.Append(emptyMap);
                 noGroupRecord.fieldValues[0] = new StringField(this.processedGroupIndex.ToString(), JsonDataType.Int);
+                if (this.isParallel)
+                {
+                    // add default taskId
+                    noGroupRecord.fieldValues[1] = new StringField("-1");
+                }
+
                 this.processedGroupIndex++;
 
                 return noGroupRecord;
@@ -1616,6 +1623,11 @@ namespace GraphView
             }
             resultRecord.Append(result);
             resultRecord.fieldValues[0] = this.firstRecordInGroup[0];
+            if (this.isParallel)
+            {
+                // reserve the taskId in record[1]
+                resultRecord.fieldValues[1] = this.firstRecordInGroup[1];
+            }
             
             this.firstRecordInGroup = rec;
             this.groupedStates.Clear();

@@ -13,13 +13,9 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Branch
         [TestMethod]
         public void OptionalTest1()
         {
-            string query = "g.V().hasLabel('person').optional(__.out('knows')).values('name')";
-            List<string> results = StartAzureBatch.AzureBatchJobManager.TestQuery(query);
-            Console.WriteLine("-------------Test Result-------------");
-            foreach (string result in results)
-            {
-                Console.WriteLine(result);
-            }
+            this.job.Query = "g.V().hasLabel('person').optional(__.out('knows')).values('name')";
+            List<string> results = this.jobManager.TestQuery(this.job);
+
             List<string> correctResult = new List<string> {
                 "vadas",
                 "josh",
@@ -33,13 +29,9 @@ namespace GraphViewAzureBatchUnitTest.Gremlin.Branch
         [TestMethod]
         public void OptionalTest2()
         {
-            string query = "g.V().hasLabel('person').optional(__.out('knows').optional(__.out('created'))).path().by('name')";
-            List<string> results = StartAzureBatch.AzureBatchJobManager.TestQuery(query);
-            Console.WriteLine("-------------Test Result-------------");
-            foreach (string result in results)
-            {
-                Console.WriteLine(result);
-            }
+            this.job.Query = "g.V().hasLabel('person').optional(__.out('knows').optional(__.out('created'))).path().by('name')";
+            List<string> results = this.jobManager.TestQuery(this.job);
+
             List<string> correctResult = new List<string> {
                 "[marko, vadas]",
                 "[marko, josh, ripple]",
