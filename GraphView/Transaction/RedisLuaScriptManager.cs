@@ -21,7 +21,7 @@
         /// <summary>
         /// a init lock for singleton class
         /// </summary>
-        private static readonly object initLock = new object();
+        private static readonly object initLock = new object();  
 
         /// <summary>
         /// the singleton instance
@@ -114,7 +114,7 @@
             {
                 "GET_AND_SET_COMMIT_TIME",
                 "REPLACE_PAYLOAD",
-                "REPLACE_VERSION_ENTRY_TXID",
+                "REPLACE_VERSION_ENTRY",
                 "UPDATE_COMMIT_TS_LOWER_BOUND",
                 "UPDATE_VERSION_MAX_COMMIT_TS"
             };
@@ -156,9 +156,9 @@
                     byte[][] returnBytes = redisClient.ScriptExists(new byte[][] { sha1Bytes });
                     if (returnBytes != null && returnBytes.Length != 0)
                     {
-                        // The return value == 1 means scripts have been registered
-                        // TODO: try to clarify
-                        hasRegistered = BitConverter.ToInt64(returnBytes[0], 0) == 1;
+                        // The return value == "1" means scripts have been registered
+                        // SCRIPT EXISTS will return an array of string
+                        hasRegistered = Encoding.ASCII.GetString(returnBytes[0]) == "1";
                     }
                 }
 

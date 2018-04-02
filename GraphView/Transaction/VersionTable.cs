@@ -58,7 +58,16 @@ namespace GraphView.Transaction
             throw new NotImplementedException();
         }
 
-        internal virtual long ReplaceVersionEntryTxId(object recordKey, long versionKey, long txId)
+        /// <summary>
+        /// It will be called when the postprocessing is ongoing. In general, we only need
+        /// to replace the beginTimestamp and endTimestamp, and no need to update record.
+        /// 
+        /// In case of some other storages, we must replace the whole [begin, end, record] even 
+        /// we just want to change begin and end. Thus, here we also put the record in param list
+        /// to keep the interface extensiable.
+        /// </summary>
+        /// <returns></returns>
+        internal virtual long ReplaceVersionEntry(object recordKey, long versionKey, long beginTimestamp, long endTimestamp, long txId, long readTxId) 
         {
             throw new NotImplementedException();
         }
@@ -71,20 +80,6 @@ namespace GraphView.Transaction
         /// <param name="versionEntry"></param>
         /// <returns></returns>
         internal virtual bool UploadNewVersionEntry(object recordKey, long versionKey, VersionEntry versionEntry)
-        {
-            throw new NotImplementedException();
-        }
-
-        /// <summary>
-        /// It will be called when the postprocessing is ongoing. In general, we only need
-        /// to replace the beginTimestamp and endTimestamp, and no need to update record.
-        /// 
-        /// In case of some other storages, we must replace the whole [begin, end, record] even 
-        /// we just want to change begin and end. Thus, here we also put the record in param list
-        /// to keep the interface extensiable.
-        /// </summary>
-        /// <returns></returns>
-        internal virtual bool ReplacePayload(object recordKey, long versionKey, long beginTimestamp, long endTimestamp, object record)
         {
             throw new NotImplementedException();
         }

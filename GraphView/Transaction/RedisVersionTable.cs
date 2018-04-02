@@ -145,13 +145,13 @@
         /// <param name="versionKey"></param>
         /// <param name="txId"></param>
         /// <returns>Version's maxCommitTs if success, -1 otherwise</returns>
-        internal override long ReplaceVersionEntryTxId(object recordKey, long versionKey, long txId)
+        internal override long ReplaceVersionEntry(object recordKey, long versionKey, long beginTimestamp, long endTimestamp, long txId, long readTxId)
         {
             using (RedisClient redisClient = (RedisClient)this.RedisManager.GetClient())
             {
                 redisClient.ChangeDb(this.redisDbIndex);
 
-                string sha1 = this.LuaManager.GetLuaScriptSha1("REPLACE_VERSION_ENTRY_TXID");
+                string sha1 = this.LuaManager.GetLuaScriptSha1("REPLACE_VERSION_ENTRY");
                 string hashId = recordKey as string;
 
                 byte[][] keysAndArgs =
@@ -209,52 +209,6 @@
             }
         }
 
-        /// <summary>
-        /// Replace beginTimestamp and endTimestamp in redis with the operation "REPLACE_PAYLOAD"
-        /// </summary>
-        /// <param name="recordKey"></param>
-        /// <param name="versionKey"></param>
-        /// <param name="beginTimestamp"></param>
-        /// <param name="endTimestamp"></param>
-        /// <param name="record"></param>
-        /// <returns></returns>
-        internal override bool ReplacePayload(object recordKey, long versionKey, long beginTimestamp, long endTimestamp, object record)
-        {
-            using (RedisClient redisClient = (RedisClient)this.RedisManager.GetClient())
-            {
-                redisClient.ChangeDb(this.redisDbIndex);
-
-                string sha1 = this.LuaManager.GetLuaScriptSha1("REPLACE_PAYLOAD");
-                string hashId = recordKey as string;
-
-                byte[][] keysAndArgs =
-                {
-                    Encoding.ASCII.GetBytes(hashId),
-                    BitConverter.GetBytes(versionKey),
-                    BitConverter.GetBytes(beginTimestamp),
-                    BitConverter.GetBytes(endTimestamp),
-                    RedisVersionDb.NEGATIVE_ONE_BYTES,
-                    RedisVersionDb.ZERO_BYTES,
-                };
-
-                try
-                {
-                    byte[][] returnBytes = redisClient.EvalSha(sha1, 1, keysAndArgs);
-                    if (returnBytes == null || returnBytes.Length == 0)
-                    {
-                        return false;
-                    }
-
-                    // return format is [keybytes, valuebytes]
-                    long ret = BitConverter.ToInt64(returnBytes[1], 0);
-                    return ret == 1;
-                }
-                catch (RedisResponseException e)
-                {
-                    return false;
-                }
-            }
-        }
 
         /// <summary>
         /// Update a version's maxCommitTs if the current version is not updating by others

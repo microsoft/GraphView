@@ -52,7 +52,8 @@ namespace GraphView.Transaction
             return versionTable.GetVersionEntryByKey(recordKey, versionKey);
         }
 
-        internal virtual long ReplaceVersionEntryTxId(string tableId, object recordKey, long versionKey, long txId)
+        internal virtual long ReplaceVersionEntryTxId(string tableId, object recordKey, long versionKey,
+            long beginTimestamp, long endTimestamp, long txId, long readTxId)
         {
             VersionTable versionTable = this.GetVersionTable(tableId);
             if (versionTable == null)
@@ -60,7 +61,7 @@ namespace GraphView.Transaction
                 return -1;
             }
 
-            return versionTable.ReplaceVersionEntryTxId(recordKey, versionKey, txId);
+            return versionTable.ReplaceVersionEntry(recordKey, versionKey, beginTimestamp, endTimestamp, txId, readTxId);
         }
 
         internal virtual bool UploadNewVersionEntry(string tableId, object recordKey, long versionKey, VersionEntry versionEntry)
@@ -72,17 +73,6 @@ namespace GraphView.Transaction
             }
 
             return versionTable.UploadNewVersionEntry(recordKey, versionKey, versionEntry);
-        }
-
-        internal virtual bool ReplacePayload(string tableId, object recordKey, long versionKey, long beginTimestamp, long endTimestamp, object record)
-        {
-            VersionTable versionTable = this.GetVersionTable(tableId);
-            if (versionTable == null)
-            {
-                return false;
-            }
-
-            return versionTable.ReplacePayload(recordKey, versionKey, beginTimestamp, endTimestamp, record);
         }
 
         /// <summary>
