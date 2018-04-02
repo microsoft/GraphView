@@ -113,7 +113,6 @@
             string[] luaScriptNames =
             {
                 "GET_AND_SET_COMMIT_TIME",
-                "REPLACE_PAYLOAD",
                 "REPLACE_VERSION_ENTRY",
                 "UPDATE_COMMIT_TS_LOWER_BOUND",
                 "UPDATE_VERSION_MAX_COMMIT_TS"

@@ -3,9 +3,13 @@ using System.Runtime.Serialization;
 
 namespace GraphView.Transaction
 {
-    [Serializable]
-    internal class TxTableEntry : ISerializable
+    internal class TxTableEntry
     {
+        public static readonly string TXID_STRING = "tx_id";
+        public static readonly string STATUS_STRING = "status";
+        public static readonly string COMMIT_TIME_STRING = "commit_time";
+        public static readonly string COMMIT_LOWER_BOUND_STRING = "commit_lower_bound";
+
         private readonly long txId;
         private TxStatus status;
         private long commitTime;
@@ -89,22 +93,6 @@ namespace GraphView.Transaction
 
             return this.TxId == entry.TxId && this.status == entry.Status &&
                 this.commitTime == entry.CommitTime && this.commitLowerBound == entry.CommitLowerBound;
-        }
-
-        public TxTableEntry(SerializationInfo info, StreamingContext contex)
-        {
-            this.txId = (long) info.GetValue("txId", typeof(long));
-            this.status = (TxStatus) info.GetValue("status", typeof(TxStatus));
-            this.commitTime = (long) info.GetValue("commitTime", typeof(long));
-            this.commitLowerBound = (long)info.GetValue("commitLowerBound", typeof(long));
-        }
-
-        public void GetObjectData(SerializationInfo info, StreamingContext context)
-        {
-            info.AddValue("txId", this.txId, typeof(long));
-            info.AddValue("status", this.status, typeof(TxStatus));
-            info.AddValue("commitTime", this.commitTime, typeof(long));
-            info.AddValue("commitLowerBound", this.commitLowerBound, typeof(long));
         }
     }
 }

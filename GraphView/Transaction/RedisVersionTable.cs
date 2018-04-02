@@ -158,7 +158,10 @@
                 {
                     Encoding.ASCII.GetBytes(hashId),
                     BitConverter.GetBytes(versionKey),
+                    BitConverter.GetBytes(beginTimestamp),
+                    BitConverter.GetBytes(endTimestamp),
                     BitConverter.GetBytes(txId),
+                    BitConverter.GetBytes(readTxId),
                     RedisVersionDb.NEGATIVE_ONE_BYTES,
                 };
 

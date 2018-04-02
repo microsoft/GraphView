@@ -8,6 +8,12 @@ namespace GraphView.Transaction
 
     internal class VersionEntry
     {
+        private static readonly int BEGIN_TIMESTAMP_OFFSET = 0;
+        private static readonly int END_TIMESTAMP_OFFSET = 1 * 8;
+        private static readonly int TXID_OFFSET = 2 * 8;
+        private static readonly int MAX_COMMIT_TS_OFFSET = 3 * 8;
+        private static readonly int RECORD_OFFSET = 4 * 8;
+
         internal object RecordKey { get; }
         internal long VersionKey { get; }
         internal long BeginTimestamp { get; }
@@ -102,13 +108,13 @@ namespace GraphView.Transaction
         /// <returns></returns>
         public static VersionEntry Deserialize(object recordKey, long versionKey, byte[] bytes)
         {
-            long beginTimestamp = BitConverter.ToInt64(bytes, 0);
-            long endTimestamp = BitConverter.ToInt64(bytes, 8);
-            long txId = BitConverter.ToInt64(bytes, 2*8);
-            long maxCommitTs = BitConverter.ToInt64(bytes, 3*8);
+            long beginTimestamp = BitConverter.ToInt64(bytes, VersionEntry.BEGIN_TIMESTAMP_OFFSET);
+            long endTimestamp = BitConverter.ToInt64(bytes, VersionEntry.END_TIMESTAMP_OFFSET);
+            long txId = BitConverter.ToInt64(bytes, VersionEntry.TXID_OFFSET);
+            long maxCommitTs = BitConverter.ToInt64(bytes, VersionEntry.MAX_COMMIT_TS_OFFSET);
 
-            byte[] recordBytes = new byte[bytes.Length - 4*8];
-            Buffer.BlockCopy(bytes, 4*8, recordBytes, 0, recordBytes.Length);
+            byte[] recordBytes = new byte[bytes.Length - VersionEntry.RECORD_OFFSET];
+            Buffer.BlockCopy(bytes, VersionEntry.RECORD_OFFSET, recordBytes, 0, recordBytes.Length);
             object record = BytesSerializer.Deserialize(recordBytes);
 
             return new VersionEntry(recordKey, versionKey, beginTimestamp, endTimestamp,

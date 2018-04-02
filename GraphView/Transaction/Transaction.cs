@@ -52,6 +52,32 @@ namespace GraphView.Transaction
 
         private long commitTs;
 
+        // Only for benchmark test
+        public TxStatus Status
+        {
+            get
+            {
+                return this.txStatus;
+            }
+        }
+
+        // Only for benchmark test
+        public long CommitTs
+        {
+            get
+            {
+                return this.commitTs;
+            }
+        }
+
+        public long TxId
+        {
+            get
+            {
+                return this.TxId;
+            }
+        }
+
         /// <summary>
         /// Read set, using for checking visibility of the versions read.
         /// </summary>
@@ -183,7 +209,7 @@ namespace GraphView.Transaction
             throw new NotImplementedException();
         }
 
-        internal bool Commit()
+        public bool Commit()
         {
             if (!this.UploadLocalWriteRecords())
             {

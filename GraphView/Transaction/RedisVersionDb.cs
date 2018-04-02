@@ -9,7 +9,7 @@
     /// 1. Definition of fields of RedisVersionDb
     /// 2. Implementation of private methods of redis operation, all those operations are atomic operations
     /// </summary>
-    internal partial class RedisVersionDb : VersionDb
+    public partial class RedisVersionDb : VersionDb
     {
         /// <summary>
         /// The defalut hashset key for the meta table
@@ -71,6 +71,11 @@
         /// It's used to be a return value of successful operations
         /// </summary
         public static readonly byte[] ZERO_BYTES = BitConverter.GetBytes(0L);
+
+        /// <summary>
+        ///  The return error code of some functions
+        /// </summary>
+        private static readonly int ERROR_CODE = -2;
 
         /// <summary>
         /// Get RedisClient from the redis connection pool
@@ -141,7 +146,7 @@
         }
     }
 
-    internal partial class RedisVersionDb
+    public partial class RedisVersionDb
     {
         internal override VersionTable CreateVersionTable(string tableId, long redisDbIndex)
         {
@@ -223,11 +228,11 @@
     /// 
     /// IT'S IMPORTANT!!!!
     /// </summary>
-    internal partial class RedisVersionDb
+    public partial class RedisVersionDb
     {
         /// <summary>
         /// Get a unique transaction Id and store the txTableEntry into the redis
-        /// This will be implemented in two steps:
+        /// This will be implemented in two steps since HSETNX can only have a field
         /// 1. try a random txId and ensure that it is unique in redis with the command HSETNX
         ///    If it is a unique id, set it in hset to occupy it with the same atomic operation
         /// 2. set other fields of txTableEntry 
@@ -245,7 +250,7 @@
                     txId = this.RandomLong();
 
                     string hashId = txId.ToString();
-                    byte[] keyBytes = Encoding.ASCII.GetBytes("tx_id");
+                    byte[] keyBytes = Encoding.ASCII.GetBytes(TxTableEntry.TXID_STRING);
                     byte[] valueBytes = BitConverter.GetBytes(txId);
 
                     // If the hashId doesn't exist or field doesn't exist, return 1
@@ -257,9 +262,9 @@
 
                 byte[][] keysBytes =
                 {
-                    Encoding.ASCII.GetBytes("status"),
-                    Encoding.ASCII.GetBytes("commit_time"),
-                    Encoding.ASCII.GetBytes("commit_lower_bound")
+                    Encoding.ASCII.GetBytes(TxTableEntry.STATUS_STRING),
+                    Encoding.ASCII.GetBytes(TxTableEntry.COMMIT_TIME_STRING),
+                    Encoding.ASCII.GetBytes(TxTableEntry.COMMIT_LOWER_BOUND_STRING)
                 };
 
                 byte[][] valuesBytes =
@@ -283,9 +288,9 @@
                 string hashId = txId.ToString();
                 byte[][] keyBytes =
                 {
-                    Encoding.ASCII.GetBytes("status"),
-                    Encoding.ASCII.GetBytes("commit_time"),
-                    Encoding.ASCII.GetBytes("commit_lower_bound")
+                    Encoding.ASCII.GetBytes(TxTableEntry.STATUS_STRING),
+                    Encoding.ASCII.GetBytes(TxTableEntry.COMMIT_TIME_STRING),
+                    Encoding.ASCII.GetBytes(TxTableEntry.COMMIT_LOWER_BOUND_STRING)
                 };
 
                 byte[][] valueBytes = redisClient.HMGet(hashId, keyBytes);
@@ -309,7 +314,7 @@
                 redisClient.ChangeDb(RedisVersionDb.TRANSACTION_DB_INDEX);
 
                 string hashId = txId.ToString();
-                byte[] keyBytes = Encoding.ASCII.GetBytes("status");
+                byte[] keyBytes = Encoding.ASCII.GetBytes(TxTableEntry.STATUS_STRING);
                 byte[] valueBytes = BitConverter.GetBytes((int) status);
 
                 long ret = redisClient.HSet(hashId, keyBytes, valueBytes);
@@ -366,22 +371,15 @@
                     byte[][] returnBytes = redisClient.EvalSha(sha1, 1, keys);
                     if (returnBytes == null || returnBytes.Length == 0)
                     {
-                        // TODO: throw exceptions
+                        return RedisVersionDb.ERROR_CODE;
                     }
 
                     long ret = BitConverter.ToInt64(returnBytes[1], 0);
-                    // There must be some errors happened inside the lua
-                    if (ret == -2)
-                    {
-                        // TODO
-                    }
-
                     return ret;
                 }
                 catch (RedisResponseException e)
                 {
-                    // TODO
-                    return -1;
+                    return RedisVersionDb.ERROR_CODE;
                 }
             }
         }
