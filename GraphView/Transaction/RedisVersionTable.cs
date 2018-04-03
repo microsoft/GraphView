@@ -145,7 +145,7 @@
         /// <param name="versionKey"></param>
         /// <param name="txId"></param>
         /// <returns>Version's maxCommitTs if success, -1 otherwise</returns>
-        internal override long ReplaceVersionEntry(object recordKey, long versionKey, long beginTimestamp, long endTimestamp, long txId, long readTxId)
+        internal override long ReplaceVersionEntry(object recordKey, long versionKey, long beginTimestamp, long endTimestamp, long txId, long readTxId, long readEndTs)
         {
             using (RedisClient redisClient = (RedisClient)this.RedisManager.GetClient())
             {
@@ -162,6 +162,7 @@
                     BitConverter.GetBytes(endTimestamp),
                     BitConverter.GetBytes(txId),
                     BitConverter.GetBytes(readTxId),
+                    BitConverter.GetBytes(readEndTs),
                     RedisVersionDb.NEGATIVE_ONE_BYTES,
                 };
 
