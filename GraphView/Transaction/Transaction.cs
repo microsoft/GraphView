@@ -174,11 +174,11 @@ namespace GraphView.Transaction
                             VersionEntry newImageEntry = new VersionEntry(
                                 recordKey,
                                 this.readSet[tableId][recordKey].LargestVersionKey,
-                                -1,
-                                -1,
+                                VersionEntry.DEFAULT_BEGIN_TIMESTAMP,
+                                VersionEntry.DEFAULT_END_TIMESTAMP,
                                 this.writeSet[tableId][recordKey],
                                 this.txId,
-                                0);
+                                VersionEntry.DEFAULT_MAX_COMMIT_TS);
                             if (!this.versionDb.UploadNewVersionEntry(tableId, recordKey, newImageEntry.VersionKey,
                                 newImageEntry))
                             {
@@ -401,7 +401,8 @@ namespace GraphView.Transaction
             return true;
         }
 
-        internal void Abort()
+        // IMPORTANT: change to public only for test
+        public void Abort()
         {
             this.txStatus = TxStatus.Aborted;
             this.versionDb.UpdateTxStatus(this.txId, TxStatus.Aborted);
@@ -517,7 +518,7 @@ namespace GraphView.Transaction
             }
         }
 
-        internal void Commit()
+        public void Commit()
         {
             if (!this.UploadLocalWriteRecords())
             {
@@ -547,7 +548,8 @@ namespace GraphView.Transaction
 
         internal void WriteChangetoLog()
         {
-            throw new NotImplementedException();
+            // IMPORTANT: only for test
+            // throw new NotImplementedException();
         }
     }
 

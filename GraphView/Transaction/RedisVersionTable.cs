@@ -124,7 +124,7 @@
 
                 string hashId = recordKey as string;
                 long versionKey = 0L;
-                VersionEntry emptyEntry = new VersionEntry(recordKey, versionKey, null, -1);
+                VersionEntry emptyEntry = new VersionEntry(recordKey, versionKey, "empty", -1);
 
                 byte[] keyBytes = BitConverter.GetBytes(versionKey);
                 byte[] valueBytes = VersionEntry.Serialize(emptyEntry.BeginTimestamp, emptyEntry.EndTimestamp,

@@ -14,6 +14,10 @@ namespace GraphView.Transaction
         private static readonly int MAX_COMMIT_TS_OFFSET = 3 * 8;
         private static readonly int RECORD_OFFSET = 4 * 8;
 
+        public static readonly long DEFAULT_BEGIN_TIMESTAMP = -1L;
+        public static readonly long DEFAULT_END_TIMESTAMP = -1L;
+        public static readonly long DEFAULT_MAX_COMMIT_TS = 0L;
+
         internal object RecordKey { get; }
         internal long VersionKey { get; }
         internal long BeginTimestamp { get; }

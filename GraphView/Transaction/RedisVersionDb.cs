@@ -102,15 +102,15 @@
             this.versionTableMap = new Dictionary<string, RedisVersionTable>();
         }
 
-        internal static RedisVersionDb Instance
+        public static RedisVersionDb Instance
         {
             get
             {
-                if (RedisVersionDb.Instance == null)
+                if (RedisVersionDb.instance == null)
                 {
                     lock (RedisVersionDb.initLock)
                     {
-                        if (RedisVersionDb.Instance == null)
+                        if (RedisVersionDb.instance == null)
                         {
                             RedisVersionDb.instance = new RedisVersionDb();
                         }
@@ -148,7 +148,7 @@
 
     public partial class RedisVersionDb
     {
-        internal override VersionTable CreateVersionTable(string tableId, long redisDbIndex)
+        public override VersionTable CreateVersionTable(string tableId, long redisDbIndex)
         {
             using (RedisClient redisClient = (RedisClient)this.RedisManager.GetClient())
             {
@@ -321,18 +321,19 @@
             }
         }
 
-        internal override long SetAndGetCommitTime(long txId, long lowerBound)
+        internal override long SetAndGetCommitTime(long txId, long proposedCommitTime)
         {
             using (RedisClient redisClient = (RedisClient)this.RedisManager.GetClient())
             {
                 redisClient.ChangeDb(RedisVersionDb.TRANSACTION_DB_INDEX);
 
                 string hashId = txId.ToString();
-                string sha1 = this.RedisLuaManager.GetLuaScriptSha1("GET_SET_COMMIT_TIME");
+                string sha1 = this.RedisLuaManager.GetLuaScriptSha1("SET_AND_GET_COMMIT_TIME");
                 byte[][] keys =
                 {
                     Encoding.ASCII.GetBytes(hashId),
-                    BitConverter.GetBytes(lowerBound),
+                    BitConverter.GetBytes(proposedCommitTime),
+                    RedisVersionDb.NEGATIVE_ONE_BYTES,
                 };
 
                 try
@@ -352,7 +353,7 @@
             }
         }
 
-        internal override long UpdateCommitLowerBound(long txId, long commitTs)
+        internal override long UpdateCommitLowerBound(long txId, long lowerBound)
         {
             using (RedisClient redisClient = (RedisClient)this.RedisManager.GetClient())
             {
@@ -363,7 +364,9 @@
                 byte[][] keys =
                 {
                     Encoding.ASCII.GetBytes(hashId),
-                    BitConverter.GetBytes(commitTs),
+                    BitConverter.GetBytes(lowerBound),
+                    RedisVersionDb.NEGATIVE_ONE_BYTES,
+                    RedisVersionDb.NEGATIVE_TWO_BYTES,
                 };
 
                 try

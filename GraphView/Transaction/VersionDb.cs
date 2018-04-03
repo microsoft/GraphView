@@ -13,7 +13,7 @@ namespace GraphView.Transaction
             throw new NotImplementedException();
         }
 
-        internal virtual VersionTable CreateVersionTable(string tableId, long redisDbIndex = 0)
+        public virtual VersionTable CreateVersionTable(string tableId, long redisDbIndex = 0)
         {
             throw new NotImplementedException();
         }
