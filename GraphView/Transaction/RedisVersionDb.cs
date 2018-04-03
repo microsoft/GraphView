@@ -67,7 +67,7 @@
         public static readonly byte[] NEGATIVE_TWO_BYTES = BitConverter.GetBytes(-2L);
 
         // <summary>
-        /// The bytes of -2 in long type, should mind that it must be a long type with 8 bytes
+        /// The bytes of 0 in long type, should mind that it must be a long type with 8 bytes
         /// It's used to be a return value of successful operations
         /// </summary
         public static readonly byte[] ZERO_BYTES = BitConverter.GetBytes(0L);
@@ -88,6 +88,9 @@
             }
         }
 
+        /// <summary>
+        /// A lua script manager to register lua scripts and get its sha1 by script name
+        /// </summary>
         private RedisLuaScriptManager RedisLuaManager
         {
             get
@@ -122,10 +125,9 @@
 
         /// <summary>
         /// Get redisDbIndex from meta hashset by tableId
-        /// Take the System.Nullable<long> to wrap the return result, 
-        ///     as it could return null if the table has not been found
+        /// Take the System.Nullable<long> to wrap the return result, as it could 
+        /// return null if the table has not been found
         /// </summary>
-        /// <param name="tableId"></param>
         /// <returns></returns>
         protected long? GetTableRedisDbIndex(string tableId)
         {
@@ -146,6 +148,9 @@
         }
     }
 
+    /// <summary>
+    /// This part override the interfaces for DDL
+    /// </summary>
     public partial class RedisVersionDb
     {
         public override VersionTable CreateVersionTable(string tableId, long redisDbIndex)
@@ -235,7 +240,7 @@
         /// This will be implemented in two steps since HSETNX can only have a field
         /// 1. try a random txId and ensure that it is unique in redis with the command HSETNX
         ///    If it is a unique id, set it in hset to occupy it with the same atomic operation
-        /// 2. set other fields of txTableEntry 
+        /// 2. set other fields of txTableEntry by HSET command
         /// </summary>
         /// <returns>a transaction Id</returns>
         internal override long InsertNewTx()
@@ -279,6 +284,13 @@
             }
         }
 
+        /// <summary>
+        /// Get txTableEntry with HMGET command
+        /// The return fields and values' order in HGETALL isn't guaranteed in Redis
+        /// To simplyify it, we take the HMGET
+        /// </summary>
+        /// <param name="txId"></param>
+        /// <returns></returns>
         internal override TxTableEntry GetTxTableEntry(long txId)
         {
             using (RedisClient redisClient = (RedisClient)this.RedisManager.GetClient())
@@ -307,6 +319,9 @@
             }
         }
 
+        /// <summary>
+        /// Implemented by HSET command
+        /// </summary>
         internal override void UpdateTxStatus(long txId, TxStatus status)
         {
             using (RedisClient redisClient = (RedisClient)this.RedisManager.GetClient())
@@ -321,6 +336,12 @@
             }
         }
 
+        /// <summary>
+        /// It's implemeted by a CAS "SET_AND_GET_COMMIT_TIME"
+        /// </summary>
+        /// <param name="txId"></param>
+        /// <param name="proposedCommitTime"></param>
+        /// <returns></returns>
         internal override long SetAndGetCommitTime(long txId, long proposedCommitTime)
         {
             using (RedisClient redisClient = (RedisClient)this.RedisManager.GetClient())
@@ -353,6 +374,10 @@
             }
         }
 
+        /// <summary>
+        /// It's implemeted by a CAS "UPDATE_COMMIT_LOWER_BOUND"
+        /// </summary>s
+        /// <returns></returns>
         internal override long UpdateCommitLowerBound(long txId, long lowerBound)
         {
             using (RedisClient redisClient = (RedisClient)this.RedisManager.GetClient())

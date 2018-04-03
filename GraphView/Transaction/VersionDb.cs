@@ -3,21 +3,39 @@ namespace GraphView.Transaction
 {
     using System;
     using System.Collections.Generic;
-    using Newtonsoft.Json.Linq;
-    using RecordRuntime;
 
+    /// <summary>
+    /// This part is for DDL operators
+    /// </summary>
     public abstract partial class VersionDb
     {
+        /// <summary>
+        /// Get a version table instance by tableId, which has different implementations
+        /// in different storages, like loading from meta-data database
+        /// </summary>
+        /// <returns></returns>
         internal virtual VersionTable GetVersionTable(string tableId)
         {
             throw new NotImplementedException();
         }
 
+        /// <summary>
+        /// Create a version table if the table doesn't exist, it will be called when the version
+        /// insertion finds that the table with tableId doesn't exist
+        /// </summary>
+        /// <param name="tableId">The specify tabldId</param>
+        /// <param name="redisDbIndex">It's only from redis kv storage</param>
+        /// <returns>a version table instance</returns>
         public virtual VersionTable CreateVersionTable(string tableId, long redisDbIndex = 0)
         {
             throw new NotImplementedException();
         }
 
+        /// <summary>
+        /// Delete a version table by tableId, it will be called by sql delete
+        /// </summary>
+        /// <param name="tableId"></param>
+        /// <returns></returns>
         internal virtual bool DeleteTable(string tableId)
         {
             throw new NotImplementedException();
@@ -25,7 +43,7 @@ namespace GraphView.Transaction
     }
 
     /// <summary>
-    /// A version Db for concurrency control.
+    /// This part is the implemetation of version table interfaces
     /// </summary>
     public abstract partial class VersionDb
     {
@@ -74,11 +92,6 @@ namespace GraphView.Transaction
             return versionTable.UploadNewVersionEntry(recordKey, versionKey, versionEntry);
         }
 
-        /// <summary>
-        /// In negotiation phase, if no another transaction is updating tx, make sure future tx's who
-        /// update x have CommitTs greater than the commitTime of current transaction
-        /// </summary>
-        /// <returns></returns>
         internal virtual VersionEntry UpdateVersionMaxCommitTs(string tableId, object recordKey, long versionKey, long commitTime)
         {
             VersionTable versionTable = this.GetVersionTable(tableId);
@@ -116,29 +129,57 @@ namespace GraphView.Transaction
     public abstract partial class VersionDb
     {
         /// <summary>
-        /// Try different random txIds and return the txId if successes
+        /// Generate an unique txId in the current transaction table and store the initial states in transaction
+        /// table entry
+        /// It will return the unique txId
         /// </summary>
-        /// <returns></returns>
+        /// <returns>transaction id</returns>
         internal virtual long InsertNewTx()
         {
             throw new NotImplementedException();
         }
 
+        /// <summary>
+        /// Get an TxTableEntey(txId, status, commitTime, commitLowerBound) by TxId
+        /// </summary>
+        /// <returns>a TxTableEntry</returns>
         internal virtual TxTableEntry GetTxTableEntry(long txId)
         {
             throw new NotImplementedException();
         }
 
+        /// <summary>
+        /// Update the transaction's status, set from ongoing => committed or ongoing => aborted
+        /// </summary>
         internal virtual void UpdateTxStatus(long txId, TxStatus status)
         {
             throw new NotImplementedException();
         }
 
-        internal virtual long SetAndGetCommitTime(long txId, long proposalTs)
+        /// <summary>
+        /// Try to set the tx's commitTime and return the commitTime
+        /// If the proposedCommitTime is greater than or equal to the commitLowerBound, set its commitTime as proposedCommitTime
+        /// and return the commitTime
+        /// Otherwise return -1 which means the proposedCommitTime is invalid
+        /// </summary>
+        /// <param name="txId"></param>
+        /// <param name="proposalTs"></param>
+        /// <returns>-1 or proposedCommitTime</returns>
+        internal virtual long SetAndGetCommitTime(long txId, long proposedCommitTime)
         {
             throw new NotImplementedException();
         }
 
+        /// <summary>
+        /// Update the commitLowerBound to push Tx has greater commitTime than the lowerBound
+        /// lowerBound should be the value commitTime + 1
+        /// </summary>
+        /// <param name="lowerBound">The current transaction's commit time + 1</param>
+        /// <returns>
+        /// -2 means there are some errors during the execution phase
+        /// -1 means the txId hasn't gotten its commitTime and set the lowerBound successfully
+        /// Other values mean txId has already got the commitTime and it returns tx's commitTime
+        /// </returns>
         internal virtual long UpdateCommitLowerBound(long txId, long lowerBound)
         {
             throw new NotImplementedException();
@@ -147,6 +188,10 @@ namespace GraphView.Transaction
 
     public abstract partial class VersionDb
     {
+        /// <summary>
+        /// Generate a random long type in the range of [min, max]
+        /// </summary>
+        /// <returns></returns>
         protected virtual long RandomLong(long min = 0, long max = long.MaxValue)
         {
             Random rand = new Random();

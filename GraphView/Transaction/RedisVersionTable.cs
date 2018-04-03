@@ -50,9 +50,6 @@
         /// MIND: HGETALL in ServiceStack.Redis only supports a string type as the hashId 
         /// If we want to take other types as the hashId, must override the HGETALL with lua
         /// </summary>
-        /// <param name="recordKey"></param>
-        /// <param name="versionKey"></param>
-        /// <param name="versionEntry"></param>
         /// <returns>A list of version entries, maybe an empty list</returns>
         internal override IEnumerable<VersionEntry> GetVersionList(object recordKey)
         {

@@ -6,10 +6,6 @@ namespace GraphView.Transaction
     using System;
     using System.Collections.Generic;
     using System.Linq;
-    using System.Text;
-    using System.Data.Entity;
-    using System.Threading.Tasks;
-    using Newtonsoft.Json.Linq;
     using System.Runtime.Serialization;
 
     [Serializable]
@@ -176,7 +172,7 @@ namespace GraphView.Transaction
                             //create and upload the new versionEntry
                             VersionEntry newImageEntry = new VersionEntry(
                                 recordKey,
-                                this.readSet[tableId][recordKey].LargestVersionKey,
+                                this.readSet[tableId][recordKey].LargestVersionKey + 1,
                                 VersionEntry.DEFAULT_BEGIN_TIMESTAMP,
                                 VersionEntry.DEFAULT_END_TIMESTAMP,
                                 this.writeSet[tableId][recordKey],
