@@ -24,22 +24,7 @@ namespace GraphView.Transaction
         {
             throw new NotImplementedException();
         }
-
-        /// <summary>
-        /// Get the most recent commited version entry
-        /// </summary>
-        /// <param name="recordKey"></param>
-        /// <returns></returns>
-        internal virtual VersionEntry GetRecentVersionEntry(object recordKey, out long largestVersionKey)
-        {
-            throw new NotImplementedException();
-        }
-
-        internal virtual bool CheckVisibility(VersionEntry versionEntry)
-        {
-            throw new NotImplementedException();
-        }
-                                                                 
+                                                 
         internal virtual VersionEntry GetVersionEntryByKey(object recordKey, long versionKey)
         {
             IEnumerable<VersionEntry> versionList = this.GetVersionList(recordKey);
@@ -53,18 +38,13 @@ namespace GraphView.Transaction
             return null;
         }
 
-        internal virtual VersionEntry ReadAndInitialize(object recordKey, out long largestVersionKey)
+        internal virtual IEnumerable<VersionEntry> InitializeAndGetVersionList(object recordKey)
         {
             throw new NotImplementedException();
         }
 
         /// <summary>
-        /// It will be called when the postprocessing is ongoing. In general, we only need
-        /// to replace the beginTimestamp and endTimestamp, and no need to update record.
-        /// 
-        /// In case of some other storages, we must replace the whole [begin, end, record] even 
-        /// we just want to change begin and end. Thus, here we also put the record in param list
-        /// to keep the interface extensiable.
+        /// This method will be called during Uploading Phase and the PostProcessing Phase.
         /// </summary>
         /// <returns></returns>
         internal virtual long ReplaceVersionEntry(object recordKey, long versionKey, long beginTimestamp, long endTimestamp, long txId, long readTxId) 
@@ -84,7 +64,7 @@ namespace GraphView.Transaction
             throw new NotImplementedException();
         }
 
-        internal virtual VersionEntry UpdateVersionMaxCommitTs(object recordKey, long versionKey, long commitTime)
+        internal virtual VersionEntry UpdateVersionMaxCommitTs(object recordKey, long versionKey, long commitTs)
         {
             throw new NotImplementedException();
         }

@@ -361,7 +361,6 @@
     <Service Include="{508349B6-6B84-4DF5-91F0-309BEEBAD82D}" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="app.config" />
     <None Include="packages.config" />
     <EmbeddedResource Include="Resources\RedisLua\GET_AND_SET_COMMIT_TIME.lua" />
     <EmbeddedResource Include="Resources\RedisLua\UPDATE_VERSION_MAX_COMMIT_TS.lua" />

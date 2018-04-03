@@ -29,16 +29,15 @@ namespace GraphView.Transaction
     /// </summary>
     public abstract partial class VersionDb
     {
-        internal virtual VersionEntry GetRecentVersionEntry(string tableId, object recordKey, out long largestVersionKey)
+        internal virtual IEnumerable<VersionEntry> GetVersionList(string tableId, object recordKey)
         {
             VersionTable versionTable = this.GetVersionTable(tableId);
             if (versionTable == null)
             {
-                largestVersionKey = -1;
                 return null;
             }
 
-            return versionTable.GetRecentVersionEntry(recordKey, out largestVersionKey);
+            return versionTable.GetVersionList(recordKey);
         }
 
         internal virtual VersionEntry GetVersionEntryByKey(string tableId, object recordKey, long versionKey)
@@ -102,16 +101,15 @@ namespace GraphView.Transaction
             return versionTable.DeleteVersionEntry(recordKey, versionKey);
         }
         
-        internal virtual VersionEntry ReadAndInitialize(string tableId, object recordKey, out long largestVersionKey)
+        internal virtual IEnumerable<VersionEntry> InitializeAndGetVersionList(string tableId, object recordKey)
         {
             VersionTable versionTable = this.GetVersionTable(tableId);
             if (versionTable == null) 
             {
-                largestVersionKey = -1;
                 return null;
             }
 
-            return versionTable.ReadAndInitialize(recordKey, out largestVersionKey);
+            return versionTable.InitializeAndGetVersionList(recordKey);
         }
     }
 
@@ -136,12 +134,12 @@ namespace GraphView.Transaction
             throw new NotImplementedException();
         }
 
-        internal virtual long GetAndSetCommitTime(long txId, long lowerBound)
+        internal virtual long SetAndGetCommitTime(long txId, long proposalTs)
         {
             throw new NotImplementedException();
         }
 
-        internal virtual long UpdateCommitLowerBound(long txId, long commitTs)
+        internal virtual long UpdateCommitLowerBound(long txId, long lowerBound)
         {
             throw new NotImplementedException();
         }

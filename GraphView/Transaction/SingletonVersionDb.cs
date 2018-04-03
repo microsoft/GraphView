@@ -65,7 +65,7 @@ namespace GraphView.Transaction
             this.txTable[txId].Status = status;
         }
 
-        internal override long GetAndSetCommitTime(long txId, long lowerBound)
+        internal override long SetAndGetCommitTime(long txId, long lowerBound)
         {
             throw new NotImplementedException();
         }

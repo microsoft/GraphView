@@ -321,7 +321,7 @@
             }
         }
 
-        internal override long GetAndSetCommitTime(long txId, long lowerBound)
+        internal override long SetAndGetCommitTime(long txId, long lowerBound)
         {
             using (RedisClient redisClient = (RedisClient)this.RedisManager.GetClient())
             {

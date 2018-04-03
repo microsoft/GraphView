@@ -116,7 +116,7 @@
         /// <param name="recordKey"></param>
         /// <param name="largestVersionKey"></param>
         /// <returns>The most recent commited version entry</returns>
-        internal override VersionEntry ReadAndInitialize(object recordKey, out long largestVersionKey)
+        internal override IEnumerable<VersionEntry> InitializeAndGetVersionList(object recordKey)
         {
             using (RedisClient redisClient = (RedisClient) this.RedisManager.GetClient())
             {
@@ -133,8 +133,11 @@
                 // Initialize the list with HSETNX command
                 long ret = redisClient.HSetNX(hashId, keyBytes, valueBytes);
 
-                largestVersionKey = 0;
-                return this.GetRecentVersionEntry(recordKey, out largestVersionKey);
+                if (ret == 1)
+                {
+                    return new List<VersionEntry>(new VersionEntry[] {emptyEntry});
+                }
+                return this.GetVersionList(recordKey);
             }
         }
 
