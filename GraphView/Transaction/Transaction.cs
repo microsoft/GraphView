@@ -72,7 +72,10 @@ namespace GraphView.Transaction
 
         private long commitTs;
 
-        private long replaceRecordMaxCommitTs;
+        /// <summary>
+        /// Maximal commit timestamp of all tx's that have updated the write-set records
+        /// </summary>
+        private long maxCommitTsOfWrites;
 
         private long beginTimestamp;
 
@@ -134,8 +137,8 @@ namespace GraphView.Transaction
             this.txStatus = TxStatus.Ongoing;
 
             this.commitTs = -1;
-            this.replaceRecordMaxCommitTs = -1;
-            this.beginTimestamp = 0;
+            this.maxCommitTsOfWrites = -1;
+            this.beginTimestamp = -1;
         }
 
     }
@@ -212,9 +215,9 @@ namespace GraphView.Transaction
                                 return false;
                             }
 
-                            if (this.replaceRecordMaxCommitTs < versionMaxCommitTs)
+                            if (this.maxCommitTsOfWrites < versionMaxCommitTs)
                             {
-                                this.replaceRecordMaxCommitTs = versionMaxCommitTs;
+                                this.maxCommitTsOfWrites = versionMaxCommitTs;
                             }
 
                             //add the info to the rollbackSet
@@ -252,9 +255,9 @@ namespace GraphView.Transaction
                                 }
                             }
 
-                            if (this.replaceRecordMaxCommitTs < versionMaxCommitTs)
+                            if (this.maxCommitTsOfWrites < versionMaxCommitTs)
                             {
-                                this.replaceRecordMaxCommitTs = versionMaxCommitTs;
+                                this.maxCommitTsOfWrites = versionMaxCommitTs;
                             }
 
                             //add the info to the rollbackSet
@@ -290,9 +293,9 @@ namespace GraphView.Transaction
                                 }
                             }
 
-                            if (this.replaceRecordMaxCommitTs < versionMaxCommitTs)
+                            if (this.maxCommitTsOfWrites < versionMaxCommitTs)
                             {
-                                this.replaceRecordMaxCommitTs = versionMaxCommitTs;
+                                this.maxCommitTsOfWrites = versionMaxCommitTs;
                             }
 
                             //add the info to the rollbackSet
@@ -347,7 +350,7 @@ namespace GraphView.Transaction
             //CommitTs >= tx.CommitLowerBound
             //CommitTs >= tx.BeginTimestamp
             //CommitTs >= tx.replaceRecordMaxCommitTs + 1
-            long proposalTs = this.replaceRecordMaxCommitTs + 1;
+            long proposalTs = this.maxCommitTsOfWrites + 1;
             if (proposalTs < this.beginTimestamp)
             {
                 proposalTs = this.beginTimestamp;
@@ -610,7 +613,7 @@ namespace GraphView.Transaction
             IEnumerable<VersionEntry> versionList = this.versionDb.GetVersionList(tableId, recordKey);
 
             long largestVersionKey = 0;
-            VersionEntry versionEntry = this.GetRecentVersionEntryFromList(versionList, out largestVersionKey);
+            VersionEntry versionEntry = this.GetVisibleVersionEntry(versionList, out largestVersionKey);
 
             if (versionEntry == null)
             {
@@ -724,7 +727,7 @@ namespace GraphView.Transaction
             IEnumerable<VersionEntry> versionList = this.versionDb.InitializeAndGetVersionList(tableId, recordKey);
 
             long largestVersionKey = 0;
-            VersionEntry versionEntry = this.GetRecentVersionEntryFromList(versionList, out largestVersionKey);
+            VersionEntry versionEntry = this.GetVisibleVersionEntry(versionList, out largestVersionKey);
 
             if (versionEntry == null)
             {
@@ -748,49 +751,80 @@ namespace GraphView.Transaction
             return versionEntry.Record;
         }
 
-        internal VersionEntry GetRecentVersionEntryFromList(IEnumerable<VersionEntry> versionList, out long largestVersionKey)
+        /// <summary>
+        /// Given a version list, returns a visible version to the tx.
+        /// </summary>
+        /// <param name="versionList">The version list</param>
+        /// <param name="largestVersionKey">The version key of the most-recently committed version entry</param>
+        /// <returns>The version entry visible to the tx</returns>
+        internal VersionEntry GetVisibleVersionEntry(IEnumerable<VersionEntry> versionList, out long largestVersionKey)
         {
             largestVersionKey = 0;
-            foreach (VersionEntry version in versionList)
+            VersionEntry visibleVersion = null;
+
+            foreach (VersionEntry versionEntry in versionList)
             {
-                if (this.CheckVisibility(version))
+                TxStatus pendingTxStatus = TxStatus.Committed;
+                // If the version entry is a dirty write, skips the entry
+                if (versionEntry.TxId >= 0)
                 {
-                    largestVersionKey = version.VersionKey;
-                    return version;
+                    pendingTxStatus = this.versionDb.GetTxTableEntry(versionEntry.TxId).Status;
+
+                    if (versionEntry.EndTimestamp == -1)
+                    {
+                        if (pendingTxStatus == TxStatus.Ongoing || pendingTxStatus == TxStatus.Aborted)
+                        {
+                            continue;
+                        }
+                    }
                 }
 
-                if (largestVersionKey < version.VersionKey)
+                if (visibleVersion == null)
                 {
-                    largestVersionKey = version.VersionKey;
+                    if (versionEntry.TxId == -1)
+                    {
+                        if (this.beginTimestamp >= 0)
+                        {
+                            // When a tx has a begin timestamp after intialization
+                            if (this.beginTimestamp >= versionEntry.BeginTimestamp && this.beginTimestamp < versionEntry.EndTimestamp)
+                            {
+                                visibleVersion = versionEntry;
+                            }
+                        }
+                        else
+                        {
+                            // When a tx has no begin timestamp after intialization, the tx is under serializability. 
+                            // A read always returns the most-recently committed version.
+                            if (versionEntry.EndTimestamp == long.MaxValue)
+                            {
+                                visibleVersion = versionEntry;
+                            }
+                        }
+                    }
+                    else if (versionEntry.TxId >= 0)
+                    {
+                        // A dirty write has been appended after this version entry. 
+                        // This version is visible if the writing tx has not been committed 
+                        if (versionEntry.EndTimestamp == long.MaxValue && pendingTxStatus != TxStatus.Committed)
+                        {
+                            visibleVersion = versionEntry;
+                        }
+                        // A dirty write is visible to this tx when the writing tx has been committed, 
+                        // which has not finished postprocessing and changing the dirty write to a normal version entry
+                        else if (versionEntry.EndTimestamp == -1 && pendingTxStatus == TxStatus.Committed)
+                        {
+                            visibleVersion = versionEntry;
+                        }
+                    }
+                }
+
+                if (largestVersionKey < versionEntry.VersionKey)
+                {
+                    largestVersionKey = versionEntry.VersionKey;
                 }
             }
 
-            return null;
-        }
-
-        internal bool CheckVisibility(VersionEntry versionEntry)
-        {
-            if (versionEntry.EndTimestamp == long.MaxValue &&
-                versionEntry.TxId == -1)
-            {
-                return true;
-            }
-
-            if (versionEntry.EndTimestamp == long.MaxValue &&
-                versionEntry.TxId != -1 &&
-                this.versionDb.GetTxTableEntry(versionEntry.TxId).Status == TxStatus.Aborted)
-            {
-                return true;
-            }
-
-            if (versionEntry.EndTimestamp == -1 &&
-                versionEntry.TxId != -1 &&
-                this.versionDb.GetTxTableEntry(versionEntry.TxId).Status == TxStatus.Committed)
-            {
-                return true;
-            }
-
-            return false;
+            return visibleVersion;
         }
     }
 }
