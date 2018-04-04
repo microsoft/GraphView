@@ -59,7 +59,8 @@
         /// This method will be called during Uploading Phase and the PostProcessing Phase.
         /// </summary>
         /// <returns></returns>
-        internal virtual VersionEntry ReplaceVersionEntry(object recordKey, long versionKey, long beginTimestamp, long endTimestamp, long txId, long readTxId, long readEndTs) 
+        internal virtual VersionEntry ReplaceVersionEntry(object recordKey, long versionKey, 
+            long beginTimestamp, long endTimestamp, long txId, long readTxId, long expectedEndTimestamp) 
         {
             throw new NotImplementedException();
         }

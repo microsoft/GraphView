@@ -75,7 +75,7 @@
         /// <summary>
         ///  The return error code of some functions
         /// </summary>
-        private static readonly int ERROR_CODE = -2;
+        private static readonly long REDIS_CALL_ERROR_CODE = -2L;
 
         /// <summary>
         /// Get RedisClient from the redis connection pool
@@ -399,7 +399,7 @@
                     byte[][] returnBytes = redisClient.EvalSha(sha1, 1, keys);
                     if (returnBytes == null || returnBytes.Length == 0)
                     {
-                        return RedisVersionDb.ERROR_CODE;
+                        return RedisVersionDb.REDIS_CALL_ERROR_CODE;
                     }
 
                     long ret = BitConverter.ToInt64(returnBytes[1], 0);
@@ -407,7 +407,7 @@
                 }
                 catch (RedisResponseException e)
                 {
-                    return RedisVersionDb.ERROR_CODE;
+                    return RedisVersionDb.REDIS_CALL_ERROR_CODE;
                 }
             }
         }

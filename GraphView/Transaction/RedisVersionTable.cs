@@ -144,7 +144,7 @@
         /// <param name="txId"></param>
         /// <returns>Version's maxCommitTs if success, -1 otherwise</returns>
         internal override VersionEntry ReplaceVersionEntry(object recordKey, long versionKey, 
-            long beginTimestamp, long endTimestamp, long txId, long readTxId, long readEndTs)
+            long beginTimestamp, long endTimestamp, long txId, long readTxId, long expectedEndTimestamp)
         {
             using (RedisClient redisClient = (RedisClient)this.RedisManager.GetClient())
             {
@@ -161,22 +161,19 @@
                     BitConverter.GetBytes(endTimestamp),
                     BitConverter.GetBytes(txId),
                     BitConverter.GetBytes(readTxId),
-                    BitConverter.GetBytes(readEndTs),
+                    BitConverter.GetBytes(expectedEndTimestamp),
                     RedisVersionDb.NEGATIVE_ONE_BYTES,
                 };
 
                 try
                 {
                     byte[][] returnBytes = redisClient.EvalSha(sha1, 1, keysAndArgs);
-                    if (returnBytes == null || returnBytes.Length == 0)
+                    // Maybe return [null, null]
+                    if (returnBytes == null || returnBytes.Length == 0 || returnBytes[1] == null)
                     {
                         return null;
                     }
-
-                    // The first byte array in return bytes is always null if no errors
-                    //Todo:
-                    //return BitConverter.ToInt64(returnBytes[1], 0);
-                    return null;
+                    return VersionEntry.Deserialize(recordKey, versionKey, returnBytes[1]);
                 }
                 catch (RedisResponseException e)
                 {

@@ -10,6 +10,9 @@ namespace GraphView.Transaction
         public static readonly string COMMIT_TIME_STRING = "commit_time";
         public static readonly string COMMIT_LOWER_BOUND_STRING = "commit_lower_bound";
 
+        public static readonly long DEFAULT_COMMIT_TIME = -1L;
+        public static readonly long DEFAULT_LOWER_BOUND = 0L;
+
         private readonly long txId;
         private TxStatus status;
         private long commitTime;
@@ -66,8 +69,8 @@ namespace GraphView.Transaction
         {
             this.txId = txId;
             this.status = TxStatus.Ongoing;
-            this.commitTime = -1;
-            this.commitLowerBound = 0;
+            this.commitTime = TxTableEntry.DEFAULT_COMMIT_TIME;
+            this.commitLowerBound = TxTableEntry.DEFAULT_LOWER_BOUND;
         }
 
         public TxTableEntry(long txId, TxStatus status, long commitTime, long commitLowerBound)

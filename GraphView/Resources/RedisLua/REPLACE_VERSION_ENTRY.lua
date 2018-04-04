@@ -8,7 +8,7 @@ local negative_one = ARGV[7]
 
 local entry = redis.call('HGET', KEYS[1], ARGV[1])
 if not entry then
-    return negative_one
+    return nil
 end
 
 local entry_tx_id = string.sub(entry, 2*8+1, 3*8)
@@ -19,9 +19,9 @@ if entry_tx_id == read_tx_id and entry_end_timestamp == read_end_timestamp then
     local new_version_entry = begin_timestamp .. end_timestamp .. tx_id .. string.sub(entry, 3*8+1, string.len(entry))
     local ret = redis.call('HSET', KEYS[1], ARGV[1], new_version_entry);
     if ret == nil then
-        return negative_one
+        return nil
     end
-    return max_commit_ts
+    return new_version_entry
 else
-    return negative_one
+    return nil
 end

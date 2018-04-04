@@ -9,6 +9,8 @@ namespace GraphView.Transaction
     /// </summary>
     public abstract partial class VersionDb
     {
+        public static readonly long RETURN_ERROR_CODE = -2L;
+
         /// <summary>
         /// Get a version table instance by tableId, which has different implementations
         /// in different storages, like loading from meta-data database
@@ -58,19 +60,8 @@ namespace GraphView.Transaction
             return versionTable.GetVersionList(recordKey);
         }
 
-        internal virtual VersionEntry GetVersionEntryByKey(string tableId, object recordKey, long versionKey)
-        {
-            VersionTable versionTable = this.GetVersionTable(tableId);
-            if (versionTable == null)
-            {
-                return null;
-            }
-
-            return versionTable.GetVersionEntryByKey(recordKey, versionKey);
-        }
-
         internal virtual VersionEntry ReplaceVersionEntryTxId(string tableId, object recordKey, long versionKey,
-            long beginTimestamp, long endTimestamp, long txId, long readTxId, long readEndTs)
+            long beginTimestamp, long endTimestamp, long txId, long readTxId, long expectedEndTimestamp)
         {
             VersionTable versionTable = this.GetVersionTable(tableId);
             if (versionTable == null)
@@ -78,7 +69,8 @@ namespace GraphView.Transaction
                 return null;
             }
 
-            return versionTable.ReplaceVersionEntry(recordKey, versionKey, beginTimestamp, endTimestamp, txId, readTxId, readEndTs);
+            return versionTable.ReplaceVersionEntry(recordKey, versionKey, 
+                beginTimestamp, endTimestamp, txId, readTxId, expectedEndTimestamp);
         }
 
         internal virtual bool UploadNewVersionEntry(string tableId, object recordKey, long versionKey, VersionEntry versionEntry)
