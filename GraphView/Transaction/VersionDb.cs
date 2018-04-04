@@ -69,13 +69,13 @@ namespace GraphView.Transaction
             return versionTable.GetVersionEntryByKey(recordKey, versionKey);
         }
 
-        internal virtual long ReplaceVersionEntryTxId(string tableId, object recordKey, long versionKey,
+        internal virtual VersionEntry ReplaceVersionEntryTxId(string tableId, object recordKey, long versionKey,
             long beginTimestamp, long endTimestamp, long txId, long readTxId, long readEndTs)
         {
             VersionTable versionTable = this.GetVersionTable(tableId);
             if (versionTable == null)
             {
-                return -1;
+                return null;
             }
 
             return versionTable.ReplaceVersionEntry(recordKey, versionKey, beginTimestamp, endTimestamp, txId, readTxId, readEndTs);

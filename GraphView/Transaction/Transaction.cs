@@ -68,6 +68,10 @@ namespace GraphView.Transaction
 
         private long beginTimestamp;
 
+        private static readonly long UNSET_TX_COMMIT_TIMESTAMP = -2L;
+
+        private static readonly long DEFAULT_VERSION_TXID_FIELD = -1L;
+
         /// <summary>
         /// Read set, using for checking visibility of the versions read.
         /// </summary>
@@ -84,16 +88,16 @@ namespace GraphView.Transaction
 
         /// <summary>
         /// A set of version entries that need to be rolled back upon abortion
-        /// The Tuple stores the beginTs field, endTs field and TxId field which wanted to be rolled back to.
+        /// The Tuple stores the beginTs field, endTs field which wanted to be rolled back to.
         /// </summary>
-        private readonly Dictionary<string, Dictionary<object, Dictionary<long, Tuple<long, long, long>>>> abortSet;
+        private readonly Dictionary<string, Dictionary<object, Dictionary<long, Tuple<long, long>>>> abortSet;
 
         /// <summary>
         /// A set of version entries that need to be changed upon commit
-        /// The Tuple stores the beginTs field, endTs field and TxId field which wanted to be changed to.
+        /// The Tuple stores the beginTs field, endTs field which wanted to be changed to.
         /// The beginTs field and endTs field in the tuple maybe set to -2 temporarily, because we don not get the current tx's commitTs
         /// </summary>
-        private readonly Dictionary<string, Dictionary<object, Dictionary<long, Tuple<long, long, long>>>> commitSet;
+        private readonly Dictionary<string, Dictionary<object, Dictionary<long, Tuple<long, long>>>> commitSet;
 
         private readonly Dictionary<string, Dictionary<object, long>> largestVersionKeyMap;
 
@@ -130,8 +134,8 @@ namespace GraphView.Transaction
             this.versionDb = versionDb;
             this.readSet = new Dictionary<string, Dictionary<object, ReadSetEntry>>();
             this.writeSet = new Dictionary<string, Dictionary<object, object>>();
-            this.abortSet = new Dictionary<string, Dictionary<object, Dictionary<long, Tuple<long, long, long>>>>();
-            this.commitSet = new Dictionary<string, Dictionary<object, Dictionary<long, Tuple<long, long, long>>>>();
+            this.abortSet = new Dictionary<string, Dictionary<object, Dictionary<long, Tuple<long, long>>>>();
+            this.commitSet = new Dictionary<string, Dictionary<object, Dictionary<long, Tuple<long, long>>>>();
             this.largestVersionKeyMap = new Dictionary<string, Dictionary<object, long>>();
 
             this.txId = this.versionDb.InsertNewTx();
@@ -169,6 +173,7 @@ namespace GraphView.Transaction
             {
                 foreach (object recordKey in this.writeSet[tableId].Keys)
                 {
+                    object writeRecord = this.writeSet[tableId][recordKey];
                     if (this.readSet.ContainsKey(tableId) && this.readSet[tableId].ContainsKey(recordKey))
                     {
                         if (this.writeSet[tableId][recordKey] != null)
@@ -180,7 +185,7 @@ namespace GraphView.Transaction
                                 this.largestVersionKeyMap[tableId][recordKey] + 1,
                                 VersionEntry.DEFAULT_BEGIN_TIMESTAMP,
                                 VersionEntry.DEFAULT_END_TIMESTAMP,
-                                this.writeSet[tableId][recordKey],
+                                writeRecord,
                                 this.txId,
                                 VersionEntry.DEFAULT_MAX_COMMIT_TS);
                             if (!this.versionDb.UploadNewVersionEntry(tableId, recordKey, newImageEntry.VersionKey,
@@ -190,140 +195,127 @@ namespace GraphView.Transaction
                             }
 
                             //add the info to the abortSet
-                            this.AddVersionToAbortSet(tableId, recordKey, newImageEntry.VersionKey, -1, -1, -1);
+                            this.AddVersionToAbortSet(tableId, recordKey, newImageEntry.VersionKey, -1, -1);
                             //add the info to the commitSet
-                            this.AddVersionToCommitSet(tableId, recordKey, newImageEntry.VersionKey, -2, long.MaxValue, -1);
+                            this.AddVersionToCommitSet(tableId, recordKey, newImageEntry.VersionKey, 
+                                Transaction.UNSET_TX_COMMIT_TIMESTAMP, long.MaxValue);
                         }
 
+                        ReadSetEntry readVersion = this.readSet[tableId][recordKey];
                         //Both UPDATE and DELETE Op.
                         //replace the old version's Begin field, End field and TxId field.
                         //three case:
-                        //(1) read [Ts, inf, -1], replace by [Ts, inf, myTxId]
-                        //(2) read [Ts, inf, txId1] and tx1's status is Aborted or Ongoing, replace by [Ts, inf, myTxId]
-                        //(3) read [-1, -1, txId1] and tx1's status is Committed, replace by [tx1CommitTs, inf, myTxId]
+                        //(1) read [Ts, inf, -1], want to replace it with [Ts, inf, myTxId]
+                        //(2) read [Ts, inf, txId1] and tx1's status is Aborted or Ongoing, want to replace it with [Ts, inf, myTxId]
+                        //(3) read [-1, -1, txId1] and tx1's status is Committed, want to replace it by [tx1CommitTs, inf, myTxId]
 
-                        //case 1:
-                        if (this.readSet[tableId][recordKey].EndTimestamp == long.MaxValue &&
-                            this.readSet[tableId][recordKey].TxId == -1)
+                        //for case (1) and (2)
+                        long replaceVersionBeginTimestamp = readVersion.BeginTimestamp;
+                        //for case (3), get the tx's commitTs
+                        if (readVersion.EndTimestamp != -1)
                         {
-                            long versionMaxCommitTs = this.versionDb.ReplaceVersionEntryTxId(
+                            replaceVersionBeginTimestamp = this.versionDb.GetTxTableEntry(
+                                this.readSet[tableId][recordKey].TxId).CommitTime;
+                        }
+
+                        long rollBackBeginTimestamp = replaceVersionBeginTimestamp;
+
+                        //want to replace [Ts, inf, -1] with [Ts, inf, myTxId]
+                        VersionEntry versionEntry = this.versionDb.ReplaceVersionEntryTxId(
                                 tableId,
                                 recordKey,
-                                this.readSet[tableId][recordKey].VersionKey,
-                                this.readSet[tableId][recordKey].BeginTimestamp,
+                                readVersion.VersionKey,
+                                replaceVersionBeginTimestamp,
                                 long.MaxValue,
                                 this.txId,
-                                -1,
+                                Transaction.DEFAULT_VERSION_TXID_FIELD,
                                 long.MaxValue);
-                            if (versionMaxCommitTs == -1)
+
+                        //replace failed
+                        if (versionEntry.TxId != this.txId)
+                        {
+                            if (versionEntry.TxId == -1)
                             {
+                                //we meet a version [Ts, Ts', -1]
                                 return false;
                             }
 
-                            if (this.maxCommitTsOfWrites < versionMaxCommitTs)
+                            TxTableEntry txEntry = this.versionDb.GetTxTableEntry(versionEntry.TxId);
+                            if (txEntry.Status == TxStatus.Ongoing)
                             {
-                                this.maxCommitTsOfWrites = versionMaxCommitTs;
+                                return false;
                             }
-
-                            //add the info to the abortSet
-                            this.AddVersionToAbortSet(tableId, recordKey, this.readSet[tableId][recordKey].VersionKey,
-                                this.readSet[tableId][recordKey].BeginTimestamp, long.MaxValue, -1);
-                            //add the info to the commitSet
-                            this.AddVersionToCommitSet(tableId, recordKey, this.readSet[tableId][recordKey].VersionKey,
-                                this.readSet[tableId][recordKey].BeginTimestamp, -2, -1);
-                        }
-                        //case 2:
-                        else if (this.readSet[tableId][recordKey].EndTimestamp == long.MaxValue &&
-                                 this.readSet[tableId][recordKey].TxId != -1)
-                        {
-                            //need 2 CAS ops
-                            //first try to replace [Ts, inf, txId1] with [Ts, inf, myTxId]
-                            //if failed (tx1 may have just finished PostProcessing),
-                            //then try to replace [Ts, inf, -1] with [Ts, inf, myTxId]
-                            long versionMaxCommitTs = this.versionDb.ReplaceVersionEntryTxId(
-                                tableId,
-                                recordKey,
-                                this.readSet[tableId][recordKey].VersionKey,
-                                this.readSet[tableId][recordKey].BeginTimestamp,
-                                long.MaxValue,
-                                this.txId,
-                                this.readSet[tableId][recordKey].TxId,
-                                long.MaxValue);
-                            if (versionMaxCommitTs == -1)
+                            else if (txEntry.Status == TxStatus.Committed)
                             {
-                                versionMaxCommitTs = this.versionDb.ReplaceVersionEntryTxId(
+                                if (versionEntry.EndTimestamp != -1)
+                                {
+                                    return false;
+                                }
+                                //now the version is [-1, -1, TxId1] and Tx1 is committed
+                                //need 2 CAS ops
+                                //first try to replace [-1, -1, txId1] with [TxId1's commitTs, inf, myTxId]
+                                //if failed (tx1 may have just finished PostProcessing),
+                                //then try to replace [TxId1's commitTs, inf, -1] with [TxId1's commitTs, inf, myTxId]
+                                VersionEntry retry1 = this.versionDb.ReplaceVersionEntryTxId(
                                     tableId,
                                     recordKey,
-                                    this.readSet[tableId][recordKey].VersionKey,
-                                    this.readSet[tableId][recordKey].BeginTimestamp,
+                                    versionEntry.VersionKey,
+                                    txEntry.CommitTime,
                                     long.MaxValue,
                                     this.txId,
-                                    -1,
+                                    versionEntry.TxId,
+                                    -1);
+
+                                rollBackBeginTimestamp = txEntry.CommitTime;
+
+                                if (retry1.TxId != this.txId)
+                                {
+                                    VersionEntry retry2 = this.versionDb.ReplaceVersionEntryTxId(
+                                        tableId,
+                                        recordKey,
+                                        versionEntry.VersionKey,
+                                        txEntry.CommitTime,
+                                        long.MaxValue,
+                                        this.txId,
+                                        Transaction.DEFAULT_VERSION_TXID_FIELD,
+                                        long.MaxValue);
+                                    if (retry2.TxId != this.txId)
+                                    {
+                                        return false;
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                //now the version is [Ts, inf, TxId1] and tx1 is aborted
+                                //want to replace [Ts, inf, TxId1] with [Ts, inf, myTxId]
+                                VersionEntry retry1 = this.versionDb.ReplaceVersionEntryTxId(
+                                    tableId,
+                                    recordKey,
+                                    versionEntry.VersionKey,
+                                    txEntry.CommitTime,
+                                    long.MaxValue,
+                                    this.txId,
+                                    versionEntry.TxId,
                                     long.MaxValue);
-                                if (versionMaxCommitTs == -1)
+
+                                rollBackBeginTimestamp = versionEntry.BeginTimestamp;
+
+                                if (retry1.TxId != this.txId)
                                 {
                                     return false;
                                 }
                             }
-
-                            if (this.maxCommitTsOfWrites < versionMaxCommitTs)
-                            {
-                                this.maxCommitTsOfWrites = versionMaxCommitTs;
-                            }
-
-                            //add the info to the abortSet
-                            this.AddVersionToAbortSet(tableId, recordKey, this.readSet[tableId][recordKey].VersionKey,
-                                this.readSet[tableId][recordKey].BeginTimestamp, long.MaxValue, -1);
-                            //add the info to the commitSet
-                            this.AddVersionToCommitSet(tableId, recordKey, this.readSet[tableId][recordKey].VersionKey,
-                                this.readSet[tableId][recordKey].BeginTimestamp, -2, -1);
                         }
-                        else
-                        {
-                            //also need 2 CAS ops
-                            //first try to replace [-1, -1, txId1] with [tx1CommitTs, inf, myTxId]
-                            //if failed (tx1 may have just finished PostProcessing),
-                            //then try to replace [tx1CommitTs, inf, -1] with [tx1CommitTs, inf, myTxId]
-                            long txCommitTs = this.versionDb.GetTxTableEntry(
-                                    this.readSet[tableId][recordKey].TxId).CommitTime;
-                            long versionMaxCommitTs = this.versionDb.ReplaceVersionEntryTxId(
-                                tableId,
-                                recordKey,
-                                this.readSet[tableId][recordKey].VersionKey,
-                                txCommitTs,
-                                long.MaxValue,
-                                this.txId,
-                                this.readSet[tableId][recordKey].TxId,
-                                -1);
-                            if (versionMaxCommitTs == -1)
-                            {
-                                versionMaxCommitTs = this.versionDb.ReplaceVersionEntryTxId(
-                                    tableId,
-                                    recordKey,
-                                    this.readSet[tableId][recordKey].VersionKey,
-                                    txCommitTs,
-                                    long.MaxValue,
-                                    this.txId,
-                                    -1,
-                                    long.MaxValue);
-                                if (versionMaxCommitTs == -1)
-                                {
-                                    return false;
-                                }
-                            }
 
-                            if (this.maxCommitTsOfWrites < versionMaxCommitTs)
-                            {
-                                this.maxCommitTsOfWrites = versionMaxCommitTs;
-                            }
+                        //replace successfully
 
-                            //add the info to the abortSet
-                            this.AddVersionToAbortSet(tableId, recordKey, this.readSet[tableId][recordKey].VersionKey,
-                                txCommitTs, long.MaxValue, -1);
-                            //add the info to the commitSet
-                            this.AddVersionToCommitSet(tableId, recordKey, this.readSet[tableId][recordKey].VersionKey,
-                                txCommitTs, -2, -1);
-                        }
+                        //add the info to the abortSet
+                        this.AddVersionToAbortSet(tableId, recordKey, readVersion.VersionKey,
+                            rollBackBeginTimestamp, long.MaxValue);
+                        //add the info to the commitSet
+                        this.AddVersionToCommitSet(tableId, recordKey, readVersion.VersionKey,
+                            rollBackBeginTimestamp, Transaction.UNSET_TX_COMMIT_TIMESTAMP);                     
                     }
                     else
                     {
@@ -334,7 +326,7 @@ namespace GraphView.Transaction
                             this.largestVersionKeyMap[tableId][recordKey] + 1,
                             VersionEntry.DEFAULT_BEGIN_TIMESTAMP,
                             VersionEntry.DEFAULT_END_TIMESTAMP,
-                            this.writeSet[tableId][recordKey],
+                            writeRecord,
                             this.txId,
                             VersionEntry.DEFAULT_MAX_COMMIT_TS);
                         if (!this.versionDb.UploadNewVersionEntry(
@@ -346,9 +338,10 @@ namespace GraphView.Transaction
                             return false;
                         }
                         //add the info to the abortSet
-                        this.AddVersionToAbortSet(tableId, recordKey, newImageEntry.VersionKey, -1, -1, -1);
+                        this.AddVersionToAbortSet(tableId, recordKey, newImageEntry.VersionKey, -1, -1);
                         //add the info to the commitSet
-                        this.AddVersionToCommitSet(tableId, recordKey, newImageEntry.VersionKey, -2, long.MaxValue, -1);
+                        this.AddVersionToCommitSet(tableId, recordKey, newImageEntry.VersionKey, 
+                            Transaction.UNSET_TX_COMMIT_TIMESTAMP, long.MaxValue);
                     }
                 }
             }
@@ -356,32 +349,32 @@ namespace GraphView.Transaction
             return true;
         }
 
-        internal void AddVersionToAbortSet(string tableId, object recordKey, long versionKey, long beginTs, long endTs, long txId)
+        internal void AddVersionToAbortSet(string tableId, object recordKey, long versionKey, long beginTs, long endTs)
         {
             if (!this.abortSet.ContainsKey(tableId))
             {
-                this.abortSet[tableId] = new Dictionary<object, Dictionary<long, Tuple<long, long, long>>>();
+                this.abortSet[tableId] = new Dictionary<object, Dictionary<long, Tuple<long, long>>>();
             }
 
             if (!this.abortSet[tableId].ContainsKey(recordKey))
             {
-                this.abortSet[tableId][recordKey] = new Dictionary<long, Tuple<long, long, long>>();
+                this.abortSet[tableId][recordKey] = new Dictionary<long, Tuple<long, long>>();
             }
-            this.abortSet[tableId][recordKey][versionKey] = new Tuple<long, long, long>(beginTs, endTs, txId);
+            this.abortSet[tableId][recordKey][versionKey] = new Tuple<long, long>(beginTs, endTs);
         }
 
-        internal void AddVersionToCommitSet(string tableId, object recordKey, long versionKey, long beginTs, long endTs, long txId)
+        internal void AddVersionToCommitSet(string tableId, object recordKey, long versionKey, long beginTs, long endTs)
         {
             if (!this.commitSet.ContainsKey(tableId))
             {
-                this.commitSet[tableId] = new Dictionary<object, Dictionary<long, Tuple<long, long, long>>>();
+                this.commitSet[tableId] = new Dictionary<object, Dictionary<long, Tuple<long, long>>>();
             }
 
             if (!this.commitSet[tableId].ContainsKey(recordKey))
             {
-                this.commitSet[tableId][recordKey] = new Dictionary<long, Tuple<long, long, long>>();
+                this.commitSet[tableId][recordKey] = new Dictionary<long, Tuple<long, long>>();
             }
-            this.commitSet[tableId][recordKey][versionKey] = new Tuple<long, long, long>(beginTs, endTs, txId);
+            this.commitSet[tableId][recordKey][versionKey] = new Tuple<long, long>(beginTs, endTs);
         }
 
         internal bool GetCommitTimestamp()
@@ -431,8 +424,7 @@ namespace GraphView.Transaction
                         {
                             //the tx who is locking the version has already gotten its commitTs
                             //range check
-                            if (this.commitTs < versionEntry.BeginTimestamp ||
-                                this.commitTs > txCommitTs)
+                            if (this.commitTs > txCommitTs)
                             {
                                 return false;
                             }
@@ -445,8 +437,7 @@ namespace GraphView.Transaction
                         //the current version's endTimestamp must be a timestamp (tx2's commitTs),
                         //so we need to compare the current version's endTimestamp with my CommitTs, 
                         //to ensure we can still read the current version and there is no new version has been committed before I commits
-                        if (this.commitTs < versionEntry.BeginTimestamp ||
-                            this.commitTs > versionEntry.EndTimestamp)
+                        if (this.commitTs > versionEntry.EndTimestamp)
                         {
                             return false;
                         }
@@ -475,8 +466,7 @@ namespace GraphView.Transaction
                     foreach (long versionKey in this.abortSet[tableId][recordKey].Keys)
                     {
                         if (this.abortSet[tableId][recordKey][versionKey].Item1 == -1 &&
-                            this.abortSet[tableId][recordKey][versionKey].Item2 == -1 &&
-                            this.abortSet[tableId][recordKey][versionKey].Item3 == -1)
+                            this.abortSet[tableId][recordKey][versionKey].Item2 == -1)
                         {
                             //this is a new version inserted by this aborted tx, delete it
                             this.versionDb.DeleteVersionEntry(tableId, recordKey, versionKey);
@@ -489,7 +479,7 @@ namespace GraphView.Transaction
                                 versionKey,
                                 this.abortSet[tableId][recordKey][versionKey].Item1,
                                 this.abortSet[tableId][recordKey][versionKey].Item2,
-                                this.abortSet[tableId][recordKey][versionKey].Item3,
+                                Transaction.DEFAULT_VERSION_TXID_FIELD,
                                 this.txId,
                                 long.MaxValue);
                         }
@@ -506,7 +496,7 @@ namespace GraphView.Transaction
                 {
                     foreach (long versionKey in this.commitSet[tableId][recordKey].Keys)
                     {
-                        if (this.commitSet[tableId][recordKey][versionKey].Item1 == -2)
+                        if (this.commitSet[tableId][recordKey][versionKey].Item1 == Transaction.UNSET_TX_COMMIT_TIMESTAMP)
                         {
                             //this is a new version inserted by this committed tx, try to change it
                             this.versionDb.ReplaceVersionEntryTxId(
@@ -515,7 +505,7 @@ namespace GraphView.Transaction
                                 versionKey,
                                 this.commitTs,
                                 this.commitSet[tableId][recordKey][versionKey].Item2,
-                                this.commitSet[tableId][recordKey][versionKey].Item3,
+                                Transaction.DEFAULT_VERSION_TXID_FIELD,
                                 this.txId,
                                 -1);
                         }
@@ -528,7 +518,7 @@ namespace GraphView.Transaction
                                 versionKey,
                                 this.commitSet[tableId][recordKey][versionKey].Item1,
                                 this.commitTs,
-                                this.commitSet[tableId][recordKey][versionKey].Item3,
+                                Transaction.DEFAULT_VERSION_TXID_FIELD,
                                 this.txId,
                                 long.MaxValue);
                         }
@@ -678,8 +668,9 @@ namespace GraphView.Transaction
             else if (this.readSet.ContainsKey(tableId) &&
                      this.readSet[tableId].ContainsKey(recordKey))
             {
-                //this version is updatable only if its endTs is inf
-                if (this.readSet[tableId][recordKey].EndTimestamp != long.MaxValue)
+                //this version is updatable only if its endTs is inf or -1
+                if (this.readSet[tableId][recordKey].EndTimestamp != long.MaxValue &&
+                    this.readSet[tableId][recordKey].EndTimestamp != -1)
                 {
                     this.Abort();
                     throw new TransactionException("Update");
