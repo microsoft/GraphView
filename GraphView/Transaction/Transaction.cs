@@ -2,6 +2,7 @@
 namespace GraphView.Transaction
 {
     using System;
+    using System.Diagnostics;
     using System.Collections.Generic;
     using System.Runtime.Serialization;
 
@@ -176,10 +177,9 @@ namespace GraphView.Transaction
                     object writeRecord = this.writeSet[tableId][recordKey];
                     if (this.readSet.ContainsKey(tableId) && this.readSet[tableId].ContainsKey(recordKey))
                     {
+                        // Upload the new version to the k-v store, when the new version has a payload. 
                         if (this.writeSet[tableId][recordKey] != null)
                         {
-                            //UPDATE Op.
-                            //create and upload the new versionEntry
                             VersionEntry newImageEntry = new VersionEntry(
                                 recordKey,
                                 this.largestVersionKeyMap[tableId][recordKey] + 1,
@@ -202,120 +202,104 @@ namespace GraphView.Transaction
                         }
 
                         ReadSetEntry readVersion = this.readSet[tableId][recordKey];
-                        //Both UPDATE and DELETE Op.
-                        //replace the old version's Begin field, End field and TxId field.
-                        //three case:
-                        //(1) read [Ts, inf, -1], want to replace it with [Ts, inf, myTxId]
-                        //(2) read [Ts, inf, txId1] and tx1's status is Aborted or Ongoing, want to replace it with [Ts, inf, myTxId]
-                        //(3) read [-1, -1, txId1] and tx1's status is Committed, want to replace it by [tx1CommitTs, inf, myTxId]
 
-                        //for case (1) and (2)
-                        long replaceVersionBeginTimestamp = readVersion.BeginTimestamp;
-                        //for case (3), get the tx's commitTs
-                        if (readVersion.EndTimestamp != -1)
-                        {
-                            replaceVersionBeginTimestamp = this.versionDb.GetTxTableEntry(
-                                this.readSet[tableId][recordKey].TxId).CommitTime;
-                        }
+                        // Appends the new version to the tail of the version list
+                        // by pinning the tx to the tail version entry. 
+                        // The tail entry could be [Ts, inf, -1], [Ts, inf, txId1] or [-1, -1, txId1].
+                        // The first case indicates that no concurrent tx is locking the tail.
+                        // The second case indicates that one concurrent tx is holding the tail. 
+                        // The third case means that a concurrent tx is creating a new tail, which was seen by this tx. 
 
-                        long rollBackBeginTimestamp = replaceVersionBeginTimestamp;
-
-                        //want to replace [Ts, inf, -1] with [Ts, inf, myTxId]
+                        // Tries to hold a lock on the tail when the tail is [Ts, inf, -1]
                         VersionEntry versionEntry = this.versionDb.ReplaceVersionEntryTxId(
                                 tableId,
                                 recordKey,
                                 readVersion.VersionKey,
-                                replaceVersionBeginTimestamp,
+                                readVersion.BeginTimestamp,
                                 long.MaxValue,
                                 this.txId,
                                 Transaction.DEFAULT_VERSION_TXID_FIELD,
                                 long.MaxValue);
 
-                        //replace failed
-                        if (versionEntry.TxId != this.txId)
-                        {
-                            if (versionEntry.TxId == -1)
-                            {
-                                //we meet a version [Ts, Ts', -1]
-                                return false;
-                            }
+                        long rolledBackBegin = versionEntry.BeginTimestamp;
+                        this.maxCommitTsOfWrites = Math.Max(this.maxCommitTsOfWrites, versionEntry.MaxCommitTs);
 
+                        // The first try was unsuccessful because the tail is hold by another concurrent tx. 
+                        // If the concurrent tx has finished (committed or aborted), there is a chance for this tx
+                        // to re-gain the lock. 
+                        if (versionEntry.TxId >= 0)
+                        {
+                            VersionEntry retryEntry = null;
                             TxTableEntry txEntry = this.versionDb.GetTxTableEntry(versionEntry.TxId);
+
+                            // The tx has not finished. Always abort.
                             if (txEntry.Status == TxStatus.Ongoing)
                             {
                                 return false;
                             }
-                            else if (txEntry.Status == TxStatus.Committed)
+
+                            // The new tail was created by the concurrent tx, yet has not been post-processed. 
+                            // The current tx tries to update the tail to the post-processing image and obtain the lock.
+                            if (versionEntry.EndTimestamp == -1)
                             {
-                                if (versionEntry.EndTimestamp != -1)
-                                {
-                                    return false;
-                                }
-                                //now the version is [-1, -1, TxId1] and Tx1 is committed
-                                //need 2 CAS ops
-                                //first try to replace [-1, -1, txId1] with [TxId1's commitTs, inf, myTxId]
-                                //if failed (tx1 may have just finished PostProcessing),
-                                //then try to replace [TxId1's commitTs, inf, -1] with [TxId1's commitTs, inf, myTxId]
-                                VersionEntry retry1 = this.versionDb.ReplaceVersionEntryTxId(
+                                // Only if a new tail's owner tx has been committed, can it be seen by 
+                                // the current tx. 
+                                Debug.Assert(txEntry.Status == TxStatus.Committed);
+
+                                retryEntry = this.versionDb.ReplaceVersionEntryTxId(
                                     tableId,
                                     recordKey,
                                     versionEntry.VersionKey,
                                     txEntry.CommitTime,
                                     long.MaxValue,
                                     this.txId,
-                                    versionEntry.TxId,
+                                    txEntry.TxId,
                                     -1);
-
-                                rollBackBeginTimestamp = txEntry.CommitTime;
-
-                                if (retry1.TxId != this.txId)
+                            }
+                            // The old tail was locked by a concurrent tx, which has finished but has not cleared the lock. 
+                            // The current lock tries to replaces the lock's owner to itself. 
+                            else if (versionEntry.EndTimestamp == long.MaxValue)
+                            {
+                                // The owner tx of the lock has committed. This version entry is not the tail anymore.
+                                if (txEntry.Status == TxStatus.Committed)
                                 {
-                                    VersionEntry retry2 = this.versionDb.ReplaceVersionEntryTxId(
+                                    return false;
+                                }
+                                else if (txEntry.Status == TxStatus.Aborted)
+                                {
+                                    retryEntry = this.versionDb.ReplaceVersionEntryTxId(
                                         tableId,
                                         recordKey,
                                         versionEntry.VersionKey,
-                                        txEntry.CommitTime,
+                                        versionEntry.BeginTimestamp,
                                         long.MaxValue,
                                         this.txId,
-                                        Transaction.DEFAULT_VERSION_TXID_FIELD,
+                                        txEntry.TxId,
                                         long.MaxValue);
-                                    if (retry2.TxId != this.txId)
-                                    {
-                                        return false;
-                                    }
                                 }
                             }
-                            else
+                            
+                            if (retryEntry.TxId != this.txId)
                             {
-                                //now the version is [Ts, inf, TxId1] and tx1 is aborted
-                                //want to replace [Ts, inf, TxId1] with [Ts, inf, myTxId]
-                                VersionEntry retry1 = this.versionDb.ReplaceVersionEntryTxId(
-                                    tableId,
-                                    recordKey,
-                                    versionEntry.VersionKey,
-                                    txEntry.CommitTime,
-                                    long.MaxValue,
-                                    this.txId,
-                                    versionEntry.TxId,
-                                    long.MaxValue);
-
-                                rollBackBeginTimestamp = versionEntry.BeginTimestamp;
-
-                                if (retry1.TxId != this.txId)
-                                {
-                                    return false;
-                                }
+                                return false;
                             }
+
+                            rolledBackBegin = retryEntry.BeginTimestamp;
+                            this.maxCommitTsOfWrites = Math.Max(this.maxCommitTsOfWrites, retryEntry.MaxCommitTs);
+                        }
+                        else
+                        {
+                            // The new version is failed to append to the tail of the version list, 
+                            // because the old tail seen by this tx is not the tail anymore 
+                            return false;
                         }
 
-                        //replace successfully
-
-                        //add the info to the abortSet
+                        // Add the updated tail to the abort set
                         this.AddVersionToAbortSet(tableId, recordKey, readVersion.VersionKey,
-                            rollBackBeginTimestamp, long.MaxValue);
-                        //add the info to the commitSet
+                            rolledBackBegin, long.MaxValue);
+                        // Add the updated tail to the commit set
                         this.AddVersionToCommitSet(tableId, recordKey, readVersion.VersionKey,
-                            rollBackBeginTimestamp, Transaction.UNSET_TX_COMMIT_TIMESTAMP);                     
+                            rolledBackBegin, Transaction.UNSET_TX_COMMIT_TIMESTAMP);                     
                     }
                     else
                     {
@@ -377,18 +361,30 @@ namespace GraphView.Transaction
             this.commitSet[tableId][recordKey][versionKey] = new Tuple<long, long>(beginTs, endTs);
         }
 
-        internal bool GetCommitTimestamp()
+        private bool GetCommitTimestamp()
         {
             //CommitTs >= tx.CommitLowerBound
             //CommitTs >= tx.BeginTimestamp
             //CommitTs >= tx.replaceRecordMaxCommitTs + 1
-            long proposalTs = this.maxCommitTsOfWrites + 1;
-            if (proposalTs < this.beginTimestamp)
+
+            long proposedCommitTs = this.maxCommitTsOfWrites + 1;
+
+            foreach (string tableId in this.readSet.Keys)
             {
-                proposalTs = this.beginTimestamp;
+                foreach (object recordKey in this.readSet[tableId].Keys)
+                {
+                    if (this.writeSet.ContainsKey(tableId) && this.writeSet[tableId].ContainsKey(recordKey))
+                    {
+                        proposedCommitTs = Math.Max(proposedCommitTs, this.readSet[tableId][recordKey].BeginTimestamp + 1);
+                    }
+                    else
+                    {
+                        proposedCommitTs = Math.Max(proposedCommitTs, this.readSet[tableId][recordKey].BeginTimestamp);
+                    }
+                }
             }
 
-            this.commitTs = this.versionDb.SetAndGetCommitTime(this.txId, proposalTs);
+            this.commitTs = this.versionDb.SetAndGetCommitTime(this.txId, proposedCommitTs);
             return this.commitTs != -1;
         }
 
@@ -398,6 +394,11 @@ namespace GraphView.Transaction
             {
                 foreach (object recordKey in this.readSet[tableId].Keys)
                 {
+                    if (this.writeSet.ContainsKey(tableId) && this.writeSet[tableId].ContainsKey(recordKey))
+                    {
+                        continue;
+                    }
+
                     //CAS1
                     //try to push the version’s maxCommitTs as my CommitTs
                     VersionEntry versionEntry = this.versionDb.UpdateVersionMaxCommitTs(
@@ -795,11 +796,13 @@ namespace GraphView.Transaction
 
             foreach (VersionEntry versionEntry in versionList)
             {
+                TxTableEntry pendingTxEntry = null;
                 TxStatus pendingTxStatus = TxStatus.Committed;
                 // If the version entry is a dirty write, skips the entry
                 if (versionEntry.TxId >= 0)
                 {
-                    pendingTxStatus = this.versionDb.GetTxTableEntry(versionEntry.TxId).Status;
+                    pendingTxEntry = this.versionDb.GetTxTableEntry(versionEntry.TxId);
+                    pendingTxStatus = pendingTxEntry.Status;
 
                     if (versionEntry.EndTimestamp == -1)
                     {
@@ -844,7 +847,14 @@ namespace GraphView.Transaction
                         // which has not finished postprocessing and changing the dirty write to a normal version entry
                         else if (versionEntry.EndTimestamp == -1 && pendingTxStatus == TxStatus.Committed)
                         {
-                            visibleVersion = versionEntry;
+                            visibleVersion = new VersionEntry(
+                                versionEntry.RecordKey, 
+                                versionEntry.VersionKey, 
+                                pendingTxEntry.CommitTime, 
+                                long.MaxValue, 
+                                versionEntry.Record, 
+                                -1, 
+                                versionEntry.MaxCommitTs);
                         }
                     }
                 }
