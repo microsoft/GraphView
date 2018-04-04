@@ -23,5 +23,5 @@ if entry_tx_id == read_tx_id and entry_end_timestamp == read_end_timestamp then
     end
     return new_version_entry
 else
-    return nil
+    return entry
 end

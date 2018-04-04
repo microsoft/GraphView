@@ -23,23 +23,6 @@
         {
             throw new NotImplementedException();
         }
-        
-        /// <summary>
-        /// It's useless
-        /// </summary>
-        /// <returns></returns>                                   
-        internal virtual VersionEntry GetVersionEntryByKey(object recordKey, long versionKey)
-        {
-            IEnumerable<VersionEntry> versionList = this.GetVersionList(recordKey);
-            foreach (VersionEntry entry in versionList)
-            {
-                if (entry.VersionKey == versionKey)
-                {
-                    return entry;
-                }
-            }
-            return null;
-        }
 
         /// <summary>
         /// To keep the same actions whether the version list is empty or not when insert a new version

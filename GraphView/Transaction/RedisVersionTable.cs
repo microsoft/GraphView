@@ -77,32 +77,6 @@
         }
 
         /// <summary>
-        /// Get a version entry from redis with record key and version key by HGET command
-        /// </summary>
-        /// <param name="recordKey"></param>
-        /// <param name="versionKey"></param>
-        /// <returns>A version entry or null if the specified version entry doesn't exist</returns>
-        internal override VersionEntry GetVersionEntryByKey(object recordKey, long versionKey)
-        {
-            using (RedisClient redisClient = (RedisClient)this.RedisManager.GetClient())
-            {
-                List<VersionEntry> entries = new List<VersionEntry>();
-
-                redisClient.ChangeDb(this.redisDbIndex);
-                string hashId = recordKey as string;
-                byte[] fieldBytes = BitConverter.GetBytes(versionKey);
-
-                byte[] returnBytes = redisClient.HGet(hashId, fieldBytes);
-                if (returnBytes == null || returnBytes.Length == 0)
-                {
-                    return null;
-                }
-
-                return VersionEntry.Deserialize(recordKey, versionKey, returnBytes);
-            }
-        }
-
-        /// <summary>
         /// Read the the most recent version entry, if the list of recordKey is empty,
         /// initialize the list with an emtpy version entry
         /// 
