@@ -111,7 +111,6 @@
         /// Initialization is implemented by HSETNX command
         /// </summary>
         /// <param name="recordKey"></param>
-        /// <param name="largestVersionKey"></param>
         /// <returns>The most recent commited version entry</returns>
         internal override IEnumerable<VersionEntry> InitializeAndGetVersionList(object recordKey)
         {
@@ -120,8 +119,9 @@
                 redisClient.ChangeDb(this.redisDbIndex);
 
                 string hashId = recordKey as string;
-                long versionKey = 0L;
-                VersionEntry emptyEntry = new VersionEntry(recordKey, versionKey, "empty", -1);
+                long versionKey = VersionEntry.VERSION_KEY_STRAT_INDEX;
+                VersionEntry emptyEntry = new VersionEntry(recordKey, versionKey, 
+                    VersionEntry.EMPTY_RECORD, VersionEntry.EMPTY_TXID);
 
                 byte[] keyBytes = BitConverter.GetBytes(versionKey);
                 byte[] valueBytes = VersionEntry.Serialize(emptyEntry.BeginTimestamp, emptyEntry.EndTimestamp,
@@ -132,7 +132,7 @@
 
                 if (ret == 1)
                 {
-                    return new List<VersionEntry>(new VersionEntry[] {emptyEntry});
+                    return new List<VersionEntry>(new VersionEntry[] { emptyEntry });
                 }
                 return this.GetVersionList(recordKey);
             }

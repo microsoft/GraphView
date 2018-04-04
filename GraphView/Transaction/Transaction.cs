@@ -3,43 +3,24 @@ namespace GraphView.Transaction
 {
     using System;
     using System.Collections.Generic;
-    using System.Runtime.Serialization;
 
-    [Serializable]
     public class TransactionException : Exception
     {
         public TransactionException() { }
-        public TransactionException(string message) : base("Error when perform " + message + ".\n") { }
+        public TransactionException(string message) : base($"Error when perform '{message}' message.\n") { }
 
         public TransactionException(string message, Exception innerException) :
             base(message, innerException)
         { }
-
-        protected TransactionException(SerializationInfo info, StreamingContext context) : base(info, context) { }
-    }
-
-    internal class ReadSetEntry
-    {
-        internal long VersionKey { get; private set; }
-        internal long BeginTimestamp { get; private set; }
-        internal long EndTimestamp { get; private set; }
-        internal long TxId { get; private set; }
-        internal object Record { get; private set; }
-
-        public ReadSetEntry(long versionKey, long beginTimestamp, long endTimestamp, long txId, object record)
-        {
-            this.VersionKey = versionKey;
-            this.BeginTimestamp = beginTimestamp;
-            this.EndTimestamp = endTimestamp;
-            this.TxId = txId;
-            this.Record = record;
-        }
     }
 
     public partial class Transaction
     {
+        private static readonly long DEFAULT_COMMIT_TIMESTAMP = -1L;
+        private static readonly long DEFAULT_BEGIN_TIMESTAMP = -1L;
+
         /// <summary>
-        /// Data store for loggingl
+        /// Data store for logging
         /// </summary>
         private readonly LogStore logStore;
 
@@ -47,7 +28,6 @@ namespace GraphView.Transaction
         /// Version Db for concurrency control
         /// </summary>
         private readonly VersionDb versionDb;
-
 
         /// <summary>
         /// Transaction id assigned to this transaction
@@ -59,6 +39,9 @@ namespace GraphView.Transaction
         /// </summary>
         private TxStatus txStatus;
 
+        /// <summary>
+        /// Transaction's commit time
+        /// </summary>
         private long commitTs;
 
         /// <summary>
@@ -66,10 +49,14 @@ namespace GraphView.Transaction
         /// </summary>
         private long maxCommitTsOfWrites;
 
+        /// <summary>
+        /// Transaction's begin time stamp
+        /// </summary>
         private long beginTimestamp;
 
         /// <summary>
         /// Read set, using for checking visibility of the versions read.
+        /// Format: tableId => [recordKey => ReadSetEntry]
         /// </summary>
         private readonly Dictionary<string, Dictionary<object, ReadSetEntry>> readSet;
 
@@ -79,6 +66,7 @@ namespace GraphView.Transaction
         /// 2) updating the old and new versions' timestamps during commit
         /// 3) locating old versions for garbage collection
         /// Add the versions updated (old and new), versions deleted (old), and versions inserted (new) to the writeSet.
+        /// Format: tableId => [recordKey => image]
         /// </summary>
         private readonly Dictionary<string, Dictionary<object, object>> writeSet;
 
@@ -95,9 +83,14 @@ namespace GraphView.Transaction
         /// </summary>
         private readonly Dictionary<string, Dictionary<object, Dictionary<long, Tuple<long, long, long>>>> commitSet;
 
+        /// <summary>
+        /// A set of largest key for every record key to refer the version key for new entry
+        /// For the insertion operation, there is no entry in the read set, we
+        /// should keep the largest version key in a global set
+        /// </summary>
         private readonly Dictionary<string, Dictionary<object, long>> largestVersionKeyMap;
 
-        //only for benchmark test
+        // only for benchmark test
         public TxStatus Status
         {
             get
@@ -106,6 +99,7 @@ namespace GraphView.Transaction
             }
         }
 
+        // only for benchmark test
         public long CommitTs
         {
             get
@@ -115,6 +109,7 @@ namespace GraphView.Transaction
             }
         }
 
+        // only for benchmark test
         public long TxId
         {
             get
@@ -137,9 +132,9 @@ namespace GraphView.Transaction
             this.txId = this.versionDb.InsertNewTx();
             this.txStatus = TxStatus.Ongoing;
 
-            this.commitTs = -1;
+            this.commitTs = Transaction.DEFAULT_COMMIT_TIMESTAMP;
             this.maxCommitTsOfWrites = -1;
-            this.beginTimestamp = -1;
+            this.beginTimestamp = Transaction.DEFAULT_BEGIN_TIMESTAMP;
         }
 
     }
@@ -149,16 +144,14 @@ namespace GraphView.Transaction
     {
         internal void GetBeginTimestamp()
         {
-            //Tranverse the readSet to get the begin timestamp
+            // Tranverse the readSet to get the maximal beginTimestamp as tx's beginTimestamp
             foreach (string tableId in this.readSet.Keys)
             {
-                foreach (object recordKey in this.readSet[tableId].Keys)
+                Dictionary<object, ReadSetEntry> entryMap = this.readSet[tableId];
+                foreach (KeyValuePair<object, ReadSetEntry> entry in entryMap)
                 {
-                    long currentBeginTimestamp = readSet[tableId][recordKey].BeginTimestamp;
-                    if (this.beginTimestamp < currentBeginTimestamp)
-                    {
-                        this.beginTimestamp = currentBeginTimestamp;
-                    }
+                    long currentBeginTimestamp = entry.Value.BeginTimestamp;
+                    this.beginTimestamp = Math.Max(this.beginTimestamp, currentBeginTimestamp);
                 }
             }
         }
@@ -557,7 +550,7 @@ namespace GraphView.Transaction
                 throw new TransactionException("Validation");
             }
 
-            this.WriteChangetoLog();
+            this.WriteChangeToLog();
 
             this.txStatus = TxStatus.Committed;
             this.versionDb.UpdateTxStatus(this.txId, TxStatus.Committed);
@@ -565,18 +558,22 @@ namespace GraphView.Transaction
             this.PostProcessingAfterCommit();
         }
 
-        internal void WriteChangetoLog()
+        internal void WriteChangeToLog()
         {
             // IMPORTANT: only for test
             // throw new NotImplementedException();
         }
     }
 
+    /// <summary>
+    /// It's the execution phase in the transaction's whole life, which includes several operations:
+    /// Read, Update, Insert and Delete
+    /// </summary>
     public partial class Transaction
     {
         public void Insert(string tableId, object recordKey, object record)
         {
-            //check whether the record is already exist in the local writeSet
+            // check whether the record is already exist in the local writeSet
             if (this.writeSet.ContainsKey(tableId) && 
                 this.writeSet[tableId].ContainsKey(recordKey))
             {
@@ -609,28 +606,37 @@ namespace GraphView.Transaction
             this.writeSet[tableId][recordKey] = record;
         }
 
+        /// <summary>
+        /// Read a record by version key in the transaction
+        /// It will read in the following orders:
+        /// (1) local write set, in case that it already have a insertion or update before
+        /// (2) local read set, in case there is already a read operation
+        /// (3) the version list from storage, in case it's the first read
+        /// </summary>
+        /// <returns>A version entry or null</returns>
         public object Read(string tableId, object recordKey)
         {
-            //try to find the object in the local writeSet
+            // try to find the record image in the local writeSet
             if (this.writeSet.ContainsKey(tableId) &&
                 this.writeSet[tableId].ContainsKey(recordKey))
             {
                 return this.writeSet[tableId][recordKey];
             }
 
-            //try to find the obejct in the local readSet
+            // try to find the obejct in the local readSet
             if (this.readSet.ContainsKey(tableId) && 
                 this.readSet[tableId].ContainsKey(recordKey))
             {
                 return this.readSet[tableId][recordKey].Record;
             }
 
-            //try to get the object from DB
+            // try to get the object from DB
             IEnumerable<VersionEntry> versionList = this.versionDb.GetVersionList(tableId, recordKey);
 
             long largestVersionKey = 0;
             VersionEntry versionEntry = this.GetVisibleVersionEntry(versionList, out largestVersionKey);
 
+            // Store the largest version key into the map to infer the version key for future new versions
             if (!this.largestVersionKeyMap.ContainsKey(tableId))
             {
                 this.largestVersionKeyMap[tableId] = new Dictionary<object, long>();
@@ -642,7 +648,7 @@ namespace GraphView.Transaction
                 return null;
             }
 
-            //add the record to local readSet
+            // Add the record to local readSet
             if (!this.readSet.ContainsKey(tableId))
             {
                 this.readSet[tableId] = new Dictionary<object, ReadSetEntry>();
@@ -658,9 +664,16 @@ namespace GraphView.Transaction
             return versionEntry.Record;
         }
 
+        /// <summary>
+        /// Update a record by version key in the transaction
+        /// It will update in the following orders:
+        /// (1) local write set, in case that it already have a insertion or update before
+        /// (2) local read set, in case it's the first update which must have a read before
+        /// In other cases, it must have some errors, throw an exception
+        /// </summary>
         public void Update(string tableId, object recordKey, object record)
         {
-            //check whether the record is already exist in the local writeSet
+            // check whether the record is already exist in the local writeSet
             if (this.writeSet.ContainsKey(tableId) &&
                 this.writeSet[tableId].ContainsKey(recordKey))
             {
@@ -668,24 +681,33 @@ namespace GraphView.Transaction
                 {
                     this.writeSet[tableId][recordKey] = record;
                 }
+                // It means the last modification operation is delete, update is invalid
                 else
                 {
                     this.Abort();
                     throw new TransactionException("Update");
                 }
             }
+
             //check whether the record is already exist in the local readSet
             else if (this.readSet.ContainsKey(tableId) &&
                      this.readSet[tableId].ContainsKey(recordKey))
             {
-                //this version is updatable only if its endTs is inf
-                if (this.readSet[tableId][recordKey].EndTimestamp != long.MaxValue)
+                ReadSetEntry entry = this.readSet[tableId][recordKey];
+
+                // this version is updatable only if its endTs or -1
+                // Four types of readable version entry:
+                // 1. [Ts, Inf, -1]: UPDATEABLE
+                // 2. [Ts, Inf, TxId]: NOT UPDATEABLE, w-w confilct, it will be aborted in the validation phase
+                // 3. [-1, -1, TxId]: UPDATEABLE, commited version without postprocessing
+                // 4. [Ts, Ts', -1]: NOT UPDATEABLE, not the most recent committed version, 
+                if (entry.EndTimestamp != long.MaxValue && entry.EndTimestamp != VersionEntry.DEFAULT_END_TIMESTAMP)
                 {
                     this.Abort();
                     throw new TransactionException("Update");
                 }
 
-                //add the update record to the local writeSet
+                // add the update record to the local writeSet
                 if (!this.writeSet.ContainsKey(tableId))
                 {
                     this.writeSet[tableId] = new Dictionary<object, object>();
@@ -700,9 +722,16 @@ namespace GraphView.Transaction
             }
         }
 
+        /// <summary>
+        /// Delete a record by version key in the transaction
+        /// It will delete in the following orders:
+        /// (1) local write set, in case that it already have a insertion or update before
+        /// (2) local read set, in case it's the first update which must have a read before
+        /// In other cases, it must have some errors, throw an exception
+        /// </summary>
         public void Delete(string tableId, object recordKey)
         {
-            //check whether the record is already exist in the local writeSet
+            // check whether the record already exists in the local writeSet
             if (this.writeSet.ContainsKey(tableId) &&
                 this.writeSet[tableId].ContainsKey(recordKey))
             {
@@ -710,6 +739,7 @@ namespace GraphView.Transaction
                 {
                     this.writeSet[tableId][recordKey] = null;
                 }
+                // It means the last modification is deletion, the current deletion is invalid
                 else
                 {
                     this.Abort();
@@ -720,19 +750,24 @@ namespace GraphView.Transaction
             else if (this.readSet.ContainsKey(tableId) &&
                 this.readSet[tableId].ContainsKey(recordKey))
             {
-                //this version is deletable only if its endTs is inf
-                if (this.readSet[tableId][recordKey].EndTimestamp != long.MaxValue)
+                // this version is deleteable only if its endTs or -1
+                // Four types of readable version entry:
+                // 1. [Ts, Inf, -1]: DELETEABLE
+                // 2. [Ts, Inf, TxId]: UNDELETEABLE, w-w confilct, it will be aborted in the validation phase
+                // 3. [-1, -1, TxId]: DELETEABLE, commited version without postprocessing
+                // 4. [Ts, Ts', -1]: UNDELETEABLE, not the most recent committed version
+                ReadSetEntry entry = this.readSet[tableId][recordKey];
+                if (entry.EndTimestamp != long.MaxValue && entry.EndTimestamp != VersionEntry.DEFAULT_END_TIMESTAMP)
                 {
                     this.Abort();
                     throw new TransactionException("Delete");
                 }
 
-                //add the delete record to the local writeSet
+                // add the delete record to the local writeSet
                 if (!this.writeSet.ContainsKey(tableId))
                 {
                     this.writeSet[tableId] = new Dictionary<object, object>();
                 }
-
                 this.writeSet[tableId][recordKey] = null;
             }
             else
@@ -742,23 +777,31 @@ namespace GraphView.Transaction
             }
         }
 
+        /// <summary>
+        /// Read a record by version key in the transaction and initialize the list if the version list is empty
+        /// It will read in the following orders:
+        /// (1) local write set, in case that it already have a insertion or update before
+        /// (2) local read set, in case there is already a read operation
+        /// (3) the version list from storage, in case it's the first read
+        /// </summary>
+        /// <returns>A version entry or null</returns>
         public object ReadAndInitialize(string tableId, object recordKey)
         {
-            //try to find the object in the local writeSet
+            // try to find the object in the local writeSet
             if (this.writeSet.ContainsKey(tableId) &&
                 this.writeSet[tableId].ContainsKey(recordKey))
             {
                 return this.writeSet[tableId][recordKey];
             }
 
-            //try to find the obejct in the local readSet
+            // try to find the obejct in the local readSet
             if (this.readSet.ContainsKey(tableId) && 
                 this.readSet[tableId].ContainsKey(recordKey))
             {
                 return this.readSet[tableId][recordKey].Record;
             }
 
-            //try to get the object from DB
+            // try to get the objects from DB
             IEnumerable<VersionEntry> versionList = this.versionDb.InitializeAndGetVersionList(tableId, recordKey);
 
             long largestVersionKey = 0;
@@ -858,10 +901,7 @@ namespace GraphView.Transaction
                     }
                 }
 
-                if (largestVersionKey < versionEntry.VersionKey)
-                {
-                    largestVersionKey = versionEntry.VersionKey;
-                }
+                largestVersionKey = Math.Max(largestVersionKey, versionEntry.VersionKey);
             }
 
             return visibleVersion;
