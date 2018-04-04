@@ -194,6 +194,7 @@ namespace GraphView.Transaction
                             //add the info to the commitSet
                             this.AddVersionToCommitSet(tableId, recordKey, newImageEntry.VersionKey, -2, long.MaxValue, -1);
                         }
+
                         //Both UPDATE and DELETE Op.
                         //replace the old version's Begin field, End field and TxId field.
                         //three case:
@@ -410,7 +411,8 @@ namespace GraphView.Transaction
                         tableId,
                         recordKey,
                         readSet[tableId][recordKey].VersionKey,
-                        this.commitTs);
+                        this.commitTs,
+                        this.txId);
                     if (versionEntry.TxId != -1)
                     {
                         //CAS2

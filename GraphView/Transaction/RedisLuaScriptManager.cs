@@ -74,7 +74,7 @@
         {
             if (!this.luaScriptSha1Map.ContainsKey(scriptName))
             {
-                throw new NotImplementedException($"{scriptName} has not been registered in redis");
+                throw new ArgumentException($"{scriptName} has not been registered in redis");
             }
             return this.luaScriptSha1Map[scriptName];
         }
@@ -114,7 +114,7 @@
             {
                 "SET_AND_GET_COMMIT_TIME",
                 "REPLACE_VERSION_ENTRY",
-                "UPDATE_COMMIT_TS_LOWER_BOUND",
+                "UPDATE_COMMIT_LOWER_BOUND",
                 "UPDATE_VERSION_MAX_COMMIT_TS"
             };
 

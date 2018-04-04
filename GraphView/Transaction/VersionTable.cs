@@ -85,8 +85,13 @@
         ///     set txId1's commitLowerBound to push it.
         /// </summary>
         /// <param name="commitTs">The current transaction's commit time</param>
+        /// <param name="txId">
+        /// The current transaction's txId or -1
+        /// If the transaction only read the version, txId should be -1
+        /// If the transaction try to update or delete the version, txId should be tx' txId
+        /// </param>
         /// <returns>A updated or non-updated version entry</returns>
-        internal virtual VersionEntry UpdateVersionMaxCommitTs(object recordKey, long versionKey, long commitTs)
+        internal virtual VersionEntry UpdateVersionMaxCommitTs(object recordKey, long versionKey, long commitTs, long txId)
         {
             throw new NotImplementedException();
         }
