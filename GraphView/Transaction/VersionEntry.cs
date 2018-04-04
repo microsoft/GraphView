@@ -8,15 +8,26 @@ namespace GraphView.Transaction
 
     internal class VersionEntry
     {
+        /// <summary>
+        /// The offsets of fields in serialized binary data
+        /// </summary>
         private static readonly int BEGIN_TIMESTAMP_OFFSET = 0;
         private static readonly int END_TIMESTAMP_OFFSET = 1 * 8;
         private static readonly int TXID_OFFSET = 2 * 8;
         private static readonly int MAX_COMMIT_TS_OFFSET = 3 * 8;
         private static readonly int RECORD_OFFSET = 4 * 8;
 
+        /// <summary>
+        /// Default values of the version entry
+        /// </summary>
         public static readonly long DEFAULT_BEGIN_TIMESTAMP = -1L;
         public static readonly long DEFAULT_END_TIMESTAMP = -1L;
         public static readonly long DEFAULT_MAX_COMMIT_TS = 0L;
+
+        public static readonly object EMPTY_RECORD = "";
+        public static readonly long EMPTY_TXID = -1L;
+
+        public static readonly long VERSION_KEY_STRAT_INDEX = 0L;
 
         internal object RecordKey { get; }
         internal long VersionKey { get; }
@@ -53,11 +64,11 @@ namespace GraphView.Transaction
         {
             this.RecordKey = recordKey;
             this.VersionKey = versionKey;
-            this.BeginTimestamp = -1L;
-            this.EndTimestamp = -1L;
+            this.BeginTimestamp = VersionEntry.DEFAULT_BEGIN_TIMESTAMP;
+            this.EndTimestamp = VersionEntry.DEFAULT_END_TIMESTAMP;
             this.Record = record;
             this.TxId = txId;
-            this.MaxCommitTs = 0;
+            this.MaxCommitTs = VersionEntry.DEFAULT_MAX_COMMIT_TS;
         }
 
         public override int GetHashCode()
