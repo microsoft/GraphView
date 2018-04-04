@@ -3,8 +3,6 @@
     using System;
     using System.Collections.Generic;
     using ServiceStack.Redis;
-    using RecordRuntime;
-    using Newtonsoft.Json.Linq;
     using System.Text;
 
     internal partial class RedisVersionTable : VersionTable
@@ -145,7 +143,7 @@
         /// <param name="versionKey"></param>
         /// <param name="txId"></param>
         /// <returns>Version's maxCommitTs if success, -1 otherwise</returns>
-        internal override long ReplaceVersionEntry(object recordKey, long versionKey, 
+        internal override VersionEntry ReplaceVersionEntry(object recordKey, long versionKey, 
             long beginTimestamp, long endTimestamp, long txId, long readTxId, long readEndTs)
         {
             using (RedisClient redisClient = (RedisClient)this.RedisManager.GetClient())
@@ -172,15 +170,17 @@
                     byte[][] returnBytes = redisClient.EvalSha(sha1, 1, keysAndArgs);
                     if (returnBytes == null || returnBytes.Length == 0)
                     {
-                        return -1;
+                        return null;
                     }
 
                     // The first byte array in return bytes is always null if no errors
-                    return BitConverter.ToInt64(returnBytes[1], 0);
+                    //Todo:
+                    //return BitConverter.ToInt64(returnBytes[1], 0);
+                    return null;
                 }
                 catch (RedisResponseException e)
                 {
-                    return -1;
+                    return null;
                 }
             }
         }
