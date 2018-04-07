@@ -1470,7 +1470,7 @@ namespace GraphView
             {
                 AdditionalSerializationInfo additionalInfo = (AdditionalSerializationInfo)context.Context;
                 this.aggregateIntermadiateResult = new AggregateIntermadiateResult(this.receiveHostId,
-                    additionalInfo.TaskIndex, additionalInfo.PartitionPlans, additionalInfo.Command);
+                    additionalInfo.TaskIndex, additionalInfo.NodePlans, additionalInfo.Command);
             }
         }
     }

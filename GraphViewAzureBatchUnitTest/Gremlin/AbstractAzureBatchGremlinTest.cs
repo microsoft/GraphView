@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Configuration;
 using System.Diagnostics;
 using System.Linq;
@@ -29,9 +30,11 @@ namespace GraphViewAzureBatchUnitTest.Gremlin
             string storageAccountName = ConfigurationManager.AppSettings["StorageAccountName"];
             string storageAccountKey = ConfigurationManager.AppSettings["StorageAccountKey"];
             string poolId = "GraphViewPool";
+            int virtualMachineNumber = 2;
+            string virtualMachineSize = "small";
 
             this.jobManager = new AzureBatchJobManager(batchAccountName, batchAccountKey, batchAccountUrl,
-                storageAccountName, storageAccountKey, poolId);
+                storageAccountName, storageAccountKey, poolId, virtualMachineNumber, virtualMachineSize);
 
             int parallelism = 2;
             string docDBEndPoint = ConfigurationManager.AppSettings["DocDBEndPoint"];
@@ -39,7 +42,19 @@ namespace GraphViewAzureBatchUnitTest.Gremlin
             string docDBDatabaseId = ConfigurationManager.AppSettings["DocDBDatabaseId"];
             string docDBCollectionId = ConfigurationManager.AppSettings["DocDBCollectionId"];
 
-            this.job = new GraphViewAzureBatchJob(parallelism, docDBEndPoint, docDBKey, docDBDatabaseId, docDBCollectionId,
+            List<NodePlan> nodePlans = new List<NodePlan>();
+            NodePlan nodeA = new NodePlan(
+                TEST_PARTITION_BY_KEY, 
+                new List<string>() {"marko", "vadas"}, 
+                new PartitionPlan(new HashSet<int>() {0, 1, 2, 3, 4}, new Tuple<int, int, PartitionBetweenType>(0, 5, PartitionBetweenType.IncludeLeft)));
+            NodePlan nodeB = new NodePlan(
+                TEST_PARTITION_BY_KEY,
+                new List<string>() { "lop", "peter", "josh", "ripple" },
+                new PartitionPlan(new HashSet<int>() { 5, 6, 7, 8, 9 }, new Tuple<int, int, PartitionBetweenType>(5, 10, PartitionBetweenType.IncludeLeft)));
+            nodePlans.Add(nodeA);
+            nodePlans.Add(nodeB);
+
+            this.job = new GraphViewAzureBatchJob(parallelism, nodePlans, docDBEndPoint, docDBKey, docDBDatabaseId, docDBCollectionId,
                 AbstractAzureBatchGremlinTest.TEST_USE_REVERSE_EDGE, AbstractAzureBatchGremlinTest.TEST_PARTITION_BY_KEY,
                 AbstractAzureBatchGremlinTest.TEST_SPILLED_EDGE_THRESHOLD_VIAGRAPHAPI);
 

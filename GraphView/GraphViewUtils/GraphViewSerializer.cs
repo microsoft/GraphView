@@ -96,7 +96,7 @@ namespace GraphView
             return SerializeWithSoapFormatter(serializationString);
         }
 
-        public static Tuple<GraphViewCommand, GraphViewExecutionOperator> Deserialize(string serializationString, string partitionString)
+        public static Tuple<GraphViewCommand, GraphViewExecutionOperator> Deserialize(string serializationString, string planString)
         {
             SerializationString serializationStringObj = (SerializationString)DeserializeWithSoapFormatter(serializationString);
 
@@ -105,12 +105,12 @@ namespace GraphView
 
             GraphViewCommand command = (GraphViewCommand)DeserializeWithSoapFormatter(serializationStringObj.commandString);
 
-            int partitionPlanIndex = int.Parse(Environment.GetEnvironmentVariable("PARTITION_PLAN_INDEX"));
-            List<PartitionPlan> partitionPlans = PartitionPlan.DeserializePatitionPlans(partitionString);
-            PartitionPlan ownPartitionPlan = partitionPlans[partitionPlanIndex];
+            int taskIndex = int.Parse(Environment.GetEnvironmentVariable("TASK_INDEX"));
+            List<NodePlan> nodePlans = NodePlan.DeserializNodePlans(planString);
+            NodePlan nodePlan = nodePlans[taskIndex];
 
             // Deserilization of sideEffectFunctions needs information about command.
-            AdditionalSerializationInfo additionalInfo = new AdditionalSerializationInfo(command, partitionPlans, partitionPlanIndex);
+            AdditionalSerializationInfo additionalInfo = new AdditionalSerializationInfo(command, nodePlans, taskIndex);
             WrapSideEffectFunctions wrapSideEffectFunctions = 
                 (WrapSideEffectFunctions) DeserializeWithSoapFormatter(serializationStringObj.sideEffectString, additionalInfo);
 
@@ -123,14 +123,14 @@ namespace GraphView
             FetchNodeOperator fetchNode = firstOp as FetchNodeOperator;
             if (fetchNode != null)
             {
-                fetchNode.AppendPartitionPlan(ownPartitionPlan);
+                fetchNode.AppendPartitionPlan(nodePlan);
                 return new Tuple<GraphViewCommand, GraphViewExecutionOperator>(command, op);
             }
 
             FetchEdgeOperator fetchEdge = firstOp as FetchEdgeOperator;
             if (fetchEdge != null)
             {
-                fetchEdge.AppendPartitionPlan(ownPartitionPlan);
+                fetchEdge.AppendPartitionPlan(nodePlan);
                 return new Tuple<GraphViewCommand, GraphViewExecutionOperator>(command, op);
             }
 
@@ -562,14 +562,14 @@ namespace GraphView
     internal class AdditionalSerializationInfo
     {
         public GraphViewCommand Command { get; private set; }
-        public List<PartitionPlan> PartitionPlans { get; private set; }
+        public List<NodePlan> NodePlans { get; private set; }
         public int TaskIndex { get; private set; }
         public Dictionary<string, IAggregateFunction> SideEffectFunctions { get; set; }
 
-        public AdditionalSerializationInfo(GraphViewCommand command, List<PartitionPlan> partitionPlans, int taskIndex)
+        public AdditionalSerializationInfo(GraphViewCommand command, List<NodePlan> NodePlans, int taskIndex)
         {
             this.Command = command;
-            this.PartitionPlans = partitionPlans;
+            this.NodePlans = NodePlans;
             this.TaskIndex = taskIndex;
         }
     }
@@ -591,190 +591,53 @@ namespace GraphView
         LessOrEqual // x <= b
     }
 
-    public enum PartitionMethod
-    {
-        CompareEntire, // compare entire partition key.
-        CompareFirstChar, // compare the first char of the partition key.
-    }
-
     [DataContract]
-    public class PartitionPlan
+    public class NodePlan
     {
-        [DataMember]
-        private string partitionKey;
-
-        [DataMember]
-        private PartitionCompareType compareType;
-
-        [DataMember]
-        private List<string> inValues;
-        [DataMember]
-        private Tuple<string, string, PartitionBetweenType> betweenValues;
-
-        [DataMember]
-        private PartitionMethod partitionMethod;
-
+        // node info
         [DataMember]
         public string IP { get; private set; }
         [DataMember]
         public int Port { get; private set; }
 
-        public PartitionPlan(string partitionKey, PartitionMethod partitionMethod, string ip, int port)
+        // For JsonQuery at the start of query.(g.V() or g.E())
+        [DataMember]
+        private string partitionKey;
+        [DataMember]
+        private List<string> partitionValues;
+
+        // Maybe should have multiple partitionPlan
+        [DataMember]
+        public PartitionPlan PartitionPlan { get; private set; } // single partitionPlan
+        //public Dictionary<string, PartitionPlan> PartitionPlans { get; private set; } // multiple partitionPlan
+
+        public NodePlan(string partitionKey, List<string> partitionValues, PartitionPlan partitionPlan)
         {
             this.partitionKey = partitionKey;
-            this.partitionMethod = partitionMethod;
+            this.partitionValues = partitionValues;
+            this.PartitionPlan = partitionPlan;
+        }
+
+        public void SetNodeInfo(string ip, int port)
+        {
             this.IP = ip;
             this.Port = port;
         }
 
-        public PartitionPlan(string partitionKey, PartitionMethod partitionMethod, string ip, int port, List<string> inValues) 
-            : this(partitionKey, partitionMethod, ip, port)
-        {
-            this.inValues = inValues;
-            this.compareType = PartitionCompareType.In;
-        }
-
-        public PartitionPlan(string partitionKey, PartitionMethod partitionMethod, string ip, int port, Tuple<string, string, PartitionBetweenType> betweenValues)
-            : this(partitionKey, partitionMethod, ip, port)
-        {
-            this.betweenValues = betweenValues;
-            this.compareType = PartitionCompareType.Between;
-        }
-
         internal void AppendToWhereClause(JsonQuery jsonQuery)
         {
-            if (this.partitionMethod == PartitionMethod.CompareEntire)
-            {
-                if (this.compareType == PartitionCompareType.In)
-                {
-                    jsonQuery.FlatProperties.Add(this.partitionKey);
-                    jsonQuery.WhereConjunction(new WInPredicate(
-                        new WColumnReferenceExpression(jsonQuery.NodeAlias ?? jsonQuery.EdgeAlias, this.partitionKey), this.inValues),
-                        BooleanBinaryExpressionType.And);
-                }
-                else
-                {
-                    throw new NotImplementedException();
-                }
-            }
-            else
-            {
-                throw new NotImplementedException();
-            }
+            jsonQuery.FlatProperties.Add(this.partitionKey);
+            jsonQuery.WhereConjunction(new WInPredicate(
+                    new WColumnReferenceExpression(jsonQuery.NodeAlias ?? jsonQuery.EdgeAlias, this.partitionKey), this.partitionValues),
+                BooleanBinaryExpressionType.And);
         }
 
-        /// <summary>
-        /// Deprecated. Will be deleted later.
-        /// </summary>
-        /// <param name="tableAlias"></param>
-        /// <param name="whereClause"></param>
-        /// <returns></returns>
-        internal string AppendToWhereClause(string tableAlias, string whereClause)
-        {
-            if (this.partitionMethod == PartitionMethod.CompareEntire)
-            {
-                if (this.compareType == PartitionCompareType.In)
-                {
-                    throw new NotImplementedException();
-                }
-                else
-                {
-                    throw new NotImplementedException();
-                }
-            }
-            else if (this.partitionMethod == PartitionMethod.CompareFirstChar)
-            {
-                if (this.compareType == PartitionCompareType.Between)
-                {
-                    string leftSymbol = "<";
-                    string rightSymbol = "<";
-                    switch (this.betweenValues.Item3)
-                    {
-                        case PartitionBetweenType.IncludeBoth:
-                            leftSymbol += "=";
-                            rightSymbol += "=";
-                            break;
-                        case PartitionBetweenType.IncludeLeft:
-                            leftSymbol += "=";
-                            break;
-                        case PartitionBetweenType.IncludeRight:
-                            rightSymbol += "=";
-                            break;
-                        case PartitionBetweenType.GreaterOrEqual:
-                            leftSymbol += "=";
-                            break;
-                        case PartitionBetweenType.LessOrEqual:
-                            rightSymbol += "=";
-                            break;
-                    }
-
-                    switch (this.betweenValues.Item3)
-                    {
-                        case PartitionBetweenType.IncludeBoth:
-                        case PartitionBetweenType.IncludeLeft:
-                        case PartitionBetweenType.IncludeRight:
-                            return $"({whereClause}) AND " +
-                                   $"\"{this.betweenValues.Item1}\" {leftSymbol} LOWER(LEFT({tableAlias}.{this.partitionKey}, 1)) " +
-                                   $"AND LOWER(LEFT({tableAlias}.{this.partitionKey}, 1)) {rightSymbol} \"{this.betweenValues.Item2}\" ";
-                        case PartitionBetweenType.Greater:
-                        case PartitionBetweenType.GreaterOrEqual:
-                            return $"({whereClause}) AND " +
-                                   $"\"{this.betweenValues.Item1}\" {leftSymbol} LOWER(LEFT({tableAlias}.{this.partitionKey}, 1)) ";
-                        case PartitionBetweenType.Less:
-                        case PartitionBetweenType.LessOrEqual:
-                            return $"({whereClause}) AND " +
-                                   $"LOWER(LEFT({tableAlias}.{this.partitionKey}, 1)) {rightSymbol} \"{this.betweenValues.Item2}\" ";
-                        default:
-                            throw new NotImplementedException();
-                    }
-                }
-                else
-                {
-                    throw new NotImplementedException();
-                }
-            }
-            else
-            {
-                throw new NotImplementedException();
-            }
-        }
-
-        internal bool BelongToPartitionPlan(string partition)
-        {
-            if (this.partitionMethod == PartitionMethod.CompareEntire)
-            {
-                if (this.compareType == PartitionCompareType.In)
-                {
-                    foreach (string inValue in this.inValues)
-                    {
-                        if (partition == inValue)
-                        {
-                            return true;
-                        }
-                    }
-                    return false;
-                }
-                else
-                {
-                    throw new NotImplementedException();
-                }
-            }
-            else if (this.partitionMethod == PartitionMethod.CompareFirstChar)
-            {
-                throw new NotImplementedException();
-            }
-            else
-            {
-                throw new NotImplementedException();
-            }
-        }
-
-        public static string SerializePatitionPlans(List<PartitionPlan> partitionPlans)
+        public static string SerializeNodePlans(List<NodePlan> nodePlans)
         {
             using (MemoryStream memStream = new MemoryStream())
             {
-                DataContractSerializer ser = new DataContractSerializer(typeof(List<PartitionPlan>));
-                ser.WriteObject(memStream, partitionPlans);
+                DataContractSerializer ser = new DataContractSerializer(typeof(List<NodePlan>));
+                ser.WriteObject(memStream, nodePlans);
 
                 memStream.Position = 0;
                 StreamReader stringReader = new StreamReader(memStream);
@@ -782,21 +645,67 @@ namespace GraphView
             }
         }
 
-        public static List<PartitionPlan> DeserializePatitionPlans(string partitionPlanStr)
+        public static List<NodePlan> DeserializNodePlans(string nodePlansStr)
         {
             using (MemoryStream stream = new MemoryStream())
             {
                 StreamWriter writer = new StreamWriter(stream);
-                writer.Write(partitionPlanStr);
+                writer.Write(nodePlansStr);
                 writer.Flush();
                 stream.Position = 0;
 
-                DataContractSerializer deser = new DataContractSerializer(typeof(List<PartitionPlan>));
-                List<PartitionPlan> partitionPlans = (List<PartitionPlan>)deser.ReadObject(stream);
-                return partitionPlans;
+                DataContractSerializer deser = new DataContractSerializer(typeof(List<NodePlan>));
+                List<NodePlan> nodePlans = (List<NodePlan>)deser.ReadObject(stream);
+                return nodePlans;
             }
-
         }
+    }
+
+    [DataContract]
+    public class PartitionPlan
+    {
+        // Partition info for send/receive
+        [DataMember]
+        private HashSet<int> inValues;
+        [DataMember]
+        private Tuple<int, int, PartitionBetweenType> betweenValues;
+
+        public PartitionPlan(HashSet<int> inValues, Tuple<int, int, PartitionBetweenType> betweenValues)
+        {
+            this.inValues = inValues;
+            this.betweenValues = betweenValues;
+        }
+
+        internal bool BelongToPartitionPlan(int value, PartitionCompareType type)
+        {
+            switch (type)
+            {
+                case PartitionCompareType.In:
+                    return this.inValues.Contains(value);
+                case PartitionCompareType.Between:
+                    switch (this.betweenValues.Item3)
+                    {
+                        case PartitionBetweenType.IncludeLeft:
+                            return value >= this.betweenValues.Item1 && value < this.betweenValues.Item2;
+                        case PartitionBetweenType.IncludeRight:
+                            return value > this.betweenValues.Item1 && value <= this.betweenValues.Item2;
+                        case PartitionBetweenType.IncludeBoth:
+                            return value >= this.betweenValues.Item1 && value <= this.betweenValues.Item2;
+                        case PartitionBetweenType.Greater:
+                            return value > this.betweenValues.Item1;
+                        case PartitionBetweenType.GreaterOrEqual:
+                            return value >= this.betweenValues.Item1;
+                        case PartitionBetweenType.Less:
+                            return value < this.betweenValues.Item2;
+                        case PartitionBetweenType.LessOrEqual:
+                            return value <= this.betweenValues.Item2;
+                        default:
+                            throw new NotImplementedException();
+                    }
+                default:
+                    throw new NotImplementedException();
+            }
+        } 
     }
 
     [Serializable]

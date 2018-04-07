@@ -49,6 +49,7 @@ namespace StartAzureBatch
         internal string jobId;
 
         internal readonly int parallelism;
+        internal readonly List<NodePlan> nodePlans;
 
         // CosmosDB account credentials
         internal readonly string docDBEndPoint;
@@ -63,10 +64,12 @@ namespace StartAzureBatch
         internal bool IsSuccess { get; set; } = false;
         internal string Result { get; set; }
 
-        public GraphViewAzureBatchJob(int parallelism, string docDBEndPoint, string docDBKey, string docDBDatabaseId,
+        public GraphViewAzureBatchJob(int parallelism, List<NodePlan> nodePlans, string docDBEndPoint, string docDBKey, string docDBDatabaseId,
             string docDBCollectionId, bool useReverseEdge, string partitionByKey, int spilledEdgeThresholdViagraphAPI)
         {
+            Debug.Assert(nodePlans.Count == parallelism);
             this.parallelism = parallelism;
+            this.nodePlans = nodePlans;
 
             this.docDBEndPoint = docDBEndPoint;
             this.docDBKey = docDBKey;
@@ -95,6 +98,8 @@ namespace StartAzureBatch
 
         // Suppose that there is only one pool.
         private readonly string poolId;
+        private readonly int virtualMachineNumber;
+        private readonly string virtualMachineSize;
 
         private readonly string outputContainerNamePrefix;
         private readonly string appContainerNamePrefix;
@@ -102,7 +107,9 @@ namespace StartAzureBatch
         private readonly string denpendencyPath;
         private readonly string exeName;
 
-        public AzureBatchJobManager(string batchAccountName, string batchAccountKey, string batchAccountUrl, string storageAccountName, string storageAccountKey, string poolId)
+        public AzureBatchJobManager(string batchAccountName, string batchAccountKey, string batchAccountUrl, 
+            string storageAccountName, string storageAccountKey, 
+            string poolId, int virtualMachineNumber, string virtualMachineSize)
         {
             this.batchAccountName = batchAccountName;
             this.batchAccountKey = batchAccountKey;
@@ -117,6 +124,9 @@ namespace StartAzureBatch
 
             this.denpendencyPath = "..\\..\\..\\GraphViewProgram\\bin\\Debug\\";
             this.exeName = "Program.exe";
+
+            this.virtualMachineNumber = virtualMachineNumber;
+            this.virtualMachineSize = virtualMachineSize;
 
             this.CreatePoolIfNotExistAsync().Wait();
         }
@@ -151,7 +161,7 @@ namespace StartAzureBatch
                 List<Tuple<string, string>> nodeInfo = this.AllocateComputeNode(batchClient, job);
 
                 Console.WriteLine("[make partition plan] start");
-                string partitionStr = MakePartitionPlan(nodeInfo, job);
+                string partitionStr = MakePlan(nodeInfo, job);
                 Console.WriteLine("[make partition plan] finish");
 
                 string partitionPath = $"parititonPlan{job.jobId}";
@@ -236,26 +246,14 @@ namespace StartAzureBatch
             return nodeInfo;
         }
 
-        private static string MakePartitionPlan(List<Tuple<string, string>> nodeInfo, GraphViewAzureBatchJob job)
+        private static string MakePlan(List<Tuple<string, string>> nodeInfo, GraphViewAzureBatchJob job)
         {
-            List<PartitionPlan> plans = new List<PartitionPlan>();
-            
-            // For debug
-            Debug.Assert(job.parallelism == 2);
+            for (int i = 0; i < nodeInfo.Count; i++)
+            {
+                job.nodePlans[i].SetNodeInfo(nodeInfo[i].Item1, 8000);
+            }
 
-            plans.Add(new PartitionPlan(
-                "_partition", 
-                PartitionMethod.CompareEntire, nodeInfo[0].Item1, 
-                8000, // port 
-                new List<string>{"marko", "vadas"}));
-
-            plans.Add(new PartitionPlan(
-                "_partition",
-                PartitionMethod.CompareEntire, nodeInfo[1].Item1,
-                8000, // port
-                new List<string> { "josh", "ripple", "peter", "lop" }));
-
-            return PartitionPlan.SerializePatitionPlans(plans);
+            return NodePlan.SerializeNodePlans(job.nodePlans);
         }
 
         // For Debug
@@ -449,8 +447,8 @@ namespace StartAzureBatch
                     pool = batchClient.PoolOperations.CreatePool(
                         poolId: this.poolId,
                         targetLowPriorityComputeNodes: 0,
-                        targetDedicatedComputeNodes: 2,
-                        virtualMachineSize: "small",
+                        targetDedicatedComputeNodes: this.virtualMachineNumber,
+                        virtualMachineSize: this.virtualMachineSize,
                         cloudServiceConfiguration: new CloudServiceConfiguration(osFamily: "4"));   // Windows Server 2012 R2
 
                     // When internode communication is enabled, 
@@ -529,7 +527,7 @@ namespace StartAzureBatch
                 {
                     task.EnvironmentSettings = new List<EnvironmentSetting>();
                 }
-                task.EnvironmentSettings.Add(new EnvironmentSetting("PARTITION_PLAN_INDEX", i.ToString()));
+                task.EnvironmentSettings.Add(new EnvironmentSetting("TASK_INDEX", i.ToString()));
 
                 // set task running in administrator level
                 task.UserIdentity = new UserIdentity(new AutoUserSpecification(
@@ -653,7 +651,7 @@ namespace StartAzureBatch
         }
 
         // For Debug
-        private void DeletePool()
+        public void DeletePool()
         {
             BatchSharedKeyCredentials cred = new BatchSharedKeyCredentials(this.batchAccountUrl, this.batchAccountName, this.batchAccountKey);
             using (BatchClient batchClient = BatchClient.Open(cred))
@@ -663,7 +661,7 @@ namespace StartAzureBatch
         }
 
         // For Debug
-        private void DeleteJob(string jobId)
+        public void DeleteJob(string jobId)
         {
             BatchSharedKeyCredentials cred = new BatchSharedKeyCredentials(this.batchAccountUrl, this.batchAccountName, this.batchAccountKey);
             using (BatchClient batchClient = BatchClient.Open(cred))

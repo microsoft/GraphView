@@ -51,7 +51,7 @@ namespace GraphView
             return this;
         }
 
-        public void AppendPartitionPlan(PartitionPlan plan)
+        public void AppendPartitionPlan(NodePlan plan)
         {
             plan.AppendToWhereClause(this.vertexQuery);
         }
@@ -107,7 +107,7 @@ namespace GraphView
             return this;
         }
 
-        public void AppendPartitionPlan(PartitionPlan plan)
+        public void AppendPartitionPlan(NodePlan plan)
         {
             plan.AppendToWhereClause(this.edgeQuery);
         }
@@ -1310,7 +1310,7 @@ namespace GraphView
             {
                 AdditionalSerializationInfo additionalInfo = (AdditionalSerializationInfo)context.Context;
                 this.aggregateIntermadiateResult = new AggregateIntermadiateResult(this.receiveHostId,
-                    additionalInfo.TaskIndex, additionalInfo.PartitionPlans, additionalInfo.Command);
+                    additionalInfo.TaskIndex, additionalInfo.NodePlans, additionalInfo.Command);
             }
             
             this.Open();

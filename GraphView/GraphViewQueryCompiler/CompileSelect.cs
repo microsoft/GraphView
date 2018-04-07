@@ -508,7 +508,7 @@ namespace GraphView
                             GetPartitionMethodForTraversalOp getPartitionMethod = new GetPartitionMethodForTraversalOp(edgeFieldIndex, traversalType);
                             if (context.InParallelMode && context.SendReceiveMode != SendReceiveMode.None)
                             {
-                                SendOperator sendOperator = new SendOperator(context.CurrentExecutionOperator, getPartitionMethod, 
+                                SendOperator sendOperator = new SendOperator(context.CurrentExecutionOperator, getPartitionMethod, new TestPartitionFunction(), 
                                     context.SendReceiveMode == SendReceiveMode.SendThenSendBack);
                                 ReceiveOperator receiveOperator = new ReceiveOperator(sendOperator);
                                 currentExecutionOperator = receiveOperator;
@@ -567,7 +567,7 @@ namespace GraphView
                             GetPartitionMethodForTraversalOp getPartitionMethod = new GetPartitionMethodForTraversalOp(edgeFieldIndex, traversalType);
                             if (context.InParallelMode && context.SendReceiveMode != SendReceiveMode.None)
                             {
-                                SendOperator sendOperator = new SendOperator(context.CurrentExecutionOperator, getPartitionMethod, 
+                                SendOperator sendOperator = new SendOperator(context.CurrentExecutionOperator, getPartitionMethod, new TestPartitionFunction(), 
                                     context.SendReceiveMode == SendReceiveMode.SendThenSendBack);
                                 ReceiveOperator receiveOperator = new ReceiveOperator(sendOperator);
                                 currentExecutionOperator = receiveOperator;
@@ -1946,7 +1946,7 @@ namespace GraphView
             GetPartitionMethodForTraversalOp getPartitionMethod = new GetPartitionMethodForTraversalOp(edgeFieldIndex, traversalType);
             if (context.InParallelMode && context.SendReceiveMode != SendReceiveMode.None)
             {
-                SendOperator sendOperator = new SendOperator(context.CurrentExecutionOperator, getPartitionMethod, 
+                SendOperator sendOperator = new SendOperator(context.CurrentExecutionOperator, getPartitionMethod, new TestPartitionFunction(), 
                     context.SendReceiveMode == SendReceiveMode.SendThenSendBack);
                 ReceiveOperator receiveOperator = new ReceiveOperator(sendOperator);
                 currentExecutionOperator = receiveOperator;

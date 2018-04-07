@@ -70,7 +70,7 @@ namespace GraphView
         private readonly int retryInterval;
 
         [NonSerialized]
-        private List<PartitionPlan> partitionPlans;
+        private List<NodePlan> nodePlans;
 
         public SendClient(string receiveHostId)
         {
@@ -79,15 +79,15 @@ namespace GraphView
             this.retryInterval = 10; // 10 ms
         }
 
-        public SendClient(string receiveHostId, List<PartitionPlan> partitionPlans) : this(receiveHostId)
+        public SendClient(string receiveHostId, List<NodePlan> nodePlans) : this(receiveHostId)
         {
-            this.partitionPlans = partitionPlans;
+            this.nodePlans = nodePlans;
         }
 
         private MessageServiceClient ConstructClient(int targetTask)
         {
-            string ip = this.partitionPlans[targetTask].IP;
-            int port = this.partitionPlans[targetTask].Port;
+            string ip = this.nodePlans[targetTask].IP;
+            int port = this.nodePlans[targetTask].Port;
             UriBuilder uri = new UriBuilder("http", ip, port, this.receiveHostId + "/GraphView");
             EndpointAddress endpointAddress = new EndpointAddress(uri.ToString());
             WSHttpBinding binding = new WSHttpBinding();
@@ -226,7 +226,7 @@ namespace GraphView
         private void Reconstruct(StreamingContext context)
         {
             AdditionalSerializationInfo additionalInfo = (AdditionalSerializationInfo)context.Context;
-            this.partitionPlans = additionalInfo.PartitionPlans;
+            this.nodePlans = additionalInfo.NodePlans;
         }
     }
 
@@ -243,7 +243,7 @@ namespace GraphView
 
         // Set following fields in deserialization
         [NonSerialized]
-        private List<PartitionPlan> partitionPlans;
+        private List<NodePlan> nodePlans;
         [NonSerialized]
         private int currentTask;
 
@@ -253,11 +253,11 @@ namespace GraphView
             this.selfHost = null;
         }
 
-        public ReceiveHost(string receiveHostId, int currentTask, List<PartitionPlan> partitionPlans)
+        public ReceiveHost(string receiveHostId, int currentTask, List<NodePlan> nodePlans)
         {
             this.receiveHostId = receiveHostId;
             this.currentTask = currentTask;
-            this.partitionPlans = partitionPlans;
+            this.nodePlans = nodePlans;
             this.selfHost = null;
         }
 
@@ -273,8 +273,8 @@ namespace GraphView
 
         public void OpenHost()
         {
-            PartitionPlan ownPartitionPlan = this.partitionPlans[this.currentTask];
-            UriBuilder uri = new UriBuilder("http", ownPartitionPlan.IP, ownPartitionPlan.Port, this.receiveHostId);
+            NodePlan ownNodePlan = this.nodePlans[this.currentTask];
+            UriBuilder uri = new UriBuilder("http", ownNodePlan.IP, ownNodePlan.Port, this.receiveHostId);
             Uri baseAddress = uri.Uri;
 
             WSHttpBinding binding = new WSHttpBinding();
@@ -300,7 +300,7 @@ namespace GraphView
         public List<string> WaitReturnAllMessages()
         {
             List<string> messages = new List<string>();
-            List<bool> hasReceived = Enumerable.Repeat(false, this.partitionPlans.Count).ToList();
+            List<bool> hasReceived = Enumerable.Repeat(false, this.nodePlans.Count).ToList();
             hasReceived[this.currentTask] = true;
 
             while (true)
@@ -339,7 +339,7 @@ namespace GraphView
         private void Reconstruct(StreamingContext context)
         {
             AdditionalSerializationInfo additionalInfo = (AdditionalSerializationInfo)context.Context;
-            this.partitionPlans = additionalInfo.PartitionPlans;
+            this.nodePlans = additionalInfo.NodePlans;
             this.currentTask = additionalInfo.TaskIndex;
 
             OpenHost();
@@ -351,17 +351,17 @@ namespace GraphView
         private readonly string receiveHostId;
 
         private readonly int currentTask;
-        private List<PartitionPlan> partitionPlans;
+        private List<NodePlan> nodePlans;
 
         private GraphViewCommand command;
 
         private ReceiveHost receiveHost;
 
-        public AggregateIntermadiateResult(string receiveHostId, int currentTask, List<PartitionPlan> partitionPlans, GraphViewCommand command)
+        public AggregateIntermadiateResult(string receiveHostId, int currentTask, List<NodePlan> nodePlans, GraphViewCommand command)
         {
             this.receiveHostId = receiveHostId;
             this.currentTask = currentTask;
-            this.partitionPlans = partitionPlans;
+            this.nodePlans = nodePlans;
             this.command = command;
         }
 
@@ -380,7 +380,7 @@ namespace GraphView
             {
                 if (this.receiveHost == null)
                 {
-                    this.receiveHost = new ReceiveHost(this.receiveHostId, this.currentTask, this.partitionPlans);
+                    this.receiveHost = new ReceiveHost(this.receiveHostId, this.currentTask, this.nodePlans);
                     this.receiveHost.OpenHost();
                 }
 
@@ -399,7 +399,7 @@ namespace GraphView
             else
             {
                 string message = SerializeAggregateFunctions(aggFuncs);
-                SendClient sendClient = new SendClient(this.receiveHostId, this.partitionPlans);
+                SendClient sendClient = new SendClient(this.receiveHostId, this.nodePlans);
                 sendClient.SendMessage(message, targetTask, this.currentTask);
                 return false;
             }
@@ -416,7 +416,7 @@ namespace GraphView
                 {
                     if (this.receiveHost == null)
                     {
-                        this.receiveHost = new ReceiveHost(this.receiveHostId, this.currentTask, this.partitionPlans);
+                        this.receiveHost = new ReceiveHost(this.receiveHostId, this.currentTask, this.nodePlans);
                         this.receiveHost.OpenHost();
                     }
 
@@ -432,7 +432,7 @@ namespace GraphView
                 else
                 {
                     string message = groupState.Serialize();
-                    SendClient sendClient = new SendClient(this.receiveHostId, this.partitionPlans);
+                    SendClient sendClient = new SendClient(this.receiveHostId, this.nodePlans);
                     sendClient.SendMessage(message, targetTask, this.currentTask);
                     return false;
                 }
@@ -568,6 +568,31 @@ namespace GraphView
     }
 
     [Serializable]
+    internal abstract class PartitionFunction
+    {
+        public abstract int Evaluate(string value);
+    }
+
+    // Just For Test
+    [Serializable]
+    internal class TestPartitionFunction : PartitionFunction
+    {
+        public override int Evaluate(string value)
+        {
+            int result;
+            if (int.TryParse(value, out result))
+            {
+                return result;
+            }
+            else
+            {
+                int hashcode = value.GetHashCode();
+                return (hashcode >= 0 ? hashcode : -hashcode) % 10;
+            }
+        }
+    }
+
+    [Serializable]
     internal class SendOperator : GraphViewExecutionOperator
     {
         private readonly GraphViewExecutionOperator inputOp;
@@ -596,11 +621,12 @@ namespace GraphView
         public int AggregateTarget { get; private set; } = -1;
 
         private readonly GetPartitionMethod getPartitionMethod;
+        private readonly PartitionFunction partitionFunction;
         private readonly SendType sendType;
 
         // Set following fields in deserialization
         [NonSerialized]
-        private List<PartitionPlan> partitionPlans;
+        private List<NodePlan> nodePlans;
         [NonSerialized]
         private int taskIndex;
 
@@ -610,10 +636,11 @@ namespace GraphView
             this.Open();
         }
 
-        public SendOperator(GraphViewExecutionOperator inputOp, GetPartitionMethod getPartitionMethod, bool needSendBack) 
+        public SendOperator(GraphViewExecutionOperator inputOp, GetPartitionMethod getPartitionMethod, PartitionFunction partitionFunction, bool needSendBack) 
             : this(inputOp)
         {
             this.getPartitionMethod = getPartitionMethod;
+            this.partitionFunction = partitionFunction;
             this.sendType = needSendBack ? SendType.SendAndAttachTaskId : SendType.Send;
         }
 
@@ -665,23 +692,24 @@ namespace GraphView
                             ((StringField)record[1]).Value = this.taskIndex.ToString();
                         }
                         string partition = this.getPartitionMethod.GetPartition(record);
-                        if (this.partitionPlans[this.taskIndex].BelongToPartitionPlan(partition))
+                        int evaluateValue = this.partitionFunction.Evaluate(partition);
+                        if (this.nodePlans[this.taskIndex].PartitionPlan.BelongToPartitionPlan(evaluateValue, PartitionCompareType.In))
                         {
                             this.resultCount++;
                             return record;
                         }
-                        for (int i = 0; i < this.partitionPlans.Count; i++)
+                        for (int i = 0; i < this.nodePlans.Count; i++)
                         {
                             if (i == this.taskIndex)
                             {
                                 continue;
                             }
-                            if (this.partitionPlans[i].BelongToPartitionPlan(partition))
+                            if (this.nodePlans[i].PartitionPlan.BelongToPartitionPlan(evaluateValue, PartitionCompareType.In))
                             {
                                 this.client.SendRawRecord(record, i);
                                 break;
                             }
-                            if (i == this.partitionPlans.Count - 1)
+                            if (i == this.nodePlans.Count - 1)
                             {
                                 throw new GraphViewException($"This partition does not belong to any partition plan! partition:{ partition }");
                             }
@@ -737,7 +765,7 @@ namespace GraphView
                 signal = $"{this.taskIndex},{this.resultCount}";
             }
 
-            for (int i = 0; i < this.partitionPlans.Count; i++)
+            for (int i = 0; i < this.nodePlans.Count; i++)
             {
                 if (i == this.taskIndex)
                 {
@@ -771,11 +799,11 @@ namespace GraphView
         private void Reconstruct(StreamingContext context)
         {
             AdditionalSerializationInfo additionalInfo = (AdditionalSerializationInfo)context.Context;
-            this.partitionPlans = additionalInfo.PartitionPlans;
+            this.nodePlans = additionalInfo.NodePlans;
             this.taskIndex = additionalInfo.TaskIndex;
             this.resultCount = 0;
 
-            this.client = new SendClient(this.receiveOpId, this.partitionPlans);
+            this.client = new SendClient(this.receiveOpId, this.nodePlans);
         }
     }
 
@@ -799,7 +827,7 @@ namespace GraphView
 
         // Set following fields in deserialization
         [NonSerialized]
-        private List<PartitionPlan> partitionPlans;
+        private List<NodePlan> nodePlans;
         [NonSerialized]
         private int taskIndex;
         [NonSerialized]
@@ -897,13 +925,13 @@ namespace GraphView
         {
             this.Open();
             this.inputOp.ResetState();
-            this.hasBeenSignaled = Enumerable.Repeat(false, this.partitionPlans.Count).ToList();
+            this.hasBeenSignaled = Enumerable.Repeat(false, this.nodePlans.Count).ToList();
             this.hasBeenSignaled[this.taskIndex] = true;
             if (this.inputOp.AggregateTarget != -1)
             {
                 this.hasBeenSignaled[this.inputOp.AggregateTarget] = true;
             }
-            this.resultCountList = Enumerable.Repeat(0, this.partitionPlans.Count).ToList();
+            this.resultCountList = Enumerable.Repeat(0, this.nodePlans.Count).ToList();
             this.otherContainerHasMoreInput = false;
         }
 
@@ -912,19 +940,19 @@ namespace GraphView
         {
             AdditionalSerializationInfo additionalInfo = (AdditionalSerializationInfo)context.Context;
             this.command = additionalInfo.Command;
-            this.partitionPlans = additionalInfo.PartitionPlans;
+            this.nodePlans = additionalInfo.NodePlans;
             this.taskIndex = additionalInfo.TaskIndex;
 
-            this.hasBeenSignaled = Enumerable.Repeat(false, this.partitionPlans.Count).ToList();
+            this.hasBeenSignaled = Enumerable.Repeat(false, this.nodePlans.Count).ToList();
             this.hasBeenSignaled[this.taskIndex] = true;
             if (this.inputOp.AggregateTarget != -1)
             {
                 this.hasBeenSignaled[this.inputOp.AggregateTarget] = true;
             }
-            this.resultCountList = Enumerable.Repeat(0, this.partitionPlans.Count).ToList();
+            this.resultCountList = Enumerable.Repeat(0, this.nodePlans.Count).ToList();
             this.otherContainerHasMoreInput = false;
 
-            this.receiveHost = new ReceiveHost(this.id, this.taskIndex, this.partitionPlans);
+            this.receiveHost = new ReceiveHost(this.id, this.taskIndex, this.nodePlans);
             this.receiveHost.OpenHost();
         }
     }
