@@ -18,6 +18,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GraphViewProgram", "GraphVi
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GraphViewAzureBatchUnitTest", "GraphViewAzureBatchUnitTest\GraphViewAzureBatchUnitTest.csproj", "{D37DFD43-CF18-4F73-B2EE-218A0193D14E}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GraphViewBenchmark", "GraphViewBenchmark\GraphViewBenchmark.csproj", "{76E5F5B8-7E15-43CF-A581-82E4DE806CC8}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -44,6 +46,10 @@ Global
 		{D37DFD43-CF18-4F73-B2EE-218A0193D14E}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{D37DFD43-CF18-4F73-B2EE-218A0193D14E}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{D37DFD43-CF18-4F73-B2EE-218A0193D14E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{76E5F5B8-7E15-43CF-A581-82E4DE806CC8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{76E5F5B8-7E15-43CF-A581-82E4DE806CC8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{76E5F5B8-7E15-43CF-A581-82E4DE806CC8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{76E5F5B8-7E15-43CF-A581-82E4DE806CC8}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
