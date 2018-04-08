@@ -20,7 +20,7 @@ namespace GraphView.Transaction
         /// <summary>
         /// The default transaction begin timestamp
         /// </summary>
-        private static readonly long DEFAULT_BEGIN_TIMESTAMP = -1L;
+        private static readonly long DEFAULT_TX_BEGIN_TIMESTAMP = -1L;
 
         /// <summary>
         /// The maximal capcity of the postprocessing entry list
@@ -87,18 +87,20 @@ namespace GraphView.Transaction
         /// <summary>
         /// A set of version entries that need to be rolled back upon abortion
         /// The Tuple stores the beginTs field, endTs field which wanted to be rolled back to.
+        /// Format: tableId => [recordKey => List of Entry]
         /// </summary>
         private readonly Dictionary<string, Dictionary<object, List<PostProcessingEntry>>> abortSet;
 
         /// <summary>
         /// A set of version entries that need to be changed upon commit
         /// The Tuple stores the beginTs field, endTs field which wanted to be changed to.
-        /// The beginTs field and endTs field in the tuple maybe set to -2 temporarily, because we don not get the current tx's commitTs
+        /// The beginTs field and endTs field in the tuple maybe set to -2 temporarily, since we haven't get the current tx's commitTs
+        /// tableId => [recordKey => List of Entry]
         /// </summary>
         private readonly Dictionary<string, Dictionary<object, List<PostProcessingEntry>>> commitSet;
 
         /// <summary>
-        /// A set of largest key for every record key to refer the version key for new entry
+        /// A set of largest key for every record key to infer the version key for new entry
         /// For the insertion operation, there is no entry in the read set, we
         /// should keep the largest version key in a global set
         /// </summary>
@@ -148,9 +150,8 @@ namespace GraphView.Transaction
 
             this.commitTs = TxTableEntry.DEFAULT_COMMIT_TIME;
             this.maxCommitTsOfWrites = -1L;
-            this.beginTimestamp = Transaction.DEFAULT_BEGIN_TIMESTAMP;
+            this.beginTimestamp = Transaction.DEFAULT_TX_BEGIN_TIMESTAMP;
         }
-
     }
 
     // For record operations
@@ -173,6 +174,7 @@ namespace GraphView.Transaction
                                 this.largestVersionKeyMap[tableId][recordKey] + 1,
                                 writeRecord,
                                 this.txId);
+
                             if (!this.versionDb.UploadNewVersionEntry(tableId, recordKey, newImageEntry.VersionKey,
                                 newImageEntry))
                             {
@@ -212,7 +214,7 @@ namespace GraphView.Transaction
 
                         if (versionEntry.TxId == this.TxId)
                         {
-                            // the first try was success, do nothing
+                            // the first try was successful, do nothing
                         }
                         // The first try was unsuccessful because the tail is hold by another concurrent tx. 
                         // If the concurrent tx has finished (committed or aborted), there is a chance for this tx
@@ -233,7 +235,8 @@ namespace GraphView.Transaction
                             if (versionEntry.EndTimestamp == VersionEntry.DEFAULT_END_TIMESTAMP)
                             {
                                 // Only if a new tail's owner tx has been committed, can it be seen by 
-                                // the current tx. 
+                                // the current tx. Since we are trying to replace the read version entry and lock it,
+                                // Thus it must be commited if it's a new version
                                 Debug.Assert(txEntry.Status == TxStatus.Committed);
 
                                 retryEntry = this.versionDb.ReplaceVersionEntry(
@@ -308,7 +311,7 @@ namespace GraphView.Transaction
                             newImageEntry))
                         {
                             return false;
-                        }
+                        } 
 
                         //add the info to the abortSet
                         this.AddVersionToAbortSet(tableId, recordKey, newImageEntry.VersionKey,
@@ -386,6 +389,8 @@ namespace GraphView.Transaction
             {
                 foreach (object recordKey in this.readSet[tableId].Keys)
                 {
+                    // For those recordKeys in the writeSet, they must be holden by the current tx and still visiabl
+                    // to the current tx
                     if (this.writeSet.ContainsKey(tableId) && this.writeSet[tableId].ContainsKey(recordKey))
                     {
                         continue;
@@ -402,6 +407,7 @@ namespace GraphView.Transaction
                         this.commitTs,
                         this.txId);
 
+                    // The current version entry has been holden by another concurrent transaction
                     if (versionEntry.TxId != VersionEntry.EMPTY_TXID)
                     {
                         // Step2: 

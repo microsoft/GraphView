@@ -11,11 +11,15 @@ end
 local commit_time = tx_entry[1]
 local commit_lower_bound = tx_entry[2]
 
-if commit_time == negative_one and 
-    string.byte(commit_lower_bound) <= string.byte(try_commit_time) then
-    local ret = redis.call("HSET", KEYS[1], "commit_time", try_commit_time)
+if commit_time == negative_one then
+	commit_time = try_commit_time
+	if string.byte(commit_lower_bound) > string.byte(try_commit_time) then
+		commit_time = commit_lower_bound
+	end
+
+    local ret = redis.call("HSET", KEYS[1], "commit_time", commit_time)
     if ret == 0 then
-        return try_commit_time
+        return commit_time
     end
     return negative_one
 end
