@@ -54,7 +54,7 @@ namespace GraphViewAzureBatchUnitTest.Gremlin
             nodePlans.Add(nodeA);
             nodePlans.Add(nodeB);
 
-            this.job = new GraphViewAzureBatchJob(parallelism, nodePlans, docDBEndPoint, docDBKey, docDBDatabaseId, docDBCollectionId,
+            this.job = new GraphViewAzureBatchJob(parallelism, nodePlans, null, docDBEndPoint, docDBKey, docDBDatabaseId, docDBCollectionId,
                 AbstractAzureBatchGremlinTest.TEST_USE_REVERSE_EDGE, AbstractAzureBatchGremlinTest.TEST_PARTITION_BY_KEY,
                 AbstractAzureBatchGremlinTest.TEST_SPILLED_EDGE_THRESHOLD_VIAGRAPHAPI);
 

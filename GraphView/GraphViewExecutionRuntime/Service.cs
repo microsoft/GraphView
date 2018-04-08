@@ -598,6 +598,9 @@ namespace GraphView
         private readonly GraphViewExecutionOperator inputOp;
         private string receiveOpId;
 
+        // If sendtype is Send/SendAndAttachTaskId and resultCount >= bound, records can be sent out.
+        private readonly int bound;
+
         [NonSerialized]
         private SendClient client;
 
@@ -636,11 +639,12 @@ namespace GraphView
             this.Open();
         }
 
-        public SendOperator(GraphViewExecutionOperator inputOp, GetPartitionMethod getPartitionMethod, PartitionFunction partitionFunction, bool needSendBack) 
+        public SendOperator(GraphViewExecutionOperator inputOp, GetPartitionMethod getPartitionMethod, PartitionFunction partitionFunction, int bound, bool needSendBack) 
             : this(inputOp)
         {
             this.getPartitionMethod = getPartitionMethod;
             this.partitionFunction = partitionFunction;
+            this.bound = bound;
             this.sendType = needSendBack ? SendType.SendAndAttachTaskId : SendType.Send;
         }
 
@@ -687,6 +691,12 @@ namespace GraphView
                         break;
                     case SendType.SendAndAttachTaskId:
                     case SendType.Send:
+                        if (this.resultCount < this.bound)
+                        {
+                            this.resultCount++;
+                            return record;
+                        }
+
                         if (this.sendType == SendType.SendAndAttachTaskId && ((StringField)record[1]).Value == "-1")
                         {
                             ((StringField)record[1]).Value = this.taskIndex.ToString();

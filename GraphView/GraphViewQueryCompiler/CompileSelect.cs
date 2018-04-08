@@ -509,7 +509,7 @@ namespace GraphView
                             if (context.InParallelMode && context.SendReceiveMode != SendReceiveMode.None)
                             {
                                 SendOperator sendOperator = new SendOperator(context.CurrentExecutionOperator, getPartitionMethod, new TestPartitionFunction(), 
-                                    context.SendReceiveMode == SendReceiveMode.SendThenSendBack);
+                                    context.ParallelLevel.Bound, context.SendReceiveMode == SendReceiveMode.SendThenSendBack);
                                 ReceiveOperator receiveOperator = new ReceiveOperator(sendOperator);
                                 currentExecutionOperator = receiveOperator;
                             }
@@ -567,8 +567,8 @@ namespace GraphView
                             GetPartitionMethodForTraversalOp getPartitionMethod = new GetPartitionMethodForTraversalOp(edgeFieldIndex, traversalType);
                             if (context.InParallelMode && context.SendReceiveMode != SendReceiveMode.None)
                             {
-                                SendOperator sendOperator = new SendOperator(context.CurrentExecutionOperator, getPartitionMethod, new TestPartitionFunction(), 
-                                    context.SendReceiveMode == SendReceiveMode.SendThenSendBack);
+                                SendOperator sendOperator = new SendOperator(context.CurrentExecutionOperator, getPartitionMethod, new TestPartitionFunction(),
+                                    context.ParallelLevel.Bound, context.SendReceiveMode == SendReceiveMode.SendThenSendBack);
                                 ReceiveOperator receiveOperator = new ReceiveOperator(sendOperator);
                                 currentExecutionOperator = receiveOperator;
                             }
@@ -1210,9 +1210,13 @@ namespace GraphView
             return op;
         }
 
-        internal string CompileAndSerialize(QueryCompilationContext context, GraphViewCommand command)
+        internal string CompileAndSerialize(QueryCompilationContext context, GraphViewCommand command, ParallelLevel parallelLevel = null)
         {
-            ParallelLevel parallelLevel = new ParallelLevel(true, true, true);
+            if (parallelLevel == null)
+            {
+                parallelLevel = new ParallelLevel(true, true, true);
+            }
+
             QueryCompilationContext priorContext = new QueryCompilationContext();
             GraphViewExecutionOperator op = null;
             foreach (WSqlStatement st in Statements)
@@ -1946,8 +1950,8 @@ namespace GraphView
             GetPartitionMethodForTraversalOp getPartitionMethod = new GetPartitionMethodForTraversalOp(edgeFieldIndex, traversalType);
             if (context.InParallelMode && context.SendReceiveMode != SendReceiveMode.None)
             {
-                SendOperator sendOperator = new SendOperator(context.CurrentExecutionOperator, getPartitionMethod, new TestPartitionFunction(), 
-                    context.SendReceiveMode == SendReceiveMode.SendThenSendBack);
+                SendOperator sendOperator = new SendOperator(context.CurrentExecutionOperator, getPartitionMethod, new TestPartitionFunction(),
+                    context.ParallelLevel.Bound, context.SendReceiveMode == SendReceiveMode.SendThenSendBack);
                 ReceiveOperator receiveOperator = new ReceiveOperator(sendOperator);
                 currentExecutionOperator = receiveOperator;
             }

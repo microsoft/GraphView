@@ -91,14 +91,17 @@ namespace GraphView
         SendThenSendBack, // ...->op->send->receive->op->...->send->send
     }
 
-    internal class ParallelLevel
+    public class ParallelLevel
     {
         public bool EnableSend { get; }
         public bool EnableSendInSubTraversal { get; }
         public bool EnableSendThenSendBack { get; }
 
+        // Decide whether to send records or not.
+        public int Bound { get; }
+
         public ParallelLevel(bool enableSend = false, bool enableSendInSubTraversal = false, 
-            bool enableSendThenSendBack = false)
+            bool enableSendThenSendBack = false, int bound = 0)
         {
             Debug.Assert(enableSend || (!enableSendInSubTraversal && !enableSendThenSendBack));
             Debug.Assert(enableSendInSubTraversal || !enableSendThenSendBack);
@@ -106,6 +109,8 @@ namespace GraphView
             this.EnableSend = enableSend;
             this.EnableSendInSubTraversal = enableSendInSubTraversal;
             this.EnableSendThenSendBack = enableSendThenSendBack;
+
+            this.Bound = bound;
         }
     }
 

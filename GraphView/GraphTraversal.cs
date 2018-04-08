@@ -296,13 +296,13 @@ namespace GraphView
             return results;
         }
 
-        public string CompileAndSerialize()
+        public string CompileAndSerialize(ParallelLevel parallelLevel)
         {
             this.Reset();
             WSqlScript sqlScript = GetEndOp().ToSqlScript();
             this.SqlScript = sqlScript.ToString();
 
-            return sqlScript.Batches[0].CompileAndSerialize(null, this.Command);
+            return sqlScript.Batches[0].CompileAndSerialize(null, this.Command, parallelLevel);
         }
 
         public static List<string> ExecuteQueryByDeserialization(string serializationStr, string partitionStr)

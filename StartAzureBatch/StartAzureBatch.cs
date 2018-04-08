@@ -50,6 +50,7 @@ namespace StartAzureBatch
 
         internal readonly int parallelism;
         internal readonly List<NodePlan> nodePlans;
+        internal readonly ParallelLevel parallelLevel;
 
         // CosmosDB account credentials
         internal readonly string docDBEndPoint;
@@ -60,16 +61,20 @@ namespace StartAzureBatch
         internal readonly string partitionByKey;
         internal readonly int spilledEdgeThresholdViagraphAPI;
 
-        public int TimeLimit { get; set; } = 60; // Time limit of this query in seconds.
+        public int TimeLimit { get; set; } = 300; // Time limit of this query in seconds.
         internal bool IsSuccess { get; set; } = false;
         internal string Result { get; set; }
+        // For benchmark. Not include the time of compiling and uploading file.
+        public long UseTime { get; set; }
 
-        public GraphViewAzureBatchJob(int parallelism, List<NodePlan> nodePlans, string docDBEndPoint, string docDBKey, string docDBDatabaseId,
-            string docDBCollectionId, bool useReverseEdge, string partitionByKey, int spilledEdgeThresholdViagraphAPI)
+        public GraphViewAzureBatchJob(int parallelism, List<NodePlan> nodePlans, ParallelLevel parallelLevel,
+            string docDBEndPoint, string docDBKey, string docDBDatabaseId, string docDBCollectionId,
+            bool useReverseEdge, string partitionByKey, int spilledEdgeThresholdViagraphAPI)
         {
             Debug.Assert(nodePlans.Count == parallelism);
             this.parallelism = parallelism;
             this.nodePlans = nodePlans;
+            this.parallelLevel = parallelLevel;
 
             this.docDBEndPoint = docDBEndPoint;
             this.docDBKey = docDBKey;
@@ -107,8 +112,8 @@ namespace StartAzureBatch
         private readonly string denpendencyPath;
         private readonly string exeName;
 
-        public AzureBatchJobManager(string batchAccountName, string batchAccountKey, string batchAccountUrl, 
-            string storageAccountName, string storageAccountKey, 
+        public AzureBatchJobManager(string batchAccountName, string batchAccountKey, string batchAccountUrl,
+            string storageAccountName, string storageAccountKey,
             string poolId, int virtualMachineNumber, string virtualMachineSize)
         {
             this.batchAccountName = batchAccountName;
@@ -191,12 +196,17 @@ namespace StartAzureBatch
                 string[] args = { "-file", compileResultPath, partitionPath, outputContainerSasUrl };
                 await this.AddTasksAsync(batchClient, job, nodeInfo, resourceFiles, args);
 
+                var watch = System.Diagnostics.Stopwatch.StartNew();
+
                 job.IsSuccess = await MonitorTasks(batchClient, job.jobId, TimeSpan.FromSeconds(job.TimeLimit));
+
+                watch.Stop();
+                job.UseTime = watch.ElapsedMilliseconds;
 
                 await this.DownloadAndAggregateOutputAsync(blobClient, outputContainerName, job);
 
                 // For Debug. Print stdout and stderr
-                PrintTaskOutput(batchClient, job);
+                // PrintTaskOutput(batchClient, job);
 
                 await DeleteContainerAsync(blobClient, outputContainerName);
                 await DeleteContainerAsync(blobClient, appContainerName);
@@ -217,10 +227,11 @@ namespace StartAzureBatch
         {
             if (job.Traversal != null)
             {
-                return job.Traversal.CompileAndSerialize();
+                return job.Traversal.CompileAndSerialize(job.parallelLevel);
             }
             else
             {
+                // Not Support set parallelLevel temporarily.
                 GraphViewCommand command = job.Command;
                 command.CommandText = job.Query;
                 return command.CompileAndSerialize();
@@ -567,9 +578,9 @@ namespace StartAzureBatch
                 result.Append(stringReader.ReadToEnd());
             }
 
-            Console.WriteLine("Aggregate result is as follows:");
+            //Console.WriteLine("Aggregate result is as follows:");
             job.Result = result.ToString();
-            Console.Write(job.Result);
+            //Console.Write(job.Result);
         }
 
         /// <summary>
