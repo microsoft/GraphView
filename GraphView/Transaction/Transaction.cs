@@ -51,6 +51,7 @@ namespace GraphView.Transaction
         /// <summary>
         /// The status of this transaction.
         /// </summary>
+        /// IMPORTANT: only for unit test
         private TxStatus txStatus;
 
         /// <summary>
@@ -354,7 +355,7 @@ namespace GraphView.Transaction
             this.commitSet[tableId][recordKey].Add(new PostProcessingEntry(versionKey, beginTs, endTs));
         }
 
-        private bool GetCommitTimestamp()
+        internal bool GetCommitTimestamp()
         {
             // CommitTs >= tx.CommitLowerBound
             // CommitTs >= entry.BeginTimestamp for read-only entry
@@ -383,7 +384,7 @@ namespace GraphView.Transaction
             return this.commitTs != TxTableEntry.DEFAULT_COMMIT_TIME;
         }
 
-        private bool Validate()
+        internal bool Validate()
         {
             foreach (string tableId in this.readSet.Keys)
             {
@@ -462,7 +463,7 @@ namespace GraphView.Transaction
             this.PostProcessingAfterAbort();
         }
 
-        private void PostProcessingAfterAbort()
+        internal void PostProcessingAfterAbort()
         {
             foreach (string tableId in this.abortSet.Keys)
             {
@@ -492,7 +493,7 @@ namespace GraphView.Transaction
             }
         }
 
-        private void PostProcessingAfterCommit()
+        internal void PostProcessingAfterCommit()
         {
             foreach (string tableId in this.commitSet.Keys)
             {
