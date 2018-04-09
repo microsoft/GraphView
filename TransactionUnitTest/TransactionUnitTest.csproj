@@ -70,6 +70,8 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="AbstractTransactionTest.cs" />
     <Compile Include="GetCommitTsTest.cs" />
+    <Compile Include="PostProcessingTest.cs" />
+    <Compile Include="ValidationTest.cs" />
     <Compile Include="UploadingUnitTest.cs" />
   </ItemGroup>
   <ItemGroup>
