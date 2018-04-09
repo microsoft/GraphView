@@ -7,67 +7,132 @@ namespace TransactionUnitTest
     [TestClass]
     public class ExecutionTest : AbstractTransactionTest
     {
-        /// <summary>
-        /// Test read the most recent records
-        /// </summary>
         [TestMethod]
-        public void TestRead()
+        public void TestReadCase1()
         {
-            // command variables
-            object value = null;
+            this.SetUp();
+            Transaction txRead = new Transaction(null, this.versionDb);
             long largestVersionKey = 0;
 
-            // two transactions
+            // Case1: Initial Read
+            object value = this.ReadValue(txRead, ExecutionTest.TABLE_ID, "key", out largestVersionKey);
+            Assert.AreEqual((string)value, "value");
+            Assert.AreEqual(largestVersionKey, 1L);
+        }
+
+        [TestMethod]
+        public void TestReadCase2()
+        {
+            this.SetUp();
             Transaction txRead = new Transaction(null, this.versionDb);
             Transaction txUpdate = new Transaction(null, this.versionDb);
-
-            // Case1: Initial Read
-            value = this.ReadValue(txRead, ExecutionTest.TABLE_ID, "key", out largestVersionKey);
-            Assert.AreEqual((string) value, "value");
-            Assert.AreEqual(largestVersionKey, 1L);
+            long largestVersionKey = 0;
 
             // Case2: Read after local update
             txUpdate.Read(ExecutionTest.TABLE_ID, "key");
             txUpdate.Update(ExecutionTest.TABLE_ID, "key", "value_update");
-            value = this.ReadValue(txRead, ExecutionTest.TABLE_ID, "key", out largestVersionKey);
+            object value = this.ReadValue(txRead, ExecutionTest.TABLE_ID, "key", out largestVersionKey);
             Assert.AreEqual((string)value, "value");
             Assert.AreEqual(largestVersionKey, 1L);
+        }
+
+        [TestMethod]
+        public void TestReadCase3()
+        {
+            this.SetUp();
+            Transaction txRead = new Transaction(null, this.versionDb);
+            Transaction txUpdate = new Transaction(null, this.versionDb);
+            long largestVersionKey = 0;
 
             // Case3: Read after uploading
+            txUpdate.Read(ExecutionTest.TABLE_ID, "key");
+            txUpdate.Update(ExecutionTest.TABLE_ID, "key", "value_update");
             txUpdate.UploadLocalWriteRecords();
-            value = this.ReadValue(txRead, ExecutionTest.TABLE_ID, "key", out largestVersionKey);
+            object value = this.ReadValue(txRead, ExecutionTest.TABLE_ID, "key", out largestVersionKey);
             Assert.AreEqual((string)value, "value");
             Assert.AreEqual(largestVersionKey, 1L);
+        }
+
+        [TestMethod]
+        public void TestReadCase4()
+        {
+            this.SetUp();
+            Transaction txRead = new Transaction(null, this.versionDb);
+            Transaction txUpdate = new Transaction(null, this.versionDb);
+            long largestVersionKey = 0;
 
             // Case4: Read after getting commitTime
+            txUpdate.Read(ExecutionTest.TABLE_ID, "key");
+            txUpdate.Update(ExecutionTest.TABLE_ID, "key", "value_update");
+            txUpdate.UploadLocalWriteRecords();
             txUpdate.GetCommitTimestamp();
-            value = this.ReadValue(txRead, ExecutionTest.TABLE_ID, "key", out largestVersionKey);
+            object value = this.ReadValue(txRead, ExecutionTest.TABLE_ID, "key", out largestVersionKey);
             Assert.AreEqual((string)value, "value");
             Assert.AreEqual(largestVersionKey, 1L);
+        }
+
+        [TestMethod]
+        public void TestReadCase5()
+        {
+            this.SetUp();
+            Transaction txRead = new Transaction(null, this.versionDb);
+            Transaction txUpdate = new Transaction(null, this.versionDb);
+            long largestVersionKey = 0;
 
             // Case5: Read after validation
+            txUpdate.Read(ExecutionTest.TABLE_ID, "key");
+            txUpdate.Update(ExecutionTest.TABLE_ID, "key", "value_update");
+            txUpdate.UploadLocalWriteRecords();
+            txUpdate.GetCommitTimestamp();
             txUpdate.Validate();
-            value = this.ReadValue(txRead, ExecutionTest.TABLE_ID, "key", out largestVersionKey);
+            object value = this.ReadValue(txRead, ExecutionTest.TABLE_ID, "key", out largestVersionKey);
             Assert.AreEqual((string)value, "value");
             Assert.AreEqual(largestVersionKey, 1L);
 
+        }
+
+        [TestMethod]
+        public void TestReadCase6()
+        {
+            this.SetUp();
+            Transaction txRead = new Transaction(null, this.versionDb);
+            Transaction txUpdate = new Transaction(null, this.versionDb);
+            long largestVersionKey = 0;
+
             // Case6: Read after commit
+            txUpdate.Read(ExecutionTest.TABLE_ID, "key");
+            txUpdate.Update(ExecutionTest.TABLE_ID, "key", "value_update");
+            txUpdate.UploadLocalWriteRecords();
+            txUpdate.GetCommitTimestamp();
+            txUpdate.Validate();
             this.versionDb.UpdateTxStatus(txUpdate.TxId, TxStatus.Committed);
-            value = this.ReadValue(txRead, ExecutionTest.TABLE_ID, "key", out largestVersionKey);
+
+            object value = this.ReadValue(txRead, ExecutionTest.TABLE_ID, "key", out largestVersionKey);
             Assert.AreEqual((string)value, "value_update");
             Assert.AreEqual(largestVersionKey, 2L);
 
-            // Case7: Read after postprocessing
+        }
+
+        [TestMethod]
+        public void TestReadCase7()
+        {
+            this.SetUp();
+            Transaction txRead = new Transaction(null, this.versionDb);
+            Transaction txUpdate = new Transaction(null, this.versionDb);
+            long largestVersionKey = 0;
+
+            // Case6: Read after commit
+            txUpdate.Read(ExecutionTest.TABLE_ID, "key");
+            txUpdate.Update(ExecutionTest.TABLE_ID, "key", "value_update");
+            txUpdate.UploadLocalWriteRecords();
+            txUpdate.GetCommitTimestamp();
+            txUpdate.Validate();
+            this.versionDb.UpdateTxStatus(txUpdate.TxId, TxStatus.Committed);
             txUpdate.PostProcessingAfterCommit();
-            value = this.ReadValue(txRead, ExecutionTest.TABLE_ID, "key", out largestVersionKey);
+
+            object value = this.ReadValue(txRead, ExecutionTest.TABLE_ID, "key", out largestVersionKey);
             Assert.AreEqual((string)value, "value_update");
             Assert.AreEqual(largestVersionKey, 2L);
-
-            // Cases for aborted
-
-            // Cases for deletion
-
-            // Cases for insertion
         }
 
         private object ReadValue(Transaction tx, string tableId, object recordKey, out long largestVersionKey)

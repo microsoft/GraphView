@@ -405,41 +405,67 @@ namespace GraphView.Transaction
                     }
 
                     // Step1: UpdateMaxCommitTime
-                    // 1. if the version's txId is -1, update the max commit ts
-                    // 2. if the version's txId is another txId1, do nothing and return the entry
                     // try to push the version’s maxCommitTs as my CommitTs
                     VersionEntry versionEntry = this.versionDb.UpdateVersionMaxCommitTs(
                         tableId,
                         recordKey,
                         readSet[tableId][recordKey].VersionKey,
-                        this.commitTs,
-                        this.txId);
+                        this.commitTs);
 
                     // The current version entry has been holden by another concurrent transaction
                     if (versionEntry.TxId != VersionEntry.EMPTY_TXID)
                     {
                         // Step2: 
-                        // try to push the tx who is locking this version's commitLowerBound to myCommitTs + 1
-                        // if the tx has already got the commit time, then compare their timestamps
-                        // (1) if commitTime > tx's commitTime, abort
-                        // (2) if commitTime < tx's commitTime, keep going
-                        long txCommitTs = this.versionDb.UpdateCommitLowerBound(versionEntry.TxId, this.commitTs + 1);
-                        if (txCommitTs == VersionDb.RETURN_ERROR_CODE)
+                        // get the concurrent transaction's status
+                        // (1) if its status is Aborted, keep going
+                        // (2) if its status is Committed, range check
+                        // (3) if its status is Ongoing, try to push its commitLowerBound
+                        TxTableEntry txEntry = this.versionDb.GetTxTableEntry(versionEntry.TxId);
+                        if (txEntry.Status == TxStatus.Aborted)
                         {
-                            return false;
-                        }
-                        else if (txCommitTs == TxTableEntry.DEFAULT_COMMIT_TIME)
-                        {
-                            //the tx who is locking the version has not gotten its commitTs and I push its commitLowerBound successfully.
                             continue;
+                        }
+                        else if (txEntry.Status == TxStatus.Committed)
+                        {
+                            if (this.commitTs > txEntry.CommitTime)
+                            {
+                                return false;
+                            }
                         }
                         else
                         {
-                            // the tx who is locking the version has already gotten its commitTs
-                            // range check
-                            if (this.commitTs > txCommitTs)
+                            // Step 3:
+                            // try to push the tx who is locking this version's commitLowerBound to myCommitTs + 1
+                            // if the tx has already got the commit time, it may be in 3 cases:
+                            // (1) ongoing: if it will be commited, this.CommitTs < tx.CommitTime ensure that the current transaction
+                            //              still valid after it commited; if it will be abort, the current transaction must be valid
+                            // (2) commited: just check the range
+                            // (3) aborted: the current transaction must be valid
+                            // In conslusion, to simplify the process, in all cases we will only check the range which may increase the abort rate
+                            
+                            // Range check Rules:
+                            // (1) if my commitTs > tx's commitTime, abort
+                            // (2) if my commitTs < tx's commitTime, keep going
+                            long txCommitTs = this.versionDb.UpdateCommitLowerBound(versionEntry.TxId, this.commitTs + 1);
+                            if (txCommitTs == VersionDb.RETURN_ERROR_CODE)
                             {
                                 return false;
+                            }
+                            // push the commit lower bound successfully
+                            else if (txCommitTs == TxTableEntry.DEFAULT_COMMIT_TIME)
+                            {
+                                //the tx who is locking the version has not gotten its commitTs and I push its commitLowerBound successfully.
+                                continue;
+                            }
+                            // push failed, the transaction holding the version entry has gotten the commit time
+                            else
+                            {
+                                //the tx who is locking the version has already gotten its commitTs
+                                //range check
+                                if (this.commitTs > txCommitTs)
+                                {
+                                    return false;
+                                }
                             }
                         }
                     }

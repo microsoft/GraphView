@@ -15,6 +15,9 @@ namespace TransactionUnitTest
 
         internal static readonly string TABLE_ID = "unit_test_table";
 
+        internal static readonly string DEFAULT_KEY = "key";
+
+        internal static readonly string DEFAULT_VALUE = "value";
         /// <summary>
         /// Define our own setup methods
         /// </summary>
@@ -31,8 +34,9 @@ namespace TransactionUnitTest
 
                 // 3. load data
                 Transaction tx = new Transaction(null, this.versionDb);
-                tx.ReadAndInitialize(AbstractTransactionTest.TABLE_ID, "key");
-                tx.Insert(AbstractTransactionTest.TABLE_ID, "key", "value");
+                tx.ReadAndInitialize(AbstractTransactionTest.TABLE_ID, AbstractTransactionTest.DEFAULT_KEY);
+                tx.Insert(AbstractTransactionTest.TABLE_ID, AbstractTransactionTest.DEFAULT_KEY, 
+                    AbstractTransactionTest.DEFAULT_VALUE);
                 tx.Commit();
             }
         }

@@ -63,19 +63,11 @@
         /// 
         /// <returns></returns>
         /// Update the version's maxCommitTs in the validataion phase
-        /// (1) If the version's txId == -1, which means no other transactions are manipulate it,
-        ///     update the maxCommitTs and return the new version entry
-        /// (2) If the version's txId is some other txId1, return the version entry. We will try to 
-        ///     set txId1's commitLowerBound to push it.
         /// </summary>
         /// <param name="commitTs">The current transaction's commit time</param>
-        /// <param name="txId">
-        /// The current transaction's txId or -1
-        /// If the transaction only read the version, txId should be -1
-        /// If the transaction try to update or delete the version, txId should be tx' txId
         /// </param>
         /// <returns>A updated or non-updated version entry</returns>
-        internal virtual VersionEntry UpdateVersionMaxCommitTs(object recordKey, long versionKey, long commitTs, long txId)
+        internal virtual VersionEntry UpdateVersionMaxCommitTs(object recordKey, long versionKey, long commitTs)
         {
             throw new NotImplementedException();
         }

@@ -57,7 +57,7 @@ namespace TransactionUnitTest
 
             //case5: test the effect of tx.maxCommitTsOfWrites
             this.SetUp();
-            this.versionDb.UpdateVersionMaxCommitTs(GetCommitTsTest.TABLE_ID, "key", 1, 5, -1);
+            this.versionDb.UpdateVersionMaxCommitTs(GetCommitTsTest.TABLE_ID, "key", 1, 5);
             Transaction t7 = new Transaction(null, this.versionDb);
             t7.Read(GetCommitTsTest.TABLE_ID, "key");
             t7.Update(GetCommitTsTest.TABLE_ID, "key", "value1");
