@@ -69,6 +69,7 @@
     <Compile Include="ExecutionTest.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="AbstractTransactionTest.cs" />
+    <Compile Include="GetCommitTsTest.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

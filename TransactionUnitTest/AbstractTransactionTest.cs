@@ -15,6 +15,28 @@ namespace TransactionUnitTest
 
         internal static readonly string TABLE_ID = "unit_test_table";
 
+        /// <summary>
+        /// Define our own setup methods
+        /// </summary>
+        internal void SetUp()
+        {
+            using (RedisClient redisClient = (RedisClient)this.clientManager.GetClient())
+            {
+                // 1. flush the test db
+                redisClient.ChangeDb(AbstractTransactionTest.TEST_REDIS_DB);
+                redisClient.FlushDb();
+
+                // 2. create version table
+                this.versionDb.CreateVersionTable(AbstractTransactionTest.TABLE_ID, AbstractTransactionTest.TEST_REDIS_DB);
+
+                // 3. load data
+                Transaction tx = new Transaction(null, this.versionDb);
+                tx.ReadAndInitialize(AbstractTransactionTest.TABLE_ID, "key");
+                tx.Insert(AbstractTransactionTest.TABLE_ID, "key", "value");
+                tx.Commit();
+            }
+        }
+
         [ClassInitialize()]
         public static void ClassInit(TestContext context)
         {

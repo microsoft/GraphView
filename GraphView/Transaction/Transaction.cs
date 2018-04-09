@@ -116,12 +116,19 @@ namespace GraphView.Transaction
             }
         }
 
+        // IMPORTANT: change to public only for test
+        // IMPORTANT: change to get and set only for test
         // only for benchmark test
         public long CommitTs
         {
             get
             {
                 return this.commitTs;
+
+            }
+            set
+            {
+                this.CommitTs = value;
 
             }
         }

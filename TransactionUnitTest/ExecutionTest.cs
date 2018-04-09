@@ -1,45 +1,18 @@
-﻿namespace GraphViewUnitTest.Transaction
-{
-    using System;
-    using Microsoft.VisualStudio.TestTools.UnitTesting;
-    using GraphView.Transaction;
-    using ServiceStack.Redis;
-    using System.Collections.Generic;
-    using TransactionUnitTest;
+﻿using System.Collections.Generic;
+using GraphView.Transaction;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 
+namespace TransactionUnitTest
+{
     [TestClass]
     public class ExecutionTest : AbstractTransactionTest
     {
-        /// <summary>
-        /// Define our own setup methods
-        /// </summary>
-        public void SetUp()
-        {
-            using (RedisClient redisClient = (RedisClient)this.clientManager.GetClient())
-            {
-                // 1. flush the test db
-                redisClient.ChangeDb(ExecutionTest.TEST_REDIS_DB);
-                redisClient.FlushDb();
-
-                // 2. create version table
-                this.versionDb.CreateVersionTable(ExecutionTest.TABLE_ID, ExecutionTest.TEST_REDIS_DB);
-
-                // 3. load data
-                Transaction tx = new Transaction(null, this.versionDb);
-                tx.ReadAndInitialize(ExecutionTest.TABLE_ID, "key");
-                tx.Insert(ExecutionTest.TABLE_ID, "key", "value");
-                tx.Commit();
-            }
-        }
-
         /// <summary>
         /// Test read the most recent records
         /// </summary>
         [TestMethod]
         public void TestRead()
         {
-            this.SetUp();
-
             // command variables
             object value = null;
             long largestVersionKey = 0;
