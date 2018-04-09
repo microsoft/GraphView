@@ -162,8 +162,12 @@
                 byte[] keyBytes = Encoding.ASCII.GetBytes(tableId);
                 byte[] valueBytes = BitConverter.GetBytes(redisDbIndex);
 
-                long result = redisClient.HSet(RedisVersionDb.META_TABLE_KEY, keyBytes, valueBytes);
-
+                long result = redisClient.HSetNX(RedisVersionDb.META_TABLE_KEY, keyBytes, valueBytes);
+                // if the tableId exists in the redis, return null
+                if (result == 0)
+                {
+                    return null;
+                }
                 return this.GetVersionTable(tableId);
             }
         }
