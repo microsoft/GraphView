@@ -141,11 +141,107 @@ namespace TransactionUnitTest
             this.versionDb.UpdateTxStatus(txUpdate.TxId, TxStatus.Committed);
 
             Transaction txUpdate2 = new Transaction(null, this.versionDb);
-            txUpdate2.Read(UploadingUnitTest.TABLE_ID, UploadingUnitTest.DEFAULT_KEY);
-            txUpdate2.Update(UploadingUnitTest.TABLE_ID, UploadingUnitTest.DEFAULT_KEY, "value_insert");
-            success = txUpdate.UploadLocalWriteRecords();
+            object value = txUpdate2.Read(TABLE_ID, DEFAULT_KEY);
+            Assert.AreEqual((string)value, "value_update");
 
+            txUpdate2.Update(TABLE_ID, DEFAULT_KEY, "value_update2");
+            success = txUpdate2.UploadLocalWriteRecords();
             Assert.AreEqual(success, true);
+        }
+
+        [TestMethod]
+        // case6: read [-1, -1, txId1], version entry is [Ts, Inf, -1] when replacing
+        public void TestReplaceOldCase6()
+        {
+            this.SetUp();
+            Transaction txUpdate = new Transaction(null, this.versionDb);
+            txUpdate.Read(TABLE_ID, DEFAULT_KEY);
+            txUpdate.Update(TABLE_ID, DEFAULT_KEY, "value_update");
+            bool success = txUpdate.UploadLocalWriteRecords();
+            Assert.AreEqual(success, true);
+            txUpdate.GetCommitTimestamp();
+            this.versionDb.UpdateTxStatus(txUpdate.TxId, TxStatus.Committed);
+
+            Transaction txUpdate2 = new Transaction(null, this.versionDb);
+            object value = txUpdate2.Read(TABLE_ID, DEFAULT_KEY);
+            Assert.AreEqual((string)value, "value_update");
+
+            txUpdate.PostProcessingAfterCommit();
+
+            txUpdate2.Update(TABLE_ID, DEFAULT_KEY, "value_update2");
+            success = txUpdate2.UploadLocalWriteRecords();
+            Assert.AreEqual(success, true);
+        }
+
+        [TestMethod]
+        // case7: read [Ts, inf, tx], version entry is [Ts, Inf, tx] when replacing tx is commited
+        public void TestReplaceOldCase7()
+        {
+            this.SetUp();
+            Transaction txDelete = new Transaction(null, this.versionDb);
+            txDelete.Read(TABLE_ID, DEFAULT_KEY);
+            txDelete.Delete(TABLE_ID, DEFAULT_KEY);
+            bool success = txDelete.UploadLocalWriteRecords();
+            Assert.AreEqual(success, true);
+
+            Transaction txUpdate2 = new Transaction(null, this.versionDb);
+            object value = txUpdate2.Read(TABLE_ID, DEFAULT_KEY);
+            Assert.AreEqual((string)value, "value");
+
+            txDelete.GetCommitTimestamp();
+            this.versionDb.UpdateTxStatus(txDelete.TxId, TxStatus.Committed);
+
+            txUpdate2.Update(TABLE_ID, DEFAULT_KEY, "value");
+            success = txUpdate2.UploadLocalWriteRecords();
+            Assert.AreEqual(success, false);
+        }
+
+        [TestMethod]
+        // case8: read [Ts, inf, tx], version entry is [Ts, Inf, tx] when replacing tx is aborted
+        public void TestReplaceOldCase8()
+        {
+            this.SetUp();
+            Transaction txDelete = new Transaction(null, this.versionDb);
+            txDelete.Read(TABLE_ID, DEFAULT_KEY);
+            txDelete.Delete(TABLE_ID, DEFAULT_KEY);
+            bool success = txDelete.UploadLocalWriteRecords();
+            Assert.AreEqual(success, true);
+
+            Transaction txUpdate2 = new Transaction(null, this.versionDb);
+            object value = txUpdate2.Read(TABLE_ID, DEFAULT_KEY);
+            Assert.AreEqual((string)value, "value");
+
+            txDelete.GetCommitTimestamp();
+            this.versionDb.UpdateTxStatus(txDelete.TxId, TxStatus.Aborted);
+
+            txUpdate2.Update(TABLE_ID, DEFAULT_KEY, "value_update2");
+            success = txUpdate2.UploadLocalWriteRecords();
+            Assert.AreEqual(success, true);
+        }
+
+        [TestMethod]
+        // case9: read [Ts, inf, tx], version entry is [Ts, Ts', -1] when replacing
+        public void TestReplaceOldCase9()
+        {
+            this.SetUp();
+
+            Transaction txDelete = new Transaction(null, this.versionDb);
+            txDelete.Read(TABLE_ID, DEFAULT_KEY);
+            txDelete.Delete(TABLE_ID, DEFAULT_KEY);
+            bool success = txDelete.UploadLocalWriteRecords();
+            Assert.AreEqual(success, true);
+
+            Transaction txUpdate2 = new Transaction(null, this.versionDb);
+            object value = txUpdate2.Read(TABLE_ID, DEFAULT_KEY);
+            Assert.AreEqual((string)value, "value");
+
+            txDelete.GetCommitTimestamp();
+            this.versionDb.UpdateTxStatus(txDelete.TxId, TxStatus.Committed);
+            txDelete.PostProcessingAfterCommit();
+
+            txUpdate2.Update(TABLE_ID, DEFAULT_KEY, "value_update2");
+            success = txUpdate2.UploadLocalWriteRecords();
+            Assert.AreEqual(success, false);
         }
     }
 }
