@@ -128,7 +128,7 @@ namespace GraphView.Transaction
             }
             set
             {
-                this.CommitTs = value;
+                this.commitTs = value;
 
             }
         }
@@ -412,7 +412,7 @@ namespace GraphView.Transaction
                         readSet[tableId][recordKey].VersionKey,
                         this.commitTs);
 
-                    // The current version entry has been holden by another concurrent transaction
+                    // The current version entry has been held by another concurrent transaction
                     if (versionEntry.TxId != VersionEntry.EMPTY_TXID)
                     {
                         // Step2: 
@@ -437,12 +437,15 @@ namespace GraphView.Transaction
                             // Step 3:
                             // try to push the tx who is locking this version's commitLowerBound to myCommitTs + 1
                             // if the tx has already got the commit time, it may be in 3 cases:
-                            // (1) ongoing: if it will be commited, this.CommitTs < tx.CommitTime ensure that the current transaction
-                            //              still valid after it commited; if it will be abort, the current transaction must be valid
+                            // (1) ongoing: if it will be Committed later, we want to perform range check to ensure that the 
+                            //              current transaction is still valid after tx commit; 
+                            //              if it will be Aborted later, the current transaction must be valid
+                            //
                             // (2) commited: just check the range
                             // (3) aborted: the current transaction must be valid
-                            // In conslusion, to simplify the process, in all cases we will only check the range which may increase the abort rate
-                            
+                            //
+                            // In conclusion, to simplify the process, in all the 3 cases we will only check the range, which may increase the abort rate
+                            //
                             // Range check Rules:
                             // (1) if my commitTs > tx's commitTime, abort
                             // (2) if my commitTs < tx's commitTime, keep going
@@ -472,10 +475,6 @@ namespace GraphView.Transaction
                     else
                     {
                         //range check
-                        //if there is a new committed version (tx2 committed it) in the list, 
-                        //the current version's endTimestamp must be a timestamp (tx2's commitTs),
-                        //so we need to compare the current version's endTimestamp with my CommitTs, 
-                        //to ensure we can still read the current version and there is no new version has been committed before I commits
                         if (this.commitTs > versionEntry.EndTimestamp)
                         {
                             return false;
