@@ -36,7 +36,7 @@ namespace GraphView.Transaction
         /// <summary>
         /// Data store for logging
         /// </summary>
-        private readonly ILogStore logStore;
+        private readonly LogStore logStore;
 
         /// <summary>
         /// Version Db for concurrency control
@@ -143,7 +143,7 @@ namespace GraphView.Transaction
             }
         }
 
-        public Transaction(ILogStore logStore, VersionDb versionDb)
+        public Transaction(LogStore logStore, VersionDb versionDb)
         {
             this.logStore = logStore;
             this.versionDb = versionDb;
@@ -598,16 +598,8 @@ namespace GraphView.Transaction
 
         private void WriteChangeToLog()
         {
-            foreach (string tableId in this.writeSet.Keys)
-            {
-                foreach (object recordKey in this.writeSet[tableId].Keys)
-                {
-                    this.logStore.WriteVerionEntry(
-                        tableId, recordKey, this.writeSet[tableId][recordKey], this.txId, this.commitTs);
-                }
-            }
-
-            this.logStore.WriteTx(this.txId);
+            // IMPORTANT: only for test
+            // throw new NotImplementedException();
         }
     }
 

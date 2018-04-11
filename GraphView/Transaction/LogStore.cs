@@ -8,14 +8,35 @@
     /// <summary>
     /// A data store for logging
     /// </summary>
-    public interface ILogStore
+    public abstract class LogStore
     {
-        void WriteVerionEntry(string tableId, object recordKey, object payload, long txId, long commitTs);
+        public virtual long GetMaxTxSequenceNumber()
+        {
+            return 0;
+        }
 
-        void WriteTx(long txId);
+        public virtual IEnumerable<JObject> ReadJson(string recordId)
+        {
+            throw new NotImplementedException(); 
+        }
+
+        public virtual IEnumerable<JObject> ReadJson(IEnumerable<string> ridList)
+        {
+            throw new NotImplementedException();
+        }
+
+        public virtual void WriteJson(JObject record)
+        {
+            throw new NotImplementedException();
+        }
+
+        public virtual void WriteJson(IEnumerable<JObject> recordList)
+        {
+            throw new NotImplementedException();
+        }
     }
-
-    public class CosmosDBStore : ILogStore
+    
+    public class CosmosDBStore : LogStore
     {
         private readonly string url;
         private readonly string primaryKey;
@@ -48,16 +69,6 @@
 
             this.cosmosDbClient = new DocumentClient(new Uri(this.url), this.primaryKey, connectionPolicy);
             this.cosmosDbClient.OpenAsync().Wait();
-        }
-
-        public void WriteTx(long txId)
-        {
-            throw new NotImplementedException();
-        }
-
-        public void WriteVerionEntry(string tableId, object recordKey, object payload, long txId, long commitTs)
-        {
-            throw new NotImplementedException();
         }
     }
 }
