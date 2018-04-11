@@ -36,7 +36,7 @@ namespace GraphView.Transaction
         /// <summary>
         /// Data store for logging
         /// </summary>
-        private readonly LogStore logStore;
+        private readonly ILogStore logStore;
 
         /// <summary>
         /// Version Db for concurrency control
@@ -143,7 +143,7 @@ namespace GraphView.Transaction
             }
         }
 
-        public Transaction(LogStore logStore, VersionDb versionDb)
+        public Transaction(ILogStore logStore, VersionDb versionDb)
         {
             this.logStore = logStore;
             this.versionDb = versionDb;
