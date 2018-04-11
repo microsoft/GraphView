@@ -28,8 +28,8 @@
                         if (RedisClientManager.redisManagerPool == null)
                         {
                             RedisClientManagerConfig config = new RedisClientManagerConfig();
-                            config.MaxReadPoolSize = 10;
-                            config.MaxWritePoolSize = 10;
+                            config.MaxReadPoolSize = 1000;
+                            config.MaxWritePoolSize = 1000;
                             // TODO: read redis config from config files
                             string redisConnectionString = "127.0.0.1:6379";
                             RedisClientManager.redisManagerPool = 

@@ -9,6 +9,17 @@ namespace GraphView.Transaction
     /// </summary>
     public abstract partial class VersionDb
     {
+        /// <summary>
+        /// The seed to generate random number
+        /// Based on the random documents, Random objects created within 15 milliseconds of 
+        /// one another are likely to have identical seed values
+        /// 
+        /// In our protocol, we expect several millions txId will be generated in a second,
+        /// Thus we need record the last txId generated and take it as the seed of next round of 
+        /// random number generator to avoid the 15ms limitations.
+        /// </summary>
+        protected int randomSeed = 0;
+
         public static readonly long RETURN_ERROR_CODE = -2L;
 
         /// <summary>
@@ -184,9 +195,13 @@ namespace GraphView.Transaction
         /// Generate a random long type in the range of [min, max]
         /// </summary>
         /// <returns></returns>
-        protected virtual long RandomLong(long min = 0, long max = long.MaxValue)
+        protected virtual long RandomLong(long min = 0, long max = long.MaxValue, int seed = 0)
         {
             Random rand = new Random();
+            if (seed != 0)
+            {
+                rand = new Random(seed);
+            }
             byte[] buf = new byte[8];
             rand.NextBytes(buf);
             long longRand = BitConverter.ToInt64(buf, 0);

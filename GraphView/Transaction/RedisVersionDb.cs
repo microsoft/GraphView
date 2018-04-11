@@ -256,7 +256,8 @@
                 long txId = 0, ret = 0;
                 do
                 {
-                    txId = this.RandomLong();
+                    txId = this.RandomLong(0, long.MaxValue, this.randomSeed);
+                    this.randomSeed = (int)txId;
 
                     string hashId = txId.ToString();
                     byte[] keyBytes = Encoding.ASCII.GetBytes(TxTableEntry.TXID_STRING);
