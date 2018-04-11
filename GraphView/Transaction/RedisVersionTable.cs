@@ -175,12 +175,11 @@
                 redisClient.ChangeDb(this.redisDbIndex);
                 string hashId = recordKey as string;
 
-                byte[] hashIdBytes = Encoding.ASCII.GetBytes(hashId);
-                byte[] fieldBytes = BitConverter.GetBytes(versionKey);
+                byte[] keyBytes = BitConverter.GetBytes(versionKey);
                 byte[] valueBytes = VersionEntry.Serialize(versionEntry.BeginTimestamp, versionEntry.EndTimestamp,
                     versionEntry.TxId, versionEntry.MaxCommitTs, versionEntry.Record);
 
-                long ret = redisClient.HSetNX(hashId, fieldBytes, valueBytes);
+                long ret = redisClient.HSetNX(hashId, keyBytes, valueBytes);
                 return ret == 1;
             }
         }
@@ -248,8 +247,8 @@
                 redisClient.ChangeDb(this.redisDbIndex);
                 string hashId = recordKey as string;
 
-                byte[] fieldBytes = BitConverter.GetBytes(versionKey);
-                long ret = redisClient.HDel(hashId, fieldBytes);
+                byte[] keyBytes = BitConverter.GetBytes(versionKey);
+                long ret = redisClient.HDel(hashId, keyBytes);
                 return ret == 1;
             }
         }

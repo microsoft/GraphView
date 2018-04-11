@@ -308,6 +308,7 @@
     <Compile Include="Transaction\ReadSetEntry.cs" />
     <Compile Include="Transaction\RedisClientManager.cs" />
     <Compile Include="Transaction\RedisLuaScriptManager.cs" />
+    <Compile Include="Transaction\RedisRequest.cs" />
     <Compile Include="Transaction\RedisVersionDb.cs" />
     <Compile Include="Transaction\RedisVersionTable.cs" />
     <Compile Include="Transaction\SingletonVersionDb.cs" />
