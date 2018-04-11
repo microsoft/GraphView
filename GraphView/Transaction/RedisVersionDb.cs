@@ -31,7 +31,7 @@
         /// <summary>
         /// The default transaction database index
         /// </summary>
-        public static readonly long TRANSACTION_DB_INDEX = 1;
+        public static readonly long TX_DB_INDEX = 1;
 
         /// <summary>
         /// the map from tableId to redis version table
@@ -80,7 +80,7 @@
         /// <summary>
         /// Get RedisClient from the redis connection pool
         /// </summary>
-        private IRedisClientsManager RedisManager
+        private RedisClientManager RedisManager
         {
             get
             {
@@ -99,8 +99,15 @@
             }
         }
 
+        /// <summary>
+        /// Provide an option to set version db in pipelineMode or not
+        /// </summary>
+        public bool PipelineMode { get; set; }
+
         private RedisVersionDb()
-        { 
+        {
+            // Default switch off the pipeline mode
+            this.PipelineMode = false;
             this.tableLock = new object();
             this.versionTableMap = new Dictionary<string, RedisVersionTable>();
         }
@@ -131,10 +138,8 @@
         /// <returns></returns>
         protected long? GetTableRedisDbIndex(string tableId)
         {
-            using (RedisClient redisClient = (RedisClient)this.RedisManager.GetClient())
+            using (RedisClient redisClient = this.RedisManager.GetClient(RedisVersionDb.META_DB_INDEX))
             {
-                redisClient.ChangeDb(RedisVersionDb.META_DB_INDEX);
-
                 byte[] keyBytes = Encoding.ASCII.GetBytes(tableId);
                 byte[] valueBytes = redisClient.HGet(RedisVersionDb.META_TABLE_KEY, keyBytes);
 
@@ -155,10 +160,8 @@
     {
         public override VersionTable CreateVersionTable(string tableId, long redisDbIndex)
         {
-            using (RedisClient redisClient = (RedisClient)this.RedisManager.GetClient())
+            using (RedisClient redisClient = this.RedisManager.GetClient(RedisVersionDb.META_DB_INDEX))
             {
-                redisClient.ChangeDb(RedisVersionDb.META_DB_INDEX);
-
                 byte[] keyBytes = Encoding.ASCII.GetBytes(tableId);
                 byte[] valueBytes = BitConverter.GetBytes(redisDbIndex);
 
@@ -200,11 +203,8 @@
 
         internal override bool DeleteTable(string tableId)
         {
-            using (RedisClient redisClient = (RedisClient)this.RedisManager.GetClient())
+            using (RedisClient redisClient = this.RedisManager.GetClient(RedisVersionDb.META_DB_INDEX))
             {
-
-                redisClient.ChangeDb(RedisVersionDb.META_DB_INDEX);
-
                 byte[] keyBytes = Encoding.ASCII.GetBytes(tableId);
                 long result = redisClient.HDel(RedisVersionDb.META_TABLE_KEY, keyBytes);
 
@@ -218,7 +218,6 @@
                         }
                     }
                 }
-
                 return result == 1;
             }
         }
@@ -249,44 +248,60 @@
         /// <returns>a transaction Id</returns>
         internal override long InsertNewTx()
         {
-            using (RedisClient redisClient = (RedisClient)this.RedisManager.GetClient())
+            long txId = 0, ret = 0;
+            do
             {
-                redisClient.ChangeDb(RedisVersionDb.TRANSACTION_DB_INDEX);
+                txId = this.RandomLong(0, long.MaxValue, this.randomSeed);
+                this.randomSeed = (int)txId;
 
-                long txId = 0, ret = 0;
-                do
+                string hashId = txId.ToString();
+                byte[] keyBytes = Encoding.ASCII.GetBytes(TxTableEntry.TXID_STRING);
+                byte[] valueBytes = BitConverter.GetBytes(txId);
+
+                // If the hashId doesn't exist or field doesn't exist, return 1
+                // otherwise return 0
+                if (this.PipelineMode)
                 {
-                    txId = this.RandomLong(0, long.MaxValue, this.randomSeed);
-                    this.randomSeed = (int)txId;
-
-                    string hashId = txId.ToString();
-                    byte[] keyBytes = Encoding.ASCII.GetBytes(TxTableEntry.TXID_STRING);
-                    byte[] valueBytes = BitConverter.GetBytes(txId);
-
-                    // If the hashId doesn't exist or field doesn't exist, return 1
-                    // otherwise return 0
-                    ret = redisClient.HSetNX(hashId, keyBytes, valueBytes);
-                } while (ret == 0);
-
-                TxTableEntry txTableEntry = new TxTableEntry(txId);
-
-                byte[][] keysBytes =
+                    RedisRequest request = new RedisRequest(hashId, keyBytes, valueBytes, RedisRequestType.HSetNX);
+                    RedisClientPool clientPool = this.RedisManager.GetClientPool(RedisVersionDb.TX_DB_INDEX);
+                    ret = clientPool.ProcessLongRequest(request);
+                }
+                else
                 {
-                    Encoding.ASCII.GetBytes(TxTableEntry.STATUS_STRING),
-                    Encoding.ASCII.GetBytes(TxTableEntry.COMMIT_TIME_STRING),
-                    Encoding.ASCII.GetBytes(TxTableEntry.COMMIT_LOWER_BOUND_STRING)
-                };
+                    using (RedisClient client = this.RedisManager.GetClient(RedisVersionDb.TX_DB_INDEX))
+                    {
+                        ret = client.HSetNX(hashId, keyBytes, valueBytes);
+                    }    
+                }
+                
+            } while (ret == 0);
 
-                byte[][] valuesBytes =
-                {
-                    BitConverter.GetBytes((int) txTableEntry.Status),
-                    BitConverter.GetBytes(txTableEntry.CommitTime),
-                    BitConverter.GetBytes(txTableEntry.CommitLowerBound)
-                };
+            TxTableEntry txTableEntry = new TxTableEntry(txId);
+            string txIdStr = txId.ToString();
+            byte[][] keysBytes =
+            {
+                Encoding.ASCII.GetBytes(TxTableEntry.STATUS_STRING),
+                Encoding.ASCII.GetBytes(TxTableEntry.COMMIT_TIME_STRING),
+                Encoding.ASCII.GetBytes(TxTableEntry.COMMIT_LOWER_BOUND_STRING)
+            };
+            byte[][] valuesBytes =
+            {
+                BitConverter.GetBytes((int) txTableEntry.Status),
+                BitConverter.GetBytes(txTableEntry.CommitTime),
+                BitConverter.GetBytes(txTableEntry.CommitLowerBound)
+            };
 
-                redisClient.HMSet(txId.ToString(), keysBytes, valuesBytes);
-                return txId;
+            if (this.PipelineMode)
+            {
+                RedisRequest request = new RedisRequest(txIdStr, keysBytes, valuesBytes, RedisRequestType.HMSet);
+                RedisClientPool clientPool = this.RedisManager.GetClientPool(RedisVersionDb.TX_DB_INDEX);
+                clientPool.ProcessVoidRequest(request);
             }
+            using (RedisClient client = this.RedisManager.GetClient(RedisVersionDb.TX_DB_INDEX))
+            {
+                client.HMSet(txIdStr, keysBytes, valuesBytes);
+            }
+            return txId;
         }
 
         /// <summary>
@@ -298,30 +313,38 @@
         /// <returns></returns>
         internal override TxTableEntry GetTxTableEntry(long txId)
         {
-            using (RedisClient redisClient = (RedisClient)this.RedisManager.GetClient())
+            string hashId = txId.ToString();
+            byte[][] keyBytes =
             {
-                redisClient.ChangeDb(RedisVersionDb.TRANSACTION_DB_INDEX);
-
-                string hashId = txId.ToString();
-                byte[][] keyBytes =
-                {
-                    Encoding.ASCII.GetBytes(TxTableEntry.STATUS_STRING),
-                    Encoding.ASCII.GetBytes(TxTableEntry.COMMIT_TIME_STRING),
-                    Encoding.ASCII.GetBytes(TxTableEntry.COMMIT_LOWER_BOUND_STRING)
-                };
-
-                byte[][] valueBytes = redisClient.HMGet(hashId, keyBytes);
-                if (valueBytes == null || valueBytes.Length == 0)
-                {
-                    return null;
-                }
-
-                return new TxTableEntry(
-                    txId,
-                    (TxStatus) BitConverter.ToInt32(valueBytes[0], 0),
-                    BitConverter.ToInt64(valueBytes[1], 0),
-                    BitConverter.ToInt64(valueBytes[2],0));
+                Encoding.ASCII.GetBytes(TxTableEntry.STATUS_STRING),
+                Encoding.ASCII.GetBytes(TxTableEntry.COMMIT_TIME_STRING),
+                Encoding.ASCII.GetBytes(TxTableEntry.COMMIT_LOWER_BOUND_STRING)
+            };
+            byte[][] valueBytes = null;
+            if (this.PipelineMode)
+            {
+                RedisRequest request = new RedisRequest(hashId, keyBytes, RedisRequestType.HMGet);
+                RedisClientPool clientPool = this.RedisManager.GetClientPool(RedisVersionDb.TX_DB_INDEX);
+                valueBytes = clientPool.ProcessValuesRequest(request);
             }
+            else
+            {
+                using (RedisClient client = this.RedisManager.GetClient(RedisVersionDb.TX_DB_INDEX))
+                {
+                    valueBytes = client.HMGet(hashId, keyBytes);
+                }
+            }
+           
+            if (valueBytes == null || valueBytes.Length == 0)
+            {
+                return null;
+            }
+
+            return new TxTableEntry(
+                txId,
+                (TxStatus) BitConverter.ToInt32(valueBytes[0], 0),
+                BitConverter.ToInt64(valueBytes[1], 0),
+                BitConverter.ToInt64(valueBytes[2],0));
         }
 
         /// <summary>
@@ -329,15 +352,23 @@
         /// </summary>
         internal override void UpdateTxStatus(long txId, TxStatus status)
         {
-            using (RedisClient redisClient = (RedisClient)this.RedisManager.GetClient())
+            string hashId = txId.ToString();
+            byte[] keyBytes = Encoding.ASCII.GetBytes(TxTableEntry.STATUS_STRING);
+            byte[] valueBytes = BitConverter.GetBytes((int)status);
+            long ret = 0;
+            
+            if (this.PipelineMode)
             {
-                redisClient.ChangeDb(RedisVersionDb.TRANSACTION_DB_INDEX);
-
-                string hashId = txId.ToString();
-                byte[] keyBytes = Encoding.ASCII.GetBytes(TxTableEntry.STATUS_STRING);
-                byte[] valueBytes = BitConverter.GetBytes((int) status);
-
-                long ret = redisClient.HSet(hashId, keyBytes, valueBytes);
+                RedisRequest request = new RedisRequest(hashId, keyBytes, valueBytes, RedisRequestType.HSet);
+                RedisClientPool clientPool = this.RedisManager.GetClientPool(RedisVersionDb.TX_DB_INDEX);
+                ret = clientPool.ProcessLongRequest(request);
+            }
+            else
+            {
+                using (RedisClient client = this.RedisManager.GetClient(RedisVersionDb.TX_DB_INDEX))
+                {
+                    ret = client.HSet(hashId, keyBytes, valueBytes);
+                }
             }
         }
 
@@ -349,34 +380,35 @@
         /// <returns></returns>
         internal override long SetAndGetCommitTime(long txId, long proposedCommitTime)
         {
-            using (RedisClient redisClient = (RedisClient)this.RedisManager.GetClient())
+            string hashId = txId.ToString();
+            string sha1 = this.RedisLuaManager.GetLuaScriptSha1("SET_AND_GET_COMMIT_TIME");
+            byte[][] keys =
             {
-                redisClient.ChangeDb(RedisVersionDb.TRANSACTION_DB_INDEX);
+                Encoding.ASCII.GetBytes(hashId),
+                BitConverter.GetBytes(proposedCommitTime),
+                RedisVersionDb.NEGATIVE_ONE_BYTES,
+            };
+            byte[][] returnBytes = null;
 
-                string hashId = txId.ToString();
-                string sha1 = this.RedisLuaManager.GetLuaScriptSha1("SET_AND_GET_COMMIT_TIME");
-                byte[][] keys =
+            if (this.PipelineMode)
+            {
+                RedisRequest request = new RedisRequest(keys, sha1, 1, RedisRequestType.EvalSha);
+                RedisClientPool clientPool = this.RedisManager.GetClientPool(RedisVersionDb.TX_DB_INDEX);
+                returnBytes = clientPool.ProcessValuesRequest(request);
+            }
+            else
+            {
+                using (RedisClient client = this.RedisManager.GetClient(RedisVersionDb.TX_DB_INDEX))
                 {
-                    Encoding.ASCII.GetBytes(hashId),
-                    BitConverter.GetBytes(proposedCommitTime),
-                    RedisVersionDb.NEGATIVE_ONE_BYTES,
-                };
-
-                try
-                {
-                    byte[][] returnBytes = redisClient.EvalSha(sha1, 1, keys);
-                    if (returnBytes == null || returnBytes.Length == 0)
-                    {
-                        return -1;
-                    }
-
-                    return BitConverter.ToInt64(returnBytes[1], 0);
-                }
-                catch (RedisResponseException e)
-                {
-                    return -1;
+                    returnBytes = client.EvalSha(sha1, 1, keys);
                 }
             }
+
+            if (returnBytes == null || returnBytes.Length == 0)
+            {
+                return -1;
+            }
+            return BitConverter.ToInt64(returnBytes[1], 0);
         }
 
         /// <summary>
@@ -385,36 +417,38 @@
         /// <returns></returns>
         internal override long UpdateCommitLowerBound(long txId, long lowerBound)
         {
-            using (RedisClient redisClient = (RedisClient)this.RedisManager.GetClient())
+            string hashId = txId.ToString();
+            string sha1 = this.RedisLuaManager.GetLuaScriptSha1("UPDATE_COMMIT_LOWER_BOUND");
+            byte[][] keys =
             {
-                redisClient.ChangeDb(RedisVersionDb.TRANSACTION_DB_INDEX);
-
-                string hashId = txId.ToString();
-                string sha1 = this.RedisLuaManager.GetLuaScriptSha1("UPDATE_COMMIT_LOWER_BOUND");
-                byte[][] keys =
+                Encoding.ASCII.GetBytes(hashId),
+                BitConverter.GetBytes(lowerBound),
+                RedisVersionDb.NEGATIVE_ONE_BYTES,
+                RedisVersionDb.NEGATIVE_TWO_BYTES,
+            };
+            byte[][] returnBytes = null;
+            
+            if (this.PipelineMode)
+            {
+                RedisRequest request = new RedisRequest(keys, sha1, 1, RedisRequestType.EvalSha);
+                RedisClientPool clientPool = this.RedisManager.GetClientPool(RedisVersionDb.TX_DB_INDEX);
+                returnBytes = clientPool.ProcessValuesRequest(request);
+            }
+            else
+            {
+                using (RedisClient client = this.RedisManager.GetClient(RedisVersionDb.TX_DB_INDEX))
                 {
-                    Encoding.ASCII.GetBytes(hashId),
-                    BitConverter.GetBytes(lowerBound),
-                    RedisVersionDb.NEGATIVE_ONE_BYTES,
-                    RedisVersionDb.NEGATIVE_TWO_BYTES,
-                };
-
-                try
-                {
-                    byte[][] returnBytes = redisClient.EvalSha(sha1, 1, keys);
-                    if (returnBytes == null || returnBytes.Length == 0)
-                    {
-                        return RedisVersionDb.REDIS_CALL_ERROR_CODE;
-                    }
-
-                    long ret = BitConverter.ToInt64(returnBytes[1], 0);
-                    return ret;
-                }
-                catch (RedisResponseException e)
-                {
-                    return RedisVersionDb.REDIS_CALL_ERROR_CODE;
+                    returnBytes = client.EvalSha(sha1, 1, keys);
                 }
             }
+
+            if (returnBytes == null || returnBytes.Length == 0)
+            {
+                return RedisVersionDb.REDIS_CALL_ERROR_CODE;
+            }
+
+            long ret = BitConverter.ToInt64(returnBytes[1], 0);
+            return ret;
         }
     }
 }

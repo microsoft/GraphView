@@ -197,11 +197,7 @@ namespace GraphView.Transaction
         /// <returns></returns>
         protected virtual long RandomLong(long min = 0, long max = long.MaxValue, int seed = 0)
         {
-            Random rand = new Random();
-            if (seed != 0)
-            {
-                rand = new Random(seed);
-            }
+            Random rand = seed == 0 ? new Random() : new Random(seed);
             byte[] buf = new byte[8];
             rand.NextBytes(buf);
             long longRand = BitConverter.ToInt64(buf, 0);

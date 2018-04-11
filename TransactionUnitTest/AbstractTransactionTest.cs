@@ -1,6 +1,7 @@
 ﻿using GraphView.Transaction;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using ServiceStack.Redis;
+using System.Threading;
 
 namespace TransactionUnitTest
 {
@@ -9,7 +10,7 @@ namespace TransactionUnitTest
     {
         internal VersionDb versionDb;
 
-        internal IRedisClientsManager clientManager;
+        internal RedisClientManager clientManager;
 
         internal static readonly long TEST_REDIS_DB = 10L;
 
@@ -23,7 +24,7 @@ namespace TransactionUnitTest
         /// </summary>
         internal void SetUp()
         {
-            using (RedisClient redisClient = (RedisClient)this.clientManager.GetClient())
+            using (RedisClient redisClient = (RedisClient)this.clientManager.GetClient(TEST_REDIS_DB))
             {
                 // 1. flush the test db
                 redisClient.ChangeDb(TEST_REDIS_DB);
@@ -49,6 +50,7 @@ namespace TransactionUnitTest
         [TestInitialize()]
         public void Initialize()
         {
+            RedisVersionDb.Instance.PipelineMode = true;
             this.versionDb = RedisVersionDb.Instance;
             this.clientManager = RedisClientManager.Instance;
         }
@@ -56,7 +58,13 @@ namespace TransactionUnitTest
         [TestCleanup()]
         public void Cleanup()
         {
+            
+        }
 
+        [ClassCleanup()]
+        public void ClassCleanup()
+        {
+            Thread.Sleep(2 * 1000);
         }
     }
 }

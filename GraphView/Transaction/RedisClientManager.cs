@@ -1,215 +1,134 @@
-﻿namespace GraphView.Transaction
+﻿using ServiceStack.Redis;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
+
+namespace GraphView.Transaction
 {
-    using System;
-    using System.Threading;
-    using ServiceStack.Redis;
-    using ServiceStack.Redis.Pipeline;
-
     /// <summary>
-    /// A singleton redis client manager to get redis client based on RedisManagerPool
-    /// Can extract IRedisClient and IRedisNativeClient from this redis client manager 
+    /// A redis client manager for redis request. The redis manager hold a redis client pool 
+    /// for every redis db. When a application client need a redis client, the client manager will 
+    /// create or get the pool instance. And the real client will be fetched from redis client pool.
+    /// 
+    /// For every redis db, it has a daemon thread to send requests and collect results. 
     /// </summary>
-    internal class RedisClientManager : IDisposable
-    { 
+    class RedisClientManager : IDisposable
+    {
+        private static readonly string DEFAULT_HOST = "127.0.0.1";
+
+        private static readonly int DEFAULT_PORT = 6379;
+
+        /// <summary>
+        /// the init lock to create singleton instance
+        /// </summary>
         private static readonly object initLock = new object();
-        private static IRedisClientsManager redisManagerPool;
 
-        private static readonly int requestBatchSize = 10000;
-        private static readonly long windowMicroSec = 100;      // 100 micro sec = 0.1 milli sec
-        internal static RedisRequest[] requestQueue = null;
-        internal static int currReqId;
-        private static bool active;
+        /// <summary>
+        /// The private variable to hold the instance
+        /// </summary>
+        private static RedisClientManager clientManager = null;
 
-        internal static IRedisClientsManager Instance
+        /// <summary>
+        /// The map from redisDbIndex to redisClientPool
+        /// </summary>
+        public static Dictionary<long, RedisClientPool> clientPools = new Dictionary<long, RedisClientPool>();
+
+        /// <summary>
+        /// the lock for clientPool dictionary
+        /// </summary>
+        private static readonly object dictLock = new object();
+
+        /// <summary>
+        /// The host of redis
+        /// </summary>
+        internal string Host { get; set; }
+
+        /// <summary>
+        /// The port of redis
+        /// </summary>
+        internal int Port { get; set; }
+
+        public static RedisClientManager Instance
         {
             get
             {
-                if (RedisClientManager.redisManagerPool == null)
+                if (RedisClientManager.clientManager == null)
                 {
                     lock (RedisClientManager.initLock)
                     {
-                        if (RedisClientManager.redisManagerPool == null)
+                        if (RedisClientManager.clientManager == null)
                         {
-                            RedisClientManagerConfig config = new RedisClientManagerConfig();
-                            config.MaxReadPoolSize = 1000;
-                            config.MaxWritePoolSize = 1000;
-                            // TODO: read redis config from config files
-                            string redisConnectionString = "127.0.0.1:6379";
-                            RedisClientManager.redisManagerPool = 
-                                new PooledRedisClientManager(
-                                    new string[] { redisConnectionString },
-                                    new string[] { redisConnectionString},
-                                    config);
-
-                            RedisClientManager.requestQueue = new RedisRequest[RedisClientManager.requestBatchSize];
-                            RedisClientManager.currReqId = -1;
-                            RedisClientManager.active = true;
+                            RedisClientManager.clientManager = new RedisClientManager();
                         }
                     }
                 }
-
-                return RedisClientManager.redisManagerPool;
+                return RedisClientManager.clientManager;
             }
         }
 
-        internal RedisClient GetRedisClient()
+        public RedisClientManager()
         {
-            IRedisClient redisClient = RedisClientManager.redisManagerPool.GetClient();
-            return (RedisClient)redisClient;
+            this.Host = RedisClientManager.DEFAULT_HOST;
+            this.Port = RedisClientManager.DEFAULT_PORT;
         }
-
-        /// <summary>
-        /// Enqueues an incoming Redis request to a queue. Queued requests are periodically sent to Redis.
-        /// </summary>
-        /// <param name="request">The incoming request</param>
-        /// <returns>The index of the spot the request takes</returns>
-        private void EnqueueRequest(RedisRequest request)
+        
+        internal RedisClient GetClient(long redisDbIndex)
         {
-            int reqId = -1;
-
-            // Spinlock until an empty spot is available in the queue
-            while (reqId < 0 || reqId >= RedisClientManager.requestBatchSize)
+            if (!RedisClientManager.clientPools.ContainsKey(redisDbIndex))
             {
-                if (reqId >= RedisClientManager.requestBatchSize)
+                lock (RedisClientManager.dictLock)
                 {
-                    continue;
-                }
-                else
-                {
-                    reqId = Interlocked.Increment(ref RedisClientManager.currReqId);
-                }
-            }
-
-            RedisClientManager.requestQueue[reqId] = request;
-        }
-
-        private void Flush()
-        {
-            // Send queued requests to Redis, collect results and store each of them in the corresonding request
-            using (RedisClient redisClient = this.GetRedisClient())
-            {
-                using (IRedisPipeline pipe = redisClient.CreatePipeline())
-                {
-                    for (int reqId = 0; reqId <= RedisClientManager.currReqId; reqId++)
+                    if (!RedisClientManager.clientPools.ContainsKey(redisDbIndex))
                     {
-                        RedisRequest req = RedisClientManager.requestQueue[reqId];
-                        if (req == null)
-                        {
-                            continue;
-                        }
-
-                        switch(req.Type)
-                        {
-                            case RedisRequestType.NewTx1:
-                                pipe.QueueCommand(                              
-                                    r => ((RedisNativeClient)r).HSetNX(req.HashId, new byte[0], new byte[0]), 
-                                    req.SetLong);
-                                break;
-                            case RedisRequestType.GetTxEntry:
-                                pipe.QueueCommand(
-                                    r => ((RedisNativeClient)r).HMGet(req.HashId, req.Keys), 
-                                    req.SetValues);
-                                break;
-                            case RedisRequestType.UpdateTxStatus:
-                                pipe.QueueCommand(
-                                    r => ((RedisNativeClient)r).HSet(req.HashId, req.Key, req.Value), 
-                                    req.SetLong);
-                                break;
-                            case RedisRequestType.SetCommitTs:
-                                pipe.QueueCommand(
-                                    r => ((RedisNativeClient)r).EvalSha(req.Sha, 1, req.Keys), 
-                                    req.SetValues);
-                                break;
-                            case RedisRequestType.UpdateCommitLowerBound:
-                                pipe.QueueCommand(
-                                    r => ((RedisNativeClient)r).EvalSha(req.Sha, 1, req.Keys), 
-                                    req.SetValues);
-                                break;
-                            case RedisRequestType.GetVersionList:
-                                pipe.QueueCommand(
-                                    r => ((RedisNativeClient)r).HGetAll(req.HashId), 
-                                    req.SetValues);
-                                break;
-                            case RedisRequestType.InitiGetVersionList:
-                                pipe.QueueCommand(
-                                    r => ((RedisNativeClient)r).HSetNX(req.HashId, req.Key, req.Value), 
-                                    req.SetLong);
-                                break;
-                            case RedisRequestType.ReplaceVersion:
-                                pipe.QueueCommand(
-                                    r => ((RedisNativeClient)r).EvalSha(req.Sha, 1, req.Keys), 
-                                    req.SetValues);
-                                break;
-                            case RedisRequestType.UploadVersion:
-                                pipe.QueueCommand(
-                                    r => ((RedisNativeClient)r).HSetNX(req.HashId, req.Key, req.Value), 
-                                    req.SetLong);
-                                break;
-                            case RedisRequestType.UpdateVersionMaxTs:
-                                pipe.QueueCommand(
-                                    r => ((RedisNativeClient)r).EvalSha(req.Sha, 1, req.Keys), 
-                                    req.SetValues);
-                                break;
-                            case RedisRequestType.DeleteVersion:
-                                pipe.QueueCommand(
-                                    r => ((RedisNativeClient)r).HDel(req.HashId, req.Key), 
-                                    req.SetLong);
-                                break;
-                            default:
-                                break;
-                        }
+                        this.StartNewRedisClientPool(redisDbIndex);
                     }
-
-                    pipe.Flush();
                 }
             }
-
-            RedisClientManager.currReqId = -1;
+            return RedisClientManager.clientPools[redisDbIndex].GetRedisClient();
         }
 
-        /// <summary>
-        /// A daemon thread invokes the Monitor() method to monitor the request queue,  
-        /// periodically flushes queued request to Redis, and get back results for each request.
-        /// </summary>
-        internal void Monitor()
+        internal RedisClientPool GetClientPool(long redisDbIndex)
         {
-            long lastFlushTime = DateTime.Now.Ticks / 10;
-            while (RedisClientManager.active)
+            if (!RedisClientManager.clientPools.ContainsKey(redisDbIndex))
             {
-                long now = DateTime.Now.Ticks / 10;
-                if (now - lastFlushTime >= RedisClientManager.windowMicroSec || 
-                    RedisClientManager.currReqId >= RedisClientManager.requestBatchSize)
+                lock (RedisClientManager.dictLock)
                 {
-                    this.Flush();
-                    lastFlushTime = DateTime.Now.Ticks / 10;
+                    if (!RedisClientManager.clientPools.ContainsKey(redisDbIndex))
+                    {
+                        this.StartNewRedisClientPool(redisDbIndex);
+                    }
                 }
             }
-
-            if (RedisClientManager.currReqId >= 0)
-            {
-                this.Flush();
-            }
+            return RedisClientManager.clientPools[redisDbIndex];
         }
 
         public void Dispose()
         {
-            RedisClientManager.active = false;
+            foreach (long redisDbIndex in RedisClientManager.clientPools.Keys)
+            {
+                RedisClientManager.clientPools[redisDbIndex].Active = false;
+            }
         }
 
-        internal long ProcessLongRequest(RedisRequest redisRequest)
+        /// <summary>
+        /// Start a new redis client pool, which will create an instance of RedisClientPool
+        /// and start a new daemon thread to send requests and collect results
+        /// </summary>
+        /// <param name="redisDbIndex"></param>
+        private void StartNewRedisClientPool(long redisDbIndex)
         {
-            this.EnqueueRequest(redisRequest);
-            while (redisRequest.Result == null) { }
+            RedisClientPool pool = new RedisClientPool(this.Host, this.Port, redisDbIndex);
+            RedisClientManager.clientPools.Add(redisDbIndex, pool);
 
-            return (long)redisRequest.Result;
-        }
-
-        internal byte[][] ProcessValuesRequest(RedisRequest redisRequest)
-        {
-            this.EnqueueRequest(redisRequest);
-            while (redisRequest.Result == null) { }
-
-            return (byte[][])redisRequest.Result;
+            // If the redis version db in pipeline mode, start a daemon thread
+            if (RedisVersionDb.Instance.PipelineMode)
+            {
+                Thread t = new Thread(new ThreadStart(pool.Monitor));
+                t.Start();
+            }
         }
     }
 }

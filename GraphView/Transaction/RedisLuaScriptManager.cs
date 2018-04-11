@@ -28,7 +28,7 @@
         /// </summary>
         private static RedisLuaScriptManager instance;
 
-        private IRedisClientsManager RedisManager
+        private RedisClientManager RedisManager
         {
             get
             {
@@ -84,10 +84,8 @@
         /// </summary>
         private void LoadLuaScriptMapFromRedis()
         {
-            using (RedisClient redisClient = (RedisClient) this.RedisManager.GetClient())
+            using (RedisClient redisClient = this.RedisManager.GetClient(RedisVersionDb.META_DB_INDEX))
             {
-                redisClient.ChangeDb(RedisVersionDb.META_DB_INDEX);
-
                 string hashId = RedisVersionDb.META_SCRIPT_KEY;
                 byte[][] valueBytes = redisClient.HGetAll(hashId);
 
@@ -140,10 +138,8 @@
         /// <returns></returns>
         private bool RegisterLuaScripts(string scriptKey, string luaBody)
         {
-            using (RedisClient redisClient = (RedisClient) this.RedisManager.GetClient())
+            using (RedisClient redisClient = this.RedisManager.GetClient(RedisVersionDb.META_DB_INDEX))
             {
-                redisClient.ChangeDb(RedisVersionDb.META_DB_INDEX);
-
                 // Extract the command sha1
                 byte[] scriptKeyBytes = Encoding.UTF8.GetBytes(scriptKey);
                 byte[] sha1Bytes = redisClient.HGet(RedisVersionDb.META_SCRIPT_KEY, scriptKeyBytes);
