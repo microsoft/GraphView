@@ -28,7 +28,7 @@ namespace GraphView.Transaction
         /// <param name="tableId">The specify tabldId</param>
         /// <param name="redisDbIndex">It's only from redis kv storage</param>
         /// <returns>a version table instance</returns>
-        public virtual VersionTable CreateVersionTable(string tableId, long redisDbIndex = 0)
+        internal virtual VersionTable CreateVersionTable(string tableId, long redisDbIndex = 0)
         {
             throw new NotImplementedException();
         }

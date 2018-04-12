@@ -162,7 +162,7 @@
     /// </summary>
     public partial class RedisVersionDb
     {
-        public override VersionTable CreateVersionTable(string tableId, long redisDbIndex)
+        internal override VersionTable CreateVersionTable(string tableId, long redisDbIndex)
         {
             using (RedisClient redisClient = this.RedisManager.GetClient(RedisVersionDb.META_DB_INDEX))
             {

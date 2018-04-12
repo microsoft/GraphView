@@ -15,7 +15,7 @@ namespace GraphView.Transaction
     /// 
     /// For every redis db, it has a daemon thread to send requests and collect results. 
     /// </summary>
-    class RedisClientManager : IDisposable
+    internal class RedisClientManager : IDisposable
     {
         private static readonly string DEFAULT_HOST = "127.0.0.1";
 
