@@ -588,7 +588,11 @@ namespace GraphView.Transaction
             }
 
             // Phase 6: Commit Phase, Write to log and change the transaction status
-            this.WriteChangeToLog();
+            if (!this.WriteChangeToLog())
+            {
+                this.Abort();
+                throw new TransactionException("WriteChangeToLog");
+            }
             this.txStatus = TxStatus.Committed;
             this.versionDb.UpdateTxStatus(this.txId, TxStatus.Committed);
 
@@ -596,10 +600,26 @@ namespace GraphView.Transaction
             this.PostProcessingAfterCommit();
         }
 
-        private void WriteChangeToLog()
+        private bool WriteChangeToLog()
         {
-            // IMPORTANT: only for test
-            // throw new NotImplementedException();
+            foreach (string tableId in this.writeSet.Keys)
+            {
+                foreach (object recordKey in this.writeSet[tableId].Keys)
+                {
+                    if (!this.logStore.WriteCommittedVersion(
+                        tableId, recordKey, this.writeSet[tableId][recordKey], this.txId, this.commitTs))
+                    {
+                        return false;
+                    }
+                }                
+            }
+
+            if (!this.logStore.WriteCommittedTx(this.txId))
+            {
+                return false;
+            }
+
+            return true;
         }
     }
 

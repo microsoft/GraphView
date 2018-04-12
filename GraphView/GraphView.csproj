@@ -302,6 +302,7 @@
     <Compile Include="RecordRuntime\IndexSpecification.cs" />
     <Compile Include="Transaction\BytesSerializer.cs" />
     <Compile Include="Transaction\CassandraClusterManager.cs" />
+    <Compile Include="Transaction\CassandraLogStore.cs" />
     <Compile Include="Transaction\CassandraVersionDb.cs" />
     <Compile Include="Transaction\CassandraVersionTable.cs" />
     <Compile Include="Transaction\PostProcessingEntry.cs" />
