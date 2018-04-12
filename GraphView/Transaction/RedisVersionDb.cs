@@ -53,6 +53,10 @@
         /// </summary>
         private static readonly object initLock = new object();
 
+        /// <summary>
+        /// A random number generator for create new TxId.
+        /// </summary>
+        private static readonly Random random = new Random();
 
         // <summary>
         /// The bytes of -1 in long type, should mind that it must be a long type with 8 bytes
@@ -249,10 +253,10 @@
         internal override long InsertNewTx()
         {
             long txId = 0, ret = 0;
+
             do
             {
-                txId = this.RandomLong(0, long.MaxValue, this.randomSeed);
-                this.randomSeed = (int)txId;
+                txId = this.RandomLong(0, long.MaxValue, RedisVersionDb.random);
 
                 string hashId = txId.ToString();
                 byte[] keyBytes = Encoding.ASCII.GetBytes(TxTableEntry.TXID_STRING);
@@ -273,7 +277,7 @@
                         ret = client.HSetNX(hashId, keyBytes, valueBytes);
                     }    
                 }
-                
+
             } while (ret == 0);
 
             TxTableEntry txTableEntry = new TxTableEntry(txId);
