@@ -11,8 +11,6 @@ namespace TransactionUnitTest
         // case1: upload new inserted entry successfully
         public void TestUploadNewCase1()
         {
-            this.SetUp();
-
             Transaction txDelete = new Transaction(null, this.versionDb);
             txDelete.Read(UploadingUnitTest.TABLE_ID, UploadingUnitTest.DEFAULT_KEY);
             txDelete.Delete(UploadingUnitTest.TABLE_ID, UploadingUnitTest.DEFAULT_KEY);
@@ -29,8 +27,6 @@ namespace TransactionUnitTest
         // case2: upload new inserted entry failed
         public void TestUploadNewCase2()
         {
-            this.SetUp();
-
             Transaction txDelete = new Transaction(null, this.versionDb);
             txDelete.Read(UploadingUnitTest.TABLE_ID, UploadingUnitTest.DEFAULT_KEY);
             txDelete.Delete(UploadingUnitTest.TABLE_ID, UploadingUnitTest.DEFAULT_KEY);
@@ -53,9 +49,7 @@ namespace TransactionUnitTest
         [TestMethod]
         // case1: read [Ts, inf, -1], and it's still [Ts, inf, -1] when replacing, no retry
         public void TestReplaceOldCase1()
-        {
-            this.SetUp();
-
+        {        
             Transaction txUpdate = new Transaction(null, this.versionDb);
             txUpdate.Read(UploadingUnitTest.TABLE_ID, UploadingUnitTest.DEFAULT_KEY);
             txUpdate.Update(UploadingUnitTest.TABLE_ID, UploadingUnitTest.DEFAULT_KEY, "value_insert");
@@ -68,7 +62,6 @@ namespace TransactionUnitTest
         // case2: read [Ts, inf, -1], and it will be [Ts, inf, tx2 ] when replacing, tx is ongoing
         public void TestReplaceOldCase2()
         {
-            this.SetUp();
             Transaction txDelete = new Transaction(null, this.versionDb);
             txDelete.Read(UploadingUnitTest.TABLE_ID, UploadingUnitTest.DEFAULT_KEY);
             txDelete.Delete(UploadingUnitTest.TABLE_ID, UploadingUnitTest.DEFAULT_KEY);
@@ -87,7 +80,6 @@ namespace TransactionUnitTest
         // case3: read [Ts, inf, -1], and it will be [Ts, inf, tx2] when replacing, tx is commited
         public void TestReplaceOldCase3()
         {
-            this.SetUp();
             Transaction txDelete = new Transaction(null, this.versionDb);
             txDelete.Read(TABLE_ID, DEFAULT_KEY);
             txDelete.Delete(TABLE_ID, DEFAULT_KEY);
@@ -110,7 +102,6 @@ namespace TransactionUnitTest
         // case4: read [Ts, inf, -1], and it will be [Ts, inf, tx2] when replacing, tx is aborted
         public void TestReplaceOldCase4()
         {
-            this.SetUp();
             Transaction txDelete = new Transaction(null, this.versionDb);
             txDelete.Read(UploadingUnitTest.TABLE_ID, UploadingUnitTest.DEFAULT_KEY);
             txDelete.Delete(UploadingUnitTest.TABLE_ID, UploadingUnitTest.DEFAULT_KEY);
@@ -131,7 +122,6 @@ namespace TransactionUnitTest
         // case5: read [-1, -1, txId1], version entry is [-1, -1, txId1] when replacing
         public void TestReplaceOldCase5()
         {
-            this.SetUp();
             Transaction txUpdate = new Transaction(null, this.versionDb);
             txUpdate.Read(TABLE_ID, DEFAULT_KEY);
             txUpdate.Update(TABLE_ID, DEFAULT_KEY, "value_update");
@@ -153,7 +143,6 @@ namespace TransactionUnitTest
         // case6: read [-1, -1, txId1], version entry is [Ts, Inf, -1] when replacing
         public void TestReplaceOldCase6()
         {
-            this.SetUp();
             Transaction txUpdate = new Transaction(null, this.versionDb);
             txUpdate.Read(TABLE_ID, DEFAULT_KEY);
             txUpdate.Update(TABLE_ID, DEFAULT_KEY, "value_update");
@@ -177,7 +166,6 @@ namespace TransactionUnitTest
         // case7: read [Ts, inf, tx], version entry is [Ts, Inf, tx] when replacing tx is commited
         public void TestReplaceOldCase7()
         {
-            this.SetUp();
             Transaction txDelete = new Transaction(null, this.versionDb);
             txDelete.Read(TABLE_ID, DEFAULT_KEY);
             txDelete.Delete(TABLE_ID, DEFAULT_KEY);
@@ -200,7 +188,6 @@ namespace TransactionUnitTest
         // case8: read [Ts, inf, tx], version entry is [Ts, Inf, tx] when replacing tx is aborted
         public void TestReplaceOldCase8()
         {
-            this.SetUp();
             Transaction txDelete = new Transaction(null, this.versionDb);
             txDelete.Read(TABLE_ID, DEFAULT_KEY);
             txDelete.Delete(TABLE_ID, DEFAULT_KEY);
@@ -223,8 +210,6 @@ namespace TransactionUnitTest
         // case9: read [Ts, inf, tx], version entry is [Ts, Ts', -1] when replacing
         public void TestReplaceOldCase9()
         {
-            this.SetUp();
-
             Transaction txDelete = new Transaction(null, this.versionDb);
             txDelete.Read(TABLE_ID, DEFAULT_KEY);
             txDelete.Delete(TABLE_ID, DEFAULT_KEY);

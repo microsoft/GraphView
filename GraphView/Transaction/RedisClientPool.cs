@@ -4,6 +4,7 @@
     using System.Threading;
     using ServiceStack.Redis;
     using ServiceStack.Redis.Pipeline;
+    using System.Diagnostics;
 
     /// <summary>
     /// A redis client pool to provide clients service for the specify redisDbIndex
@@ -55,6 +56,11 @@
         /// </summary>
         internal bool Active { get; set; }
 
+        /// <summary>
+        /// The spin lock to ensure that enqueue and flush are exclusive
+        /// </summary>
+        private SpinLock spinLock;
+
         public RedisClientPool(string host, int port, long redisDbIndex)
         {
             // Init the pooledRedisClient Manager
@@ -76,6 +82,8 @@
 
             this.requestQueue = new RedisRequest[this.RequestBatchSize];
             this.currReqId = -1;
+
+            this.spinLock = new SpinLock();
         }
 
         /// <summary>
@@ -97,7 +105,6 @@
         private void EnqueueRequest(RedisRequest request)
         {
             int reqId = -1;
-
             // Spinlock until an empty spot is available in the queue
             while (reqId < 0 || reqId >= this.RequestBatchSize)
             {
@@ -107,11 +114,25 @@
                 }
                 else
                 {
-                    reqId = Interlocked.Increment(ref this.currReqId);
+                    bool lockTaken = false;
+                    try
+                    {
+                        this.spinLock.Enter(ref lockTaken);
+                        // No need to take interlocked since it already in the lock
+                        // reqId = Interlocked.Increment(ref this.currReqId);
+                        this.currReqId++;
+                        reqId = this.currReqId;
+                        this.requestQueue[reqId] = request;
+                    }
+                    finally
+                    {
+                        if (lockTaken)
+                        {
+                            this.spinLock.Exit();
+                        }
+                    }
                 }
             }
-
-            this.requestQueue[reqId] = request;
         }
 
         private void Flush()
@@ -199,7 +220,19 @@
                 {
                     if (this.currReqId >= 0)
                     {
-                        this.Flush();
+                        bool lockTaken = false;
+                        try
+                        {
+                            this.spinLock.Enter(ref lockTaken);
+                            this.Flush();
+                        }
+                        finally
+                        {
+                            if (lockTaken)
+                            {
+                                this.spinLock.Exit();
+                            }
+                        }
                     }
                     lastFlushTime = DateTime.Now.Ticks / 10;
                 }
@@ -207,7 +240,19 @@
 
             if (this.currReqId >= 0)
             {
-                this.Flush();
+                bool lockTaken = false;
+                try
+                {
+                    this.spinLock.Enter(ref lockTaken);
+                    this.Flush();
+                }
+                finally
+                {
+                    if (lockTaken)
+                    {
+                        this.spinLock.Exit();
+                    } 
+                }
             }
         }
 

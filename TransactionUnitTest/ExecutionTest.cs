@@ -12,7 +12,6 @@ namespace TransactionUnitTest
         [TestMethod]
         public void TestReadCase1()
         {
-            this.SetUp();
             Transaction txRead = new Transaction(null, this.versionDb);
             long largestVersionKey = 0;
 
@@ -25,7 +24,6 @@ namespace TransactionUnitTest
         [TestMethod]
         public void TestReadCase2()
         {
-            this.SetUp();
             Transaction txRead = new Transaction(null, this.versionDb);
             Transaction txUpdate = new Transaction(null, this.versionDb);
             long largestVersionKey = 0;
@@ -41,7 +39,6 @@ namespace TransactionUnitTest
         [TestMethod]
         public void TestReadCase3()
         {
-            this.SetUp();
             Transaction txRead = new Transaction(null, this.versionDb);
             Transaction txUpdate = new Transaction(null, this.versionDb);
             long largestVersionKey = 0;
@@ -58,7 +55,6 @@ namespace TransactionUnitTest
         [TestMethod]
         public void TestReadCase4()
         {
-            this.SetUp();
             Transaction txRead = new Transaction(null, this.versionDb);
             Transaction txUpdate = new Transaction(null, this.versionDb);
             long largestVersionKey = 0;
@@ -76,7 +72,6 @@ namespace TransactionUnitTest
         [TestMethod]
         public void TestReadCase5()
         {
-            this.SetUp();
             Transaction txRead = new Transaction(null, this.versionDb);
             Transaction txUpdate = new Transaction(null, this.versionDb);
             long largestVersionKey = 0;
@@ -96,7 +91,6 @@ namespace TransactionUnitTest
         [TestMethod]
         public void TestReadCase6()
         {
-            this.SetUp();
             Transaction txRead = new Transaction(null, this.versionDb);
             Transaction txUpdate = new Transaction(null, this.versionDb);
             long largestVersionKey = 0;
@@ -118,7 +112,6 @@ namespace TransactionUnitTest
         [TestMethod]
         public void TestReadCase7()
         {
-            this.SetUp();
             Transaction txRead = new Transaction(null, this.versionDb);
             Transaction txUpdate = new Transaction(null, this.versionDb);
             long largestVersionKey = 0;
@@ -140,7 +133,6 @@ namespace TransactionUnitTest
         [TestMethod]
         public void TestReadCase8()
         {
-            this.SetUp();
             Transaction txRead = new Transaction(null, this.versionDb);
             Transaction txUpdate = new Transaction(null, this.versionDb);
             long largestVersionKey = 0;
@@ -160,7 +152,6 @@ namespace TransactionUnitTest
         [TestMethod]
         public void TestReadCase9()
         {
-            this.SetUp();
             Transaction txRead = new Transaction(null, this.versionDb);
             Transaction txUpdate = new Transaction(null, this.versionDb);
             long largestVersionKey = 0;
@@ -182,7 +173,6 @@ namespace TransactionUnitTest
         // Read [Ts, Ts', -1]
         public void TestReadCase10()
         {
-            this.SetUp();
             Transaction txRead = new Transaction(null, this.versionDb);
             Transaction txDelete = new Transaction(null, this.versionDb);
             long largestVersionKey = 0;
@@ -201,7 +191,6 @@ namespace TransactionUnitTest
         // Read after insert
         public void TestReadCase11()
         {
-            this.SetUp();
             Transaction txInsert = new Transaction(null, this.versionDb);
             txInsert.Read(TABLE_ID, DEFAULT_KEY);
             txInsert.Delete(TABLE_ID, DEFAULT_KEY);
@@ -214,7 +203,6 @@ namespace TransactionUnitTest
         // Read after delete
         public void TestReadCase12()
         {
-            this.SetUp();
             Transaction txUpdate = new Transaction(null, this.versionDb);
             txUpdate.Read(TABLE_ID, DEFAULT_KEY);
             txUpdate.Delete(TABLE_ID, DEFAULT_KEY);
@@ -226,7 +214,6 @@ namespace TransactionUnitTest
         // Read after update
         public void TestReadCase13()
         {
-            this.SetUp();
             Transaction txUpdate = new Transaction(null, this.versionDb);
             txUpdate.Read(TABLE_ID, DEFAULT_KEY);
             txUpdate.Update(TABLE_ID, DEFAULT_KEY, "value_update");
@@ -234,22 +221,20 @@ namespace TransactionUnitTest
             Assert.AreEqual(value, "value_update");
         }
 
-        //[TestMethod]
-        //// can not insert
-        //[ExpectedException(typeof(TransactionException))]
-        //public void TestInsertCase1()
-        //{
-        //    this.SetUp();
-        //    Transaction txInsert = new Transaction(null, this.versionDb);
-        //    txInsert.ReadAndInitialize(TABLE_ID, DEFAULT_KEY);
-        //    txInsert.Insert(TABLE_ID, DEFAULT_KEY, DEFAULT_VALUE);
-        //}
+        [TestMethod]
+        // can not insert
+        [ExpectedException(typeof(TransactionException))]
+        public void TestInsertCase1()
+        {
+            Transaction txInsert = new Transaction(null, this.versionDb);
+            txInsert.ReadAndInitialize(TABLE_ID, DEFAULT_KEY);
+            txInsert.Insert(TABLE_ID, DEFAULT_KEY, DEFAULT_VALUE);
+        }
 
         [TestMethod]
         // delete -> insert
         public void TestInsertCase2()
         {
-            this.SetUp();
             Transaction txInsert = new Transaction(null, this.versionDb);
             txInsert.Read(TABLE_ID, DEFAULT_KEY);
             txInsert.Delete(TABLE_ID, DEFAULT_KEY);
@@ -260,23 +245,21 @@ namespace TransactionUnitTest
             Assert.AreEqual(value, DEFAULT_VALUE + "_insert");
         }
 
-        //[TestMethod]
-        //// update -> insert
-        //[ExpectedException(typeof(TransactionException))]
-        //public void TestInsertCase3()
-        //{
-        //    this.SetUp();
-        //    Transaction txInsert = new Transaction(null, this.versionDb);
-        //    txInsert.Read(TABLE_ID, DEFAULT_KEY);
-        //    txInsert.Update(TABLE_ID, DEFAULT_KEY, DEFAULT_VALUE);
-        //    txInsert.Insert(TABLE_ID, DEFAULT_KEY, DEFAULT_VALUE);
-        //}
+        [TestMethod]
+        // update -> insert
+        [ExpectedException(typeof(TransactionException))]
+        public void TestInsertCase3()
+        {
+            Transaction txInsert = new Transaction(null, this.versionDb);
+            txInsert.Read(TABLE_ID, DEFAULT_KEY);
+            txInsert.Update(TABLE_ID, DEFAULT_KEY, DEFAULT_VALUE);
+            txInsert.Insert(TABLE_ID, DEFAULT_KEY, DEFAULT_VALUE);
+        }
 
         [TestMethod]
         // update
         public void TestUpdateCase1()
         {
-            this.SetUp();
             Transaction txUpdate = new Transaction(null, this.versionDb);
             txUpdate.Read(TABLE_ID, DEFAULT_KEY);
             txUpdate.Update(TABLE_ID, DEFAULT_KEY, DEFAULT_VALUE + "_update");
@@ -287,23 +270,21 @@ namespace TransactionUnitTest
             Assert.AreEqual(value, DEFAULT_VALUE + "_update");
         }
 
-        //[TestMethod]
-        //// delete -> update
-        //[ExpectedException(typeof(TransactionException))]
-        //public void TestUpdateCase2()
-        //{
-        //    this.SetUp();
-        //    Transaction txDelete = new Transaction(null, this.versionDb);
-        //    txDelete.Read(TABLE_ID, DEFAULT_KEY);
-        //    txDelete.Delete(TABLE_ID, DEFAULT_KEY);
-        //    txDelete.Update(TABLE_ID, DEFAULT_KEY, DEFAULT_VALUE + "_insert");
-        //}
+        [TestMethod]
+        // delete -> update
+        [ExpectedException(typeof(TransactionException))]
+        public void TestUpdateCase2()
+        {
+            Transaction txDelete = new Transaction(null, this.versionDb);
+            txDelete.Read(TABLE_ID, DEFAULT_KEY);
+            txDelete.Delete(TABLE_ID, DEFAULT_KEY);
+            txDelete.Update(TABLE_ID, DEFAULT_KEY, DEFAULT_VALUE + "_insert");
+        }
 
         [TestMethod]
         // delete
         public void TestDeleteCase1()
         {
-            this.SetUp();
             Transaction txDelete = new Transaction(null, this.versionDb);
             txDelete.Read(TABLE_ID, DEFAULT_KEY);
             txDelete.Delete(TABLE_ID, DEFAULT_KEY);
@@ -318,7 +299,6 @@ namespace TransactionUnitTest
         // insert -> delete
         public void TestDeleteCase2()
         {
-            this.SetUp();
             Transaction txDelete = new Transaction(null, this.versionDb);
             txDelete.Read(TABLE_ID, DEFAULT_KEY);
             txDelete.Delete(TABLE_ID, DEFAULT_KEY);
@@ -327,23 +307,21 @@ namespace TransactionUnitTest
             txDelete.Commit();
         }
 
-        //[TestMethod]
-        //// delete -> delete
-        //[ExpectedException(typeof(TransactionException))]
-        //public void TestDeleteCase3()
-        //{
-        //    this.SetUp();
-        //    Transaction txDelete = new Transaction(null, this.versionDb);
-        //    txDelete.Read(TABLE_ID, DEFAULT_KEY);
-        //    txDelete.Delete(TABLE_ID, DEFAULT_KEY);
-        //    txDelete.Delete(TABLE_ID, DEFAULT_KEY);
-        //}
+        [TestMethod]
+        // delete -> delete
+        [ExpectedException(typeof(TransactionException))]
+        public void TestDeleteCase3()
+        {
+            Transaction txDelete = new Transaction(null, this.versionDb);
+            txDelete.Read(TABLE_ID, DEFAULT_KEY);
+            txDelete.Delete(TABLE_ID, DEFAULT_KEY);
+            txDelete.Delete(TABLE_ID, DEFAULT_KEY);
+        }
 
         [TestMethod]
         // update -> delete
         public void TestDeleteCase4()
         {
-            this.SetUp();
             Transaction txDelete = new Transaction(null, this.versionDb);
             txDelete.Read(TABLE_ID, DEFAULT_KEY);
             txDelete.Update(TABLE_ID, DEFAULT_KEY, DEFAULT_VALUE + "_update");

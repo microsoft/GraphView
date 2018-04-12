@@ -14,8 +14,6 @@ namespace TransactionUnitTest
             // Abort transaction
             // new version should be removed
             // old version shoud be rolled back from [Ts, inf, myTxId] to [Ts, inf, -1], if no other transaction is locking it.
-            this.SetUp();
-
             Transaction t1 = new Transaction(null, this.versionDb);
             t1.Read(TABLE_ID, DEFAULT_KEY);
             t1.Update(TABLE_ID, DEFAULT_KEY, "value1");
@@ -37,7 +35,6 @@ namespace TransactionUnitTest
             // new version should be removed
             // try to roll back the old version from [Ts, inf, myTxId] to [Ts, inf, -1], 
             // but other transaction is locking it, do nothing
-            this.SetUp();
 
             Transaction t1 = new Transaction(null, this.versionDb);
             t1.Read(TABLE_ID, DEFAULT_KEY);
@@ -66,7 +63,6 @@ namespace TransactionUnitTest
             // Commit transaction
             // new version should be updated, if no other transaction is locking it.
             // old version shoud be updated from [Ts, inf, myTxId] to [Ts, myCommitTs, -1]
-            this.SetUp();
 
             Transaction t1 = new Transaction(null, this.versionDb);
             t1.Read(TABLE_ID, DEFAULT_KEY);
@@ -94,8 +90,6 @@ namespace TransactionUnitTest
             // Commit transaction
             // new version should be updated, but other transaction is locking it, do nothing
             // old version shoud be updated from [Ts, inf, myTxId] to [Ts, myCommitTs, -1]
-
-            this.SetUp();
 
             Transaction t1 = new Transaction(null, this.versionDb);
             t1.Read(TABLE_ID, DEFAULT_KEY);

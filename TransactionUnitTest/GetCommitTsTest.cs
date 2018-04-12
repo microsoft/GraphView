@@ -13,7 +13,6 @@ namespace TransactionUnitTest
         public void TestGetCommitTs1()
         {
             //case1: read-only
-            this.SetUp();
             Transaction t1 = new Transaction(null, this.versionDb);
             t1.Read(TABLE_ID, DEFAULT_KEY);
             bool isSuccess = t1.GetCommitTimestamp();
@@ -25,7 +24,6 @@ namespace TransactionUnitTest
         public void TestGetCommitTs2()
         {
             //case2: update
-            this.SetUp();
             Transaction t1 = new Transaction(null, this.versionDb);
             t1.Read(TABLE_ID, DEFAULT_KEY);
             t1.Update(TABLE_ID, DEFAULT_KEY, "value1");
@@ -39,7 +37,6 @@ namespace TransactionUnitTest
         public void TestGetCommitTs3()
         {
             //case3: read after other tx update
-            this.SetUp();
             Transaction t1 = new Transaction(null, this.versionDb);
             t1.Read(TABLE_ID, DEFAULT_KEY);
             t1.Update(TABLE_ID, DEFAULT_KEY, "value1");
@@ -55,7 +52,6 @@ namespace TransactionUnitTest
         public void TestGetCommitTs4()
         {
             //case4: update after other tx update
-            this.SetUp();
             Transaction t1 = new Transaction(null, this.versionDb);
             t1.Read(TABLE_ID, DEFAULT_KEY);
             t1.Update(TABLE_ID, DEFAULT_KEY, "value1");
@@ -72,7 +68,6 @@ namespace TransactionUnitTest
         public void TestGetCommitTs5()
         {
             //case5: test the effect of tx.maxCommitTsOfWrites
-            this.SetUp();
             this.versionDb.UpdateVersionMaxCommitTs(TABLE_ID, DEFAULT_KEY, 1L, 5L);
             Transaction t1 = new Transaction(null, this.versionDb);
             t1.Read(TABLE_ID, DEFAULT_KEY);
@@ -87,7 +82,6 @@ namespace TransactionUnitTest
         public void TestGetCommitTs6()
         {
             //case6: test the effect of tx.CommitLowerBound
-            this.SetUp();
             Transaction t1 = new Transaction(null, this.versionDb);
             this.versionDb.UpdateCommitLowerBound(t1.TxId, 5L);
             long t1CommitTs = this.versionDb.SetAndGetCommitTime(t1.TxId, 4L);

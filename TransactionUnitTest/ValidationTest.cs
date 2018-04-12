@@ -11,7 +11,6 @@ namespace TransactionUnitTest
         public void TestValidation1()
         {
             //Test the function of UpdateVersionMaxCommitTs()
-            this.SetUp();
             VersionEntry versionEntry = this.versionDb.UpdateVersionMaxCommitTs(TABLE_ID, DEFAULT_KEY, 1L, 5L);
             Assert.AreEqual(5, versionEntry.MaxCommitTs);
 
@@ -28,7 +27,6 @@ namespace TransactionUnitTest
         public void TestValidation2()
         {
             //Test the function of UpdateCommitLowerBound()
-            this.SetUp();
             Transaction t1 = new Transaction(null, this.versionDb);
             Assert.AreEqual(0L, this.versionDb.GetTxTableEntry(t1.TxId).CommitLowerBound);
 
@@ -47,7 +45,6 @@ namespace TransactionUnitTest
         {
             //the current version entry has not been held by any transaction
             //just perform range check
-            this.SetUp();
             Transaction t1 = new Transaction(null, this.versionDb);
             t1.Read(TABLE_ID, DEFAULT_KEY);
             t1.UploadLocalWriteRecords();
@@ -68,7 +65,6 @@ namespace TransactionUnitTest
         {
             // The current version entry has been held by another concurrent transaction
             // And the concurrent transaction's status is Aborted
-            this.SetUp();
 
             Transaction t2 = new Transaction(null, this.versionDb);
             t2.Read(TABLE_ID, DEFAULT_KEY);
@@ -89,7 +85,6 @@ namespace TransactionUnitTest
         {
             // The current version entry has been held by another concurrent transaction
             // And the concurrent transaction's status is Committed
-            this.SetUp();
 
             Transaction t2 = new Transaction(null, this.versionDb);
             t2.Read(TABLE_ID, DEFAULT_KEY);
@@ -120,7 +115,6 @@ namespace TransactionUnitTest
             // The current version entry has been held by another concurrent transaction
             // if its status is Ongoing, try to push its commitLowerBound
             // the tx who is locking the version has not gotten its commitTs and I push its commitLowerBound successfully.
-            this.SetUp();
 
             Transaction t2 = new Transaction(null, this.versionDb);
             t2.Read(TABLE_ID, DEFAULT_KEY);
@@ -144,7 +138,6 @@ namespace TransactionUnitTest
             // The current version entry has been held by another concurrent transaction
             // if its status is Ongoing, try to push its commitLowerBound
             // push failed, the transaction holding the version entry has gotten the commit time
-            this.SetUp();
 
             Transaction t2 = new Transaction(null, this.versionDb);
             t2.Read(TABLE_ID, DEFAULT_KEY);
