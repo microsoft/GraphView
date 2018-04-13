@@ -285,5 +285,36 @@
             }
             return ret == 1;
         }
+
+        /// <summary>
+        /// Get a version entry by key with the HGET command
+        /// </summary>
+        /// <returns>A version entry or null</returns>
+        internal override VersionEntry GetVersionEntryByKey(object recordKey, long versionKey)
+        {
+            string hashId = recordKey as string;
+            byte[] keyBytes = BitConverter.GetBytes(versionKey);
+            byte[] valueBytes = null;
+
+            if (RedisVersionDb.Instance.PipelineMode)
+            {
+                RedisRequest request = new RedisRequest(hashId, keyBytes, RedisRequestType.HGet);
+                RedisConnectionPool clientPool = this.RedisManager.GetClientPool(this.redisDbIndex, hashId);
+                valueBytes = clientPool.ProcessValueRequest(request);
+            }
+            else
+            {
+                using (RedisClient client = this.RedisManager.GetClient(this.redisDbIndex, hashId))
+                {
+                    valueBytes = client.HGet(hashId, keyBytes);
+                }
+            }
+
+            if (valueBytes == null)
+            {
+                return null;
+            }
+            return VersionEntry.Deserialize(recordKey, versionKey, valueBytes);
+        }
     }
 }

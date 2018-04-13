@@ -409,7 +409,7 @@ namespace GraphView.Transaction
                         tableId, 
                         recordKey,
                         readSet[tableId][recordKey].VersionKey);
-                    if (ventry.MaxCommitTs > this.CommitTs)
+                    if (ventry.MaxCommitTs >= this.CommitTs)
                     {
                         //we do not need to update the version's maxCommitTs
                         //check the return version's TxId field.
@@ -644,22 +644,24 @@ namespace GraphView.Transaction
 
         private bool WriteChangeToLog()
         {
-            foreach (string tableId in this.writeSet.Keys)
-            {
-                foreach (object recordKey in this.writeSet[tableId].Keys)
-                {
-                    if (!this.logStore.WriteCommittedVersion(
-                        tableId, recordKey, this.writeSet[tableId][recordKey], this.txId, this.commitTs))
-                    {
-                        return false;
-                    }
-                }                
-            }
+            // UNCOMMENT THE LOG PART NOW
 
-            if (!this.logStore.WriteCommittedTx(this.txId))
-            {
-                return false;
-            }
+            //foreach (string tableId in this.writeSet.Keys)
+            //{
+            //    foreach (object recordKey in this.writeSet[tableId].Keys)
+            //    {
+            //        if (!this.logStore.WriteCommittedVersion(
+            //            tableId, recordKey, this.writeSet[tableId][recordKey], this.txId, this.commitTs))
+            //        {
+            //            return false;
+            //        }
+            //    }                
+            //}
+
+            //if (!this.logStore.WriteCommittedTx(this.txId))
+            //{
+            //    return false;
+            //}
 
             return true;
         }

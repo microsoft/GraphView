@@ -77,9 +77,7 @@ namespace GraphView.Transaction
         /// <summary>
         /// In the Validate phase, get this version entry to check its MaxCommitTs.
         /// </summary>
-        /// <param name="recordKey"></param>
-        /// <param name="versionKey"></param>
-        /// <returns>The current version entry</returns>
+        /// <returns>The version entry with recordKey and version key</returns>
         internal virtual VersionEntry GetVersionEntryByKey(object recordKey, long versionKey)
         {
             throw new NotImplementedException();
