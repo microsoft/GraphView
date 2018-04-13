@@ -267,12 +267,12 @@
                 if (this.PipelineMode)
                 {
                     RedisRequest request = new RedisRequest(hashId, keyBytes, valueBytes, RedisRequestType.HSetNX);
-                    RedisClientPool clientPool = this.RedisManager.GetClientPool(RedisVersionDb.TX_DB_INDEX);
+                    RedisConnectionPool clientPool = this.RedisManager.GetClientPool(RedisVersionDb.TX_DB_INDEX, hashId);
                     ret = clientPool.ProcessLongRequest(request);
                 }
                 else
                 {
-                    using (RedisClient client = this.RedisManager.GetClient(RedisVersionDb.TX_DB_INDEX))
+                    using (RedisClient client = this.RedisManager.GetClient(RedisVersionDb.TX_DB_INDEX, hashId))
                     {
                         ret = client.HSetNX(hashId, keyBytes, valueBytes);
                     }    
@@ -298,10 +298,10 @@
             if (this.PipelineMode)
             {
                 RedisRequest request = new RedisRequest(txIdStr, keysBytes, valuesBytes, RedisRequestType.HMSet);
-                RedisClientPool clientPool = this.RedisManager.GetClientPool(RedisVersionDb.TX_DB_INDEX);
+                RedisConnectionPool clientPool = this.RedisManager.GetClientPool(RedisVersionDb.TX_DB_INDEX, txIdStr);
                 clientPool.ProcessVoidRequest(request);
             }
-            using (RedisClient client = this.RedisManager.GetClient(RedisVersionDb.TX_DB_INDEX))
+            using (RedisClient client = this.RedisManager.GetClient(RedisVersionDb.TX_DB_INDEX, txIdStr))
             {
                 client.HMSet(txIdStr, keysBytes, valuesBytes);
             }
@@ -328,12 +328,12 @@
             if (this.PipelineMode)
             {
                 RedisRequest request = new RedisRequest(hashId, keyBytes, RedisRequestType.HMGet);
-                RedisClientPool clientPool = this.RedisManager.GetClientPool(RedisVersionDb.TX_DB_INDEX);
+                RedisConnectionPool clientPool = this.RedisManager.GetClientPool(RedisVersionDb.TX_DB_INDEX, hashId);
                 valueBytes = clientPool.ProcessValuesRequest(request);
             }
             else
             {
-                using (RedisClient client = this.RedisManager.GetClient(RedisVersionDb.TX_DB_INDEX))
+                using (RedisClient client = this.RedisManager.GetClient(RedisVersionDb.TX_DB_INDEX, hashId))
                 {
                     valueBytes = client.HMGet(hashId, keyBytes);
                 }
@@ -364,12 +364,12 @@
             if (this.PipelineMode)
             {
                 RedisRequest request = new RedisRequest(hashId, keyBytes, valueBytes, RedisRequestType.HSet);
-                RedisClientPool clientPool = this.RedisManager.GetClientPool(RedisVersionDb.TX_DB_INDEX);
+                RedisConnectionPool clientPool = this.RedisManager.GetClientPool(RedisVersionDb.TX_DB_INDEX, hashId);
                 ret = clientPool.ProcessLongRequest(request);
             }
             else
             {
-                using (RedisClient client = this.RedisManager.GetClient(RedisVersionDb.TX_DB_INDEX))
+                using (RedisClient client = this.RedisManager.GetClient(RedisVersionDb.TX_DB_INDEX, hashId))
                 {
                     ret = client.HSet(hashId, keyBytes, valueBytes);
                 }
@@ -397,12 +397,12 @@
             if (this.PipelineMode)
             {
                 RedisRequest request = new RedisRequest(keys, sha1, 1, RedisRequestType.EvalSha);
-                RedisClientPool clientPool = this.RedisManager.GetClientPool(RedisVersionDb.TX_DB_INDEX);
+                RedisConnectionPool clientPool = this.RedisManager.GetClientPool(RedisVersionDb.TX_DB_INDEX, hashId);
                 returnBytes = clientPool.ProcessValuesRequest(request);
             }
             else
             {
-                using (RedisClient client = this.RedisManager.GetClient(RedisVersionDb.TX_DB_INDEX))
+                using (RedisClient client = this.RedisManager.GetClient(RedisVersionDb.TX_DB_INDEX, hashId))
                 {
                     returnBytes = client.EvalSha(sha1, 1, keys);
                 }
@@ -435,12 +435,12 @@
             if (this.PipelineMode)
             {
                 RedisRequest request = new RedisRequest(keys, sha1, 1, RedisRequestType.EvalSha);
-                RedisClientPool clientPool = this.RedisManager.GetClientPool(RedisVersionDb.TX_DB_INDEX);
+                RedisConnectionPool clientPool = this.RedisManager.GetClientPool(RedisVersionDb.TX_DB_INDEX, hashId);
                 returnBytes = clientPool.ProcessValuesRequest(request);
             }
             else
             {
-                using (RedisClient client = this.RedisManager.GetClient(RedisVersionDb.TX_DB_INDEX))
+                using (RedisClient client = this.RedisManager.GetClient(RedisVersionDb.TX_DB_INDEX, hashId))
                 {
                     returnBytes = client.EvalSha(sha1, 1, keys);
                 }

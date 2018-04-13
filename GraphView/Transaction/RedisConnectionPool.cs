@@ -4,7 +4,39 @@
     using System.Threading;
     using ServiceStack.Redis;
     using ServiceStack.Redis.Pipeline;
-    using System.Diagnostics;
+
+    internal class RedisConnectionKey
+    {
+        internal long RedisDbIndex { get; private set; }
+
+        internal int Partition { get; private set; }
+
+        public RedisConnectionKey(long redisDbIndex, int partion)
+        {
+            this.RedisDbIndex = redisDbIndex;
+            this.Partition = partion;
+        }
+
+        public override bool Equals(object obj)
+        {
+            RedisConnectionKey other = obj as RedisConnectionKey;
+            if (obj == null)
+            {
+                return false;
+            }
+
+            return this.RedisDbIndex == other.RedisDbIndex &&
+                this.Partition == other.Partition;
+        }
+
+        public override int GetHashCode()
+        {
+            int hash = 17;
+            hash = hash * 23 + this.RedisDbIndex.GetHashCode();
+            hash = hash * 23 + this.Partition.GetHashCode();
+            return hash;
+        }
+    }
 
     /// <summary>
     /// A redis client pool to provide clients service for the specify redisDbIndex
@@ -15,7 +47,7 @@
     /// 2. Collect results. 
     /// redis client pool provide a interface to get the redis client
     /// </summary>
-    internal class RedisClientPool
+    internal class RedisConnectionPool
     {
         public static readonly int DEFAULT_BATCH_SIZE = 10000;
 
@@ -61,23 +93,22 @@
         /// </summary>
         private SpinLock spinLock;
 
-        public RedisClientPool(string host, int port, long redisDbIndex)
+        public RedisConnectionPool(string redisConnectionString, long database)
         {
             // Init the pooledRedisClient Manager
             RedisClientManagerConfig config = new RedisClientManagerConfig();
-            config.DefaultDb = redisDbIndex;
-            config.MaxReadPoolSize = RedisClientPool.DEFAULT_MAX_READ_POOL_SIZE;
-            config.MaxWritePoolSize = RedisClientPool.DEFAULT_MAX_WRITE_POOL_SIZE;
+            config.DefaultDb = database;
+            config.MaxReadPoolSize = RedisConnectionPool.DEFAULT_MAX_READ_POOL_SIZE;
+            config.MaxWritePoolSize = RedisConnectionPool.DEFAULT_MAX_WRITE_POOL_SIZE;
 
-            string redisConnectionString = $"{host}:{port}";
             this.redisManagerPool =
                 new PooledRedisClientManager(
                     new string[] { redisConnectionString },
                     new string[] { redisConnectionString },
                     config);
 
-            this.RequestBatchSize = RedisClientPool.DEFAULT_BATCH_SIZE;
-            this.WindowMicroSec = RedisClientPool.DEFAULT_WINDOW_MICRO_SEC;
+            this.RequestBatchSize = RedisConnectionPool.DEFAULT_BATCH_SIZE;
+            this.WindowMicroSec = RedisConnectionPool.DEFAULT_WINDOW_MICRO_SEC;
             this.Active = true;
 
             this.requestQueue = new RedisRequest[this.RequestBatchSize];

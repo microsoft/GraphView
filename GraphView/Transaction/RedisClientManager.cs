@@ -1,13 +1,10 @@
-﻿using ServiceStack.Redis;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
-
-namespace GraphView.Transaction
+﻿namespace GraphView.Transaction
 {
+    using ServiceStack.Redis;
+    using System;
+    using System.Collections.Generic;
+    using System.Threading;
+
     /// <summary>
     /// A redis client manager for redis request. The redis manager hold a redis client pool 
     /// for every redis db. When a application client need a redis client, the client manager will 
@@ -16,10 +13,8 @@ namespace GraphView.Transaction
     /// For every redis db, it has a daemon thread to send requests and collect results. 
     /// </summary>
     internal class RedisClientManager : IDisposable
-    {
-        private static readonly string DEFAULT_HOST = "127.0.0.1";
-
-        private static readonly int DEFAULT_PORT = 6379;
+    { 
+        private static readonly int DEFAULT_REDIS_INSTANCE_COUNT = 1;
 
         /// <summary>
         /// the init lock to create singleton instance
@@ -34,7 +29,8 @@ namespace GraphView.Transaction
         /// <summary>
         /// The map from redisDbIndex to redisClientPool
         /// </summary>
-        public static Dictionary<long, RedisClientPool> clientPools = new Dictionary<long, RedisClientPool>();
+        public static Dictionary<RedisConnectionKey, RedisConnectionPool> 
+            clientPools = new Dictionary<RedisConnectionKey, RedisConnectionPool>();
 
         /// <summary>
         /// the lock for clientPool dictionary
@@ -42,14 +38,27 @@ namespace GraphView.Transaction
         private static readonly object dictLock = new object();
 
         /// <summary>
-        /// The host of redis
+        /// The redis connection strings of read and write
         /// </summary>
-        internal string Host { get; set; }
+        internal string[] ReadWriteHosts { get; private set; }
 
         /// <summary>
-        /// The port of redis
+        /// The number of redis instances
         /// </summary>
-        internal int Port { get; set; }
+        internal int RedisInstanceCount { get; private set; }
+
+        /// <summary>
+        /// Define a delegate type to specify the partition rules.
+        /// Which can be re-assigned outside the client manager
+        /// </summary>
+        /// <param name="recordKey">The record key need to be operated</param>
+        /// <returns></returns>
+        internal delegate int PartitionByRecordKeyDelegate(object recordKey);
+
+        /// <summary>
+        /// Define a delegate method to specify the partition rules.
+        /// </summary>
+        internal PartitionByRecordKeyDelegate PartitionByRecordKey;
 
         public static RedisClientManager Instance
         {
@@ -69,47 +78,69 @@ namespace GraphView.Transaction
             }
         }
 
-        public RedisClientManager()
+        private RedisClientManager()
         {
-            this.Host = RedisClientManager.DEFAULT_HOST;
-            this.Port = RedisClientManager.DEFAULT_PORT;
-        }
-        
-        internal RedisClient GetClient(long redisDbIndex)
-        {
-            if (!RedisClientManager.clientPools.ContainsKey(redisDbIndex))
-            {
-                lock (RedisClientManager.dictLock)
-                {
-                    if (!RedisClientManager.clientPools.ContainsKey(redisDbIndex))
-                    {
-                        this.StartNewRedisClientPool(redisDbIndex);
-                    }
-                }
-            }
-            return RedisClientManager.clientPools[redisDbIndex].GetRedisClient();
+            this.RedisInstanceCount = RedisClientManager.DEFAULT_REDIS_INSTANCE_COUNT;
+            this.ReadWriteHosts = new string[] { "127.0.0.1:6379"};
+
+            // define the default delegate method, take the remainder as the redis instance index
+            this.PartitionByRecordKey = recordKey => recordKey.GetHashCode() % this.RedisInstanceCount;
         }
 
-        internal RedisClientPool GetClientPool(long redisDbIndex)
+        /// <summary>
+        /// Config the redis instances by specifing an array of connection strings
+        /// </summary>
+        /// <param name="readWriteHosts">An array of connections strings, with host and port</param>
+        internal void Config(string[] readWriteHosts)
         {
-            if (!RedisClientManager.clientPools.ContainsKey(redisDbIndex))
+            if (readWriteHosts == null || readWriteHosts.Length == 0)
+            {
+                throw new ArgumentException("readWriteHosts must be not null or not empty");
+            }
+
+            this.RedisInstanceCount = readWriteHosts.Length;
+            this.ReadWriteHosts = readWriteHosts;
+        }
+        
+        internal RedisClient GetClient(long redisDbIndex, object recordKey = null)
+        {
+            int partition = recordKey == null ? 0 : this.PartitionByRecordKey(recordKey);
+            RedisConnectionKey key = new RedisConnectionKey(redisDbIndex, partition);
+            if (!RedisClientManager.clientPools.ContainsKey(key))
             {
                 lock (RedisClientManager.dictLock)
                 {
-                    if (!RedisClientManager.clientPools.ContainsKey(redisDbIndex))
+                    if (!RedisClientManager.clientPools.ContainsKey(key))
                     {
-                        this.StartNewRedisClientPool(redisDbIndex);
+                        this.StartNewRedisClientPool(key);
                     }
                 }
             }
-            return RedisClientManager.clientPools[redisDbIndex];
+            return RedisClientManager.clientPools[key].GetRedisClient();
+        }
+
+        internal RedisConnectionPool GetClientPool(long redisDbIndex, object recordKey = null)
+        {
+            int partition = recordKey == null ? 0 : this.PartitionByRecordKey(recordKey);
+            RedisConnectionKey key = new RedisConnectionKey(redisDbIndex, partition);
+            if (!RedisClientManager.clientPools.ContainsKey(key))
+            {
+                lock (RedisClientManager.dictLock)
+                {
+                    if (!RedisClientManager.clientPools.ContainsKey(key))
+                    {
+                        this.StartNewRedisClientPool(key);
+                    }
+                }
+            }
+            return RedisClientManager.clientPools[key];
         }
 
         public void Dispose()
         {
-            foreach (long redisDbIndex in RedisClientManager.clientPools.Keys)
+            foreach (RedisConnectionKey key in RedisClientManager.clientPools.Keys)
             {
-                RedisClientManager.clientPools[redisDbIndex].Active = false;
+                RedisClientManager.clientPools[key].Active = false;
             }
         }
 
@@ -118,10 +149,10 @@ namespace GraphView.Transaction
         /// and start a new daemon thread to send requests and collect results
         /// </summary>
         /// <param name="redisDbIndex"></param>
-        private void StartNewRedisClientPool(long redisDbIndex)
+        private void StartNewRedisClientPool(RedisConnectionKey key)
         {
-            RedisClientPool pool = new RedisClientPool(this.Host, this.Port, redisDbIndex);
-            RedisClientManager.clientPools.Add(redisDbIndex, pool);
+            RedisConnectionPool pool = new RedisConnectionPool(this.ReadWriteHosts[key.Partition], key.RedisDbIndex);
+            RedisClientManager.clientPools.Add(key, pool);
 
             // If the redis version db in pipeline mode, start a daemon thread
             if (RedisVersionDb.Instance.PipelineMode)

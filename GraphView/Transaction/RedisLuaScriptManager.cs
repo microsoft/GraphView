@@ -59,7 +59,7 @@
             }
         }
 
-        public RedisLuaScriptManager()
+        private RedisLuaScriptManager()
         {
             this.CheckAndLoadLuaScripts();
             this.LoadLuaScriptMapFromRedis();
