@@ -1,4 +1,6 @@
-﻿namespace GraphView.Transaction
+﻿using Microsoft.SqlServer.TransactSql.ScriptDom;
+
+namespace GraphView.Transaction
 {
     using System;
     using System.Collections.Generic;
@@ -68,6 +70,17 @@
         /// </param>
         /// <returns>A updated or non-updated version entry</returns>
         internal virtual VersionEntry UpdateVersionMaxCommitTs(object recordKey, long versionKey, long commitTs)
+        {
+            throw new NotImplementedException();
+        }
+
+        /// <summary>
+        /// In the Validate phase, get this version entry to check its MaxCommitTs.
+        /// </summary>
+        /// <param name="recordKey"></param>
+        /// <param name="versionKey"></param>
+        /// <returns>The current version entry</returns>
+        internal virtual VersionEntry GetVersionEntryByKey(object recordKey, long versionKey)
         {
             throw new NotImplementedException();
         }

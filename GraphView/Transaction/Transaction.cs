@@ -404,80 +404,122 @@ namespace GraphView.Transaction
                         continue;
                     }
 
-                    // Step1: UpdateMaxCommitTime
-                    // try to push the version’s maxCommitTs as my CommitTs
-                    VersionEntry versionEntry = this.versionDb.UpdateVersionMaxCommitTs(
-                        tableId,
+                    //first get the version, compare its maxCommitTs with my CommitTs
+                    VersionEntry ventry = this.versionDb.GetVersionEntryByKey(
+                        tableId, 
                         recordKey,
-                        readSet[tableId][recordKey].VersionKey,
-                        this.commitTs);
-
-                    // The current version entry has been held by another concurrent transaction
-                    if (versionEntry.TxId != VersionEntry.EMPTY_TXID)
+                        readSet[tableId][recordKey].VersionKey);
+                    if (ventry.MaxCommitTs > this.CommitTs)
                     {
-                        // Step2: 
-                        // get the concurrent transaction's status
-                        // (1) if its status is Aborted, keep going
-                        // (2) if its status is Committed, range check
-                        // (3) if its status is Ongoing, try to push its commitLowerBound
-                        TxTableEntry txEntry = this.versionDb.GetTxTableEntry(versionEntry.TxId);
-                        if (txEntry.Status == TxStatus.Aborted)
+                        //we do not need to update the version's maxCommitTs
+                        //check the return version's TxId field.
+                        if (ventry.TxId != VersionEntry.EMPTY_TXID)
                         {
-                            continue;
-                        }
-                        else if (txEntry.Status == TxStatus.Committed)
-                        {
-                            if (this.commitTs > txEntry.CommitTime)
+                            // get the concurrent transaction's status
+                            // (1) if its status is Aborted, keep going
+                            // (2) if its status is Committed, range check
+                            // (3) if its status is Ongoing, keep going, 
+                            //     because this concurrent transaction's commitTs must be larger than
+                            //     this version's maxCommitTs, which is larger than my CommitTs.
+                            TxTableEntry txEntry = this.versionDb.GetTxTableEntry(ventry.TxId);
+                            if (txEntry.Status == TxStatus.Aborted || txEntry.Status == TxStatus.Ongoing)
                             {
-                                return false;
-                            }
-                        }
-                        else
-                        {
-                            // Step 3:
-                            // try to push the tx who is locking this version's commitLowerBound to myCommitTs + 1
-                            // if the tx has already got the commit time, it may be in 3 cases:
-                            // (1) ongoing: if it will be Committed later, we want to perform range check to ensure that the 
-                            //              current transaction is still valid after tx commit; 
-                            //              if it will be Aborted later, the current transaction must be valid
-                            //
-                            // (2) commited: just check the range
-                            // (3) aborted: the current transaction must be valid
-                            //
-                            // In conclusion, to simplify the process, in all the 3 cases we will only check the range, which may increase the abort rate
-                            //
-                            // Range check Rules:
-                            // (1) if my commitTs > tx's commitTime, abort
-                            // (2) if my commitTs < tx's commitTime, keep going
-                            long txCommitTs = this.versionDb.UpdateCommitLowerBound(versionEntry.TxId, this.commitTs + 1);
-                            if (txCommitTs == VersionDb.RETURN_ERROR_CODE)
-                            {
-                                return false;
-                            }
-                            // push the commit lower bound successfully
-                            else if (txCommitTs == TxTableEntry.DEFAULT_COMMIT_TIME)
-                            {
-                                //the tx who is locking the version has not gotten its commitTs and I push its commitLowerBound successfully.
                                 continue;
                             }
-                            // push failed, the transaction holding the version entry has gotten the commit time
                             else
                             {
-                                //the tx who is locking the version has already gotten its commitTs
-                                //range check
-                                if (this.commitTs > txCommitTs)
+                                if (this.commitTs > txEntry.CommitTime)
                                 {
                                     return false;
                                 }
                             }
                         }
+                        else
+                        {
+                            //range check
+                            if (this.commitTs > ventry.EndTimestamp)
+                            {
+                                return false;
+                            }
+                        }
                     }
                     else
                     {
-                        //range check
-                        if (this.commitTs > versionEntry.EndTimestamp)
+                        // Step1: UpdateMaxCommitTime
+                        // try to push the version’s maxCommitTs as my CommitTs
+                        VersionEntry versionEntry = this.versionDb.UpdateVersionMaxCommitTs(
+                            tableId,
+                            recordKey,
+                            readSet[tableId][recordKey].VersionKey,
+                            this.commitTs);
+
+                        // The current version entry has been held by another concurrent transaction
+                        if (versionEntry.TxId != VersionEntry.EMPTY_TXID)
                         {
-                            return false;
+                            // Step2: 
+                            // get the concurrent transaction's status
+                            // (1) if its status is Aborted, keep going
+                            // (2) if its status is Committed, range check
+                            // (3) if its status is Ongoing, try to push its commitLowerBound
+                            TxTableEntry txEntry = this.versionDb.GetTxTableEntry(versionEntry.TxId);
+                            if (txEntry.Status == TxStatus.Aborted)
+                            {
+                                continue;
+                            }
+                            else if (txEntry.Status == TxStatus.Committed)
+                            {
+                                if (this.commitTs > txEntry.CommitTime)
+                                {
+                                    return false;
+                                }
+                            }
+                            else
+                            {
+                                // Step 3:
+                                // try to push the tx who is locking this version's commitLowerBound to myCommitTs + 1
+                                // if the tx has already got the commit time, it may be in 3 cases:
+                                // (1) ongoing: if it will be Committed later, we want to perform range check to ensure that the 
+                                //              current transaction is still valid after tx commit; 
+                                //              if it will be Aborted later, the current transaction must be valid
+                                //
+                                // (2) commited: just check the range
+                                // (3) aborted: the current transaction must be valid
+                                //
+                                // In conclusion, to simplify the process, in all the 3 cases we will only check the range, which may increase the abort rate
+                                //
+                                // Range check Rules:
+                                // (1) if my commitTs > tx's commitTime, abort
+                                // (2) if my commitTs < tx's commitTime, keep going
+                                long txCommitTs = this.versionDb.UpdateCommitLowerBound(versionEntry.TxId, this.commitTs + 1);
+                                if (txCommitTs == VersionDb.RETURN_ERROR_CODE)
+                                {
+                                    return false;
+                                }
+                                // push the commit lower bound successfully
+                                else if (txCommitTs == TxTableEntry.DEFAULT_COMMIT_TIME)
+                                {
+                                    //the tx who is locking the version has not gotten its commitTs and I push its commitLowerBound successfully.
+                                    continue;
+                                }
+                                // push failed, the transaction holding the version entry has gotten the commit time
+                                else
+                                {
+                                    //the tx who is locking the version has already gotten its commitTs
+                                    //range check
+                                    if (this.commitTs > txCommitTs)
+                                    {
+                                        return false;
+                                    }
+                                }
+                            }
+                        }
+                        else
+                        {
+                            //range check
+                            if (this.commitTs > versionEntry.EndTimestamp)
+                            {
+                                return false;
+                            }
                         }
                     }
                 }
