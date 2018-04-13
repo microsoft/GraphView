@@ -95,6 +95,17 @@ namespace GraphView.Transaction
             return versionTable.UpdateVersionMaxCommitTs(recordKey, versionKey, commitTime);
         }
 
+        internal virtual VersionEntry GetVersionEntryByKey(string tableId, object recordKey, long versionKey)
+        {
+            VersionTable versionTable = this.GetVersionTable(tableId);
+            if (versionTable == null)
+            {
+                return null;
+            }
+
+            return versionTable.GetVersionEntryByKey(recordKey, versionKey);
+        }
+
         internal virtual bool DeleteVersionEntry(string tableId, object recordKey, long versionKey)
         {
             VersionTable versionTable = this.GetVersionTable(tableId);
