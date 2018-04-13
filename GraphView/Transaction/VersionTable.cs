@@ -84,6 +84,17 @@ namespace GraphView.Transaction
         }
 
         /// <summary>
+        /// Given a batch of verion keys, retrieves a collection of verion entries in a batch
+        /// </summary>
+        /// <param name="batch">a list of record keys and version keys</param>
+        /// <returns></returns>
+        internal virtual IDictionary<VersionPrimaryKey, VersionEntry> GetVersionEntryByKey(
+            IEnumerable<VersionPrimaryKey> batch)
+        {
+            throw new NotImplementedException();
+        }
+
+        /// <summary>
         /// Delete a version entry by recordKey and version Key
         /// It will be called when the insertion or update is aborted.
         /// Inserted new version will be deleted to avoid unnecessary write conflicts

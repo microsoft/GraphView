@@ -316,5 +316,15 @@
             }
             return VersionEntry.Deserialize(recordKey, versionKey, valueBytes);
         }
+
+        //internal IDictionary<object, VersionEntry> GetVersionEntryByKey(IEnumerable<Tuple<object, long>> batch)
+        //{
+        //    Dictionary<object, VersionEntry> versionDict = new Dictionary<object, VersionEntry>();
+        //    Dictionary<Tuple<string, int, long>, Tuple<Tuple<RedisClient, Tuple<object, long>>> 
+        //    using (RedisClient redisClient = this.RedisManager.GetClient(0, 1))
+        //    {
+        //        redisClient.Db;
+        //    }
+        //}
     }
 }

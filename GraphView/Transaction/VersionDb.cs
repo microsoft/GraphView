@@ -60,6 +60,24 @@ namespace GraphView.Transaction
             return versionTable.GetVersionList(recordKey);
         }
 
+        /// <summary>
+        /// Get the version entries by a batch of keys in a version table
+        /// </summary>
+        /// <param name="batch">A batch of record keys and version keys</returns>
+        internal virtual IDictionary<VersionPrimaryKey, VersionEntry> GetVersionEntryByKey(
+            string tableId, IEnumerable<VersionPrimaryKey> batch)
+        {
+            Dictionary<VersionPrimaryKey, VersionEntry> versionDict = 
+                new Dictionary<VersionPrimaryKey, VersionEntry>();
+
+            VersionTable versionTable = this.GetVersionTable(tableId);
+            if (versionTable == null)
+            {
+                return null;
+            }
+            return versionTable.GetVersionEntryByKey(batch);
+        }
+
         internal virtual VersionEntry ReplaceVersionEntry(string tableId, object recordKey, long versionKey,
             long beginTimestamp, long endTimestamp, long txId, long readTxId, long expectedEndTimestamp)
         {

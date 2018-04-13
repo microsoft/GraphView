@@ -318,6 +318,7 @@
     <Compile Include="Transaction\SingletonVersionTreeMapTable.cs" />
     <Compile Include="Transaction\TxStatus.cs" />
     <Compile Include="Transaction\TxTableEntry.cs" />
+    <Compile Include="Transaction\VersionPrimaryKey.cs" />
     <Compile Include="Transaction\VersionDb.cs" />
     <Compile Include="Transaction\VersionEntry.cs" />
     <Compile Include="Transaction\VersionList.cs" />
