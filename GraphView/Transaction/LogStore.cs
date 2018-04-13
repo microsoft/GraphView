@@ -10,8 +10,8 @@
     /// </summary>
     public interface ILogStore
     {
-        void WriteCommittedVersion(string tableId, object recordKey, object payload, long txId, long commitTs);
-        void WriteCommittedTx(long txId);
+        bool WriteCommittedVersion(string tableId, object recordKey, object payload, long txId, long commitTs);
+        bool WriteCommittedTx(long txId);
     }
     
     public class CosmosDBStore : ILogStore
@@ -49,12 +49,12 @@
             this.cosmosDbClient.OpenAsync().Wait();
         }
 
-        public void WriteCommittedTx(long txId)
+        public bool WriteCommittedTx(long txId)
         {
             throw new NotImplementedException();
         }
 
-        public void WriteCommittedVersion(string tableId, object recordKey, object payload, long txId, long commitTs)
+        public bool WriteCommittedVersion(string tableId, object recordKey, object payload, long txId, long commitTs)
         {
             throw new NotImplementedException();
         }
