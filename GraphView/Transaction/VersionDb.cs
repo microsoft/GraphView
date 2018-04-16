@@ -12,6 +12,30 @@ namespace GraphView.Transaction
         public static readonly long RETURN_ERROR_CODE = -2L;
 
         /// <summary>
+        /// Define a delegate type to specify the partition rules.
+        /// Which can be re-assigned outside the version db
+        /// </summary>
+        /// <param name="recordKey">The record key need to be operated</param>
+        /// <returns></returns>
+        public delegate int PartitionByKeyDelegate(object recordKey);
+
+        /// <summary>
+        /// Define a delegate method to specify the partition rules.
+        /// </summary>
+        public PartitionByKeyDelegate PhysicalPartitionByKey { get; set; }
+
+        /// <summary>
+        /// Define the global LogicalParitionByKey function to determine its partition
+        /// It's not a method belonging to version table or version db, which shoule be a global partition function
+        /// </summary>
+        public static PartitionByKeyDelegate LogicalPartitionByKey { get; set; }
+
+        public VersionDb()
+        {
+            
+        }
+
+        /// <summary>
         /// Get a version table instance by tableId, which has different implementations
         /// in different storages, like loading from meta-data database
         /// </summary>

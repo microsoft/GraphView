@@ -47,12 +47,13 @@
             VersionDb versionDb = RedisVersionDb.Instance;
             RedisClientManager clientManager = RedisClientManager.Instance;
 
-            // delete data
-            using (RedisClient client = clientManager.GetClient(ConcurrencyRunner.REDIS_DB_INDEX))
+            // TODO: give the right redis partition
+            int partition = 0;
+            using (RedisClient client = clientManager.GetClient(ConcurrencyRunner.REDIS_DB_INDEX, partition))
             {
                 client.FlushDb();
             }
-            using (RedisClient client = clientManager.GetClient(SequenceRunner.REDIS_DB_INDEX))
+            using (RedisClient client = clientManager.GetClient(SequenceRunner.REDIS_DB_INDEX, partition))
             {
                 client.FlushDb();
             }

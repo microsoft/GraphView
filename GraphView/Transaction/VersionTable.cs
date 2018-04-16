@@ -12,8 +12,15 @@ namespace GraphView.Transaction
     {
         public readonly string tableId;
 
-        public VersionTable(string tableId)
+        /// <summary>
+        /// The version db instance of the current version table
+        /// In case of version db may hold some information about the index, partition etc.
+        /// </summary>
+        internal VersionDb VersionDb { get; set; }
+
+        public VersionTable(VersionDb versionDb, string tableId)
         {
+            this.VersionDb = versionDb;
             this.tableId = tableId;
         }
 

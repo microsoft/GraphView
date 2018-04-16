@@ -33,7 +33,8 @@ namespace TransactionUnitTest
             this.versionDb = RedisVersionDb.Instance;
             this.clientManager = RedisClientManager.Instance;
 
-            using (RedisClient redisClient = (RedisClient)this.clientManager.GetClient(TEST_REDIS_DB))
+            int partition = versionDb.PhysicalPartitionByKey(DEFAULT_KEY);
+            using (RedisClient redisClient = (RedisClient)this.clientManager.GetClient(TEST_REDIS_DB, partition))
             {
                 // 1. flush the test db
                 redisClient.ChangeDb(TEST_REDIS_DB);

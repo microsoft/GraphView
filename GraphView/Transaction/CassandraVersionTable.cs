@@ -37,8 +37,8 @@
             }
         }
 
-        public CassandraVersionTable(string tableId)
-            : base(tableId)
+        public CassandraVersionTable(VersionDb versionDb, string tableId)
+            : base(versionDb, tableId)
         { 
         }
     }

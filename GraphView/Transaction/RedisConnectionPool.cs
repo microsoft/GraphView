@@ -7,14 +7,14 @@
 
     internal class RedisConnectionKey
     {
+        internal int RedisInstanceIndex { get; private set; }
+
         internal long RedisDbIndex { get; private set; }
 
-        internal int Partition { get; private set; }
-
-        public RedisConnectionKey(long redisDbIndex, int partion)
+        public RedisConnectionKey(int redisInstanceIndex, long redisDbIndex)
         {
             this.RedisDbIndex = redisDbIndex;
-            this.Partition = partion;
+            this.RedisInstanceIndex = redisInstanceIndex;
         }
 
         public override bool Equals(object obj)
@@ -26,14 +26,14 @@
             }
 
             return this.RedisDbIndex == other.RedisDbIndex &&
-                this.Partition == other.Partition;
+                this.RedisInstanceIndex == other.RedisInstanceIndex;
         }
 
         public override int GetHashCode()
         {
             int hash = 17;
             hash = hash * 23 + this.RedisDbIndex.GetHashCode();
-            hash = hash * 23 + this.Partition.GetHashCode();
+            hash = hash * 23 + this.RedisInstanceIndex.GetHashCode();
             return hash;
         }
     }

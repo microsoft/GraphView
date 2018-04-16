@@ -16,7 +16,8 @@
         private readonly object listlock;
 
 
-        public SingletonDictionaryVersionTable(string tableId) : base(tableId)
+        public SingletonDictionaryVersionTable(VersionDb versionDb, string tableId) 
+            : base(versionDb, tableId)
         {
             this.dict = new Dictionary<object, VersionList>();
             this.listlock = new object();

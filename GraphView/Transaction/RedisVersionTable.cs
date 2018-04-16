@@ -4,6 +4,7 @@
     using System.Collections.Generic;
     using ServiceStack.Redis;
     using System.Text;
+    using ServiceStack.Redis.Pipeline;
 
     internal partial class RedisVersionTable : VersionTable
     {
@@ -34,8 +35,8 @@
             }
         }
 
-        public RedisVersionTable(string tableId, long redisDbIndex)
-            : base(tableId)
+        public RedisVersionTable(VersionDb versionDb, string tableId, long redisDbIndex)
+            : base(versionDb, tableId)
         {
             this.redisDbIndex = redisDbIndex;
         }
@@ -55,15 +56,16 @@
             string hashId = recordKey as string;
             byte[][] returnBytes = null;
 
+            int partition = this.VersionDb.PhysicalPartitionByKey(hashId);
             if (RedisVersionDb.Instance.PipelineMode)
             {
                 RedisRequest request = new RedisRequest(hashId, RedisRequestType.HGetAll);
-                RedisConnectionPool clientPool = this.RedisManager.GetClientPool(this.redisDbIndex, hashId);
+                RedisConnectionPool clientPool = this.RedisManager.GetClientPool(this.redisDbIndex, partition);
                 returnBytes = clientPool.ProcessValuesRequest(request);
             }
             else
             {
-                using (RedisClient client = this.RedisManager.GetClient(this.redisDbIndex, hashId))
+                using (RedisClient client = this.RedisManager.GetClient(this.redisDbIndex, partition))
                 {
                     returnBytes = client.HGetAll(hashId);
                 }
@@ -104,15 +106,16 @@
                 emptyEntry.TxId, emptyEntry.MaxCommitTs, emptyEntry.Record);
             long ret = 0;
 
+            int partition = this.VersionDb.PhysicalPartitionByKey(hashId);
             if (RedisVersionDb.Instance.PipelineMode)
             {
                 RedisRequest request = new RedisRequest(hashId, keyBytes, valueBytes, RedisRequestType.HSetNX);
-                RedisConnectionPool clientPool = this.RedisManager.GetClientPool(this.redisDbIndex, hashId);
+                RedisConnectionPool clientPool = this.RedisManager.GetClientPool(this.redisDbIndex, partition);
                 ret = clientPool.ProcessLongRequest(request);
             }
             else
             {
-                using (RedisClient client = this.RedisManager.GetClient(this.redisDbIndex, hashId))
+                using (RedisClient client = this.RedisManager.GetClient(this.redisDbIndex, partition))
                 {
                     ret = client.HSetNX(hashId, keyBytes, valueBytes);
                 }
@@ -151,15 +154,16 @@
             };
 
             byte[][] returnBytes = null;
+            int partition = this.VersionDb.PhysicalPartitionByKey(hashId);
             if (RedisVersionDb.Instance.PipelineMode)
             {
                 RedisRequest request = new RedisRequest(keysAndArgs, sha1, 1, RedisRequestType.EvalSha);
-                RedisConnectionPool clientPool = this.RedisManager.GetClientPool(this.redisDbIndex, hashId);
+                RedisConnectionPool clientPool = this.RedisManager.GetClientPool(this.redisDbIndex, partition);
                 returnBytes = clientPool.ProcessValuesRequest(request);
             }
             else
             {
-                using (RedisClient client = this.RedisManager.GetClient(this.redisDbIndex, hashId))
+                using (RedisClient client = this.RedisManager.GetClient(this.redisDbIndex, partition))
                 {
                     returnBytes = client.EvalSha(sha1, 1, keysAndArgs);
                 }
@@ -193,15 +197,16 @@
                 versionEntry.TxId, versionEntry.MaxCommitTs, versionEntry.Record);
             long ret = 0;
 
+            int partition = this.VersionDb.PhysicalPartitionByKey(hashId);
             if (RedisVersionDb.Instance.PipelineMode)
             {
                 RedisRequest request = new RedisRequest(hashId, keyBytes, valueBytes, RedisRequestType.HSetNX);
-                RedisConnectionPool clientPool = this.RedisManager.GetClientPool(this.redisDbIndex, hashId);
+                RedisConnectionPool clientPool = this.RedisManager.GetClientPool(this.redisDbIndex, partition);
                 ret = clientPool.ProcessLongRequest(request);
             }
             else
             {
-                using (RedisClient client = this.RedisManager.GetClient(this.redisDbIndex, hashId))
+                using (RedisClient client = this.RedisManager.GetClient(this.redisDbIndex, partition))
                 {
                     ret = client.HSetNX(hashId, keyBytes, valueBytes);
                 }
@@ -236,15 +241,16 @@
             };
             byte[][] returnBytes = null;
 
+            int partition = this.VersionDb.PhysicalPartitionByKey(hashId);
             if (RedisVersionDb.Instance.PipelineMode)
             {
                 RedisRequest request = new RedisRequest(keysAndArgs, sha1, 1, RedisRequestType.EvalSha);
-                RedisConnectionPool clientPool = this.RedisManager.GetClientPool(this.redisDbIndex, hashId);
+                RedisConnectionPool clientPool = this.RedisManager.GetClientPool(this.redisDbIndex, partition);
                 returnBytes = clientPool.ProcessValuesRequest(request);
             }
             else
             {
-                using (RedisClient client = this.RedisManager.GetClient(this.redisDbIndex, hashId))
+                using (RedisClient client = this.RedisManager.GetClient(this.redisDbIndex, partition))
                 {
                     returnBytes = client.EvalSha(sha1, 1, keysAndArgs);
                 }
@@ -270,15 +276,16 @@
             byte[] keyBytes = BitConverter.GetBytes(versionKey);
             long ret = 0;
 
+            int partition = this.VersionDb.PhysicalPartitionByKey(hashId);
             if (RedisVersionDb.Instance.PipelineMode)
             {
                 RedisRequest request = new RedisRequest(hashId, keyBytes, RedisRequestType.HDel);
-                RedisConnectionPool clientPool = this.RedisManager.GetClientPool(this.redisDbIndex, hashId);
+                RedisConnectionPool clientPool = this.RedisManager.GetClientPool(this.redisDbIndex, partition);
                 ret = clientPool.ProcessLongRequest(request);
             }
             else
             {
-                using (RedisClient client = this.RedisManager.GetClient(this.redisDbIndex, hashId))
+                using (RedisClient client = this.RedisManager.GetClient(this.redisDbIndex, partition))
                 {
                     ret = client.HDel(hashId, keyBytes);
                 }
@@ -296,15 +303,16 @@
             byte[] keyBytes = BitConverter.GetBytes(versionKey);
             byte[] valueBytes = null;
 
+            int partition = this.VersionDb.PhysicalPartitionByKey(hashId);
             if (RedisVersionDb.Instance.PipelineMode)
             {
                 RedisRequest request = new RedisRequest(hashId, keyBytes, RedisRequestType.HGet);
-                RedisConnectionPool clientPool = this.RedisManager.GetClientPool(this.redisDbIndex, hashId);
+                RedisConnectionPool clientPool = this.RedisManager.GetClientPool(this.redisDbIndex, partition);
                 valueBytes = clientPool.ProcessValueRequest(request);
             }
             else
             {
-                using (RedisClient client = this.RedisManager.GetClient(this.redisDbIndex, hashId))
+                using (RedisClient client = this.RedisManager.GetClient(this.redisDbIndex, partition))
                 {
                     valueBytes = client.HGet(hashId, keyBytes);
                 }
@@ -317,14 +325,83 @@
             return VersionEntry.Deserialize(recordKey, versionKey, valueBytes);
         }
 
-        //internal IDictionary<object, VersionEntry> GetVersionEntryByKey(IEnumerable<Tuple<object, long>> batch)
-        //{
-        //    Dictionary<object, VersionEntry> versionDict = new Dictionary<object, VersionEntry>();
-        //    Dictionary<Tuple<string, int, long>, Tuple<Tuple<RedisClient, Tuple<object, long>>> 
-        //    using (RedisClient redisClient = this.RedisManager.GetClient(0, 1))
-        //    {
-        //        redisClient.Db;
-        //    }
-        //}
+        /// <summary>
+        /// Get entries by a batch of key with PIPELINE command in redis
+        /// </summary>
+        /// <param name="batch"></param>
+        /// <returns></returns>
+        internal override IDictionary<VersionPrimaryKey, VersionEntry> GetVersionEntryByKey(IEnumerable<VersionPrimaryKey> batch)
+        {
+            Dictionary<int, List<VersionPrimaryKey>> partitionBatch = new Dictionary<int, List<VersionPrimaryKey>>();
+            foreach (VersionPrimaryKey key in batch)
+            {
+                int partition = this.VersionDb.PhysicalPartitionByKey(key);
+                if (!partitionBatch.ContainsKey(partition))
+                {
+                    partitionBatch[partition] = new List<VersionPrimaryKey>();
+                }
+                partitionBatch[partition].Add(key);
+            }
+
+            Dictionary<VersionPrimaryKey, VersionEntry> versionEntries = new Dictionary<VersionPrimaryKey, VersionEntry>();
+            foreach (int partition in partitionBatch.Keys)
+            {
+                IDictionary<VersionPrimaryKey, VersionEntry> partitionEntries = 
+                    this.GetVersionEntryInPartition(partitionBatch[partition]);
+                
+                foreach (KeyValuePair<VersionPrimaryKey, VersionEntry> kv in partitionEntries)
+                {
+                    versionEntries.Add(kv.Key, kv.Value);
+                }
+            }
+            return versionEntries;
+        }
+
+        /// <summary>
+        /// All the record key and version keys in the batch belong to the same parti
+        /// </summary>
+        /// <param name="batch"></param>
+        /// <returns></returns>
+        private IDictionary<VersionPrimaryKey, VersionEntry> GetVersionEntryInPartition(List<VersionPrimaryKey> batch)
+        {
+            Dictionary<VersionPrimaryKey, VersionEntry> versionEntries = new Dictionary<VersionPrimaryKey, VersionEntry>();
+            if (batch == null || batch.Count == 0)
+            {
+                return versionEntries;
+            }
+
+            int partition = this.VersionDb.PhysicalPartitionByKey(batch[0]);
+            List<RedisRequest> reqList = new List<RedisRequest>();
+            using (RedisClient redisClient = this.RedisManager.GetClient(this.redisDbIndex, partition))
+            {
+                using (IRedisPipeline pipe = redisClient.CreatePipeline())
+                {
+                    foreach (VersionPrimaryKey key in batch)
+                    {
+                        string hashId = key.RecordKey as string;
+                        byte[] keyBytes = BitConverter.GetBytes(key.VersionKey);
+
+                        RedisRequest req = new RedisRequest(hashId, keyBytes, RedisRequestType.HGet);
+                        reqList.Add(req);
+                        pipe.QueueCommand(
+                             r => ((RedisNativeClient)r).HGet(req.HashId, req.Key),
+                             req.SetValue, req.SetError);
+                    }
+                    pipe.Flush();
+                }
+            }
+
+            // wait to finish
+            while (!reqList[0].Finished) { };
+
+            foreach (RedisRequest req in reqList)
+            {
+                object recordKey = req.HashId;
+                long versionKey = BitConverter.ToInt64(req.Key, 0);
+                VersionEntry entry = VersionEntry.Deserialize(recordKey, versionKey, (byte[]) req.Result);
+                versionEntries.Add(new VersionPrimaryKey(recordKey, versionKey), entry);
+            }
+            return versionEntries;
+        }
     }
 }

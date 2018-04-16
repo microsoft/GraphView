@@ -47,19 +47,6 @@
         /// </summary>
         internal int RedisInstanceCount { get; private set; }
 
-        /// <summary>
-        /// Define a delegate type to specify the partition rules.
-        /// Which can be re-assigned outside the client manager
-        /// </summary>
-        /// <param name="recordKey">The record key need to be operated</param>
-        /// <returns></returns>
-        internal delegate int PartitionByRecordKeyDelegate(object recordKey);
-
-        /// <summary>
-        /// Define a delegate method to specify the partition rules.
-        /// </summary>
-        internal PartitionByRecordKeyDelegate PartitionByRecordKey;
-
         public static RedisClientManager Instance
         {
             get
@@ -82,9 +69,6 @@
         {
             this.RedisInstanceCount = RedisClientManager.DEFAULT_REDIS_INSTANCE_COUNT;
             this.ReadWriteHosts = new string[] { "127.0.0.1:6379"};
-
-            // define the default delegate method, take the remainder as the redis instance index
-            this.PartitionByRecordKey = recordKey => recordKey.GetHashCode() % this.RedisInstanceCount;
         }
 
         /// <summary>
@@ -102,10 +86,9 @@
             this.ReadWriteHosts = readWriteHosts;
         }
         
-        internal RedisClient GetClient(long redisDbIndex, object recordKey = null)
+        internal RedisClient GetClient(long redisDbIndex, int partition)
         {
-            int partition = recordKey == null ? 0 : this.PartitionByRecordKey(recordKey);
-            RedisConnectionKey key = new RedisConnectionKey(redisDbIndex, partition);
+            RedisConnectionKey key = new RedisConnectionKey(partition, redisDbIndex);
             if (!RedisClientManager.clientPools.ContainsKey(key))
             {
                 lock (RedisClientManager.dictLock)
@@ -119,10 +102,9 @@
             return RedisClientManager.clientPools[key].GetRedisClient();
         }
 
-        internal RedisConnectionPool GetClientPool(long redisDbIndex, object recordKey = null)
+        internal RedisConnectionPool GetClientPool(long redisDbIndex, int partition)
         {
-            int partition = recordKey == null ? 0 : this.PartitionByRecordKey(recordKey);
-            RedisConnectionKey key = new RedisConnectionKey(redisDbIndex, partition);
+            RedisConnectionKey key = new RedisConnectionKey(partition, redisDbIndex);
             if (!RedisClientManager.clientPools.ContainsKey(key))
             {
                 lock (RedisClientManager.dictLock)
@@ -151,7 +133,7 @@
         /// <param name="redisDbIndex"></param>
         private void StartNewRedisClientPool(RedisConnectionKey key)
         {
-            RedisConnectionPool pool = new RedisConnectionPool(this.ReadWriteHosts[key.Partition], key.RedisDbIndex);
+            RedisConnectionPool pool = new RedisConnectionPool(this.ReadWriteHosts[key.RedisInstanceIndex], key.RedisDbIndex);
             RedisClientManager.clientPools.Add(key, pool);
 
             // If the redis version db in pipeline mode, start a daemon thread
