@@ -102,8 +102,7 @@
                 VersionEntry.EMPTY_RECORD, VersionEntry.EMPTY_TXID);
 
             byte[] keyBytes = BitConverter.GetBytes(versionKey);
-            byte[] valueBytes = VersionEntry.Serialize(emptyEntry.BeginTimestamp, emptyEntry.EndTimestamp,
-                emptyEntry.TxId, emptyEntry.MaxCommitTs, emptyEntry.Record);
+            byte[] valueBytes = VersionEntry.Serialize(emptyEntry);
             long ret = 0;
 
             int partition = this.VersionDb.PhysicalPartitionByKey(hashId);
@@ -178,6 +177,37 @@
         }
 
         /// <summary>
+        /// Replace the whole version entry by the HSET command
+        /// </summary>
+        /// <param name="recordKey"></param>
+        /// <param name="versionKey"></param>
+        /// <param name="versionEntry"></param>
+        /// <returns>True or False</returns>
+        internal override bool ReplaceWholeVersionEntry(object recordKey, long versionKey, VersionEntry versionEntry)
+        {
+            string hashId = recordKey as string;
+            byte[] keyBytes = BitConverter.GetBytes(versionKey);
+            byte[] valueBytes = VersionEntry.Serialize(versionEntry);
+
+            long ret = 0;
+            int partition = this.VersionDb.PhysicalPartitionByKey(recordKey);
+            if (((RedisVersionDb)this.VersionDb).PipelineMode)
+            {
+                RedisRequest request = new RedisRequest(hashId, keyBytes, valueBytes, RedisRequestType.HSet);
+                RedisConnectionPool clientPool = this.RedisManager.GetClientPool(this.redisDbIndex, partition);
+                ret = clientPool.ProcessLongRequest(request);
+            }
+            else
+            {
+                using (RedisClient client = this.RedisManager.GetClient(this.redisDbIndex, partition))
+                {
+                    ret = client.HSet(hashId, keyBytes, valueBytes);
+                }
+            }
+            return ret == 1;
+        }
+
+        /// <summary>
         /// Upload a whole version entry to the redis by HSETNX command
         /// MIND: HSETNX in ServiceStack.Redis only supports a string type as the hashId 
         /// If we want to take other types as the hashId, must override the HSETNX with lua
@@ -193,8 +223,7 @@
 
             string hashId = recordKey as string;
             byte[] keyBytes = BitConverter.GetBytes(versionKey);
-            byte[] valueBytes = VersionEntry.Serialize(versionEntry.BeginTimestamp, versionEntry.EndTimestamp,
-                versionEntry.TxId, versionEntry.MaxCommitTs, versionEntry.Record);
+            byte[] valueBytes = VersionEntry.Serialize(versionEntry);
             long ret = 0;
 
             int partition = this.VersionDb.PhysicalPartitionByKey(hashId);

@@ -56,6 +56,20 @@ namespace GraphView.Transaction
         {
             throw new NotImplementedException();
         }
+        
+        /// <summary>
+        /// Replace the whole version entry, which will be called in the commit postprocessing phase.
+        /// For write operations, like delete and update, the old version entry must be holden by the current 
+        /// transaction, which can be replaced directly rather than call lua script
+        /// </summary>
+        /// <param name="recordKey">The specify record key</param>
+        /// <param name="versionKey">The specify version key</param>
+        /// <param name="versionEntry">The version entry will be put</param>
+        /// <returns></returns>
+        internal virtual bool ReplaceWholeVersionEntry(object recordKey, long versionKey, VersionEntry versionEntry)
+        {
+            throw new NotImplementedException();
+        }
 
         /// <summary>
         /// Upload a new version entry when insert or update a version

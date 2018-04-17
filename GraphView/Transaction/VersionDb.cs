@@ -115,6 +115,18 @@ namespace GraphView.Transaction
                 beginTimestamp, endTimestamp, txId, readTxId, expectedEndTimestamp);
         }
 
+        internal virtual bool ReplaceWholeVersionEntry(string tableId, object recordKey, long versionKey,
+            VersionEntry versionEntry)
+        {
+            VersionTable versionTable = this.GetVersionTable(tableId);
+            if (versionTable == null)
+            {
+                return false;
+            }
+
+            return versionTable.ReplaceWholeVersionEntry(recordKey, versionKey, versionEntry);
+        }
+
         internal virtual bool UploadNewVersionEntry(string tableId, object recordKey, long versionKey, VersionEntry versionEntry)
         {
             VersionTable versionTable = this.GetVersionTable(tableId);

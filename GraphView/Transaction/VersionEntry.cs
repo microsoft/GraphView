@@ -101,15 +101,15 @@ namespace GraphView.Transaction
         /// [beginTimestamp bytes][endTimestamp bytes][txId bytes][maxCommitTs bytes][record bytes]
         /// 
         /// <returns>a byte array</returns>
-        public static byte[] Serialize(long beginTimestamp, long endTimestamp, long txId, long maxCommitTs, object record)
+        public static byte[] Serialize(VersionEntry versionEntry)
         {
             List<byte> byteList = new List<byte>();
 
-            byteList.AddRange(BitConverter.GetBytes(beginTimestamp));
-            byteList.AddRange(BitConverter.GetBytes(endTimestamp));
-            byteList.AddRange(BitConverter.GetBytes(txId));
-            byteList.AddRange(BitConverter.GetBytes(maxCommitTs));
-            byteList.AddRange(BytesSerializer.Serialize(record));
+            byteList.AddRange(BitConverter.GetBytes(versionEntry.BeginTimestamp));
+            byteList.AddRange(BitConverter.GetBytes(versionEntry.EndTimestamp));
+            byteList.AddRange(BitConverter.GetBytes(versionEntry.TxId));
+            byteList.AddRange(BitConverter.GetBytes(versionEntry.MaxCommitTs));
+            byteList.AddRange(BytesSerializer.Serialize(versionEntry.Record));
 
             return byteList.ToArray();
         }
