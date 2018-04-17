@@ -602,17 +602,35 @@ namespace GraphView.Transaction
                         }
                         else
                         {
-                            //this is an old version replaced by myself
-                            this.versionDb.ReplaceVersionEntry(
-                                tableId,
-                                recordKey,
-                                entry.VersionKey,
-                                entry.BeginTimestamp,
-                                this.commitTs,
-                                VersionEntry.EMPTY_TXID,
-                                this.txId,
-                                long.MaxValue);
-                        }
+							// this is an old version replaced by myself
+
+							// cloud environment: just replace the begin, end, txId field, need lua script, 3 redis command.
+							// this.versionDb.ReplaceVersionEntry(
+							//	 tableId,
+							//	 recordKey,
+							//	 entry.VersionKey,
+							//	 entry.BeginTimestamp,
+							//	 this.commitTs,
+							//	 VersionEntry.EMPTY_TXID,
+							//	 this.txId,
+							//	 long.MaxValue);
+
+							// Single machine setting: pass the whole version, need only 1 redis command.
+							// Note that we set the current transaction's commitTs as the old version's maxCommitTs.
+							ReadSetEntry readEntry = this.readSet[tableId][recordKey];
+							this.versionDb.ReplaceWholeVersionEntry(
+								tableId,
+								recordKey,
+								entry.VersionKey,
+								new VersionEntry(
+									recordKey, 
+									entry.VersionKey, 
+									readEntry.BeginTimestamp, 
+									this.commitTs, 
+									readEntry.Record, 
+									VersionEntry.EMPTY_TXID, 
+									this.commitTs));
+						}
                     }
                 }
             }
