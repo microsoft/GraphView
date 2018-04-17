@@ -2,6 +2,7 @@
 {
     using System;
     using System.Collections.Generic;
+    using System.Diagnostics;
     using System.Threading;
     using ServiceStack.Redis;
     using ServiceStack.Redis.Pipeline;
@@ -209,7 +210,6 @@
                                     r => ((RedisNativeClient)r).HSet(req.HashId, req.Key, req.Value),
                                     req.SetLong, req.SetError);
                                 break;
-                            // no reponse for HMSet
                             case RedisRequestType.HMSet:
                                 pipe.QueueCommand(
                                     r => ((RedisNativeClient)r).HMSet(req.HashId, req.Keys, req.Values),
@@ -233,10 +233,16 @@
                     pipe.Flush();
                 }
 
-                //for (int reqId = 0; reqId < this.currReqId; reqId++)
-                //{
-                //    System.Threading.Monitor.PulseAll(this.requestQueue[reqId]);
-                //}
+                // Release the request lock to make sure processRequest can keep going
+                for (int reqId = 0; reqId <= this.currReqId; reqId++)
+                {
+                    // Monitor.Wait must be called in sync block, here we should lock the 
+                    // request and release the it on time
+                    lock (this.requestQueue[reqId])
+                    {
+                        System.Threading.Monitor.PulseAll(this.requestQueue[reqId]);
+                    }
+                }
             }
 
             this.currReqId = -1;
@@ -301,9 +307,12 @@
         internal long ProcessLongRequest(RedisRequest redisRequest)
         {
             this.EnqueueRequest(redisRequest);
-            while (!redisRequest.Finished)
+            lock (redisRequest)
             {
-                // System.Threading.Monitor.Wait(redisRequest);
+                while (!redisRequest.Finished)
+                {
+                    System.Threading.Monitor.Wait(redisRequest);
+                }
             }
 
             return (long)redisRequest.Result;
@@ -312,9 +321,12 @@
         internal byte[][] ProcessValuesRequest(RedisRequest redisRequest)
         {
             this.EnqueueRequest(redisRequest);
-            while (!redisRequest.Finished)
+            lock (redisRequest)
             {
-                // System.Threading.Monitor.Wait(redisRequest);
+                while (!redisRequest.Finished)
+                {
+                    System.Threading.Monitor.Wait(redisRequest);
+                }
             }
 
             return (byte[][])redisRequest.Result;
@@ -323,20 +335,25 @@
         internal byte[] ProcessValueRequest(RedisRequest redisRequest)
         {
             this.EnqueueRequest(redisRequest);
-            while (!redisRequest.Finished)
+            lock (redisRequest)
             {
-                // System.Threading.Monitor.Wait(redisRequest);
+                while (!redisRequest.Finished)
+                {
+                    System.Threading.Monitor.Wait(redisRequest);
+                }
             }
-
             return (byte[])redisRequest.Result;
         }
 
         internal void ProcessVoidRequest(RedisRequest redisRequest)
         {
             this.EnqueueRequest(redisRequest);
-            while (!redisRequest.Finished)
+            lock (redisRequest)
             {
-                // System.Threading.Monitor.Wait(redisRequest);
+                while (!redisRequest.Finished)
+                {
+                    System.Threading.Monitor.Wait(redisRequest);
+                }
             }
         }
 
@@ -353,9 +370,12 @@
 
             // Since requests may be executed in different batch, we must enusre all
             // requests are finished by checking whether the last request is finished
-            while (!lastRequest.Finished)
+            lock (lastRequest)
             {
-                // System.Threading.Monitor.Wait(lastRequest);
+                while (!lastRequest.Finished)
+                {
+                    System.Threading.Monitor.Wait(lastRequest);
+                }
             }
 
             byte[][] values = new byte[count][];
