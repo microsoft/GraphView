@@ -16,6 +16,7 @@
         /// The spinlock for the sync of task Queue
         /// </summary>
         private SpinLock spinLock;
+
         /// <summary>
         /// The status of current Worker, close the 
         /// </summary>
@@ -30,6 +31,8 @@
         /// (2) False: both producer and consumer are working at the same time
         /// </summary>
         internal bool OnlyConsumer { get; set; } = true;
+
+        internal double ExecutionTime { get; set; } = -1;
 
         public Worker(int queueSize = -1)
         {
@@ -61,6 +64,8 @@
 
         internal void Monitor()
         {
+            long beginTime = DateTime.Now.Ticks;
+            long endTime = -1; 
             while (this.Active)
             {
                 if (this.OnlyConsumer)
@@ -70,6 +75,14 @@
                         Task task = this.txTaskQueue[this.currTxId--];
                         task.Start();
                         task.Wait();
+                    }
+                    else
+                    {
+                        if (endTime == -1)
+                        { 
+                            endTime = DateTime.Now.Ticks;
+                            this.ExecutionTime = (endTime - beginTime)*1.0/10000000;
+                        }
                     }
                 }
                 else
