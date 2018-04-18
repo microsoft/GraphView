@@ -104,7 +104,7 @@
     <Compile Include="YCSB\Runner.cs" />
     <Compile Include="YCSB\SequenceRunner.cs" />
     <Compile Include="YCSB\CorrectnessTest.cs" />
-    <Compile Include="YCSB\ThroughputTest.cs" />
+    <Compile Include="YCSB\ThroughputBenchmarkTest.cs" />
     <Compile Include="YCSB\YCSBTestBase.cs" />
   </ItemGroup>
   <ItemGroup>
