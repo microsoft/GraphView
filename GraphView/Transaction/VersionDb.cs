@@ -245,14 +245,19 @@ namespace GraphView.Transaction
 
     public abstract partial class VersionDb
     {
-        /// <summary>
-        /// Generate a random long type in the range of [min, max]
-        /// </summary>
-        /// <returns></returns>
-        protected long RandomLong(long min, long max, Random rand)
+		/// <summary>
+		/// A random number generator for create new TxId.
+		/// </summary>
+		private static readonly Random random = new Random();
+
+		/// <summary>
+		/// Generate a random long type in the range of [min, max]
+		/// </summary>
+		/// <returns></returns>
+		protected long RandomLong(long min, long max)
         {
             byte[] buf = new byte[8];
-            rand.NextBytes(buf);
+            VersionDb.random.NextBytes(buf);
             long longRand = BitConverter.ToInt64(buf, 0);
 
             return (Math.Abs(longRand % (max - min)) + min);

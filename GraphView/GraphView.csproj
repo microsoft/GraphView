@@ -303,8 +303,10 @@
     <Compile Include="Transaction\BytesSerializer.cs" />
     <Compile Include="Transaction\CassandraClusterManager.cs" />
     <Compile Include="Transaction\CassandraLogStore.cs" />
+    <Compile Include="Transaction\LogRequest.cs" />
     <Compile Include="Transaction\CassandraVersionDb.cs" />
     <Compile Include="Transaction\CassandraVersionTable.cs" />
+    <Compile Include="Transaction\LogStore.cs" />
     <Compile Include="Transaction\PostProcessingEntry.cs" />
     <Compile Include="Transaction\ReadSetEntry.cs" />
     <Compile Include="Transaction\RedisClientManager.cs" />
@@ -323,7 +325,7 @@
     <Compile Include="Transaction\VersionEntry.cs" />
     <Compile Include="Transaction\VersionList.cs" />
     <Compile Include="Transaction\VersionTable.cs" />
-    <Compile Include="Transaction\LogStore.cs" />
+    <Compile Include="Transaction\ILogStore.cs" />
     <Compile Include="Transaction\Transaction.cs" />
     <Compile Include="TSQL Syntax Tree\WControlFlow.cs" />
     <Compile Include="TSQL Syntax Tree\WCreateViewStatement.cs" />

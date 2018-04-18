@@ -58,11 +58,6 @@
         /// </summary>
         private static readonly object initLock = new object();
 
-        /// <summary>
-        /// A random number generator for create new TxId.
-        /// </summary>
-        private static readonly Random random = new Random();
-
         // <summary>
         /// The bytes of -1 in long type, should mind that it must be a long type with 8 bytes
         /// It's used to compare txId or as a return value in lua script
@@ -266,7 +261,7 @@
             long txId = 0, ret = 0;
             do
             {
-                txId = this.RandomLong(0, long.MaxValue, RedisVersionDb.random);
+                txId = this.RandomLong(0, long.MaxValue);
 
                 string hashId = txId.ToString();
                 byte[] keyBytes = Encoding.ASCII.GetBytes(TxTableEntry.TXID_STRING);

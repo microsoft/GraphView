@@ -141,6 +141,7 @@
             // Spinlock until an empty spot is available in the queue
             while (reqId < 0 || reqId >= this.RequestBatchSize)
             {
+				reqId = this.currReqId + 1;
                 if (reqId >= this.RequestBatchSize)
                 {
                     continue;
@@ -151,11 +152,14 @@
                     try
                     {
                         this.spinLock.Enter(ref lockTaken);
-                        // No need to take interlocked since it already in the lock
-                        // reqId = Interlocked.Increment(ref this.currReqId);
-                        this.currReqId++;
-                        reqId = this.currReqId;
-                        this.requestQueue[reqId] = request;
+						// No need to take interlocked since it already in the lock
+						// reqId = Interlocked.Increment(ref this.currReqId);
+						reqId = this.currReqId + 1;
+						if (reqId < this.RequestBatchSize)
+						{
+							this.currReqId++;
+							this.requestQueue[reqId] = request;
+						}
                     }
                     finally
                     {
@@ -259,7 +263,7 @@
             {
                 long now = DateTime.Now.Ticks / 10;
                 if (now - lastFlushTime >= this.WindowMicroSec || 
-                    this.currReqId >= this.RequestBatchSize)
+                    this.currReqId + 1 >= this.RequestBatchSize)
                 {
                     if (this.currReqId >= 0)
                     {

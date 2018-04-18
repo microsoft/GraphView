@@ -1,41 +1,92 @@
 ﻿namespace GraphView.Transaction
 {
     using Cassandra;
+	using System;
+	using System.Collections.Generic;
 
-    /// <summary>
-    /// A cluster manager for cassandra connection, the current implementation is
-    /// a singleton cluster instance with a specify host address
-    /// </summary>
-    class CassandraClusterManager
+	/// <summary>
+	/// A session manager for cassandra connection, the current implementation is
+	/// a singleton cluster instance with a specify host address
+	/// </summary>
+	class CassandraSessionManager
     {
-        /// <summary>
-        /// The lock for singleton instance
-        /// </summary>
-        private static readonly object initLock = new object();
+		private static readonly int DEFAULT_CLUSTER_NODE_COUNT = 1;
 
-        /// <summary>
-        /// the cluster instance of cassandra
-        /// </summary>
-        private static Cluster cluster;
+		/// <summary>
+		/// The lock for singleton instance
+		/// </summary>
+		private static readonly object initLock = new object();
 
-        internal static Cluster CassandraCluster
+		/// <summary>
+		/// The private variable to hold the instance
+		/// </summary>
+		private static CassandraSessionManager sessionManager = null;
+
+		/// <summary>
+		/// the cluster instance of cassandra
+		/// </summary>
+		private Cluster cluster = null;
+
+		/// <summary>
+		/// A map from keyspace to session.
+		/// </summary>
+		private Dictionary<string, ISession> sessionPool;
+
+		/// <summary>
+		/// the lock for sessionPool dictionary
+		/// </summary>
+		private readonly object dictLock = new object();
+
+		/// <summary>
+		/// The cassandra connection strings of read and write
+		/// </summary>
+		internal string[] ReadWriteHosts { get; private set; }
+
+		/// <summary>
+		/// The number of cluster hosts
+		/// </summary>
+		internal int ClusterNodeCount { get; private set; }
+
+        public static CassandraSessionManager Instance
         {
             get
             {
-                if (CassandraClusterManager.cluster == null)
+                if (CassandraSessionManager.sessionManager == null)
                 {
-                    lock (CassandraClusterManager.initLock)
+                    lock (CassandraSessionManager.initLock)
                     {
-                        if (CassandraClusterManager.cluster == null)
+                        if (CassandraSessionManager.sessionManager == null)
                         {
-                            string host = "127.0.0.1";
-                            CassandraClusterManager.cluster = 
-                                Cluster.Builder().AddContactPoints(host).Build();
+							CassandraSessionManager.sessionManager = new CassandraSessionManager();
                         }
                     }
                 }
-                return CassandraClusterManager.cluster;
+				return CassandraSessionManager.sessionManager;
             }
         }
-    }
+
+		private CassandraSessionManager()
+		{
+			this.ClusterNodeCount = CassandraSessionManager.DEFAULT_CLUSTER_NODE_COUNT;
+			this.ReadWriteHosts = new string[] { "127.0.0.1" };
+			this.cluster = Cluster.Builder().AddContactPoints(this.ReadWriteHosts).Build();
+			this.sessionPool = new Dictionary<string, ISession>();
+		}
+
+		internal ISession GetSession(string keyspace)
+		{
+			if (!this.sessionPool.ContainsKey(keyspace))
+			{
+				lock (this.dictLock)
+				{
+					if (!this.sessionPool.ContainsKey(keyspace))
+					{
+						this.sessionPool[keyspace] = this.cluster.Connect();
+					}
+				}
+			}
+
+			return this.sessionPool[keyspace];
+		}
+	}
 }
