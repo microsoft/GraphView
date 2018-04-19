@@ -1,14 +1,13 @@
-﻿using GraphView.Transaction;
-using ServiceStack.Redis;
-using ServiceStack.Redis.Pipeline;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
-
-namespace TransactionBenchmarkTest.YCSB
+﻿namespace TransactionBenchmarkTest.YCSB
 {
+    using GraphView.Transaction;
+    using ServiceStack.Redis;
+    using ServiceStack.Redis.Pipeline;
+    using System;
+    using System.Collections.Generic;
+    using System.Linq;
+    using System.Threading;
+
     class RedisCommand
     {
         internal string hashId;
@@ -17,7 +16,7 @@ namespace TransactionBenchmarkTest.YCSB
         internal int type;
     }
 
-    class RedisBenchmarkTest : IDisposable
+    class RedisBenchmarkTest
     {
         public static readonly long REDIS_DB_INDEX = 3L;
 
@@ -62,48 +61,63 @@ namespace TransactionBenchmarkTest.YCSB
             return null;
         };
 
-        public static Random RAND = new Random();
-
-        public static string CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-
-        public static Func<int, string> RandomString = (int length) =>
-        {
-            return new string(Enumerable.Repeat(CHARS, length)
-                .Select(s => s[RAND.Next(s.Length)]).ToArray());
-        };
-
-        public static Func<int, byte[]> RandomBytes = (int length) =>
-        {
-            byte[] value = new byte[length];
-            RAND.NextBytes(value);
-            return value;
-        };
-
+        /// <summary>
+        /// The number of running workers
+        /// </summary>
         private int workerCount;
 
-        private int workerTaskCount;
+        /// <summary>
+        /// The number of tasks per worker
+        /// </summary>
+        private int taskCountPerWorker;
 
+        /// <summary>
+        /// A list of workers
+        /// </summary>
         private List<Worker> workers;
 
-        private Dictionary<int, int> lastFinishedTasks;
-
+        /// <summary>
+        /// Whether it's in pipeline mode
+        /// </summary>
         private bool pipelineMode;
 
+        /// <summary>
+        /// If it's in the pipeline mode, the pipeline size
+        /// </summary>
         private int pipelineSize;
+
+        /// <summary>
+        /// The exact ticks when the test starts
+        /// </summary>
+        private long testBeginTicks;
+
+        /// <summary>
+        /// The exact ticks when then test ends
+        /// </summary>
+        private long testEndTicks;
+
+        internal int Throughput
+        {
+            get
+            {
+                double runSeconds = ((this.testEndTicks - this.testBeginTicks) * 1.0) / 10000000;
+                int taskCount = this.workerCount * this.taskCountPerWorker;
+                Console.WriteLine("Finshed {0} requests in {1} seconds", taskCount, runSeconds);
+                return (int) (taskCount / runSeconds);
+            }
+        }
 
         public RedisBenchmarkTest(int workerCount, int taskCount, bool pipelineMode = false, int pipelineSize = 100)
         {
             this.workerCount = workerCount;
-            this.workerTaskCount = taskCount;
-            this.lastFinishedTasks = new Dictionary<int, int>();
-            this.workers = new List<Worker>();
+            this.taskCountPerWorker = taskCount;
             this.pipelineMode = pipelineMode;
             this.pipelineSize = pipelineSize;
+            this.workers = new List<Worker>();
 
             for (int i = 0; i < workerCount; i++)
             {
-                this.workers.Add(new Worker(i + 1, Math.Max(taskCount, Worker.DEFAULT_QUEUE_SIZE)));
-                this.lastFinishedTasks[i+1] = 0;
+                this.workers.Add(new Worker(i+1, Math.Max(taskCount, Worker.DEFAULT_QUEUE_SIZE)));
             }
         }
 
@@ -121,35 +135,23 @@ namespace TransactionBenchmarkTest.YCSB
                 // non-pipeline mode
                 if (!this.pipelineMode)
                 {
-                    for (int i = 0; i < this.workerTaskCount; i++)
+                    for (int i = 0; i < this.taskCountPerWorker; i++)
                     {
-                        RedisCommand cmd = new RedisCommand();
-                        cmd.hashId = RandomString(4);
-                        cmd.key = BitConverter.GetBytes(3);
-                        cmd.value = RandomBytes(50);
-                        cmd.type = RAND.Next(0, 1);
-
-                        worker.EnqueueTxTask(new Task<object>(ACTION, cmd));
+                        worker.EnqueueTxTask(new TxTask(ACTION, this.mockRedisCommands()));
                     }
                 }
                 // pipeline mode
                 else
                 {
-                    int batchs = this.workerTaskCount / this.pipelineSize;
+                    int batchs = this.taskCountPerWorker / this.pipelineSize;
                     for (int i = 0; i < batchs; i++)
                     {
                         List<RedisCommand> cmds = new List<RedisCommand>(this.pipelineSize);
                         for (int j = 0; j < this.pipelineSize; j++)
                         {
-                            RedisCommand cmd = new RedisCommand();
-                            cmd.hashId = RandomString(4);
-                            cmd.key = BitConverter.GetBytes(3);
-                            cmd.value = RandomBytes(50);
-                            cmd.type = RAND.Next(0, 1);
-
-                            cmds.Add(cmd);
+                            cmds.Add(this.mockRedisCommands());
                         }
-                        worker.EnqueueTxTask(new Task<object>(PIPELINE_ACTION, cmds));
+                        worker.EnqueueTxTask(new TxTask(ACTION, cmds));
                     }
                 }
                 
@@ -159,44 +161,55 @@ namespace TransactionBenchmarkTest.YCSB
 
         internal void Run()
         {
+            Console.WriteLine("Try to run {0} tasks in {1} workers", (this.workerCount * this.taskCountPerWorker),this.workerCount);
+            Console.WriteLine("Running......");
+
+            this.testBeginTicks = DateTime.Now.Ticks;
+            List<Thread> threadList = new List<Thread>();
+
             foreach(Worker worker in this.workers)
             {
-                worker.Active = true;
-                Thread thread = new Thread(new ThreadStart(worker.Monitor));
+                Thread thread = new Thread(new ThreadStart(worker.Run));
+                threadList.Add(thread);
                 thread.Start();
             }
-        }
 
-        /// <summary>
-        /// Compute the throughout from the last time call this function.
-        /// If at least a worker is finished, it will return -1
-        /// Otherwrise return thr throughput
-        /// </summary>
-        /// <returns></returns>
-        internal int ComputeThroughput()
-        {
-            int throughput = 0;
-            foreach (Worker worker in workers)
+            foreach (Thread thread in threadList)
             {
-                if (worker.Finished)
-                {
-                    return -1;
-                }
-
-                int finishedTask = worker.FinishedTasks;
-                int tasks = finishedTask - this.lastFinishedTasks[worker.WorkerId];
-                this.lastFinishedTasks[worker.WorkerId] = finishedTask;
-                throughput += tasks;
+                thread.Join();
             }
-            return throughput;
+            this.testEndTicks = DateTime.Now.Ticks;
+            
+            Console.WriteLine("Finished all tasks");
         }
 
-        public void Dispose()
+        private RedisCommand mockRedisCommands()
         {
-            foreach (Worker worker in workers)
-            {
-                worker.Active = false;
-            }
+            RedisCommand cmd = new RedisCommand();
+            cmd.hashId = RandomString(4);
+            cmd.key = BitConverter.GetBytes(3);
+            cmd.value = RandomBytes(50);
+            cmd.type = RAND.Next(0, 1);
+            return cmd;
         }
+
+        /// Helper Functions to test benchmarks
+        /// 
+        public static Random RAND = new Random();
+
+        public static string CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+
+        public static Func<int, string> RandomString = (int length) =>
+        {
+            return new string(Enumerable.Repeat(CHARS, length)
+                .Select(s => s[RAND.Next(s.Length)]).ToArray());
+        };
+
+        public static Func<int, byte[]> RandomBytes = (int length) =>
+        {
+            byte[] value = new byte[length];
+            RAND.NextBytes(value);
+            return value;
+        };
     }
 }

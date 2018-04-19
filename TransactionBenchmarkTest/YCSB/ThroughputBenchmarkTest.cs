@@ -6,23 +6,42 @@
     using System.Collections.Generic;
     using System.IO;
     using System.Threading;
-    using System.Threading.Tasks;
 
-    class ThroughputBenchmarkTest : IDisposable
+    class TxOperation
+    {
+        internal string TableId;
+        internal string Key;
+        internal string Value;
+        internal string Type;
+
+        public TxOperation(string tableId, string key, string value, string type)
+        {
+            this.TableId = tableId;
+            this.Key = key;
+            this.Value = value;
+            this.Type = type;
+        }
+    }
+
+    class YCSBBenchmarkTest
     {
         public static int FINISHED_TXS = 0;
 
         public static int COMMITED_TXS = 0;
 
+        public static readonly String TABLE_ID = "ycsb_table";
+
+        public static readonly long REDIS_DB_INDEX = 7L;
+
         public static Func<object, object> ACTION = (object op) =>
         {
-            Operation oper = op as Operation;
+            TxOperation oper = op as TxOperation;
             Transaction tx = new Transaction(null, RedisVersionDb.Instance);
             string readValue = null;
 
             try
             {
-                switch (oper.Operator)
+                switch (oper.Type)
                 {
                     case "READ":
                         readValue = (string)tx.Read(oper.TableId, oper.Key);
@@ -57,10 +76,10 @@
                 }
                 tx.Commit();
 
-                FINISHED_TXS += 1;
+                YCSBBenchmarkTest.FINISHED_TXS += 1;
                 if (tx.Status == TxStatus.Committed)
                 {
-                    COMMITED_TXS += 1;
+                    YCSBBenchmarkTest.COMMITED_TXS += 1;
                 }
             }
             catch (TransactionException e)
@@ -70,40 +89,71 @@
             return null;
         };
 
-        public static readonly String TABLE_ID = "usertable_concurrent";
-
-        public static readonly long REDIS_DB_INDEX = 7L;
-
+        /// <summary>
+        /// The number of workers
+        /// </summary>
         private int workerCount;
 
-        private List<Worker> workerList;
+        /// <summary>
+        /// The number of tasks per worker
+        /// </summary>
+        private int taskCountPerWorker;
 
-        public ThroughputBenchmarkTest(int workerCount)
+        /// <summary>
+        /// A list of workers
+        /// </summary>
+        private List<Worker> workers;
+
+        /// <summary>
+        /// The exact ticks when the test starts
+        /// </summary>
+        private long testBeginTicks;
+
+        /// <summary>
+        /// The exact ticks when then test ends
+        /// </summary>
+        private long testEndTicks;
+
+        internal int Throughput
         {
-            this.workerCount = workerCount;
-            this.workerList = new List<Worker>();
-
-            for (int i = 0; i < this.workerCount; i++)
+            get
             {
-                this.workerList.Add(new Worker(i+1));
+                double runSeconds = ((this.testEndTicks - this.testBeginTicks) * 1.0) / 10000000;
+                int taskCount = this.workerCount * this.taskCountPerWorker;
+                Console.WriteLine("Finshed {0} requests in {1} seconds", taskCount, runSeconds);
+                return (int)(taskCount / runSeconds);
             }
         }
 
-        internal void SetupTest(string dataFile)
+
+        public YCSBBenchmarkTest(int workerCount, int taskCountPerWorker)
         {
-            // flush the database
+            this.workerCount = workerCount;
+            this.taskCountPerWorker = taskCountPerWorker;
+            this.workers = new List<Worker>();
+
+            for (int i = 0; i < this.workerCount; i++)
+            {
+                this.workers.Add(new Worker(i+1));
+            }
+        }
+
+        internal void Setup(string dataFile, string operationFile)
+        {
+            // step1: flush the database
             RedisClientManager manager = RedisClientManager.Instance;
             RedisVersionDb versionDb = RedisVersionDb.Instance;
+
             using (RedisClient client = manager.GetClient(REDIS_DB_INDEX, 0))
             {
                 client.FlushAll();
-                Console.WriteLine("Flushed the database");
             }
+            Console.WriteLine("Flushed the database");
 
-            // create version table
+            // step2: create version table
             versionDb.CreateVersionTable(TABLE_ID, REDIS_DB_INDEX);
 
-            // load data
+            // step3: load data
             using (StreamReader reader = new StreamReader(dataFile))
             {
                 string line;
@@ -111,7 +161,7 @@
                 while ((line = reader.ReadLine()) != null)
                 {
                     string[] fields = this.ParseCommandFormat(line);
-                    Operation operation = new Operation(fields[0], TABLE_ID, fields[2], fields[3]);
+                    TxOperation operation = new TxOperation(fields[0], TABLE_ID, fields[2], fields[3]);
                     count++;
 
                     ACTION(operation);
@@ -120,75 +170,48 @@
                         Console.WriteLine("Loaded {0} records", count);
                     }
                 }
+                Console.WriteLine("Load records successfully, {0} records in total", count);
             }
 
-            //Console.WriteLine("TOTAL_FLUSH: {0}, TIME_FLUSH: {1}, COMMANDS_FLUSH: {2}", RedisConnectionPool.TOTAL_FLUSH, RedisConnectionPool.TIME_FLUSH, RedisConnectionPool.COMMANDS_FLUSHED);
-            //Console.WriteLine("FINISHED_TXS: {0}, COMMITED_TXS: {1}", FINISHED_TXS, COMMITED_TXS);
-            //Console.WriteLine("Loaded all records");
-        }
-
-        internal void FillWorkersQueue(string optrFilePrefix)
-        {
-            for (int i = 0; i < this.workerCount; i++)
+            // step 4: fill workers' queue
+            using (StreamReader reader = new StreamReader(operationFile))
             {
-                Worker worker = this.workerList[i];
-                string resourceName = String.Format("{0}{1}.in", optrFilePrefix, i+1);
-                using (StreamReader reader = new StreamReader(resourceName))
+                string line;
+                foreach (Worker worker in this.workers)
                 {
-                    string line;
-                    while ((line = reader.ReadLine()) != null)
+                    for (int i = 0; i < this.taskCountPerWorker; i++)
                     {
+                        line = reader.ReadLine();
                         string[] fields = this.ParseCommandFormat(line);
-                        Operation op = new Operation(fields[0], ConcurrencyRunner.TABLE_ID, fields[2], fields[3]);
-                        worker.EnqueueTxTask(new Task<object>(ACTION, op));
+                        TxOperation op = new TxOperation(fields[0], TABLE_ID, fields[2], fields[3]);
+                        worker.EnqueueTxTask(new TxTask(ACTION, op));
                     }
                 }
             }
-
-            Console.WriteLine("Filled all workers' queue");
         }
 
         internal void Run()
         {
-            this.StartWorkers();
-        }
+            Console.WriteLine("Try to run {0} tasks in {1} workers", (this.workerCount * this.taskCountPerWorker), this.workerCount);
+            Console.WriteLine("Running......");
 
-        internal void Conclude()
-        {
-            //bool allFinished = false;
-            //while (!allFinished)
-            //{
-            //    int i = 0;
-            //    for (; i < this.workerCount; i++)
-            //    {
-            //        if (this.workerList[i].ExecutionTime == -1)
-            //        {
-            //            break;
-            //        }
-            //    }
-            //    if (i >= this.workerCount)
-            //    {
-            //        allFinished = true;
-            //    }
-            //}
+            this.testBeginTicks = DateTime.Now.Ticks;
+            List<Thread> threadList = new List<Thread>();
 
-            //int throughput = 0;
-            //foreach (Worker worker in this.workerList)
-            //{
-            //    throughput += worker.Throughput;
-            //}
-
-            //Console.WriteLine("Throughput: {0} txs/second", throughput);
-        }
-
-        private void StartWorkers()
-        {
-            foreach (Worker worker in this.workerList)
+            foreach (Worker worker in this.workers)
             {
-                worker.Active = true;
-                Thread thread = new Thread(new ThreadStart(worker.Monitor));
+                Thread thread = new Thread(new ThreadStart(worker.Run));
+                threadList.Add(thread);
                 thread.Start();
             }
+
+            foreach (Thread thread in threadList)
+            {
+                thread.Join();
+            }
+            this.testEndTicks = DateTime.Now.Ticks;
+
+            Console.WriteLine("Finished all tasks");
         }
 
         private string[] ParseCommandFormat(string line)
@@ -203,14 +226,6 @@
             return new string[] {
                 fields[0], fields[1], fields[2], value
             };
-        }
-
-        public void Dispose()
-        {
-            foreach (Worker worker in this.workerList)
-            {
-                worker.Dispose();
-            }
         }
     }
 }

@@ -4,120 +4,56 @@
     using System.Threading;
     using System.Threading.Tasks;
 
-    internal class Worker : IDisposable
+    internal class Worker
     {
         public static readonly int DEFAULT_QUEUE_SIZE = 10000;
 
-        internal bool Active { get; set; }
-
+        /// <summary>
+        /// The task queue size, can be set by constructor parameters
+        /// </summary>
         internal int TaskQueueSize { get; set; }
 
         /// <summary>
-        /// A flag to declare whether the worker has producer and consumer at the same time:
-        /// (1) True: all tasks have been enqueued in advance, 
-        ///           no concurrent threads add tasks when the daemon thread is working
-        /// (2) False: both producer and consumer are working at the same time
+        /// The worker Id
         /// </summary>
-        internal bool OnlyConsumer { get; set; } = true;
-
-        internal int RemainedTasks { get; private set; }
-
-        internal int FinishedTasks { get; private set; }
-
-        internal long TasksBeginTicks { get; private set; }
-
-        internal long TasksEndTicks { get; private set; }
-
-        internal bool Finished { get; private set; } = false;
-
         internal int WorkerId;
 
-        private Task<object>[] txTaskQueue;
-
-        private int currTxId;
-
-        private int taskCount;
-
-        private object waitExecutionLock = new object();
         /// <summary>
-        /// The spinlock for the sync of task Queue
+        /// Task queue
         /// </summary>
-        private SpinLock spinLock;
+        private TxTask[] txTaskQueue;
+
+        /// <summary>
+        /// The number of tasks
+        /// </summary>
+        private int taskCount;
 
         public Worker(int workerId, int queueSize = -1)
         {
             this.WorkerId = workerId;
             this.TaskQueueSize = queueSize == -1 ? Worker.DEFAULT_QUEUE_SIZE : queueSize;
-            this.txTaskQueue = new Task<object>[this.TaskQueueSize];
-            this.currTxId = -1;
+            this.txTaskQueue = new TxTask[this.TaskQueueSize];
             this.taskCount = 0;
-            this.spinLock = new SpinLock();
         }
 
-        internal void EnqueueTxTask(Task<object> task)
+        internal void EnqueueTxTask(TxTask task)
         {
-            // there is only a consumer working
-            if (this.OnlyConsumer)
+            int taskId = this.taskCount;
+            if (taskId >= this.TaskQueueSize)
             {
-                int taskId = this.currTxId + 1;
-                if (taskId >= this.TaskQueueSize)
-                {
-                    throw new IndexOutOfRangeException("The task queue is full now");
-                }
+                throw new IndexOutOfRangeException("The task queue is full now");
+            }
 
-                this.txTaskQueue[taskId] = task;
-                this.currTxId++;
-                this.taskCount++;
-            }
-            else
-            {
-                // TODO
-            }
+            this.txTaskQueue[taskId] = task;
+            this.taskCount++;
         }
 
-        internal void Monitor()
+        internal void Run()
         {
-            this.RemainedTasks = this.taskCount;
-            this.FinishedTasks = 0;
-            this.TasksBeginTicks = DateTime.Now.Ticks;
-            this.TasksEndTicks = -1;
-
-            while (this.Active)
+            for (int i = 0; i < this.taskCount; i++)
             {
-                if (this.OnlyConsumer)
-                {
-                    if (this.currTxId >= 0)
-                    {
-                        Task task = this.txTaskQueue[this.currTxId--];
-                        task.Start();
-                        task.Wait();
-
-                        this.RemainedTasks--;
-                        this.FinishedTasks++;
-                    }
-                    else
-                    {
-                        if (this.TasksEndTicks == -1)
-                        {
-                            this.TasksEndTicks = DateTime.Now.Ticks;
-                            this.Finished = true;
-                            lock (this.waitExecutionLock)
-                            {
-                                System.Threading.Monitor.PulseAll(this.waitExecutionLock);
-                            }
-                        }
-                    }
-                }
-                else
-                {
-                    // TODO
-                }
+                txTaskQueue[i].Run();
             }
-        }
-
-        public void Dispose()
-        {
-            this.Active = false;
         }
     }
 }

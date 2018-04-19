@@ -50,7 +50,7 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <PropertyGroup>
-    <StartupObject>TransactionBenchmarkTest.TPCC.TestRedis</StartupObject>
+    <StartupObject>TransactionBenchmarkTest.YCSB.Program</StartupObject>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="Newtonsoft.Json, Version=11.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
@@ -112,17 +112,11 @@
     <Compile Include="TPCC\TPCCTable.cs" />
     <Compile Include="TPCC\TPCCWorkload.cs" />
     <Compile Include="TPCC\Utils.cs" />
+    <Compile Include="TxTask.cs" />
     <Compile Include="Worker.cs" />
-    <Compile Include="YCSB\ConcurrentRunner.cs" />
-    <Compile Include="YCSB\Operation.cs" />
-    <Compile Include="YCSB\LogEntry.cs" />
     <Compile Include="YCSB\Program.cs" />
     <Compile Include="YCSB\RedisBenchmarkTest.cs" />
-    <Compile Include="YCSB\Runner.cs" />
-    <Compile Include="YCSB\SequenceRunner.cs" />
-    <Compile Include="YCSB\CorrectnessTest.cs" />
     <Compile Include="YCSB\ThroughputBenchmarkTest.cs" />
-    <Compile Include="YCSB\YCSBTestBase.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

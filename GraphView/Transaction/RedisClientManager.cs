@@ -137,11 +137,11 @@
             RedisClientManager.clientPools.Add(key, pool);
 
             // If the redis version db in pipeline mode, start a daemon thread
-            if (key.RedisDbIndex != 0)
-            {
-                Thread t = new Thread(new ThreadStart(pool.Monitor));
-                t.Start();
-            }
+            // if (key.RedisDbIndex != 0)
+            // {
+            //     Thread t = new Thread(new ThreadStart(pool.Monitor));
+            //     t.Start();
+            // }
         }
     }
 }
