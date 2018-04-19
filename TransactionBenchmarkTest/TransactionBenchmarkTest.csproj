@@ -117,6 +117,7 @@
     <Compile Include="YCSB\Operation.cs" />
     <Compile Include="YCSB\LogEntry.cs" />
     <Compile Include="YCSB\Program.cs" />
+    <Compile Include="YCSB\RedisBenchmarkTest.cs" />
     <Compile Include="YCSB\Runner.cs" />
     <Compile Include="YCSB\SequenceRunner.cs" />
     <Compile Include="YCSB\CorrectnessTest.cs" />

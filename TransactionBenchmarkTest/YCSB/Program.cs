@@ -1,8 +1,5 @@
-﻿using GraphView.Transaction;
-using System;
+﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -45,6 +42,44 @@ namespace TransactionBenchmarkTest.YCSB
             worker.Active = false;
         }
 
+        static void RedisBenchmarkTest()
+        {
+            const int workerCount = 50;
+            const int taskCount = 500000;
+            const bool pipelineMode = true;
+            const int pipelineSize = 100;
+            // 1 second
+            const long ticksCycle = 10000000;
+
+            RedisBenchmarkTest test = new RedisBenchmarkTest(workerCount, taskCount, pipelineMode, pipelineSize);
+
+            // step1: setup test data
+            test.Setup();
+
+            // step2: run test
+            test.Run();
+
+            while (true)
+            {
+                int throughput = test.ComputeThroughput();
+                long lastTicks = DateTime.Now.Ticks;
+                if (throughput == -1)
+                {
+                    break;
+                }
+
+                if (pipelineMode)
+                {
+                    throughput *= pipelineSize;
+                }
+                Console.WriteLine("Throughput: {0} requests/second", throughput);
+
+                while (DateTime.Now.Ticks - lastTicks < ticksCycle) { };
+            }
+
+            test.Dispose();
+        }
+
         static void YCSBTest()
         {
             // RedisVersionDb.Instance.PipelineMode = true;
@@ -79,7 +114,10 @@ namespace TransactionBenchmarkTest.YCSB
 
         public static void Main(string[] args)
         {
-            YCSBTest();
+            // YCSBTest();
+            // LocalRedisBenchmarkTest();
+
+            RedisBenchmarkTest();
         }
     }
 }

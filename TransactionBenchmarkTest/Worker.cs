@@ -8,41 +8,9 @@
     {
         public static readonly int DEFAULT_QUEUE_SIZE = 10000;
 
-        private Task<object>[] txTaskQueue;
-
-        private int workerId;
-
-        private int currTxId;
-
-        private int taskCount;
-        /// <summary>
-        /// The spinlock for the sync of task Queue
-        /// </summary>
-        private SpinLock spinLock;
-
-        /// <summary>
-        /// The status of current Worker, close the 
-        /// </summary>
         internal bool Active { get; set; }
 
         internal int TaskQueueSize { get; set; }
-
-        private object waitExecutionLock = new object();
-
-        internal int Throughput
-        {
-            get
-            {
-                lock (this.waitExecutionLock)
-                {
-                    while (this.ExecutionTime == -1)
-                    {
-                        System.Threading.Monitor.Wait(this.waitExecutionLock);
-                    };
-                }
-                return (int)(this.taskCount/this.ExecutionTime);
-            }
-        }
 
         /// <summary>
         /// A flag to declare whether the worker has producer and consumer at the same time:
@@ -52,11 +20,33 @@
         /// </summary>
         internal bool OnlyConsumer { get; set; } = true;
 
-        internal double ExecutionTime { get; set; } = -1;
+        internal int RemainedTasks { get; private set; }
+
+        internal int FinishedTasks { get; private set; }
+
+        internal long TasksBeginTicks { get; private set; }
+
+        internal long TasksEndTicks { get; private set; }
+
+        internal bool Finished { get; private set; } = false;
+
+        internal int WorkerId;
+
+        private Task<object>[] txTaskQueue;
+
+        private int currTxId;
+
+        private int taskCount;
+
+        private object waitExecutionLock = new object();
+        /// <summary>
+        /// The spinlock for the sync of task Queue
+        /// </summary>
+        private SpinLock spinLock;
 
         public Worker(int workerId, int queueSize = -1)
         {
-            this.workerId = workerId;
+            this.WorkerId = workerId;
             this.TaskQueueSize = queueSize == -1 ? Worker.DEFAULT_QUEUE_SIZE : queueSize;
             this.txTaskQueue = new Task<object>[this.TaskQueueSize];
             this.currTxId = -1;
@@ -87,8 +77,11 @@
 
         internal void Monitor()
         {
-            long beginTime = DateTime.Now.Ticks;
-            long endTime = -1; 
+            this.RemainedTasks = this.taskCount;
+            this.FinishedTasks = 0;
+            this.TasksBeginTicks = DateTime.Now.Ticks;
+            this.TasksEndTicks = -1;
+
             while (this.Active)
             {
                 if (this.OnlyConsumer)
@@ -99,17 +92,15 @@
                         task.Start();
                         task.Wait();
 
-                        //if (this.currTxId % 10 == 0)
-                        //{
-                        //    Console.WriteLine("Worker {0} finished {1}", this.workerId, this.taskCount - this.currTxId);
-                        //}
+                        this.RemainedTasks--;
+                        this.FinishedTasks++;
                     }
                     else
                     {
-                        if (endTime == -1)
-                        { 
-                            endTime = DateTime.Now.Ticks;
-                            this.ExecutionTime = (endTime - beginTime)*1.0/10000000;
+                        if (this.TasksEndTicks == -1)
+                        {
+                            this.TasksEndTicks = DateTime.Now.Ticks;
+                            this.Finished = true;
                             lock (this.waitExecutionLock)
                             {
                                 System.Threading.Monitor.PulseAll(this.waitExecutionLock);
