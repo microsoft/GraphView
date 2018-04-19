@@ -155,30 +155,30 @@
 
         internal void Conclude()
         {
-            bool allFinished = false;
-            while (!allFinished)
-            {
-                int i = 0;
-                for (; i < this.workerCount; i++)
-                {
-                    if (this.workerList[i].ExecutionTime == -1)
-                    {
-                        break;
-                    }
-                }
-                if (i >= this.workerCount)
-                {
-                    allFinished = true;
-                }
-            }
+            //bool allFinished = false;
+            //while (!allFinished)
+            //{
+            //    int i = 0;
+            //    for (; i < this.workerCount; i++)
+            //    {
+            //        if (this.workerList[i].ExecutionTime == -1)
+            //        {
+            //            break;
+            //        }
+            //    }
+            //    if (i >= this.workerCount)
+            //    {
+            //        allFinished = true;
+            //    }
+            //}
 
-            int throughput = 0;
-            foreach (Worker worker in this.workerList)
-            {
-                throughput += worker.Throughput;
-            }
+            //int throughput = 0;
+            //foreach (Worker worker in this.workerList)
+            //{
+            //    throughput += worker.Throughput;
+            //}
 
-            Console.WriteLine("Throughput: {0} txs/second", throughput);
+            //Console.WriteLine("Throughput: {0} txs/second", throughput);
         }
 
         private void StartWorkers()
