@@ -7,12 +7,11 @@ using System.Threading.Tasks;
 
 namespace GraphView.Transaction
 {
-	public abstract class LogStore : ILogStore
+	internal class CassandraLogConnectionPool
 	{
-		/// <summary>
-		/// Provide an option to set log store in pipelineMode or not
-		/// </summary>
-		public bool PipelineMode { get; set; }
+		public static readonly int DEFAULT_BATCH_SIZE = 1;
+
+		public static readonly long DEFAULT_WINDOW_MICRO_SEC = 100L;
 
 		/// <summary>
 		/// Request Window Size, we can reset it by the propery
@@ -36,7 +35,7 @@ namespace GraphView.Transaction
 		internal int currReqId;
 
 		/// <summary>
-		/// The status of current log store, we can set it by the propery
+		/// The status of current connection pool, we can set it by the propery
 		/// </summary>
 		internal bool Active { get; set; }
 
@@ -44,6 +43,18 @@ namespace GraphView.Transaction
 		/// The spin lock to ensure that enqueue and flush are exclusive
 		/// </summary>
 		internal SpinLock spinLock;
+
+		public CassandraLogConnectionPool()
+		{
+			this.RequestBatchSize = CassandraLogConnectionPool.DEFAULT_BATCH_SIZE;
+			this.WindowMicroSec = CassandraLogConnectionPool.DEFAULT_WINDOW_MICRO_SEC;
+			this.Active = true;
+
+			this.requestQueue = new LogRequest[this.RequestBatchSize];
+			this.currReqId = -1;
+
+			this.spinLock = new SpinLock();
+		}
 
 		/// <summary>
 		/// Enqueues an incoming cassandra request to a queue. Queued requests are periodically sent to log store.
@@ -84,9 +95,37 @@ namespace GraphView.Transaction
 			}
 		}
 
-		internal virtual void Flush()
+		internal void Flush()
 		{
-			throw new NotImplementedException();
+			// Send queued requests to Cassandra, collect results and store each of them in the corresonding request
+			for (int reqId = 0; reqId <= this.currReqId; reqId++)
+			{
+				LogRequest req = this.requestQueue[reqId];
+				if (req.Type == LogRequestType.WriteTxLog)
+				{
+					req.IsSuccess = CassandraLogStore.Instance.InsertCommittedTx(req.TxId);
+					req.Finished = true;
+				}
+				else
+				{
+					LogVersionEntry entry = req.LogEntry;
+					req.IsSuccess = CassandraLogStore.Instance.InsertCommittedVersion(req.TableId, entry.RecordKey, entry.Payload, req.TxId, entry.CommitTs);
+					req.Finished = true;
+				}
+			}
+
+			// Release the request lock to make sure processRequest can keep going
+			for (int reqId = 0; reqId <= this.currReqId; reqId++)
+			{
+				// Monitor.Wait must be called in sync block, here we should lock the 
+				// request and release the it on time
+				lock (this.requestQueue[reqId])
+				{
+					System.Threading.Monitor.PulseAll(this.requestQueue[reqId]);
+				}
+			}
+
+			this.currReqId = -1;
 		}
 
 		/// <summary>
@@ -145,7 +184,7 @@ namespace GraphView.Transaction
 			this.Active = false;
 		}
 
-		private bool ProcessBoolRequest(LogRequest request)
+		internal bool ProcessBoolRequest(LogRequest request)
 		{
 			this.EnqueueRequest(request);
 			lock (request)
@@ -157,42 +196,6 @@ namespace GraphView.Transaction
 			}
 
 			return request.IsSuccess;
-		}
-
-		public bool WriteCommittedVersion(string tableId, object recordKey, object payload, long txId, long commitTs)
-		{
-			if (this.PipelineMode)
-			{
-				LogVersionEntry logEntry = new LogVersionEntry(recordKey, payload, txId);
-				LogRequest request = new LogRequest(tableId, txId, logEntry, LogRequestType.WriteVersionLog);
-				return this.ProcessBoolRequest(request);
-			}
-			else
-			{
-				return this.InsertCommittedVersion(tableId, recordKey, payload, txId, commitTs);
-			}
-		}
-
-		public bool WriteCommittedTx(long txId)
-		{
-			if (this.PipelineMode)
-			{
-				return this.ProcessBoolRequest(new LogRequest(txId, LogRequestType.WriteTxLog));
-			}
-			else
-			{
-				return this.InsertCommittedTx(txId);
-			}
-		}
-
-		internal virtual bool InsertCommittedVersion(string tableId, object recordKey, object payload, long txId, long commitTs)
-		{
-			throw new NotImplementedException();
-		}
-
-		internal virtual bool InsertCommittedTx(long txId)
-		{
-			throw new NotImplementedException();
 		}
 	}
 }

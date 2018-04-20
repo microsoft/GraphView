@@ -9,11 +9,16 @@ using Cassandra;
 
 namespace GraphView.Transaction
 {
-    public class CassandraLogStore : LogStore
-    {
-		public static readonly int DEFAULT_BATCH_SIZE = 1;
+    public class CassandraLogStore : ILogStore
+	{
+		/// <summary>
+		/// Provide an option to set log store in pipelineMode or not
+		/// </summary>
+		public bool PipelineMode { get; set; } = false;
 
-		public static readonly long DEFAULT_WINDOW_MICRO_SEC = 100L;
+		public static readonly int DEFAULT_CONNECTION_POOL_COUNT = 3;
+
+		private CassandraLogConnectionPool[] connectionPool;
 
 		/// <summary>
 		/// The table name used to log the committed transaction' Id.
@@ -66,6 +71,17 @@ namespace GraphView.Transaction
         private CassandraLogStore()
         {
             this.tableSet = new HashSet<string>();
+			this.connectionPool = new CassandraLogConnectionPool[CassandraLogStore.DEFAULT_CONNECTION_POOL_COUNT];
+			for (int i = 0; i < CassandraLogStore.DEFAULT_CONNECTION_POOL_COUNT; i++)
+			{
+				int index = i;
+				this.connectionPool[index] = new CassandraLogConnectionPool();
+				new Thread(() =>
+				{
+					this.connectionPool[index].Monitor();
+				}).Start();
+			}
+
 			this.session = this.SessionManager.GetSession(CassandraLogStore.KEYSPACE);
 
             // first create the log keyspace
@@ -82,15 +98,6 @@ namespace GraphView.Transaction
 			//initialize the prepare statement
 			this.insertTxIdToLog = this.session.Prepare($@"
                         INSERT INTO {CassandraLogStore.KEYSPACE + "." + CassandraLogStore.TRANSACTION_TABLE_NAME} (txId) VALUES (?)");
-
-			this.RequestBatchSize = CassandraLogStore.DEFAULT_BATCH_SIZE;
-			this.WindowMicroSec = CassandraLogStore.DEFAULT_WINDOW_MICRO_SEC;
-			this.Active = true;
-
-			this.requestQueue = new LogRequest[this.RequestBatchSize];
-			this.currReqId = -1;
-
-			this.spinLock = new SpinLock();
 		}
 
         public static CassandraLogStore Instance
@@ -111,40 +118,33 @@ namespace GraphView.Transaction
             }
         }
 
-		internal override void Flush()
+		public bool WriteCommittedVersion(string tableId, object recordKey, object payload, long txId, long commitTs)
 		{
-			// Send queued requests to Cassandra, collect results and store each of them in the corresonding request
-			for (int reqId = 0; reqId <= this.currReqId; reqId++)
+			if (this.PipelineMode)
 			{
-				LogRequest req = this.requestQueue[reqId];
-				if (req.Type == LogRequestType.WriteTxLog)
-				{
-					req.IsSuccess = this.InsertCommittedTx(req.TxId);
-					req.Finished = true;
-				}
-				else
-				{
-					LogVersionEntry entry = req.LogEntry;
-					req.IsSuccess = this.InsertCommittedVersion(req.TableId, entry.RecordKey, entry.Payload, req.TxId, entry.CommitTs);
-					req.Finished = true;
-				}
+				LogVersionEntry logEntry = new LogVersionEntry(recordKey, payload, txId);
+				LogRequest request = new LogRequest(tableId, txId, logEntry, LogRequestType.WriteVersionLog);
+				return this.connectionPool[txId % CassandraLogStore.DEFAULT_CONNECTION_POOL_COUNT].ProcessBoolRequest(request);
 			}
-
-			// Release the request lock to make sure processRequest can keep going
-			for (int reqId = 0; reqId <= this.currReqId; reqId++)
+			else
 			{
-				// Monitor.Wait must be called in sync block, here we should lock the 
-				// request and release the it on time
-				lock (this.requestQueue[reqId])
-				{
-					System.Threading.Monitor.PulseAll(this.requestQueue[reqId]);
-				}
+				return this.InsertCommittedVersion(tableId, recordKey, payload, txId, commitTs);
 			}
-
-			this.currReqId = -1;
 		}
 
-		internal override bool InsertCommittedVersion(string tableId, object recordKey, object payload, long txId, long commitTs)
+		public bool WriteCommittedTx(long txId)
+		{
+			if (this.PipelineMode)
+			{
+				return this.connectionPool[txId % CassandraLogStore.DEFAULT_CONNECTION_POOL_COUNT].ProcessBoolRequest(new LogRequest(txId, LogRequestType.WriteTxLog));
+			}
+			else
+			{
+				return this.InsertCommittedTx(txId);
+			}
+		}
+
+		internal bool InsertCommittedVersion(string tableId, object recordKey, object payload, long txId, long commitTs)
 		{
 			if (!this.tableSet.Contains(tableId))
 			{
@@ -189,7 +189,7 @@ namespace GraphView.Transaction
 			return true;
 		}
 
-		internal override bool InsertCommittedTx(long txId)
+		internal bool InsertCommittedTx(long txId)
 		{
 			try
 			{
@@ -202,6 +202,14 @@ namespace GraphView.Transaction
 			}
 
 			return true;
+		}
+
+		internal void Dispose()
+		{
+			for (int i = 0; i < CassandraLogStore.DEFAULT_CONNECTION_POOL_COUNT; i++)
+			{
+				this.connectionPool[i].Dispose();
+			}
 		}
     }
 }
