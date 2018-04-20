@@ -1,6 +1,7 @@
 ﻿namespace TransactionBenchmarkTest
 {
     using System;
+    using System.Diagnostics;
     using System.Threading;
     using System.Threading.Tasks;
 
@@ -28,10 +29,14 @@
         /// </summary>
         private int taskCount;
 
+        internal int FinishedTxs { get; private set; }
+
+        internal int AbortedTxs { get; private set; }
+
         public Worker(int workerId, int queueSize = -1)
         {
             this.WorkerId = workerId;
-            this.TaskQueueSize = queueSize == -1 ? Worker.DEFAULT_QUEUE_SIZE : queueSize;
+            this.TaskQueueSize = Math.Max(queueSize, DEFAULT_QUEUE_SIZE);
             this.txTaskQueue = new TxTask[this.TaskQueueSize];
             this.taskCount = 0;
         }
@@ -50,10 +55,35 @@
 
         internal void Run()
         {
+            // this.PinThreadOnCores();
+
             for (int i = 0; i < this.taskCount; i++)
             {
-                txTaskQueue[i].Run();
+                bool commited = (bool)txTaskQueue[i].Run();
+                this.FinishedTxs++;
+                if (!commited)
+                {
+                    this.AbortedTxs++;
+                }
             }
+        }
+
+        internal void PinThreadOnCores()
+        {
+            Thread.BeginThreadAffinity();
+            Process Proc = Process.GetCurrentProcess();
+            foreach (ProcessThread pthread in Proc.Threads)
+            {
+                if (pthread.Id == AppDomain.GetCurrentThreadId())
+                {
+                    long AffinityMask = (long)Proc.ProcessorAffinity;
+                    AffinityMask &= 0x000F;
+                    // AffinityMask &= 0x007F;
+                    pthread.ProcessorAffinity = (IntPtr)AffinityMask;
+                }
+            }
+
+            Thread.EndThreadAffinity();
         }
     }
 }

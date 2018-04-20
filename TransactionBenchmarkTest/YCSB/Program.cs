@@ -1,4 +1,7 @@
 ﻿using System;
+using System.Diagnostics;
+using System.Threading;
+
 namespace TransactionBenchmarkTest.YCSB
 {
     class Program
@@ -18,8 +21,8 @@ namespace TransactionBenchmarkTest.YCSB
 
         static void YCSBTest()
         {
-            const int workerCount = 6;
-            const int taskCount = 1000;
+            const int workerCount = 4;
+            const int taskCount = 50000;
             const string dataFile = "ycsb_data.in";
             const string operationFile = "ycsb_ops.in";
 
@@ -29,8 +32,27 @@ namespace TransactionBenchmarkTest.YCSB
             test.Stats();
         }
 
+        internal static void PinThreadOnCores()
+        {
+            Thread.BeginThreadAffinity();
+            Process Proc = Process.GetCurrentProcess();
+            foreach (ProcessThread pthread in Proc.Threads)
+            {
+                if (pthread.Id == AppDomain.GetCurrentThreadId())
+                {
+                    long AffinityMask = (long)Proc.ProcessorAffinity;
+                    AffinityMask &= 0x0010;
+                    // AffinityMask &= 0x007F;
+                    pthread.ProcessorAffinity = (IntPtr)AffinityMask;
+                }
+            }
+
+            Thread.EndThreadAffinity();
+        }
+
         public static void Main(string[] args)
         {
+            // PinThreadOnCores();
             YCSBTest();
             // RedisBenchmarkTest();
         }

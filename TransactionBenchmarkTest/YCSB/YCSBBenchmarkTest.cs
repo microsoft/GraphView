@@ -14,21 +14,22 @@
         internal string Value;
         internal string Type;
 
-        public TxWorkload(string tableId, string key, string value, string type)
+        public TxWorkload(string type, string tableId, string key, string value)
         {
             this.TableId = tableId;
             this.Key = key;
             this.Value = value;
             this.Type = type;
         }
+
+        public override string ToString()
+        {
+            return string.Format("key={0},value={1},type={2},tableId={3}", this.Key, this.Value, this.Type, this.TableId);
+        }
     }
 
     class YCSBBenchmarkTest
     {
-        public static int FINISHED_TXS = 0;
-
-        public static int COMMITED_TXS = 0;
-
         public static readonly String TABLE_ID = "ycsb_table";
 
         public static readonly long REDIS_DB_INDEX = 7L;
@@ -38,7 +39,6 @@
             TxWorkload oper = op as TxWorkload;
             Transaction tx = new Transaction(null, RedisVersionDb.Instance);
             string readValue = null;
-
             try
             {
                 switch (oper.Type)
@@ -75,18 +75,14 @@
                         break;
                 }
                 tx.Commit();
-
-                YCSBBenchmarkTest.FINISHED_TXS += 1;
-                if (tx.Status == TxStatus.Committed)
-                {
-                    YCSBBenchmarkTest.COMMITED_TXS += 1;
-                }
+                // commited here
+                return true;
             }
             catch (TransactionException e)
             {
-
+                // aborted here
+                return false;
             }
-            return null;
         };
 
         /// <summary>
@@ -129,13 +125,13 @@
             }
         }
 
-        internal double AbortRate
-        {
-            get
-            {
-                return 1 - (COMMITED_TXS * 1.0 / FINISHED_TXS);
-            }
-        }
+        //internal double AbortRate
+        //{
+        //    get
+        //    {
+        //        return 1 - (COMMITED_TXS * 1.0 / FINISHED_TXS);
+        //    }
+        //}
 
         internal double RunSeconds
         {
@@ -162,7 +158,7 @@
 
             for (int i = 0; i < this.workerCount; i++)
             {
-                this.workers.Add(new Worker(i+1));
+                this.workers.Add(new Worker(i+1, taskCountPerWorker));
             }
         }
 
@@ -193,7 +189,7 @@
                     count++;
 
                     ACTION(operation);
-                    if (count % 1000 == 0)
+                    if (count % 5000 == 0)
                     {
                         Console.WriteLine("Loaded {0} records", count);
                     }
@@ -253,8 +249,14 @@
             Console.WriteLine("\nFinshed {0} requests in {1} seconds", taskCount, this.RunSeconds);
             Console.WriteLine("Transaction Throughput: {0} tx/second", this.TxThroughput);
 
-            Console.WriteLine("\nFinshed {0} txs, Commited {1} txs", FINISHED_TXS, COMMITED_TXS);
-            Console.WriteLine("Transaction AbortRate: {0}%", this.AbortRate * 100);
+            int totalTxs = 0, abortedTxs = 0;
+            foreach (Worker worker in this.workers)
+            {
+                totalTxs += worker.FinishedTxs;
+                abortedTxs += worker.AbortedTxs;
+            }
+            Console.WriteLine("\nFinshed {0} txs, Commited {1} txs", totalTxs, abortedTxs);
+            Console.WriteLine("Transaction AbortRate: {0}%", (abortedTxs*1.0/totalTxs) * 100);
 
             Console.WriteLine("\nFinshed {0} commands in {1} seconds", this.commandCount, this.RunSeconds);
             Console.WriteLine("Redis Throughput: {0} cmd/second", this.RedisThroughput);
@@ -266,9 +268,12 @@
         {
             string[] fields = line.Split(' ');
             string value = null;
-            if (fields[4].Length > 6)
+            int fieldsOffset = fields[0].Length + fields[1].Length + fields[2].Length + 3 + 9;
+            int fieldsEnd = line.Length - 2;
+
+            if (fieldsOffset < fieldsEnd)
             {
-                value = fields[4].Substring(7, fields[4].Length - 7);
+                value = line.Substring(fieldsOffset, fieldsEnd-fieldsOffset+1);
             }
 
             return new string[] {
