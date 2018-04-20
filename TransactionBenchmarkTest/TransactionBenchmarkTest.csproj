@@ -117,7 +117,7 @@
     <Compile Include="Worker.cs" />
     <Compile Include="YCSB\Program.cs" />
     <Compile Include="YCSB\RedisBenchmarkTest.cs" />
-    <Compile Include="YCSB\ThroughputBenchmarkTest.cs" />
+    <Compile Include="YCSB\YCSBBenchmarkTest.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
