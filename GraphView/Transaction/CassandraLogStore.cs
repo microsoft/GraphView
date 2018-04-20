@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -143,7 +144,7 @@ namespace GraphView.Transaction
 			this.currReqId = -1;
 		}
 
-		private bool InsertCommittedVersion(string tableId, object recordKey, object payload, long txId, long commitTs)
+		internal override bool InsertCommittedVersion(string tableId, object recordKey, object payload, long txId, long commitTs)
 		{
 			if (!this.tableSet.Contains(tableId))
 			{
@@ -188,7 +189,7 @@ namespace GraphView.Transaction
 			return true;
 		}
 
-		private bool InsertCommittedTx(long txId)
+		internal override bool InsertCommittedTx(long txId)
 		{
 			try
 			{
