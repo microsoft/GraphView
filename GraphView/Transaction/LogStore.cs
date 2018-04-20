@@ -10,6 +10,11 @@ namespace GraphView.Transaction
 	public abstract class LogStore : ILogStore
 	{
 		/// <summary>
+		/// Provide an option to set log store in pipelineMode or not
+		/// </summary>
+		public bool PipelineMode { get; set; }
+
+		/// <summary>
 		/// Request Window Size, we can reset it by the propery
 		/// </summary>
 		internal int RequestBatchSize { get; set; }
@@ -156,14 +161,38 @@ namespace GraphView.Transaction
 
 		public bool WriteCommittedVersion(string tableId, object recordKey, object payload, long txId, long commitTs)
 		{
-			LogVersionEntry logEntry = new LogVersionEntry(recordKey, payload, txId);
-			LogRequest request = new LogRequest(tableId, txId, logEntry, LogRequestType.WriteVersionLog);
-			return this.ProcessBoolRequest(request);
+			if (this.PipelineMode)
+			{
+				LogVersionEntry logEntry = new LogVersionEntry(recordKey, payload, txId);
+				LogRequest request = new LogRequest(tableId, txId, logEntry, LogRequestType.WriteVersionLog);
+				return this.ProcessBoolRequest(request);
+			}
+			else
+			{
+				return this.InsertCommittedVersion(tableId, recordKey, payload, txId, commitTs);
+			}
 		}
 
 		public bool WriteCommittedTx(long txId)
 		{
-			return this.ProcessBoolRequest(new LogRequest(txId, LogRequestType.WriteTxLog));
+			if (this.PipelineMode)
+			{
+				return this.ProcessBoolRequest(new LogRequest(txId, LogRequestType.WriteTxLog));
+			}
+			else
+			{
+				return this.InsertCommittedTx(txId);
+			}
+		}
+
+		internal virtual bool InsertCommittedVersion(string tableId, object recordKey, object payload, long txId, long commitTs)
+		{
+			throw new NotImplementedException();
+		}
+
+		internal virtual bool InsertCommittedTx(long txId)
+		{
+			throw new NotImplementedException();
 		}
 	}
 }
