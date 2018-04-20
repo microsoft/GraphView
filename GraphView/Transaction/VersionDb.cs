@@ -11,8 +11,6 @@ namespace GraphView.Transaction
     {
         public static readonly long RETURN_ERROR_CODE = -2L;
 
-        private static readonly Random random = new Random();
-
         /// <summary>
         /// Define a delegate type to specify the partition rules.
         /// Which can be re-assigned outside the version db
@@ -166,6 +164,18 @@ namespace GraphView.Transaction
 
             versionTable.EnqueueTxRequest(req);
             return req;
+        }
+
+        internal virtual bool ReplaceWholeVersionEntry(string tableId, object recordKey, long versionKey,
+            VersionEntry versionEntry)
+        {
+            VersionTable versionTable = this.GetVersionTable(tableId);
+            if (versionTable == null)
+            {
+                return false;
+            }
+
+            return versionTable.ReplaceWholeVersionEntry(recordKey, versionKey, versionEntry);
         }
 
         internal virtual bool UploadNewVersionEntry(string tableId, object recordKey, long versionKey, VersionEntry versionEntry)
@@ -402,14 +412,19 @@ namespace GraphView.Transaction
 
     public abstract partial class VersionDb
     {
-        /// <summary>
-        /// Generate a random long type in the range of [min, max]
-        /// </summary>
-        /// <returns></returns>
-        protected long RandomLong(long min, long max, Random rand)
+		/// <summary>
+		/// A random number generator for create new TxId.
+		/// </summary>
+		private static readonly Random random = new Random();
+
+		/// <summary>
+		/// Generate a random long type in the range of [min, max]
+		/// </summary>
+		/// <returns></returns>
+		protected long RandomLong(long min, long max)
         {
             byte[] buf = new byte[8];
-            rand.NextBytes(buf);
+            VersionDb.random.NextBytes(buf);
             long longRand = BitConverter.ToInt64(buf, 0);
 
             return (Math.Abs(longRand % (max - min)) + min);

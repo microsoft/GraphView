@@ -1,47 +1,60 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+using System.Diagnostics;
 using System.Threading;
-using System.Threading.Tasks;
 
 namespace TransactionBenchmarkTest.YCSB
 {
     class Program
     {
-        public static void Main(string[] args)
+        static void RedisBenchmarkTest()
         {
-            // start a worker
-            Worker worker = new Worker();
-            worker.Active = true;
-            Thread thread = new Thread(new ThreadStart(worker.Monitor));
-            thread.Start();
+            const int workerCount = 5;
+            const int taskCount = 10000;
+            const bool pipelineMode = false;
+            const int pipelineSize = 1000;
 
-            Func<object, object> action = (object obj) =>
-            {
-                Console.WriteLine("Thread {0} is running", Thread.CurrentThread.ManagedThreadId);
-                Tuple<int, int> tuple = new Tuple<int, int>((int) obj, 123);
-                return (object)tuple;
-            };
+            RedisBenchmarkTest test = new RedisBenchmarkTest(workerCount, taskCount, pipelineMode, pipelineSize);
+            test.Setup();
+            test.Run();
+            test.Stats();
+        }
 
-            List<Task<object>> taskList = new List<Task<object>>();
-            for (int i = 0; i < 5; i++)
-            {
-                Task<object> t = new Task<object>(action, i);
-                taskList.Add(t);
-                worker.EnqueueTxTask(t);
-            }
+        static void YCSBTest()
+        {
+            const int workerCount = 4;
+            const int taskCount = 50000;
+            const string dataFile = "ycsb_data.in";
+            const string operationFile = "ycsb_ops.in";
 
-            Thread.Sleep(1000);
-            for (int i = 0; i < 5; i++)
+            YCSBBenchmarkTest test = new YCSBBenchmarkTest(workerCount, taskCount);
+            test.Setup(dataFile, operationFile);
+            test.Run();
+            test.Stats();
+        }
+
+        internal static void PinThreadOnCores()
+        {
+            Thread.BeginThreadAffinity();
+            Process Proc = Process.GetCurrentProcess();
+            foreach (ProcessThread pthread in Proc.Threads)
             {
-                if (taskList[i].IsCompleted)
+                if (pthread.Id == AppDomain.GetCurrentThreadId())
                 {
-                    Console.WriteLine(taskList[i].Result);
+                    long AffinityMask = (long)Proc.ProcessorAffinity;
+                    AffinityMask &= 0x0010;
+                    // AffinityMask &= 0x007F;
+                    pthread.ProcessorAffinity = (IntPtr)AffinityMask;
                 }
             }
-            // close the worker
-            worker.Active = false;
+
+            Thread.EndThreadAffinity();
+        }
+
+        public static void Main(string[] args)
+        {
+            // PinThreadOnCores();
+            YCSBTest();
+            // RedisBenchmarkTest();
         }
     }
 }

@@ -1,87 +1,89 @@
 ﻿namespace TransactionBenchmarkTest
 {
     using System;
+    using System.Diagnostics;
     using System.Threading;
     using System.Threading.Tasks;
 
-    internal class Worker : IDisposable
+    internal class Worker
     {
         public static readonly int DEFAULT_QUEUE_SIZE = 10000;
 
-        private Task<object>[] txTaskQueue;
-
-        private int currTxId;
-
         /// <summary>
-        /// The spinlock for the sync of task Queue
+        /// The task queue size, can be set by constructor parameters
         /// </summary>
-        private SpinLock spinLock;
-        /// <summary>
-        /// The status of current Worker, close the 
-        /// </summary>
-        internal bool Active { get; set; }
-
         internal int TaskQueueSize { get; set; }
 
         /// <summary>
-        /// A flag to declare whether the worker has producer and consumer at the same time:
-        /// (1) True: all tasks have been enqueued in advance, 
-        ///           no concurrent threads add tasks when the daemon thread is working
-        /// (2) False: both producer and consumer are working at the same time
+        /// The worker Id
         /// </summary>
-        internal bool OnlyConsumer { get; set; } = true;
+        internal int WorkerId;
 
-        public Worker(int queueSize = -1)
+        /// <summary>
+        /// Task queue
+        /// </summary>
+        private TxTask[] txTaskQueue;
+
+        /// <summary>
+        /// The number of tasks
+        /// </summary>
+        private int taskCount;
+
+        internal int FinishedTxs { get; private set; }
+
+        internal int AbortedTxs { get; private set; }
+
+        public Worker(int workerId, int queueSize = -1)
         {
-            this.TaskQueueSize = queueSize == -1 ? Worker.DEFAULT_QUEUE_SIZE : queueSize;
-            this.txTaskQueue = new Task<object>[this.TaskQueueSize];
-            this.currTxId = -1;
-            this.spinLock = new SpinLock();
+            this.WorkerId = workerId;
+            this.TaskQueueSize = Math.Max(queueSize, DEFAULT_QUEUE_SIZE);
+            this.txTaskQueue = new TxTask[this.TaskQueueSize];
+            this.taskCount = 0;
         }
 
-        internal void EnqueueTxTask(Task<object> task)
+        internal void EnqueueTxTask(TxTask task)
         {
-            // there is only a consumer working
-            if (this.OnlyConsumer)
+            int taskId = this.taskCount;
+            if (taskId >= this.TaskQueueSize)
             {
-                int taskId = this.currTxId + 1;
-                if (taskId >= this.TaskQueueSize)
-                {
-                    throw new IndexOutOfRangeException("The task queue is full now");
-                }
+                throw new IndexOutOfRangeException("The task queue is full now");
+            }
 
-                this.txTaskQueue[taskId] = task;
-                this.currTxId++;
-            }
-            else
-            {
-                // TODO
-            }
+            this.txTaskQueue[taskId] = task;
+            this.taskCount++;
         }
 
-        internal void Monitor()
+        internal void Run()
         {
-            while (this.Active)
+            // this.PinThreadOnCores();
+
+            for (int i = 0; i < this.taskCount; i++)
             {
-                if (this.OnlyConsumer)
+                bool commited = (bool)txTaskQueue[i].Run();
+                this.FinishedTxs++;
+                if (!commited)
                 {
-                    if (this.currTxId >= 0)
-                    {
-                        Task task = this.txTaskQueue[this.currTxId--];
-                        task.Start();
-                        task.Wait();
-                    }
-                }
-                else
-                {
-                    // TODO
+                    this.AbortedTxs++;
                 }
             }
         }
 
-        public void Dispose()
+        internal void PinThreadOnCores()
         {
-            this.Active = false;
+            Thread.BeginThreadAffinity();
+            Process Proc = Process.GetCurrentProcess();
+            foreach (ProcessThread pthread in Proc.Threads)
+            {
+                if (pthread.Id == AppDomain.GetCurrentThreadId())
+                {
+                    long AffinityMask = (long)Proc.ProcessorAffinity;
+                    AffinityMask &= 0x000F;
+                    // AffinityMask &= 0x007F;
+                    pthread.ProcessorAffinity = (IntPtr)AffinityMask;
+                }
+            }
+
+            Thread.EndThreadAffinity();
         }
     }
 }

@@ -27,16 +27,6 @@
     /// </summary>
     internal partial class CassandraVersionTable : VersionTable
     {
-        /// <summary>
-        /// The cluster instance
-        /// </summary>
-        private Cluster CassandraCluster {
-            get
-            {
-                return CassandraClusterManager.CassandraCluster;
-            }
-        }
-
         public CassandraVersionTable(VersionDb versionDb, string tableId)
             : base(versionDb, tableId)
         { 

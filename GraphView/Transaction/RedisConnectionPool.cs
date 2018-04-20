@@ -1,6 +1,8 @@
 ﻿namespace GraphView.Transaction
 {
     using System;
+    using System.Collections.Generic;
+    using System.Diagnostics;
     using System.Threading;
     using ServiceStack.Redis;
     using ServiceStack.Redis.Pipeline;
@@ -139,6 +141,7 @@
             // Spinlock until an empty spot is available in the queue
             while (reqId < 0 || reqId >= this.RequestBatchSize)
             {
+				reqId = this.currReqId + 1;
                 if (reqId >= this.RequestBatchSize)
                 {
                     continue;
@@ -149,11 +152,14 @@
                     try
                     {
                         this.spinLock.Enter(ref lockTaken);
-                        // No need to take interlocked since it already in the lock
-                        // reqId = Interlocked.Increment(ref this.currReqId);
-                        this.currReqId++;
-                        reqId = this.currReqId;
-                        this.requestQueue[reqId] = request;
+						// No need to take interlocked since it already in the lock
+						// reqId = Interlocked.Increment(ref this.currReqId);
+						reqId = this.currReqId + 1;
+						if (reqId < this.RequestBatchSize)
+						{
+							this.currReqId++;
+							this.requestQueue[reqId] = request;
+						}
                     }
                     finally
                     {
@@ -208,7 +214,6 @@
                                     r => ((RedisNativeClient)r).HSet(req.HashId, req.Key, req.Value),
                                     req.SetLong, req.SetError);
                                 break;
-                            // no reponse for HMSet
                             case RedisRequestType.HMSet:
                                 pipe.QueueCommand(
                                     r => ((RedisNativeClient)r).HMSet(req.HashId, req.Keys, req.Values),
@@ -231,6 +236,17 @@
 
                     pipe.Flush();
                 }
+
+                // Release the request lock to make sure processRequest can keep going
+                for (int reqId = 0; reqId <= this.currReqId; reqId++)
+                {
+                    // Monitor.Wait must be called in sync block, here we should lock the 
+                    // request and release the it on time
+                    lock (this.requestQueue[reqId])
+                    {
+                        System.Threading.Monitor.PulseAll(this.requestQueue[reqId]);
+                    }
+                }
             }
 
             this.currReqId = -1;
@@ -247,7 +263,7 @@
             {
                 long now = DateTime.Now.Ticks / 10;
                 if (now - lastFlushTime >= this.WindowMicroSec || 
-                    this.currReqId >= this.RequestBatchSize)
+                    this.currReqId + 1 >= this.RequestBatchSize)
                 {
                     if (this.currReqId >= 0)
                     {
@@ -295,7 +311,13 @@
         internal long ProcessLongRequest(RedisRequest redisRequest)
         {
             this.EnqueueRequest(redisRequest);
-            while (!redisRequest.Finished) { }
+            lock (redisRequest)
+            {
+                while (!redisRequest.Finished)
+                {
+                    System.Threading.Monitor.Wait(redisRequest);
+                }
+            }
 
             return (long)redisRequest.Result;
         }
@@ -303,7 +325,13 @@
         internal byte[][] ProcessValuesRequest(RedisRequest redisRequest)
         {
             this.EnqueueRequest(redisRequest);
-            while (!redisRequest.Finished) { }
+            lock (redisRequest)
+            {
+                while (!redisRequest.Finished)
+                {
+                    System.Threading.Monitor.Wait(redisRequest);
+                }
+            }
 
             return (byte[][])redisRequest.Result;
         }
@@ -311,15 +339,56 @@
         internal byte[] ProcessValueRequest(RedisRequest redisRequest)
         {
             this.EnqueueRequest(redisRequest);
-            while (!redisRequest.Finished) { }
-
+            lock (redisRequest)
+            {
+                while (!redisRequest.Finished)
+                {
+                    System.Threading.Monitor.Wait(redisRequest);
+                }
+            }
             return (byte[])redisRequest.Result;
         }
 
         internal void ProcessVoidRequest(RedisRequest redisRequest)
         {
             this.EnqueueRequest(redisRequest);
-            while (!redisRequest.Finished) { }
+            lock (redisRequest)
+            {
+                while (!redisRequest.Finished)
+                {
+                    System.Threading.Monitor.Wait(redisRequest);
+                }
+            }
+        }
+
+        internal byte[][] ProcessValueRequestInBatch(IEnumerable<RedisRequest> reqBatch)
+        {
+            RedisRequest lastRequest = null;
+            int count = 0;
+            foreach (RedisRequest req in reqBatch)
+            {
+                count++;
+                lastRequest = req;
+                this.EnqueueRequest(req);
+            }
+
+            // Since requests may be executed in different batch, we must enusre all
+            // requests are finished by checking whether the last request is finished
+            lock (lastRequest)
+            {
+                while (!lastRequest.Finished)
+                {
+                    System.Threading.Monitor.Wait(lastRequest);
+                }
+            }
+
+            byte[][] values = new byte[count][];
+            count = 0;
+            foreach (RedisRequest req in reqBatch)
+            {
+                values[count++] = (byte[])req.Result;
+            }
+            return values;
         }
     }
 }

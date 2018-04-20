@@ -30,6 +30,7 @@ namespace TransactionUnitTest
         [TestInitialize]
         public void TestInit()
         {
+            // RedisVersionDb.Instance.PipelineMode = true;
             this.versionDb = RedisVersionDb.Instance;
             this.clientManager = RedisClientManager.Instance;
 

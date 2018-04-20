@@ -1,18 +1,34 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using Cassandra;
 
 namespace GraphView.Transaction
 {
-    public class CassandraLogStore : ILogStore
+    public class CassandraLogStore : LogStore
     {
-        /// <summary>
-        /// The lock to init the singleton instance
-        /// </summary>
-        private static readonly object initLock = new object();
+		public static readonly int DEFAULT_BATCH_SIZE = 1;
+
+		public static readonly long DEFAULT_WINDOW_MICRO_SEC = 100L;
+
+		/// <summary>
+		/// The table name used to log the committed transaction' Id.
+		/// </summary>
+		private static readonly string TRANSACTION_TABLE_NAME = "transaction";
+
+		/// <summary>
+		/// The keyspace name used to store the transaction log table and all version log tables.
+		/// </summary>
+		private static readonly string KEYSPACE = "log";
+
+		/// <summary>
+		/// The lock to init the singleton instance
+		/// </summary>
+		private static readonly object initLock = new object();
 
         /// <summary>
         /// The singleton instance of CassandraLogStore
@@ -29,36 +45,53 @@ namespace GraphView.Transaction
         /// </summary>
         private readonly object tableLock = new object();
 
-        private readonly string TRANSACTION_TABLE_NAME = "transaction";
+		/// <summary>
+		/// The session to perform read and write on the keyspace.
+		/// </summary>
+		private readonly ISession session;
 
-        private readonly string KEYSPACE = "log";
+		/// <summary>
+		/// the prepare statement will be used in WriteCommittedTx().
+		/// </summary>
+		private readonly PreparedStatement insertTxIdToLog;
 
-
-        private Cluster CassandraCluster
+		private CassandraSessionManager SessionManager
         {
             get
             {
-                return CassandraClusterManager.CassandraCluster;
+				return CassandraSessionManager.Instance;
             }
         }
 
         private CassandraLogStore()
         {
             this.tableSet = new HashSet<string>();
+			this.session = this.SessionManager.GetSession(CassandraLogStore.KEYSPACE);
 
-            //create a transaction log table
-            using (ISession session = this.CassandraCluster.Connect())
-            {
-                session.Execute($@"CREATE KEYSPACE IF NOT EXISTS {this.KEYSPACE} WITH replication = "+
-                                "{'class':'SimpleStrategy', 'replication_factor':'3'};");
+            // first create the log keyspace
+            this.session.Execute($@"CREATE KEYSPACE IF NOT EXISTS {CassandraLogStore.KEYSPACE} WITH replication = "+
+                                   "{'class':'SimpleStrategy', 'replication_factor':'3'};");
 
-                session.Execute($@"
-                        CREATE TABLE IF NOT EXISTS {this.KEYSPACE+"."+this.TRANSACTION_TABLE_NAME} (
+			// create the transaction log table
+            this.session.Execute($@"
+                        CREATE TABLE IF NOT EXISTS {CassandraLogStore.KEYSPACE + "." + CassandraLogStore.TRANSACTION_TABLE_NAME} (
                             txId bigint,
                             PRIMARY KEY (txId)
                         );");
-            }
-        }
+
+			//initialize the prepare statement
+			this.insertTxIdToLog = this.session.Prepare($@"
+                        INSERT INTO {CassandraLogStore.KEYSPACE + "." + CassandraLogStore.TRANSACTION_TABLE_NAME} (txId) VALUES (?)");
+
+			this.RequestBatchSize = CassandraLogStore.DEFAULT_BATCH_SIZE;
+			this.WindowMicroSec = CassandraLogStore.DEFAULT_WINDOW_MICRO_SEC;
+			this.Active = true;
+
+			this.requestQueue = new LogRequest[this.RequestBatchSize];
+			this.currReqId = -1;
+
+			this.spinLock = new SpinLock();
+		}
 
         public static CassandraLogStore Instance
         {
@@ -74,77 +107,101 @@ namespace GraphView.Transaction
                         }
                     }
                 }
-
                 return CassandraLogStore.instance;
             }
         }
 
-        public bool WriteCommittedVersion(string tableId, object recordKey, object payload, long txId, long commitTs)
-        {
-            using (ISession session = this.CassandraCluster.Connect())
-            {
-                if (!this.tableSet.Contains(tableId))
-                {
-                    lock (this.tableLock)
-                    {
-                        if (!this.tableSet.Contains(tableId))
-                        {
-                            try
-                            {
-                                session.Execute($@"
-                                    CREATE TABLE {this.KEYSPACE + "." + tableId} (
+		internal override void Flush()
+		{
+			// Send queued requests to Cassandra, collect results and store each of them in the corresonding request
+			for (int reqId = 0; reqId <= this.currReqId; reqId++)
+			{
+				LogRequest req = this.requestQueue[reqId];
+				if (req.Type == LogRequestType.WriteTxLog)
+				{
+					req.IsSuccess = this.InsertCommittedTx(req.TxId);
+					req.Finished = true;
+				}
+				else
+				{
+					LogVersionEntry entry = req.LogEntry;
+					req.IsSuccess = this.InsertCommittedVersion(req.TableId, entry.RecordKey, entry.Payload, req.TxId, entry.CommitTs);
+					req.Finished = true;
+				}
+			}
+
+			// Release the request lock to make sure processRequest can keep going
+			for (int reqId = 0; reqId <= this.currReqId; reqId++)
+			{
+				// Monitor.Wait must be called in sync block, here we should lock the 
+				// request and release the it on time
+				lock (this.requestQueue[reqId])
+				{
+					System.Threading.Monitor.PulseAll(this.requestQueue[reqId]);
+				}
+			}
+
+			this.currReqId = -1;
+		}
+
+		internal override bool InsertCommittedVersion(string tableId, object recordKey, object payload, long txId, long commitTs)
+		{
+			if (!this.tableSet.Contains(tableId))
+			{
+				lock (this.tableLock)
+				{
+					if (!this.tableSet.Contains(tableId))
+					{
+						try
+						{
+							this.session.Execute($@"
+									CREATE TABLE {CassandraLogStore.KEYSPACE + "." + tableId} (
                                     recordKey blob,
                                     beginTs bigint,
                                     txId bigint,
                                     payload blob,
                                     PRIMARY KEY (recordKey, beginTs)
                                 );");
-                            }
-                            catch (DriverException e)
-                            {
-                                return false;
-                            }
+						}
+						catch (DriverException e)
+						{
+							return false;
+						}
 
-                            this.tableSet.Add(tableId);
-                        }
-                    }
-                }
+						this.tableSet.Add(tableId);
+					}
+				}
+			}
 
-                try
-                {
-                    PreparedStatement ps = session.Prepare($@"
-                        INSERT INTO {this.KEYSPACE + "." + tableId} (recordKey, beginTs, txId, payload) VALUES (?, ?, ?, ?)");
-                    Statement statement = ps.Bind(BytesSerializer.Serialize(recordKey), 
-                        commitTs, txId, BytesSerializer.Serialize(payload));
-                    session.Execute(statement);
-                }
-                catch (DriverException e)
-                {
-                    return false;
-                }
-            }
+			try
+			{
+				PreparedStatement ps = this.session.Prepare($@"
+                        INSERT INTO {CassandraLogStore.KEYSPACE + "." + tableId} (recordKey, beginTs, txId, payload) VALUES (?, ?, ?, ?)");
+				Statement statement = ps.Bind(BytesSerializer.Serialize(recordKey),
+					commitTs, txId, BytesSerializer.Serialize(payload));
+				session.Execute(statement);
+			}
+			catch (DriverException e)
+			{
+				return false;
+			}
 
-            return true;
-        }
+			return true;
+		}
 
-        public bool WriteCommittedTx(long txId)
-        {
-            using (ISession session = this.CassandraCluster.Connect())
-            {
-                try
-                {
-                    PreparedStatement ps = session.Prepare($@"
-                        INSERT INTO {this.KEYSPACE + "." + this.TRANSACTION_TABLE_NAME} (txId) VALUES (?)");
-                    Statement statement = ps.Bind(txId);
-                    session.Execute(statement);
-                }
-                catch (DriverException e)
-                {
-                    return false;
-                }
-            }
+		internal override bool InsertCommittedTx(long txId)
+		{
+			try
+			{
+				Statement statement = this.insertTxIdToLog.Bind(txId);
+				session.Execute(statement);
+			}
+			catch (DriverException e)
+			{
+				return false;
+			}
 
-            return true;
-        }
+			return true;
+		}
     }
 }
