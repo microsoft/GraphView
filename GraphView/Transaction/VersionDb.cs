@@ -323,7 +323,7 @@ namespace GraphView.Transaction
 
         internal NewTxIdRequest EnqueueNewTxId()
         {
-            NewTxIdRequest req = new NewTxIdRequest(this.RandomLong(0, long.MaxValue, VersionDb.random));
+            NewTxIdRequest req = new NewTxIdRequest(this.RandomLong(0, long.MaxValue));
             this.EnqueueTxRequest(req);
             return req;
         }
