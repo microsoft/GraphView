@@ -24,6 +24,11 @@ namespace GraphView.Transaction
             this.tableId = tableId;
         }
 
+        internal virtual void EnqueueTxRequest(TxRequest req)
+        {
+            throw new NotImplementedException();
+        }
+
         /// <summary>
         /// Get a list of version entries, which will be used to check visiablity
         /// </summary>
@@ -32,7 +37,7 @@ namespace GraphView.Transaction
         {
             throw new NotImplementedException();
         }
-
+        
         /// <summary>
         /// To keep the same actions whether the version list is empty or not when insert a new version
         /// That is computing the new version's version key as largestKey + 1

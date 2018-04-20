@@ -11,6 +11,8 @@ namespace GraphView.Transaction
     {
         public static readonly long RETURN_ERROR_CODE = -2L;
 
+        private static readonly Random random = new Random();
+
         /// <summary>
         /// Define a delegate type to specify the partition rules.
         /// Which can be re-assigned outside the version db
@@ -84,6 +86,19 @@ namespace GraphView.Transaction
             return versionTable.GetVersionList(recordKey);
         }
 
+        internal GetVersionListRequest EnqueueGetVersionList(string tableId, object recordKey)
+        {
+            GetVersionListRequest req = new GetVersionListRequest(tableId, recordKey);
+            VersionTable versionTable = this.GetVersionTable(tableId);
+            if (versionTable == null)
+            {
+                throw new TransactionException("The specified table does not exists.");
+            }
+
+            versionTable.EnqueueTxRequest(req);
+            return req;
+        }
+
         /// <summary>
         /// Get the version entries by a batch of keys in a version table
         /// </summary>
@@ -97,9 +112,24 @@ namespace GraphView.Transaction
             VersionTable versionTable = this.GetVersionTable(tableId);
             if (versionTable == null)
             {
-                return null;
+                throw new TransactionException("The specified table does not exists.");
             }
             return versionTable.GetVersionEntryByKey(batch);
+        }
+
+        internal BulkReadVersionsRequest EnqueueGetVersionEntryByKey(
+            string tableId, IEnumerable<VersionPrimaryKey> batch)
+        {
+            VersionTable versionTable = this.GetVersionTable(tableId);
+            if (versionTable == null)
+            {
+                return null;
+            }
+
+            BulkReadVersionsRequest req = new BulkReadVersionsRequest(tableId, batch);
+            versionTable.EnqueueTxRequest(req);
+
+            return req;
         }
 
         internal virtual VersionEntry ReplaceVersionEntry(string tableId, object recordKey, long versionKey,
@@ -115,6 +145,29 @@ namespace GraphView.Transaction
                 beginTimestamp, endTimestamp, txId, readTxId, expectedEndTimestamp);
         }
 
+        internal ReplaceVersionRequest EnqueueReplaceVersionEntry(string tableId, object recordKey, long versionKey,
+            long beginTimestamp, long endTimestamp, long txId, long readTxId, long expectedEndTimestamp)
+        {
+            VersionTable versionTable = this.GetVersionTable(tableId);
+            if (versionTable == null)
+            {
+                throw new TransactionException("The specified table does not exists.");
+            }
+
+            ReplaceVersionRequest req = new ReplaceVersionRequest(
+                tableId, 
+                recordKey, 
+                versionKey, 
+                beginTimestamp, 
+                endTimestamp, 
+                txId, 
+                readTxId, 
+                expectedEndTimestamp);
+
+            versionTable.EnqueueTxRequest(req);
+            return req;
+        }
+
         internal virtual bool UploadNewVersionEntry(string tableId, object recordKey, long versionKey, VersionEntry versionEntry)
         {
             VersionTable versionTable = this.GetVersionTable(tableId);
@@ -124,6 +177,19 @@ namespace GraphView.Transaction
             }
 
             return versionTable.UploadNewVersionEntry(recordKey, versionKey, versionEntry);
+        }
+
+        internal UploadVersionRequest EnqueueUploadNewVersionEntry(string tableId, object recordKey, long versionKey, VersionEntry versionEntry)
+        {
+            VersionTable versionTable = this.GetVersionTable(tableId);
+            if (versionTable == null)
+            {
+                throw new TransactionException("The specified table does not exists.");
+            }
+
+            UploadVersionRequest req = new UploadVersionRequest(tableId, recordKey, versionKey, versionEntry);
+            versionTable.EnqueueTxRequest(req);
+            return req;
         }
 
         internal virtual VersionEntry UpdateVersionMaxCommitTs(string tableId, object recordKey, long versionKey, long commitTime)
@@ -137,6 +203,20 @@ namespace GraphView.Transaction
             return versionTable.UpdateVersionMaxCommitTs(recordKey, versionKey, commitTime);
         }
 
+        internal UpdateVersionMaxCommitTsRequest EnqueueUpdateVersionMaxCommitTs(string tableId, object recordKey, long versionKey, long commitTime)
+        {
+            VersionTable versionTable = this.GetVersionTable(tableId);
+            if (versionTable == null)
+            {
+                throw new TransactionException("The specified table does not exists.");
+            }
+
+            UpdateVersionMaxCommitTsRequest req = new UpdateVersionMaxCommitTsRequest(tableId, recordKey, versionKey, commitTime);
+            versionTable.EnqueueTxRequest(req);
+
+            return req;
+        }
+
         internal virtual VersionEntry GetVersionEntryByKey(string tableId, object recordKey, long versionKey)
         {
             VersionTable versionTable = this.GetVersionTable(tableId);
@@ -146,6 +226,20 @@ namespace GraphView.Transaction
             }
 
             return versionTable.GetVersionEntryByKey(recordKey, versionKey);
+        }
+
+        internal ReadVersionRequest EnqueueGetVersionEntryByKey(string tableId, object recordKey, long versionKey)
+        {
+            ReadVersionRequest req = new ReadVersionRequest(tableId, recordKey, versionKey);
+
+            VersionTable versionTable = this.GetVersionTable(tableId);
+            if (versionTable == null)
+            {
+                throw new TransactionException("The specified table does not exists.");
+            }
+
+            versionTable.EnqueueTxRequest(req);
+            return req;
         }
 
         internal virtual bool DeleteVersionEntry(string tableId, object recordKey, long versionKey)
@@ -158,7 +252,21 @@ namespace GraphView.Transaction
 
             return versionTable.DeleteVersionEntry(recordKey, versionKey);
         }
-        
+
+        internal DeleteVersionRequest EnqueueDeleteVersionEntry(string tableId, object recordKey, long versionKey)
+        {
+            VersionTable versionTable = this.GetVersionTable(tableId);
+            if (versionTable == null)
+            {
+                throw new TransactionException("The specified table does not exists.");
+            }
+
+            DeleteVersionRequest req = new DeleteVersionRequest(tableId, recordKey, versionKey);
+            versionTable.EnqueueTxRequest(req);
+
+            return req;
+        }
+
         internal virtual IEnumerable<VersionEntry> InitializeAndGetVersionList(string tableId, object recordKey)
         {
             VersionTable versionTable = this.GetVersionTable(tableId);
@@ -169,10 +277,29 @@ namespace GraphView.Transaction
 
             return versionTable.InitializeAndGetVersionList(recordKey);
         }
+
+        internal InitiGetVersionListRequest EnqueueInitializeAndGetVersionList(string tableId, object recordKey)
+        {
+            VersionTable versionTable = this.GetVersionTable(tableId);
+            if (versionTable == null)
+            {
+                throw new TransactionException("The specified table does not exists.");
+            }
+
+            InitiGetVersionListRequest req = new InitiGetVersionListRequest(tableId, recordKey);
+            versionTable.EnqueueTxRequest(req);
+
+            return req;
+        }
     }
 
     public abstract partial class VersionDb
     {
+        internal virtual void EnqueueTxRequest(TxRequest req)
+        {
+            throw new NotImplementedException();
+        }
+
         /// <summary>
         /// Generate an unique txId in the current transaction table and store the initial states in transaction
         /// table entry
@@ -184,6 +311,20 @@ namespace GraphView.Transaction
             throw new NotImplementedException();
         }
 
+        internal NewTxIdRequest EnqueueNewTxId()
+        {
+            NewTxIdRequest req = new NewTxIdRequest(this.RandomLong(0, long.MaxValue, VersionDb.random));
+            this.EnqueueTxRequest(req);
+            return req;
+        }
+
+        internal InsertTxIdRequest EnqueueInsertTxId(long txId)
+        {
+            InsertTxIdRequest req = new InsertTxIdRequest(txId);
+            this.EnqueueTxRequest(req);
+            return req;
+        }
+
         /// <summary>
         /// Get an TxTableEntey(txId, status, commitTime, commitLowerBound) by TxId
         /// </summary>
@@ -193,12 +334,26 @@ namespace GraphView.Transaction
             throw new NotImplementedException();
         }
 
+        internal GetTxEntryRequest EnqueueGetTxEntry(long txId)
+        {
+            GetTxEntryRequest req = new GetTxEntryRequest(txId);
+            this.EnqueueTxRequest(req);
+            return req;
+        }
+
         /// <summary>
         /// Update the transaction's status, set from ongoing => committed or ongoing => aborted
         /// </summary>
         internal virtual void UpdateTxStatus(long txId, TxStatus status)
         {
             throw new NotImplementedException();
+        }
+
+        internal UpdateTxStatusRequest EnqueueUpdateTxStatus(long txId, TxStatus status)
+        {
+            UpdateTxStatusRequest req = new UpdateTxStatusRequest(txId, status);
+            this.EnqueueTxRequest(req);
+            return req;
         }
 
         /// <summary>
@@ -215,6 +370,13 @@ namespace GraphView.Transaction
             throw new NotImplementedException();
         }
 
+        internal SetCommitTsRequest EnqueueSetCommitTs(long txId, long proposedCommitTs)
+        {
+            SetCommitTsRequest req = new SetCommitTsRequest(txId, proposedCommitTs);
+            this.EnqueueTxRequest(req);
+            return req;
+        }
+
         /// <summary>
         /// Update the commitLowerBound to push Tx has greater commitTime than the lowerBound
         /// lowerBound should be the value commitTime + 1
@@ -228,6 +390,13 @@ namespace GraphView.Transaction
         internal virtual long UpdateCommitLowerBound(long txId, long lowerBound)
         {
             throw new NotImplementedException();
+        }
+
+        internal UpdateCommitLowerBoundRequest EnqueueUpdateCommitLowerBound(long txId, long lowerBound)
+        {
+            UpdateCommitLowerBoundRequest lowerBoundReq = new UpdateCommitLowerBoundRequest(txId, lowerBound);
+            this.EnqueueTxRequest(lowerBoundReq);
+            return lowerBoundReq;
         }
     }
 
