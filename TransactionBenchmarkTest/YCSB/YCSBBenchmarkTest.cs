@@ -7,14 +7,14 @@
     using System.IO;
     using System.Threading;
 
-    class TxOperation
+    class TxWorkload
     {
         internal string TableId;
         internal string Key;
         internal string Value;
         internal string Type;
 
-        public TxOperation(string tableId, string key, string value, string type)
+        public TxWorkload(string tableId, string key, string value, string type)
         {
             this.TableId = tableId;
             this.Key = key;
@@ -35,7 +35,7 @@
 
         public static Func<object, object> ACTION = (object op) =>
         {
-            TxOperation oper = op as TxOperation;
+            TxWorkload oper = op as TxWorkload;
             Transaction tx = new Transaction(null, RedisVersionDb.Instance);
             string readValue = null;
 
@@ -114,17 +114,45 @@
         /// </summary>
         private long testEndTicks;
 
-        internal int Throughput
+        /// <summary>
+        /// total redis commands processed
+        /// </summary>
+        private long commandCount = 0;
+
+        internal int TxThroughput
         {
             get
             {
-                double runSeconds = ((this.testEndTicks - this.testBeginTicks) * 1.0) / 10000000;
+                double runSeconds = this.RunSeconds;
                 int taskCount = this.workerCount * this.taskCountPerWorker;
-                Console.WriteLine("Finshed {0} requests in {1} seconds", taskCount, runSeconds);
                 return (int)(taskCount / runSeconds);
             }
         }
 
+        internal double AbortRate
+        {
+            get
+            {
+                return 1 - (COMMITED_TXS * 1.0 / FINISHED_TXS);
+            }
+        }
+
+        internal double RunSeconds
+        {
+            get
+            {
+                return ((this.testEndTicks - this.testBeginTicks) * 1.0) / 10000000;
+            }
+        }
+
+        internal double RedisThroughput
+        {
+            get
+            {
+                double runSeconds = this.RunSeconds;
+                return (int)(this.commandCount / runSeconds);
+            }
+        }
 
         public YCSBBenchmarkTest(int workerCount, int taskCountPerWorker)
         {
@@ -161,7 +189,7 @@
                 while ((line = reader.ReadLine()) != null)
                 {
                     string[] fields = this.ParseCommandFormat(line);
-                    TxOperation operation = new TxOperation(fields[0], TABLE_ID, fields[2], fields[3]);
+                    TxWorkload operation = new TxWorkload(fields[0], TABLE_ID, fields[2], fields[3]);
                     count++;
 
                     ACTION(operation);
@@ -183,7 +211,7 @@
                     {
                         line = reader.ReadLine();
                         string[] fields = this.ParseCommandFormat(line);
-                        TxOperation op = new TxOperation(fields[0], TABLE_ID, fields[2], fields[3]);
+                        TxWorkload op = new TxWorkload(fields[0], TABLE_ID, fields[2], fields[3]);
                         worker.EnqueueTxTask(new TxTask(ACTION, op));
                     }
                 }
@@ -194,6 +222,8 @@
         {
             Console.WriteLine("Try to run {0} tasks in {1} workers", (this.workerCount * this.taskCountPerWorker), this.workerCount);
             Console.WriteLine("Running......");
+
+            long commandCountBeforeRun = this.GetCurrentCommandCount();
 
             this.testBeginTicks = DateTime.Now.Ticks;
             List<Thread> threadList = new List<Thread>();
@@ -211,7 +241,25 @@
             }
             this.testEndTicks = DateTime.Now.Ticks;
 
+            long commandCountAfterRun = this.GetCurrentCommandCount();
+            this.commandCount = commandCountAfterRun - commandCountBeforeRun;
+
             Console.WriteLine("Finished all tasks");
+        }
+
+        internal void Stats()
+        {
+            int taskCount = this.workerCount * this.taskCountPerWorker;
+            Console.WriteLine("\nFinshed {0} requests in {1} seconds", taskCount, this.RunSeconds);
+            Console.WriteLine("Transaction Throughput: {0} tx/second", this.TxThroughput);
+
+            Console.WriteLine("\nFinshed {0} txs, Commited {1} txs", FINISHED_TXS, COMMITED_TXS);
+            Console.WriteLine("Transaction AbortRate: {0}%", this.AbortRate * 100);
+
+            Console.WriteLine("\nFinshed {0} commands in {1} seconds", this.commandCount, this.RunSeconds);
+            Console.WriteLine("Redis Throughput: {0} cmd/second", this.RedisThroughput);
+
+            Console.WriteLine();
         }
 
         private string[] ParseCommandFormat(string line)
@@ -226,6 +274,32 @@
             return new string[] {
                 fields[0], fields[1], fields[2], value
             };
+        }
+
+        /// <summary>
+        /// Here there is a bug in ServiceStack.Redis, it will not refresh the info aftering reget a client from
+        /// the pool, which means the number of commands will be not changed.
+        /// 
+        /// The bug has been fixed in Version 4.0.58 (Commerical Version), our reference version is Version 3.9 (The last open source version).
+        /// 
+        /// So here we have to dispose the redis client manager and reconnect with redis to get the lastest commands.
+        /// </summary>
+        /// <returns></returns>
+        private long GetCurrentCommandCount()
+        {
+            RedisClientManager.Instance.Dispose();
+
+            long commandCount = 0;
+            for (int i = 0; i < RedisClientManager.Instance.RedisInstanceCount; i++)
+            {
+                using (RedisClient redisClient = RedisClientManager.Instance.GetLastestClient(0, 0))
+                {
+                    string countStr = redisClient.Info["total_commands_processed"];
+                    long count = Convert.ToInt64(countStr);
+                    commandCount += count;
+                }
+            }
+            return commandCount;
         }
     }
 }

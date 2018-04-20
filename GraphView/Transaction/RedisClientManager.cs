@@ -102,6 +102,18 @@
             return RedisClientManager.clientPools[key].GetRedisClient();
         }
 
+        /// <summary>
+        /// Only for debug, the reason why we need such a method in YCSBBenchmarkTest/GetCurrentCommandCount
+        /// </summary>
+        /// <param name="redisDbIndex"></param>
+        /// <param name="partition"></param>
+        /// <returns></returns>
+        internal RedisClient GetLastestClient(long redisDbIndex, int partition)
+        {
+            RedisConnectionPool pool = new RedisConnectionPool(this.ReadWriteHosts[partition], redisDbIndex);
+            return pool.GetRedisClient();
+        }
+
         internal RedisConnectionPool GetClientPool(long redisDbIndex, int partition)
         {
             RedisConnectionKey key = new RedisConnectionKey(partition, redisDbIndex);
@@ -122,7 +134,7 @@
         {
             foreach (RedisConnectionKey key in RedisClientManager.clientPools.Keys)
             {
-                RedisClientManager.clientPools[key].Active = false;
+                RedisClientManager.clientPools[key].Dispose();
             }
         }
 
