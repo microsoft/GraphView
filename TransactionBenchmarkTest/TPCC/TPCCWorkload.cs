@@ -22,7 +22,7 @@ namespace TransactionBenchmarkTest.TPCC
     }
     class NewOrderOutput
     {
-        public TxFinalStatus txFinalStatus;
+        //public TxFinalStatus txFinalStatus;
         public Tuple<string, int, char, double, double>[] itemsData;
         public Tuple<double, double, uint, double> other;
         public CustomerPayload cpl;
@@ -42,12 +42,17 @@ namespace TransactionBenchmarkTest.TPCC
     }
     class PaymentOutput
     {
-        public TxFinalStatus txFinalStatus;
+        //public TxFinalStatus txFinalStatus;
         public WarehousePayload wpl;
         public DistrictPayload dpl;
         public CustomerPayload cpl;
     }
 
+    class TPCCWorkloadOutput
+    {
+        public TxFinalStatus txFinalStatus;
+        public object data;
+    }
 
     abstract class TPCCWorkload
     {
@@ -61,8 +66,10 @@ namespace TransactionBenchmarkTest.TPCC
             this.redisClient = redisClient;
         }
 
-        public abstract object Run();
+        public abstract TPCCWorkloadOutput Run();
     }
+
+
 
     class TPCCNewOrderWorkload : TPCCWorkload
     {
@@ -70,10 +77,10 @@ namespace TransactionBenchmarkTest.TPCC
         {
         }
 
-        public override object Run()
+        public override TPCCWorkloadOutput Run()
         {
             NewOrderInParameters input = (NewOrderInParameters)this.inParams;
-            NewOrderOutput ret = new NewOrderOutput();
+            TPCCWorkloadOutput ret = new TPCCWorkloadOutput();
             ret.txFinalStatus = TxFinalStatus.COMMITTED;
             Transaction tx = new Transaction(null, vdb);
             try
@@ -205,9 +212,11 @@ namespace TransactionBenchmarkTest.TPCC
 
                 // to return
                 total *= (1 - C_DISCOUNT) * (1 + W_TAX + D_TAX);
-                ret.other = new Tuple<double, double, uint, double>(W_TAX, D_TAX, D_NEXT_O_ID, total);
-                ret.itemsData = itemsData;
-                ret.cpl = cpl;
+                NewOrderOutput noOutput = new NewOrderOutput();
+                noOutput.other = new Tuple<double, double, uint, double>(W_TAX, D_TAX, D_NEXT_O_ID, total);
+                noOutput.itemsData = itemsData;
+                noOutput.cpl = cpl;
+                ret.data = noOutput;
 
                 tx.Commit();
             }
@@ -228,10 +237,10 @@ namespace TransactionBenchmarkTest.TPCC
         {
         }
 
-        public override object Run()
+        public override TPCCWorkloadOutput Run()
         {
             PaymentInParameters input = (PaymentInParameters)this.inParams;
-            PaymentOutput ret = new PaymentOutput();
+            TPCCWorkloadOutput ret = new TPCCWorkloadOutput();
             ret.txFinalStatus = TxFinalStatus.COMMITTED;
             Transaction tx = new Transaction(null, vdb);
             try
@@ -298,9 +307,11 @@ namespace TransactionBenchmarkTest.TPCC
                 tx.Insert(Constants.DefaultTbl, hpk, JsonConvert.SerializeObject(hpl));
 
                 // to return
-                ret.wpl = wpl;
-                ret.dpl = dpl;
-                ret.cpl = cpl;  // TODO C_ID may be null in input
+                PaymentOutput pmOutput = new PaymentOutput();
+                pmOutput.wpl = wpl;
+                pmOutput.dpl = dpl;
+                pmOutput.cpl = cpl;  // TODO C_ID may be null in input
+                ret.data = pmOutput;
 
                 tx.Commit();
             }

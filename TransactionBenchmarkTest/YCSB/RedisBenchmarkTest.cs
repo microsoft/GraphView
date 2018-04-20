@@ -151,7 +151,7 @@
                         {
                             cmds.Add(this.mockRedisCommands());
                         }
-                        worker.EnqueueTxTask(new TxTask(ACTION, cmds));
+                        worker.EnqueueTxTask(new TxTask(PIPELINE_ACTION, cmds));
                     }
                 }
                 
