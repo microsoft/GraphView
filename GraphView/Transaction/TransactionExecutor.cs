@@ -38,8 +38,14 @@ namespace GraphView.Transaction
 
     internal class TransactionExecutor
     {
+        /// <summary>
+        /// The size of current working transaction set
+        /// </summary>
         private readonly int workingSetSize = 100;      // in terms of # of tx's
 
+        /// <summary>
+        /// A queue of workloads accepted from clients
+        /// </summary>
         internal Queue<TransactionRequest> workload;
 
         private readonly VersionDb versionDb;

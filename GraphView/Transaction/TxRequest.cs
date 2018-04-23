@@ -208,6 +208,25 @@ namespace GraphView.Transaction
         }
     }
 
+    internal class ReplaceWholeVersionRequest : TxRequest
+    {
+        internal string TableId { get; }
+        internal object RecordKey { get; }
+        internal long VersionKey { get; }
+        internal VersionEntry VersionEntry { get; }
+
+        public ReplaceWholeVersionRequest(string tableId,
+            object recordKey,
+            long versionKey,
+            VersionEntry versionEntry)
+        {
+            this.TableId = tableId;
+            this.RecordKey = recordKey;
+            this.VersionKey = versionKey;
+            this.VersionEntry = versionEntry;
+        }
+    }
+
     internal class SetCommitTsRequest : TxRequest
     {
         internal long ProposedCommitTs { get; }

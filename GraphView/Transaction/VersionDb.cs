@@ -109,7 +109,7 @@ namespace GraphView.Transaction
         internal virtual IDictionary<VersionPrimaryKey, VersionEntry> GetVersionEntryByKey(
             string tableId, IEnumerable<VersionPrimaryKey> batch)
         {
-            Dictionary<VersionPrimaryKey, VersionEntry> versionDict = 
+            Dictionary<VersionPrimaryKey, VersionEntry> versionDict =
                 new Dictionary<VersionPrimaryKey, VersionEntry>();
 
             VersionTable versionTable = this.GetVersionTable(tableId);
@@ -144,7 +144,7 @@ namespace GraphView.Transaction
                 return null;
             }
 
-            return versionTable.ReplaceVersionEntry(recordKey, versionKey, 
+            return versionTable.ReplaceVersionEntry(recordKey, versionKey,
                 beginTimestamp, endTimestamp, txId, readTxId, expectedEndTimestamp);
         }
 
@@ -158,13 +158,13 @@ namespace GraphView.Transaction
             }
 
             ReplaceVersionRequest req = new ReplaceVersionRequest(
-                tableId, 
-                recordKey, 
-                versionKey, 
-                beginTimestamp, 
-                endTimestamp, 
-                txId, 
-                readTxId, 
+                tableId,
+                recordKey,
+                versionKey,
+                beginTimestamp,
+                endTimestamp,
+                txId,
+                readTxId,
                 expectedEndTimestamp);
 
             versionTable.EnqueueTxRequest(req);
@@ -181,6 +181,25 @@ namespace GraphView.Transaction
             }
 
             return versionTable.ReplaceWholeVersionEntry(recordKey, versionKey, versionEntry);
+        }
+
+        internal ReplaceWholeVersionRequest EnqueueReplaceWholeVersionEntry(string tableId, object recordKey, long versionKey,
+            VersionEntry versionEntry)
+        {
+            VersionTable versionTable = this.GetVersionTable(tableId);
+            if (versionTable == null)
+            {
+                throw new TransactionException("The specified table does not exists.");
+            }
+
+            ReplaceWholeVersionRequest req = new ReplaceWholeVersionRequest(
+                tableId,
+                recordKey,
+                versionKey,
+                versionEntry);
+
+            versionTable.EnqueueTxRequest(req);
+            return req;
         }
 
         internal virtual bool UploadNewVersionEntry(string tableId, object recordKey, long versionKey, VersionEntry versionEntry)
