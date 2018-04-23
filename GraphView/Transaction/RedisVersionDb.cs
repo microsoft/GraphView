@@ -79,7 +79,7 @@
         /// <summary>
         ///  The return error code of some functions
         /// </summary>
-        private static readonly long REDIS_CALL_ERROR_CODE = -2L;
+        internal static readonly long REDIS_CALL_ERROR_CODE = -2L;
 
         /// <summary>
         /// Get RedisClient from the redis connection pool

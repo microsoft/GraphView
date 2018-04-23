@@ -130,5 +130,10 @@ namespace GraphView.Transaction
         {
             throw new NotImplementedException();
         }
+
+        internal virtual void Visit(int partitionKey)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

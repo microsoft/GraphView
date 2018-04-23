@@ -45,7 +45,25 @@ namespace GraphView.Transaction
         private readonly VersionDb versionDb;
         private readonly ILogStore logStore;
 
+        /// <summary>
+        /// A list of (table Id, partition key) pairs, each of which represents a key-value instance. 
+        /// This worker is responsible for processing key-value ops directed to the designated instances.
+        /// </summary>
+        private List<Tuple<string, int>> partitionedInstances;
+
         private Dictionary<string, Tuple<TransactionExecution, Queue<TransactionRequest>>> activeTxs;
+
+        public TransactionExecutor(
+            VersionDb versionDb, 
+            ILogStore logStore, 
+            Queue<TransactionRequest> workload, 
+            List<Tuple<string, int>> instances = null)
+        {
+            this.versionDb = versionDb;
+            this.logStore = logStore;
+            this.workload = workload;
+            this.partitionedInstances = instances;
+        }
 
         internal void Execute()
         {
@@ -152,6 +170,17 @@ namespace GraphView.Transaction
                     else if (txExec.Progress == TxProgress.Close)
                     {
                         toRemoveSessions.Add(sessionId);
+                    }
+                }
+
+                if (this.partitionedInstances != null)
+                {
+                    foreach (Tuple<string, int> kvIns in this.partitionedInstances)
+                    {
+                        string tableId = kvIns.Item1;
+                        int partitionKey = kvIns.Item2;
+
+                        this.versionDb.Visit(tableId, partitionKey);
                     }
                 }
 

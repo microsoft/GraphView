@@ -51,7 +51,7 @@
     /// </summary>
     internal class RedisConnectionPool
     {
-        public static readonly int DEFAULT_BATCH_SIZE = 10000;
+        public static readonly int DEFAULT_BATCH_SIZE = 100;
 
         public static readonly long DEFAULT_WINDOW_MICRO_SEC = 100L;
 
@@ -95,6 +95,8 @@
         /// </summary>
         private SpinLock spinLock;
 
+        private long lastFlushTime;
+
         public RedisConnectionPool(string redisConnectionString, long database)
         {
             // Init the pooledRedisClient Manager
@@ -117,6 +119,7 @@
             this.currReqId = -1;
 
             this.spinLock = new SpinLock();
+            lastFlushTime = DateTime.Now.Ticks / 10;
         }
 
         /// <summary>
@@ -135,7 +138,7 @@
         /// </summary>
         /// <param name="request">The incoming request</param>
         /// <returns>The index of the spot the request takes</returns>
-        private void EnqueueRequest(RedisRequest request)
+        internal void EnqueueRequest(RedisRequest request)
         {
             int reqId = -1;
             // Spinlock until an empty spot is available in the queue
@@ -152,8 +155,6 @@
                     try
                     {
                         this.spinLock.Enter(ref lockTaken);
-						// No need to take interlocked since it already in the lock
-						// reqId = Interlocked.Increment(ref this.currReqId);
 						reqId = this.currReqId + 1;
 						if (reqId < this.RequestBatchSize)
 						{
@@ -187,7 +188,7 @@
                             continue;
                         }
 
-                        switch(req.Type)
+                        switch (req.Type)
                         {
                             case RedisRequestType.HGet:
                                 pipe.QueueCommand(
@@ -250,6 +251,95 @@
             }
 
             this.currReqId = -1;
+        }
+
+        internal void Visit()
+        {
+            long now = DateTime.Now.Ticks / 10;
+            if (now - lastFlushTime >= this.WindowMicroSec ||
+                this.currReqId + 1 >= this.RequestBatchSize)
+            {
+                if (this.currReqId >= 0)
+                {
+                    bool lockTaken = false;
+                    try
+                    {
+                        this.spinLock.Enter(ref lockTaken);
+                        using (RedisClient redisClient = this.GetRedisClient())
+                        {
+                            using (IRedisPipeline pipe = redisClient.CreatePipeline())
+                            {
+                                for (int reqId = 0; reqId <= this.currReqId; reqId++)
+                                {
+                                    RedisRequest req = this.requestQueue[reqId];
+                                    if (req == null)
+                                    {
+                                        continue;
+                                    }
+
+                                    switch (req.Type)
+                                    {
+                                        case RedisRequestType.HGet:
+                                            pipe.QueueCommand(
+                                                r => ((RedisNativeClient)r).HGet(req.HashId, req.Key),
+                                                req.SetValue, req.SetError);
+                                            break;
+                                        case RedisRequestType.HMGet:
+                                            pipe.QueueCommand(
+                                                r => ((RedisNativeClient)r).HMGet(req.HashId, req.Keys),
+                                                req.SetValues, req.SetError);
+                                            break;
+                                        case RedisRequestType.HGetAll:
+                                            pipe.QueueCommand(
+                                                r => ((RedisNativeClient)r).HGetAll(req.HashId),
+                                                req.SetValues, req.SetError);
+                                            break;
+                                        case RedisRequestType.HSetNX:
+                                            pipe.QueueCommand(
+                                                r => ((RedisNativeClient)r).HSetNX(req.HashId, req.Key, req.Value),
+                                                req.SetLong, req.SetError);
+                                            break;
+                                        case RedisRequestType.HSet:
+                                            pipe.QueueCommand(
+                                                r => ((RedisNativeClient)r).HSet(req.HashId, req.Key, req.Value),
+                                                req.SetLong, req.SetError);
+                                            break;
+                                        case RedisRequestType.HMSet:
+                                            pipe.QueueCommand(
+                                                r => ((RedisNativeClient)r).HMSet(req.HashId, req.Keys, req.Values),
+                                                req.SetVoid, req.SetError);
+                                            break;
+                                        case RedisRequestType.HDel:
+                                            pipe.QueueCommand(
+                                                r => ((RedisNativeClient)r).HDel(req.HashId, req.Key),
+                                                    req.SetLong, req.SetError);
+                                            break;
+                                        case RedisRequestType.EvalSha:
+                                            pipe.QueueCommand(
+                                                r => ((RedisNativeClient)r).EvalSha(req.Sha1, req.NumberKeysInArgs, req.Keys),
+                                                    req.SetValues, req.SetError);
+                                            break;
+                                        default:
+                                            break;
+                                    }
+                                }
+
+                                pipe.Flush();
+                            }
+                        }
+                    }
+                    finally
+                    {
+                        if (lockTaken)
+                        {
+                            this.spinLock.Exit();
+                        }
+                    }
+                }
+
+                this.currReqId = -1;
+                lastFlushTime = DateTime.Now.Ticks / 10;
+            }
         }
 
         /// <summary>

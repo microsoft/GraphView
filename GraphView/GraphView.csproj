@@ -313,6 +313,8 @@
     <Compile Include="Transaction\RedisConnectionPool.cs" />
     <Compile Include="Transaction\RedisLuaScriptManager.cs" />
     <Compile Include="Transaction\RedisRequest.cs" />
+    <Compile Include="Transaction\RedisResponseVisitor.cs" />
+    <Compile Include="Transaction\RedisRequestVisitor.cs" />
     <Compile Include="Transaction\RedisVersionDb.cs" />
     <Compile Include="Transaction\RedisVersionTable.cs" />
     <Compile Include="Transaction\SingletonVersionDb.cs" />
@@ -321,6 +323,7 @@
     <Compile Include="Transaction\TransactionExecution.cs" />
     <Compile Include="Transaction\TransactionExecutor.cs" />
     <Compile Include="Transaction\TxRequest.cs" />
+    <Compile Include="Transaction\TxRequestVisitor.cs" />
     <Compile Include="Transaction\TxStatus.cs" />
     <Compile Include="Transaction\TxTableEntry.cs" />
     <Compile Include="Transaction\VersionPrimaryKey.cs" />

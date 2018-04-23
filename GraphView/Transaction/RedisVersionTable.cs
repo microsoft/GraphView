@@ -13,6 +13,9 @@
         /// </summary>
         private readonly long redisDbIndex;
 
+        private readonly RedisRequestVisitor requestVisitor;
+        private readonly RedisResponseVisitor responseVisitor;
+
         /// <summary>
         /// Get redisClient from the client pool
         /// </summary>
@@ -39,11 +42,24 @@
             : base(versionDb, tableId)
         {
             this.redisDbIndex = redisDbIndex;
+            this.requestVisitor = new RedisRequestVisitor();
+            this.responseVisitor = new RedisResponseVisitor();
         }
     }
 
     internal partial class RedisVersionTable
     {
+        internal override void EnqueueTxRequest(TxRequest req)
+        {
+            this.requestVisitor.Invoke(req);
+            string hashId = this.requestVisitor.HashId;
+            RedisRequest redisReq = this.requestVisitor.RedisReq;
+
+            int partition = this.VersionDb.PhysicalPartitionByKey(hashId);
+            RedisConnectionPool clientPool = this.RedisManager.GetClientPool(this.redisDbIndex, partition);
+            clientPool.EnqueueRequest(redisReq);
+        }
+
         /// <summary>
         /// Get all version entries by the command HGETALL
         /// MIND: HGETALL in ServiceStack.Redis only supports a string type as the hashId 
@@ -451,6 +467,12 @@
                 versionEntries.Add(new VersionPrimaryKey(recordKey, versionKey), entry);
             }
             return versionEntries;
+        }
+
+        internal override void Visit(int partitionKey)
+        {
+            RedisConnectionPool clientPool = this.RedisManager.GetClientPool(this.redisDbIndex, partitionKey);
+            clientPool.Visit();
         }
     }
 }

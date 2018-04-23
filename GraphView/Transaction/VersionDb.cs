@@ -66,6 +66,11 @@ namespace GraphView.Transaction
         {
             throw new NotImplementedException();
         }
+
+        internal void Visit(string tableId, int partitionKey)
+        {
+            this.GetVersionTable(tableId).Visit(partitionKey);
+        }
     }
 
     /// <summary>
@@ -115,20 +120,20 @@ namespace GraphView.Transaction
             return versionTable.GetVersionEntryByKey(batch);
         }
 
-        internal BulkReadVersionsRequest EnqueueGetVersionEntryByKey(
-            string tableId, IEnumerable<VersionPrimaryKey> batch)
-        {
-            VersionTable versionTable = this.GetVersionTable(tableId);
-            if (versionTable == null)
-            {
-                return null;
-            }
+        //internal BulkReadVersionsRequest EnqueueGetVersionEntryByKey(
+        //    string tableId, IEnumerable<VersionPrimaryKey> batch)
+        //{
+        //    VersionTable versionTable = this.GetVersionTable(tableId);
+        //    if (versionTable == null)
+        //    {
+        //        return null;
+        //    }
 
-            BulkReadVersionsRequest req = new BulkReadVersionsRequest(tableId, batch);
-            versionTable.EnqueueTxRequest(req);
+        //    BulkReadVersionsRequest req = new BulkReadVersionsRequest(tableId, batch);
+        //    versionTable.EnqueueTxRequest(req);
 
-            return req;
-        }
+        //    return req;
+        //}
 
         internal virtual VersionEntry ReplaceVersionEntry(string tableId, object recordKey, long versionKey,
             long beginTimestamp, long endTimestamp, long txId, long readTxId, long expectedEndTimestamp)

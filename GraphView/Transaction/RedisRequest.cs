@@ -28,6 +28,9 @@ namespace GraphView.Transaction
         internal int NumberKeysInArgs { get; private set; }
         internal bool Finished { get; set; } = false;
         internal RedisRequestType Type { get; private set; }
+
+        internal TxRequest ParentRequest { get; set; }
+        private RedisResponseVisitor responseVisitor;
         
         /// <summary>
         /// for HSet, HSetNX command
@@ -38,6 +41,7 @@ namespace GraphView.Transaction
             this.Key = key;
             this.Value = value;
             this.Type = type;
+            this.responseVisitor = new RedisResponseVisitor();
         }
 
         /// <summary>
@@ -95,28 +99,56 @@ namespace GraphView.Transaction
         {
             this.Result = result;
             this.Finished = true;
+
+            if (this.ParentRequest != null)
+            {
+                this.ParentRequest.Finished = true;
+                this.responseVisitor.Invoke(this.ParentRequest, result);
+            }
         }
 
         internal void SetLong(long result)
         {
             this.Result = result;
             this.Finished = true;
+
+            if (this.ParentRequest != null)
+            {
+                this.ParentRequest.Finished = true;
+                this.responseVisitor.Invoke(this.ParentRequest, result);
+            }
         }
 
         internal void SetValues(byte[][] result)
         {
             this.Result = result;
             this.Finished = true;
+
+            if (this.ParentRequest != null)
+            {
+                this.ParentRequest.Finished = true;
+                this.responseVisitor.Invoke(this.ParentRequest, result);
+            }
         }
 
         internal void SetVoid()
         {
             this.Finished = true;
+
+            if (this.ParentRequest != null)
+            {
+                this.ParentRequest.Finished = true;
+            }
         }
 
         internal void SetError(Exception e)
         {
             this.Finished = true;
+
+            if (this.ParentRequest != null)
+            {
+                this.ParentRequest.Finished = true;
+            }
         }
     }
 }
