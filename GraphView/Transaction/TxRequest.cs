@@ -42,6 +42,14 @@ namespace GraphView.Transaction
             this.RecordKey = recordKey;
             this.VersionKey = versionKey;
         }
+
+        internal override void Accept(TxRequestVisitor visitor)
+        {
+            if (visitor != null)
+            {
+                visitor.Visit(this);
+            }
+        }
     }
 
     internal class GetVersionListRequest : TxRequest
@@ -54,6 +62,14 @@ namespace GraphView.Transaction
             this.TableId = tableId;
             this.RecordKey = recordKey;
         }
+
+        internal override void Accept(TxRequestVisitor visitor)
+        {
+            if (visitor != null)
+            {
+                visitor.Visit(this);
+            }
+        }
     }
 
     internal class GetTxEntryRequest : TxRequest
@@ -63,6 +79,14 @@ namespace GraphView.Transaction
         public GetTxEntryRequest(long txId)
         {
             this.TxId = TxId;
+        }
+
+        internal override void Accept(TxRequestVisitor visitor)
+        {
+            if (visitor != null)
+            {
+                visitor.Visit(this);
+            }
         }
     }
 
@@ -76,6 +100,14 @@ namespace GraphView.Transaction
             this.TableId = tableId;
             this.RecordKey = recordKey;
         }
+
+        internal override void Accept(TxRequestVisitor visitor)
+        {
+            if (visitor != null)
+            {
+                visitor.Visit(this);
+            }
+        }
     }
 
     internal class InsertTxIdRequest : TxRequest
@@ -86,6 +118,14 @@ namespace GraphView.Transaction
         {
             this.TxId = txId;
         }
+
+        internal override void Accept(TxRequestVisitor visitor)
+        {
+            if (visitor != null)
+            {
+                visitor.Visit(this);
+            }
+        }
     }
 
     internal class NewTxIdRequest : TxRequest
@@ -95,6 +135,14 @@ namespace GraphView.Transaction
         public NewTxIdRequest(long txId)
         {
             this.TxId = txId;
+        }
+
+        internal override void Accept(TxRequestVisitor visitor)
+        {
+            if (visitor != null)
+            {
+                visitor.Visit(this);
+            }
         }
     }
 
@@ -109,6 +157,14 @@ namespace GraphView.Transaction
             this.TableId = tableId;
             this.RecordKey = recordKey;
             this.VersionKey = versionKey;
+        }
+
+        internal override void Accept(TxRequestVisitor visitor)
+        {
+            if (visitor != null)
+            {
+                visitor.Visit(this);
+            }
         }
     }
 
@@ -142,6 +198,14 @@ namespace GraphView.Transaction
             this.ReadTxId = readTxId;
             this.ExpectedEndTs = expectedEndTimestamp;
         }
+
+        internal override void Accept(TxRequestVisitor visitor)
+        {
+            if (visitor != null)
+            {
+                visitor.Visit(this);
+            }
+        }
     }
 
     internal class SetCommitTsRequest : TxRequest
@@ -153,6 +217,14 @@ namespace GraphView.Transaction
         {
             this.TxId = txId;
             this.ProposedCommitTs = proposedCommitTs;
+        }
+
+        internal override void Accept(TxRequestVisitor visitor)
+        {
+            if (visitor != null)
+            {
+                visitor.Visit(this);
+            }
         }
     }
 
@@ -166,6 +238,14 @@ namespace GraphView.Transaction
             this.TxId = txId;
             this.CommitTsLowerBound = commitTsLowerBound;
         }
+
+        internal override void Accept(TxRequestVisitor visitor)
+        {
+            if (visitor != null)
+            {
+                visitor.Visit(this);
+            }
+        }
     }
 
     internal class UpdateTxStatusRequest : TxRequest
@@ -177,6 +257,14 @@ namespace GraphView.Transaction
         {
             this.TxId = txId;
             this.TxStatus = status;
+        }
+
+        internal override void Accept(TxRequestVisitor visitor)
+        {
+            if (visitor != null)
+            {
+                visitor.Visit(this);
+            }
         }
     }
 
@@ -194,6 +282,14 @@ namespace GraphView.Transaction
             this.VersionKey = versionKey;
             this.MaxCommitTs = commitTime;
         }
+
+        internal override void Accept(TxRequestVisitor visitor)
+        {
+            if (visitor != null)
+            {
+                visitor.Visit(this);
+            }
+        }
     }
 
     internal class UploadVersionRequest : TxRequest
@@ -209,6 +305,14 @@ namespace GraphView.Transaction
             this.RecordKey = recordKey;
             this.VersionKey = versionKey;
             this.VersionEntry = versionEntry;
+        }
+
+        internal override void Accept(TxRequestVisitor visitor)
+        {
+            if (visitor != null)
+            {
+                visitor.Visit(this);
+            }
         }
     }
  }

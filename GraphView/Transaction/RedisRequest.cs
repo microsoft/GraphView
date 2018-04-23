@@ -52,6 +52,7 @@ namespace GraphView.Transaction
             this.HashId = hashId;
             this.Key = key;
             this.Type = type;
+            this.responseVisitor = new RedisResponseVisitor();
         }
 
         /// <summary>
@@ -62,6 +63,7 @@ namespace GraphView.Transaction
             this.HashId = hashId;
             this.Keys = keys;
             this.Type = type;
+            this.responseVisitor = new RedisResponseVisitor();
         }
 
         /// <summary>
@@ -73,6 +75,7 @@ namespace GraphView.Transaction
             this.Keys = keys;
             this.Values = values;
             this.Type = type;
+            this.responseVisitor = new RedisResponseVisitor();
         }
 
         /// <summary>
@@ -84,6 +87,7 @@ namespace GraphView.Transaction
             this.Sha1 = sha1;
             this.NumberKeysInArgs = numberOfKeysInArg;
             this.Type = type;
+            this.responseVisitor = new RedisResponseVisitor();
         } 
 
         /// <summary>
@@ -93,6 +97,7 @@ namespace GraphView.Transaction
         {
             this.HashId = hashId;
             this.Type = type;
+            this.responseVisitor = new RedisResponseVisitor();
         }
 
         internal void SetValue(byte[] result)

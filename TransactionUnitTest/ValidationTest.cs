@@ -1,4 +1,4 @@
-﻿using System;
+﻿using System.Collections.Generic;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using GraphView.Transaction;
 
@@ -21,6 +21,26 @@ namespace TransactionUnitTest
 
             versionEntry = this.versionDb.UpdateVersionMaxCommitTs(TABLE_ID, DEFAULT_KEY, 1L, 10L);
             Assert.AreEqual(10L, versionEntry.MaxCommitTs);
+        }
+
+        [TestMethod]
+        public void TestValidation1Event()
+        {
+            UpdateVersionMaxCommitTsRequest req = this.versionDb.EnqueueUpdateVersionMaxCommitTs(TABLE_ID, DEFAULT_KEY, 1L, 5L);
+            this.versionDb.Visit(TABLE_ID, 0);
+            VersionEntry versionEntry = req.Result as VersionEntry;
+            Assert.AreEqual(5, versionEntry.MaxCommitTs);
+
+            TransactionExecution tex = new TransactionExecution(null, this.versionDb);
+            tex.Read(TABLE_ID, DEFAULT_KEY, out bool received, out object payload);
+            while (!received)
+            {
+                this.versionDb.Visit(TABLE_ID, 0);
+                tex.Read(TABLE_ID, DEFAULT_KEY, out received, out payload);
+            }
+
+            tex.Delete(TABLE_ID, DEFAULT_KEY, out object deletedPayload);
+            this.versionDb.Visit(TABLE_ID, 0);
         }
 
         [TestMethod]

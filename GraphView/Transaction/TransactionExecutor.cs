@@ -56,12 +56,12 @@ namespace GraphView.Transaction
         public TransactionExecutor(
             VersionDb versionDb, 
             ILogStore logStore, 
-            Queue<TransactionRequest> workload, 
+            Queue<TransactionRequest> workload = null, 
             List<Tuple<string, int>> instances = null)
         {
             this.versionDb = versionDb;
             this.logStore = logStore;
-            this.workload = workload;
+            this.workload = workload ?? new Queue<TransactionRequest>();
             this.partitionedInstances = instances;
         }
 
@@ -222,6 +222,64 @@ namespace GraphView.Transaction
                     }
                 }
             }
+        }
+
+        internal void Read(string sessionId, string tableId, object recordKey)
+        {
+            TxFunction func = new TxFunction();
+
+            this.workload.Enqueue(new TransactionRequest()
+            {
+                SessionId = sessionId,
+                OperationType = OperationType.Read,
+                TableId = tableId,
+                RecordKey = recordKey,
+                Callback = new TxCallBack(func.ReadCallback)
+            });
+        }
+
+        internal void Insert(string sessionId, string tableId, object recordKey, object payload)
+        {
+            TxFunction func = new TxFunction();
+
+            this.workload.Enqueue(new TransactionRequest()
+            {
+                SessionId = sessionId,
+                OperationType = OperationType.Insert,
+                TableId = tableId,
+                RecordKey = recordKey,
+                Payload = payload,
+                Callback = new TxCallBack(func.InsertCallBack)
+            });
+        }
+
+        internal void Delete(string sessionId, string tableId, object recordKey)
+        {
+            TxFunction func = new TxFunction();
+
+            this.workload.Enqueue(new TransactionRequest()
+            {
+                SessionId = sessionId,
+                OperationType = OperationType.Delete,
+                TableId = tableId,
+                RecordKey = recordKey,
+                Callback = new TxCallBack(func.DeleteCallBack)
+            });
+        }
+
+        internal void Update(string sessionId, string tableId, object recordKey, object payload)
+        {
+            TxFunction func = new TxFunction();
+
+            this.workload.Enqueue(new TransactionRequest()
+            {
+                SessionId = sessionId,
+                OperationType = OperationType.Update,
+                TableId = tableId,
+                RecordKey = recordKey,
+                Payload = payload,
+                Callback = new TxCallBack(func.UpdateCallBack)
+            });
         }
     }
 }
