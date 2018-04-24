@@ -81,10 +81,12 @@
         /// </summary>
         internal static readonly long REDIS_CALL_ERROR_CODE = -2L;
 
-        /// <summary>
-        /// Get RedisClient from the redis connection pool
-        /// </summary>
-        private RedisClientManager RedisManager
+		private readonly RedisRequestVisitor requestVisitor;
+
+		/// <summary>
+		/// Get RedisClient from the redis connection pool
+		/// </summary>
+		private RedisClientManager RedisManager
         {
             get
             {
@@ -117,7 +119,9 @@
 
             // Default partition implementation
             this.PhysicalPartitionByKey = recordKey => recordKey.GetHashCode() % this.RedisManager.RedisInstanceCount;
-        }
+
+			this.requestVisitor = new RedisRequestVisitor();
+		}
 
         public static RedisVersionDb Instance
         {
@@ -166,7 +170,13 @@
     /// </summary>
     public partial class RedisVersionDb
     {
-        internal override VersionTable CreateVersionTable(string tableId, long redisDbIndex)
+		internal override void VisitTx(int partitionKey)
+		{
+			RedisConnectionPool clientPool = this.RedisManager.GetClientPool(RedisVersionDb.TX_DB_INDEX, partitionKey);
+			clientPool.Visit();
+		}
+
+		internal override VersionTable CreateVersionTable(string tableId, long redisDbIndex)
         {
             using (RedisClient redisClient = this.RedisManager.
                 GetClient(RedisVersionDb.META_DB_INDEX, RedisVersionDb.META_DATA_PARTITION))
@@ -248,15 +258,26 @@
     /// </summary>
     public partial class RedisVersionDb
     {
-        /// <summary>
-        /// Get a unique transaction Id and store the txTableEntry into the redis
-        /// This will be implemented in two steps since HSETNX can only have a field
-        /// 1. try a random txId and ensure that it is unique in redis with the command HSETNX
-        ///    If it is a unique id, set it in hset to occupy it with the same atomic operation
-        /// 2. set other fields of txTableEntry by HSET command
-        /// </summary>
-        /// <returns>a transaction Id</returns>
-        internal override long InsertNewTx()
+		internal override void EnqueueTxRequest(TxRequest req)
+		{
+			this.requestVisitor.Invoke(req);
+			string hashId = this.requestVisitor.HashId;
+			RedisRequest redisReq = this.requestVisitor.RedisReq;
+
+			int partition = this.PhysicalPartitionByKey(hashId);
+			RedisConnectionPool clientPool = this.RedisManager.GetClientPool(RedisVersionDb.TX_DB_INDEX, partition);
+			clientPool.EnqueueRequest(redisReq);
+		}
+
+		/// <summary>
+		/// Get a unique transaction Id and store the txTableEntry into the redis
+		/// This will be implemented in two steps since HSETNX can only have a field
+		/// 1. try a random txId and ensure that it is unique in redis with the command HSETNX
+		///    If it is a unique id, set it in hset to occupy it with the same atomic operation
+		/// 2. set other fields of txTableEntry by HSET command
+		/// </summary>
+		/// <returns>a transaction Id</returns>
+		internal override long InsertNewTx()
         {
             long txId = 0, ret = 0;
             do
