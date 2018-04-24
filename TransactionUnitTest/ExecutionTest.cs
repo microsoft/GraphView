@@ -21,7 +21,29 @@ namespace TransactionUnitTest
             Assert.AreEqual(largestVersionKey, 1L);
         }
 
-        [TestMethod]
+		[TestMethod]
+		public void TestReadCase1Event()
+		{
+			TransactionExecution tex = new TransactionExecution(null, this.versionDb);
+			while (tex.txId == 0L)
+			{
+				this.versionDb.VisitTx(0);
+				tex.InitTx();
+			}
+			this.versionDb.VisitTx(0);
+			tex.InitTx();
+
+			// Case1: Initial Read under event-driven senario
+			tex.Read(TABLE_ID, DEFAULT_KEY, out bool received, out object payload);
+			while (!received)
+			{
+				this.versionDb.Visit(TABLE_ID, 0);
+				tex.Read(TABLE_ID, DEFAULT_KEY, out received, out payload);
+			}
+			Assert.AreEqual(DEFAULT_VALUE, payload);
+		}
+
+		[TestMethod]
         public void TestReadCase2()
         {
             Transaction txRead = new Transaction(null, this.versionDb);

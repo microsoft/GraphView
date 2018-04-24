@@ -12,36 +12,26 @@ namespace TransactionUnitTest
         {
             //Test the function of UpdateVersionMaxCommitTs()
             VersionEntry versionEntry = this.versionDb.UpdateVersionMaxCommitTs(TABLE_ID, DEFAULT_KEY, 1L, 5L);
-            Assert.AreEqual(5, versionEntry.MaxCommitTs);
+            Assert.AreEqual(5L, versionEntry.MaxCommitTs);
 
-            Transaction t1 = new Transaction(null, this.versionDb);
-            t1.Read(TABLE_ID, DEFAULT_KEY);
-            t1.Delete(TABLE_ID, DEFAULT_KEY);
-            t1.UploadLocalWriteRecords();
-
-            versionEntry = this.versionDb.UpdateVersionMaxCommitTs(TABLE_ID, DEFAULT_KEY, 1L, 10L);
-            Assert.AreEqual(10L, versionEntry.MaxCommitTs);
+            versionEntry = this.versionDb.UpdateVersionMaxCommitTs(TABLE_ID, DEFAULT_KEY, 1L, 3L);
+            Assert.AreEqual(5L, versionEntry.MaxCommitTs);
         }
 
         [TestMethod]
         public void TestValidation1Event()
         {
-            UpdateVersionMaxCommitTsRequest req = this.versionDb.EnqueueUpdateVersionMaxCommitTs(TABLE_ID, DEFAULT_KEY, 1L, 5L);
+			//Test the function of UpdateVersionMaxCommitTs() in the event-driven senario.
+			UpdateVersionMaxCommitTsRequest req = this.versionDb.EnqueueUpdateVersionMaxCommitTs(TABLE_ID, DEFAULT_KEY, 1L, 5L);
             this.versionDb.Visit(TABLE_ID, 0);
             VersionEntry versionEntry = req.Result as VersionEntry;
             Assert.AreEqual(5, versionEntry.MaxCommitTs);
 
-            TransactionExecution tex = new TransactionExecution(null, this.versionDb);
-            tex.Read(TABLE_ID, DEFAULT_KEY, out bool received, out object payload);
-            while (!received)
-            {
-                this.versionDb.Visit(TABLE_ID, 0);
-                tex.Read(TABLE_ID, DEFAULT_KEY, out received, out payload);
-            }
-
-            tex.Delete(TABLE_ID, DEFAULT_KEY, out object deletedPayload);
-            this.versionDb.Visit(TABLE_ID, 0);
-        }
+			req = this.versionDb.EnqueueUpdateVersionMaxCommitTs(TABLE_ID, DEFAULT_KEY, 1L, 3L);
+			this.versionDb.Visit(TABLE_ID, 0);
+			versionEntry = req.Result as VersionEntry;
+			Assert.AreEqual(5, versionEntry.MaxCommitTs);
+		}
 
         [TestMethod]
         public void TestValidation2()
@@ -60,7 +50,36 @@ namespace TransactionUnitTest
             Assert.AreEqual(5L, t1CommitTs);
         }
 
-        [TestMethod]
+		[TestMethod]
+		public void TestValidation2Event()
+		{
+			//Test the function of UpdateCommitLowerBound() in the event-driven senario.
+			TransactionExecution tex1 = new TransactionExecution(null, this.versionDb);
+			while (tex1.txId == 0L)
+			{
+				this.versionDb.VisitTx(0);
+				tex1.InitTx();
+			}
+			this.versionDb.VisitTx(0);
+			tex1.InitTx();
+
+			UpdateCommitLowerBoundRequest txCommitReq = this.versionDb.EnqueueUpdateCommitLowerBound(tex1.txId, 5L);
+			this.versionDb.VisitTx(0);
+			long txCommitTs = txCommitReq.Result == null ? VersionDb.RETURN_ERROR_CODE : (long)txCommitReq.Result;
+			GetTxEntryRequest getTxReq = this.versionDb.EnqueueGetTxEntry(tex1.txId);
+			this.versionDb.VisitTx(0);
+			TxTableEntry txEntry = getTxReq.Result as TxTableEntry;
+			Assert.AreEqual(5L, txEntry.CommitLowerBound);
+			Assert.AreEqual(-1L, txCommitTs);
+
+			//Test the function of SetCommitTs() in the event-driven senario.
+			SetCommitTsRequest setTsReq = this.versionDb.EnqueueSetCommitTs(tex1.txId, 6L);
+			this.versionDb.VisitTx(0);
+			long commitTime = setTsReq.Result == null ? -1 : (long)setTsReq.Result;
+			Assert.AreEqual(6L, commitTime);
+		}
+
+		[TestMethod]
         public void TestValidation3()
         {
             //the current version entry has not been held by any transaction

@@ -796,11 +796,9 @@ namespace GraphView.Transaction
                     {
                         foreach (PostProcessingEntry entry in this.commitSet[tableId][recordKey])
                         {
-                            ReplaceVersionRequest replaceVerReq = null;
-
                             if (entry.BeginTimestamp == TransactionExecution.UNSET_TX_COMMIT_TIMESTAMP)
                             {
-                                replaceVerReq = this.versionDb.EnqueueReplaceVersionEntry(
+								ReplaceVersionRequest replaceVerReq = this.versionDb.EnqueueReplaceVersionEntry(
                                     tableId,
                                     recordKey,
                                     entry.VersionKey,
@@ -809,21 +807,38 @@ namespace GraphView.Transaction
                                     VersionEntry.EMPTY_TXID,
                                     this.txId,
                                     -1);
-                            }
+								this.requestStack.Push(replaceVerReq);
+							}
                             else
                             {
-                                replaceVerReq = this.versionDb.EnqueueReplaceVersionEntry(
-                                    tableId,
-                                    recordKey,
-                                    entry.VersionKey,
-                                    entry.BeginTimestamp,
-                                    this.commitTs,
-                                    VersionEntry.EMPTY_TXID,
-                                    this.txId,
-                                    long.MaxValue);
-                            }
+								// cloud environment: just replace the begin, end, txId field, need lua script, 3 redis command.
+								// ReplaceVersionRequest replaceVerReq = this.versionDb.EnqueueReplaceVersionEntry(
+								//     tableId,
+								//     recordKey,
+								//     entry.VersionKey,
+								//     entry.BeginTimestamp,
+								//     this.commitTs,
+								//     VersionEntry.EMPTY_TXID,
+								//     this.txId,
+								//     long.MaxValue);
+								// this.requestStack.Push(replaceVerReq);
 
-                            this.requestStack.Push(replaceVerReq);
+								// Single machine setting: pass the whole version, need only 1 redis command.
+								ReadSetEntry readEntry = this.readSet[tableId][recordKey];
+								ReplaceWholeVersionRequest replaceWholeVerReq = this.versionDb.EnqueueReplaceWholeVersionEntry(
+									tableId,
+									recordKey,
+									entry.VersionKey,
+									new VersionEntry(
+										recordKey,
+										entry.VersionKey,
+										readEntry.BeginTimestamp,
+										this.commitTs,
+										readEntry.Record,
+										VersionEntry.EMPTY_TXID,
+										this.commitTs));
+								this.requestStack.Push(replaceWholeVerReq);
+							}
                         }
                     }
                 }

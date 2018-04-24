@@ -78,7 +78,7 @@ namespace GraphView.Transaction
 
         public GetTxEntryRequest(long txId)
         {
-            this.TxId = TxId;
+            this.TxId = txId;
         }
 
         internal override void Accept(TxRequestVisitor visitor)
