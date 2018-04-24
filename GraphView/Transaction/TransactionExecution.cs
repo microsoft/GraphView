@@ -14,12 +14,8 @@ namespace GraphView.Transaction
         Insert,
         Update,
         Delete,
-        
-        /// <summary>
-        /// The transaction can still receive read/write requests
-        /// </summary>
         Open,
-
+        Initi,
         Final,
         Close,
     }
@@ -106,6 +102,11 @@ namespace GraphView.Transaction
             {
                 NewTxIdRequest newTxIdReq = this.versionDb.EnqueueNewTxId();
                 this.requestStack.Push(newTxIdReq);
+
+                // set the current procedure as InitTx and wait for the executor check
+                this.CurrentProc = new Procedure(this.InitTx);
+                this.Progress = TxProgress.Initi;
+
                 return;
             }
             else if (this.requestStack.Count == 1 && this.requestStack.Peek() is NewTxIdRequest)
@@ -145,7 +146,10 @@ namespace GraphView.Transaction
                     this.CurrentProc();
                     return;
                 }
-                // Assume the tx has been inserted successfully
+
+                // Assume the tx has been inserted successfully, change the execution status
+                this.CurrentProc = null;
+                this.Progress = TxProgress.Open;
             }
         }
 
@@ -1139,7 +1143,7 @@ namespace GraphView.Transaction
 
             VersionEntry visibleVersion = null;
             // Keep a committed version to retrieve the largest version key
-            VersionEntry commitedVersion = null;
+            VersionEntry committedVersion = null;
             while (this.readVersionList.Count > 0)
             {
                 // Wait for the GetTxEntry response
@@ -1170,7 +1174,7 @@ namespace GraphView.Transaction
                     }
 
                     // The current version is commited and should be extracted the largest version key
-                    commitedVersion = versionEntry;
+                    committedVersion = versionEntry;
 
                     // A dirty write has been appended after this version entry. 
                     // This version is visible if the writing tx has not been committed 
@@ -1205,7 +1209,7 @@ namespace GraphView.Transaction
                     }
                     else
                     {
-                        commitedVersion = versionEntry;
+                        committedVersion = versionEntry;
                         // When a tx has a begin timestamp after intialization
                         if (this.beginTimestamp >= 0 && 
                             this.beginTimestamp >= versionEntry.BeginTimestamp && 
@@ -1232,25 +1236,13 @@ namespace GraphView.Transaction
                 }
 
                 // Retrieve the largest version key from commit version entry
-                if (commitedVersion != null)
+                if (!this.largestVersionKeyMap.ContainsKey(tableId))
                 {
-                    if (this.largestVersionKeyMap.ContainsKey(tableId))
-                    {
-                        if (this.largestVersionKeyMap[tableId].ContainsKey(recordKey))
-                        {
-                            this.largestVersionKeyMap[tableId][recordKey] = Math.Max(
-                                this.largestVersionKeyMap[tableId][recordKey], commitedVersion.VersionKey);
-                        }
-                        else
-                        {
-                            this.largestVersionKeyMap[tableId][recordKey] = commitedVersion.VersionKey;
-                        }
-                    }
-                    else
-                    {
-                        this.largestVersionKeyMap[tableId] = new Dictionary<object, long>();
-                        this.largestVersionKeyMap[tableId][recordKey] = commitedVersion.VersionKey;
-                    }
+                    this.largestVersionKeyMap[tableId] = new Dictionary<object, long>();
+                }
+                if (!this.largestVersionKeyMap[tableId].ContainsKey(recordKey) && committedVersion != null)
+                {
+                    this.largestVersionKeyMap[tableId][recordKey] = committedVersion.VersionKey;
                 }
 
                 // Break the loop once find a visiable version

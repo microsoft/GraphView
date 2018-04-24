@@ -32,6 +32,11 @@
         /// The default meta database index
         /// </summary>
         public static readonly long META_DB_INDEX = 0;
+        
+        /// <summary>
+        /// The default transaction table name
+        /// </summary>
+        public static readonly string TX_TABLE = "tx_table";
 
         /// <summary>
         /// The default transaction database index
@@ -117,6 +122,9 @@
 
             // Default partition implementation
             this.PhysicalPartitionByKey = recordKey => recordKey.GetHashCode() % this.RedisManager.RedisInstanceCount;
+
+            // Create the transaction table
+            this.CreateVersionTable(RedisVersionDb.TX_TABLE, RedisVersionDb.TX_DB_INDEX);
         }
 
         public static RedisVersionDb Instance
