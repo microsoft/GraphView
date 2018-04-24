@@ -32,6 +32,11 @@
         /// The default meta database index
         /// </summary>
         public static readonly long META_DB_INDEX = 0;
+        
+        /// <summary>
+        /// The default transaction table name
+        /// </summary>
+        public static readonly string TX_TABLE = "tx_table";
 
         /// <summary>
         /// The default transaction database index
@@ -119,6 +124,9 @@
 
             // Default partition implementation
             this.PhysicalPartitionByKey = recordKey => recordKey.GetHashCode() % this.RedisManager.RedisInstanceCount;
+            // Create the transaction table
+            this.CreateVersionTable(RedisVersionDb.TX_TABLE, RedisVersionDb.TX_DB_INDEX);
+        }	
 
             this.responseVisitor = new RedisResponseVisitor();
 		}
@@ -170,12 +178,6 @@
     /// </summary>
     public partial class RedisVersionDb
     {
-		internal override void VisitTx(int partitionKey)
-		{
-			RedisConnectionPool clientPool = this.RedisManager.GetClientPool(RedisVersionDb.TX_DB_INDEX, partitionKey);
-			clientPool.Visit();
-		}
-
 		internal override VersionTable CreateVersionTable(string tableId, long redisDbIndex)
         {
             using (RedisClient redisClient = this.RedisManager.
@@ -260,6 +262,7 @@
     {
 		internal override void EnqueueTxRequest(TxRequest req)
 		{
+            throw new NotImplementedException();
             RedisRequestVisitor requestVisitor = new RedisRequestVisitor();
             requestVisitor.Invoke(req);
 			string hashId = requestVisitor.HashId;

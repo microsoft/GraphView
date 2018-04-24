@@ -48,7 +48,14 @@ namespace GraphView.Transaction
         /// </summary>
         internal Queue<TransactionRequest> workload;
 
+        /// <summary>
+        /// The version database instance
+        /// </summary>
         private readonly VersionDb versionDb;
+
+        /// <summary>
+        /// The log store instance
+        /// </summary>
         private readonly ILogStore logStore;
 
         /// <summary>
@@ -57,6 +64,9 @@ namespace GraphView.Transaction
         /// </summary>
         private List<Tuple<string, int>> partitionedInstances;
 
+        /// <summary>
+        /// A map of transactions, and each transaction has a queue of request from the client
+        /// </summary>
         private Dictionary<string, Tuple<TransactionExecution, Queue<TransactionRequest>>> activeTxs;
 
         public TransactionExecutor(
@@ -85,12 +95,8 @@ namespace GraphView.Transaction
                     TransactionExecution txExec = execTuple.Item1;
                     Queue<TransactionRequest> queue = execTuple.Item2;
 
-                    if (queue.Count == 0)
-                    {
-                        // No pending work to do for this tx.
-                        continue;
-                    }
-
+                    // If the transaction is at the initi status, the CurrentProc will be not null
+                    // It will be covered in this case
                     if (txExec.CurrentProc != null)
                     {
                         txExec.CurrentProc();
@@ -118,6 +124,12 @@ namespace GraphView.Transaction
                     }
                     else if (txExec.Progress == TxProgress.Open)
                     {
+                        if (queue.Count == 0)
+                        {
+                            // No pending work to do for this tx.
+                            continue;
+                        }
+
                         TransactionRequest opReq = queue.Peek();
 
                         switch(opReq.OperationType)
@@ -165,6 +177,7 @@ namespace GraphView.Transaction
                                 }
                             case OperationType.Close:
                                 {
+                                    // unable to check whether the commit has been finished, so pop the request here
                                     queue.Dequeue();
                                     txExec.Commit();
                                     break;
