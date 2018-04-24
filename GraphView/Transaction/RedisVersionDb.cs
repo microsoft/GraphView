@@ -81,7 +81,7 @@
         /// </summary>
         internal static readonly long REDIS_CALL_ERROR_CODE = -2L;
 
-		private readonly RedisRequestVisitor requestVisitor;
+		private readonly RedisResponseVisitor responseVisitor;
 
 		/// <summary>
 		/// Get RedisClient from the redis connection pool
@@ -120,7 +120,7 @@
             // Default partition implementation
             this.PhysicalPartitionByKey = recordKey => recordKey.GetHashCode() % this.RedisManager.RedisInstanceCount;
 
-			this.requestVisitor = new RedisRequestVisitor();
+            this.responseVisitor = new RedisResponseVisitor();
 		}
 
         public static RedisVersionDb Instance
@@ -260,9 +260,11 @@
     {
 		internal override void EnqueueTxRequest(TxRequest req)
 		{
-			this.requestVisitor.Invoke(req);
-			string hashId = this.requestVisitor.HashId;
-			RedisRequest redisReq = this.requestVisitor.RedisReq;
+            RedisRequestVisitor requestVisitor = new RedisRequestVisitor();
+            requestVisitor.Invoke(req);
+			string hashId = requestVisitor.HashId;
+			RedisRequest redisReq = requestVisitor.RedisReq;
+            redisReq.ResponseVisitor = this.responseVisitor;
 
 			int partition = this.PhysicalPartitionByKey(hashId);
 			RedisConnectionPool clientPool = this.RedisManager.GetClientPool(RedisVersionDb.TX_DB_INDEX, partition);

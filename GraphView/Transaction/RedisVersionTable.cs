@@ -13,7 +13,6 @@
         /// </summary>
         private readonly long redisDbIndex;
 
-        private readonly RedisRequestVisitor requestVisitor;
         private readonly RedisResponseVisitor responseVisitor;
 
         /// <summary>
@@ -42,7 +41,6 @@
             : base(versionDb, tableId)
         {
             this.redisDbIndex = redisDbIndex;
-            this.requestVisitor = new RedisRequestVisitor();
             this.responseVisitor = new RedisResponseVisitor();
         }
     }
@@ -51,9 +49,11 @@
     {
         internal override void EnqueueTxRequest(TxRequest req)
         {
-            this.requestVisitor.Invoke(req);
-            string hashId = this.requestVisitor.HashId;
-            RedisRequest redisReq = this.requestVisitor.RedisReq;
+            RedisRequestVisitor requestVisitor = new RedisRequestVisitor();
+            requestVisitor.Invoke(req);
+            string hashId = requestVisitor.HashId;
+            RedisRequest redisReq = requestVisitor.RedisReq;
+            redisReq.ResponseVisitor = this.responseVisitor;
 
             int partition = this.VersionDb.PhysicalPartitionByKey(hashId);
             RedisConnectionPool clientPool = this.RedisManager.GetClientPool(this.redisDbIndex, partition);

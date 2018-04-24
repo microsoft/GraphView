@@ -30,7 +30,7 @@ namespace GraphView.Transaction
         internal RedisRequestType Type { get; private set; }
 
         internal TxRequest ParentRequest { get; set; }
-        private RedisResponseVisitor responseVisitor;
+        internal RedisResponseVisitor ResponseVisitor { get; set; }
         
         /// <summary>
         /// for HSet, HSetNX command
@@ -41,7 +41,6 @@ namespace GraphView.Transaction
             this.Key = key;
             this.Value = value;
             this.Type = type;
-            this.responseVisitor = new RedisResponseVisitor();
         }
 
         /// <summary>
@@ -52,7 +51,6 @@ namespace GraphView.Transaction
             this.HashId = hashId;
             this.Key = key;
             this.Type = type;
-            this.responseVisitor = new RedisResponseVisitor();
         }
 
         /// <summary>
@@ -63,7 +61,6 @@ namespace GraphView.Transaction
             this.HashId = hashId;
             this.Keys = keys;
             this.Type = type;
-            this.responseVisitor = new RedisResponseVisitor();
         }
 
         /// <summary>
@@ -75,7 +72,6 @@ namespace GraphView.Transaction
             this.Keys = keys;
             this.Values = values;
             this.Type = type;
-            this.responseVisitor = new RedisResponseVisitor();
         }
 
         /// <summary>
@@ -87,7 +83,6 @@ namespace GraphView.Transaction
             this.Sha1 = sha1;
             this.NumberKeysInArgs = numberOfKeysInArg;
             this.Type = type;
-            this.responseVisitor = new RedisResponseVisitor();
         } 
 
         /// <summary>
@@ -97,7 +92,6 @@ namespace GraphView.Transaction
         {
             this.HashId = hashId;
             this.Type = type;
-            this.responseVisitor = new RedisResponseVisitor();
         }
 
         internal void SetValue(byte[] result)
@@ -108,7 +102,7 @@ namespace GraphView.Transaction
             if (this.ParentRequest != null)
             {
                 this.ParentRequest.Finished = true;
-                this.responseVisitor.Invoke(this.ParentRequest, result);
+                this.ResponseVisitor.Invoke(this.ParentRequest, result);
             }
         }
 
@@ -120,7 +114,7 @@ namespace GraphView.Transaction
             if (this.ParentRequest != null)
             {
                 this.ParentRequest.Finished = true;
-                this.responseVisitor.Invoke(this.ParentRequest, result);
+                this.ResponseVisitor.Invoke(this.ParentRequest, result);
             }
         }
 
@@ -132,7 +126,7 @@ namespace GraphView.Transaction
             if (this.ParentRequest != null)
             {
                 this.ParentRequest.Finished = true;
-                this.responseVisitor.Invoke(this.ParentRequest, result);
+                this.ResponseVisitor.Invoke(this.ParentRequest, result);
             }
         }
 
