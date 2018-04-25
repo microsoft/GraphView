@@ -897,6 +897,12 @@ namespace GraphView.Transaction
                     }
                 }
 
+				// No post processing ops are needed.
+				if (this.requestStack.Count == 0)
+				{
+					this.Progress = TxProgress.Close;
+					this.CurrentProc = null;
+				}
                 return;
             }
             else
@@ -948,7 +954,15 @@ namespace GraphView.Transaction
                         }
                     }
                 }
-            }
+
+				// No post processing ops are needed.
+				if (this.requestStack.Count == 0)
+				{
+					this.Progress = TxProgress.Close;
+					this.CurrentProc = null;
+				}
+				return;
+			}
             else
             {
                 foreach (TxRequest req in this.requestStack)

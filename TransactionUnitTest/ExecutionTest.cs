@@ -559,9 +559,11 @@ namespace TransactionUnitTest
 				texUpdate.SetCommitTimestamp();
 			}
 			Assert.AreEqual(new Procedure(texUpdate.Validate), texUpdate.CurrentProc);
-			texUpdate.Abort();
-			this.versionDb.Visit(RedisVersionDb.TX_TABLE, 0);
-			texUpdate.Abort();
+			while (texUpdate.CurrentProc != new Procedure(texUpdate.PostProcessingAfterAbort))
+			{
+				this.versionDb.Visit(RedisVersionDb.TX_TABLE, 0);
+				texUpdate.Abort();
+			}
 			Assert.AreEqual(new Procedure(texUpdate.PostProcessingAfterAbort), texUpdate.CurrentProc);
 
 
