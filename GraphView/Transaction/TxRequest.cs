@@ -225,7 +225,14 @@ namespace GraphView.Transaction
             this.VersionKey = versionKey;
             this.VersionEntry = versionEntry;
         }
-    }
+		internal override void Accept(TxRequestVisitor visitor)
+		{
+			if (visitor != null)
+			{
+				visitor.Visit(this);
+			}
+		}
+	}
 
     internal class SetCommitTsRequest : TxRequest
     {

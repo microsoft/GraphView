@@ -866,32 +866,32 @@ namespace GraphView.Transaction
                             else
                             {
 								// cloud environment: just replace the begin, end, txId field, need lua script, 3 redis command.
-								ReplaceVersionRequest replaceVerReq = this.versionDb.EnqueueReplaceVersionEntry(
-									tableId,
-									recordKey,
-									entry.VersionKey,
-									entry.BeginTimestamp,
-									this.commitTs,
-									VersionEntry.EMPTY_TXID,
-									this.txId,
-									long.MaxValue);
-								this.requestStack.Push(replaceVerReq);
-
-								// Single machine setting: pass the whole version, need only 1 redis command.
-								// ReadSetEntry readEntry = this.readSet[tableId][recordKey];
-								// ReplaceWholeVersionRequest replaceWholeVerReq = this.versionDb.EnqueueReplaceWholeVersionEntry(
+								// ReplaceVersionRequest replaceVerReq = this.versionDb.EnqueueReplaceVersionEntry(
 								//	 tableId,
 								//	 recordKey,
 								//	 entry.VersionKey,
-								//	 new VersionEntry(
-								//		 recordKey,
-								//		 entry.VersionKey,
-								//		 readEntry.BeginTimestamp,
-								//		 this.commitTs,
-								//		 readEntry.Record,
-								//		 VersionEntry.EMPTY_TXID,
-								//		 this.commitTs));
-								// this.requestStack.Push(replaceWholeVerReq);
+								//	 entry.BeginTimestamp,
+								//	 this.commitTs,
+								//	 VersionEntry.EMPTY_TXID,
+								//	 this.txId,
+								//	 long.MaxValue);
+								// this.requestStack.Push(replaceVerReq);
+
+								// Single machine setting: pass the whole version, need only 1 redis command.
+								ReadSetEntry readEntry = this.readSet[tableId][recordKey];
+								ReplaceWholeVersionRequest replaceWholeVerReq = this.versionDb.EnqueueReplaceWholeVersionEntry(
+									tableId,
+									recordKey,
+									entry.VersionKey,
+									new VersionEntry(
+										recordKey,
+										entry.VersionKey,
+										readEntry.BeginTimestamp,
+										this.commitTs,
+										readEntry.Record,
+										VersionEntry.EMPTY_TXID,
+										this.commitTs));
+								this.requestStack.Push(replaceWholeVerReq);
 							}
                         }
                     }

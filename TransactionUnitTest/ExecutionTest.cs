@@ -378,12 +378,19 @@ namespace TransactionUnitTest
 			}
 			Assert.AreEqual(new Procedure(texUpdate.WriteToLog), texUpdate.CurrentProc);
 			texUpdate.WriteToLog();
-			this.versionDb.Visit(RedisVersionDb.TX_TABLE, 0);
-			texUpdate.WriteToLog();
+			while (texUpdate.CurrentProc == new Procedure(texUpdate.WriteToLog))
+			{
+				this.versionDb.Visit(RedisVersionDb.TX_TABLE, 0);
+				texUpdate.WriteToLog();
+			}
 			Assert.AreEqual(new Procedure(texUpdate.PostProcessingAfterCommit), texUpdate.CurrentProc);
 
 			GetTxEntryRequest getTxReq = this.versionDb.EnqueueGetTxEntry(texUpdate.txId);
 			this.versionDb.Visit(RedisVersionDb.TX_TABLE, 0);
+			while (getTxReq.Result == null)
+			{
+				this.versionDb.Visit(RedisVersionDb.TX_TABLE, 0);
+			}
 			TxTableEntry txEntry = getTxReq.Result as TxTableEntry;
 			Assert.AreEqual(TxStatus.Committed, txEntry.Status);
 
@@ -469,9 +476,11 @@ namespace TransactionUnitTest
 			}
 			Assert.AreEqual(new Procedure(texUpdate.WriteToLog), texUpdate.CurrentProc);
 			texUpdate.WriteToLog();
-			this.versionDb.Visit(RedisVersionDb.TX_TABLE, 0);
-			texUpdate.WriteToLog();
-			Assert.AreEqual(new Procedure(texUpdate.PostProcessingAfterCommit), texUpdate.CurrentProc);
+			while (texUpdate.CurrentProc == new Procedure(texUpdate.WriteToLog))
+			{
+				this.versionDb.Visit(RedisVersionDb.TX_TABLE, 0);
+				texUpdate.WriteToLog();
+			}
 			texUpdate.PostProcessingAfterCommit();
 			while (texUpdate.Progress != TxProgress.Close)
 			{
@@ -629,9 +638,11 @@ namespace TransactionUnitTest
 			}
 			Assert.AreEqual(new Procedure(texUpdate.Validate), texUpdate.CurrentProc);
 			texUpdate.Abort();
-			this.versionDb.Visit(RedisVersionDb.TX_TABLE, 0);
-			texUpdate.Abort();
-			Assert.AreEqual(new Procedure(texUpdate.PostProcessingAfterAbort), texUpdate.CurrentProc);
+			while (texUpdate.CurrentProc != new Procedure(texUpdate.PostProcessingAfterAbort))
+			{
+				this.versionDb.Visit(RedisVersionDb.TX_TABLE, 0);
+				texUpdate.Abort();
+			}
 			texUpdate.PostProcessingAfterAbort();
 			while (texUpdate.Progress != TxProgress.Close)
 			{
@@ -703,6 +714,10 @@ namespace TransactionUnitTest
 
 			GetTxEntryRequest getTxReq = this.versionDb.EnqueueGetTxEntry(texDelete.txId);
 			this.versionDb.Visit(RedisVersionDb.TX_TABLE, 0);
+			while (getTxReq.Result == null)
+			{
+				this.versionDb.Visit(RedisVersionDb.TX_TABLE, 0);
+			}
 			TxTableEntry txEntry = getTxReq.Result as TxTableEntry;
 			Assert.AreEqual(TxStatus.Committed, txEntry.Status);
 
@@ -765,6 +780,10 @@ namespace TransactionUnitTest
 
 			GetTxEntryRequest getTxReq = this.versionDb.EnqueueGetTxEntry(texDelete.txId);
 			this.versionDb.Visit(RedisVersionDb.TX_TABLE, 0);
+			while (getTxReq.Result == null)
+			{
+				this.versionDb.Visit(RedisVersionDb.TX_TABLE, 0);
+			}
 			TxTableEntry txEntry = getTxReq.Result as TxTableEntry;
 			Assert.AreEqual(TxStatus.Committed, txEntry.Status);
 
@@ -870,7 +889,26 @@ namespace TransactionUnitTest
             txInsert.Insert(TABLE_ID, DEFAULT_KEY, DEFAULT_VALUE);
         }
 
-        [TestMethod]
+		[TestMethod]
+		[ExpectedException(typeof(TransactionException))]
+		public void TestInsertCase1Event()
+		{
+			TransactionExecution texInsert = new TransactionExecution(null, this.versionDb);
+			while (texInsert.Progress == TxProgress.Initi)
+			{
+				this.versionDb.Visit(RedisVersionDb.TX_TABLE, 0);
+				texInsert.InitTx();
+			}
+			texInsert.ReadAndInitialize(TABLE_ID, DEFAULT_KEY, out bool received, out object payload);
+			while (!received)
+			{
+				this.versionDb.Visit(TABLE_ID, 0);
+				texInsert.ReadAndInitialize(TABLE_ID, DEFAULT_KEY, out received, out payload);
+			}
+			texInsert.Insert(TABLE_ID, DEFAULT_KEY, "value_insert");
+		}
+
+		[TestMethod]
         // delete -> insert
         public void TestInsertCase2()
         {
@@ -884,7 +922,58 @@ namespace TransactionUnitTest
             Assert.AreEqual(value, DEFAULT_VALUE + "_insert");
         }
 
-        [TestMethod]
+		[TestMethod]
+		public void TestInsertCase2Event()
+		{
+			TransactionExecution texInsert = new TransactionExecution(null, this.versionDb);
+			while (texInsert.Progress == TxProgress.Initi)
+			{
+				this.versionDb.Visit(RedisVersionDb.TX_TABLE, 0);
+				texInsert.InitTx();
+			}
+			texInsert.Read(TABLE_ID, DEFAULT_KEY, out bool received, out object payload);
+			while (!received)
+			{
+				this.versionDb.Visit(TABLE_ID, 0);
+				texInsert.Read(TABLE_ID, DEFAULT_KEY, out received, out payload);
+			}
+			texInsert.Delete(TABLE_ID, DEFAULT_KEY, out object payloadDelete);
+			texInsert.Insert(TABLE_ID, DEFAULT_KEY, "value_insert");
+			texInsert.Commit();
+			while (texInsert.Progress != TxProgress.Close)
+			{
+				this.versionDb.Visit(TABLE_ID, 0);
+				this.versionDb.Visit(RedisVersionDb.TX_TABLE, 0);
+				texInsert.CurrentProc();
+			}
+
+			GetTxEntryRequest getTxReq = this.versionDb.EnqueueGetTxEntry(texInsert.txId);
+			this.versionDb.Visit(RedisVersionDb.TX_TABLE, 0);
+			while (getTxReq.Result == null)
+			{
+				this.versionDb.Visit(RedisVersionDb.TX_TABLE, 0);
+			}
+			TxTableEntry txEntry = getTxReq.Result as TxTableEntry;
+			Assert.AreEqual(TxStatus.Committed, txEntry.Status);
+
+			TransactionExecution texRead = new TransactionExecution(null, this.versionDb);
+			while (texRead.Progress == TxProgress.Initi)
+			{
+				this.versionDb.Visit(RedisVersionDb.TX_TABLE, 0);
+				texRead.InitTx();
+			}
+			texRead.Read(TABLE_ID, DEFAULT_KEY, out bool receivedRead, out object payloadRead);
+			while (!receivedRead)
+			{
+				this.versionDb.Visit(TABLE_ID, 0);
+				this.versionDb.Visit(RedisVersionDb.TX_TABLE, 0);
+				texRead.Read(TABLE_ID, DEFAULT_KEY, out receivedRead, out payloadRead);
+			}
+			Assert.AreEqual("value_insert", (string)payloadRead);
+			Assert.AreEqual(2L, texRead.largestVersionKeyMap[TABLE_ID][DEFAULT_KEY]);
+		}
+
+		[TestMethod]
         // update -> insert
         [ExpectedException(typeof(TransactionException))]
         public void TestInsertCase3()
@@ -895,7 +984,28 @@ namespace TransactionUnitTest
             txInsert.Insert(TABLE_ID, DEFAULT_KEY, DEFAULT_VALUE);
         }
 
-        [TestMethod]
+		[TestMethod]
+		// update -> insert
+		[ExpectedException(typeof(TransactionException))]
+		public void TestInsertCase3Event()
+		{
+			TransactionExecution texInsert = new TransactionExecution(null, this.versionDb);
+			while (texInsert.Progress == TxProgress.Initi)
+			{
+				this.versionDb.Visit(RedisVersionDb.TX_TABLE, 0);
+				texInsert.InitTx();
+			}
+			texInsert.Read(TABLE_ID, DEFAULT_KEY, out bool received, out object payload);
+			while (!received)
+			{
+				this.versionDb.Visit(TABLE_ID, 0);
+				texInsert.Read(TABLE_ID, DEFAULT_KEY, out received, out payload);
+			}
+			texInsert.Update(TABLE_ID, DEFAULT_KEY, "value_update");
+			texInsert.Insert(TABLE_ID, DEFAULT_KEY, "value_insert");
+		}
+
+		[TestMethod]
         // update
         public void TestUpdateCase1()
         {
@@ -920,7 +1030,28 @@ namespace TransactionUnitTest
             txDelete.Update(TABLE_ID, DEFAULT_KEY, DEFAULT_VALUE + "_insert");
         }
 
-        [TestMethod]
+		[TestMethod]
+		// delete -> update
+		[ExpectedException(typeof(TransactionException))]
+		public void TestUpdateCase2Event()
+		{
+			TransactionExecution tex = new TransactionExecution(null, this.versionDb);
+			while (tex.Progress == TxProgress.Initi)
+			{
+				this.versionDb.Visit(RedisVersionDb.TX_TABLE, 0);
+				tex.InitTx();
+			}
+			tex.Read(TABLE_ID, DEFAULT_KEY, out bool received, out object payload);
+			while (!received)
+			{
+				this.versionDb.Visit(TABLE_ID, 0);
+				tex.Read(TABLE_ID, DEFAULT_KEY, out received, out payload);
+			}
+			tex.Delete(TABLE_ID, DEFAULT_KEY, out object payloadDelete);
+			tex.Update(TABLE_ID, DEFAULT_KEY, "value_update");
+		}
+
+		[TestMethod]
         // delete
         public void TestDeleteCase1()
         {
@@ -934,7 +1065,49 @@ namespace TransactionUnitTest
             Assert.AreEqual(value, null);
         }
 
-        [TestMethod]
+		[TestMethod]
+		// delete
+		public void TestDeleteCase1Event()
+		{
+			TransactionExecution tex = new TransactionExecution(null, this.versionDb);
+			while (tex.Progress == TxProgress.Initi)
+			{
+				this.versionDb.Visit(RedisVersionDb.TX_TABLE, 0);
+				tex.InitTx();
+			}
+			tex.Read(TABLE_ID, DEFAULT_KEY, out bool received, out object payload);
+			while (!received)
+			{
+				this.versionDb.Visit(TABLE_ID, 0);
+				tex.Read(TABLE_ID, DEFAULT_KEY, out received, out payload);
+			}
+			tex.Delete(TABLE_ID, DEFAULT_KEY, out object payloadDelete);
+			tex.Commit();
+			while (tex.Progress != TxProgress.Close)
+			{
+				this.versionDb.Visit(TABLE_ID, 0);
+				this.versionDb.Visit(RedisVersionDb.TX_TABLE, 0);
+				tex.CurrentProc();
+			}
+
+			TransactionExecution texRead = new TransactionExecution(null, this.versionDb);
+			while (texRead.Progress == TxProgress.Initi)
+			{
+				this.versionDb.Visit(RedisVersionDb.TX_TABLE, 0);
+				texRead.InitTx();
+			}
+			texRead.Read(TABLE_ID, DEFAULT_KEY, out bool receivedRead, out object payloadRead);
+			while (!receivedRead)
+			{
+				this.versionDb.Visit(TABLE_ID, 0);
+				this.versionDb.Visit(RedisVersionDb.TX_TABLE, 0);
+				texRead.Read(TABLE_ID, DEFAULT_KEY, out receivedRead, out payloadRead);
+			}
+			Assert.AreEqual(null, (string)payloadRead);
+			Assert.AreEqual(1L, texRead.largestVersionKeyMap[TABLE_ID][DEFAULT_KEY]);
+		}
+
+		[TestMethod]
         // insert -> delete
         public void TestDeleteCase2()
         {
@@ -946,7 +1119,35 @@ namespace TransactionUnitTest
             txDelete.Commit();
         }
 
-        [TestMethod]
+		[TestMethod]
+		// delete
+		public void TestDeleteCase2Event()
+		{
+			TransactionExecution tex = new TransactionExecution(null, this.versionDb);
+			while (tex.Progress == TxProgress.Initi)
+			{
+				this.versionDb.Visit(RedisVersionDb.TX_TABLE, 0);
+				tex.InitTx();
+			}
+			tex.Read(TABLE_ID, DEFAULT_KEY, out bool received, out object payload);
+			while (!received)
+			{
+				this.versionDb.Visit(TABLE_ID, 0);
+				tex.Read(TABLE_ID, DEFAULT_KEY, out received, out payload);
+			}
+			tex.Delete(TABLE_ID, DEFAULT_KEY, out object payloadDelete);
+			tex.Insert(TABLE_ID, DEFAULT_KEY, "value_insert");
+			tex.Delete(TABLE_ID, DEFAULT_KEY, out payloadDelete);
+			tex.Commit();
+			while (tex.Progress != TxProgress.Close)
+			{
+				this.versionDb.Visit(TABLE_ID, 0);
+				this.versionDb.Visit(RedisVersionDb.TX_TABLE, 0);
+				tex.CurrentProc();
+			}
+		}
+
+		[TestMethod]
         // delete -> delete
         [ExpectedException(typeof(TransactionException))]
         public void TestDeleteCase3()
@@ -957,7 +1158,27 @@ namespace TransactionUnitTest
             txDelete.Delete(TABLE_ID, DEFAULT_KEY);
         }
 
-        [TestMethod]
+		[TestMethod]
+		[ExpectedException(typeof(TransactionException))]
+		public void TestDeleteCase3Event()
+		{
+			TransactionExecution tex = new TransactionExecution(null, this.versionDb);
+			while (tex.Progress == TxProgress.Initi)
+			{
+				this.versionDb.Visit(RedisVersionDb.TX_TABLE, 0);
+				tex.InitTx();
+			}
+			tex.Read(TABLE_ID, DEFAULT_KEY, out bool received, out object payload);
+			while (!received)
+			{
+				this.versionDb.Visit(TABLE_ID, 0);
+				tex.Read(TABLE_ID, DEFAULT_KEY, out received, out payload);
+			}
+			tex.Delete(TABLE_ID, DEFAULT_KEY, out object payloadDelete);
+			tex.Delete(TABLE_ID, DEFAULT_KEY, out payloadDelete);
+		}
+
+		[TestMethod]
         // update -> delete
         public void TestDeleteCase4()
         {
@@ -967,7 +1188,34 @@ namespace TransactionUnitTest
             txDelete.Delete(TABLE_ID, DEFAULT_KEY);
         }
 
-        private object ReadValue(Transaction tx, string tableId, object recordKey, out long largestVersionKey)
+		[TestMethod]
+		// delete
+		public void TestDeleteCase4Event()
+		{
+			TransactionExecution tex = new TransactionExecution(null, this.versionDb);
+			while (tex.Progress == TxProgress.Initi)
+			{
+				this.versionDb.Visit(RedisVersionDb.TX_TABLE, 0);
+				tex.InitTx();
+			}
+			tex.Read(TABLE_ID, DEFAULT_KEY, out bool received, out object payload);
+			while (!received)
+			{
+				this.versionDb.Visit(TABLE_ID, 0);
+				tex.Read(TABLE_ID, DEFAULT_KEY, out received, out payload);
+			}
+			tex.Update(TABLE_ID, DEFAULT_KEY, "value_update");
+			tex.Delete(TABLE_ID, DEFAULT_KEY, out object payloadDelete);
+			tex.Commit();
+			while (tex.Progress != TxProgress.Close)
+			{
+				this.versionDb.Visit(TABLE_ID, 0);
+				this.versionDb.Visit(RedisVersionDb.TX_TABLE, 0);
+				tex.CurrentProc();
+			}
+		}
+
+		private object ReadValue(Transaction tx, string tableId, object recordKey, out long largestVersionKey)
         {
             IEnumerable<VersionEntry> versionList = this.versionDb.GetVersionList(TABLE_ID, DEFAULT_KEY);
             VersionEntry version = tx.GetVisibleVersionEntry(versionList, out largestVersionKey);

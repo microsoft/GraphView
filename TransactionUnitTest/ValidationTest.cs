@@ -18,22 +18,29 @@ namespace TransactionUnitTest
             Assert.AreEqual(5L, versionEntry.MaxCommitTs);
         }
 
-        [TestMethod]
-        public void TestValidation1Event()
-        {
+		[TestMethod]
+		public void TestValidation1Event()
+		{
 			//Test the function of UpdateVersionMaxCommitTs() in the event-driven senario.
 			UpdateVersionMaxCommitTsRequest req = this.versionDb.EnqueueUpdateVersionMaxCommitTs(TABLE_ID, DEFAULT_KEY, 1L, 5L);
-            this.versionDb.Visit(TABLE_ID, 0);
-            VersionEntry versionEntry = req.Result as VersionEntry;
-            Assert.AreEqual(5, versionEntry.MaxCommitTs);
+			while (req.Result == null)
+			{
+				this.versionDb.Visit(TABLE_ID, 0);
+			}
+			VersionEntry versionEntry = req.Result as VersionEntry;
+			Assert.AreEqual(5L, versionEntry.MaxCommitTs);
 
 			req = this.versionDb.EnqueueUpdateVersionMaxCommitTs(TABLE_ID, DEFAULT_KEY, 1L, 3L);
+			while (req.Result == null)
+			{
+				this.versionDb.Visit(TABLE_ID, 0);
+			}
 			this.versionDb.Visit(TABLE_ID, 0);
 			versionEntry = req.Result as VersionEntry;
-			Assert.AreEqual(5, versionEntry.MaxCommitTs);
+			Assert.AreEqual(5L, versionEntry.MaxCommitTs);
 		}
 
-        [TestMethod]
+		[TestMethod]
         public void TestValidation2()
         {
             //Test the function of UpdateCommitLowerBound()
@@ -66,13 +73,20 @@ namespace TransactionUnitTest
 			long txCommitTs = txCommitReq.Result == null ? VersionDb.RETURN_ERROR_CODE : (long)txCommitReq.Result;
 			GetTxEntryRequest getTxReq = this.versionDb.EnqueueGetTxEntry(tex1.txId);
 			this.versionDb.Visit(RedisVersionDb.TX_TABLE, 0);
+			while (getTxReq.Result == null)
+			{
+				this.versionDb.Visit(RedisVersionDb.TX_TABLE, 0);
+			}
 			TxTableEntry txEntry = getTxReq.Result as TxTableEntry;
 			Assert.AreEqual(5L, txEntry.CommitLowerBound);
 			Assert.AreEqual(-1L, txCommitTs);
 
 			//Test the function of SetCommitTs() in the event-driven senario.
 			SetCommitTsRequest setTsReq = this.versionDb.EnqueueSetCommitTs(tex1.txId, 6L);
-			this.versionDb.Visit(RedisVersionDb.TX_TABLE, 0);
+			while (setTsReq.Result == null)
+			{
+				this.versionDb.Visit(RedisVersionDb.TX_TABLE, 0);
+			}
 			long commitTime = setTsReq.Result == null ? -1 : (long)setTsReq.Result;
 			Assert.AreEqual(6L, commitTime);
 		}
