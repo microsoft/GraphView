@@ -13,6 +13,9 @@
         /// </summary>
         private readonly long redisDbIndex;
 
+        /// <summary>
+        /// The response visitor to handle response
+        /// </summary>
         private readonly RedisResponseVisitor responseVisitor;
 
         /// <summary>

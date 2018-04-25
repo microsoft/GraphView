@@ -21,7 +21,8 @@ namespace GraphView.Transaction
         internal override void Visit(DeleteVersionRequest req)
         {
             this.HashId = req.RecordKey as string;
-            this.RedisReq = new RedisRequest(this.HashId, RedisRequestType.HGetAll)
+            byte[] keyBytes = BitConverter.GetBytes(req.VersionKey);
+            this.RedisReq = new RedisRequest(this.HashId, keyBytes, RedisRequestType.HDel)
             {
                 ParentRequest = req
             };
@@ -138,6 +139,18 @@ namespace GraphView.Transaction
             };
         }
 
+        internal override void Visit(ReplaceWholeVersionRequest req)
+        {
+            this.HashId = req.RecordKey as string;
+            byte[] keyBytes = BitConverter.GetBytes(req.VersionKey);
+            byte[] valueBytes = VersionEntry.Serialize(req.VersionEntry);
+
+            this.RedisReq = new RedisRequest(this.HashId, keyBytes, valueBytes, RedisRequestType.HSet)
+            {
+                ParentRequest = req
+            };
+        }
+
         internal override void Visit(SetCommitTsRequest req)
         {
             this.HashId = req.TxId.ToString();
@@ -166,7 +179,6 @@ namespace GraphView.Transaction
                 RedisVersionDb.NEGATIVE_ONE_BYTES,
                 RedisVersionDb.NEGATIVE_TWO_BYTES,
             };
-            byte[][] returnBytes = null;
 
             this.RedisReq = new RedisRequest(keys, sha1, 1, RedisRequestType.EvalSha)
             {
@@ -179,7 +191,6 @@ namespace GraphView.Transaction
             this.HashId = req.TxId.ToString();
             byte[] keyBytes = Encoding.ASCII.GetBytes(TxTableEntry.STATUS_STRING);
             byte[] valueBytes = BitConverter.GetBytes((int)req.TxStatus);
-            long ret = 0;
 
             this.RedisReq = new RedisRequest(this.HashId, keyBytes, valueBytes, RedisRequestType.HSet)
             {
