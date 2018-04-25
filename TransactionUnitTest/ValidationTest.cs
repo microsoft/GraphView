@@ -70,9 +70,12 @@ namespace TransactionUnitTest
 
 			UpdateCommitLowerBoundRequest txCommitReq = this.versionDb.EnqueueUpdateCommitLowerBound(tex1.txId, 5L);
 			this.versionDb.Visit(RedisVersionDb.TX_TABLE, 0);
+			while (txCommitReq.Result == null)
+			{
+				this.versionDb.Visit(RedisVersionDb.TX_TABLE, 0);
+			}
 			long txCommitTs = txCommitReq.Result == null ? VersionDb.RETURN_ERROR_CODE : (long)txCommitReq.Result;
 			GetTxEntryRequest getTxReq = this.versionDb.EnqueueGetTxEntry(tex1.txId);
-			this.versionDb.Visit(RedisVersionDb.TX_TABLE, 0);
 			while (getTxReq.Result == null)
 			{
 				this.versionDb.Visit(RedisVersionDb.TX_TABLE, 0);
@@ -111,12 +114,59 @@ namespace TransactionUnitTest
             Assert.AreEqual(false, isSuccess);
         }
 
+		[TestMethod]
+		public void TestValidation3Event()
+		{
+			UpdateVersionMaxCommitTsRequest req = this.versionDb.EnqueueUpdateVersionMaxCommitTs(TABLE_ID, DEFAULT_KEY, 1L, 5L);
+			while (req.Result == null)
+			{
+				this.versionDb.Visit(TABLE_ID, 0);
+			}
+
+			TransactionExecution tex = new TransactionExecution(null, this.versionDb);
+			tex.DEBUG_MODE = true;
+			while (tex.Progress == TxProgress.Initi)
+			{
+				this.versionDb.Visit(RedisVersionDb.TX_TABLE, 0);
+				tex.InitTx();
+			}
+			tex.Read(TABLE_ID, DEFAULT_KEY, out bool received, out object payload);
+			while (!received)
+			{
+				this.versionDb.Visit(TABLE_ID, 0);
+				tex.Read(TABLE_ID, DEFAULT_KEY, out received, out payload);
+			}
+			tex.Upload();
+			while (tex.CurrentProc == null)
+			{
+				this.versionDb.Visit(TABLE_ID, 0);
+				tex.Upload();
+			}
+			tex.maxCommitTsOfWrites = 4L;
+			tex.SetCommitTimestamp();
+			while (tex.CurrentProc == new Procedure(tex.SetCommitTimestamp))
+			{
+				this.versionDb.Visit(RedisVersionDb.TX_TABLE, 0);
+				tex.SetCommitTimestamp();
+			}
+
+			VersionEntry versionEntry =
+				this.versionDb.ReplaceVersionEntry(TABLE_ID, DEFAULT_KEY, 1L, 0L, 4L, -1, -1, long.MaxValue);
+
+			tex.Validate();
+			while (tex.CurrentProc == new Procedure(tex.Validate))
+			{
+				this.versionDb.Visit(TABLE_ID, 0);
+				tex.Validate();
+			}
+			Assert.AreEqual(new Procedure(tex.Abort), tex.CurrentProc);
+		}
+
         [TestMethod]
         public void TestValidation4()
         {
             // The current version entry has been held by another concurrent transaction
             // And the concurrent transaction's status is Aborted
-
             Transaction t2 = new Transaction(null, this.versionDb);
             t2.Read(TABLE_ID, DEFAULT_KEY);
             t2.UploadLocalWriteRecords();
@@ -131,12 +181,86 @@ namespace TransactionUnitTest
             Assert.AreEqual(true, isSuccess);
         }
 
-        [TestMethod]
+		[TestMethod]
+		public void TestValidation4Event()
+		{
+			TransactionExecution tex = new TransactionExecution(null, this.versionDb);
+			tex.DEBUG_MODE = true;
+			while (tex.Progress == TxProgress.Initi)
+			{
+				this.versionDb.Visit(RedisVersionDb.TX_TABLE, 0);
+				tex.InitTx();
+			}
+			tex.Read(TABLE_ID, DEFAULT_KEY, out bool received, out object payload);
+			while (!received)
+			{
+				this.versionDb.Visit(TABLE_ID, 0);
+				tex.Read(TABLE_ID, DEFAULT_KEY, out received, out payload);
+			}
+			tex.Upload();
+			while (tex.CurrentProc == null)
+			{
+				this.versionDb.Visit(TABLE_ID, 0);
+				tex.Upload();
+			}
+
+			TransactionExecution texUpdate = new TransactionExecution(null, this.versionDb);
+			texUpdate.DEBUG_MODE = true;
+			while (texUpdate.Progress == TxProgress.Initi)
+			{
+				this.versionDb.Visit(RedisVersionDb.TX_TABLE, 0);
+				texUpdate.InitTx();
+			}
+			texUpdate.Read(TABLE_ID, DEFAULT_KEY, out bool receivedUpdate, out object payloadUpdate);
+			while (!receivedUpdate)
+			{
+				this.versionDb.Visit(TABLE_ID, 0);
+				texUpdate.Read(TABLE_ID, DEFAULT_KEY, out receivedUpdate, out payloadUpdate);
+			}
+			texUpdate.Delete(TABLE_ID, DEFAULT_KEY, out object payloadDelete);
+			texUpdate.Upload();
+			while (texUpdate.CurrentProc == null)
+			{
+				this.versionDb.Visit(TABLE_ID, 0);
+				texUpdate.Upload();
+			}
+			Assert.AreEqual(new Procedure(texUpdate.SetCommitTimestamp), texUpdate.CurrentProc);
+			texUpdate.SetCommitTimestamp();
+			while (texUpdate.CurrentProc == new Procedure(texUpdate.SetCommitTimestamp))
+			{
+				this.versionDb.Visit(RedisVersionDb.TX_TABLE, 0);
+				texUpdate.SetCommitTimestamp();
+			}
+			Assert.AreEqual(new Procedure(texUpdate.Validate), texUpdate.CurrentProc);
+			texUpdate.Abort();
+			while (texUpdate.CurrentProc != new Procedure(texUpdate.PostProcessingAfterAbort))
+			{
+				this.versionDb.Visit(RedisVersionDb.TX_TABLE, 0);
+				texUpdate.Abort();
+			}
+
+			tex.SetCommitTimestamp();
+			while (tex.CurrentProc == new Procedure(tex.SetCommitTimestamp))
+			{
+				this.versionDb.Visit(RedisVersionDb.TX_TABLE, 0);
+				tex.SetCommitTimestamp();
+			}
+			Assert.AreEqual(new Procedure(tex.Validate), tex.CurrentProc);
+			tex.Validate();
+			while (tex.CurrentProc == new Procedure(tex.Validate))
+			{
+				this.versionDb.Visit(TABLE_ID, 0);
+				this.versionDb.Visit(RedisVersionDb.TX_TABLE, 0);
+				tex.Validate();
+			}
+			Assert.AreEqual(new Procedure(tex.WriteToLog), tex.CurrentProc);
+		}
+
+		[TestMethod]
         public void TestValidation5()
         {
             // The current version entry has been held by another concurrent transaction
             // And the concurrent transaction's status is Committed
-
             Transaction t2 = new Transaction(null, this.versionDb);
             t2.Read(TABLE_ID, DEFAULT_KEY);
             t2.UploadLocalWriteRecords();
@@ -160,13 +284,148 @@ namespace TransactionUnitTest
             Assert.AreEqual(false, isSuccess);
         }
 
-        [TestMethod]
+		[TestMethod]
+		public void TestValidation5_1Event()
+		{
+			TransactionExecution tex1 = new TransactionExecution(null, this.versionDb);
+			tex1.DEBUG_MODE = true;
+			while (tex1.Progress == TxProgress.Initi)
+			{
+				this.versionDb.Visit(RedisVersionDb.TX_TABLE, 0);
+				tex1.InitTx();
+			}
+			tex1.Read(TABLE_ID, DEFAULT_KEY, out bool received, out object payload);
+			while (!received)
+			{
+				this.versionDb.Visit(TABLE_ID, 0);
+				tex1.Read(TABLE_ID, DEFAULT_KEY, out received, out payload);
+			}
+			tex1.Upload();
+			while (tex1.CurrentProc == null)
+			{
+				this.versionDb.Visit(TABLE_ID, 0);
+				tex1.Upload();
+			}
+
+			TransactionExecution tex = new TransactionExecution(null, this.versionDb);
+			tex.DEBUG_MODE = true;
+			while (tex.Progress == TxProgress.Initi)
+			{
+				this.versionDb.Visit(RedisVersionDb.TX_TABLE, 0);
+				tex.InitTx();
+			}
+			tex.Read(TABLE_ID, DEFAULT_KEY, out bool receivedRead, out object payloadRead);
+			while (!receivedRead)
+			{
+				this.versionDb.Visit(TABLE_ID, 0);
+				tex.Read(TABLE_ID, DEFAULT_KEY, out receivedRead, out payloadRead);
+			}
+			tex.Delete(TABLE_ID, DEFAULT_KEY, out object payloadDelete);
+			tex.Upload();
+			while (tex.CurrentProc == null)
+			{
+				this.versionDb.Visit(TABLE_ID, 0);
+				tex.Upload();
+			}
+			tex.maxCommitTsOfWrites = 4L;
+			tex.SetCommitTimestamp();
+			while (tex.CurrentProc == new Procedure(tex.SetCommitTimestamp))
+			{
+				this.versionDb.Visit(RedisVersionDb.TX_TABLE, 0);
+				tex.SetCommitTimestamp();
+			}
+
+			tex1.maxCommitTsOfWrites = 3L;
+			tex1.SetCommitTimestamp();
+			while (tex1.CurrentProc == new Procedure(tex1.SetCommitTimestamp))
+			{
+				this.versionDb.Visit(RedisVersionDb.TX_TABLE, 0);
+				tex1.SetCommitTimestamp();
+			}
+			tex1.Validate();
+			while (tex1.CurrentProc == new Procedure(tex1.Validate))
+			{
+				this.versionDb.Visit(TABLE_ID, 0);
+				this.versionDb.Visit(RedisVersionDb.TX_TABLE, 0);
+				tex1.Validate();
+			}
+			Assert.AreEqual(new Procedure(tex1.WriteToLog), tex1.CurrentProc);
+		}
+
+		[TestMethod]
+		public void TestValidation5_2Event()
+		{
+			TransactionExecution tex1 = new TransactionExecution(null, this.versionDb);
+			tex1.DEBUG_MODE = true;
+			while (tex1.Progress == TxProgress.Initi)
+			{
+				this.versionDb.Visit(RedisVersionDb.TX_TABLE, 0);
+				tex1.InitTx();
+			}
+			tex1.Read(TABLE_ID, DEFAULT_KEY, out bool received, out object payload);
+			while (!received)
+			{
+				this.versionDb.Visit(TABLE_ID, 0);
+				tex1.Read(TABLE_ID, DEFAULT_KEY, out received, out payload);
+			}
+			tex1.Upload();
+			while (tex1.CurrentProc == null)
+			{
+				this.versionDb.Visit(TABLE_ID, 0);
+				tex1.Upload();
+			}
+
+			TransactionExecution tex = new TransactionExecution(null, this.versionDb);
+			tex.DEBUG_MODE = true;
+			while (tex.Progress == TxProgress.Initi)
+			{
+				this.versionDb.Visit(RedisVersionDb.TX_TABLE, 0);
+				tex.InitTx();
+			}
+			tex.Read(TABLE_ID, DEFAULT_KEY, out bool receivedRead, out object payloadRead);
+			while (!receivedRead)
+			{
+				this.versionDb.Visit(TABLE_ID, 0);
+				tex.Read(TABLE_ID, DEFAULT_KEY, out receivedRead, out payloadRead);
+			}
+			tex.Delete(TABLE_ID, DEFAULT_KEY, out object payloadDelete);
+			tex.Upload();
+			while (tex.CurrentProc == null)
+			{
+				this.versionDb.Visit(TABLE_ID, 0);
+				tex.Upload();
+			}
+			tex.maxCommitTsOfWrites = 4L;
+			tex.SetCommitTimestamp();
+			while (tex.CurrentProc == new Procedure(tex.SetCommitTimestamp))
+			{
+				this.versionDb.Visit(RedisVersionDb.TX_TABLE, 0);
+				tex.SetCommitTimestamp();
+			}
+
+			tex1.maxCommitTsOfWrites = 5L;
+			tex1.SetCommitTimestamp();
+			while (tex1.CurrentProc == new Procedure(tex1.SetCommitTimestamp))
+			{
+				this.versionDb.Visit(RedisVersionDb.TX_TABLE, 0);
+				tex1.SetCommitTimestamp();
+			}
+			tex1.Validate();
+			while (tex1.CurrentProc == new Procedure(tex1.Validate))
+			{
+				this.versionDb.Visit(TABLE_ID, 0);
+				this.versionDb.Visit(RedisVersionDb.TX_TABLE, 0);
+				tex1.Validate();
+			}
+			Assert.AreEqual(new Procedure(tex1.Abort), tex1.CurrentProc);
+		}
+
+		[TestMethod]
         public void TestValidation6()
         {
             // The current version entry has been held by another concurrent transaction
             // if its status is Ongoing, try to push its commitLowerBound
             // the tx who is locking the version has not gotten its commitTs and I push its commitLowerBound successfully.
-
             Transaction t2 = new Transaction(null, this.versionDb);
             t2.Read(TABLE_ID, DEFAULT_KEY);
             t2.UploadLocalWriteRecords();
@@ -183,7 +442,93 @@ namespace TransactionUnitTest
             Assert.AreEqual(5L, this.versionDb.GetTxTableEntry(t1.TxId).CommitLowerBound);
         }
 
-        [TestMethod]
+		[TestMethod]
+		public void TestValidation6Event()
+		{
+			TransactionExecution tex1 = new TransactionExecution(null, this.versionDb);
+			tex1.DEBUG_MODE = true;
+			while (tex1.Progress == TxProgress.Initi)
+			{
+				this.versionDb.Visit(RedisVersionDb.TX_TABLE, 0);
+				tex1.InitTx();
+			}
+			tex1.Read(TABLE_ID, DEFAULT_KEY, out bool received, out object payload);
+			while (!received)
+			{
+				this.versionDb.Visit(TABLE_ID, 0);
+				tex1.Read(TABLE_ID, DEFAULT_KEY, out received, out payload);
+			}
+			tex1.Upload();
+			while (tex1.CurrentProc == null)
+			{
+				this.versionDb.Visit(TABLE_ID, 0);
+				tex1.Upload();
+			}
+
+			TransactionExecution tex = new TransactionExecution(null, this.versionDb);
+			tex.DEBUG_MODE = true;
+			while (tex.Progress == TxProgress.Initi)
+			{
+				this.versionDb.Visit(RedisVersionDb.TX_TABLE, 0);
+				tex.InitTx();
+			}
+			tex.Read(TABLE_ID, DEFAULT_KEY, out bool receivedRead, out object payloadRead);
+			while (!receivedRead)
+			{
+				this.versionDb.Visit(TABLE_ID, 0);
+				tex.Read(TABLE_ID, DEFAULT_KEY, out receivedRead, out payloadRead);
+			}
+			tex.Delete(TABLE_ID, DEFAULT_KEY, out object payloadDelete);
+			tex.Upload();
+			while (tex.CurrentProc == null)
+			{
+				this.versionDb.Visit(TABLE_ID, 0);
+				tex.Upload();
+			}
+
+			tex1.maxCommitTsOfWrites = 3L;
+			tex1.SetCommitTimestamp();
+			while (tex1.CurrentProc == new Procedure(tex1.SetCommitTimestamp))
+			{
+				this.versionDb.Visit(RedisVersionDb.TX_TABLE, 0);
+				tex1.SetCommitTimestamp();
+			}
+			tex1.Validate();
+			while (tex1.CurrentProc == new Procedure(tex1.Validate))
+			{
+				this.versionDb.Visit(TABLE_ID, 0);
+				this.versionDb.Visit(RedisVersionDb.TX_TABLE, 0);
+				tex1.Validate();
+			}
+			Assert.AreEqual(new Procedure(tex1.WriteToLog), tex1.CurrentProc);
+
+			tex.SetCommitTimestamp();
+			while (tex.CurrentProc == new Procedure(tex.SetCommitTimestamp))
+			{
+				this.versionDb.Visit(RedisVersionDb.TX_TABLE, 0);
+				tex.SetCommitTimestamp();
+			}
+			tex.Validate();
+			while (tex.CurrentProc == new Procedure(tex.Validate))
+			{
+				this.versionDb.Visit(TABLE_ID, 0);
+				this.versionDb.Visit(RedisVersionDb.TX_TABLE, 0);
+				tex.Validate();
+			}
+			Assert.AreEqual(new Procedure(tex.WriteToLog), tex.CurrentProc);
+
+			GetTxEntryRequest getTxReq = this.versionDb.EnqueueGetTxEntry(tex.txId);
+			this.versionDb.Visit(RedisVersionDb.TX_TABLE, 0);
+			while (getTxReq.Result == null)
+			{
+				this.versionDb.Visit(RedisVersionDb.TX_TABLE, 0);
+			}
+			TxTableEntry txEntry = getTxReq.Result as TxTableEntry;
+			Assert.AreEqual(5L, txEntry.CommitTime);
+		}
+
+
+		[TestMethod]
         public void TestValidation7()
         {
             // The current version entry has been held by another concurrent transaction
@@ -214,5 +559,157 @@ namespace TransactionUnitTest
             Assert.AreEqual(false, isSuccess);
             Assert.AreEqual(0L, this.versionDb.GetTxTableEntry(t1.TxId).CommitLowerBound);
         }
-    }
+
+		[TestMethod]
+		public void TestValidation7_1Event()
+		{
+			TransactionExecution tex1 = new TransactionExecution(null, this.versionDb);
+			tex1.DEBUG_MODE = true;
+			while (tex1.Progress == TxProgress.Initi)
+			{
+				this.versionDb.Visit(RedisVersionDb.TX_TABLE, 0);
+				tex1.InitTx();
+			}
+			tex1.Read(TABLE_ID, DEFAULT_KEY, out bool received, out object payload);
+			while (!received)
+			{
+				this.versionDb.Visit(TABLE_ID, 0);
+				tex1.Read(TABLE_ID, DEFAULT_KEY, out received, out payload);
+			}
+			tex1.Upload();
+			while (tex1.CurrentProc == null)
+			{
+				this.versionDb.Visit(TABLE_ID, 0);
+				tex1.Upload();
+			}
+
+			TransactionExecution tex = new TransactionExecution(null, this.versionDb);
+			tex.DEBUG_MODE = true;
+			while (tex.Progress == TxProgress.Initi)
+			{
+				this.versionDb.Visit(RedisVersionDb.TX_TABLE, 0);
+				tex.InitTx();
+			}
+			tex.Read(TABLE_ID, DEFAULT_KEY, out bool receivedRead, out object payloadRead);
+			while (!receivedRead)
+			{
+				this.versionDb.Visit(TABLE_ID, 0);
+				tex.Read(TABLE_ID, DEFAULT_KEY, out receivedRead, out payloadRead);
+			}
+			tex.Delete(TABLE_ID, DEFAULT_KEY, out object payloadDelete);
+			tex.Upload();
+			while (tex.CurrentProc == null)
+			{
+				this.versionDb.Visit(TABLE_ID, 0);
+				tex.Upload();
+			}
+			tex.maxCommitTsOfWrites = 4L;
+			tex.SetCommitTimestamp();
+			while (tex.CurrentProc == new Procedure(tex.SetCommitTimestamp))
+			{
+				this.versionDb.Visit(RedisVersionDb.TX_TABLE, 0);
+				tex.SetCommitTimestamp();
+			}
+			tex.Validate();
+			while (tex.CurrentProc == new Procedure(tex.Validate))
+			{
+				this.versionDb.Visit(TABLE_ID, 0);
+				this.versionDb.Visit(RedisVersionDb.TX_TABLE, 0);
+				tex.Validate();
+			}
+			Assert.AreEqual(new Procedure(tex.WriteToLog), tex.CurrentProc);
+
+			tex1.maxCommitTsOfWrites = 3L;
+			tex1.SetCommitTimestamp();
+			while (tex1.CurrentProc == new Procedure(tex1.SetCommitTimestamp))
+			{
+				this.versionDb.Visit(RedisVersionDb.TX_TABLE, 0);
+				tex1.SetCommitTimestamp();
+			}
+			tex1.Validate();
+			while (tex1.CurrentProc == new Procedure(tex1.Validate))
+			{
+				this.versionDb.Visit(TABLE_ID, 0);
+				this.versionDb.Visit(RedisVersionDb.TX_TABLE, 0);
+				tex1.Validate();
+			}
+			Assert.AreEqual(new Procedure(tex1.WriteToLog), tex1.CurrentProc);
+		}
+
+		[TestMethod]
+		public void TestValidation7_2Event()
+		{
+			TransactionExecution tex1 = new TransactionExecution(null, this.versionDb);
+			tex1.DEBUG_MODE = true;
+			while (tex1.Progress == TxProgress.Initi)
+			{
+				this.versionDb.Visit(RedisVersionDb.TX_TABLE, 0);
+				tex1.InitTx();
+			}
+			tex1.Read(TABLE_ID, DEFAULT_KEY, out bool received, out object payload);
+			while (!received)
+			{
+				this.versionDb.Visit(TABLE_ID, 0);
+				tex1.Read(TABLE_ID, DEFAULT_KEY, out received, out payload);
+			}
+			tex1.Upload();
+			while (tex1.CurrentProc == null)
+			{
+				this.versionDb.Visit(TABLE_ID, 0);
+				tex1.Upload();
+			}
+
+			TransactionExecution tex = new TransactionExecution(null, this.versionDb);
+			tex.DEBUG_MODE = true;
+			while (tex.Progress == TxProgress.Initi)
+			{
+				this.versionDb.Visit(RedisVersionDb.TX_TABLE, 0);
+				tex.InitTx();
+			}
+			tex.Read(TABLE_ID, DEFAULT_KEY, out bool receivedRead, out object payloadRead);
+			while (!receivedRead)
+			{
+				this.versionDb.Visit(TABLE_ID, 0);
+				tex.Read(TABLE_ID, DEFAULT_KEY, out receivedRead, out payloadRead);
+			}
+			tex.Delete(TABLE_ID, DEFAULT_KEY, out object payloadDelete);
+			tex.Upload();
+			while (tex.CurrentProc == null)
+			{
+				this.versionDb.Visit(TABLE_ID, 0);
+				tex.Upload();
+			}
+			tex.maxCommitTsOfWrites = 4L;
+			tex.SetCommitTimestamp();
+			while (tex.CurrentProc == new Procedure(tex.SetCommitTimestamp))
+			{
+				this.versionDb.Visit(RedisVersionDb.TX_TABLE, 0);
+				tex.SetCommitTimestamp();
+			}
+			tex.Validate();
+			while (tex.CurrentProc == new Procedure(tex.Validate))
+			{
+				this.versionDb.Visit(TABLE_ID, 0);
+				this.versionDb.Visit(RedisVersionDb.TX_TABLE, 0);
+				tex.Validate();
+			}
+			Assert.AreEqual(new Procedure(tex.WriteToLog), tex.CurrentProc);
+
+			tex1.maxCommitTsOfWrites = 5L;
+			tex1.SetCommitTimestamp();
+			while (tex1.CurrentProc == new Procedure(tex1.SetCommitTimestamp))
+			{
+				this.versionDb.Visit(RedisVersionDb.TX_TABLE, 0);
+				tex1.SetCommitTimestamp();
+			}
+			tex1.Validate();
+			while (tex1.CurrentProc == new Procedure(tex1.Validate))
+			{
+				this.versionDb.Visit(TABLE_ID, 0);
+				this.versionDb.Visit(RedisVersionDb.TX_TABLE, 0);
+				tex1.Validate();
+			}
+			Assert.AreEqual(new Procedure(tex1.Abort), tex1.CurrentProc);
+		}
+	}
 }

@@ -751,7 +751,7 @@ namespace GraphView.Transaction
                     else
                     {
                         UpdateCommitLowerBoundRequest updateCommitBoundReq = 
-                            this.versionDb.EnqueueUpdateCommitLowerBound(this.txId, this.commitTs + 1);
+                            this.versionDb.EnqueueUpdateCommitLowerBound(txEntry.TxId, this.commitTs + 1);
                         this.requestStack.Push(updateCommitBoundReq);
                         return;
                     }
@@ -1119,7 +1119,7 @@ namespace GraphView.Transaction
             {
                 this.CurrentProc = new Procedure(this.Abort);
                 this.CurrentProc();
-                throw new TransactionException("The record has not been read or does not exist.Cannot delete it.");
+                throw new TransactionException("The record has not been read or does not exist. Cannot delete it.");
             }
         }
 
