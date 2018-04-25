@@ -55,13 +55,11 @@ namespace TransactionUnitTest
 		{
 			//Test the function of UpdateCommitLowerBound() in the event-driven senario.
 			TransactionExecution tex1 = new TransactionExecution(null, this.versionDb);
-			while (tex1.txId == 0L)
+			while (tex1.Progress == TxProgress.Initi)
 			{
 				this.versionDb.Visit(RedisVersionDb.TX_TABLE, 0);
 				tex1.InitTx();
 			}
-			this.versionDb.Visit(RedisVersionDb.TX_TABLE, 0);
-			tex1.InitTx();
 
 			UpdateCommitLowerBoundRequest txCommitReq = this.versionDb.EnqueueUpdateCommitLowerBound(tex1.txId, 5L);
 			this.versionDb.Visit(RedisVersionDb.TX_TABLE, 0);
