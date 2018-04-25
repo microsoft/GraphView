@@ -27,10 +27,10 @@ namespace TransactionUnitTest
 			TransactionExecution tex = new TransactionExecution(null, this.versionDb);
 			while (tex.txId == 0L)
 			{
-				this.versionDb.VisitTx(0);
+				this.versionDb.Visit(RedisVersionDb.TX_TABLE, 0);
 				tex.InitTx();
 			}
-			this.versionDb.VisitTx(0);
+			this.versionDb.Visit(RedisVersionDb.TX_TABLE, 0);
 			tex.InitTx();
 
 			// Case1: Initial Read under event-driven senario

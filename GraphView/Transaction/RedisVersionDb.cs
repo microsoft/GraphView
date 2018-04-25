@@ -126,7 +126,6 @@
             this.PhysicalPartitionByKey = recordKey => recordKey.GetHashCode() % this.RedisManager.RedisInstanceCount;
             // Create the transaction table
             this.CreateVersionTable(RedisVersionDb.TX_TABLE, RedisVersionDb.TX_DB_INDEX);
-        }	
 
             this.responseVisitor = new RedisResponseVisitor();
 		}
@@ -263,15 +262,6 @@
 		internal override void EnqueueTxRequest(TxRequest req)
 		{
             throw new NotImplementedException();
-            RedisRequestVisitor requestVisitor = new RedisRequestVisitor();
-            requestVisitor.Invoke(req);
-			string hashId = requestVisitor.HashId;
-			RedisRequest redisReq = requestVisitor.RedisReq;
-            redisReq.ResponseVisitor = this.responseVisitor;
-
-			int partition = this.PhysicalPartitionByKey(hashId);
-			RedisConnectionPool clientPool = this.RedisManager.GetClientPool(RedisVersionDb.TX_DB_INDEX, partition);
-			clientPool.EnqueueRequest(redisReq);
 		}
 
 		/// <summary>

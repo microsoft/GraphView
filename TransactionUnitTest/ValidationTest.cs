@@ -57,24 +57,24 @@ namespace TransactionUnitTest
 			TransactionExecution tex1 = new TransactionExecution(null, this.versionDb);
 			while (tex1.txId == 0L)
 			{
-				this.versionDb.VisitTx(0);
+				this.versionDb.Visit(RedisVersionDb.TX_TABLE, 0);
 				tex1.InitTx();
 			}
-			this.versionDb.VisitTx(0);
+			this.versionDb.Visit(RedisVersionDb.TX_TABLE, 0);
 			tex1.InitTx();
 
 			UpdateCommitLowerBoundRequest txCommitReq = this.versionDb.EnqueueUpdateCommitLowerBound(tex1.txId, 5L);
-			this.versionDb.VisitTx(0);
+			this.versionDb.Visit(RedisVersionDb.TX_TABLE, 0);
 			long txCommitTs = txCommitReq.Result == null ? VersionDb.RETURN_ERROR_CODE : (long)txCommitReq.Result;
 			GetTxEntryRequest getTxReq = this.versionDb.EnqueueGetTxEntry(tex1.txId);
-			this.versionDb.VisitTx(0);
+			this.versionDb.Visit(RedisVersionDb.TX_TABLE, 0);
 			TxTableEntry txEntry = getTxReq.Result as TxTableEntry;
 			Assert.AreEqual(5L, txEntry.CommitLowerBound);
 			Assert.AreEqual(-1L, txCommitTs);
 
 			//Test the function of SetCommitTs() in the event-driven senario.
 			SetCommitTsRequest setTsReq = this.versionDb.EnqueueSetCommitTs(tex1.txId, 6L);
-			this.versionDb.VisitTx(0);
+			this.versionDb.Visit(RedisVersionDb.TX_TABLE, 0);
 			long commitTime = setTsReq.Result == null ? -1 : (long)setTsReq.Result;
 			Assert.AreEqual(6L, commitTime);
 		}
