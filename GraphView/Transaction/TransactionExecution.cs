@@ -22,6 +22,8 @@ namespace GraphView.Transaction
 
     public class TransactionExecution
     {
+		public bool DEBUG_MODE = false;
+
         internal static readonly long DEFAULT_TX_BEGIN_TIMESTAMP = -1L;
 
         internal static readonly int POSTPROCESSING_LIST_MAX_CAPACITY = 2;
@@ -217,13 +219,16 @@ namespace GraphView.Transaction
                     }
                     UploadVersionRequest uploadReq = (this.requestStack.Pop()) as UploadVersionRequest;
 
-                    bool uploadSuccess = uploadReq.Result == null ? false : (bool)uploadReq.Result;
+                    bool uploadSuccess = uploadReq.Result == null ? false : Convert.ToBoolean(uploadReq.Result);
                     if (!uploadSuccess)
                     {
-                        // Failed to upload the new image. Moves to the abort phase. 
-                        this.CurrentProc = new Procedure(this.Abort);
-                        this.CurrentProc();
-                        return;
+						// Failed to upload the new image. Moves to the abort phase.
+						this.CurrentProc = new Procedure(this.Abort);
+						if (!this.DEBUG_MODE)
+						{
+							this.CurrentProc();
+						}
+						return;
                     }
 
                     string tableId = uploadReq.TableId;
@@ -274,8 +279,11 @@ namespace GraphView.Transaction
                     VersionEntry versionEntry = replaceReq.Result as VersionEntry;
                     if (versionEntry == null)
                     {
-                        this.CurrentProc = new Procedure(this.Abort);
-                        this.CurrentProc();
+						this.CurrentProc = new Procedure(this.Abort);
+						if (!this.DEBUG_MODE)
+						{
+							this.CurrentProc();
+						}
                         return;
                     }
 
@@ -317,9 +325,11 @@ namespace GraphView.Transaction
                     {
                         // The new version is failed to append to the tail of the version list, 
                         // because the old tail seen by this tx is not the tail anymore
-
                         this.CurrentProc = new Procedure(this.Abort);
-                        this.CurrentProc();
+						if (!this.DEBUG_MODE)
+						{
+							this.CurrentProc();
+						}
                         return;
                     }
                 }
@@ -338,7 +348,10 @@ namespace GraphView.Transaction
                     if (conflictTxStatus == null || conflictTxStatus.Status == TxStatus.Ongoing)
                     {
                         this.CurrentProc = new Procedure(this.Abort);
-                        this.CurrentProc();
+						if (!this.DEBUG_MODE)
+						{
+							this.CurrentProc();
+						}
                         return;
                     }
 
@@ -373,7 +386,10 @@ namespace GraphView.Transaction
                         if (conflictTxStatus.Status == TxStatus.Committed)
                         {
                             this.CurrentProc = new Procedure(this.Abort);
-                            this.CurrentProc();
+							if (!this.DEBUG_MODE)
+							{
+								this.CurrentProc();
+							}
                             return;
                         }
                         else if (conflictTxStatus.Status == TxStatus.Aborted)
@@ -409,7 +425,10 @@ namespace GraphView.Transaction
                     if (retryEntry == null || retryEntry.TxId != this.txId)
                     {
                         this.CurrentProc = new Procedure(this.Abort);
-                        this.CurrentProc();
+						if (!this.DEBUG_MODE)
+						{
+							this.CurrentProc();
+						}
                         return;
                     }
 
@@ -432,10 +451,13 @@ namespace GraphView.Transaction
                 }
             }
 
-            // Move on to the next phase
-            this.writeKeyList = null;
-            this.CurrentProc = new Procedure(this.SetCommitTimestamp);
-            this.CurrentProc();
+			// Move on to the next phase
+			this.writeKeyList = null;
+			this.CurrentProc = new Procedure(this.SetCommitTimestamp);
+			if (!this.DEBUG_MODE)
+			{
+				this.CurrentProc();
+			}
             return;
         }
 
@@ -516,14 +538,20 @@ namespace GraphView.Transaction
                 if (commitTime < 0)
                 {
                     this.CurrentProc = new Procedure(this.Abort);
-                    this.CurrentProc();
+					if (!this.DEBUG_MODE)
+					{
+						this.CurrentProc();
+					}
                     return;
                 } 
                 else
                 {
                     this.commitTs = commitTime;
                     this.CurrentProc = new Procedure(this.Validate);
-                    this.CurrentProc();
+					if (!this.DEBUG_MODE)
+					{
+						this.CurrentProc();
+					}
                     return;
                 }
             }
@@ -580,7 +608,10 @@ namespace GraphView.Transaction
                     if (readEntry == null)
                     {
                         this.CurrentProc = new Procedure(this.Abort);
-                        this.CurrentProc();
+						if (!this.DEBUG_MODE)
+						{
+							this.CurrentProc();
+						}
                         return;
                     }
 
@@ -619,9 +650,11 @@ namespace GraphView.Transaction
                             {
                                 // A new version has been created before this tx can commit.
                                 // Abort the tx.
-
                                 this.CurrentProc = new Procedure(this.Abort);
-                                this.CurrentProc();
+								if (!this.DEBUG_MODE)
+								{
+									this.CurrentProc();
+								}
                                 return;
                             }
                             else
@@ -655,7 +688,10 @@ namespace GraphView.Transaction
                     if (readEntry == null)
                     {
                         this.CurrentProc = new Procedure(this.Abort);
-                        this.CurrentProc();
+						if (!this.DEBUG_MODE)
+						{
+							this.CurrentProc();
+						}
                         return;
                     }
 
@@ -681,7 +717,10 @@ namespace GraphView.Transaction
                     if (txEntry == null)
                     {
                         this.CurrentProc = new Procedure(this.Abort);
-                        this.CurrentProc();
+						if (!this.DEBUG_MODE)
+						{
+							this.CurrentProc();
+						}
                         return;
                     }
 
@@ -696,7 +735,10 @@ namespace GraphView.Transaction
                         if (this.commitTs > txEntry.CommitTime)
                         {
                             this.CurrentProc = new Procedure(this.Abort);
-                            this.CurrentProc();
+							if (!this.DEBUG_MODE)
+							{
+								this.CurrentProc();
+							}
                             return;
                         }
                         else
@@ -726,10 +768,13 @@ namespace GraphView.Transaction
                     UpdateCommitLowerBoundRequest txCommitReq = this.requestStack.Pop() as UpdateCommitLowerBoundRequest;
                     long txCommitTs = txCommitReq.Result == null ? VersionDb.RETURN_ERROR_CODE : (long)txCommitReq.Result;
 
-                    if (txCommitTs == VersionDb.RETURN_ERROR_CODE)
-                    {
-                        this.CurrentProc = new Procedure(this.Abort);
-                        this.CurrentProc();
+					if (txCommitTs == VersionDb.RETURN_ERROR_CODE)
+					{
+						this.CurrentProc = new Procedure(this.Abort);
+						if (!this.DEBUG_MODE)
+						{
+							this.CurrentProc();
+						}
                         return;
                     }
                     else if (txCommitTs == TxTableEntry.DEFAULT_COMMIT_TIME)
@@ -741,7 +786,10 @@ namespace GraphView.Transaction
                     else if (this.commitTs > txCommitTs)
                     {
                         this.CurrentProc = new Procedure(this.Abort);
-                        this.CurrentProc();
+						if (!this.DEBUG_MODE)
+						{
+							this.CurrentProc();
+						}
                         return;
                     }
                     else if (this.commitTs <= txCommitTs)
@@ -760,7 +808,10 @@ namespace GraphView.Transaction
             // All versions pass validation. Move to the commit phase.
             this.validateKeyList = null;
             this.CurrentProc = new Procedure(this.WriteToLog);
-            this.CurrentProc();
+			if (!this.DEBUG_MODE)
+			{
+				this.CurrentProc();
+			}
             return;
         }
 
@@ -781,7 +832,10 @@ namespace GraphView.Transaction
 
                 this.requestStack.Pop();
                 this.CurrentProc = new Procedure(this.PostProcessingAfterCommit);
-                this.CurrentProc();
+				if (!this.DEBUG_MODE)
+				{
+					this.CurrentProc();
+				}
                 return;
             }
         }
@@ -812,32 +866,32 @@ namespace GraphView.Transaction
                             else
                             {
 								// cloud environment: just replace the begin, end, txId field, need lua script, 3 redis command.
-								// ReplaceVersionRequest replaceVerReq = this.versionDb.EnqueueReplaceVersionEntry(
-								//     tableId,
-								//     recordKey,
-								//     entry.VersionKey,
-								//     entry.BeginTimestamp,
-								//     this.commitTs,
-								//     VersionEntry.EMPTY_TXID,
-								//     this.txId,
-								//     long.MaxValue);
-								// this.requestStack.Push(replaceVerReq);
-
-								// Single machine setting: pass the whole version, need only 1 redis command.
-								ReadSetEntry readEntry = this.readSet[tableId][recordKey];
-								ReplaceWholeVersionRequest replaceWholeVerReq = this.versionDb.EnqueueReplaceWholeVersionEntry(
+								ReplaceVersionRequest replaceVerReq = this.versionDb.EnqueueReplaceVersionEntry(
 									tableId,
 									recordKey,
 									entry.VersionKey,
-									new VersionEntry(
-										recordKey,
-										entry.VersionKey,
-										readEntry.BeginTimestamp,
-										this.commitTs,
-										readEntry.Record,
-										VersionEntry.EMPTY_TXID,
-										this.commitTs));
-								this.requestStack.Push(replaceWholeVerReq);
+									entry.BeginTimestamp,
+									this.commitTs,
+									VersionEntry.EMPTY_TXID,
+									this.txId,
+									long.MaxValue);
+								this.requestStack.Push(replaceVerReq);
+
+								// Single machine setting: pass the whole version, need only 1 redis command.
+								// ReadSetEntry readEntry = this.readSet[tableId][recordKey];
+								// ReplaceWholeVersionRequest replaceWholeVerReq = this.versionDb.EnqueueReplaceWholeVersionEntry(
+								//	 tableId,
+								//	 recordKey,
+								//	 entry.VersionKey,
+								//	 new VersionEntry(
+								//		 recordKey,
+								//		 entry.VersionKey,
+								//		 readEntry.BeginTimestamp,
+								//		 this.commitTs,
+								//		 readEntry.Record,
+								//		 VersionEntry.EMPTY_TXID,
+								//		 this.commitTs));
+								// this.requestStack.Push(replaceWholeVerReq);
 							}
                         }
                     }
@@ -930,8 +984,12 @@ namespace GraphView.Transaction
                 }
 
                 this.requestStack.Pop();
-                this.CurrentProc = new Procedure(this.PostProcessingAfterAbort);
-                this.CurrentProc();
+				this.CurrentProc = new Procedure(this.PostProcessingAfterAbort);
+				if (!this.DEBUG_MODE)
+				{
+					this.CurrentProc();
+				}
+				return;
             }
         }
 
@@ -1218,7 +1276,7 @@ namespace GraphView.Transaction
                     if (versionEntry.TxId >= 0)
                     {
                         // Send the GetTxEntry request
-                        GetTxEntryRequest getTxReq = this.versionDb.EnqueueGetTxEntry(this.txId);
+                        GetTxEntryRequest getTxReq = this.versionDb.EnqueueGetTxEntry(versionEntry.TxId);
                         this.requestStack.Push(getTxReq);
                         return;
                     }

@@ -126,10 +126,7 @@
             this.PhysicalPartitionByKey = recordKey => recordKey.GetHashCode() % this.RedisManager.RedisInstanceCount;
             // Create the transaction table
             this.CreateVersionTable(RedisVersionDb.TX_TABLE, RedisVersionDb.TX_DB_INDEX);
-        }	
-
-            this.responseVisitor = new RedisResponseVisitor();
-		}
+        }
 
         public static RedisVersionDb Instance
         {

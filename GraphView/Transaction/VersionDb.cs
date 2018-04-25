@@ -71,11 +71,6 @@ namespace GraphView.Transaction
         {
             this.GetVersionTable(tableId).Visit(partitionKey);
         }
-
-		internal virtual void VisitTx(int partitionKey)
-		{
-			throw new NotImplementedException();
-		}
     }
 
     /// <summary>
