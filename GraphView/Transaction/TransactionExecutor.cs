@@ -4,7 +4,7 @@ namespace GraphView.Transaction
     using System;
     using System.Collections.Generic;
 
-    internal class TransactionRequest
+    public class TransactionRequest
     {
         internal string SessionId { get; set; }
         internal string TableId { get; set; }
@@ -12,7 +12,7 @@ namespace GraphView.Transaction
         internal object Payload { get; set; }
         internal OperationType OperationType;
 
-        internal TxCallBack Callback { get; set; }
+        internal StoredProcedure Procedure { get; set; }
     }
 
     internal enum OperationType
@@ -24,16 +24,6 @@ namespace GraphView.Transaction
         Read,
         InitiRead,
         Close,
-    }
-
-    internal delegate void TxCallBack(string tableId, object recordKey, object payload);
-
-    internal class TxFunction
-    {
-        internal virtual void ReadCallback(string tableId, object recordKey, object payload) { }
-        internal virtual void InsertCallBack(string tableId, object recordKey, object payload) { }
-        internal virtual void DeleteCallBack(string tableId, object recordKey, object payload) { }
-        internal virtual void UpdateCallBack(string tableId, object recordKey, object newPayload) { }
     }
 
     internal class TransactionExecutor
@@ -119,7 +109,7 @@ namespace GraphView.Transaction
                         if (received)
                         {
                             queue.Dequeue();
-                            readReq.Callback(readReq.TableId, readReq.RecordKey, payload);
+                            txExec.Procedure.ReadCallback(readReq.TableId, readReq.RecordKey, payload);
                         }
                     }
                     else if (txExec.Progress == TxProgress.Open)
@@ -140,7 +130,7 @@ namespace GraphView.Transaction
                                     if (received)
                                     {
                                         queue.Dequeue();
-                                        opReq.Callback(opReq.TableId, opReq.RecordKey, payload);
+                                        txExec.Procedure?.ReadCallback(opReq.TableId, opReq.RecordKey, payload);
                                     }
                                     break;
                                 }
@@ -150,7 +140,7 @@ namespace GraphView.Transaction
                                     if (received)
                                     {
                                         queue.Dequeue();
-                                        opReq.Callback(opReq.TableId, opReq.RecordKey, payload);
+                                        txExec.Procedure?.ReadCallback(opReq.TableId, opReq.RecordKey, payload);
                                     }
                                     break;
                                 }
@@ -158,21 +148,21 @@ namespace GraphView.Transaction
                                 {
                                     queue.Dequeue();
                                     txExec.Insert(opReq.TableId, opReq.RecordKey, opReq.Payload);
-                                    opReq.Callback(opReq.TableId, opReq.RecordKey, opReq.Payload);
+                                    txExec.Procedure?.InsertCallBack(opReq.TableId, opReq.RecordKey, opReq.Payload);
                                     break;
                                 }
                             case OperationType.Update:
                                 {
                                     queue.Dequeue();
                                     txExec.Update(opReq.TableId, opReq.RecordKey, opReq.Payload);
-                                    opReq.Callback(opReq.TableId, opReq.RecordKey, opReq.Payload);
+                                    txExec.Procedure?.UpdateCallBack(opReq.TableId, opReq.RecordKey, opReq.Payload);
                                     break;
                                 }
                             case OperationType.Delete:
                                 {
                                     queue.Dequeue();
                                     txExec.Delete(opReq.TableId, opReq.RecordKey, out object payload);
-                                    opReq.Callback(opReq.TableId, opReq.RecordKey, payload);
+                                    txExec.Procedure?.DeleteCallBack(opReq.TableId, opReq.RecordKey, payload);
                                     break;
                                 }
                             case OperationType.Close:
@@ -222,9 +212,13 @@ namespace GraphView.Transaction
                                     continue;
                                 }
 
-                                TransactionExecution exec = new TransactionExecution(this.logStore, this.versionDb);
-                                this.activeTxs[txReq.SessionId] = 
-                                    Tuple.Create(exec, new Queue<TransactionRequest>());
+                                TransactionExecution exec = new TransactionExecution(this.logStore, this.versionDb, txReq.Procedure);
+
+                                this.activeTxs[txReq.SessionId] = txReq.Procedure != null ?
+                                    Tuple.Create(exec, txReq.Procedure.RequestQueue) :
+                                    Tuple.Create(exec, new Queue<TransactionRequest>()); 
+
+                                exec.Procedure?.Start();
                                 break;
                             }
                         default:
@@ -241,64 +235,6 @@ namespace GraphView.Transaction
                     }
                 }
             }
-        }
-
-        internal void Read(string sessionId, string tableId, object recordKey)
-        {
-            TxFunction func = new TxFunction();
-
-            this.workload.Enqueue(new TransactionRequest()
-            {
-                SessionId = sessionId,
-                OperationType = OperationType.Read,
-                TableId = tableId,
-                RecordKey = recordKey,
-                Callback = new TxCallBack(func.ReadCallback)
-            });
-        }
-
-        internal void Insert(string sessionId, string tableId, object recordKey, object payload)
-        {
-            TxFunction func = new TxFunction();
-
-            this.workload.Enqueue(new TransactionRequest()
-            {
-                SessionId = sessionId,
-                OperationType = OperationType.Insert,
-                TableId = tableId,
-                RecordKey = recordKey,
-                Payload = payload,
-                Callback = new TxCallBack(func.InsertCallBack)
-            });
-        }
-
-        internal void Delete(string sessionId, string tableId, object recordKey)
-        {
-            TxFunction func = new TxFunction();
-
-            this.workload.Enqueue(new TransactionRequest()
-            {
-                SessionId = sessionId,
-                OperationType = OperationType.Delete,
-                TableId = tableId,
-                RecordKey = recordKey,
-                Callback = new TxCallBack(func.DeleteCallBack)
-            });
-        }
-
-        internal void Update(string sessionId, string tableId, object recordKey, object payload)
-        {
-            TxFunction func = new TxFunction();
-
-            this.workload.Enqueue(new TransactionRequest()
-            {
-                SessionId = sessionId,
-                OperationType = OperationType.Update,
-                TableId = tableId,
-                RecordKey = recordKey,
-                Payload = payload,
-                Callback = new TxCallBack(func.UpdateCallBack)
-            });
         }
     }
 }

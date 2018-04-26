@@ -64,7 +64,9 @@ namespace GraphView.Transaction
 
         internal TxProgress Progress { get; private set; }
 
-        public TransactionExecution(ILogStore logStore, VersionDb versionDb)
+        internal StoredProcedure Procedure { get; private set; }
+
+        public TransactionExecution(ILogStore logStore, VersionDb versionDb, StoredProcedure procedure = null)
         {
             this.logStore = logStore;
             this.versionDb = versionDb;
@@ -80,6 +82,8 @@ namespace GraphView.Transaction
 
             this.Progress = TxProgress.Open;
             this.requestStack = new Stack<TxRequest>();
+
+            this.Procedure = procedure;
 
             // init and get tx id
             this.InitTx();
