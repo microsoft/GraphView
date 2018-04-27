@@ -25,7 +25,7 @@
         {
             get
             {
-                return RedisClientManager.Instance;
+                return ((RedisVersionDb)this.VersionDb).RedisManager;
             }
         }
 
@@ -36,7 +36,7 @@
         {
             get
             {
-                return RedisLuaScriptManager.Instance;
+                return ((RedisVersionDb)this.VersionDb).RedisLuaManager;
             }
         }
 
@@ -52,7 +52,7 @@
     {
         internal override void EnqueueTxRequest(TxRequest req)
         {
-            RedisRequestVisitor requestVisitor = new RedisRequestVisitor();
+            RedisRequestVisitor requestVisitor = new RedisRequestVisitor(this.LuaManager);
             requestVisitor.Invoke(req);
             string hashId = requestVisitor.HashId;
             RedisRequest redisReq = requestVisitor.RedisReq;

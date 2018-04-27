@@ -115,6 +115,8 @@
         /// </summary>
         private long commandCount = 0;
 
+        private RedisVersionDb versionDb;
+
         internal int TxThroughput
         {
             get
@@ -165,8 +167,8 @@
         internal void Setup(string dataFile, string operationFile)
         {
             // step1: flush the database
-            RedisClientManager manager = RedisClientManager.Instance;
-            RedisVersionDb versionDb = RedisVersionDb.Instance;
+            this.versionDb = RedisVersionDb.Instance;
+            RedisClientManager manager = this.versionDb.RedisManager;
 
             using (RedisClient client = manager.GetClient(REDIS_DB_INDEX, 0))
             {
@@ -292,12 +294,12 @@
         /// <returns></returns>
         private long GetCurrentCommandCount()
         {
-            RedisClientManager.Instance.Dispose();
-
+            RedisClientManager clientManager = this.versionDb.RedisManager;
+            clientManager.Dispose();
             long commandCount = 0;
-            for (int i = 0; i < RedisClientManager.Instance.RedisInstanceCount; i++)
+            for (int i = 0; i < clientManager.RedisInstanceCount; i++)
             {
-                using (RedisClient redisClient = RedisClientManager.Instance.GetLastestClient(0, 0))
+                using (RedisClient redisClient = clientManager.GetLastestClient(0, 0))
                 {
                     string countStr = redisClient.Info["total_commands_processed"];
                     long count = Convert.ToInt64(countStr);

@@ -32,7 +32,7 @@ namespace TransactionUnitTest
         {
             // RedisVersionDb.Instance.PipelineMode = true;
             this.versionDb = RedisVersionDb.Instance;
-            this.clientManager = RedisClientManager.Instance;
+            this.clientManager = ((RedisVersionDb)this.versionDb).RedisManager;
 
             int partition = versionDb.PhysicalPartitionByKey(DEFAULT_KEY);
             using (RedisClient redisClient = (RedisClient)this.clientManager.GetClient(TEST_REDIS_DB, partition))
@@ -61,7 +61,7 @@ namespace TransactionUnitTest
         [ClassCleanup]
         public void ClassCleanup()
         {
-            RedisClientManager.Instance.Dispose();
+
         }
     }
 }

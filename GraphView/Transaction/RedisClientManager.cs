@@ -14,28 +14,16 @@
     /// </summary>
     internal class RedisClientManager : IDisposable
     { 
-        private static readonly int DEFAULT_REDIS_INSTANCE_COUNT = 1;
-
-        /// <summary>
-        /// the init lock to create singleton instance
-        /// </summary>
-        private static readonly object initLock = new object();
-
-        /// <summary>
-        /// The private variable to hold the instance
-        /// </summary>
-        private static RedisClientManager clientManager = null;
-
         /// <summary>
         /// The map from redisDbIndex to redisClientPool
         /// </summary>
-        public static Dictionary<RedisConnectionKey, RedisConnectionPool> 
+        private Dictionary<RedisConnectionKey, RedisConnectionPool> 
             clientPools = new Dictionary<RedisConnectionKey, RedisConnectionPool>();
 
         /// <summary>
         /// the lock for clientPool dictionary
         /// </summary>
-        private static readonly object dictLock = new object();
+        private readonly object dictLock = new object();
 
         /// <summary>
         /// The redis connection strings of read and write
@@ -53,25 +41,7 @@
             }
         }
 
-        public static RedisClientManager Instance
-        {
-            get
-            {
-                if (RedisClientManager.clientManager == null)
-                {
-                    lock (RedisClientManager.initLock)
-                    {
-                        if (RedisClientManager.clientManager == null)
-                        {
-                            RedisClientManager.clientManager = new RedisClientManager();
-                        }
-                    }
-                }
-                return RedisClientManager.clientManager;
-            }
-        }
-
-        private RedisClientManager()
+        internal RedisClientManager()
         {
             this.readWriteHosts = new string[] { "127.0.0.1:6379"};
         }
@@ -88,17 +58,17 @@
         internal RedisClient GetClient(long redisDbIndex, int partition)
         {
             RedisConnectionKey key = new RedisConnectionKey(partition, redisDbIndex);
-            if (!RedisClientManager.clientPools.ContainsKey(key))
+            if (!this.clientPools.ContainsKey(key))
             {
-                lock (RedisClientManager.dictLock)
+                lock (this.dictLock)
                 {
-                    if (!RedisClientManager.clientPools.ContainsKey(key))
+                    if (!this.clientPools.ContainsKey(key))
                     {
                         this.StartNewRedisClientPool(key);
                     }
                 }
             }
-            return RedisClientManager.clientPools[key].GetRedisClient();
+            return this.clientPools[key].GetRedisClient();
         }
 
         /// <summary>
@@ -116,24 +86,24 @@
         internal RedisConnectionPool GetClientPool(long redisDbIndex, int partition)
         {
             RedisConnectionKey key = new RedisConnectionKey(partition, redisDbIndex);
-            if (!RedisClientManager.clientPools.ContainsKey(key))
+            if (!this.clientPools.ContainsKey(key))
             {
-                lock (RedisClientManager.dictLock)
+                lock (this.dictLock)
                 {
-                    if (!RedisClientManager.clientPools.ContainsKey(key))
+                    if (!this.clientPools.ContainsKey(key))
                     {
                         this.StartNewRedisClientPool(key);
                     }
                 }
             }
-            return RedisClientManager.clientPools[key];
+            return this.clientPools[key];
         }
 
         public void Dispose()
         {
-            foreach (RedisConnectionKey key in RedisClientManager.clientPools.Keys)
+            foreach (RedisConnectionKey key in this.clientPools.Keys)
             {
-                RedisClientManager.clientPools[key].Dispose();
+                this.clientPools[key].Dispose();
             }
         }
 
@@ -145,7 +115,7 @@
         private void StartNewRedisClientPool(RedisConnectionKey key)
         {
             RedisConnectionPool pool = new RedisConnectionPool(this.readWriteHosts[key.RedisInstanceIndex], key.RedisDbIndex);
-            RedisClientManager.clientPools.Add(key, pool);
+            this.clientPools.Add(key, pool);
 
             // If the redis version db in pipeline mode, start a daemon thread
             // if (key.RedisDbIndex != 0)
