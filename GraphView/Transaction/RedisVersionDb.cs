@@ -3,13 +3,13 @@
     using System;
     using System.Collections.Generic;
     using System.Text;
+    using System.Threading;
     using ServiceStack.Redis;
 
     /// <summary>
-    /// 1. Definition of fields of RedisVersionDb
-    /// 2. Implementation of private methods of redis operation, all those operations are atomic operations
+    /// The basic fields defined here
     /// </summary>
-    public partial class RedisVersionDb : VersionDb
+    public partial class RedisVersionDb : VersionDb, IDisposable
     {
         /// <summary>
         /// The defalut hashset key for the meta table
@@ -22,46 +22,6 @@
         /// meta_script is a map from script_name to sha1
         /// </summary>
         public static readonly string META_SCRIPT_KEY = "meta:scripts:hashset";
-
-        /// <summary>
-        /// The default meta data partition
-        /// </summary>
-        public static readonly int META_DATA_PARTITION = 0;
-
-        /// <summary>
-        /// The default meta database index
-        /// </summary>
-        public static readonly long META_DB_INDEX = 0;
-        
-        /// <summary>
-        /// The default transaction table name
-        /// </summary>
-        public static readonly string TX_TABLE = "tx_table";
-
-        /// <summary>
-        /// The default transaction database index
-        /// </summary>
-        public static readonly long TX_DB_INDEX = 1;
-
-        /// <summary>
-        /// the map from tableId to redis version table
-        /// </summary>
-        private Dictionary<string, RedisVersionTable> versionTableMap;
-
-        /// <summary>
-        /// the singleton instance of RedisVersionDb
-        /// </summary>
-        private static volatile RedisVersionDb instance;
-
-        /// <summary>
-        /// the lock to guarantee the safety of table's creation and delete
-        /// </summary>
-        private readonly object tableLock;
-
-        /// <summary>
-        /// the lock to init the singleton instance
-        /// </summary>
-        private static readonly object initLock = new object();
 
         // <summary>
         /// The bytes of -1 in long type, should mind that it must be a long type with 8 bytes
@@ -86,18 +46,71 @@
         /// </summary>
         internal static readonly long REDIS_CALL_ERROR_CODE = -2L;
 
+        /// <summary>
+        /// The default meta data partition
+        /// </summary>
+        public static readonly int META_DATA_PARTITION = 0;
+
+        /// <summary>
+        /// The default meta database index
+        /// </summary>
+        public static readonly long META_DB_INDEX = 0;
+        
+        /// <summary>
+        /// The default transaction table name
+        /// </summary>
+        public static readonly string TX_TABLE = "tx_table";
+
+        /// <summary>
+        /// The default transaction database index
+        /// </summary>
+        public static readonly long TX_DB_INDEX = 1;
+
+
+
+
+
+        /// <summary>
+        /// the map from tableId to redis version table
+        /// </summary>
+        private Dictionary<string, RedisVersionTable> versionTableMap;
+
+        /// <summary>
+        /// the singleton instance of RedisVersionDb
+        /// </summary>
+        private static volatile RedisVersionDb instance;
+
+        /// <summary>
+        /// the lock to guarantee the safety of table's creation and delete
+        /// </summary>
+        private readonly object tableLock;
+
+        /// <summary>
+        /// the lock to init the singleton instance
+        /// </summary>
+        private static readonly object initLock = new object();
+
+        /// <summary>
+        /// The response visitor to send requests
+        /// </summary>
 		private readonly RedisResponseVisitor responseVisitor;
 
-		/// <summary>
-		/// Get RedisClient from the redis connection pool
-		/// </summary>
-		private RedisClientManager RedisManager
-        {
-            get
-            {
-                return RedisClientManager.Instance;
-            }
-        }
+        /// <summary>
+        /// The redis client manager instance
+        /// </summary>
+        private RedisClientManager clientManager;
+
+        /// <summary>
+        /// A list of (table Id, partition key) pairs, each of which represents a key-value instance. 
+        /// This worker is responsible for processing key-value ops directed to the designated instances.
+        /// </summary>
+        private Dictionary<string, List<int>> partitionedInstances;
+
+        /// <summary>
+        /// A flag to declare if the async monitor is active, which will be set as false
+        /// when the version db is closed
+        /// </summary>
+        private bool AsyncMonitorActive = true;
 
         /// <summary>
         /// A lua script manager to register lua scripts and get its sha1 by script name
@@ -113,22 +126,21 @@
         /// <summary>
         /// Provide an option to set version db in pipelineMode or not
         /// </summary>
-        public bool PipelineMode { get; set; }
+        public bool PipelineMode { get; set; } = false;
+
+        /// <summary>
+        /// If the version db is in async mode
+        /// </summary>
+        public bool AsyncMode { get; set; } = false;
 
         private RedisVersionDb()
         {
-            // Default switch off the pipeline mode
-            this.PipelineMode = false;
             this.tableLock = new object();
             this.versionTableMap = new Dictionary<string, RedisVersionTable>();
-
-            // Default partition implementation
-            this.PhysicalPartitionByKey = recordKey => recordKey.GetHashCode() % this.RedisManager.RedisInstanceCount;
-            // Create the transaction table
-            this.CreateVersionTable(RedisVersionDb.TX_TABLE, RedisVersionDb.TX_DB_INDEX);
-
             this.responseVisitor = new RedisResponseVisitor();
-		}
+
+            this.Setup();
+        }
 
         public static RedisVersionDb Instance
         {
@@ -148,6 +160,39 @@
             } 
         }
 
+    }
+
+    /// <summary>
+    /// Methods related the version db itself
+    /// </summary>
+    public partial class RedisVersionDb
+    {
+        /// <summary>
+        /// There will be daemon thread running to flush the requests
+        /// </summary>
+        public void Monitor()
+        {
+            while (this.AsyncMonitorActive)
+            {
+                foreach (KeyValuePair<string, List<int>> partition in this.partitionedInstances)
+                {
+                    string tableId = partition.Key;
+                    foreach (int partitionKey in partition.Value)
+                    {
+                        this.Visit(tableId, partitionKey);
+                    }
+                }
+            }
+        }
+
+        public void Dispose()
+        {
+            if (this.AsyncMode)
+            {
+                this.AsyncMonitorActive = false;
+            }
+        }
+
         /// <summary>
         /// Get redisDbIndex from meta hashset by tableId
         /// Take the System.Nullable<long> to wrap the return result, as it could 
@@ -156,7 +201,7 @@
         /// <returns></returns>
         protected long? GetTableRedisDbIndex(string tableId)
         {
-            using (RedisClient redisClient = this.RedisManager.
+            using (RedisClient redisClient = this.clientManager.
                 GetClient(RedisVersionDb.META_DB_INDEX, RedisVersionDb.META_DATA_PARTITION))
             {
                 byte[] keyBytes = Encoding.ASCII.GetBytes(tableId);
@@ -170,16 +215,66 @@
                 return BitConverter.ToInt64(valueBytes, 0);
             }
         }
+
+        /// <summary>
+        /// Setup the version db and initialize the environment
+        /// </summary>
+        private void Setup()
+        {
+            // Default partition implementation
+            this.PhysicalPartitionByKey = recordKey => recordKey.GetHashCode() % this.clientManager.RedisInstanceCount;
+           
+            // Init the redis client manager
+            // TODO: get readWriteHosts from config file
+            string[] readWriteHosts = new string[] { "127.0.0.1:6379" };
+            this.clientManager = new RedisClientManager(readWriteHosts);
+
+            // Create the transaction table
+            this.CreateVersionTable(RedisVersionDb.TX_TABLE, RedisVersionDb.TX_DB_INDEX);
+
+            if (this.AsyncMode)
+            {
+                // Add tableIds and partition instances
+                IEnumerable<string> tables = this.GetAllTables();
+                foreach (string tableId in tables)
+                {
+                    this.AddPartitionInstance(tableId);
+                }
+
+                // start a daemon thread to monitor the flush
+                Thread thread = new Thread(new ThreadStart(this.Monitor));
+                thread.Start();
+            }
+        }
+
+        /// <summary>
+        /// Add partition instances for a given tableId
+        /// </summary>
+        /// <param name="tableId"></param>
+        private void AddPartitionInstance(string tableId)
+        {
+            if (this.partitionedInstances == null)
+            {
+                this.partitionedInstances = new Dictionary<string, List<int>>();
+            }
+
+            List<int> partitionKeys = new List<int>();
+            for (int partition = 0; partition < this.clientManager.RedisInstanceCount; partition++)
+            {
+                partitionKeys.Add(partition);
+            }
+            this.partitionedInstances.Add(tableId, partitionKeys);
+        }
     }
 
     /// <summary>
-    /// This part override the interfaces for DDL
+    /// This part overrides the interfaces for DDL
     /// </summary>
     public partial class RedisVersionDb
     {
 		internal override VersionTable CreateVersionTable(string tableId, long redisDbIndex)
         {
-            using (RedisClient redisClient = this.RedisManager.
+            using (RedisClient redisClient = this.clientManager.
                 GetClient(RedisVersionDb.META_DB_INDEX, RedisVersionDb.META_DATA_PARTITION))
             {
                 byte[] keyBytes = Encoding.ASCII.GetBytes(tableId);
@@ -213,6 +308,8 @@
                         if (!this.versionTableMap.ContainsKey(tableId))
                         {
                             this.versionTableMap[tableId] = versionTable;
+                            // add instances for the created table
+                            this.AddPartitionInstance(tableId);
                         }
                     }
                 }
@@ -221,9 +318,32 @@
             return this.versionTableMap[tableId];
         }
 
+        internal override IEnumerable<string> GetAllTables()
+        {
+            using (RedisClient redisClient = this.clientManager.
+               GetClient(RedisVersionDb.META_DB_INDEX, RedisVersionDb.META_DATA_PARTITION))
+            {
+                byte[][] returnBytes = redisClient.HGetAll(RedisVersionDb.META_TABLE_KEY);
+
+                if (returnBytes == null || returnBytes.Length == 0)
+                {
+                    return null;
+                }
+
+                IList<string> tables = new List<string>(returnBytes.Length/2);
+                for (int i = 0; i < returnBytes.Length; i += 2)
+                {
+                    string tableName = Encoding.ASCII.GetString(returnBytes[i]);
+                    tables.Add(tableName);
+                }
+
+                return tables;
+            }
+        }
+
         internal override bool DeleteTable(string tableId)
         {
-            using (RedisClient redisClient = this.RedisManager.
+            using (RedisClient redisClient = this.clientManager.
                 GetClient(RedisVersionDb.META_DB_INDEX, RedisVersionDb.META_DATA_PARTITION))
             {
                 byte[] keyBytes = Encoding.ASCII.GetBytes(tableId);
@@ -236,6 +356,7 @@
                         if (this.versionTableMap.ContainsKey(tableId))
                         {
                             this.versionTableMap.Remove(tableId);
+                            this.partitionedInstances.Remove(tableId);
                         }
                     }
                 }
@@ -289,12 +410,12 @@
                 if (this.PipelineMode)
                 {
                     RedisRequest request = new RedisRequest(hashId, keyBytes, valueBytes, RedisRequestType.HSetNX);
-                    RedisConnectionPool clientPool = this.RedisManager.GetClientPool(RedisVersionDb.TX_DB_INDEX, partition);
+                    RedisConnectionPool clientPool = this.clientManager.GetClientPool(RedisVersionDb.TX_DB_INDEX, partition);
                     ret = clientPool.ProcessLongRequest(request);
                 }
                 else
                 {
-                    using (RedisClient client = this.RedisManager.GetClient(RedisVersionDb.TX_DB_INDEX, partition))
+                    using (RedisClient client = this.clientManager.GetClient(RedisVersionDb.TX_DB_INDEX, partition))
                     {
                         ret = client.HSetNX(hashId, keyBytes, valueBytes);
                     }    
@@ -321,10 +442,10 @@
             if (this.PipelineMode)
             {
                 RedisRequest request = new RedisRequest(txIdStr, keysBytes, valuesBytes, RedisRequestType.HMSet);
-                RedisConnectionPool clientPool = this.RedisManager.GetClientPool(RedisVersionDb.TX_DB_INDEX, txPartition);
+                RedisConnectionPool clientPool = this.clientManager.GetClientPool(RedisVersionDb.TX_DB_INDEX, txPartition);
                 clientPool.ProcessVoidRequest(request);
             }
-            using (RedisClient client = this.RedisManager.GetClient(RedisVersionDb.TX_DB_INDEX, txPartition))
+            using (RedisClient client = this.clientManager.GetClient(RedisVersionDb.TX_DB_INDEX, txPartition))
             {
                 client.HMSet(txIdStr, keysBytes, valuesBytes);
             }
@@ -353,12 +474,12 @@
             if (this.PipelineMode)
             {
                 RedisRequest request = new RedisRequest(hashId, keyBytes, RedisRequestType.HMGet);
-                RedisConnectionPool clientPool = this.RedisManager.GetClientPool(RedisVersionDb.TX_DB_INDEX, partition);
+                RedisConnectionPool clientPool = this.clientManager.GetClientPool(RedisVersionDb.TX_DB_INDEX, partition);
                 valueBytes = clientPool.ProcessValuesRequest(request);
             }
             else
             {
-                using (RedisClient client = this.RedisManager.GetClient(RedisVersionDb.TX_DB_INDEX, partition))
+                using (RedisClient client = this.clientManager.GetClient(RedisVersionDb.TX_DB_INDEX, partition))
                 {
                     valueBytes = client.HMGet(hashId, keyBytes);
                 }
@@ -390,12 +511,12 @@
             if (this.PipelineMode)
             {
                 RedisRequest request = new RedisRequest(hashId, keyBytes, valueBytes, RedisRequestType.HSet);
-                RedisConnectionPool clientPool = this.RedisManager.GetClientPool(RedisVersionDb.TX_DB_INDEX, partition);
+                RedisConnectionPool clientPool = this.clientManager.GetClientPool(RedisVersionDb.TX_DB_INDEX, partition);
                 ret = clientPool.ProcessLongRequest(request);
             }
             else
             {
-                using (RedisClient client = this.RedisManager.GetClient(RedisVersionDb.TX_DB_INDEX, partition))
+                using (RedisClient client = this.clientManager.GetClient(RedisVersionDb.TX_DB_INDEX, partition))
                 {
                     ret = client.HSet(hashId, keyBytes, valueBytes);
                 }
@@ -424,12 +545,12 @@
             if (this.PipelineMode)
             {
                 RedisRequest request = new RedisRequest(keys, sha1, 1, RedisRequestType.EvalSha);
-                RedisConnectionPool clientPool = this.RedisManager.GetClientPool(RedisVersionDb.TX_DB_INDEX, partition);
+                RedisConnectionPool clientPool = this.clientManager.GetClientPool(RedisVersionDb.TX_DB_INDEX, partition);
                 returnBytes = clientPool.ProcessValuesRequest(request);
             }
             else
             {
-                using (RedisClient client = this.RedisManager.GetClient(RedisVersionDb.TX_DB_INDEX, partition))
+                using (RedisClient client = this.clientManager.GetClient(RedisVersionDb.TX_DB_INDEX, partition))
                 {
                     returnBytes = client.EvalSha(sha1, 1, keys);
                 }
@@ -463,12 +584,12 @@
             if (this.PipelineMode)
             {
                 RedisRequest request = new RedisRequest(keys, sha1, 1, RedisRequestType.EvalSha);
-                RedisConnectionPool clientPool = this.RedisManager.GetClientPool(RedisVersionDb.TX_DB_INDEX, partition);
+                RedisConnectionPool clientPool = this.clientManager.GetClientPool(RedisVersionDb.TX_DB_INDEX, partition);
                 returnBytes = clientPool.ProcessValuesRequest(request);
             }
             else
             {
-                using (RedisClient client = this.RedisManager.GetClient(RedisVersionDb.TX_DB_INDEX, partition))
+                using (RedisClient client = this.clientManager.GetClient(RedisVersionDb.TX_DB_INDEX, partition))
                 {
                     returnBytes = client.EvalSha(sha1, 1, keys);
                 }

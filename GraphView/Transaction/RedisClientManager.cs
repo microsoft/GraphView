@@ -40,12 +40,18 @@
         /// <summary>
         /// The redis connection strings of read and write
         /// </summary>
-        internal string[] ReadWriteHosts { get; private set; }
+        private string[] readWriteHosts;
 
         /// <summary>
         /// The number of redis instances
         /// </summary>
-        internal int RedisInstanceCount { get; private set; }
+        internal int RedisInstanceCount
+        {
+            get
+            {
+                return this.readWriteHosts.Length;
+            }
+        }
 
         public static RedisClientManager Instance
         {
@@ -67,23 +73,16 @@
 
         private RedisClientManager()
         {
-            this.RedisInstanceCount = RedisClientManager.DEFAULT_REDIS_INSTANCE_COUNT;
-            this.ReadWriteHosts = new string[] { "127.0.0.1:6379"};
+            this.readWriteHosts = new string[] { "127.0.0.1:6379"};
         }
 
         /// <summary>
-        /// Config the redis instances by specifing an array of connection strings
+        /// Init a redis client manager with given read and write hosts
         /// </summary>
         /// <param name="readWriteHosts">An array of connections strings, with host and port</param>
-        internal void Config(string[] readWriteHosts)
+        internal RedisClientManager(string[] readWriteHosts) 
         {
-            if (readWriteHosts == null || readWriteHosts.Length == 0)
-            {
-                throw new ArgumentException("readWriteHosts must be not null or not empty");
-            }
-
-            this.RedisInstanceCount = readWriteHosts.Length;
-            this.ReadWriteHosts = readWriteHosts;
+            this.readWriteHosts = readWriteHosts ?? throw new ArgumentException("readWriteHosts at least have a host");
         }
         
         internal RedisClient GetClient(long redisDbIndex, int partition)
@@ -110,7 +109,7 @@
         /// <returns></returns>
         internal RedisClient GetLastestClient(long redisDbIndex, int partition)
         {
-            RedisConnectionPool pool = new RedisConnectionPool(this.ReadWriteHosts[partition], redisDbIndex);
+            RedisConnectionPool pool = new RedisConnectionPool(this.readWriteHosts[partition], redisDbIndex);
             return pool.GetRedisClient();
         }
 
@@ -145,7 +144,7 @@
         /// <param name="redisDbIndex"></param>
         private void StartNewRedisClientPool(RedisConnectionKey key)
         {
-            RedisConnectionPool pool = new RedisConnectionPool(this.ReadWriteHosts[key.RedisInstanceIndex], key.RedisDbIndex);
+            RedisConnectionPool pool = new RedisConnectionPool(this.readWriteHosts[key.RedisInstanceIndex], key.RedisDbIndex);
             RedisClientManager.clientPools.Add(key, pool);
 
             // If the redis version db in pipeline mode, start a daemon thread

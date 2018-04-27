@@ -13,9 +13,30 @@ namespace GraphView.Transaction
         internal OperationType OperationType;
 
         internal StoredProcedure Procedure { get; set; }
+
+        public TransactionRequest(
+            string sessionId, 
+            string tableId, 
+            string recordKey, 
+            string payload, 
+            OperationType operationType)
+        {
+            this.SessionId = sessionId;
+            this.TableId = tableId;
+            this.RecordKey = recordKey;
+            this.Payload = payload;
+            this.OperationType = operationType;
+        }
+
+        public TransactionRequest(StoredProcedure procedure)
+        {
+            this.Procedure = procedure;
+        }
+
+        public TransactionRequest() { }
     }
 
-    internal enum OperationType
+    public enum OperationType
     {
         Open,
         Insert,
@@ -49,12 +70,6 @@ namespace GraphView.Transaction
         private readonly ILogStore logStore;
 
         /// <summary>
-        /// A list of (table Id, partition key) pairs, each of which represents a key-value instance. 
-        /// This worker is responsible for processing key-value ops directed to the designated instances.
-        /// </summary>
-        private List<Tuple<string, int>> partitionedInstances;
-
-        /// <summary>
         /// A map of transactions, and each transaction has a queue of request from the client
         /// </summary>
         private Dictionary<string, Tuple<TransactionExecution, Queue<TransactionRequest>>> activeTxs;
@@ -68,7 +83,6 @@ namespace GraphView.Transaction
             this.versionDb = versionDb;
             this.logStore = logStore;
             this.workload = workload ?? new Queue<TransactionRequest>();
-            this.partitionedInstances = instances;
         }
 
         internal void Execute()
@@ -179,17 +193,6 @@ namespace GraphView.Transaction
                     else if (txExec.Progress == TxProgress.Close)
                     {
                         toRemoveSessions.Add(sessionId);
-                    }
-                }
-
-                if (this.partitionedInstances != null)
-                {
-                    foreach (Tuple<string, int> kvIns in this.partitionedInstances)
-                    {
-                        string tableId = kvIns.Item1;
-                        int partitionKey = kvIns.Item2;
-
-                        this.versionDb.Visit(tableId, partitionKey);
                     }
                 }
 
