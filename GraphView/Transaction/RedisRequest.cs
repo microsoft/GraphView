@@ -101,8 +101,9 @@ namespace GraphView.Transaction
 
             if (this.ParentRequest != null)
             {
-                this.ParentRequest.Finished = true;
+                // Should set value at first and then set the finish flag
                 this.ResponseVisitor.Invoke(this.ParentRequest, result);
+                this.ParentRequest.Finished = true;
             }
         }
 
@@ -113,8 +114,8 @@ namespace GraphView.Transaction
 
             if (this.ParentRequest != null)
             {
-                this.ParentRequest.Finished = true;
                 this.ResponseVisitor.Invoke(this.ParentRequest, result);
+                this.ParentRequest.Finished = true;
             }
         }
 
@@ -125,8 +126,8 @@ namespace GraphView.Transaction
 
             if (this.ParentRequest != null)
             {
-                this.ParentRequest.Finished = true;
                 this.ResponseVisitor.Invoke(this.ParentRequest, result);
+                this.ParentRequest.Finished = true;
             }
         }
 

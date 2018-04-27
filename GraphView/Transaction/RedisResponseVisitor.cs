@@ -125,6 +125,7 @@ namespace GraphView.Transaction
         internal override void Visit(SetCommitTsRequest req)
         {
             byte[][] returnBytes = req.Result as byte[][];
+
             req.Result = returnBytes == null || returnBytes.Length == 0 ?
                 -1L:
                 BitConverter.ToInt64(returnBytes[1], 0);

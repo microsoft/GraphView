@@ -44,6 +44,8 @@ namespace GraphView.Transaction
 
         internal long beginTimestamp;
 
+        internal bool isCommitted;
+
         internal Dictionary<string, Dictionary<object, ReadSetEntry>> readSet;
 
         internal Dictionary<string, Dictionary<object, object>> writeSet;
@@ -59,6 +61,7 @@ namespace GraphView.Transaction
         private Stack<Tuple<string, VersionEntry>> validateKeyList;
 
         private Queue<VersionEntry> readVersionList;
+
 
         internal Procedure CurrentProc { get; private set; }
 
@@ -84,6 +87,8 @@ namespace GraphView.Transaction
             this.requestStack = new Stack<TxRequest>();
 
             this.Procedure = procedure;
+
+            this.isCommitted = false;
 
             // init and get tx id
             this.InitTx();
@@ -112,7 +117,6 @@ namespace GraphView.Transaction
                 // set the current procedure as InitTx and wait for the executor check
                 this.CurrentProc = new Procedure(this.InitTx);
                 this.Progress = TxProgress.Initi;
-
                 return;
             }
             else if (this.requestStack.Count == 1 && this.requestStack.Peek() is NewTxIdRequest)
@@ -123,8 +127,7 @@ namespace GraphView.Transaction
                 }
 
                 NewTxIdRequest newTxIdReq = this.requestStack.Pop() as NewTxIdRequest;
-                long ret = newTxIdReq == null ? 0 : (long)newTxIdReq.Result;
-                if (ret == 0)
+                if ((long)newTxIdReq.Result == 0)
                 {
                     // Retry in loop to get the unique txId
                     NewTxIdRequest retryReq = this.versionDb.EnqueueNewTxId();
@@ -527,17 +530,13 @@ namespace GraphView.Transaction
             }
             else if (this.requestStack.Count == 1)
             {
-                TxRequest req = this.requestStack.Peek();
-                if (!req.Finished)
+                if (!this.requestStack.Peek().Finished)
                 {
                     // The prior request hasn't been processed. Returns the control to the caller.
                     return;
                 }
 
-                // The request has been finished, pop the request
-                requestStack.Pop();
-
-                SetCommitTsRequest setTsReq = req as SetCommitTsRequest;
+                SetCommitTsRequest setTsReq = this.requestStack.Pop() as SetCommitTsRequest;
                 long commitTime = setTsReq.Result == null ? -1 : (long)setTsReq.Result;
                 if (commitTime < 0)
                 {
@@ -612,6 +611,8 @@ namespace GraphView.Transaction
                     if (readEntry == null)
                     {
                         this.CurrentProc = new Procedure(this.Abort);
+                        // A really serious bug, should clear the stack before enter the next step
+                        this.requestStack.Clear();
 						if (!this.DEBUG_MODE)
 						{
 							this.CurrentProc();
@@ -834,6 +835,7 @@ namespace GraphView.Transaction
                     return;
                 }
 
+                this.isCommitted = true;
                 this.requestStack.Pop();
                 this.CurrentProc = new Procedure(this.PostProcessingAfterCommit);
 				if (!this.DEBUG_MODE)
@@ -1218,6 +1220,8 @@ namespace GraphView.Transaction
                             this.largestVersionKeyMap[tableId] = new Dictionary<object, long>();
                         }
                         this.largestVersionKeyMap[tableId][recordKey] = VersionEntry.VERSION_KEY_STRAT_INDEX;
+                        VersionEntry emptyEntry = VersionEntry.InitEmptyVersionEntry(initReq.RecordKey);
+                        this.readVersionList = new Queue<VersionEntry>(new VersionEntry[] { emptyEntry });
                     }
                     else
                     {

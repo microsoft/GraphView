@@ -135,5 +135,11 @@ namespace GraphView.Transaction
             return new VersionEntry(recordKey, versionKey, beginTimestamp, endTimestamp,
                 record, txId, maxCommitTs);
         }
+
+        public static VersionEntry InitEmptyVersionEntry(object recordKey)
+        {
+            return new VersionEntry(recordKey, VersionEntry.VERSION_KEY_STRAT_INDEX,
+                VersionEntry.EMPTY_RECORD, VersionEntry.EMPTY_TXID);
+        }
     }
 }

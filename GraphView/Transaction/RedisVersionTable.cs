@@ -117,8 +117,7 @@
         {
             string hashId = recordKey as string;
             long versionKey = VersionEntry.VERSION_KEY_STRAT_INDEX;
-            VersionEntry emptyEntry = new VersionEntry(recordKey, versionKey,
-                VersionEntry.EMPTY_RECORD, VersionEntry.EMPTY_TXID);
+            VersionEntry emptyEntry = VersionEntry.InitEmptyVersionEntry(recordKey);
 
             byte[] keyBytes = BitConverter.GetBytes(versionKey);
             byte[] valueBytes = VersionEntry.Serialize(emptyEntry);

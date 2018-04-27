@@ -7,7 +7,7 @@
     using System.IO;
     using System.Threading;
 
-    class YCSBBenchmarkTest
+    class YCSBAsyncBenchmarkTest
     {
         public static readonly String TABLE_ID = "ycsb_table";
 
@@ -17,7 +17,7 @@
         {
             TxWorkload oper = op as TxWorkload;
             Transaction tx = new Transaction(null, RedisVersionDb.Instance);
-            string readValue = null;
+            string readValue = null;                          
             try
             {
                 switch (oper.Type)
@@ -64,20 +64,17 @@
             }
         };
 
-        /// <summary>
-        /// The number of workers
-        /// </summary>
-        private int workerCount;
+        private List<TransactionExecutor> executorList;
 
         /// <summary>
-        /// The number of tasks per worker
+        /// The number of executors
         /// </summary>
-        private int taskCountPerWorker;
+        private int executorCount;
 
         /// <summary>
-        /// A list of workers
+        /// The number of tx count per executor
         /// </summary>
-        private List<Worker> workers;
+        private int txCountPerExecutor;
 
         /// <summary>
         /// The exact ticks when the test starts
@@ -94,25 +91,20 @@
         /// </summary>
         private long commandCount = 0;
 
-        private RedisVersionDb versionDb;
+        /// <summary>
+        /// The redis version db instance
+        /// </summary>
+        private RedisVersionDb redisVersionDb;
 
         internal int TxThroughput
         {
             get
             {
+                int txCount = this.txCountPerExecutor * this.executorCount;
                 double runSeconds = this.RunSeconds;
-                int taskCount = this.workerCount * this.taskCountPerWorker;
-                return (int)(taskCount / runSeconds);
+                return (int)(txCount / runSeconds);
             }
         }
-
-        //internal double AbortRate
-        //{
-        //    get
-        //    {
-        //        return 1 - (COMMITED_TXS * 1.0 / FINISHED_TXS);
-        //    }
-        //}
 
         internal double RunSeconds
         {
@@ -131,23 +123,21 @@
             }
         }
 
-        public YCSBBenchmarkTest(int workerCount, int taskCountPerWorker)
+        public YCSBAsyncBenchmarkTest(int executorCount, int txCountPerExecutor)
         {
-            this.workerCount = workerCount;
-            this.taskCountPerWorker = taskCountPerWorker;
-            this.workers = new List<Worker>();
+            RedisVersionDb.DEFAULT_ASYNC_MODE = true;
+            this.redisVersionDb = RedisVersionDb.Instance;
 
-            for (int i = 0; i < this.workerCount; i++)
-            {
-                this.workers.Add(new Worker(i+1, taskCountPerWorker));
-            }
+            this.executorCount = executorCount;
+            this.txCountPerExecutor = txCountPerExecutor;
+
+            this.executorList = new List<TransactionExecutor>();
         }
 
         internal void Setup(string dataFile, string operationFile)
         {
             // step1: flush the database
-            this.versionDb = RedisVersionDb.Instance;
-            RedisClientManager manager = this.versionDb.RedisManager;
+            RedisClientManager manager = this.redisVersionDb.RedisManager;
 
             using (RedisClient client = manager.GetClient(REDIS_DB_INDEX, 0))
             {
@@ -156,7 +146,7 @@
             Console.WriteLine("Flushed the database");
 
             // step2: create version table
-            versionDb.CreateVersionTable(TABLE_ID, REDIS_DB_INDEX);
+            this.redisVersionDb.CreateVersionTable(TABLE_ID, REDIS_DB_INDEX);
 
             // step3: load data
             using (StreamReader reader = new StreamReader(dataFile))
@@ -170,9 +160,10 @@
                     count++;
 
                     ACTION(operation);
-                    if (count % 5000 == 0)
+                    if (count % 10000 == 0)
                     {
                         Console.WriteLine("Loaded {0} records", count);
+                        break;
                     }
                 }
                 Console.WriteLine("Load records successfully, {0} records in total", count);
@@ -182,22 +173,32 @@
             using (StreamReader reader = new StreamReader(operationFile))
             {
                 string line;
-                foreach (Worker worker in this.workers)
+                
+                for (int i = 0; i < this.executorCount; i++)
                 {
-                    for (int i = 0; i < this.taskCountPerWorker; i++)
+                    Queue<TransactionRequest> reqQueue = new Queue<TransactionRequest>();
+                    for (int j = 0; j < this.txCountPerExecutor; j++)
                     {
                         line = reader.ReadLine();
                         string[] fields = this.ParseCommandFormat(line);
-                        TxWorkload op = new TxWorkload(fields[0], TABLE_ID, fields[2], fields[3]);
-                        worker.EnqueueTxTask(new TxTask(ACTION, op));
+
+                        TxWorkload workload = new TxWorkload(fields[0], TABLE_ID, fields[2], fields[3]);
+
+                        string sessionId = ((i * this.txCountPerExecutor) + j + 1).ToString();
+                        YCSBStoredProcedure procedure = new YCSBStoredProcedure(sessionId, workload);
+                        TransactionRequest req = new TransactionRequest(sessionId, procedure);
+                        reqQueue.Enqueue(req);
                     }
+
+                    this.executorList.Add(new TransactionExecutor(this.redisVersionDb, null, reqQueue));
                 }
             }
         }
 
         internal void Run()
         {
-            Console.WriteLine("Try to run {0} tasks in {1} workers", (this.workerCount * this.taskCountPerWorker), this.workerCount);
+
+            Console.WriteLine("Try to run {0} tasks in {1} workers", (this.executorCount * this.txCountPerExecutor), this.executorCount);
             Console.WriteLine("Running......");
 
             long commandCountBeforeRun = this.GetCurrentCommandCount();
@@ -205,17 +206,19 @@
             this.testBeginTicks = DateTime.Now.Ticks;
             List<Thread> threadList = new List<Thread>();
 
-            foreach (Worker worker in this.workers)
-            {
-                Thread thread = new Thread(new ThreadStart(worker.Run));
-                threadList.Add(thread);
-                thread.Start();
-            }
+            this.executorList[0].Execute();
+            //foreach (TransactionExecutor executor in this.executorList)
+            //{
+            //    executor.Execute();
+            //    //Thread thread = new Thread(new ThreadStart(executor.Execute));
+            //    //threadList.Add(thread);
+            //    //thread.Start();
+            //}
 
-            foreach (Thread thread in threadList)
-            {
-                thread.Join();
-            }
+            //foreach (Thread thread in threadList)
+            //{
+            //    thread.Join();
+            //}
             this.testEndTicks = DateTime.Now.Ticks;
 
             long commandCountAfterRun = this.GetCurrentCommandCount();
@@ -226,18 +229,18 @@
 
         internal void Stats()
         {
-            int taskCount = this.workerCount * this.taskCountPerWorker;
-            Console.WriteLine("\nFinshed {0} requests in {1} seconds", taskCount, this.RunSeconds);
+            Console.WriteLine("\nFinshed {0} requests in {1} seconds", (this.executorCount * this.txCountPerExecutor), this.RunSeconds);
             Console.WriteLine("Transaction Throughput: {0} tx/second", this.TxThroughput);
 
             int totalTxs = 0, abortedTxs = 0;
-            foreach (Worker worker in this.workers)
+            foreach (TransactionExecutor executor in this.executorList)
             {
-                totalTxs += worker.FinishedTxs;
-                abortedTxs += worker.AbortedTxs;
+                totalTxs += executor.FinishedTxs;
+                abortedTxs += (executor.FinishedTxs - executor.CommittedTxs);
+                Console.WriteLine(executor.CommittedTxs);
             }
-            Console.WriteLine("\nFinshed {0} txs, Commited {1} txs", totalTxs, abortedTxs);
-            Console.WriteLine("Transaction AbortRate: {0}%", (abortedTxs*1.0/totalTxs) * 100);
+            Console.WriteLine("\nFinshed {0} txs, Aborted {1} txs", totalTxs, abortedTxs);
+            Console.WriteLine("Transaction AbortRate: {0}%", (abortedTxs * 1.0 / totalTxs) * 100);
 
             Console.WriteLine("\nFinshed {0} commands in {1} seconds", this.commandCount, this.RunSeconds);
             Console.WriteLine("Redis Throughput: {0} cmd/second", this.RedisThroughput);
@@ -254,7 +257,7 @@
 
             if (fieldsOffset < fieldsEnd)
             {
-                value = line.Substring(fieldsOffset, fieldsEnd-fieldsOffset+1);
+                value = line.Substring(fieldsOffset, fieldsEnd - fieldsOffset + 1);
             }
 
             return new string[] {
@@ -273,12 +276,12 @@
         /// <returns></returns>
         private long GetCurrentCommandCount()
         {
-            RedisClientManager clientManager = this.versionDb.RedisManager;
-            clientManager.Dispose();
+            RedisClientManager manager = this.redisVersionDb.RedisManager;
+
             long commandCount = 0;
-            for (int i = 0; i < clientManager.RedisInstanceCount; i++)
+            for (int i = 0; i < manager.RedisInstanceCount; i++)
             {
-                using (RedisClient redisClient = clientManager.GetLastestClient(0, 0))
+                using (RedisClient redisClient = manager.GetLastestClient(0, 0))
                 {
                     string countStr = redisClient.Info["total_commands_processed"];
                     long count = Convert.ToInt64(countStr);

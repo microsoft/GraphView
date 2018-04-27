@@ -28,9 +28,11 @@ namespace GraphView.Transaction
             this.OperationType = operationType;
         }
 
-        public TransactionRequest(StoredProcedure procedure)
+        public TransactionRequest(string sessionId, StoredProcedure procedure)
         {
+            this.SessionId = sessionId;
             this.Procedure = procedure;
+            this.OperationType = OperationType.Open;
         }
 
         public TransactionRequest() { }
@@ -47,7 +49,7 @@ namespace GraphView.Transaction
         Close,
     }
 
-    internal class TransactionExecutor
+    public class TransactionExecutor
     {
         /// <summary>
         /// The size of current working transaction set
@@ -70,6 +72,16 @@ namespace GraphView.Transaction
         private readonly ILogStore logStore;
 
         /// <summary>
+        /// ONLY FOR TEST
+        /// </summary>
+        internal int CommittedTxs = 0;
+
+        /// <summary>
+        /// ONLY FOR TEST
+        /// </summary>
+        internal int FinishedTxs = 0;
+
+        /// <summary>
         /// A map of transactions, and each transaction has a queue of request from the client
         /// </summary>
         private Dictionary<string, Tuple<TransactionExecution, Queue<TransactionRequest>>> activeTxs;
@@ -77,15 +89,15 @@ namespace GraphView.Transaction
         public TransactionExecutor(
             VersionDb versionDb, 
             ILogStore logStore, 
-            Queue<TransactionRequest> workload = null, 
-            List<Tuple<string, int>> instances = null)
+            Queue<TransactionRequest> workload = null)
         {
             this.versionDb = versionDb;
             this.logStore = logStore;
             this.workload = workload ?? new Queue<TransactionRequest>();
+            this.activeTxs = new Dictionary<string, Tuple<TransactionExecution, Queue<TransactionRequest>>>();
         }
 
-        internal void Execute()
+        public void Execute()
         {
             HashSet<string> toRemoveSessions = new HashSet<string>();
 
@@ -193,6 +205,11 @@ namespace GraphView.Transaction
                     else if (txExec.Progress == TxProgress.Close)
                     {
                         toRemoveSessions.Add(sessionId);
+                        if (txExec.isCommitted)
+                        {
+                            this.CommittedTxs += 1;
+                        }
+                        this.FinishedTxs += 1;
                     }
                 }
 

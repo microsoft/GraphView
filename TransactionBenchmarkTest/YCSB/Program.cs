@@ -32,6 +32,19 @@ namespace TransactionBenchmarkTest.YCSB
             test.Stats();
         }
 
+        static void YCSBAsyncTest()
+        {
+            const int executorCount = 3;
+            const int txCountPerExecutor = 100000;
+            const string dataFile = "ycsb_data.in";
+            const string operationFile = "ycsb_ops.in";
+
+            YCSBAsyncBenchmarkTest test = new YCSBAsyncBenchmarkTest(executorCount, txCountPerExecutor);
+            test.Setup(dataFile, operationFile);
+            test.Run();
+            test.Stats();
+        }
+
         internal static void PinThreadOnCores()
         {
             Thread.BeginThreadAffinity();
@@ -52,9 +65,14 @@ namespace TransactionBenchmarkTest.YCSB
 
         public static void Main(string[] args)
         {
+            //byte[] bytes = BitConverter.GetBytes(5L);
+            //object value = BitConverter.ToInt64(bytes, 0);
+            //long longv = Convert.ToInt64(value);
+
             // PinThreadOnCores();
-            YCSBTest();
+            // YCSBTest();
             // RedisBenchmarkTest();
+            YCSBAsyncTest();
         }
     }
 }
