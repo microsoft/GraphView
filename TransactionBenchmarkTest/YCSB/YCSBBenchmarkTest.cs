@@ -8,6 +8,7 @@
     using System.Threading;
     using System.Linq;
 
+    /*
     class TxWorkload
     {
         internal string TableId;
@@ -27,7 +28,7 @@
         {
             return string.Format("key={0},value={1},type={2},tableId={3}", this.Key, this.Value, this.Type, this.TableId);
         }
-    }
+    }*/
 
     class TxWorkloadWithTx
     {
@@ -243,7 +244,7 @@
 
         internal void FlushRedis()
         {
-            RedisClientManager manager = RedisClientManager.Instance;
+            RedisClientManager manager = RedisVersionDb.Instance.RedisManager;
 
             using (RedisClient client = manager.GetClient(REDIS_DB_INDEX, 0))
             {
@@ -308,7 +309,7 @@
         internal void SetupReadOnly(string dataFile, string operationFile)
         {
             // step1: flush the database
-            RedisClientManager manager = RedisClientManager.Instance;
+            RedisClientManager manager = RedisVersionDb.Instance.RedisManager;
             RedisVersionDb versionDb = RedisVersionDb.Instance;
 
             using (RedisClient client = manager.GetClient(REDIS_DB_INDEX, 0))

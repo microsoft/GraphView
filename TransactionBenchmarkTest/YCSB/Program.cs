@@ -66,6 +66,10 @@ namespace TransactionBenchmarkTest.YCSB
             //Console.WriteLine("PLEASE INPUT RETURN TO CONTINUE...");
             //Console.Read();
 
+            test.Run();
+            test.Stats();
+        }
+
         static void YCSBAsyncTest()
         {
             const int executorCount = 1;
