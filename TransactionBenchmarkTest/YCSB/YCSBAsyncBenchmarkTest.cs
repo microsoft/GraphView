@@ -197,9 +197,6 @@
 
         internal void Run()
         {
-            Console.WriteLine("type to run");
-            Console.Read();
-
             Console.WriteLine("Try to run {0} tasks in {1} workers", (this.executorCount * this.txCountPerExecutor), this.executorCount);
             Console.WriteLine("Running......");
 

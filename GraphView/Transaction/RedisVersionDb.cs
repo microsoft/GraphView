@@ -262,7 +262,6 @@
                 return;
             }
 
-
             List<int> partitionKeys = new List<int>();
             for (int partition = 0; partition < this.RedisManager.RedisInstanceCount; partition++)
             {
@@ -318,7 +317,6 @@
                         }
                     }
                 }
-                this.versionTableMap[tableId] = versionTable;
             }
             return this.versionTableMap[tableId];
         }

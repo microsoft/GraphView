@@ -67,7 +67,7 @@
         /// <summary>
         /// Request queue holding the pending requests
         /// </summary>
-        internal RedisRequest[] requestQueue = null;
+        internal Queue<RedisRequest> requestQueue;
 
         /// <summary>
         /// The current request index
@@ -115,7 +115,7 @@
             this.WindowMicroSec = RedisConnectionPool.DEFAULT_WINDOW_MICRO_SEC;
             this.Active = true;
 
-            this.requestQueue = new RedisRequest[this.RequestBatchSize];
+            this.requestQueue = new Queue<RedisRequest>(this.RequestBatchSize);
             this.currReqId = -1;
 
             this.spinLock = new SpinLock();
@@ -140,49 +140,29 @@
         /// <returns>The index of the spot the request takes</returns>
         internal void EnqueueRequest(RedisRequest request)
         {
-            int reqId = -1;
-            // Spinlock until an empty spot is available in the queue
-            while (reqId < 0 || reqId >= this.RequestBatchSize)
+            bool lockTaken = false;
+            try
             {
-				reqId = this.currReqId + 1;
-                if (reqId >= this.RequestBatchSize)
+                this.spinLock.Enter(ref lockTaken);
+                this.requestQueue.Enqueue(request);
+            }
+            finally
+            {
+                if (lockTaken)
                 {
-                    continue;
-                }
-                else
-                {
-                    bool lockTaken = false;
-                    try
-                    {
-                        this.spinLock.Enter(ref lockTaken);
-						reqId = this.currReqId + 1;
-						if (reqId < this.RequestBatchSize)
-						{
-							this.currReqId++;
-							this.requestQueue[reqId] = request;
-						}
-                    }
-                    finally
-                    {
-                        if (lockTaken)
-                        {
-                            this.spinLock.Exit();
-                        }
-                    }
+                    this.spinLock.Exit();
                 }
             }
         }
 
-        private void Flush()
+        private void Flush(IEnumerable<RedisRequest> requests)
         {
-            // Send queued requests to Redis, collect results and store each of them in the corresonding request
             using (RedisClient redisClient = this.GetRedisClient())
             {
                 using (IRedisPipeline pipe = redisClient.CreatePipeline())
                 {
-                    for (int reqId = 0; reqId <= this.currReqId; reqId++)
+                    foreach (RedisRequest req in requests)
                     {
-                        RedisRequest req = this.requestQueue[reqId];
                         if (req == null)
                         {
                             continue;
@@ -222,7 +202,7 @@
                                 break;
                             case RedisRequestType.HDel:
                                 pipe.QueueCommand(
-                                    r => ((RedisNativeClient)r).HDel(req.HashId, req.Key), 
+                                    r => ((RedisNativeClient)r).HDel(req.HashId, req.Key),
                                         req.SetLong, req.SetError);
                                 break;
                             case RedisRequestType.EvalSha:
@@ -234,23 +214,9 @@
                                 break;
                         }
                     }
-
                     pipe.Flush();
                 }
-
-                // Release the request lock to make sure processRequest can keep going
-                for (int reqId = 0; reqId <= this.currReqId; reqId++)
-                {
-                    // Monitor.Wait must be called in sync block, here we should lock the 
-                    // request and release the it on time
-                    lock (this.requestQueue[reqId])
-                    {
-                        System.Threading.Monitor.PulseAll(this.requestQueue[reqId]);
-                    }
-                }
             }
-
-            this.currReqId = -1;
         }
 
         internal void Visit()
@@ -259,74 +225,18 @@
             if (now - lastFlushTime >= this.WindowMicroSec ||
                 this.currReqId + 1 >= this.RequestBatchSize)
             {
-                if (this.currReqId >= 0)
+                if (this.requestQueue.Count != 0)
                 {
                     bool lockTaken = false;
+                    RedisRequest[] requests = null;
                     try
                     {
                         this.spinLock.Enter(ref lockTaken);
-                        using (RedisClient redisClient = this.GetRedisClient())
-                        {
-                            using (IRedisPipeline pipe = redisClient.CreatePipeline())
-                            {
-                                for (int reqId = 0; reqId <= this.currReqId; reqId++)
-                                {
-                                    RedisRequest req = this.requestQueue[reqId];
-                                    if (req == null)
-                                    {
-                                        continue;
-                                    }
 
-                                    switch (req.Type)
-                                    {
-                                        case RedisRequestType.HGet:
-                                            pipe.QueueCommand(
-                                                r => ((RedisNativeClient)r).HGet(req.HashId, req.Key),
-                                                req.SetValue, req.SetError);
-                                            break;
-                                        case RedisRequestType.HMGet:
-                                            pipe.QueueCommand(
-                                                r => ((RedisNativeClient)r).HMGet(req.HashId, req.Keys),
-                                                req.SetValues, req.SetError);
-                                            break;
-                                        case RedisRequestType.HGetAll:
-                                            pipe.QueueCommand(
-                                                r => ((RedisNativeClient)r).HGetAll(req.HashId),
-                                                req.SetValues, req.SetError);
-                                            break;
-                                        case RedisRequestType.HSetNX:
-                                            pipe.QueueCommand(
-                                                r => ((RedisNativeClient)r).HSetNX(req.HashId, req.Key, req.Value),
-                                                req.SetLong, req.SetError);
-                                            break;
-                                        case RedisRequestType.HSet:
-                                            pipe.QueueCommand(
-                                                r => ((RedisNativeClient)r).HSet(req.HashId, req.Key, req.Value),
-                                                req.SetLong, req.SetError);
-                                            break;
-                                        case RedisRequestType.HMSet:
-                                            pipe.QueueCommand(
-                                                r => ((RedisNativeClient)r).HMSet(req.HashId, req.Keys, req.Values),
-                                                req.SetVoid, req.SetError);
-                                            break;
-                                        case RedisRequestType.HDel:
-                                            pipe.QueueCommand(
-                                                r => ((RedisNativeClient)r).HDel(req.HashId, req.Key),
-                                                    req.SetLong, req.SetError);
-                                            break;
-                                        case RedisRequestType.EvalSha:
-                                            pipe.QueueCommand(
-                                                r => ((RedisNativeClient)r).EvalSha(req.Sha1, req.NumberKeysInArgs, req.Keys),
-                                                    req.SetValues, req.SetError);
-                                            break;
-                                        default:
-                                            break;
-                                    }
-                                }
-
-                                pipe.Flush();
-                            }
-                        }
+                        // Copy all elements to an array and clear the request queue, then release the lock.
+                        // It reduces the time holding the lock and let enqueue wait not so long
+                        requests = this.requestQueue.ToArray();
+                        this.requestQueue.Clear();
                     }
                     finally
                     {
@@ -334,10 +244,13 @@
                         {
                             this.spinLock.Exit();
                         }
+                        if (requests != null)
+                        {
+                            this.Flush(requests);
+                        }
                     }
+                    
                 }
-
-                this.currReqId = -1;
                 lastFlushTime = DateTime.Now.Ticks / 10;
             }
         }
@@ -348,48 +261,37 @@
         /// </summary>
         internal void Monitor()
         {
-            long lastFlushTime = DateTime.Now.Ticks / 10;
-            while (this.Active)
+            long now = DateTime.Now.Ticks / 10;
+            if (now - lastFlushTime >= this.WindowMicroSec ||
+                this.currReqId + 1 >= this.RequestBatchSize)
             {
-                long now = DateTime.Now.Ticks / 10;
-                if (now - lastFlushTime >= this.WindowMicroSec || 
-                    this.currReqId + 1 >= this.RequestBatchSize)
+                if (this.requestQueue.Count != 0)
                 {
-                    if (this.currReqId >= 0)
+                    bool lockTaken = false;
+                    RedisRequest[] requests = null;
+                    try
                     {
-                        bool lockTaken = false;
-                        try
+                        this.spinLock.Enter(ref lockTaken);
+
+                        // Copy all elements to an array and clear the request queue, then release the lock.
+                        // It reduces the time holding the lock and let enqueue wait not so long
+                        requests = this.requestQueue.ToArray();
+                        this.requestQueue.Clear();
+                    }
+                    finally
+                    {
+                        if (lockTaken)
                         {
-                            this.spinLock.Enter(ref lockTaken);
-                            this.Flush();
+                            this.spinLock.Exit();
                         }
-                        finally
+                        if (requests != null)
                         {
-                            if (lockTaken)
-                            {
-                                this.spinLock.Exit();
-                            }
+                            this.Flush(requests);
                         }
                     }
-                    lastFlushTime = DateTime.Now.Ticks / 10;
-                }
-            }
 
-            if (this.currReqId >= 0)
-            {
-                bool lockTaken = false;
-                try
-                {
-                    this.spinLock.Enter(ref lockTaken);
-                    this.Flush();
                 }
-                finally
-                {
-                    if (lockTaken)
-                    {
-                        this.spinLock.Exit();
-                    } 
-                }
+                lastFlushTime = DateTime.Now.Ticks / 10;
             }
         }
 
