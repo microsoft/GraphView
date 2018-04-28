@@ -24,7 +24,7 @@ namespace GraphView.Transaction
             }
             catch (Exception)
             {
-                req.Result = (long)0;
+                req.Result = 0L;
             } 
         }
 
@@ -33,7 +33,7 @@ namespace GraphView.Transaction
             List<VersionEntry> versionList = new List<VersionEntry>();
 
             byte[][] returnBytes = req.Result as byte[][];
-            if (returnBytes != null)
+            if (returnBytes != null && returnBytes.Length != 0)
             {
                 for (int i = 0; i < returnBytes.Length; i += 2)
                 {
@@ -72,27 +72,14 @@ namespace GraphView.Transaction
             }
             catch (Exception)
             {
-                req.Result = (long)0;
+                req.Result = 0L;
             }
         }
 
         internal override void Visit(InsertTxIdRequest req)
         {
-            try
-            {
-                if ((long)req.Result > 0)
-                {
-                    req.Result = req.TxId;
-                }
-                else
-                {
-                    req.Result = (long)-1;
-                }
-            }
-            catch (Exception)
-            {
-                req.Result = -1L;
-            }
+            // There is no response for HMSET command
+            // Nothing to do here
         }
 
         internal override void Visit(NewTxIdRequest req)
@@ -118,14 +105,27 @@ namespace GraphView.Transaction
         internal override void Visit(ReplaceVersionRequest req)
         {
             byte[][] returnBytes = req.Result as byte[][];
-            req.Result = returnBytes == null || returnBytes.Length == 0 || returnBytes[1] == null ?
+            req.Result = returnBytes == null || returnBytes.Length == 0 ?
                 null:
                 VersionEntry.Deserialize(req.RecordKey, req.VersionKey, returnBytes[1]);
+        }
+
+        internal override void Visit(ReplaceWholeVersionRequest req)
+        {
+            try
+            {
+                req.Result = (long)req.Result;
+            }
+            catch (Exception)
+            {
+                req.Result = -1L;
+            }
         }
 
         internal override void Visit(SetCommitTsRequest req)
         {
             byte[][] returnBytes = req.Result as byte[][];
+
             req.Result = returnBytes == null || returnBytes.Length == 0 ?
                 -1L:
                 BitConverter.ToInt64(returnBytes[1], 0);
@@ -147,7 +147,7 @@ namespace GraphView.Transaction
             }
             catch (Exception)
             {
-                req.Result = 0L;
+                req.Result = -1L;
             }
         }
 

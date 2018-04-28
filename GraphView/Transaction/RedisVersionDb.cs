@@ -3,13 +3,13 @@
     using System;
     using System.Collections.Generic;
     using System.Text;
+    using System.Threading;
     using ServiceStack.Redis;
 
     /// <summary>
-    /// 1. Definition of fields of RedisVersionDb
-    /// 2. Implementation of private methods of redis operation, all those operations are atomic operations
+    /// The basic fields defined here
     /// </summary>
-    public partial class RedisVersionDb : VersionDb
+    public partial class RedisVersionDb : VersionDb, IDisposable
     {
         /// <summary>
         /// The defalut hashset key for the meta table
@@ -22,41 +22,6 @@
         /// meta_script is a map from script_name to sha1
         /// </summary>
         public static readonly string META_SCRIPT_KEY = "meta:scripts:hashset";
-
-        /// <summary>
-        /// The default meta data partition
-        /// </summary>
-        public static readonly int META_DATA_PARTITION = 0;
-
-        /// <summary>
-        /// The default meta database index
-        /// </summary>
-        public static readonly long META_DB_INDEX = 0;
-
-        /// <summary>
-        /// The default transaction database index
-        /// </summary>
-        public static readonly long TX_DB_INDEX = 1;
-
-        /// <summary>
-        /// the map from tableId to redis version table
-        /// </summary>
-        private Dictionary<string, RedisVersionTable> versionTableMap;
-
-        /// <summary>
-        /// the singleton instance of RedisVersionDb
-        /// </summary>
-        private static volatile RedisVersionDb instance;
-
-        /// <summary>
-        /// the lock to guarantee the safety of table's creation and delete
-        /// </summary>
-        private readonly object tableLock;
-
-        /// <summary>
-        /// the lock to init the singleton instance
-        /// </summary>
-        private static readonly object initLock = new object();
 
         // <summary>
         /// The bytes of -1 in long type, should mind that it must be a long type with 8 bytes
@@ -82,41 +47,91 @@
         internal static readonly long REDIS_CALL_ERROR_CODE = -2L;
 
         /// <summary>
-        /// Get RedisClient from the redis connection pool
+        /// The default meta data partition
         /// </summary>
-        private RedisClientManager RedisManager
-        {
-            get
-            {
-                return RedisClientManager.Instance;
-            }
-        }
+        public static readonly int META_DATA_PARTITION = 0;
+
+        /// <summary>
+        /// The default meta database index
+        /// </summary>
+        public static readonly long META_DB_INDEX = 0;
+        
+        /// <summary>
+        /// The default transaction table name
+        /// </summary>
+        public static readonly string TX_TABLE = "tx_table";
+
+        /// <summary>
+        /// The default transaction database index
+        /// </summary>
+        public static readonly long TX_DB_INDEX = 1;
+
+        public static bool DEFAULT_ASYNC_MODE = true;
+
+
+        /// <summary>
+        /// the map from tableId to redis version table
+        /// </summary>
+        private Dictionary<string, RedisVersionTable> versionTableMap;
+
+        /// <summary>
+        /// the singleton instance of RedisVersionDb
+        /// </summary>
+        private static volatile RedisVersionDb instance;
+
+        /// <summary>
+        /// the lock to guarantee the safety of table's creation and delete
+        /// </summary>
+        private readonly object tableLock;
+
+        /// <summary>
+        /// the lock to init the singleton instance
+        /// </summary>
+        private static readonly object initLock = new object();
+
+        /// <summary>
+        /// The response visitor to send requests
+        /// </summary>
+		private readonly RedisResponseVisitor responseVisitor;
+
+        /// <summary>
+        /// A list of (table Id, partition key) pairs, each of which represents a key-value instance. 
+        /// This worker is responsible for processing key-value ops directed to the designated instances.
+        /// </summary>
+        private Dictionary<string, List<int>> partitionedInstances;
+
+        /// <summary>
+        /// A flag to declare if the async monitor is active, which will be set as false
+        /// when the version db is closed
+        /// </summary>
+        private bool AsyncMonitorActive = true;
+
+        internal RedisClientManager RedisManager { get; private set; }
 
         /// <summary>
         /// A lua script manager to register lua scripts and get its sha1 by script name
         /// </summary>
-        private RedisLuaScriptManager RedisLuaManager
-        {
-            get
-            {
-                return RedisLuaScriptManager.Instance;
-            }
-        }
+        internal RedisLuaScriptManager RedisLuaManager { get; private set; }
 
         /// <summary>
         /// Provide an option to set version db in pipelineMode or not
         /// </summary>
-        public bool PipelineMode { get; set; }
+        public bool PipelineMode { get; set; } = false;
+
+        /// <summary>
+        /// If the version db is in async mode
+        /// </summary>
+        public bool AsyncMode { get; set; } = true;
 
         private RedisVersionDb()
         {
-            // Default switch off the pipeline mode
-            this.PipelineMode = false;
             this.tableLock = new object();
             this.versionTableMap = new Dictionary<string, RedisVersionTable>();
+            this.responseVisitor = new RedisResponseVisitor();
 
-            // Default partition implementation
-            this.PhysicalPartitionByKey = recordKey => recordKey.GetHashCode() % this.RedisManager.RedisInstanceCount;
+            // Read async mode from the file
+            this.AsyncMode = RedisVersionDb.DEFAULT_ASYNC_MODE;
+            this.Setup();
         }
 
         public static RedisVersionDb Instance
@@ -135,6 +150,40 @@
                 }
                 return RedisVersionDb.instance;
             } 
+        }
+
+    }
+
+    /// <summary>
+    /// Methods related the version db itself
+    /// </summary>
+    public partial class RedisVersionDb
+    {
+        /// <summary>
+        /// There will be daemon thread running to flush the requests
+        /// </summary>
+        public void Monitor()
+        {
+            while (this.AsyncMonitorActive)
+            {
+                foreach (KeyValuePair<string, List<int>> partition in this.partitionedInstances)
+                {
+                    string tableId = partition.Key;
+                    foreach (int partitionKey in partition.Value)
+                    {
+                        this.Visit(tableId, partitionKey);
+                    }
+                }
+            }
+        }
+
+
+        public void Dispose()
+        {
+            if (this.AsyncMode)
+            {
+                this.AsyncMonitorActive = false;
+            }
         }
 
         /// <summary>
@@ -159,14 +208,75 @@
                 return BitConverter.ToInt64(valueBytes, 0);
             }
         }
+
+        /// <summary>
+        /// Setup the version db and initialize the environment
+        /// </summary>
+        private void Setup()
+        {
+            // Default partition implementation
+            this.PhysicalPartitionByKey = recordKey => recordKey.GetHashCode() % this.RedisManager.RedisInstanceCount;
+           
+            // Init the redis client manager
+            // TODO: get readWriteHosts from config file
+            string[] readWriteHosts = new string[] { "127.0.0.1:6379" };
+            this.RedisManager = new RedisClientManager(readWriteHosts);
+
+            // Init lua script manager
+            this.RedisLuaManager = new RedisLuaScriptManager(this.RedisManager);
+
+            if (this.AsyncMode)
+            {
+                // Add tableIds and partition instances
+                IEnumerable<string> tables = this.GetAllTables();
+                foreach (string tableId in tables)
+                {
+                    this.AddPartitionInstance(tableId);
+                }
+            }
+
+            // Create the transaction table
+            this.CreateVersionTable(RedisVersionDb.TX_TABLE, RedisVersionDb.TX_DB_INDEX);
+
+            if (this.AsyncMode)
+            {
+                // start a daemon thread to monitor the flush
+                Thread thread = new Thread(new ThreadStart(this.Monitor));
+                thread.Start();
+            }
+        }
+
+        /// <summary>
+        /// Add partition instances for a given tableId
+        /// </summary>
+        /// <param name="tableId"></param>
+        private void AddPartitionInstance(string tableId)
+        {            
+            if (this.partitionedInstances == null)
+            {
+                this.partitionedInstances = new Dictionary<string, List<int>>();
+            }
+
+            if (this.partitionedInstances.ContainsKey(tableId))
+            {
+                return;
+            }
+
+            List<int> partitionKeys = new List<int>();
+            for (int partition = 0; partition < this.RedisManager.RedisInstanceCount; partition++)
+            {
+                partitionKeys.Add(partition);
+            }
+            this.partitionedInstances.Add(tableId, partitionKeys);
+        }
     }
 
     /// <summary>
-    /// This part override the interfaces for DDL
+    /// This part overrides the interfaces for DDL
     /// </summary>
     public partial class RedisVersionDb
     {
-        internal override VersionTable CreateVersionTable(string tableId, long redisDbIndex)
+		internal override VersionTable CreateVersionTable(string tableId, long redisDbIndex)
         {
             using (RedisClient redisClient = this.RedisManager.
                 GetClient(RedisVersionDb.META_DB_INDEX, RedisVersionDb.META_DATA_PARTITION))
@@ -202,12 +312,36 @@
                         if (!this.versionTableMap.ContainsKey(tableId))
                         {
                             this.versionTableMap[tableId] = versionTable;
+                            // add instances for the created table
+                            this.AddPartitionInstance(tableId);
                         }
                     }
                 }
-                this.versionTableMap[tableId] = versionTable;
             }
             return this.versionTableMap[tableId];
+        }
+
+        internal override IEnumerable<string> GetAllTables()
+        {
+            using (RedisClient redisClient = this.RedisManager.
+               GetClient(RedisVersionDb.META_DB_INDEX, RedisVersionDb.META_DATA_PARTITION))
+            {
+                byte[][] returnBytes = redisClient.HGetAll(RedisVersionDb.META_TABLE_KEY);
+
+                if (returnBytes == null || returnBytes.Length == 0)
+                {
+                    return null;
+                }
+
+                IList<string> tables = new List<string>(returnBytes.Length/2);
+                for (int i = 0; i < returnBytes.Length; i += 2)
+                {
+                    string tableName = Encoding.ASCII.GetString(returnBytes[i]);
+                    tables.Add(tableName);
+                }
+
+                return tables;
+            }
         }
 
         internal override bool DeleteTable(string tableId)
@@ -225,6 +359,7 @@
                         if (this.versionTableMap.ContainsKey(tableId))
                         {
                             this.versionTableMap.Remove(tableId);
+                            this.partitionedInstances.Remove(tableId);
                         }
                     }
                 }
@@ -248,15 +383,20 @@
     /// </summary>
     public partial class RedisVersionDb
     {
-        /// <summary>
-        /// Get a unique transaction Id and store the txTableEntry into the redis
-        /// This will be implemented in two steps since HSETNX can only have a field
-        /// 1. try a random txId and ensure that it is unique in redis with the command HSETNX
-        ///    If it is a unique id, set it in hset to occupy it with the same atomic operation
-        /// 2. set other fields of txTableEntry by HSET command
-        /// </summary>
-        /// <returns>a transaction Id</returns>
-        internal override long InsertNewTx()
+		internal override void EnqueueTxRequest(TxRequest req)
+		{
+            throw new NotImplementedException();
+		}
+
+		/// <summary>
+		/// Get a unique transaction Id and store the txTableEntry into the redis
+		/// This will be implemented in two steps since HSETNX can only have a field
+		/// 1. try a random txId and ensure that it is unique in redis with the command HSETNX
+		///    If it is a unique id, set it in hset to occupy it with the same atomic operation
+		/// 2. set other fields of txTableEntry by HSET command
+		/// </summary>
+		/// <returns>a transaction Id</returns>
+		internal override long InsertNewTx()
         {
             long txId = 0, ret = 0;
             do

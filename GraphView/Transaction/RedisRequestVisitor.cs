@@ -11,6 +11,7 @@ namespace GraphView.Transaction
     {
         internal RedisRequest RedisReq { get; private set; }
         internal string HashId { get; private set; }
+        private RedisLuaScriptManager redisLuaScriptManager;
 
         internal RedisRequest Invoke(TxRequest txReq)
         {
@@ -18,10 +19,16 @@ namespace GraphView.Transaction
             return RedisReq;
         }
 
+        internal RedisRequestVisitor(RedisLuaScriptManager luaScriptManager)
+        {
+            this.redisLuaScriptManager = luaScriptManager;
+        }
+
         internal override void Visit(DeleteVersionRequest req)
         {
             this.HashId = req.RecordKey as string;
-            this.RedisReq = new RedisRequest(this.HashId, RedisRequestType.HGetAll)
+            byte[] keyBytes = BitConverter.GetBytes(req.VersionKey);
+            this.RedisReq = new RedisRequest(this.HashId, keyBytes, RedisRequestType.HDel)
             {
                 ParentRequest = req
             };
@@ -117,7 +124,7 @@ namespace GraphView.Transaction
 
         internal override void Visit(ReplaceVersionRequest req)
         {
-            string sha1 = RedisLuaScriptManager.Instance.GetLuaScriptSha1("REPLACE_VERSION_ENTRY");
+            string sha1 = this.redisLuaScriptManager.GetLuaScriptSha1("REPLACE_VERSION_ENTRY");
             this.HashId = req.RecordKey as string;
 
             byte[][] keysAndArgs =
@@ -138,10 +145,22 @@ namespace GraphView.Transaction
             };
         }
 
+        internal override void Visit(ReplaceWholeVersionRequest req)
+        {
+            this.HashId = req.RecordKey as string;
+            byte[] keyBytes = BitConverter.GetBytes(req.VersionKey);
+            byte[] valueBytes = VersionEntry.Serialize(req.VersionEntry);
+
+            this.RedisReq = new RedisRequest(this.HashId, keyBytes, valueBytes, RedisRequestType.HSet)
+            {
+                ParentRequest = req
+            };
+        }
+
         internal override void Visit(SetCommitTsRequest req)
         {
             this.HashId = req.TxId.ToString();
-            string sha1 = RedisLuaScriptManager.Instance.GetLuaScriptSha1("SET_AND_GET_COMMIT_TIME");
+            string sha1 = this.redisLuaScriptManager.GetLuaScriptSha1("SET_AND_GET_COMMIT_TIME");
             byte[][] keys =
             {
                 Encoding.ASCII.GetBytes(this.HashId),
@@ -158,7 +177,7 @@ namespace GraphView.Transaction
         internal override void Visit(UpdateCommitLowerBoundRequest req)
         {
             this.HashId = req.TxId.ToString();
-            string sha1 = RedisLuaScriptManager.Instance.GetLuaScriptSha1("UPDATE_COMMIT_LOWER_BOUND");
+            string sha1 = this.redisLuaScriptManager.GetLuaScriptSha1("UPDATE_COMMIT_LOWER_BOUND");
             byte[][] keys =
             {
                 Encoding.ASCII.GetBytes(this.HashId),
@@ -166,7 +185,6 @@ namespace GraphView.Transaction
                 RedisVersionDb.NEGATIVE_ONE_BYTES,
                 RedisVersionDb.NEGATIVE_TWO_BYTES,
             };
-            byte[][] returnBytes = null;
 
             this.RedisReq = new RedisRequest(keys, sha1, 1, RedisRequestType.EvalSha)
             {
@@ -179,7 +197,6 @@ namespace GraphView.Transaction
             this.HashId = req.TxId.ToString();
             byte[] keyBytes = Encoding.ASCII.GetBytes(TxTableEntry.STATUS_STRING);
             byte[] valueBytes = BitConverter.GetBytes((int)req.TxStatus);
-            long ret = 0;
 
             this.RedisReq = new RedisRequest(this.HashId, keyBytes, valueBytes, RedisRequestType.HSet)
             {
@@ -189,7 +206,7 @@ namespace GraphView.Transaction
 
         internal override void Visit(UpdateVersionMaxCommitTsRequest req)
         {
-            string sha1 = RedisLuaScriptManager.Instance.GetLuaScriptSha1("UPDATE_VERSION_MAX_COMMIT_TS");
+            string sha1 = this.redisLuaScriptManager.GetLuaScriptSha1("UPDATE_VERSION_MAX_COMMIT_TS");
             this.HashId = req.RecordKey as string;
 
             byte[][] keysAndArgs =

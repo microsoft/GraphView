@@ -5,19 +5,17 @@ namespace GraphView.Transaction
     using System.Collections.Generic;
 
     /// <summary>
-    /// This part is for DDL operators
+    /// Define a delegate type to specify the partition rules.
+    /// Which can be re-assigned outside the version db
     /// </summary>
+    /// <param name="recordKey">The record key need to be operated</param>
+    /// <returns></returns>
+    public delegate int PartitionByKeyDelegate(object recordKey);
+
+    // basic part with fields and its own methods
     public abstract partial class VersionDb
     {
         public static readonly long RETURN_ERROR_CODE = -2L;
-
-        /// <summary>
-        /// Define a delegate type to specify the partition rules.
-        /// Which can be re-assigned outside the version db
-        /// </summary>
-        /// <param name="recordKey">The record key need to be operated</param>
-        /// <returns></returns>
-        public delegate int PartitionByKeyDelegate(object recordKey);
 
         /// <summary>
         /// Define a delegate method to specify the partition rules.
@@ -30,9 +28,42 @@ namespace GraphView.Transaction
         /// </summary>
         public static PartitionByKeyDelegate LogicalPartitionByKey { get; set; }
 
+        /// <summary>
+        /// A random number generator for create new TxId.
+        /// </summary>
+        private static readonly Random random = new Random();
+
         public VersionDb()
         {
-            
+
+        }
+
+        /// <summary>
+		/// Generate a random long type in the range of [min, max]
+		/// </summary>
+		/// <returns></returns>
+		protected long RandomLong(long min, long max)
+        {
+            byte[] buf = new byte[8];
+            VersionDb.random.NextBytes(buf);
+            long longRand = BitConverter.ToInt64(buf, 0);
+
+            return (Math.Abs(longRand % (max - min)) + min);
+        }
+    }
+
+    /// <summary>
+    /// This part is for DDL operators
+    /// </summary>
+    public abstract partial class VersionDb
+    {
+        /// <summary>
+        /// Get a list of tableIds which are inside the database
+        /// </summary>
+        /// <returns></returns>
+        internal virtual IEnumerable<string> GetAllTables()
+        {
+            throw new NotImplementedException();
         }
 
         /// <summary>
@@ -327,6 +358,9 @@ namespace GraphView.Transaction
         }
     }
 
+    /// <summary>
+    /// Transaction related methods
+    /// </summary>
     public abstract partial class VersionDb
     {
         internal virtual void EnqueueTxRequest(TxRequest req)
@@ -347,15 +381,27 @@ namespace GraphView.Transaction
 
         internal NewTxIdRequest EnqueueNewTxId()
         {
+            VersionTable versionTable = this.GetVersionTable(RedisVersionDb.TX_TABLE);
+            if (versionTable == null)
+            {
+                throw new TransactionException("The specified table does not exists.");
+            }
+
             NewTxIdRequest req = new NewTxIdRequest(this.RandomLong(0, long.MaxValue));
-            this.EnqueueTxRequest(req);
+            versionTable.EnqueueTxRequest(req);
             return req;
         }
 
         internal InsertTxIdRequest EnqueueInsertTxId(long txId)
         {
+            VersionTable versionTable = this.GetVersionTable(RedisVersionDb.TX_TABLE);
+            if (versionTable == null)
+            {
+                throw new TransactionException("The specified table does not exists.");
+            }
+
             InsertTxIdRequest req = new InsertTxIdRequest(txId);
-            this.EnqueueTxRequest(req);
+            versionTable.EnqueueTxRequest(req);
             return req;
         }
 
@@ -370,8 +416,14 @@ namespace GraphView.Transaction
 
         internal GetTxEntryRequest EnqueueGetTxEntry(long txId)
         {
+            VersionTable versionTable = this.GetVersionTable(RedisVersionDb.TX_TABLE);
+            if (versionTable == null)
+            {
+                throw new TransactionException("The specified table does not exists.");
+            }
+
             GetTxEntryRequest req = new GetTxEntryRequest(txId);
-            this.EnqueueTxRequest(req);
+            versionTable.EnqueueTxRequest(req);
             return req;
         }
 
@@ -385,8 +437,14 @@ namespace GraphView.Transaction
 
         internal UpdateTxStatusRequest EnqueueUpdateTxStatus(long txId, TxStatus status)
         {
+            VersionTable versionTable = this.GetVersionTable(RedisVersionDb.TX_TABLE);
+            if (versionTable == null)
+            {
+                throw new TransactionException("The specified table does not exists.");
+            }
+
             UpdateTxStatusRequest req = new UpdateTxStatusRequest(txId, status);
-            this.EnqueueTxRequest(req);
+            versionTable.EnqueueTxRequest(req);
             return req;
         }
 
@@ -406,8 +464,14 @@ namespace GraphView.Transaction
 
         internal SetCommitTsRequest EnqueueSetCommitTs(long txId, long proposedCommitTs)
         {
+            VersionTable versionTable = this.GetVersionTable(RedisVersionDb.TX_TABLE);
+            if (versionTable == null)
+            {
+                throw new TransactionException("The specified table does not exists.");
+            }
+
             SetCommitTsRequest req = new SetCommitTsRequest(txId, proposedCommitTs);
-            this.EnqueueTxRequest(req);
+            versionTable.EnqueueTxRequest(req);
             return req;
         }
 
@@ -428,30 +492,15 @@ namespace GraphView.Transaction
 
         internal UpdateCommitLowerBoundRequest EnqueueUpdateCommitLowerBound(long txId, long lowerBound)
         {
+            VersionTable versionTable = this.GetVersionTable(RedisVersionDb.TX_TABLE);
+            if (versionTable == null)
+            {
+                throw new TransactionException("The specified table does not exists.");
+            }
+
             UpdateCommitLowerBoundRequest lowerBoundReq = new UpdateCommitLowerBoundRequest(txId, lowerBound);
-            this.EnqueueTxRequest(lowerBoundReq);
+            versionTable.EnqueueTxRequest(lowerBoundReq);
             return lowerBoundReq;
-        }
-    }
-
-    public abstract partial class VersionDb
-    {
-		/// <summary>
-		/// A random number generator for create new TxId.
-		/// </summary>
-		private static readonly Random random = new Random();
-
-		/// <summary>
-		/// Generate a random long type in the range of [min, max]
-		/// </summary>
-		/// <returns></returns>
-		protected long RandomLong(long min, long max)
-        {
-            byte[] buf = new byte[8];
-            VersionDb.random.NextBytes(buf);
-            long longRand = BitConverter.ToInt64(buf, 0);
-
-            return (Math.Abs(longRand % (max - min)) + min);
         }
     }
 }

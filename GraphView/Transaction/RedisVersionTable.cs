@@ -13,7 +13,9 @@
         /// </summary>
         private readonly long redisDbIndex;
 
-        private readonly RedisRequestVisitor requestVisitor;
+        /// <summary>
+        /// The response visitor to handle response
+        /// </summary>
         private readonly RedisResponseVisitor responseVisitor;
 
         /// <summary>
@@ -23,7 +25,7 @@
         {
             get
             {
-                return RedisClientManager.Instance;
+                return ((RedisVersionDb)this.VersionDb).RedisManager;
             }
         }
 
@@ -34,7 +36,7 @@
         {
             get
             {
-                return RedisLuaScriptManager.Instance;
+                return ((RedisVersionDb)this.VersionDb).RedisLuaManager;
             }
         }
 
@@ -42,7 +44,6 @@
             : base(versionDb, tableId)
         {
             this.redisDbIndex = redisDbIndex;
-            this.requestVisitor = new RedisRequestVisitor();
             this.responseVisitor = new RedisResponseVisitor();
         }
     }
@@ -51,9 +52,11 @@
     {
         internal override void EnqueueTxRequest(TxRequest req)
         {
-            this.requestVisitor.Invoke(req);
-            string hashId = this.requestVisitor.HashId;
-            RedisRequest redisReq = this.requestVisitor.RedisReq;
+            RedisRequestVisitor requestVisitor = new RedisRequestVisitor(this.LuaManager);
+            requestVisitor.Invoke(req);
+            string hashId = requestVisitor.HashId;
+            RedisRequest redisReq = requestVisitor.RedisReq;
+            redisReq.ResponseVisitor = this.responseVisitor;
 
             int partition = this.VersionDb.PhysicalPartitionByKey(hashId);
             RedisConnectionPool clientPool = this.RedisManager.GetClientPool(this.redisDbIndex, partition);
@@ -114,8 +117,7 @@
         {
             string hashId = recordKey as string;
             long versionKey = VersionEntry.VERSION_KEY_STRAT_INDEX;
-            VersionEntry emptyEntry = new VersionEntry(recordKey, versionKey,
-                VersionEntry.EMPTY_RECORD, VersionEntry.EMPTY_TXID);
+            VersionEntry emptyEntry = VersionEntry.InitEmptyVersionEntry(recordKey);
 
             byte[] keyBytes = BitConverter.GetBytes(versionKey);
             byte[] valueBytes = VersionEntry.Serialize(emptyEntry);

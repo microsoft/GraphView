@@ -31,10 +31,12 @@
     {
         public static readonly long REDIS_DB_INDEX = 3L;
 
+        public static RedisVersionDb REDIS_VERSION_DB = RedisVersionDb.Instance;
+
         public static Func<object, object> ACTION = (object obj) =>
         {
             RedisWorkload cmd = (RedisWorkload)obj;
-            using (RedisClient client = RedisClientManager.Instance.GetClient(REDIS_DB_INDEX, 0))
+            using (RedisClient client = REDIS_VERSION_DB.RedisManager.GetClient(REDIS_DB_INDEX, 0))
             {
                 switch (cmd.type)
                 {
@@ -69,7 +71,7 @@
         public static Func<object, object> PIPELINE_ACTION = (object obj) =>
         {
             List<RedisWorkload> commands = (List<RedisWorkload>)obj;
-            using (RedisClient client = RedisClientManager.Instance.GetClient(REDIS_DB_INDEX, 0))
+            using (RedisClient client = REDIS_VERSION_DB.RedisManager.GetClient(REDIS_DB_INDEX, 0))
             {
                 using (IRedisPipeline pipe = client.CreatePipeline())
                 {
@@ -192,7 +194,7 @@
 
         internal void Setup()
         {
-            RedisClientManager manager = RedisClientManager.Instance;
+            RedisClientManager manager = REDIS_VERSION_DB.RedisManager;
             using (RedisClient client = manager.GetClient(REDIS_DB_INDEX, 0))
             {
                 client.FlushDb();
@@ -281,12 +283,11 @@
 
         private long GetCurrentCommandCount()
         {
-            RedisClientManager.Instance.Dispose();
-
+            RedisClientManager clientManager = REDIS_VERSION_DB.RedisManager;
             long commandCount = 0;
-            for (int i = 0; i < RedisClientManager.Instance.RedisInstanceCount; i++)
+            for (int i = 0; i < clientManager.RedisInstanceCount; i++)
             {
-                using (RedisClient redisClient = RedisClientManager.Instance.GetLastestClient(0, 0))
+                using (RedisClient redisClient = clientManager.GetLastestClient(0, 0))
                 {
                     string countStr = redisClient.Info["total_commands_processed"];
                     long count = Convert.ToInt64(countStr);

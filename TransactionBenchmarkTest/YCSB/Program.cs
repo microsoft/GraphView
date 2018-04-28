@@ -66,6 +66,15 @@ namespace TransactionBenchmarkTest.YCSB
             //Console.WriteLine("PLEASE INPUT RETURN TO CONTINUE...");
             //Console.Read();
 
+        static void YCSBAsyncTest()
+        {
+            const int executorCount = 1;
+            const int txCountPerExecutor = 50000;
+            const string dataFile = "ycsb_data.in";
+            const string operationFile = "ycsb_ops.in";
+
+            YCSBAsyncBenchmarkTest test = new YCSBAsyncBenchmarkTest(executorCount, txCountPerExecutor);
+            test.Setup(dataFile, operationFile);
             test.Run();
             test.Stats();
         }
@@ -91,8 +100,12 @@ namespace TransactionBenchmarkTest.YCSB
 
         public static void Main(string[] args)
         {
+            //byte[] bytes = BitConverter.GetBytes(5L);
+            //object value = BitConverter.ToInt64(bytes, 0);
+            //long longv = Convert.ToInt64(value);
+
             // PinThreadOnCores();
-            YCSBTest();
+            // YCSBTest();
             // RedisBenchmarkTest();
 
             // TxOnlyTest();
@@ -101,6 +114,7 @@ namespace TransactionBenchmarkTest.YCSB
 
             Console.WriteLine("Done");
             Console.Read();
+            YCSBAsyncTest();
         }
         
     }

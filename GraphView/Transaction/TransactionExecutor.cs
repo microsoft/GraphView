@@ -4,7 +4,7 @@ namespace GraphView.Transaction
     using System;
     using System.Collections.Generic;
 
-    internal class TransactionRequest
+    public class TransactionRequest
     {
         internal string SessionId { get; set; }
         internal string TableId { get; set; }
@@ -12,10 +12,33 @@ namespace GraphView.Transaction
         internal object Payload { get; set; }
         internal OperationType OperationType;
 
-        internal TxCallBack Callback { get; set; }
+        internal StoredProcedure Procedure { get; set; }
+
+        public TransactionRequest(
+            string sessionId, 
+            string tableId, 
+            string recordKey, 
+            string payload, 
+            OperationType operationType)
+        {
+            this.SessionId = sessionId;
+            this.TableId = tableId;
+            this.RecordKey = recordKey;
+            this.Payload = payload;
+            this.OperationType = operationType;
+        }
+
+        public TransactionRequest(string sessionId, StoredProcedure procedure)
+        {
+            this.SessionId = sessionId;
+            this.Procedure = procedure;
+            this.OperationType = OperationType.Open;
+        }
+
+        public TransactionRequest() { }
     }
 
-    internal enum OperationType
+    public enum OperationType
     {
         Open,
         Insert,
@@ -26,17 +49,7 @@ namespace GraphView.Transaction
         Close,
     }
 
-    internal delegate void TxCallBack(string tableId, object recordKey, object payload);
-
-    internal class TxFunction
-    {
-        internal virtual void ReadCallback(string tableId, object recordKey, object payload) { }
-        internal virtual void InsertCallBack(string tableId, object recordKey, object payload) { }
-        internal virtual void DeleteCallBack(string tableId, object recordKey, object payload) { }
-        internal virtual void UpdateCallBack(string tableId, object recordKey, object newPayload) { }
-    }
-
-    internal class TransactionExecutor
+    public class TransactionExecutor
     {
         /// <summary>
         /// The size of current working transaction set
@@ -48,30 +61,43 @@ namespace GraphView.Transaction
         /// </summary>
         internal Queue<TransactionRequest> workload;
 
+        /// <summary>
+        /// The version database instance
+        /// </summary>
         private readonly VersionDb versionDb;
+
+        /// <summary>
+        /// The log store instance
+        /// </summary>
         private readonly ILogStore logStore;
 
         /// <summary>
-        /// A list of (table Id, partition key) pairs, each of which represents a key-value instance. 
-        /// This worker is responsible for processing key-value ops directed to the designated instances.
+        /// ONLY FOR TEST
         /// </summary>
-        private List<Tuple<string, int>> partitionedInstances;
+        internal int CommittedTxs = 0;
 
+        /// <summary>
+        /// ONLY FOR TEST
+        /// </summary>
+        internal int FinishedTxs = 0;
+
+        /// <summary>
+        /// A map of transactions, and each transaction has a queue of request from the client
+        /// </summary>
         private Dictionary<string, Tuple<TransactionExecution, Queue<TransactionRequest>>> activeTxs;
 
         public TransactionExecutor(
             VersionDb versionDb, 
             ILogStore logStore, 
-            Queue<TransactionRequest> workload = null, 
-            List<Tuple<string, int>> instances = null)
+            Queue<TransactionRequest> workload = null)
         {
             this.versionDb = versionDb;
             this.logStore = logStore;
             this.workload = workload ?? new Queue<TransactionRequest>();
-            this.partitionedInstances = instances;
+            this.activeTxs = new Dictionary<string, Tuple<TransactionExecution, Queue<TransactionRequest>>>();
         }
 
-        internal void Execute()
+        public void Execute()
         {
             HashSet<string> toRemoveSessions = new HashSet<string>();
 
@@ -85,12 +111,8 @@ namespace GraphView.Transaction
                     TransactionExecution txExec = execTuple.Item1;
                     Queue<TransactionRequest> queue = execTuple.Item2;
 
-                    if (queue.Count == 0)
-                    {
-                        // No pending work to do for this tx.
-                        continue;
-                    }
-
+                    // If the transaction is at the initi status, the CurrentProc will be not null
+                    // It will be covered in this case
                     if (txExec.CurrentProc != null)
                     {
                         txExec.CurrentProc();
@@ -113,11 +135,17 @@ namespace GraphView.Transaction
                         if (received)
                         {
                             queue.Dequeue();
-                            readReq.Callback(readReq.TableId, readReq.RecordKey, payload);
+                            txExec.Procedure.ReadCallback(readReq.TableId, readReq.RecordKey, payload);
                         }
                     }
                     else if (txExec.Progress == TxProgress.Open)
                     {
+                        if (queue.Count == 0)
+                        {
+                            // No pending work to do for this tx.
+                            continue;
+                        }
+
                         TransactionRequest opReq = queue.Peek();
 
                         switch(opReq.OperationType)
@@ -128,7 +156,7 @@ namespace GraphView.Transaction
                                     if (received)
                                     {
                                         queue.Dequeue();
-                                        opReq.Callback(opReq.TableId, opReq.RecordKey, payload);
+                                        txExec.Procedure?.ReadCallback(opReq.TableId, opReq.RecordKey, payload);
                                     }
                                     break;
                                 }
@@ -138,7 +166,7 @@ namespace GraphView.Transaction
                                     if (received)
                                     {
                                         queue.Dequeue();
-                                        opReq.Callback(opReq.TableId, opReq.RecordKey, payload);
+                                        txExec.Procedure?.ReadCallback(opReq.TableId, opReq.RecordKey, payload);
                                     }
                                     break;
                                 }
@@ -146,25 +174,26 @@ namespace GraphView.Transaction
                                 {
                                     queue.Dequeue();
                                     txExec.Insert(opReq.TableId, opReq.RecordKey, opReq.Payload);
-                                    opReq.Callback(opReq.TableId, opReq.RecordKey, opReq.Payload);
+                                    txExec.Procedure?.InsertCallBack(opReq.TableId, opReq.RecordKey, opReq.Payload);
                                     break;
                                 }
                             case OperationType.Update:
                                 {
                                     queue.Dequeue();
                                     txExec.Update(opReq.TableId, opReq.RecordKey, opReq.Payload);
-                                    opReq.Callback(opReq.TableId, opReq.RecordKey, opReq.Payload);
+                                    txExec.Procedure?.UpdateCallBack(opReq.TableId, opReq.RecordKey, opReq.Payload);
                                     break;
                                 }
                             case OperationType.Delete:
                                 {
                                     queue.Dequeue();
                                     txExec.Delete(opReq.TableId, opReq.RecordKey, out object payload);
-                                    opReq.Callback(opReq.TableId, opReq.RecordKey, payload);
+                                    txExec.Procedure?.DeleteCallBack(opReq.TableId, opReq.RecordKey, payload);
                                     break;
                                 }
                             case OperationType.Close:
                                 {
+                                    // unable to check whether the commit has been finished, so pop the request here
                                     queue.Dequeue();
                                     txExec.Commit();
                                     break;
@@ -176,17 +205,11 @@ namespace GraphView.Transaction
                     else if (txExec.Progress == TxProgress.Close)
                     {
                         toRemoveSessions.Add(sessionId);
-                    }
-                }
-
-                if (this.partitionedInstances != null)
-                {
-                    foreach (Tuple<string, int> kvIns in this.partitionedInstances)
-                    {
-                        string tableId = kvIns.Item1;
-                        int partitionKey = kvIns.Item2;
-
-                        this.versionDb.Visit(tableId, partitionKey);
+                        if (txExec.isCommitted)
+                        {
+                            this.CommittedTxs += 1;
+                        }
+                        this.FinishedTxs += 1;
                     }
                 }
 
@@ -209,9 +232,13 @@ namespace GraphView.Transaction
                                     continue;
                                 }
 
-                                TransactionExecution exec = new TransactionExecution(this.logStore, this.versionDb);
-                                this.activeTxs[txReq.SessionId] = 
-                                    Tuple.Create(exec, new Queue<TransactionRequest>());
+                                TransactionExecution exec = new TransactionExecution(this.logStore, this.versionDb, txReq.Procedure);
+
+                                this.activeTxs[txReq.SessionId] = txReq.Procedure != null ?
+                                    Tuple.Create(exec, txReq.Procedure.RequestQueue) :
+                                    Tuple.Create(exec, new Queue<TransactionRequest>()); 
+
+                                exec.Procedure?.Start();
                                 break;
                             }
                         default:
@@ -228,64 +255,6 @@ namespace GraphView.Transaction
                     }
                 }
             }
-        }
-
-        internal void Read(string sessionId, string tableId, object recordKey)
-        {
-            TxFunction func = new TxFunction();
-
-            this.workload.Enqueue(new TransactionRequest()
-            {
-                SessionId = sessionId,
-                OperationType = OperationType.Read,
-                TableId = tableId,
-                RecordKey = recordKey,
-                Callback = new TxCallBack(func.ReadCallback)
-            });
-        }
-
-        internal void Insert(string sessionId, string tableId, object recordKey, object payload)
-        {
-            TxFunction func = new TxFunction();
-
-            this.workload.Enqueue(new TransactionRequest()
-            {
-                SessionId = sessionId,
-                OperationType = OperationType.Insert,
-                TableId = tableId,
-                RecordKey = recordKey,
-                Payload = payload,
-                Callback = new TxCallBack(func.InsertCallBack)
-            });
-        }
-
-        internal void Delete(string sessionId, string tableId, object recordKey)
-        {
-            TxFunction func = new TxFunction();
-
-            this.workload.Enqueue(new TransactionRequest()
-            {
-                SessionId = sessionId,
-                OperationType = OperationType.Delete,
-                TableId = tableId,
-                RecordKey = recordKey,
-                Callback = new TxCallBack(func.DeleteCallBack)
-            });
-        }
-
-        internal void Update(string sessionId, string tableId, object recordKey, object payload)
-        {
-            TxFunction func = new TxFunction();
-
-            this.workload.Enqueue(new TransactionRequest()
-            {
-                SessionId = sessionId,
-                OperationType = OperationType.Update,
-                TableId = tableId,
-                RecordKey = recordKey,
-                Payload = payload,
-                Callback = new TxCallBack(func.UpdateCallBack)
-            });
         }
     }
 }

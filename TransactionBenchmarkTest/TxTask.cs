@@ -2,7 +2,7 @@
 {
     using System;
 
-    class TxTask
+    internal class TxTask
     {
         private Func<object, object> runMethod;
 

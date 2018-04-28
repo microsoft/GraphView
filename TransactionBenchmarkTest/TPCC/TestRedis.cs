@@ -34,8 +34,10 @@ namespace TransactionBenchmarkTest.TPCC
                 return value;
             };
 
+            RedisVersionDb redisVersionDb = RedisVersionDb.Instance;
+
             // Non-Pipeline Mode
-            using (RedisClient client = RedisClientManager.Instance.GetClient(3, 0))
+            using (RedisClient client = redisVersionDb.RedisManager.GetClient(3, 0))
             {
                 long now = DateTime.Now.Ticks;
                 for (int i = 0; i < count; i++)
@@ -61,7 +63,8 @@ namespace TransactionBenchmarkTest.TPCC
             }
 
             // Pipeline Mode
-            using (RedisClient client = RedisClientManager.Instance.GetClient(3, 0))
+            
+            using (RedisClient client = redisVersionDb.RedisManager.GetClient(3, 0))
             {
                 long now = DateTime.Now.Ticks;
 

@@ -19,48 +19,18 @@
     internal class RedisLuaScriptManager
     {
         /// <summary>
-        /// a init lock for singleton class
-        /// </summary>
-        private static readonly object initLock = new object();  
-
-        /// <summary>
-        /// the singleton instance
-        /// </summary>
-        private static RedisLuaScriptManager instance;
-
-        private RedisClientManager RedisManager
-        {
-            get
-            {
-                return RedisClientManager.Instance;
-            }
-        }
-
-        /// <summary>
         /// A transient map from script name to sha1, it will be filled when the instance is created
         /// </summary>
         private readonly Dictionary<string, string> luaScriptSha1Map = new Dictionary<string, string>();
 
-        internal static RedisLuaScriptManager Instance
-        {
-            get
-            {
-               if (RedisLuaScriptManager.instance == null)
-                {
-                    lock (RedisLuaScriptManager.initLock)
-                    {
-                        if (RedisLuaScriptManager.instance == null)
-                        {
-                            RedisLuaScriptManager.instance = new RedisLuaScriptManager();
-                        }
-                    }
-                }
-                return RedisLuaScriptManager.instance;
-            }
-        }
+        /// <summary>
+        /// The redis client manager to call
+        /// </summary>
+        private RedisClientManager redisManager;
 
-        private RedisLuaScriptManager()
+        internal RedisLuaScriptManager(RedisClientManager redisManager)
         {
+            this.redisManager = redisManager;
             this.CheckAndLoadLuaScripts();
             this.LoadLuaScriptMapFromRedis();
         }
@@ -84,7 +54,7 @@
         /// </summary>
         private void LoadLuaScriptMapFromRedis()
         {
-            using (RedisClient redisClient = this.RedisManager.
+            using (RedisClient redisClient = this.redisManager.
                 GetClient(RedisVersionDb.META_DB_INDEX, RedisVersionDb.META_DATA_PARTITION))
             {
                 string hashId = RedisVersionDb.META_SCRIPT_KEY;
@@ -139,7 +109,7 @@
         /// <returns></returns>
         private bool RegisterLuaScripts(string scriptKey, string luaBody)
         {
-            using (RedisClient redisClient = this.RedisManager.
+            using (RedisClient redisClient = this.redisManager.
                 GetClient(RedisVersionDb.META_DB_INDEX, RedisVersionDb.META_DATA_PARTITION))
             {
                 // Extract the command sha1
