@@ -63,7 +63,7 @@ namespace TransactionBenchmarkTest.TPCC
         
         static void TPCCNewOrderTest()
         {
-            int workerCount = 4;
+            int workerCount = 2;
             int workloadCountPerWorker = 2000;
             string workloadFile = "D:\\tpcc-txns\\NEW_ORDER.csv";
             Console.WriteLine("\nNEW-ORDER: w={0}, N={1}", workerCount, workloadCountPerWorker);
@@ -77,7 +77,7 @@ namespace TransactionBenchmarkTest.TPCC
 
         static void TPCCPaymentTest()
         {
-            int workerCount = 4;
+            int workerCount = 1;
             int workloadCountPerWorker = 2000;
             string workloadFile = "D:\\tpcc-txns\\PAYMENT.csv";
             Console.WriteLine("\nPAYMENT: w={0}, N={1}", workerCount, workloadCountPerWorker);
@@ -94,9 +94,9 @@ namespace TransactionBenchmarkTest.TPCC
             //string baseDir = "D:\\tpcc-tables\\";
             //LoadTables(baseDir);
 
-            TPCCNewOrderTest();
+            //TPCCNewOrderTest();
 
-            //TPCCPaymentTest();
+            TPCCPaymentTest();
 
             Console.WriteLine("DONE");
             Console.Read();
