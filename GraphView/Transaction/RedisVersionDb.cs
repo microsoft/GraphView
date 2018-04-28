@@ -238,9 +238,12 @@
             // Create the transaction table
             this.CreateVersionTable(RedisVersionDb.TX_TABLE, RedisVersionDb.TX_DB_INDEX);
 
-            // start a daemon thread to monitor the flush
-            Thread thread = new Thread(new ThreadStart(this.Monitor));
-            thread.Start();
+            if (this.AsyncMode)
+            {
+                // start a daemon thread to monitor the flush
+                Thread thread = new Thread(new ThreadStart(this.Monitor));
+                thread.Start();
+            }
         }
 
         /// <summary>

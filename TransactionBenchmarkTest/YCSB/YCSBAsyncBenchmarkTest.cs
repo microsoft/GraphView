@@ -197,6 +197,8 @@
 
         internal void Run()
         {
+            Console.WriteLine("type to run");
+            Console.Read();
 
             Console.WriteLine("Try to run {0} tasks in {1} workers", (this.executorCount * this.txCountPerExecutor), this.executorCount);
             Console.WriteLine("Running......");
@@ -206,19 +208,17 @@
             this.testBeginTicks = DateTime.Now.Ticks;
             List<Thread> threadList = new List<Thread>();
 
-            this.executorList[0].Execute();
-            //foreach (TransactionExecutor executor in this.executorList)
-            //{
-            //    executor.Execute();
-            //    //Thread thread = new Thread(new ThreadStart(executor.Execute));
-            //    //threadList.Add(thread);
-            //    //thread.Start();
-            //}
+            foreach (TransactionExecutor executor in this.executorList)
+            {
+                Thread thread = new Thread(new ThreadStart(executor.Execute));
+                threadList.Add(thread);
+                thread.Start();
+            }
 
-            //foreach (Thread thread in threadList)
-            //{
-            //    thread.Join();
-            //}
+            foreach (Thread thread in threadList)
+            {
+                thread.Join();
+            }
             this.testEndTicks = DateTime.Now.Ticks;
 
             long commandCountAfterRun = this.GetCurrentCommandCount();
@@ -237,7 +237,6 @@
             {
                 totalTxs += executor.FinishedTxs;
                 abortedTxs += (executor.FinishedTxs - executor.CommittedTxs);
-                Console.WriteLine(executor.CommittedTxs);
             }
             Console.WriteLine("\nFinshed {0} txs, Aborted {1} txs", totalTxs, abortedTxs);
             Console.WriteLine("Transaction AbortRate: {0}%", (abortedTxs * 1.0 / totalTxs) * 100);

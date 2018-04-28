@@ -99,10 +99,15 @@ namespace GraphView.Transaction
 
         public void Execute()
         {
+            long beginTime = DateTime.Now.Ticks;
             HashSet<string> toRemoveSessions = new HashSet<string>();
 
             while (this.activeTxs.Count > 0 || this.workload.Count > 0)
             {
+                if (DateTime.Now.Ticks - beginTime > 400000000)
+                {
+                    Console.WriteLine("123");
+                }
                 foreach (string sessionId in activeTxs.Keys)
                 {
                     Tuple<TransactionExecution, Queue<TransactionRequest>> execTuple =
@@ -210,6 +215,7 @@ namespace GraphView.Transaction
                             this.CommittedTxs += 1;
                         }
                         this.FinishedTxs += 1;
+                        // Console.WriteLine(this.FinishedTxs);
                     }
                 }
 

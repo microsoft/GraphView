@@ -34,8 +34,8 @@ namespace TransactionBenchmarkTest.YCSB
 
         static void YCSBAsyncTest()
         {
-            const int executorCount = 3;
-            const int txCountPerExecutor = 100000;
+            const int executorCount = 1;
+            const int txCountPerExecutor = 50000;
             const string dataFile = "ycsb_data.in";
             const string operationFile = "ycsb_ops.in";
 
