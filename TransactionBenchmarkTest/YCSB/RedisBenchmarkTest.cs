@@ -65,7 +65,7 @@
                         break;
                 }
             }
-            return null;
+            return true;
         };
 
         public static Func<object, object> PIPELINE_ACTION = (object obj) =>
@@ -275,8 +275,9 @@
             RedisWorkload cmd = new RedisWorkload();
             cmd.hashId = RandomString(4);
             cmd.key = BitConverter.GetBytes(3);
-            cmd.value = RandomBytes(50);
-            cmd.type = (RedisWorkloadType)RAND.Next(0, 6);
+            cmd.value = RandomBytes(150);
+            //cmd.type = (RedisWorkloadType)RAND.Next(0, 6);
+            cmd.type = (RedisWorkloadType)3;
             return cmd;
         }
 

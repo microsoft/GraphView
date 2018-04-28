@@ -1,5 +1,6 @@
 ﻿namespace TransactionBenchmarkTest
 {
+    using GraphView.Transaction;
     using System;
     using System.Diagnostics;
     using System.Threading;
@@ -65,6 +66,21 @@
                 {
                     this.AbortedTxs++;
                 }
+            }
+        }
+
+        internal void RunTxOnly()
+        {
+            VersionDb vdb = RedisVersionDb.Instance;
+
+            for (int i = 0; i < this.txTaskQueue.Length; i++)
+            {
+                long txId = vdb.InsertNewTx();
+                //vdb.UpdateCommitLowerBound(txId, 50);
+                //vdb.SetAndGetCommitTime(txId, 90);
+                //vdb.UpdateTxStatus(txId, TxStatus.Committed);
+                
+                this.FinishedTxs++;
             }
         }
 

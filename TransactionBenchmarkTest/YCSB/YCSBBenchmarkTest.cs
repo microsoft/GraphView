@@ -6,6 +6,52 @@
     using System.Collections.Generic;
     using System.IO;
     using System.Threading;
+    using System.Linq;
+
+    /*
+    class TxWorkload
+    {
+        internal string TableId;
+        internal string Key;
+        internal string Value;
+        internal string Type;
+
+        public TxWorkload(string type, string tableId, string key, string value)
+        {
+            this.TableId = tableId;
+            this.Key = key;
+            this.Value = value;
+            this.Type = type;
+        }
+
+        public override string ToString()
+        {
+            return string.Format("key={0},value={1},type={2},tableId={3}", this.Key, this.Value, this.Type, this.TableId);
+        }
+    }*/
+
+    class TxWorkloadWithTx
+    {
+        internal string TableId;
+        internal string Key;
+        internal string Value;
+        internal string Type;
+        internal Transaction tx;
+
+        public TxWorkloadWithTx(string type, string tableId, string key, string value, Transaction tx)
+        {
+            this.TableId = tableId;
+            this.Key = key;
+            this.Value = value;
+            this.Type = type;
+            this.tx = tx;
+        }
+
+        public override string ToString()
+        {
+            return string.Format("key={0},value={1},type={2},tableId={3}", this.Key, this.Value, this.Type, this.TableId);
+        }
+    }
 
     class YCSBBenchmarkTest
     {
@@ -55,6 +101,59 @@
                 }
                 tx.Commit();
                 // commited here
+                return true;
+            }
+            catch (TransactionException e)
+            {
+                // aborted here
+                return false;
+            }
+        };
+
+        public static Func<object, object> ACTIONReadOnly = (object op) =>
+        {
+            try
+            {
+                // 
+                RedisVersionDb vdb = RedisVersionDb.Instance;
+                TxWorkloadWithTx oper = op as TxWorkloadWithTx;
+
+                /* read-only
+                var versionList = vdb.GetVersionList(oper.TableId, oper.Key);
+                VersionEntry v = oper.tx.GetVisibleVersionEntry(versionList, out long x);
+                List<VersionPrimaryKey> keyList = new List<VersionPrimaryKey>
+                {
+                    new VersionPrimaryKey(oper.Key, v.VersionKey)
+                };
+                //var reRead = vdb.GetVersionEntryByKey(oper.TableId, keyList);
+                vdb.UpdateVersionMaxCommitTs(oper.TableId, oper.Key, v.VersionKey, 10L);
+
+                return true;
+                */
+
+
+                //
+                VersionEntry entry = vdb.GetVersionList(oper.TableId, oper.Key).FirstOrDefault();
+                /*
+                vdb.ReplaceVersionEntry(
+                    oper.TableId,
+                    entry.RecordKey,
+                    entry.VersionKey,
+                    entry.BeginTimestamp,
+                    entry.EndTimestamp,
+                    entry.TxId + 1,
+                    entry.TxId,
+                    entry.EndTimestamp
+                    );
+                */
+                 
+
+                vdb.ReplaceWholeVersionEntry(
+                    oper.TableId,
+                    oper.Key,
+                    entry.VersionKey,
+                    new VersionEntry(entry.RecordKey, entry.VersionKey, entry.Record, entry.TxId + 1));
+
                 return true;
             }
             catch (TransactionException e)
@@ -143,6 +242,17 @@
             }
         }
 
+        internal void FlushRedis()
+        {
+            RedisClientManager manager = RedisVersionDb.Instance.RedisManager;
+
+            using (RedisClient client = manager.GetClient(REDIS_DB_INDEX, 0))
+            {
+                client.FlushAll();
+            }
+            Console.WriteLine("Flushed the database");
+        }
+
         internal void Setup(string dataFile, string operationFile)
         {
             // step1: flush the database
@@ -182,6 +292,7 @@
             using (StreamReader reader = new StreamReader(operationFile))
             {
                 string line;
+                //line = reader.ReadLine();
                 foreach (Worker worker in this.workers)
                 {
                     for (int i = 0; i < this.taskCountPerWorker; i++)
@@ -190,6 +301,59 @@
                         string[] fields = this.ParseCommandFormat(line);
                         TxWorkload op = new TxWorkload(fields[0], TABLE_ID, fields[2], fields[3]);
                         worker.EnqueueTxTask(new TxTask(ACTION, op));
+                    }
+                }
+            }
+        }
+
+        internal void SetupReadOnly(string dataFile, string operationFile)
+        {
+            // step1: flush the database
+            RedisClientManager manager = RedisVersionDb.Instance.RedisManager;
+            RedisVersionDb versionDb = RedisVersionDb.Instance;
+
+            using (RedisClient client = manager.GetClient(REDIS_DB_INDEX, 0))
+            {
+                client.FlushAll();
+            }
+            Console.WriteLine("Flushed the database");
+
+            // step2: create version table
+            versionDb.CreateVersionTable(TABLE_ID, REDIS_DB_INDEX);
+
+            // step3: load data
+            using (StreamReader reader = new StreamReader(dataFile))
+            {
+                string line;
+                int count = 0;
+                while ((line = reader.ReadLine()) != null)
+                {
+                    string[] fields = this.ParseCommandFormat(line);
+                    TxWorkload operation = new TxWorkload(fields[0], TABLE_ID, fields[2], fields[3]);
+                    count++;
+
+                    ACTION(operation);
+                    if (count % 5000 == 0)
+                    {
+                        Console.WriteLine("Loaded {0} records", count);
+                    }
+                }
+                Console.WriteLine("Load records successfully, {0} records in total", count);
+            }
+
+            // step 4: fill workers' queue
+            using (StreamReader reader = new StreamReader(operationFile))
+            {
+                Transaction tx = new Transaction(null, RedisVersionDb.Instance);
+                string line;
+                foreach (Worker worker in this.workers)
+                {
+                    for (int i = 0; i < this.taskCountPerWorker; i++)
+                    {
+                        line = reader.ReadLine();
+                        string[] fields = this.ParseCommandFormat(line);
+                        TxWorkloadWithTx op = new TxWorkloadWithTx(fields[0], TABLE_ID, fields[2], fields[3], tx);
+                        worker.EnqueueTxTask(new TxTask(ACTIONReadOnly, op));
                     }
                 }
             }
@@ -224,6 +388,35 @@
             Console.WriteLine("Finished all tasks");
         }
 
+        internal void RunTxOnly()
+        {
+            Console.WriteLine("Try to run {0} tasks in {1} workers", (this.workerCount * this.taskCountPerWorker), this.workerCount);
+            Console.WriteLine("Running......");
+
+            long commandCountBeforeRun = this.GetCurrentCommandCount();
+
+            this.testBeginTicks = DateTime.Now.Ticks;
+            List<Thread> threadList = new List<Thread>();
+
+            foreach (Worker worker in this.workers)
+            {
+                Thread thread = new Thread(new ThreadStart(worker.RunTxOnly));
+                threadList.Add(thread);
+                thread.Start();
+            }
+
+            foreach (Thread thread in threadList)
+            {
+                thread.Join();
+            }
+            this.testEndTicks = DateTime.Now.Ticks;
+
+            long commandCountAfterRun = this.GetCurrentCommandCount();
+            this.commandCount = commandCountAfterRun - commandCountBeforeRun;
+
+            Console.WriteLine("Finished all tasks");
+        }
+
         internal void Stats()
         {
             int taskCount = this.workerCount * this.taskCountPerWorker;
@@ -236,7 +429,7 @@
                 totalTxs += worker.FinishedTxs;
                 abortedTxs += worker.AbortedTxs;
             }
-            Console.WriteLine("\nFinshed {0} txs, Commited {1} txs", totalTxs, abortedTxs);
+            Console.WriteLine("\nFinshed {0} txs, Aborted {1} txs", totalTxs, abortedTxs);
             Console.WriteLine("Transaction AbortRate: {0}%", (abortedTxs*1.0/totalTxs) * 100);
 
             Console.WriteLine("\nFinshed {0} commands in {1} seconds", this.commandCount, this.RunSeconds);

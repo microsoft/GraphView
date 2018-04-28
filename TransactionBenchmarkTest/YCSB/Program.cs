@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading;
+using ServiceStack.Redis;
 
 namespace TransactionBenchmarkTest.YCSB
 {
@@ -10,8 +11,8 @@ namespace TransactionBenchmarkTest.YCSB
     {
         static void RedisBenchmarkTest()
         {
-            const int workerCount = 5;
-            const int taskCount = 10000;
+            const int workerCount = 1;
+            const int taskCount = 500000;
             const bool pipelineMode = false;
             const int pipelineSize = 1000;
 
@@ -23,13 +24,50 @@ namespace TransactionBenchmarkTest.YCSB
 
         static void YCSBTest()
         {
-            const int workerCount = 4;
-            const int taskCount = 50000;
-            const string dataFile = "ycsb_data.in";
-            const string operationFile = "ycsb_ops.in";
+            const int workerCount = 4;      // 4;
+            const int taskCount = 25000;   // 50000;
+            const string dataFile = "ycsb_data_u.in";
+            const string operationFile = "ycsb_ops_u_shuffle.in";
 
             YCSBBenchmarkTest test = new YCSBBenchmarkTest(workerCount, taskCount);
             test.Setup(dataFile, operationFile);
+
+            //Console.WriteLine("PLEASE INPUT RETURN TO CONTINUE...");
+            //Console.Read();
+
+            test.Run();
+            test.Stats();
+        }
+
+        static void TxOnlyTest()
+        {
+            const int workerCount = 8;      // 4;
+            const int taskCount = 25000;   // 50000;
+
+            YCSBBenchmarkTest test = new YCSBBenchmarkTest(workerCount, taskCount);
+            test.FlushRedis();
+
+            //Console.WriteLine("PLEASE INPUT RETURN TO CONTINUE...");
+            //Console.Read();
+
+            test.RunTxOnly();
+            
+            test.Stats();
+        }
+
+        static void YCSBReadOnlyTest()
+        {
+            const int workerCount = 4;      // 4;
+            const int taskCount = 50000;   // 50000;
+            const string dataFile = "ycsb_data_r.i";
+            const string operationFile = "ycsb_ops_r.in";
+
+            YCSBBenchmarkTest test = new YCSBBenchmarkTest(workerCount, taskCount);
+            test.SetupReadOnly(dataFile, operationFile);
+
+            //Console.WriteLine("PLEASE INPUT RETURN TO CONTINUE...");
+            //Console.Read();
+
             test.Run();
             test.Stats();
         }
@@ -62,6 +100,7 @@ namespace TransactionBenchmarkTest.YCSB
             test.Stats();
         }
 
+
         internal static void PinThreadOnCores()
         {
             Thread.BeginThreadAffinity();
@@ -89,7 +128,15 @@ namespace TransactionBenchmarkTest.YCSB
             // PinThreadOnCores();
             // YCSBTest();
             // RedisBenchmarkTest();
+
+            // TxOnlyTest();
+
+            //YCSBReadOnlyTest();
+
+            Console.WriteLine("Done");
+            Console.Read();
             YCSBAsyncTest();
         }
+        
     }
 }
