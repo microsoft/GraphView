@@ -1,4 +1,6 @@
-﻿using System;
+﻿using GraphView.Transaction;
+using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading;
 
@@ -34,12 +36,27 @@ namespace TransactionBenchmarkTest.YCSB
 
         static void YCSBAsyncTest()
         {
-            const int executorCount = 1;
+            const int executorCount = 4;
             const int txCountPerExecutor = 50000;
             const string dataFile = "ycsb_data.in";
             const string operationFile = "ycsb_ops.in";
 
-            YCSBAsyncBenchmarkTest test = new YCSBAsyncBenchmarkTest(executorCount, txCountPerExecutor);
+            // an executor is responsiable for all flush
+            List<List<Tuple<string, int>>> instances = new List<List<Tuple<string, int>>>
+            {
+                new List<Tuple<string, int>>()
+                {
+                    Tuple.Create(YCSBAsyncBenchmarkTest.TABLE_ID, 0),
+                    Tuple.Create(RedisVersionDb.TX_TABLE, 0),
+                },
+                new List<Tuple<string, int>>()
+                {
+                    Tuple.Create(YCSBAsyncBenchmarkTest.TABLE_ID, 0),
+                    Tuple.Create(RedisVersionDb.TX_TABLE, 0),
+                }
+            };
+
+            YCSBAsyncBenchmarkTest test = new YCSBAsyncBenchmarkTest(executorCount, txCountPerExecutor, instances);
             test.Setup(dataFile, operationFile);
             test.Run();
             test.Stats();

@@ -82,19 +82,44 @@ namespace GraphView.Transaction
         internal int FinishedTxs = 0;
 
         /// <summary>
+        /// The transaction timeout seconds
+        /// </summary>
+        private int txTimeoutSeconds;
+
+        /// <summary>
+        /// A flag to declare whether all requests have been finished
+        /// </summary>
+        internal bool AllRequestsFinished { get; private set; } = false;
+
+        /// <summary>
+        /// A flag to decalre whether the executor should still work to flush requests
+        /// </summary>
+        internal bool Active { get; set; } = true;
+
+        /// <summary>
         /// A map of transactions, and each transaction has a queue of request from the client
         /// </summary>
         private Dictionary<string, Tuple<TransactionExecution, Queue<TransactionRequest>>> activeTxs;
 
+        /// <summary>
+        /// A list of (table Id, partition key) pairs, each of which represents a key-value instance. 
+        /// This worker is responsible for processing key-value ops directed to the designated instances.
+        /// </summary>
+        private List<Tuple<string, int>> partitionedInstances;
+
         public TransactionExecutor(
             VersionDb versionDb, 
             ILogStore logStore, 
-            Queue<TransactionRequest> workload = null)
+            Queue<TransactionRequest> workload = null,
+            List<Tuple<string, int>> instances = null,
+            int txTimeoutSeconds = 0)
         {
             this.versionDb = versionDb;
             this.logStore = logStore;
             this.workload = workload ?? new Queue<TransactionRequest>();
             this.activeTxs = new Dictionary<string, Tuple<TransactionExecution, Queue<TransactionRequest>>>();
+            this.partitionedInstances = instances;
+            this.txTimeoutSeconds = txTimeoutSeconds;
         }
 
         public void Execute()
@@ -110,6 +135,13 @@ namespace GraphView.Transaction
 
                     TransactionExecution txExec = execTuple.Item1;
                     Queue<TransactionRequest> queue = execTuple.Item2;
+
+                    // check if the transaction execution has been time out
+                    if (this.txTimeoutSeconds != 0 && txExec.ExecutionSeconds > this.txTimeoutSeconds)
+                    {
+                        // TODO: Timeout, the request stack has been cleared in the abort method
+                        // txExec.TimeoutAbort();
+                    }
 
                     // If the transaction is at the initi status, the CurrentProc will be not null
                     // It will be covered in this case
@@ -213,6 +245,11 @@ namespace GraphView.Transaction
                     }
                 }
 
+                if (this.partitionedInstances != null)
+                {
+                    this.FlushInstances();
+                }
+
                 foreach (string sessionId in toRemoveSessions)
                 {
                     this.activeTxs.Remove(sessionId);
@@ -254,6 +291,29 @@ namespace GraphView.Transaction
                             }
                     }
                 }
+            }
+
+            // Set the finish flag as true
+            this.AllRequestsFinished = true;
+            if (this.partitionedInstances != null)
+            {
+                while (this.Active)
+                {
+                    foreach (Tuple<string, int> tuple in this.partitionedInstances)
+                    {
+                        this.FlushInstances();
+                    }
+                }
+            }
+        }
+
+        private void FlushInstances()
+        {
+            foreach (Tuple<string, int> tuple in this.partitionedInstances)
+            {
+                string tableId = tuple.Item1;
+                int partition = tuple.Item2;
+                this.versionDb.Visit(tableId, partition);
             }
         }
     }

@@ -66,8 +66,7 @@
         /// </summary>
         public static readonly long TX_DB_INDEX = 1;
 
-        public static bool DEFAULT_ASYNC_MODE = true;
-
+        public static bool DEFAULT_ASYNC_MODE = false;
 
         /// <summary>
         /// the map from tableId to redis version table
@@ -121,7 +120,7 @@
         /// <summary>
         /// If the version db is in async mode
         /// </summary>
-        public bool AsyncMode { get; set; } = true;
+        public bool AsyncMode { get; set; } = false;
 
         private RedisVersionDb()
         {
@@ -224,7 +223,6 @@
 
             // Init lua script manager
             this.RedisLuaManager = new RedisLuaScriptManager(this.RedisManager);
-
             if (this.AsyncMode)
             {
                 // Add tableIds and partition instances
@@ -237,7 +235,6 @@
 
             // Create the transaction table
             this.CreateVersionTable(RedisVersionDb.TX_TABLE, RedisVersionDb.TX_DB_INDEX);
-
             if (this.AsyncMode)
             {
                 // start a daemon thread to monitor the flush

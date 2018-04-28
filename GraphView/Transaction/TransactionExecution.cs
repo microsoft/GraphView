@@ -62,12 +62,22 @@ namespace GraphView.Transaction
 
         private Queue<VersionEntry> readVersionList;
 
+        private long beginTicks;
 
         internal Procedure CurrentProc { get; private set; }
 
         internal TxProgress Progress { get; private set; }
 
         internal StoredProcedure Procedure { get; private set; }
+
+        internal long ExecutionSeconds
+        {
+            get
+            {
+                long elapsedTicks = DateTime.Now.Ticks - this.beginTicks;
+                return elapsedTicks / 10000000;
+            }
+        }
 
         public TransactionExecution(ILogStore logStore, VersionDb versionDb, StoredProcedure procedure = null)
         {
@@ -89,6 +99,8 @@ namespace GraphView.Transaction
             this.Procedure = procedure;
 
             this.isCommitted = false;
+
+            this.beginTicks = DateTime.Now.Ticks;
 
             // init and get tx id
             this.InitTx();
@@ -984,6 +996,15 @@ namespace GraphView.Transaction
                 this.CurrentProc = null;
                 return;
             }
+        }
+
+        /// <summary>
+        /// Abort if timeout
+        /// </summary>
+        internal void TimeoutAbort()
+        {
+            this.requestStack.Clear();
+            this.CurrentProc = new Procedure(this.Abort);
         }
 
         internal void Abort()

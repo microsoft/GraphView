@@ -70,11 +70,6 @@
         internal Queue<RedisRequest> requestQueue;
 
         /// <summary>
-        /// The current request index
-        /// </summary>
-        internal int currReqId;
-
-        /// <summary>
         /// Request Window Size, client manager can reset it by the propery
         /// </summary>
         internal int RequestBatchSize { get; set; }
@@ -116,7 +111,6 @@
             this.Active = true;
 
             this.requestQueue = new Queue<RedisRequest>(this.RequestBatchSize);
-            this.currReqId = -1;
 
             this.spinLock = new SpinLock();
             lastFlushTime = DateTime.Now.Ticks / 10;
@@ -223,20 +217,26 @@
         {
             long now = DateTime.Now.Ticks / 10;
             if (now - lastFlushTime >= this.WindowMicroSec ||
-                this.currReqId + 1 >= this.RequestBatchSize)
+                this.requestQueue.Count >= this.RequestBatchSize)
             {
-                if (this.requestQueue.Count != 0)
+                if (this.requestQueue.Count > 0)
                 {
                     bool lockTaken = false;
-                    RedisRequest[] requests = null;
+                    RedisRequest[] flushReqs = null;
                     try
                     {
                         this.spinLock.Enter(ref lockTaken);
-
-                        // Copy all elements to an array and clear the request queue, then release the lock.
-                        // It reduces the time holding the lock and let enqueue wait not so long
-                        requests = this.requestQueue.ToArray();
-                        this.requestQueue.Clear();
+                        // Copy a batch of elements to an array and clear the request queue, then release the lock.
+                        // It reduces the time holding the lock and let requests enqueue timely
+                        int flushCount = Math.Min(this.RequestBatchSize, this.requestQueue.Count);
+                        if (flushCount > 0)
+                        {
+                            flushReqs = new RedisRequest[flushCount];
+                            for (int i = 0; i < flushCount; i++)
+                            {
+                                flushReqs[i] = this.requestQueue.Dequeue();
+                            }
+                        }
                     }
                     finally
                     {
@@ -244,9 +244,9 @@
                         {
                             this.spinLock.Exit();
                         }
-                        if (requests != null)
+                        if (flushReqs != null)
                         {
-                            this.Flush(requests);
+                            this.Flush(flushReqs);
                         }
                     }
                     
@@ -263,20 +263,25 @@
         {
             long now = DateTime.Now.Ticks / 10;
             if (now - lastFlushTime >= this.WindowMicroSec ||
-                this.currReqId + 1 >= this.RequestBatchSize)
+                this.requestQueue.Count >= this.RequestBatchSize)
             {
-                if (this.requestQueue.Count != 0)
+                if (this.requestQueue.Count > 0)
                 {
                     bool lockTaken = false;
-                    RedisRequest[] requests = null;
+                    RedisRequest[] flushReqs = null;
                     try
                     {
                         this.spinLock.Enter(ref lockTaken);
 
-                        // Copy all elements to an array and clear the request queue, then release the lock.
-                        // It reduces the time holding the lock and let enqueue wait not so long
-                        requests = this.requestQueue.ToArray();
-                        this.requestQueue.Clear();
+                        // Copy a batch of elements to an array and clear the request queue, then release the lock.
+                        // It reduces the time holding the lock and let requests enqueue timely
+                        int flushCount = Math.Min(this.RequestBatchSize, this.requestQueue.Count);
+                        flushReqs = new RedisRequest[flushCount];
+                        for (int i = 0; i < flushCount; i++)
+                        {
+                            flushReqs[i] = this.requestQueue.Dequeue();
+                        }
+
                     }
                     finally
                     {
@@ -284,9 +289,9 @@
                         {
                             this.spinLock.Exit();
                         }
-                        if (requests != null)
+                        if (flushReqs != null)
                         {
-                            this.Flush(requests);
+                            this.Flush(flushReqs);
                         }
                     }
 

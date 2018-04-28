@@ -96,6 +96,8 @@
         /// </summary>
         private RedisVersionDb redisVersionDb;
 
+        private List<List<Tuple<string, int>>> partitionedInstances;
+
         internal int TxThroughput
         {
             get
@@ -123,15 +125,20 @@
             }
         }
 
-        public YCSBAsyncBenchmarkTest(int executorCount, int txCountPerExecutor)
+        public YCSBAsyncBenchmarkTest(int executorCount, int txCountPerExecutor, List<List<Tuple<string, int>>> instances = null)
         {
-            RedisVersionDb.DEFAULT_ASYNC_MODE = true;
             this.redisVersionDb = RedisVersionDb.Instance;
 
             this.executorCount = executorCount;
             this.txCountPerExecutor = txCountPerExecutor;
 
             this.executorList = new List<TransactionExecutor>();
+
+            if (instances == null || instances.Count > executorCount)
+            {
+                throw new ArgumentException("instances mustn't be null and the size should be smaller or equal to executorCount");
+            }
+            this.partitionedInstances = instances;
         }
 
         internal void Setup(string dataFile, string operationFile)
@@ -173,7 +180,7 @@
             using (StreamReader reader = new StreamReader(operationFile))
             {
                 string line;
-                
+                int instanceIndex = 0;
                 for (int i = 0; i < this.executorCount; i++)
                 {
                     Queue<TransactionRequest> reqQueue = new Queue<TransactionRequest>();
@@ -190,7 +197,9 @@
                         reqQueue.Enqueue(req);
                     }
 
-                    this.executorList.Add(new TransactionExecutor(this.redisVersionDb, null, reqQueue));
+                    List<Tuple<string, int>> executorInstances = instanceIndex >= this.partitionedInstances.Count ? null :
+                        this.partitionedInstances[instanceIndex++];
+                    this.executorList.Add(new TransactionExecutor(this.redisVersionDb, null, reqQueue, executorInstances));
                 }
             }
         }
@@ -212,10 +221,29 @@
                 thread.Start();
             }
 
-            foreach (Thread thread in threadList)
+            while (true)
             {
-                thread.Join();
+                bool allFinished = true;
+                foreach (TransactionExecutor executor in this.executorList)
+                {
+                    if (!executor.AllRequestsFinished)
+                    {
+                        allFinished = false;
+                        break;
+                    }
+                }
+                
+                // Shutdown all workers
+                if (allFinished)
+                {
+                    foreach (TransactionExecutor executor in this.executorList)
+                    {
+                        executor.Active = false;
+                    }
+                    break;
+                }
             }
+
             this.testEndTicks = DateTime.Now.Ticks;
 
             long commandCountAfterRun = this.GetCurrentCommandCount();
