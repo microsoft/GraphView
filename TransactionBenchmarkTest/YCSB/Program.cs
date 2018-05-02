@@ -133,8 +133,6 @@ namespace TransactionBenchmarkTest.YCSB
 
             //YCSBReadOnlyTest();
 
-            Console.WriteLine("Done");
-            Console.Read();
             YCSBAsyncTest();
         }
         

@@ -3,6 +3,7 @@ namespace GraphView.Transaction
 {
     using System;
     using System.Collections.Generic;
+    using System.Threading;
 
     /// <summary>
     /// Define a delegate type to specify the partition rules.
@@ -33,6 +34,17 @@ namespace GraphView.Transaction
         /// </summary>
         private static readonly Random random = new Random();
 
+        /// <summary>
+        /// A spin lock to sync the random generator
+        /// Based on MSDN document: If you don't ensure that the Random object is 
+        /// accessed in a thread-safe way, calls to methods that return random numbers return 0.
+        /// 
+        /// In practical, we have encountered this case
+        /// </summary>
+        private static SpinLock RandomSpinLock = new SpinLock();
+
+        public static bool Print = true;
+
         public VersionDb()
         {
 
@@ -40,14 +52,27 @@ namespace GraphView.Transaction
 
         /// <summary>
 		/// Generate a random long type in the range of [min, max]
+        /// The reason to take the sync is introduced in VersionDbSpinLock
 		/// </summary>
 		/// <returns></returns>
 		protected long RandomLong(long min, long max)
         {
             byte[] buf = new byte[8];
-            VersionDb.random.NextBytes(buf);
+            bool lockTaken = false;
+            try
+            {
+                VersionDb.RandomSpinLock.Enter(ref lockTaken);
+                VersionDb.random.NextBytes(buf);
+            }
+            finally
+            {
+                if (lockTaken)
+                {
+                    VersionDb.RandomSpinLock.Exit();
+                }
+            }
+            
             long longRand = BitConverter.ToInt64(buf, 0);
-
             return (Math.Abs(longRand % (max - min)) + min);
         }
     }

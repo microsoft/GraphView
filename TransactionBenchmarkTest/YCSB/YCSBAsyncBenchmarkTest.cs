@@ -170,7 +170,6 @@
                     if (count % 10000 == 0)
                     {
                         Console.WriteLine("Loaded {0} records", count);
-                        break;
                     }
                 }
                 Console.WriteLine("Load records successfully, {0} records in total", count);
