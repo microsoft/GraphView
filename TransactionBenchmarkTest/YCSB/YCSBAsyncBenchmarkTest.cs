@@ -184,12 +184,11 @@
                 {
                     Queue<TransactionRequest> reqQueue = new Queue<TransactionRequest>();
                     for (int j = 0; j < this.txCountPerExecutor; j++)
-                    {
+                    { 
                         line = reader.ReadLine();
                         string[] fields = this.ParseCommandFormat(line);
 
                         TxWorkload workload = new TxWorkload(fields[0], TABLE_ID, fields[2], fields[3]);
-
                         string sessionId = ((i * this.txCountPerExecutor) + j + 1).ToString();
                         YCSBStoredProcedure procedure = new YCSBStoredProcedure(sessionId, workload);
                         TransactionRequest req = new TransactionRequest(sessionId, procedure);
@@ -222,6 +221,9 @@
 
             while (true)
             {
+                // check whether all tasks finished every 100 ms
+                Thread.Sleep(100);
+
                 bool allFinished = true;
                 foreach (TransactionExecutor executor in this.executorList)
                 {
@@ -231,7 +233,6 @@
                         break;
                     }
                 }
-                
                 // Shutdown all workers
                 if (allFinished)
                 {
@@ -266,7 +267,7 @@
             Console.WriteLine("Transaction AbortRate: {0}%", (abortedTxs * 1.0 / totalTxs) * 100);
 
             Console.WriteLine("\nFinshed {0} commands in {1} seconds", this.commandCount, this.RunSeconds);
-            Console.WriteLine("Redis Throughput: {0} cmd/second", this.RedisThroughput);
+            Console.WriteLine("Redis Throughput: {0} cmds/second", this.RedisThroughput);
 
             Console.WriteLine();
         }

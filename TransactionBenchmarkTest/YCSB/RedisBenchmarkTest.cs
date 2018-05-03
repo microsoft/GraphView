@@ -107,7 +107,7 @@
                     pipe.Flush();
                 }
             }
-            return null;
+            return true;
         };
 
         /// <summary>
@@ -276,8 +276,8 @@
             cmd.hashId = RandomString(4);
             cmd.key = BitConverter.GetBytes(3);
             cmd.value = RandomBytes(150);
-            //cmd.type = (RedisWorkloadType)RAND.Next(0, 6);
-            cmd.type = (RedisWorkloadType)3;
+            cmd.type = (RedisWorkloadType)RAND.Next(0, 6);
+            // cmd.type = (RedisWorkloadType)3;
             return cmd;
         }
 

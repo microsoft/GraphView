@@ -246,7 +246,7 @@ namespace GraphView.Transaction
                 }
 
                 if (this.partitionedInstances != null)
-                {
+                { 
                     this.FlushInstances();
                 }
 
@@ -299,10 +299,7 @@ namespace GraphView.Transaction
             {
                 while (this.Active)
                 {
-                    foreach (Tuple<string, int> tuple in this.partitionedInstances)
-                    {
-                        this.FlushInstances();
-                    }
+                    this.FlushInstances();
                 }
             }
         }

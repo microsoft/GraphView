@@ -51,9 +51,24 @@
     /// </summary>
     internal class RedisConnectionPool
     {
+        // THOSE TWO VARIABLES ARE ONLY FOR BENCHMARK TEST
+        /// <summary>
+        /// The number of times it has flushed
+        /// </summary>
+        internal static int FLUSH_TIMES = 0;
+
+        /// <summary>
+        /// the times flushed since the number of reqeusts in queue is
+        /// up to the batch size
+        /// </summary>
+        internal static int FLUSH_TIMES_UPTO_BATCH = 0;
+
         public static readonly int DEFAULT_BATCH_SIZE = 100;
 
-        public static readonly long DEFAULT_WINDOW_MICRO_SEC = 100L;
+        /// <summary>
+        /// The timeout to flush is 1ms (10000Ticks)
+        /// </summary>
+        public static readonly long DEFAULT_WINDOW_MICRO_SEC = 10000L;
 
         public static readonly int DEFAULT_MAX_READ_POOL_SIZE = 10;
 
@@ -221,6 +236,13 @@
             {
                 if (this.requestQueue.Count > 0)
                 {
+                    // ONLY FOR BENCHMARK TEST
+                    Interlocked.Increment(ref RedisConnectionPool.FLUSH_TIMES);
+                    if (this.requestQueue.Count >= this.RequestBatchSize)
+                    {
+                        Interlocked.Increment(ref RedisConnectionPool.FLUSH_TIMES_UPTO_BATCH);
+                    }
+
                     bool lockTaken = false;
                     RedisRequest[] flushReqs = null;
                     try
