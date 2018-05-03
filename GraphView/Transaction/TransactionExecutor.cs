@@ -180,21 +180,25 @@ namespace GraphView.Transaction
 
                         TransactionRequest opReq = queue.Peek();
 
+                        // To support Net 4.0
+                        bool received = false;
+                        object payload = null;
+
                         switch(opReq.OperationType)
                         {
                             case OperationType.Read:
                                 {
-                                    txExec.Read(opReq.TableId, opReq.RecordKey, out bool received, out object payload);
+                                    txExec.Read(opReq.TableId, opReq.RecordKey, out received, out payload);
                                     if (received)
                                     {
-                                        queue.Dequeue();
+                                        queue.Dequeue(); 
                                         txExec.Procedure?.ReadCallback(opReq.TableId, opReq.RecordKey, payload);
                                     }
                                     break;
                                 }
                             case OperationType.InitiRead:
                                 {
-                                    txExec.ReadAndInitialize(opReq.TableId, opReq.RecordKey, out bool received, out object payload);
+                                    txExec.ReadAndInitialize(opReq.TableId, opReq.RecordKey, out received, out payload);
                                     if (received)
                                     {
                                         queue.Dequeue();
@@ -219,7 +223,7 @@ namespace GraphView.Transaction
                             case OperationType.Delete:
                                 {
                                     queue.Dequeue();
-                                    txExec.Delete(opReq.TableId, opReq.RecordKey, out object payload);
+                                    txExec.Delete(opReq.TableId, opReq.RecordKey, out payload);
                                     txExec.Procedure?.DeleteCallBack(opReq.TableId, opReq.RecordKey, payload);
                                     break;
                                 }

@@ -52,7 +52,11 @@
         /// <param name="readWriteHosts">An array of connections strings, with host and port</param>
         internal RedisClientManager(string[] readWriteHosts) 
         {
-            this.readWriteHosts = readWriteHosts ?? throw new ArgumentException("readWriteHosts at least have a host");
+            if (readWriteHosts == null || this.readWriteHosts.Length == 0)
+            {
+                throw new ArgumentException("readWriteHosts at least have a host");
+            }
+            this.readWriteHosts = readWriteHosts;
         }
         
         internal RedisClient GetClient(long redisDbIndex, int partition)
