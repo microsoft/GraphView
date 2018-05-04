@@ -394,27 +394,34 @@ namespace GraphView.Transaction
         internal bool Validate()
         {
             List<Tuple<string, VersionEntry>> validationVersions = new List<Tuple<string, VersionEntry>>();
+
             foreach (string tableId in this.readSet.Keys)
             {
-                List<VersionPrimaryKey> validationKeys = new List<VersionPrimaryKey>();
+                // List<VersionPrimaryKey> validationKeys = new List<VersionPrimaryKey>();
                 foreach (object recordKey in this.readSet[tableId].Keys)
                 {
-                    // For those recordKeys in the writeSet, they must be holden by the current tx and still visiabl
-                    // to the current tx
+                    // Validates records only in the read set but not in the write set.
+                    // Records in the write set are already held on the current tx. 
                     if (this.writeSet.ContainsKey(tableId) && this.writeSet[tableId].ContainsKey(recordKey))
                     {
                         continue;
                     }
-                    validationKeys.Add(new VersionPrimaryKey(recordKey, readSet[tableId][recordKey].VersionKey));
+
+                    VersionEntry rereadEntry = this.versionDb.GetVersionEntryByKey(
+                        tableId, recordKey, readSet[tableId][recordKey].VersionKey);
+
+                    validationVersions.Add(Tuple.Create(tableId, rereadEntry));
+
+                    // validationKeys.Add(new VersionPrimaryKey(recordKey, readSet[tableId][recordKey].VersionKey));
                 }
 
-                IDictionary<VersionPrimaryKey, VersionEntry> versionDict = 
-                    this.versionDb.GetVersionEntryByKey(tableId, validationKeys);
+                //IDictionary<VersionPrimaryKey, VersionEntry> versionDict = 
+                //    this.versionDb.GetVersionEntryByKey(tableId, validationKeys);
 
-                foreach (VersionEntry entry in versionDict.Values)
-                {
-                    validationVersions.Add(Tuple.Create(tableId, entry));
-                }
+                //foreach (VersionEntry entry in versionDict.Values)
+                //{
+                //    validationVersions.Add(Tuple.Create(tableId, entry));
+                //}
             }
 
             foreach (Tuple<string, VersionEntry> entry in validationVersions)
@@ -569,35 +576,39 @@ namespace GraphView.Transaction
                         }
                         else
                         {
-							// this is an old version replaced by myself
+                            if (this.versionDb is RedisVersionDb)
+                            {
+                                // Pass the whole version, need only 1 redis command.
+                                // Note that we set the current transaction's commitTs as the old version's maxCommitTs.
 
-							// cloud environment: just replace the begin, end, txId field, need lua script, 3 redis command.
-							// this.versionDb.ReplaceVersionEntry(
-							//	 tableId,
-							//	 recordKey,
-							//	 entry.VersionKey,
-							//	 entry.BeginTimestamp,
-							//	 this.commitTs,
-							//	 VersionEntry.EMPTY_TXID,
-							//	 this.txId,
-							//	 long.MaxValue);
-
-							// Single machine setting: pass the whole version, need only 1 redis command.
-							// Note that we set the current transaction's commitTs as the old version's maxCommitTs.
-							ReadSetEntry readEntry = this.readSet[tableId][recordKey];
-							this.versionDb.ReplaceWholeVersionEntry(
-								tableId,
-								recordKey,
-								entry.VersionKey,
-								new VersionEntry(
-									recordKey, 
-									entry.VersionKey, 
-									readEntry.BeginTimestamp, 
-									this.commitTs, 
-									readEntry.Record, 
-									VersionEntry.EMPTY_TXID, 
-									this.commitTs));
-						}
+                                ReadSetEntry readEntry = this.readSet[tableId][recordKey];
+                                this.versionDb.ReplaceWholeVersionEntry(
+                                    tableId,
+                                    recordKey,
+                                    entry.VersionKey,
+                                    new VersionEntry(
+                                        recordKey,
+                                        entry.VersionKey,
+                                        readEntry.BeginTimestamp,
+                                        this.commitTs,
+                                        readEntry.Record,
+                                        VersionEntry.EMPTY_TXID,
+                                        this.commitTs));
+                            }
+                            else
+                            {
+                                // Just replaces the begin, end and txId fields in post-processing
+                                this.versionDb.ReplaceVersionEntry(
+                                    tableId,
+                                    recordKey,
+                                    entry.VersionKey,
+                                    entry.BeginTimestamp,
+                                    this.commitTs,
+                                    VersionEntry.EMPTY_TXID,
+                                    this.txId,
+                                    long.MaxValue);
+                            }
+                        }
                     }
                 }
             }
@@ -946,6 +957,12 @@ namespace GraphView.Transaction
         internal VersionEntry GetVisibleVersionEntry(IEnumerable<VersionEntry> versionList, out long largestVersionKey)
         {
             largestVersionKey = 0;
+
+            if (versionList == null)
+            {
+                return null;
+            }
+
             VersionEntry visibleVersion = null;
 
             foreach (VersionEntry versionEntry in versionList)

@@ -1,20 +1,22 @@
-﻿using System;
-using System.Collections.Generic;
-
+﻿
 namespace GraphView.Transaction
-{ 
+{
+    using System;
+    using System.Collections.Generic;
+    using NonBlocking;
+
     internal partial class SingletonVersionDb : VersionDb
     {
         private static volatile SingletonVersionDb instance;
         private static readonly object initlock = new object();
 
-        private readonly Dictionary<long, TxTableEntry> txTable;
+        private readonly NonBlocking.ConcurrentDictionary<long, TxTableEntry> txTable;
         private readonly Dictionary<string, SingletonDictionaryVersionTable> versionTables;
 
         private SingletonVersionDb()
         {
             this.versionTables = new Dictionary<string, SingletonDictionaryVersionTable>();
-            this.txTable = new Dictionary<long, TxTableEntry>();
+            this.txTable = new ConcurrentDictionary<long, TxTableEntry>();
         }
 
         internal static SingletonVersionDb Instance
@@ -43,26 +45,36 @@ namespace GraphView.Transaction
         //Todo: solve the problem of inserting at the same time
         internal override long InsertNewTx()
         {
-            Random random = new Random();
-            do
+            long txId = StaticRandom.Rand();
+
+            while (!this.txTable.TryAdd(txId, new TxTableEntry(txId)))
             {
-                long txId = random.Next();
-                if (!this.txTable.ContainsKey(txId))
-                {
-                    this.txTable[txId] = new TxTableEntry(txId);
-                    return txId;
-                }
-            } while (true);
+                txId = StaticRandom.Rand();
+            }
+
+            return txId;
         }
 
         internal override TxTableEntry GetTxTableEntry(long txId)
         {
-            return this.txTable[txId];
+            TxTableEntry txEntry = null;
+            if (!this.txTable.TryGetValue(txId, out txEntry))
+            {
+                throw new TransactionException("The specified tx does not exist.");
+            }
+
+            return txEntry;
         }
 
         internal override void UpdateTxStatus(long txId, TxStatus status)
         {
-            this.txTable[txId].Status = status;
+            TxTableEntry txEntry = null;
+            if (!this.txTable.TryGetValue(txId, out txEntry))
+            {
+                throw new TransactionException("The specified tx does not exist.");
+            }
+
+            txEntry.Status = status;
         }
 
         internal override long SetAndGetCommitTime(long txId, long lowerBound)
@@ -73,6 +85,11 @@ namespace GraphView.Transaction
         internal override long UpdateCommitLowerBound(long txId, long lowerBound)
         {
             throw new NotImplementedException();
+        }
+
+        internal override VersionTable CreateVersionTable(string tableId, long redisDbIndex = 0)
+        {
+            return base.CreateVersionTable(tableId, redisDbIndex);
         }
     }
 }

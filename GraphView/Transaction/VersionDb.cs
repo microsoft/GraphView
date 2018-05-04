@@ -45,6 +45,23 @@ namespace GraphView.Transaction
 
         public static bool Print = true;
 
+        protected static class StaticRandom
+        {
+            static int seed = Environment.TickCount;
+
+            static readonly ThreadLocal<Random> random =
+                new ThreadLocal<Random>(() => new Random(Interlocked.Increment(ref seed)));
+
+            public static long Rand()
+            {
+                byte[] buf = new byte[8];
+                random.Value.NextBytes(buf);
+                long longRand = BitConverter.ToInt64(buf, 0);
+
+                return Math.Abs(longRand);
+            }
+        }
+
         public VersionDb()
         {
 
