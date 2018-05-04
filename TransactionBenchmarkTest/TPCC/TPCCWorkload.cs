@@ -223,7 +223,7 @@ namespace TransactionBenchmarkTest.TPCC
             catch (Exception e)
             {
                 tx.Abort();     // TODO is it right? if e is a TransactionException ?
-                ret.txFinalStatus = TxFinalStatus.COMMITTED;
+                ret.txFinalStatus = TxFinalStatus.ABORTED;
             }
 
             return ret;

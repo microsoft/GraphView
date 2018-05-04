@@ -50,7 +50,7 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <PropertyGroup>
-    <StartupObject>TransactionBenchmarkTest.YCSB.Program</StartupObject>
+    <StartupObject>TransactionBenchmarkTest.TPCC.Example</StartupObject>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="Newtonsoft.Json, Version=11.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
@@ -109,7 +109,9 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="TPCC\Example.cs" />
     <Compile Include="TPCC\TestRedis.cs" />
+    <Compile Include="TPCC\TPCCAsyncBenchmark.cs" />
     <Compile Include="TPCC\TPCCBenchmark.cs" />
+    <Compile Include="TPCC\TPCCStoredProcedure.cs" />
     <Compile Include="TPCC\TPCCTable.cs" />
     <Compile Include="TPCC\TPCCWorkload.cs" />
     <Compile Include="TPCC\Utils.cs" />
