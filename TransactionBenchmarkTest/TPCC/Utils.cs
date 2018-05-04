@@ -20,6 +20,7 @@ namespace TransactionBenchmarkTest.TPCC
         public const char Delimiter = ',';
         public const string WorkloadDelimiter = "\",";
         public const char PlaceHolder = '*';
+        public const string PlaceHolders = "**";
         public const string BadCredit = "BC";
         public const int Max_C_DATA = 500;   // max C_DATA length
 
