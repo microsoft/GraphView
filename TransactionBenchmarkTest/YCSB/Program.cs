@@ -11,10 +11,10 @@ namespace TransactionBenchmarkTest.YCSB
     {
         static void RedisBenchmarkTest()
         {
-            const int workerCount = 1;
-            const int taskCount = 500000;
-            const bool pipelineMode = false;
-            const int pipelineSize = 1000;
+            const int workerCount = 4;
+            const int taskCount = 400000;
+            const bool pipelineMode = true;
+            const int pipelineSize = 100;
 
             RedisBenchmarkTest test = new RedisBenchmarkTest(workerCount, taskCount, pipelineMode, pipelineSize);
             test.Setup();
@@ -41,8 +41,8 @@ namespace TransactionBenchmarkTest.YCSB
 
         static void TxOnlyTest()
         {
-            const int workerCount = 8;      // 4;
-            const int taskCount = 25000;   // 50000;
+            const int workerCount = 128;      // 4;
+            const int taskCount = 10000;   // 50000;
 
             YCSBBenchmarkTest test = new YCSBBenchmarkTest(workerCount, taskCount);
             test.FlushRedis();
@@ -127,13 +127,13 @@ namespace TransactionBenchmarkTest.YCSB
 
             // PinThreadOnCores();
             // YCSBTest();
-            // RedisBenchmarkTest();
+            RedisBenchmarkTest();
 
             // TxOnlyTest();
 
             //YCSBReadOnlyTest();
 
-            YCSBAsyncTest();
+            // YCSBAsyncTest();
         }
         
     }

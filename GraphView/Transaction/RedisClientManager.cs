@@ -52,7 +52,7 @@
         /// <param name="readWriteHosts">An array of connections strings, with host and port</param>
         internal RedisClientManager(string[] readWriteHosts) 
         {
-            if (readWriteHosts == null || this.readWriteHosts.Length == 0)
+            if (readWriteHosts == null || readWriteHosts.Length == 0)
             {
                 throw new ArgumentException("readWriteHosts at least have a host");
             }

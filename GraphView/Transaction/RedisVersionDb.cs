@@ -218,7 +218,26 @@
            
             // Init the redis client manager
             // TODO: get readWriteHosts from config file
-            string[] readWriteHosts = new string[] { "127.0.0.1:6379" };
+            string[] readWriteHosts = new string[] 
+            {
+                "127.0.0.1:6380",
+                //"127.0.0.1:6381",
+                //"127.0.0.1:6382",
+                //"127.0.0.1:6383",
+                //"127.0.0.1:6384",
+                //"127.0.0.1:6385",
+                //"127.0.0.1:6386",
+                //"127.0.0.1:6387",
+                //"127.0.0.1:6388",
+                //"127.0.0.1:6389",
+                //"127.0.0.1:6390",
+                //"127.0.0.1:6390",
+                //"127.0.0.1:6391",
+                //"127.0.0.1:6392",
+                //"127.0.0.1:6393",
+                //"127.0.0.1:6394",
+                //"127.0.0.1:6395",
+            };
             this.RedisManager = new RedisClientManager(readWriteHosts);
 
             // Init lua script manager
