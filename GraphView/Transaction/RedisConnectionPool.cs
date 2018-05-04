@@ -70,9 +70,9 @@
         /// </summary>
         public static readonly long DEFAULT_WINDOW_MICRO_SEC = 10000L;
 
-        public static readonly int DEFAULT_MAX_READ_POOL_SIZE = 10;
+        public static readonly int DEFAULT_MAX_READ_POOL_SIZE = 64;
 
-        public static readonly int DEFAULT_MAX_WRITE_POOL_SIZE = 10;
+        public static readonly int DEFAULT_MAX_WRITE_POOL_SIZE = 64;
         /// <summary>
         /// The real pool manager maintaining clients pool
         /// Which is from ServiceStack.Redis
