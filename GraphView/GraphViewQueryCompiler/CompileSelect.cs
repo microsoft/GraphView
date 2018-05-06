@@ -649,7 +649,7 @@ namespace GraphView
 
                         if (context.InParallelMode)
                         {
-                            if (context.InBatchMode && (
+                            if (context.InBatchMode && context.ParallelLevel.EnableSendThenSendBack && (
                                     // branch-type operator
                                     functionTableReference is WUnionTableReference ||
                                     functionTableReference is WOptionalTableReference ||
@@ -798,7 +798,7 @@ namespace GraphView
                 GraphViewExecutionOperator inputOp = operatorChain.Any()
                     ? operatorChain.Last()
                     : context.OuterContextOp;
-                if (context.InParallelMode && !context.NeedGlobalAggregate)
+                if (context.InParallelMode && context.ParallelLevel.EnableSendThenSendBack && !context.NeedGlobalAggregate)
                 {
                     SendOperator sendOp = new SendOperator(inputOp, SendOperator.SendType.SendBack);
                     ReceiveOperator receiveOp = new ReceiveOperator(sendOp);

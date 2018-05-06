@@ -20,11 +20,13 @@ namespace GraphViewBenchmark
             string storageAccountKey = ConfigurationManager.AppSettings["StorageAccountKey"];
             string poolId = "BenchmarkPool";
             int virtualMachineNumber = 8;
-            string virtualMachineSize = "Medium";// "Small"; // virtual machine size information: https://docs.microsoft.com/en-us/azure/cloud-services/cloud-services-sizes-specs
+            string virtualMachineSize = "Large";// "Large", "Medium", "Small"; // virtual machine size information: https://docs.microsoft.com/en-us/azure/cloud-services/cloud-services-sizes-specs
 
             AzureBatchJobManager jobManager = new AzureBatchJobManager(batchAccountName, batchAccountKey, batchAccountUrl,
                 storageAccountName, storageAccountKey, poolId, virtualMachineNumber, virtualMachineSize);
 
+            //return;
+            //jobManager.ClearResource(); return;
             //jobManager.DeletePool(); return;
 
             string docDBEndPoint = ConfigurationManager.AppSettings["DocDBEndPoint"];
@@ -36,8 +38,13 @@ namespace GraphViewBenchmark
             List<ParallelLevel> parallelLevelList = new List<ParallelLevel>()
             {
                 new ParallelLevel(), // all accessive
+                new ParallelLevel(true, true, true, 1000), // middle
+                new ParallelLevel(true, true, true, 2500), // middle
+                new ParallelLevel(true, true, true, 5000), // middle
+                new ParallelLevel(true, true, true, 10000), // middle
+                new ParallelLevel(true, true, true, 15000), // middle
+                new ParallelLevel(true, true, true, 30000), // middle
                 new ParallelLevel(true, true, true), // exclusive
-                new ParallelLevel(true, true, true, 1000) // middle
             };
 
             using (System.IO.StreamWriter file =
@@ -48,7 +55,7 @@ namespace GraphViewBenchmark
                     foreach (int parallelism in parallelismList)
                     {
                         List<NodePlan> nodePlans = new List<NodePlan>();
-                        int id = 1;
+                        int id = 0;
                         for (int i = 0; i < parallelism; i++)
                         {
                             List<string> partitionValues = new List<string>();
@@ -77,65 +84,88 @@ namespace GraphViewBenchmark
                             docDBEndPoint, docDBKey, docDBDatabaseId, docDBCollectionId,
                             LoadData.USE_REVERSE_EDGE, LoadData.PARTITION_BY_KEY, LoadData.SPILLED_EDGE_THRESHOLD_VIAGRAPHAPI);
 
-                        // Query 1
                         var watch = System.Diagnostics.Stopwatch.StartNew();
-                        job.Traversal = job.Command.g().V().Count();
-                        List<string> results = jobManager.TestQuery(job);
-                        //foreach (var res in results)
-                        //{
-                        //    Console.WriteLine(res);
-                        //}
-                        watch.Stop();
-                        file.WriteLine($"Query g.V().count(), " +
-                                       $"ParallelLevel: {parallelLevelList.IndexOf(parallelLevel)}, " +
-                                       $"parallelism: {parallelism}, " +
-                                       $"Total use time: {watch.ElapsedMilliseconds}, " +
-                                       $"Task running time: {job.UseTime}");
+                        List<string> results = new List<string>();
 
-                        // Query 2
-                        watch = System.Diagnostics.Stopwatch.StartNew();
-                        job.Traversal = job.Command.g().V().Out();
-                        results = jobManager.TestQuery(job);
-                        //foreach (var res in results)
-                        //{
-                        //    Console.WriteLine(res);
-                        //}
-                        watch.Stop();
-                        file.WriteLine($"Query g.V().count().out(), " +
-                                       $"ParallelLevel: {parallelLevelList.IndexOf(parallelLevel)}, " +
-                                       $"parallelism: {parallelism}, " +
-                                       $"Total use time: {watch.ElapsedMilliseconds}, " +
-                                       $"Task running time: {job.UseTime}");
+                        try
+                        {
+                            // Query 1
+                            watch = System.Diagnostics.Stopwatch.StartNew();
+                            job.Traversal = job.Command.g().V().Count();
+                            results = jobManager.TestQuery(job);
+                            watch.Stop();
+                            file.WriteLine($"Query g.V().count(), " +
+                                           $"ParallelLevel: {parallelLevelList.IndexOf(parallelLevel)}, " +
+                                           $"parallelism: {parallelism}, " +
+                                           $"Total use time: {watch.ElapsedMilliseconds}, " +
+                                           $"Task running time: {job.UseTime}");
+                        }
+                        catch (Exception)
+                        {
+                            file.WriteLine($"Query g.V().count(), " +
+                                           $"ParallelLevel: {parallelLevelList.IndexOf(parallelLevel)}, " +
+                                           $"parallelism: {parallelism}, Error");
+                        }
 
-                        // Query 3
-                        watch = System.Diagnostics.Stopwatch.StartNew();
-                        job.Traversal = job.Command.g().V().Out().Out();
-                        results = jobManager.TestQuery(job);
-                        //foreach (var res in results)
-                        //{
-                        //    Console.WriteLine(res);
-                        //}
-                        watch.Stop();
-                        file.WriteLine($"Query g.V().out().out(), " +
-                                       $"ParallelLevel: {parallelLevelList.IndexOf(parallelLevel)}, " +
-                                       $"parallelism: {parallelism}, " +
-                                       $"Total use time: {watch.ElapsedMilliseconds}, " +
-                                       $"Task running time: {job.UseTime}");
+                        try
+                        {
+                            // Query 2
+                            watch = System.Diagnostics.Stopwatch.StartNew();
+                            job.Traversal = job.Command.g().V().Out().Count();
+                            results = jobManager.TestQuery(job);
+                            watch.Stop();
+                            file.WriteLine($"Query g.V().out().count(), " +
+                                           $"ParallelLevel: {parallelLevelList.IndexOf(parallelLevel)}, " +
+                                           $"parallelism: {parallelism}, " +
+                                           $"Total use time: {watch.ElapsedMilliseconds}, " +
+                                           $"Task running time: {job.UseTime}");
+                        }
+                        catch (Exception)
+                        {
+                            file.WriteLine($"Query g.V().out().count(), " +
+                                           $"ParallelLevel: {parallelLevelList.IndexOf(parallelLevel)}, " +
+                                           $"parallelism: {parallelism}, Error");
+                        }
 
-                        // Query 4
-                        watch = System.Diagnostics.Stopwatch.StartNew();
-                        job.Traversal = job.Command.g().V().Map(GraphTraversal.__().Out().Count());
-                        results = jobManager.TestQuery(job);
-                        //foreach (var res in results)
-                        //{
-                        //    Console.WriteLine(res);
-                        //}
-                        watch.Stop();
-                        file.WriteLine($"Query g.V().map(__.out().count()), " +
-                                       $"ParallelLevel: {parallelLevelList.IndexOf(parallelLevel)}, " +
-                                       $"parallelism: {parallelism}, " +
-                                       $"Total use time: {watch.ElapsedMilliseconds}, " +
-                                       $"Task running time: {job.UseTime}");
+                        try
+                        {
+                            // Query 3
+                            watch = System.Diagnostics.Stopwatch.StartNew();
+                            job.Traversal = job.Command.g().V().Out().Out().Count();
+                            results = jobManager.TestQuery(job);
+                            watch.Stop();
+                            file.WriteLine($"Query g.V().out().out().count(), " +
+                                           $"ParallelLevel: {parallelLevelList.IndexOf(parallelLevel)}, " +
+                                           $"parallelism: {parallelism}, " +
+                                           $"Total use time: {watch.ElapsedMilliseconds}, " +
+                                           $"Task running time: {job.UseTime}");
+                        }
+                        catch (Exception)
+                        {
+                            file.WriteLine($"Query g.V().out().out().count(), " +
+                                           $"ParallelLevel: {parallelLevelList.IndexOf(parallelLevel)}, " +
+                                           $"parallelism: {parallelism}, Error");
+                        }
+
+                        try
+                        {
+                            // Query 4
+                            watch = System.Diagnostics.Stopwatch.StartNew();
+                            job.Traversal = job.Command.g().V().Map(GraphTraversal.__().Out().Count());
+                            results = jobManager.TestQuery(job);
+                            watch.Stop();
+                            file.WriteLine($"Query g.V().map(__.out().count()), " +
+                                           $"ParallelLevel: {parallelLevelList.IndexOf(parallelLevel)}, " +
+                                           $"parallelism: {parallelism}, " +
+                                           $"Total use time: {watch.ElapsedMilliseconds}, " +
+                                           $"Task running time: {job.UseTime}");
+                        }
+                        catch (Exception)
+                        {
+                            file.WriteLine($"Query g.V().map(__.out().count()), " +
+                                           $"ParallelLevel: {parallelLevelList.IndexOf(parallelLevel)}, " +
+                                           $"parallelism: {parallelism}, Error");
+                        }
 
                         // Query n...
                     }

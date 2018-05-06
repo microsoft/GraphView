@@ -363,6 +363,12 @@ namespace GraphView
             this.currentTask = currentTask;
             this.nodePlans = nodePlans;
             this.command = command;
+
+            if (this.currentTask == DetermineTargetTask())
+            {
+                this.receiveHost = new ReceiveHost(this.receiveHostId, this.currentTask, this.nodePlans);
+                this.receiveHost.OpenHost();
+            }
         }
 
         // For ProjectAggregation

@@ -63,11 +63,11 @@ namespace GraphViewBenchmark
             GraphViewCommand graphCommand = new GraphViewCommand(graphConnection);
 
             // Add vertex
-            //for (int id = 1; id <= numVertex; id++)
-            //{
-            //    graphCommand.g().AddV("User").Property("id", id.ToString()).Property(PARTITION_BY_KEY, CalculatePartition(id)).Next();
-            //    Console.WriteLine($"Add vertex {id} successfully");
-            //}
+            for (int id = 1; id <= numVertex; id++)
+            {
+                graphCommand.g().AddV("User").Property("id", id.ToString()).Property(PARTITION_BY_KEY, CalculatePartition(id)).Next();
+                Console.WriteLine($"Add vertex {id} successfully");
+            }
 
             // Add edge
             foreach (Tuple<int, int> tuple in edges)
