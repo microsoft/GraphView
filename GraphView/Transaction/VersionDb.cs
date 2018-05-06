@@ -52,7 +52,7 @@ namespace GraphView.Transaction
             static readonly ThreadLocal<Random> random =
                 new ThreadLocal<Random>(() => new Random(Interlocked.Increment(ref seed)));
 
-            public static long Rand()
+            public static long RandIdentity()
             {
                 byte[] buf = new byte[8];
                 random.Value.NextBytes(buf);
@@ -151,7 +151,7 @@ namespace GraphView.Transaction
     /// </summary>
     public abstract partial class VersionDb
     {
-        internal virtual IEnumerable<VersionEntry> GetVersionList(string tableId, object recordKey)
+        internal IEnumerable<VersionEntry> GetVersionList(string tableId, object recordKey)
         {
             VersionTable versionTable = this.GetVersionTable(tableId);
             if (versionTable == null)
@@ -179,7 +179,7 @@ namespace GraphView.Transaction
         /// Get the version entries by a batch of keys in a version table
         /// </summary>
         /// <param name="batch">A batch of record keys and version keys</returns>
-        internal virtual IDictionary<VersionPrimaryKey, VersionEntry> GetVersionEntryByKey(
+        internal IDictionary<VersionPrimaryKey, VersionEntry> GetVersionEntryByKey(
             string tableId, IEnumerable<VersionPrimaryKey> batch)
         {
             Dictionary<VersionPrimaryKey, VersionEntry> versionDict =
@@ -208,7 +208,7 @@ namespace GraphView.Transaction
         //    return req;
         //}
 
-        internal virtual VersionEntry ReplaceVersionEntry(string tableId, object recordKey, long versionKey,
+        internal VersionEntry ReplaceVersionEntry(string tableId, object recordKey, long versionKey,
             long beginTimestamp, long endTimestamp, long txId, long readTxId, long expectedEndTimestamp)
         {
             VersionTable versionTable = this.GetVersionTable(tableId);
@@ -244,7 +244,7 @@ namespace GraphView.Transaction
             return req;
         }
 
-        internal virtual bool ReplaceWholeVersionEntry(string tableId, object recordKey, long versionKey,
+        internal bool ReplaceWholeVersionEntry(string tableId, object recordKey, long versionKey,
             VersionEntry versionEntry)
         {
             VersionTable versionTable = this.GetVersionTable(tableId);
@@ -275,7 +275,7 @@ namespace GraphView.Transaction
             return req;
         }
 
-        internal virtual bool UploadNewVersionEntry(string tableId, object recordKey, long versionKey, VersionEntry versionEntry)
+        internal bool UploadNewVersionEntry(string tableId, object recordKey, long versionKey, VersionEntry versionEntry)
         {
             VersionTable versionTable = this.GetVersionTable(tableId);
             if (versionTable == null)
@@ -299,7 +299,7 @@ namespace GraphView.Transaction
             return req;
         }
 
-        internal virtual VersionEntry UpdateVersionMaxCommitTs(string tableId, object recordKey, long versionKey, long commitTime)
+        internal VersionEntry UpdateVersionMaxCommitTs(string tableId, object recordKey, long versionKey, long commitTime)
         {
             VersionTable versionTable = this.GetVersionTable(tableId);
             if (versionTable == null)
@@ -324,7 +324,7 @@ namespace GraphView.Transaction
             return req;
         }
 
-        internal virtual VersionEntry GetVersionEntryByKey(string tableId, object recordKey, long versionKey)
+        internal VersionEntry GetVersionEntryByKey(string tableId, object recordKey, long versionKey)
         {
             VersionTable versionTable = this.GetVersionTable(tableId);
             if (versionTable == null)
@@ -349,7 +349,7 @@ namespace GraphView.Transaction
             return req;
         }
 
-        internal virtual bool DeleteVersionEntry(string tableId, object recordKey, long versionKey)
+        internal bool DeleteVersionEntry(string tableId, object recordKey, long versionKey)
         {
             VersionTable versionTable = this.GetVersionTable(tableId);
             if (versionTable == null)
@@ -374,7 +374,7 @@ namespace GraphView.Transaction
             return req;
         }
 
-        internal virtual IEnumerable<VersionEntry> InitializeAndGetVersionList(string tableId, object recordKey)
+        internal IEnumerable<VersionEntry> InitializeAndGetVersionList(string tableId, object recordKey)
         {
             VersionTable versionTable = this.GetVersionTable(tableId);
             if (versionTable == null) 

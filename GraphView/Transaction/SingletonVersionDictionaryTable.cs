@@ -40,6 +40,11 @@
                     txId == blob.txId &&
                     maxCommitTs == blob.maxCommitTs;
             }
+
+            public override int GetHashCode()
+            {
+                return this.beginTimestamp.GetHashCode();
+            }
         }
 
         private readonly NonBlocking.ConcurrentDictionary<object, NonBlocking.ConcurrentDictionary<long, VersionBlob>> dict;
@@ -118,7 +123,7 @@
             {
                 throw new TransactionException("The tail pointer is missing from the version list.");
             }
-            long lastVersionKey = tailBlob.beginTimestamp;
+            long lastVersionKey = Interlocked.Read(ref tailBlob.beginTimestamp);
 
             List<VersionEntry> localList = new List<VersionEntry>(2);
 
@@ -235,6 +240,9 @@
                 long tailKey = tailBlob.beginTimestamp;
                 while (tailKey < versionKey)
                 {
+                    // Here we use Interlocked to atomically update the tail entry, instead of ConcurrentDict.TryUpdate().
+                    // This is because once created, the whole tail entry always stays and is never replaced.
+                    // All concurrent tx's only access the tail pointer, i.e., the beginTimestamp field.  
                     Interlocked.CompareExchange(ref tailBlob.beginTimestamp, versionKey, tailKey);
                     tailKey = tailBlob.beginTimestamp;
                 }
@@ -263,11 +271,20 @@
                 throw new TransactionException("The specified version does not exist.");
             }
 
-            long maxCommitTs = verBlob.maxCommitTs;
-            while (maxCommitTs < commitTs)
+            while (verBlob.maxCommitTs < commitTs)
             {
-                Interlocked.CompareExchange(ref verBlob.maxCommitTs, commitTs, maxCommitTs);
-                maxCommitTs = verBlob.maxCommitTs;
+                VersionBlob newBlob = new VersionBlob(
+                    verBlob.beginTimestamp, verBlob.endTimestamp, verBlob.payload, verBlob.txId, commitTs);
+
+                if (versionList.TryUpdate(versionKey, newBlob, verBlob))
+                {
+                    verBlob = newBlob;
+                    break;
+                }
+                else
+                {
+                    versionList.TryGetValue(versionKey, out verBlob);
+                }
             }
 
             return new VersionEntry(
@@ -292,7 +309,7 @@
             // whose beginTimestamp points to the newest version. 
             VersionBlob tailBlob = null;
             versionList.TryGetValue(SingletonDictionaryVersionTable.TAIL_KEY, out tailBlob);
-            long lastVersionKey = tailBlob.beginTimestamp;
+            long lastVersionKey = Interlocked.Read(ref tailBlob.beginTimestamp);
 
             List<VersionEntry> localList = new List<VersionEntry>(2);
 
@@ -303,21 +320,21 @@
             while (lastVersionKey >= 0 && localList.Count <= 2)
             {
                 VersionBlob verBlob = null;
-                if (!versionList.TryGetValue(lastVersionKey, out verBlob))
+                if (versionList.TryGetValue(lastVersionKey, out verBlob))
                 {
-                    lastVersionKey--;
-                    continue;
+                    VersionEntry verEntry = new VersionEntry(
+                        recordKey,
+                        lastVersionKey,
+                        verBlob.beginTimestamp,
+                        verBlob.endTimestamp,
+                        verBlob.payload,
+                        verBlob.txId,
+                        verBlob.maxCommitTs);
+
+                    localList.Add(verEntry);
                 }
 
-                VersionEntry verEntry = new VersionEntry(
-                    recordKey,
-                    lastVersionKey,
-                    verBlob.beginTimestamp,
-                    verBlob.endTimestamp,
-                    verBlob.payload,
-                    verBlob.txId,
-                    verBlob.maxCommitTs);
-                localList.Add(verEntry);
+                lastVersionKey--;
             }
 
             return localList;
