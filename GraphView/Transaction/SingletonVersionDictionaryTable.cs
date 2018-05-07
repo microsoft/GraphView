@@ -60,6 +60,7 @@
         {
             this.dict = new ConcurrentDictionary<object, ConcurrentDictionary<long, VersionBlob>>(
                 SingletonDictionaryVersionTable.RECORD_CAPACITY);
+            
         }
 
         internal override bool DeleteVersionEntry(object recordKey, long versionKey)
