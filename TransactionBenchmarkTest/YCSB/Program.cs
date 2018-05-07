@@ -9,10 +9,18 @@ namespace TransactionBenchmarkTest.YCSB
 {
     class Program
     {
+        static void ExecuteRedisRawTest()
+        {
+            RedisRawTest.BATCHES = 10000;
+            RedisRawTest.REDIS_INSTANCES = 1;
+
+            new RedisRawTest().Test();
+        }
+
         static void RedisBenchmarkTest()
         {
             const int workerCount = 4;
-            const int taskCount = 400000;
+            const int taskCount = 1000000;
             const bool pipelineMode = true;
             const int pipelineSize = 100;
 
@@ -31,7 +39,7 @@ namespace TransactionBenchmarkTest.YCSB
             const int taskCountPerWorker = 25000;   // 50000;
             const string dataFile = "ycsb_data_r.in";
             const string operationFile = "ycsb_ops_r.in";
-            VersionDb versionDb = SingletonVersionDb.Instance;
+            VersionDb versionDb = RedisVersionDb.Instance;
 
             YCSBBenchmarkTest test = new YCSBBenchmarkTest(workerCount, taskCountPerWorker, versionDb);
 
@@ -96,6 +104,8 @@ namespace TransactionBenchmarkTest.YCSB
 
             // For the YCSB async test
             // YCSBAsyncTest();
+
+            // ExecuteRedisRawTest();
         }
     }
 }
