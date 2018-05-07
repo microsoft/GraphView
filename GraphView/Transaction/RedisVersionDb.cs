@@ -66,8 +66,6 @@
         /// </summary>
         public static readonly long TX_DB_INDEX = 1;
 
-        public static bool DEFAULT_ASYNC_MODE = false;
-
         /// <summary>
         /// the map from tableId to redis version table
         /// </summary>
@@ -94,12 +92,6 @@
 		private readonly RedisResponseVisitor responseVisitor;
 
         /// <summary>
-        /// A list of (table Id, partition key) pairs, each of which represents a key-value instance. 
-        /// This worker is responsible for processing key-value ops directed to the designated instances.
-        /// </summary>
-        private Dictionary<string, List<int>> partitionedInstances;
-
-        /// <summary>
         /// A flag to declare if the async monitor is active, which will be set as false
         /// when the version db is closed
         /// </summary>
@@ -117,19 +109,12 @@
         /// </summary>
         public bool PipelineMode { get; set; } = false;
 
-        /// <summary>
-        /// If the version db is in async mode
-        /// </summary>
-        public bool AsyncMode { get; set; } = false;
-
         private RedisVersionDb()
         {
             this.tableLock = new object();
             this.versionTableMap = new Dictionary<string, RedisVersionTable>();
             this.responseVisitor = new RedisResponseVisitor();
 
-            // Read async mode from the file
-            this.AsyncMode = RedisVersionDb.DEFAULT_ASYNC_MODE;
             this.Setup();
         }
 
@@ -158,33 +143,6 @@
     /// </summary>
     public partial class RedisVersionDb
     {
-        /// <summary>
-        /// There will be daemon thread running to flush the requests
-        /// </summary>
-        public void Monitor()
-        {
-            while (this.AsyncMonitorActive)
-            {
-                foreach (KeyValuePair<string, List<int>> partition in this.partitionedInstances)
-                {
-                    string tableId = partition.Key;
-                    foreach (int partitionKey in partition.Value)
-                    {
-                        this.Visit(tableId, partitionKey);
-                    }
-                }
-            }
-        }
-
-
-        public void Dispose()
-        {
-            if (this.AsyncMode)
-            {
-                this.AsyncMonitorActive = false;
-            }
-        }
-
         /// <summary>
         /// Get redisDbIndex from meta hashset by tableId
         /// Take the System.Nullable<long> to wrap the return result, as it could 
@@ -220,7 +178,7 @@
             // TODO: get readWriteHosts from config file
             string[] readWriteHosts = new string[] 
             {
-                "127.0.0.1:6380",
+                "127.0.0.1:6379",
                 //"127.0.0.1:6381",
                 //"127.0.0.1:6382",
                 //"127.0.0.1:6383",
@@ -242,48 +200,14 @@
 
             // Init lua script manager
             this.RedisLuaManager = new RedisLuaScriptManager(this.RedisManager);
-            if (this.AsyncMode)
-            {
-                // Add tableIds and partition instances
-                IEnumerable<string> tables = this.GetAllTables();
-                foreach (string tableId in tables)
-                {
-                    this.AddPartitionInstance(tableId);
-                }
-            }
 
             // Create the transaction table
             this.CreateVersionTable(RedisVersionDb.TX_TABLE, RedisVersionDb.TX_DB_INDEX);
-            if (this.AsyncMode)
-            {
-                // start a daemon thread to monitor the flush
-                Thread thread = new Thread(new ThreadStart(this.Monitor));
-                thread.Start();
-            }
         }
 
-        /// <summary>
-        /// Add partition instances for a given tableId
-        /// </summary>
-        /// <param name="tableId"></param>
-        private void AddPartitionInstance(string tableId)
-        {            
-            if (this.partitionedInstances == null)
-            {
-                this.partitionedInstances = new Dictionary<string, List<int>>();
-            }
-
-            if (this.partitionedInstances.ContainsKey(tableId))
-            {
-                return;
-            }
-
-            List<int> partitionKeys = new List<int>();
-            for (int partition = 0; partition < this.RedisManager.RedisInstanceCount; partition++)
-            {
-                partitionKeys.Add(partition);
-            }
-            this.partitionedInstances.Add(tableId, partitionKeys);
+        public void Dispose()
+        {
+            // do nothing
         }
     }
 
@@ -328,8 +252,6 @@
                         if (!this.versionTableMap.ContainsKey(tableId))
                         {
                             this.versionTableMap[tableId] = versionTable;
-                            // add instances for the created table
-                            this.AddPartitionInstance(tableId);
                         }
                     }
                 }
@@ -375,11 +297,25 @@
                         if (this.versionTableMap.ContainsKey(tableId))
                         {
                             this.versionTableMap.Remove(tableId);
-                            this.partitionedInstances.Remove(tableId);
                         }
                     }
                 }
                 return result == 1;
+            }
+        }
+
+        // Clear the database with FLUSHALL command
+        internal override void Clear()
+        {
+            int redisInstanceCount = this.RedisManager.RedisInstanceCount;
+            // The default redis db index
+            int redisDbIndex = 0;
+            for (int partition = 0; partition < redisInstanceCount; partition++)
+            {
+                using (RedisClient redisClient = this.RedisManager.GetClient(redisDbIndex, partition))
+                {
+                    redisClient.FlushAll();
+                }
             }
         }
     }
@@ -417,7 +353,7 @@
             long txId = 0, ret = 0;
             do
             {
-                txId = this.RandomLong(0, long.MaxValue);
+                txId = StaticRandom.RandIdentity();
 
                 string hashId = txId.ToString();
                 byte[] keyBytes = Encoding.ASCII.GetBytes(TxTableEntry.TXID_STRING);

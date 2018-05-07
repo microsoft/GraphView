@@ -201,5 +201,10 @@ namespace GraphView.Transaction
         {
             return this.versionTables.Keys;
         }
+
+        internal override void Clear()
+        {
+            // do nothing
+        }
     }
 }

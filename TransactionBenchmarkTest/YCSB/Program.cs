@@ -22,52 +22,20 @@ namespace TransactionBenchmarkTest.YCSB
             test.Stats();
         }
 
+        /// <summary>
+        /// For YCSB sync benchmark test
+        /// </summary>
         static void YCSBTest()
         {
             const int workerCount = 4;      // 4;
-            const int taskCount = 25000;   // 50000;
-            const string dataFile = "ycsb_data_u.in";
-            const string operationFile = "ycsb_ops_u_shuffle.in";
-
-            YCSBBenchmarkTest test = new YCSBBenchmarkTest(workerCount, taskCount);
-            test.Setup(dataFile, operationFile);
-
-            //Console.WriteLine("PLEASE INPUT RETURN TO CONTINUE...");
-            //Console.Read();
-
-            test.Run();
-            test.Stats();
-        }
-
-        static void TxOnlyTest()
-        {
-            const int workerCount = 128;      // 4;
-            const int taskCount = 10000;   // 50000;
-
-            YCSBBenchmarkTest test = new YCSBBenchmarkTest(workerCount, taskCount);
-            test.FlushRedis();
-
-            //Console.WriteLine("PLEASE INPUT RETURN TO CONTINUE...");
-            //Console.Read();
-
-            test.RunTxOnly();
-            
-            test.Stats();
-        }
-
-        static void YCSBReadOnlyTest()
-        {
-            const int workerCount = 4;      // 4;
-            const int taskCount = 50000;   // 50000;
-            const string dataFile = "ycsb_data_r.i";
+            const int taskCountPerWorker = 25000;   // 50000;
+            const string dataFile = "ycsb_data_r.in";
             const string operationFile = "ycsb_ops_r.in";
+            VersionDb versionDb = SingletonVersionDb.Instance;
 
-            YCSBBenchmarkTest test = new YCSBBenchmarkTest(workerCount, taskCount);
-            test.SetupReadOnly(dataFile, operationFile);
+            YCSBBenchmarkTest test = new YCSBBenchmarkTest(workerCount, taskCountPerWorker, versionDb);
 
-            //Console.WriteLine("PLEASE INPUT RETURN TO CONTINUE...");
-            //Console.Read();
-
+            test.Setup(dataFile, operationFile);
             test.Run();
             test.Stats();
         }
@@ -100,7 +68,6 @@ namespace TransactionBenchmarkTest.YCSB
             test.Stats();
         }
 
-
         internal static void PinThreadOnCores()
         {
             Thread.BeginThreadAffinity();
@@ -121,20 +88,14 @@ namespace TransactionBenchmarkTest.YCSB
 
         public static void Main(string[] args)
         {
-            //byte[] bytes = BitConverter.GetBytes(5L);
-            //object value = BitConverter.ToInt64(bytes, 0);
-            //long longv = Convert.ToInt64(value);
+            // For the YCSB sync test
+            YCSBTest();
 
-            // PinThreadOnCores();
-            // YCSBTest();
-            RedisBenchmarkTest();
+            // For the redis benchmark Test
+            // RedisBenchmarkTest();
 
-            // TxOnlyTest();
-
-            //YCSBReadOnlyTest();
-
+            // For the YCSB async test
             // YCSBAsyncTest();
         }
-        
     }
 }

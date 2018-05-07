@@ -29,20 +29,6 @@ namespace GraphView.Transaction
         /// </summary>
         public static PartitionByKeyDelegate LogicalPartitionByKey { get; set; }
 
-        /// <summary>
-        /// A random number generator for create new TxId.
-        /// </summary>
-        private static readonly Random random = new Random();
-
-        /// <summary>
-        /// A spin lock to sync the random generator
-        /// Based on MSDN document: If you don't ensure that the Random object is 
-        /// accessed in a thread-safe way, calls to methods that return random numbers return 0.
-        /// 
-        /// In practical, we have encountered this case
-        /// </summary>
-        private static SpinLock RandomSpinLock = new SpinLock();
-
         public static bool Print = true;
 
         protected static class StaticRandom
@@ -65,32 +51,6 @@ namespace GraphView.Transaction
         public VersionDb()
         {
 
-        }
-
-        /// <summary>
-		/// Generate a random long type in the range of [min, max]
-        /// The reason to take the sync is introduced in VersionDbSpinLock
-		/// </summary>
-		/// <returns></returns>
-		protected long RandomLong(long min, long max)
-        {
-            byte[] buf = new byte[8];
-            bool lockTaken = false;
-            try
-            {
-                VersionDb.RandomSpinLock.Enter(ref lockTaken);
-                VersionDb.random.NextBytes(buf);
-            }
-            finally
-            {
-                if (lockTaken)
-                {
-                    VersionDb.RandomSpinLock.Exit();
-                }
-            }
-            
-            long longRand = BitConverter.ToInt64(buf, 0);
-            return (Math.Abs(longRand % (max - min)) + min);
         }
     }
 
@@ -136,6 +96,15 @@ namespace GraphView.Transaction
         /// <param name="tableId"></param>
         /// <returns></returns>
         internal virtual bool DeleteTable(string tableId)
+        {
+            throw new NotImplementedException();
+        }
+
+        /// <summary>
+        /// Clear the version db, which will delete the meta data and record data
+        /// </summary>
+        /// <returns></returns>
+        internal virtual void Clear()
         {
             throw new NotImplementedException();
         }
@@ -429,7 +398,7 @@ namespace GraphView.Transaction
                 throw new TransactionException("The specified table does not exists.");
             }
 
-            NewTxIdRequest req = new NewTxIdRequest(this.RandomLong(0, long.MaxValue));
+            NewTxIdRequest req = new NewTxIdRequest(StaticRandom.RandIdentity());
             versionTable.EnqueueTxRequest(req);
             return req;
         }
@@ -492,13 +461,12 @@ namespace GraphView.Transaction
 
         /// <summary>
         /// Try to set the tx's commitTime and return the commitTime
-        /// If the proposedCommitTime is greater than or equal to the commitLowerBound, set its commitTime as proposedCommitTime
-        /// and return the commitTime
-        /// Otherwise return -1 which means the proposedCommitTime is invalid
+        /// Take the larger value between commitLowerBound and proposedCommitTime as the commit time, and return it.
+        /// If there are some errors in the set process, it will return -1
         /// </summary>
         /// <param name="txId"></param>
         /// <param name="proposalTs"></param>
-        /// <returns>-1 or proposedCommitTime</returns>
+        /// <returns>-1 or commitTime</returns>
         internal virtual long SetAndGetCommitTime(long txId, long proposedCommitTime)
         {
             throw new NotImplementedException();
