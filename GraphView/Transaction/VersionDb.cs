@@ -29,6 +29,11 @@ namespace GraphView.Transaction
         /// </summary>
         public static PartitionByKeyDelegate LogicalPartitionByKey { get; set; }
 
+        /// <summary>
+        /// The default transaction table name
+        /// </summary>
+        public static readonly string TX_TABLE = "tx_table";
+
         public static bool Print = true;
 
         protected static class StaticRandom
@@ -109,9 +114,10 @@ namespace GraphView.Transaction
             throw new NotImplementedException();
         }
 
-        internal void Visit(string tableId, int partitionKey)
+        internal virtual void Visit(string tableId, int partitionKey)
         {
-            this.GetVersionTable(tableId).Visit(partitionKey);
+            throw new NotImplementedException();
+            
         }
     }
 
@@ -374,11 +380,6 @@ namespace GraphView.Transaction
     /// </summary>
     public abstract partial class VersionDb
     {
-        internal virtual void EnqueueTxRequest(TxRequest req)
-        {
-            throw new NotImplementedException();
-        }
-
         /// <summary>
         /// Generate an unique txId in the current transaction table and store the initial states in transaction
         /// table entry
@@ -390,30 +391,14 @@ namespace GraphView.Transaction
             throw new NotImplementedException();
         }
 
-        internal NewTxIdRequest EnqueueNewTxId()
+        internal virtual NewTxIdRequest EnqueueNewTxId()
         {
-            VersionTable versionTable = this.GetVersionTable(RedisVersionDb.TX_TABLE);
-            if (versionTable == null)
-            {
-                throw new TransactionException("The specified table does not exists.");
-            }
-
-            NewTxIdRequest req = new NewTxIdRequest(StaticRandom.RandIdentity());
-            versionTable.EnqueueTxRequest(req);
-            return req;
+            throw new NotImplementedException();
         }
 
-        internal InsertTxIdRequest EnqueueInsertTxId(long txId)
+        internal virtual InsertTxIdRequest EnqueueInsertTxId(long txId)
         {
-            VersionTable versionTable = this.GetVersionTable(RedisVersionDb.TX_TABLE);
-            if (versionTable == null)
-            {
-                throw new TransactionException("The specified table does not exists.");
-            }
-
-            InsertTxIdRequest req = new InsertTxIdRequest(txId);
-            versionTable.EnqueueTxRequest(req);
-            return req;
+            throw new NotImplementedException();
         }
 
         /// <summary>
@@ -425,17 +410,9 @@ namespace GraphView.Transaction
             throw new NotImplementedException();
         }
 
-        internal GetTxEntryRequest EnqueueGetTxEntry(long txId)
+        internal virtual GetTxEntryRequest EnqueueGetTxEntry(long txId)
         {
-            VersionTable versionTable = this.GetVersionTable(RedisVersionDb.TX_TABLE);
-            if (versionTable == null)
-            {
-                throw new TransactionException("The specified table does not exists.");
-            }
-
-            GetTxEntryRequest req = new GetTxEntryRequest(txId);
-            versionTable.EnqueueTxRequest(req);
-            return req;
+            throw new NotImplementedException();
         }
 
         /// <summary>
@@ -446,17 +423,9 @@ namespace GraphView.Transaction
             throw new NotImplementedException();
         }
 
-        internal UpdateTxStatusRequest EnqueueUpdateTxStatus(long txId, TxStatus status)
+        internal virtual UpdateTxStatusRequest EnqueueUpdateTxStatus(long txId, TxStatus status)
         {
-            VersionTable versionTable = this.GetVersionTable(RedisVersionDb.TX_TABLE);
-            if (versionTable == null)
-            {
-                throw new TransactionException("The specified table does not exists.");
-            }
-
-            UpdateTxStatusRequest req = new UpdateTxStatusRequest(txId, status);
-            versionTable.EnqueueTxRequest(req);
-            return req;
+            throw new NotImplementedException();
         }
 
         /// <summary>
@@ -472,17 +441,9 @@ namespace GraphView.Transaction
             throw new NotImplementedException();
         }
 
-        internal SetCommitTsRequest EnqueueSetCommitTs(long txId, long proposedCommitTs)
+        internal virtual SetCommitTsRequest EnqueueSetCommitTs(long txId, long proposedCommitTs)
         {
-            VersionTable versionTable = this.GetVersionTable(RedisVersionDb.TX_TABLE);
-            if (versionTable == null)
-            {
-                throw new TransactionException("The specified table does not exists.");
-            }
-
-            SetCommitTsRequest req = new SetCommitTsRequest(txId, proposedCommitTs);
-            versionTable.EnqueueTxRequest(req);
-            return req;
+            throw new NotImplementedException();
         }
 
         /// <summary>
@@ -500,17 +461,9 @@ namespace GraphView.Transaction
             throw new NotImplementedException();
         }
 
-        internal UpdateCommitLowerBoundRequest EnqueueUpdateCommitLowerBound(long txId, long lowerBound)
+        internal virtual UpdateCommitLowerBoundRequest EnqueueUpdateCommitLowerBound(long txId, long lowerBound)
         {
-            VersionTable versionTable = this.GetVersionTable(RedisVersionDb.TX_TABLE);
-            if (versionTable == null)
-            {
-                throw new TransactionException("The specified table does not exists.");
-            }
-
-            UpdateCommitLowerBoundRequest lowerBoundReq = new UpdateCommitLowerBoundRequest(txId, lowerBound);
-            versionTable.EnqueueTxRequest(lowerBoundReq);
-            return lowerBoundReq;
+            throw new NotImplementedException();
         }
     }
 }

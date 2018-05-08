@@ -319,6 +319,8 @@
     <Compile Include="Transaction\LogRequest.cs" />
     <Compile Include="Transaction\CassandraVersionDb.cs" />
     <Compile Include="Transaction\CassandraVersionTable.cs" />
+    <Compile Include="Transaction\PartitionedTxEntryRequestVisitor.cs" />
+    <Compile Include="Transaction\PartitionVersionEntryRequestVisitor.cs" />
     <Compile Include="Transaction\PostProcessingEntry.cs" />
     <Compile Include="Transaction\ReadSetEntry.cs" />
     <Compile Include="Transaction\RedisClientManager.cs" />
@@ -329,6 +331,8 @@
     <Compile Include="Transaction\RedisRequestVisitor.cs" />
     <Compile Include="Transaction\RedisVersionDb.cs" />
     <Compile Include="Transaction\RedisVersionTable.cs" />
+    <Compile Include="Transaction\SingletonPartitionedVersionDb.cs" />
+    <Compile Include="Transaction\SingletonPartitionedVersionTable.cs" />
     <Compile Include="Transaction\SingletonVersionDb.cs" />
     <Compile Include="Transaction\SingletonVersionDictionaryTable.cs" />
     <Compile Include="Transaction\SingletonVersionTreeMapTable.cs" />
@@ -339,6 +343,7 @@
     <Compile Include="Transaction\TxRequestVisitor.cs" />
     <Compile Include="Transaction\TxStatus.cs" />
     <Compile Include="Transaction\TxTableEntry.cs" />
+    <Compile Include="Transaction\VersionBlob.cs" />
     <Compile Include="Transaction\VersionPrimaryKey.cs" />
     <Compile Include="Transaction\VersionDb.cs" />
     <Compile Include="Transaction\VersionEntry.cs" />

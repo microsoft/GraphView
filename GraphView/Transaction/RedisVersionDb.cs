@@ -57,11 +57,6 @@
         public static readonly long META_DB_INDEX = 0;
         
         /// <summary>
-        /// The default transaction table name
-        /// </summary>
-        public static readonly string TX_TABLE = "tx_table";
-
-        /// <summary>
         /// The default transaction database index
         /// </summary>
         public static readonly long TX_DB_INDEX = 1;
@@ -335,20 +330,20 @@
     /// </summary>
     public partial class RedisVersionDb
     {
-		internal override void EnqueueTxRequest(TxRequest req)
-		{
-            throw new NotImplementedException();
-		}
+        internal override void Visit(string tableId, int partitionKey)
+        {
+            this.GetVersionTable(tableId).Visit(partitionKey);
+        }
 
-		/// <summary>
-		/// Get a unique transaction Id and store the txTableEntry into the redis
-		/// This will be implemented in two steps since HSETNX can only have a field
-		/// 1. try a random txId and ensure that it is unique in redis with the command HSETNX
-		///    If it is a unique id, set it in hset to occupy it with the same atomic operation
-		/// 2. set other fields of txTableEntry by HSET command
-		/// </summary>
-		/// <returns>a transaction Id</returns>
-		internal override long InsertNewTx()
+        /// <summary>
+        /// Get a unique transaction Id and store the txTableEntry into the redis
+        /// This will be implemented in two steps since HSETNX can only have a field
+        /// 1. try a random txId and ensure that it is unique in redis with the command HSETNX
+        ///    If it is a unique id, set it in hset to occupy it with the same atomic operation
+        /// 2. set other fields of txTableEntry by HSET command
+        /// </summary>
+        /// <returns>a transaction Id</returns>
+        internal override long InsertNewTx()
         {
             long txId = 0, ret = 0;
             do
@@ -407,6 +402,32 @@
             return txId;
         }
 
+        internal override NewTxIdRequest EnqueueNewTxId()
+        {
+            VersionTable versionTable = this.GetVersionTable(RedisVersionDb.TX_TABLE);
+            if (versionTable == null)
+            {
+                throw new TransactionException("The specified table does not exists.");
+            }
+
+            NewTxIdRequest req = new NewTxIdRequest(StaticRandom.RandIdentity());
+            versionTable.EnqueueTxRequest(req);
+            return req;
+        }
+
+        internal override InsertTxIdRequest EnqueueInsertTxId(long txId)
+        {
+            VersionTable versionTable = this.GetVersionTable(RedisVersionDb.TX_TABLE);
+            if (versionTable == null)
+            {
+                throw new TransactionException("The specified table does not exists.");
+            }
+
+            InsertTxIdRequest req = new InsertTxIdRequest(txId);
+            versionTable.EnqueueTxRequest(req);
+            return req;
+        }
+
         /// <summary>
         /// Get txTableEntry with HMGET command
         /// The return fields and values' order in HGETALL isn't guaranteed in Redis
@@ -452,6 +473,19 @@
                 BitConverter.ToInt64(valueBytes[2],0));
         }
 
+        internal override GetTxEntryRequest EnqueueGetTxEntry(long txId)
+        {
+            VersionTable versionTable = this.GetVersionTable(RedisVersionDb.TX_TABLE);
+            if (versionTable == null)
+            {
+                throw new TransactionException("The specified table does not exists.");
+            }
+
+            GetTxEntryRequest req = new GetTxEntryRequest(txId);
+            versionTable.EnqueueTxRequest(req);
+            return req;
+        }
+
         /// <summary>
         /// Implemented by HSET command
         /// </summary>
@@ -476,6 +510,19 @@
                     ret = client.HSet(hashId, keyBytes, valueBytes);
                 }
             }
+        }
+
+        internal override UpdateTxStatusRequest EnqueueUpdateTxStatus(long txId, TxStatus status)
+        {
+            VersionTable versionTable = this.GetVersionTable(RedisVersionDb.TX_TABLE);
+            if (versionTable == null)
+            {
+                throw new TransactionException("The specified table does not exists.");
+            }
+
+            UpdateTxStatusRequest req = new UpdateTxStatusRequest(txId, status);
+            versionTable.EnqueueTxRequest(req);
+            return req;
         }
 
         /// <summary>
@@ -518,6 +565,19 @@
             return BitConverter.ToInt64(returnBytes[1], 0);
         }
 
+        internal override SetCommitTsRequest EnqueueSetCommitTs(long txId, long proposedCommitTs)
+        {
+            VersionTable versionTable = this.GetVersionTable(RedisVersionDb.TX_TABLE);
+            if (versionTable == null)
+            {
+                throw new TransactionException("The specified table does not exists.");
+            }
+
+            SetCommitTsRequest req = new SetCommitTsRequest(txId, proposedCommitTs);
+            versionTable.EnqueueTxRequest(req);
+            return req;
+        }
+
         /// <summary>
         /// It's implemeted by a CAS "UPDATE_COMMIT_LOWER_BOUND"
         /// </summary>s
@@ -557,6 +617,19 @@
 
             long ret = BitConverter.ToInt64(returnBytes[1], 0);
             return ret;
+        }
+
+        internal override UpdateCommitLowerBoundRequest EnqueueUpdateCommitLowerBound(long txId, long lowerBound)
+        {
+            VersionTable versionTable = this.GetVersionTable(RedisVersionDb.TX_TABLE);
+            if (versionTable == null)
+            {
+                throw new TransactionException("The specified table does not exists.");
+            }
+
+            UpdateCommitLowerBoundRequest lowerBoundReq = new UpdateCommitLowerBoundRequest(txId, lowerBound);
+            versionTable.EnqueueTxRequest(lowerBoundReq);
+            return lowerBoundReq;
         }
     }
 }
