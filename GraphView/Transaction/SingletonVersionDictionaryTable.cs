@@ -303,7 +303,7 @@
             ConcurrentDictionary<long, VersionBlob> versionList = null;
             if (!this.dict.TryGetValue(recordKey, out versionList))
             {
-                throw new TransactionException("The specified record does not exist.");
+                return null;
             }
 
             // The value at -1 in the version list is a special entry, 
@@ -339,6 +339,11 @@
             }
 
             return localList;
+        }
+
+        internal void Clear()
+        {
+            this.dict.Clear();
         }
     }
 }

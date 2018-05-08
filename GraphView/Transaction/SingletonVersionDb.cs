@@ -204,7 +204,13 @@ namespace GraphView.Transaction
 
         internal override void Clear()
         {
-            // do nothing
+            this.txTable.Clear();
+
+            foreach (string tableId in this.versionTables.Keys)
+            {
+                SingletonDictionaryVersionTable versionTable = this.versionTables[tableId];
+                versionTable.Clear();
+            }
         }
     }
 }
