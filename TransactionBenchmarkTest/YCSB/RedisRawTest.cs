@@ -1,10 +1,10 @@
 ﻿namespace TransactionBenchmarkTest.YCSB
 {
-    using GraphView.Transaction;
     using ServiceStack.Redis;
     using ServiceStack.Redis.Pipeline;
     using System;
     using System.Collections.Generic;
+    using System.Diagnostics;
     using System.Threading;
 
     class RedisRawTest
@@ -16,6 +16,8 @@
         internal static int REDIS_INSTANCES = 1;
 
         internal static int THREAD_PER_REDIS = 3;
+
+        internal static int OFFSET = 0;
 
         protected static class StaticRandom
         {
@@ -36,23 +38,23 @@
 
         internal static string[] READ_WRITE_HOST =
         {
-            "127.0.0.1:6379",
-            //"127.0.0.1:6381",
-            //"127.0.0.1:6382",
-            //"127.0.0.1:6383",
-            //"127.0.0.1:6384",
-            //"127.0.0.1:6385",
-            //"127.0.0.1:6386",
-            //"127.0.0.1:6387",
-            //"127.0.0.1:6388",
-            //"127.0.0.1:6389",
-            //"127.0.0.1:6390",
-            //"127.0.0.1:6390",
-            //"127.0.0.1:6391",
-            //"127.0.0.1:6392",
-            //"127.0.0.1:6393",
-            //"127.0.0.1:6394",
-            //"127.0.0.1:6395",
+            "127.0.0.1:6380",
+            "127.0.0.1:6381",
+            "127.0.0.1:6382",
+            "127.0.0.1:6383",
+            "127.0.0.1:6384",
+            "127.0.0.1:6385",
+            "127.0.0.1:6386",
+            "127.0.0.1:6387",
+            "127.0.0.1:6388",
+            "127.0.0.1:6389",
+            "127.0.0.1:6390",
+            "127.0.0.1:6390",
+            "127.0.0.1:6391",
+            "127.0.0.1:6392",
+            "127.0.0.1:6393",
+            "127.0.0.1:6394",
+            "127.0.0.1:6395",
         };
 
         private static IRedisClientsManager[] MANAGER;
@@ -70,8 +72,8 @@
             for (int i = 0; i < REDIS_INSTANCES;i++)
             {
                 MANAGER[i] = new PooledRedisClientManager(
-                    new string[] { READ_WRITE_HOST[i] },
-                    new string[] { READ_WRITE_HOST[i] },
+                    new string[] { READ_WRITE_HOST[i + OFFSET] },
+                    new string[] { READ_WRITE_HOST[i + OFFSET] },
                     config);
                 for (int j = 0; j < THREAD_PER_REDIS; j++)
                 {
@@ -85,7 +87,12 @@
             Tuple<int, int> tuple = (Tuple<int, int>)obj;
             int partition = tuple.Item1, clientIndex = tuple.Item2;
             IRedisClient redisClient = clients[clientIndex];
-            
+            // PinThreadOnCores(clientIndex);
+
+            // debug
+            Console.WriteLine("{0}:{1}", redisClient.Host, redisClient.Port);
+
+            long beginTicks = DateTime.Now.Ticks;
             for (int i = 0; i < BATCHES; i++)
             {
                 using (IRedisPipeline pipe = redisClient.CreatePipeline())
@@ -99,6 +106,31 @@
                     pipe.Flush();
                 }
             }
+            long endTicks = DateTime.Now.Ticks;
+
+            int throughput = (int)(BATCHES * 100 * 1.0 / ((endTicks - beginTicks) * 1.0 / 10000000));
+            // Console.WriteLine("Single Thread Throughput: {0}", throughput);
+        }
+
+        internal static void PinThreadOnCores(long coreIndex)
+        {
+            long allowMask = (1L << (int)coreIndex);
+            // Console.WriteLine(Convert.ToString(allowMask, 2).PadLeft(32, '0'));
+            Console.WriteLine("Running on the {0}-th core", coreIndex);
+            Thread.BeginThreadAffinity();
+            Process Proc = Process.GetCurrentProcess();
+            foreach (ProcessThread pthread in Proc.Threads)
+            {
+                if (pthread.Id == AppDomain.GetCurrentThreadId())
+                {
+                    long AffinityMask = (long)Proc.ProcessorAffinity;
+                    AffinityMask &= allowMask;
+                    // AffinityMask &= 0x007F;
+                    pthread.ProcessorAffinity = (IntPtr)AffinityMask;
+                }
+            }
+
+            Thread.EndThreadAffinity();
         }
 
         public void Test()

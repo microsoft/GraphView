@@ -3,7 +3,6 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading;
-using ServiceStack.Redis;
 
 namespace TransactionBenchmarkTest.YCSB
 {
@@ -11,16 +10,27 @@ namespace TransactionBenchmarkTest.YCSB
     {
         static void ExecuteRedisRawTest()
         {
-            RedisRawTest.BATCHES = 10000;
+            RedisRawTest.BATCHES = 25000;
+            RedisRawTest.REDIS_INSTANCES = 8;
+
+            // ONLY FOR SEPARATE PROGRESS
             RedisRawTest.REDIS_INSTANCES = 1;
+            Console.Write("Input the Redis Id (start from 1): ");
+            string line = Console.ReadLine();
+            int redisId = int.Parse(line);
+            RedisRawTest.OFFSET = redisId - 1;
+
 
             new RedisRawTest().Test();
+
+            Console.Write("Type Enter to close...");
+            Console.Read();
         }
 
         static void RedisBenchmarkTest()
         {
             const int workerCount = 4;
-            const int taskCount = 1000000;
+            const int taskCount = 2000000;
             const bool pipelineMode = true;
             const int pipelineSize = 100;
 
@@ -97,7 +107,7 @@ namespace TransactionBenchmarkTest.YCSB
         public static void Main(string[] args)
         {
             // For the YCSB sync test
-            YCSBTest();
+            // YCSBTest();
 
             // For the redis benchmark Test
             // RedisBenchmarkTest();
@@ -105,7 +115,7 @@ namespace TransactionBenchmarkTest.YCSB
             // For the YCSB async test
             // YCSBAsyncTest();
 
-            // ExecuteRedisRawTest();
+            ExecuteRedisRawTest();
         }
     }
 }
