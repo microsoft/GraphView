@@ -614,40 +614,41 @@ namespace GraphView.Transaction
             }
         }
 
-        public void Commit()
+        public bool Commit()
         {
             // Phase 3: Uploading Phase
             if (!this.UploadLocalWriteRecords())
             {
                 this.Abort();
-                throw new TransactionException("Upload");
+                return false;
             }
 
             // Phase 4: Choosing Commit Timestamp Phase
             if (!this.GetCommitTimestamp())
             {
                 this.Abort();
-                throw new TransactionException("Get CommitTs");
+                return false;
             }
 
             // Phase 5: Validate Phase
             if (!this.Validate())
             {
                 this.Abort();
-                throw new TransactionException("Validation");
+                return false;
             }
 
             // Phase 6: Commit Phase, Write to log and change the transaction status
             if (!this.WriteChangeToLog())
             {
                 this.Abort();
-                throw new TransactionException("WriteChangeToLog");
+                return false;
             }
             this.txStatus = TxStatus.Committed;
             this.versionDb.UpdateTxStatus(this.txId, TxStatus.Committed);
 
             // Phase 7: PostProcessing Phase
             this.PostProcessingAfterCommit();
+            return true;
         }
 
         private bool WriteChangeToLog()
@@ -690,7 +691,7 @@ namespace GraphView.Transaction
                 if (this.writeSet[tableId][recordKey] != null)
                 {
                     this.Abort();
-                    throw new TransactionException("Insert");
+                    return;
                 }
                 else
                 {
@@ -704,7 +705,7 @@ namespace GraphView.Transaction
                 this.readSet[tableId].ContainsKey(recordKey))
             {
                 this.Abort();
-                throw new TransactionException("Insert");
+                return;
             }
 
             //add the new record to local writeSet
@@ -795,7 +796,7 @@ namespace GraphView.Transaction
                 else
                 {
                     this.Abort();
-                    throw new TransactionException("Update");
+                    return;
                 }
             }
 
@@ -830,7 +831,7 @@ namespace GraphView.Transaction
             else
             {
                 this.Abort();
-                throw new TransactionException("Update");
+                return;
             }
         }
 
@@ -855,7 +856,7 @@ namespace GraphView.Transaction
                 else
                 {
                     this.Abort();
-                    throw new TransactionException("Delete");
+                    return;
                 }
             }
             //check whether the record is already exist in the local readSet
@@ -887,7 +888,7 @@ namespace GraphView.Transaction
             else
             {
                 this.Abort();
-                throw new TransactionException("Delete");
+                return;
             }
         }
 
