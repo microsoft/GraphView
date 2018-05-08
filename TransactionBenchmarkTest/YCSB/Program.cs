@@ -8,15 +8,19 @@ namespace TransactionBenchmarkTest.YCSB
 {
     class Program
     {
+
+        private static string[] args;
+
         static void ExecuteRedisRawTest()
         {
             RedisRawTest.BATCHES = 25000;
-            RedisRawTest.REDIS_INSTANCES = 8;
+            RedisRawTest.REDIS_INSTANCES = 4;
 
             // ONLY FOR SEPARATE PROGRESS
             RedisRawTest.REDIS_INSTANCES = 1;
-            Console.Write("Input the Redis Id (start from 1): ");
-            string line = Console.ReadLine();
+            //Console.Write("Input the Redis Id (start from 1): ");
+            //string line = Console.ReadLine();
+            string line = args[0];
             int redisId = int.Parse(line);
             RedisRawTest.OFFSET = redisId - 1;
 
@@ -106,6 +110,7 @@ namespace TransactionBenchmarkTest.YCSB
 
         public static void Main(string[] args)
         {
+            Program.args = args;
             // For the YCSB sync test
             // YCSBTest();
 

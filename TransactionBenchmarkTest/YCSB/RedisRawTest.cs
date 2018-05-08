@@ -6,6 +6,7 @@
     using System.Collections.Generic;
     using System.Diagnostics;
     using System.Threading;
+    using System.Threading.Tasks;
 
     class RedisRawTest
     {
@@ -18,6 +19,8 @@
         internal static int THREAD_PER_REDIS = 3;
 
         internal static int OFFSET = 0;
+
+        internal static ManualResetEventSlim SLIM = new ManualResetEventSlim();
 
         protected static class StaticRandom
         {
@@ -92,6 +95,7 @@
             // debug
             Console.WriteLine("{0}:{1}", redisClient.Host, redisClient.Port);
 
+            SLIM.Wait();
             long beginTicks = DateTime.Now.Ticks;
             for (int i = 0; i < BATCHES; i++)
             {
@@ -138,23 +142,21 @@
             Init();
             Console.WriteLine("Initied");
 
-            List<Thread> threadList = new List<Thread>();
             int totalThreads = THREAD_PER_REDIS * REDIS_INSTANCES;
+            Task[] workers = new Task[totalThreads];
+            // ManualResetEventSlim e = new ManualResetEventSlim();
+
+            for (int i = 0; i < workers.Length; i++)
+            {
+                int threadIndex = i;
+                workers[i] = Task.Factory.StartNew(
+                    () => Run(Tuple.Create(threadIndex / THREAD_PER_REDIS, threadIndex)), TaskCreationOptions.LongRunning);
+            }
 
             Console.WriteLine("Running...");
             long beginTicks = DateTime.Now.Ticks;
-            for (int i = 0; i < totalThreads; i++)
-            {
-                Thread thread = new Thread(new ParameterizedThreadStart(Run));
-                threadList.Add(thread);
-                thread.Start(Tuple.Create(i/THREAD_PER_REDIS,i));
-            }
-
-            foreach (Thread thread in threadList)
-            {
-                thread.Join();
-            }
-
+            SLIM.Set();
+            Task.WaitAll(workers);
             long endTicks = DateTime.Now.Ticks;
 
             int totalCommands = totalThreads * BATCHES * 100;
