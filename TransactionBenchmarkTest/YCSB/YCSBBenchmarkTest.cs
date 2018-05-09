@@ -46,51 +46,46 @@
             Transaction tx = new Transaction(null, versionDb);
 
             string readValue = null;
-            try
-            {
-                switch (workload.Type)
-                {
-                    case "READ":
-                        readValue = (string)tx.Read(workload.TableId, workload.Key);
-                        break;
+			switch (workload.Type)
+			{
+				case "READ":
+					readValue = (string)tx.Read(workload.TableId, workload.Key);
+					break;
 
-                    case "UPDATE":
-                        readValue = (string)tx.Read(workload.TableId, workload.Key);
-                        if (readValue != null)
-                        {
-                            tx.Update(workload.TableId, workload.Key, workload.Value);
-                        }
-                        break;
+				case "UPDATE":
+					readValue = (string)tx.Read(workload.TableId, workload.Key);
+					if (readValue != null)
+					{
+						tx.Update(workload.TableId, workload.Key, workload.Value);
+					}
+					break;
 
-                    case "DELETE":
-                        readValue = (string)tx.Read(workload.TableId, workload.Key);
-                        if (readValue != null)
-                        {
-                            tx.Delete(workload.TableId, workload.Key);
-                        }
-                        break;
+				case "DELETE":
+					readValue = (string)tx.Read(workload.TableId, workload.Key);
+					if (readValue != null)
+					{
+						tx.Delete(workload.TableId, workload.Key);
+					}
+					break;
 
-                    case "INSERT":
-                        readValue = (string)tx.ReadAndInitialize(workload.TableId, workload.Key);
-                        if (readValue == null)
-                        {
-                            tx.Insert(workload.TableId, workload.Key, workload.Value);
-                        }
-                        break;
+				case "INSERT":
+					readValue = (string)tx.ReadAndInitialize(workload.TableId, workload.Key);
+					if (readValue == null)
+					{
+						tx.Insert(workload.TableId, workload.Key, workload.Value);
+					}
+					break;
 
-                    default:
-                        break;
-                }
-                tx.Commit();
-                // commited here
-                return true;
-            }
-            catch (TransactionException e)
-            {
-                // aborted here
-                return false;
-            }
-        };
+				default:
+					break;
+			}
+			// try to commit here
+			if (tx.Commit())
+			{
+				return true;
+			}
+			return false;
+		};
 
         /// <summary>
         /// The number of workers
