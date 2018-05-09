@@ -128,9 +128,9 @@ namespace GraphView.Transaction
             }
         }
 
-        private TxEntryRequest DequeueTxEntryRequest(int partitionKey)
+        private IEnumerable<TxEntryRequest> DequeueTxEntryRequest(int partitionKey)
         {
-            TxEntryRequest req = null;
+            List<TxEntryRequest> reqList = null;
             Queue<TxEntryRequest> queue = this.txEntryRequestQueues[partitionKey];
 
             bool lockTaken = false;
@@ -139,7 +139,8 @@ namespace GraphView.Transaction
                 this.queueLocks[partitionKey].Enter(ref lockTaken);
                 if (queue.Count > 0)
                 {
-                    req = queue.Dequeue();
+                    reqList = new List<TxEntryRequest>(queue);
+                    queue.Clear();
                 }
             }
             finally
@@ -150,24 +151,27 @@ namespace GraphView.Transaction
                 }
             }
 
-            return req;
+            return reqList;
         }
 
         internal override void Visit(string tableId, int partitionKey)
         {
             if (tableId == VersionDb.TX_TABLE)
             {
-                TxEntryRequest req = this.DequeueTxEntryRequest(partitionKey);
-                if (req == null)
+                IEnumerable<TxEntryRequest> reqList = this.DequeueTxEntryRequest(partitionKey);
+                if (reqList == null)
                 {
                     return;
                 }
 
-                this.txRequestVisitors[partitionKey].Invoke(req);
+                foreach (TxEntryRequest req in reqList)
+                {
+                    this.txRequestVisitors[partitionKey].Invoke(req);
+                }
             }
             else
             {
-                VersionTable versionTable = this.versionTables[tableId];
+                SingletonPartitionedVersionTable versionTable = this.versionTables[tableId];
                 if (versionTable != null)
                 {
                     versionTable.Visit(partitionKey);
