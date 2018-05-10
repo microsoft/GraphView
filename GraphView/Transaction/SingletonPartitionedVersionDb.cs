@@ -13,13 +13,27 @@ namespace GraphView.Transaction
         private static volatile SingletonPartitionedVersionDb instance;
         private static readonly object initlock = new object();
 
+        /// <summary>
+        /// The version table maps
+        /// </summary>
         private readonly Dictionary<string, SingletonPartitionedVersionTable> versionTables;
 
+        /// <summary>
+        /// The transaction table map, txId => txTableEntry
+        /// </summary>
         private readonly Dictionary<long, TxTableEntry>[] txTable;
+
+        /// <summary>
+        /// requests of all tx operations
+        /// </summary>
         private readonly Queue<TxEntryRequest>[] txEntryRequestQueues;
         private readonly SpinLock[] queueLocks;
         private readonly PartitionTxEntryRequestVisitor[] txRequestVisitors;
 
+
+        /// <summary>
+        /// The count of partitions, thus the number of dicts for a version table
+        /// </summary>
         internal int PartitionCount { get; private set; }
 
         private SingletonPartitionedVersionDb(int partitionCount)
@@ -43,6 +57,11 @@ namespace GraphView.Transaction
             this.PhysicalPartitionByKey = key => key.GetHashCode() % this.PartitionCount;
         }
 
+        /// <summary>
+        /// The method to get the version db's singleton instance
+        /// </summary>
+        /// <param name="partitionCount">The number of partitions</param>
+        /// <returns></returns>
         internal static SingletonPartitionedVersionDb Instance(int partitionCount = 4)
         {
             if (SingletonPartitionedVersionDb.instance == null)
@@ -60,8 +79,14 @@ namespace GraphView.Transaction
 
         internal override void Clear()
         {
+            // Clear contents of the version table at first
+            foreach (string key in this.versionTables.Keys)
+            {
+                this.versionTables[key].Clear();
+            }
             this.versionTables.Clear();
-            for (int pid = 0; pid < this.versionTables.Count; pid ++)
+
+            for (int pid = 0; pid < this.PartitionCount; pid ++)
             {
                 if (this.txTable[pid] != null)
                 {
@@ -72,12 +97,15 @@ namespace GraphView.Transaction
 
         internal override VersionTable CreateVersionTable(string tableId, long redisDbIndex = 0)
         {
-            lock(this.versionTables)
+            if (!this.versionTables.ContainsKey(tableId))
             {
-                if (!this.versionTables.ContainsKey(tableId))
+                lock (this.versionTables)
                 {
-                    SingletonPartitionedVersionTable vtable = new SingletonPartitionedVersionTable(this, tableId, this.PartitionCount);
-                    this.versionTables.Add(tableId, vtable);
+                    if (!this.versionTables.ContainsKey(tableId))
+                    {
+                        SingletonPartitionedVersionTable vtable = new SingletonPartitionedVersionTable(this, tableId, this.PartitionCount);
+                        this.versionTables.Add(tableId, vtable);
+                    }
                 }
             }
 
@@ -86,18 +114,22 @@ namespace GraphView.Transaction
 
         internal override bool DeleteTable(string tableId)
         {
-            lock (this.versionTables)
+            if (this.versionTables.ContainsKey(tableId))
             {
-                if (!this.versionTables.ContainsKey(tableId))
+                lock (this.versionTables)
                 {
-                    this.versionTables.Remove(tableId);
-                    return true;
-                }
-                else
-                {
-                    return false;
+                    if (this.versionTables.ContainsKey(tableId))
+                    {
+                        this.versionTables.Remove(tableId);
+                        return true;
+                    }
+                    else
+                    {
+                        return false;
+                    }
                 }
             }
+            return true;
         }
 
         internal override IEnumerable<string> GetAllTables()
@@ -107,9 +139,18 @@ namespace GraphView.Transaction
 
         internal override VersionTable GetVersionTable(string tableId)
         {
+            if (!this.versionTables.ContainsKey(tableId))
+            {
+                return null;
+            }
             return this.versionTables[tableId];
         }
 
+        /// <summary>
+        /// Enqueue Transcation Entry Requests
+        /// </summary>
+        /// <param name="txId">The specify txId to partition</param>
+        /// <param name="txEntryRequest">The given request</param>
         private void EnqueueTxEntryRequest(long txId, TxEntryRequest txEntryRequest)
         {
             int pk = this.PhysicalPartitionByKey(txId);
@@ -130,48 +171,53 @@ namespace GraphView.Transaction
 
         private IEnumerable<TxEntryRequest> DequeueTxEntryRequest(int partitionKey)
         {
-            List<TxEntryRequest> reqList = null;
+            TxEntryRequest[] reqArray = null;
             Queue<TxEntryRequest> queue = this.txEntryRequestQueues[partitionKey];
 
-            bool lockTaken = false;
-            try
+            if (queue.Count > 0)
             {
-                this.queueLocks[partitionKey].Enter(ref lockTaken);
-                if (queue.Count > 0)
+                bool lockTaken = false;
+                try
                 {
-                    reqList = new List<TxEntryRequest>(queue);
-                    queue.Clear();
+                    this.queueLocks[partitionKey].Enter(ref lockTaken);
+                    if (queue.Count > 0)
+                    {
+                        reqArray = queue.ToArray();
+                        queue.Clear();
+                    }
                 }
-            }
-            finally
-            {
-                if (lockTaken)
+                finally
                 {
-                    this.queueLocks[partitionKey].Exit();
+                    if (lockTaken)
+                    {
+                        this.queueLocks[partitionKey].Exit();
+                    }
                 }
             }
 
-            return reqList;
+            return reqArray;
         }
 
         internal override void Visit(string tableId, int partitionKey)
         {
+            // Here try to flush the tx requests
             if (tableId == VersionDb.TX_TABLE)
             {
-                IEnumerable<TxEntryRequest> reqList = this.DequeueTxEntryRequest(partitionKey);
-                if (reqList == null)
+                IEnumerable<TxEntryRequest> reqArray = this.DequeueTxEntryRequest(partitionKey);
+                if (reqArray == null)
                 {
                     return;
                 }
 
-                foreach (TxEntryRequest req in reqList)
+                foreach (TxEntryRequest req in reqArray)
                 {
                     this.txRequestVisitors[partitionKey].Invoke(req);
                 }
             }
             else
             {
-                SingletonPartitionedVersionTable versionTable = this.versionTables[tableId];
+                SingletonPartitionedVersionTable versionTable = 
+                    this.GetVersionTable(tableId) as SingletonPartitionedVersionTable;
                 if (versionTable != null)
                 {
                     versionTable.Visit(partitionKey);

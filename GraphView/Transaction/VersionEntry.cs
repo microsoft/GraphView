@@ -27,7 +27,7 @@ namespace GraphView.Transaction
         public static readonly object EMPTY_RECORD = "";
         public static readonly long EMPTY_TXID = -1L;
 
-        public static readonly long VERSION_KEY_STRAT_INDEX = 0L;
+        public static readonly long VERSION_KEY_STRAT_INDEX = -1L;
 
         // The following three properties are readonly
         internal object RecordKey { get; }

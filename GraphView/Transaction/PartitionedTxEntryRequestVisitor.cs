@@ -6,6 +6,7 @@ namespace GraphView.Transaction
 
     internal class PartitionTxEntryRequestVisitor : TxRequestVisitor
     {
+        // A reference of dict in the version db
         private readonly Dictionary<long, TxTableEntry> txTable;
 
         public PartitionTxEntryRequestVisitor(Dictionary<long, TxTableEntry> txTable)
@@ -48,8 +49,16 @@ namespace GraphView.Transaction
         internal override void Visit(SetCommitTsRequest req)
         {
             TxTableEntry txEntry = this.txTable[req.TxId];
-            txEntry.CommitTime = Math.Max(txEntry.CommitLowerBound, req.ProposedCommitTs);
-            req.Result = txEntry.CommitTime;
+            // already has a commit time
+            if (txEntry.CommitTime != TxTableEntry.DEFAULT_COMMIT_TIME)
+            {
+                req.Result = -1L;
+            }
+            else
+            {
+                txEntry.CommitTime = Math.Max(txEntry.CommitLowerBound, req.ProposedCommitTs);
+                req.Result = txEntry.CommitTime;
+            }
             req.Finished = true;
         }
 
@@ -74,6 +83,7 @@ namespace GraphView.Transaction
         {
             TxTableEntry txEntry = this.txTable[req.TxId];
             txEntry.Status = req.TxStatus;
+            req.Result = null;
             req.Finished = true;
         }
     }

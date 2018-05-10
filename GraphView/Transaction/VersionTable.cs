@@ -30,6 +30,14 @@ namespace GraphView.Transaction
         }
 
         /// <summary>
+        /// Clear all contents of a version table
+        /// </summary>
+        internal virtual void Clear()
+        {
+            throw new NotImplementedException();
+        }
+
+        /// <summary>
         /// Get a list of version entries, which will be used to check visiablity
         /// </summary>
         /// <returns></returns>

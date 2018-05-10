@@ -1,10 +1,12 @@
 ﻿
 namespace GraphView.Transaction
 {
+    using System;
     using System.Collections.Generic;
 
     internal class PartitionVersionEntryRequestVisitor : TxRequestVisitor
     {
+        // A reference to the dict in version table
         private readonly Dictionary<object, Dictionary<long, VersionEntry>> dict;
 
         public PartitionVersionEntryRequestVisitor(Dictionary<object, Dictionary<long, VersionEntry>> dict)
@@ -23,8 +25,13 @@ namespace GraphView.Transaction
                 dict[req.RecordKey].ContainsKey(req.VersionKey))
             {
                 dict[req.RecordKey].Remove(req.VersionKey);
+
+                // should reset the lastVersionKey, set the lastVersionKey as the current - 1
+                VersionEntry tailEntry = dict[req.RecordKey][VersionEntry.VERSION_KEY_STRAT_INDEX];
+                tailEntry.BeginTimestamp -= 1;
             }
 
+            req.Result = true;
             req.Finished = true;
         }
 
@@ -37,7 +44,7 @@ namespace GraphView.Transaction
                 return;
             }
 
-            VersionEntry tailPointer = this.dict[req.RecordKey][SingletonPartitionedVersionTable.TAIL_KEY];
+            VersionEntry tailPointer = this.dict[req.RecordKey][VersionEntry.VERSION_KEY_STRAT_INDEX];
             long lastVersionKey = tailPointer.BeginTimestamp;
 
             List<VersionEntry> localList = new List<VersionEntry>(2);
@@ -47,7 +54,9 @@ namespace GraphView.Transaction
             // so as to increase the lower bound of version keys and reduce the number of iterations. 
             while (lastVersionKey >= 0 && localList.Count <= 2)
             {
-                VersionEntry verEntry = this.dict[req.RecordKey][lastVersionKey];
+                // To make it run under .Net 4.5
+                VersionEntry verEntry = null;
+                this.dict[req.RecordKey].TryGetValue(lastVersionKey, out verEntry);
 
                 if (verEntry != null)
                 {
@@ -63,18 +72,16 @@ namespace GraphView.Transaction
 
         internal override void Visit(InitiGetVersionListRequest req)
         {
-            Dictionary<long, VersionEntry> versionList = this.dict[req.RecordKey];
-            if (versionList == null)
+            // The version list is empty
+            if (!this.dict.ContainsKey(req.RecordKey))
             {
                 Dictionary<long, VersionEntry> newVersionList =
                     new Dictionary<long, VersionEntry>(SingletonPartitionedVersionTable.VERSION_CAPACITY);
+
                 // Adds a special entry whose key is -1 when the list is initialized.
                 // The entry uses beginTimestamp as a pointer pointing to the newest verion in the list.
                 newVersionList.Add(
-                    SingletonPartitionedVersionTable.TAIL_KEY, 
-                    new VersionEntry(
-                        req.RecordKey, 
-                        SingletonPartitionedVersionTable.TAIL_KEY, -1, -1, null, -1, -1));
+                    VersionEntry.VERSION_KEY_STRAT_INDEX, VersionEntry.InitEmptyVersionEntry(req.RecordKey));
 
                 this.dict.Add(req.RecordKey, newVersionList);
 
@@ -85,7 +92,8 @@ namespace GraphView.Transaction
                 return;
             }
 
-            VersionEntry tailEntry = versionList[SingletonPartitionedVersionTable.TAIL_KEY];
+            Dictionary<long, VersionEntry> versionList = this.dict[req.RecordKey];
+            VersionEntry tailEntry = versionList[VersionEntry.VERSION_KEY_STRAT_INDEX];
             if (tailEntry == null)
             {
                 throw new TransactionException("The tail pointer is missing from the version list.");
@@ -99,7 +107,8 @@ namespace GraphView.Transaction
             // so as to increase the lower bound of version keys and reduce the number of iterations. 
             while (lastVersionKey >= 0 && localList.Count <= 2)
             {
-                VersionEntry verEntry = this.dict[req.RecordKey][lastVersionKey];
+                VersionEntry verEntry = null;
+                this.dict[req.RecordKey].TryGetValue(lastVersionKey, out verEntry);
 
                 if (verEntry != null)
                 {
@@ -119,13 +128,12 @@ namespace GraphView.Transaction
                 this.dict[req.RecordKey].ContainsKey(req.VersionKey))
             {
                 req.Result = this.dict[req.RecordKey][req.VersionKey];
-                req.Finished = true;
             }
             else
             {
                 req.Result = null;
-                return;
             }
+            req.Finished = true;
         }
 
         internal override void Visit(ReplaceVersionRequest req)
@@ -146,7 +154,6 @@ namespace GraphView.Transaction
 
             req.Result = verEntry;
             req.Finished = true;
-            return;
         }
 
         internal override void Visit(ReplaceWholeVersionRequest req)
@@ -158,6 +165,7 @@ namespace GraphView.Transaction
             }
 
             this.dict[req.RecordKey][req.VersionKey] = req.VersionEntry;
+            req.Result = true;
             req.Finished = true;
         }
 
@@ -170,8 +178,9 @@ namespace GraphView.Transaction
             }
 
             VersionEntry version = this.dict[req.RecordKey][req.VersionKey];
-            version.MaxCommitTs = req.MaxCommitTs;
-
+            // Only update the max commit time when uploaded commit time is larger than the version's
+            version.MaxCommitTs = Math.Max(version.MaxCommitTs, req.MaxCommitTs);
+            
             req.Result = version;
             req.Finished = true;
         }
@@ -186,18 +195,18 @@ namespace GraphView.Transaction
             Dictionary<long, VersionEntry> versionList = this.dict[req.RecordKey];
             if (versionList.ContainsKey(req.VersionKey))
             {
-                req.Result = false;
-                req.Finished = true;
+                req.Result = false;  
             }
             else
             {
                 versionList.Add(req.VersionKey, req.VersionEntry);
-                VersionEntry tailEntry = this.dict[req.RecordKey][SingletonPartitionedVersionTable.TAIL_KEY];
+                // Take the dirty version entry to store the current largest version key
+                VersionEntry tailEntry = this.dict[req.RecordKey][VersionEntry.VERSION_KEY_STRAT_INDEX];
                 tailEntry.BeginTimestamp = req.VersionKey;
 
                 req.Result = true;
-                req.Finished = true;
             }
+            req.Finished = true;
         }
     }
 }
