@@ -107,6 +107,8 @@ namespace GraphView.Transaction
         /// </summary>
         private readonly Dictionary<string, Dictionary<object, long>> largestVersionKeyMap;
 
+        private readonly Queue<Tuple<long, long>> garbageQueue;
+
         // only for benchmark test
         public TxStatus Status
         {
@@ -143,7 +145,11 @@ namespace GraphView.Transaction
             }
         }
 
-        public Transaction(ILogStore logStore, VersionDb versionDb)
+        public Transaction(
+            ILogStore logStore, 
+            VersionDb versionDb, 
+            long txId = -1,
+            Queue<Tuple<long, long>> garbageQueue = null)
         {
             this.logStore = logStore;
             this.versionDb = versionDb;
@@ -153,12 +159,14 @@ namespace GraphView.Transaction
             this.commitSet = new Dictionary<string, Dictionary<object, List<PostProcessingEntry>>>();
             this.largestVersionKeyMap = new Dictionary<string, Dictionary<object, long>>();
 
-            this.txId = this.versionDb.InsertNewTx();
+            this.txId = txId < 0 ? this.versionDb.InsertNewTx() : txId;
             this.txStatus = TxStatus.Ongoing;
 
             this.commitTs = TxTableEntry.DEFAULT_COMMIT_TIME;
             this.maxCommitTsOfWrites = -1L;
             this.beginTimestamp = Transaction.DEFAULT_TX_BEGIN_TIMESTAMP;
+
+            this.garbageQueue = garbageQueue;
         }
     }
 
@@ -551,6 +559,8 @@ namespace GraphView.Transaction
                     }
                 }
             }
+
+            this.garbageQueue.Enqueue(Tuple.Create(this.txId, DateTime.Now.Ticks));
         }
 
         internal void PostProcessingAfterCommit()
@@ -611,6 +621,11 @@ namespace GraphView.Transaction
                         }
                     }
                 }
+            }
+
+            if (this.garbageQueue != null)
+            {
+                this.garbageQueue.Enqueue(Tuple.Create(this.txId, DateTime.Now.Ticks));
             }
         }
 

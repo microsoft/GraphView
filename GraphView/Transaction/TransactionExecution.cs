@@ -20,7 +20,7 @@ namespace GraphView.Transaction
         Close,
     }
 
-    public class TransactionExecution
+    internal class TransactionExecution
     {
 		public bool DEBUG_MODE = false;
 
@@ -62,6 +62,10 @@ namespace GraphView.Transaction
 
         private Queue<VersionEntry> readVersionList;
 
+        private readonly Queue<Tuple<long, long>> garbageQueue;
+
+        private readonly TxRange txRange;
+
         private long beginTicks;
 
         internal Procedure CurrentProc { get; private set; }
@@ -79,7 +83,12 @@ namespace GraphView.Transaction
             }
         }
 
-        public TransactionExecution(ILogStore logStore, VersionDb versionDb, StoredProcedure procedure = null)
+        public TransactionExecution(
+            ILogStore logStore, 
+            VersionDb versionDb, 
+            StoredProcedure procedure = null,
+            Queue<Tuple<long, long>> garbageQueue = null,
+            TxRange txRange = null)
         {
             this.logStore = logStore;
             this.versionDb = versionDb;
@@ -88,6 +97,8 @@ namespace GraphView.Transaction
             this.abortSet = new Dictionary<string, Dictionary<object, List<PostProcessingEntry>>>();
             this.commitSet = new Dictionary<string, Dictionary<object, List<PostProcessingEntry>>>();
             this.largestVersionKeyMap = new Dictionary<string, Dictionary<object, long>>();
+            this.garbageQueue = garbageQueue;
+            this.txRange = txRange;
 
             this.commitTs = TxTableEntry.DEFAULT_COMMIT_TIME;
             this.maxCommitTsOfWrites = -1L;
@@ -123,7 +134,25 @@ namespace GraphView.Transaction
             // Haven't sent the request
             if (this.requestStack.Count == 0)
             {
-                NewTxIdRequest newTxIdReq = this.versionDb.EnqueueNewTxId();
+                long candidateId = -1;
+                if (this.garbageQueue != null && this.garbageQueue.Count > 0)
+                {
+                    Tuple<long, long> txTuple = this.garbageQueue.Peek();
+                    long candidate = txTuple.Item1;
+                    long finishTime = txTuple.Item2;
+
+                    if (DateTime.Now.Ticks - finishTime >= TransactionExecutor.elapsed)
+                    {
+                        RecycleTxRequest recycleReq = new RecycleTxRequest(candidate);
+                        this.requestStack.Push(recycleReq);
+                        return;
+                    }
+                }
+
+                NewTxIdRequest newTxIdReq = this.txRange == null ?
+                    this.versionDb.EnqueueNewTxId() : 
+                    new NewTxIdRequest(this.txRange.NextTxCandidate());
+
                 this.requestStack.Push(newTxIdReq);
 
                 // set the current procedure as InitTx and wait for the executor check
@@ -142,7 +171,9 @@ namespace GraphView.Transaction
                 if ((long)newTxIdReq.Result == 0)
                 {
                     // Retry in loop to get the unique txId
-                    NewTxIdRequest retryReq = this.versionDb.EnqueueNewTxId();
+                    NewTxIdRequest retryReq = this.txRange == null ?
+                        this.versionDb.EnqueueNewTxId() :
+                        new NewTxIdRequest(this.txRange.NextTxCandidate());
                     this.requestStack.Push(retryReq);
                     return;
                 }
@@ -169,6 +200,24 @@ namespace GraphView.Transaction
                 }
 
                 // Assume the tx has been inserted successfully, change the execution status
+                this.CurrentProc = null;
+                this.Progress = TxProgress.Open;
+            }
+            else if (this.requestStack.Count == 1 && this.requestStack.Peek() is RecycleTxRequest)
+            {
+                if (!this.requestStack.Peek().Finished)
+                {
+                    return;
+                }
+
+                RecycleTxRequest recycleReq = this.requestStack.Pop() as RecycleTxRequest;
+                if (recycleReq == null || (long)recycleReq.Result == 0)
+                {
+                    throw new TransactionException("Recycling tx Id failed.");
+                }
+
+                // Recycled successfully
+                this.garbageQueue.Dequeue();
                 this.CurrentProc = null;
                 this.Progress = TxProgress.Open;
             }
@@ -920,7 +969,8 @@ namespace GraphView.Transaction
 				{
 					this.Progress = TxProgress.Close;
 					this.CurrentProc = null;
-				}
+                    this.garbageQueue.Enqueue(Tuple.Create(this.txId, DateTime.Now.Ticks));
+                }
                 return;
             }
             else
@@ -936,6 +986,7 @@ namespace GraphView.Transaction
                 // All post-processing records have been uploaded.
                 this.Progress = TxProgress.Close;
                 this.CurrentProc = null;
+                this.garbageQueue.Enqueue(Tuple.Create(this.txId, DateTime.Now.Ticks));
                 return;
             }
         }
@@ -978,8 +1029,9 @@ namespace GraphView.Transaction
 				{
 					this.Progress = TxProgress.Close;
 					this.CurrentProc = null;
-				}
-				return;
+                    this.garbageQueue.Enqueue(new Tuple<long, long>(this.txId, DateTime.Now.Ticks));
+                }
+                return;
 			}
             else
             {
@@ -994,6 +1046,7 @@ namespace GraphView.Transaction
                 // All pending records have been reverted.
                 this.Progress = TxProgress.Close;
                 this.CurrentProc = null;
+                this.garbageQueue.Enqueue(Tuple.Create(this.txId, DateTime.Now.Ticks));
                 return;
             }
         }

@@ -386,7 +386,17 @@ namespace GraphView.Transaction
         /// It will return the unique txId
         /// </summary>
         /// <returns>transaction id</returns>
-        internal virtual long InsertNewTx()
+        internal virtual long InsertNewTx(long txId = -1)
+        {
+            throw new NotImplementedException();
+        }
+
+        internal virtual void RemoveTx(long txId)
+        {
+            throw new NotImplementedException();
+        }
+
+        internal virtual bool RecycleTx(long txId)
         {
             throw new NotImplementedException();
         }
@@ -397,6 +407,11 @@ namespace GraphView.Transaction
         }
 
         internal virtual InsertTxIdRequest EnqueueInsertTxId(long txId)
+        {
+            throw new NotImplementedException();
+        }
+
+        internal virtual RecycleTxRequest EnqueueRecycleTx(long txId)
         {
             throw new NotImplementedException();
         }

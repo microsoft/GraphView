@@ -62,7 +62,6 @@ namespace GraphView.Transaction
 
     internal class DeleteVersionRequest : VersionEntryRequest
     {
-
         public DeleteVersionRequest(string tableId, object recordKey, long versionKey)
             : base(tableId, recordKey, versionKey) { }
 
@@ -134,6 +133,20 @@ namespace GraphView.Transaction
     internal class NewTxIdRequest : TxEntryRequest
     {
         public NewTxIdRequest(long txId)
+            : base(txId) { }
+
+        internal override void Accept(TxRequestVisitor visitor)
+        {
+            if (visitor != null)
+            {
+                visitor.Visit(this);
+            }
+        }
+    }
+
+    internal class RecycleTxRequest : TxEntryRequest
+    {
+        public RecycleTxRequest(long txId)
             : base(txId) { }
 
         internal override void Accept(TxRequestVisitor visitor)

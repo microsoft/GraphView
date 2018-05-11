@@ -46,6 +46,14 @@ namespace GraphView.Transaction
             req.Finished = true;
         }
 
+        internal override void Visit(RecycleTxRequest req)
+        {
+            TxTableEntry txEntry = this.txTable[req.TxId];
+            txEntry.Reset();
+            req.Result = 1;
+            req.Finished = true;
+        }
+
         internal override void Visit(SetCommitTsRequest req)
         {
             TxTableEntry txEntry = this.txTable[req.TxId];

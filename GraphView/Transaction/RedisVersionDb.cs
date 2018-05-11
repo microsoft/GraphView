@@ -343,10 +343,39 @@
         /// 2. set other fields of txTableEntry by HSET command
         /// </summary>
         /// <returns>a transaction Id</returns>
-        internal override long InsertNewTx()
+        internal override long InsertNewTx(long txId = -1)
         {
-            long txId = 0, ret = 0;
-            do
+            long ret = 0;
+
+            if (txId < 0)
+            {
+                do
+                {
+                    txId = StaticRandom.RandIdentity();
+
+                    string hashId = txId.ToString();
+                    byte[] keyBytes = Encoding.ASCII.GetBytes(TxTableEntry.TXID_STRING);
+                    byte[] valueBytes = BitConverter.GetBytes(txId);
+
+                    int partition = this.PhysicalPartitionByKey(hashId);
+                    // If the hashId doesn't exist or field doesn't exist, return 1
+                    // otherwise return 0
+                    if (this.PipelineMode)
+                    {
+                        RedisRequest request = new RedisRequest(hashId, keyBytes, valueBytes, RedisRequestType.HSetNX);
+                        RedisConnectionPool clientPool = this.RedisManager.GetClientPool(RedisVersionDb.TX_DB_INDEX, partition);
+                        ret = clientPool.ProcessLongRequest(request);
+                    }
+                    else
+                    {
+                        using (RedisClient client = this.RedisManager.GetClient(RedisVersionDb.TX_DB_INDEX, partition))
+                        {
+                            ret = client.HSetNX(hashId, keyBytes, valueBytes);
+                        }
+                    }
+                } while (ret == 0);
+            }
+            else
             {
                 txId = StaticRandom.RandIdentity();
 
@@ -368,10 +397,14 @@
                     using (RedisClient client = this.RedisManager.GetClient(RedisVersionDb.TX_DB_INDEX, partition))
                     {
                         ret = client.HSetNX(hashId, keyBytes, valueBytes);
-                    }    
+                    }
                 }
 
-            } while (ret == 0);
+                if (ret == 0)
+                {
+                    return -1;
+                }
+            }
 
             TxTableEntry txTableEntry = new TxTableEntry(txId);
             string txIdStr = txId.ToString();

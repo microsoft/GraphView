@@ -11,6 +11,7 @@ namespace GraphView.Transaction
         internal virtual void Visit(InsertTxIdRequest req) { }
         internal virtual void Visit(NewTxIdRequest req) { }
         internal virtual void Visit(ReadVersionRequest req) { }
+        internal virtual void Visit(RecycleTxRequest req) { }
         internal virtual void Visit(ReplaceVersionRequest req) { }
         internal virtual void Visit(ReplaceWholeVersionRequest req) { }
         internal virtual void Visit(SetCommitTsRequest req) { }

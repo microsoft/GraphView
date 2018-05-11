@@ -41,16 +41,43 @@ namespace GraphView.Transaction
 
     internal partial class SingletonVersionDb
     {
-        internal override long InsertNewTx()
+        internal override long InsertNewTx(long txId = -1)
         {
-            long txId = StaticRandom.RandIdentity();
-
-            while (!this.txTable.TryAdd(txId, new TxTableEntry(txId)))
+            if (txId < 0)
             {
                 txId = StaticRandom.RandIdentity();
-            }
 
-            return txId;
+                while (!this.txTable.TryAdd(txId, new TxTableEntry(txId)))
+                {
+                    txId = StaticRandom.RandIdentity();
+                }
+
+                return txId;
+            }
+            else
+            {
+                return this.txTable.TryAdd(txId, new TxTableEntry(txId)) ? txId : -1;
+            }
+        }
+
+        internal override void RemoveTx(long txId)
+        {
+            TxTableEntry te = null;
+            this.txTable.TryRemove(txId, out te);
+        }
+
+        internal override bool RecycleTx(long txId)
+        {
+            TxTableEntry txEntry = null;
+            if (this.txTable.TryGetValue(txId, out txEntry))
+            {
+                txEntry.Reset();
+                return true;
+            }
+            else
+            {
+                return false;
+            }
         }
 
         internal override TxTableEntry GetTxTableEntry(long txId)

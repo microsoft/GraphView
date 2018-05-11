@@ -247,6 +247,13 @@ namespace GraphView.Transaction
             return req;
         }
 
+        internal override RecycleTxRequest EnqueueRecycleTx(long txId)
+        {
+            RecycleTxRequest req = new RecycleTxRequest(txId);
+            this.EnqueueTxEntryRequest(txId, req);
+            return req;
+        }
+
         internal override SetCommitTsRequest EnqueueSetCommitTs(long txId, long proposedCommitTs)
         {
             SetCommitTsRequest req = new SetCommitTsRequest(txId, proposedCommitTs);
