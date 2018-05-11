@@ -24,7 +24,7 @@ namespace GraphView.Transaction
 
         public TxEntryRequest(long txId)
         {
-            this.TxId = TxId;
+            this.TxId = txId;
         }
     }
 
