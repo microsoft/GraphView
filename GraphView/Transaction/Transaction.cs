@@ -46,7 +46,7 @@ namespace GraphView.Transaction
         /// <summary>
         /// Transaction id assigned to this transaction
         /// </summary>
-        private readonly long txId;
+        private long txId;
 
         /// <summary>
         /// The status of this transaction.
@@ -168,6 +168,22 @@ namespace GraphView.Transaction
 
             this.garbageQueue = garbageQueue;
         }
+
+		public void Clear(long txId)
+		{
+			this.readSet.Clear();
+			this.writeSet.Clear();
+			this.abortSet.Clear();
+			this.commitSet.Clear();
+			this.largestVersionKeyMap.Clear();
+
+			this.txId = txId;
+			this.txStatus = TxStatus.Ongoing;
+
+			this.commitTs = TxTableEntry.DEFAULT_COMMIT_TIME;
+			this.maxCommitTsOfWrites = -1L;
+			this.beginTimestamp = Transaction.DEFAULT_TX_BEGIN_TIMESTAMP;
+		}
     }
 
     // For record operations
@@ -560,7 +576,10 @@ namespace GraphView.Transaction
                 }
             }
 
-            this.garbageQueue.Enqueue(Tuple.Create(this.txId, DateTime.Now.Ticks));
+			if (this.garbageQueue != null)
+			{
+				this.garbageQueue.Enqueue(Tuple.Create(this.txId, DateTime.Now.Ticks));
+			}
         }
 
         internal void PostProcessingAfterCommit()

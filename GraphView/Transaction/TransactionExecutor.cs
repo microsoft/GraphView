@@ -145,7 +145,7 @@ namespace GraphView.Transaction
         /// A queue of finished txs (committed or aborted) with their wall-clock time to be cleaned.
         /// A tx is cleaned after a certain period after it finishes post processing.
         /// </summary>
-        Queue<Tuple<long, long>> GarbageQueue { get; }
+        internal Queue<Tuple<long, long>> GarbageQueue { get; }
 
         internal TxRange TxRange { get; }
 
@@ -366,8 +366,9 @@ namespace GraphView.Transaction
             }
         }
 
+		internal int RecycleCount = 0;
         
-        public Transaction CreateTransaction()
+        public long CreateTransaction()
         {
             long txId = -1;
 
@@ -379,9 +380,10 @@ namespace GraphView.Transaction
                     long rtId = txTuple.Item1;
                     long finishTime = txTuple.Item2;
 
-                    if (DateTime.Now.Ticks - finishTime >= TransactionExecutor.elapsed &&
-                        this.versionDb.RecycleTx(rtId))
-                    {
+					if (DateTime.Now.Ticks - finishTime >= TransactionExecutor.elapsed &&
+						this.versionDb.RecycleTx(rtId))
+					{
+						this.RecycleCount++;
                         this.GarbageQueue.Dequeue();
                         txId = rtId;
                         break;
@@ -392,7 +394,8 @@ namespace GraphView.Transaction
                 txId = this.versionDb.InsertNewTx(proposedTxId);
             }
 
-            return new Transaction(this.logStore, this.versionDb, txId, this.GarbageQueue);
+			//return new Transaction(this.logStore, this.versionDb, txId, this.GarbageQueue);
+			return txId;
         }
     }
 }

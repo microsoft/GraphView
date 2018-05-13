@@ -79,6 +79,10 @@
 				default:
 					break;
 			}
+			if (tx.Status == TxStatus.Aborted)
+			{
+				return false;
+			}
 			// try to commit here
 			if (tx.Commit())
 			{
@@ -87,10 +91,66 @@
 			return false;
 		};
 
-        /// <summary>
-        /// The number of workers
-        /// </summary>
-        private int workerCount;
+		public static Func<object, object> ACTION_1 = (object obj) =>
+		{
+			// parse those parameters
+			Tuple<TxWorkload, TransactionExecutor, Transaction> tuple = obj as Tuple<TxWorkload, TransactionExecutor, Transaction>;
+			TxWorkload workload = tuple.Item1;
+			TransactionExecutor executor = tuple.Item2;
+			Transaction tx = tuple.Item3;
+			tx.Clear(executor.CreateTransaction());
+			//Transaction tx = executor.CreateTransaction();
+
+			//string readValue = null;
+			//switch (workload.Type)
+			//{
+			//	case "READ":
+			//		readValue = (string)tx.Read(workload.TableId, workload.Key);
+			//		break;
+
+			//	case "UPDATE":
+			//		readValue = (string)tx.Read(workload.TableId, workload.Key);
+			//		if (readValue != null)
+			//		{
+			//			tx.Update(workload.TableId, workload.Key, workload.Value);
+			//		}
+			//		break;
+
+			//	case "DELETE":
+			//		readValue = (string)tx.Read(workload.TableId, workload.Key);
+			//		if (readValue != null)
+			//		{
+			//			tx.Delete(workload.TableId, workload.Key);
+			//		}
+			//		break;
+
+			//	case "INSERT":
+			//		readValue = (string)tx.ReadAndInitialize(workload.TableId, workload.Key);
+			//		if (readValue == null)
+			//		{
+			//			tx.Insert(workload.TableId, workload.Key, workload.Value);
+			//		}
+			//		break;
+
+			//	default:
+			//		break;
+			//}
+			if (tx.Status == TxStatus.Aborted)
+			{
+				return false;
+			}
+			// try to commit here
+			if (tx.Commit())
+			{
+				return true;
+			}
+			return false;
+		};
+
+		/// <summary>
+		/// The number of workers
+		/// </summary>
+		private int workerCount;
 
         /// <summary>
         /// The number of tasks per worker
@@ -121,6 +181,9 @@
         /// The version db instance
         /// </summary>
         private VersionDb versionDb;
+
+		private List<TransactionExecutor> executors;
+		private List<Transaction> transactions;
 
         internal int TxThroughput
         {
@@ -172,6 +235,14 @@
             {
                 this.workers.Add(new Worker(i+1, taskCountPerWorker));
             }
+
+			this.executors = new List<TransactionExecutor>();
+			this.transactions = new List<Transaction>();
+			for (int i = 0; i < this.workerCount; i++)
+			{
+				this.executors.Add(new TransactionExecutor(this.versionDb, null, null, null, i));
+				this.transactions.Add(new Transaction(null, this.versionDb, 10, this.executors[i].GarbageQueue));
+			}
         }
 
         internal void Setup(string dataFile, string operationFile)
@@ -200,22 +271,29 @@
                     {
                         Console.WriteLine("Loaded {0} records", count);
                     }
+					if (count == 2000000)
+					{
+						break;
+					}
                 }
                 Console.WriteLine("Load records successfully, {0} records in total", count);
             }
+
+			this.versionDb.ClearTxTable();
 
             // step 4: fill workers' queue
             using (StreamReader reader = new StreamReader(operationFile))
             {
                 string line;
-                foreach (Worker worker in this.workers)
+                for (int worker_index = 0; worker_index < this.workerCount; worker_index++)
                 {
                     for (int i = 0; i < this.taskCountPerWorker; i++)
                     {
                         line = reader.ReadLine();
                         string[] fields = this.ParseCommandFormat(line);
                         TxWorkload workload = new TxWorkload(fields[0], TABLE_ID, fields[2], fields[3]);
-                        worker.EnqueueTxTask(new TxTask(ACTION, Tuple.Create(workload, this.versionDb)));
+						//this.workers[worker_index].EnqueueTxTask(new TxTask(ACTION, Tuple.Create(workload, this.versionDb)));
+						this.workers[worker_index].EnqueueTxTask(new TxTask(ACTION_1, Tuple.Create(workload, this.executors[worker_index], this.transactions[worker_index])));
                     }
                 }
             }
@@ -263,14 +341,20 @@
             int taskCount = this.workerCount * this.taskCountPerWorker;
             Console.WriteLine("\nFinshed {0} requests in {1} seconds", taskCount, this.RunSeconds);
             Console.WriteLine("Transaction Throughput: {0} tx/second", this.TxThroughput);
+			Console.WriteLine("-----------------------------------------------------------------");
 
-            int totalTxs = 0, abortedTxs = 0;
-            foreach (Worker worker in this.workers)
-            {
-                totalTxs += worker.FinishedTxs;
-                abortedTxs += worker.AbortedTxs;
-            }
-            Console.WriteLine("\nFinshed {0} txs, Aborted {1} txs", totalTxs, abortedTxs);
+			int totalTxs = 0, abortedTxs = 0;
+			for (int worker_index = 0; worker_index < this.workerCount; worker_index++)
+			{
+                totalTxs += this.workers[worker_index].FinishedTxs;
+                abortedTxs += this.workers[worker_index].AbortedTxs;
+				Console.WriteLine("Worker Index: {0}", worker_index);
+				Console.WriteLine("Throughput: {0} tx/second", (this.taskCountPerWorker-1000000)/this.workers[worker_index].RunSeconds);
+				Console.WriteLine("RecycleCount: {0}", this.executors[worker_index].RecycleCount);
+			}
+
+			Console.WriteLine("-----------------------------------------------------------------");
+			Console.WriteLine("\nFinshed {0} txs, Aborted {1} txs", totalTxs, abortedTxs);
             Console.WriteLine("Transaction AbortRate: {0}%", (abortedTxs*1.0/totalTxs) * 100);
 
             if (this.versionDb is RedisVersionDb)

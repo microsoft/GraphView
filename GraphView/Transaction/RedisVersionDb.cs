@@ -377,7 +377,7 @@
             }
             else
             {
-                txId = StaticRandom.RandIdentity();
+                // txId = StaticRandom.RandIdentity();
 
                 string hashId = txId.ToString();
                 byte[] keyBytes = Encoding.ASCII.GetBytes(TxTableEntry.TXID_STRING);

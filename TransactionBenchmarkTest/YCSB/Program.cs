@@ -34,7 +34,7 @@ namespace TransactionBenchmarkTest.YCSB
         static void RedisBenchmarkTest()
         {
             const int workerCount = 4;
-            const int taskCount = 2000000;
+            const int taskCount = 1000000;
             const bool pipelineMode = true;
             const int pipelineSize = 100;
 
@@ -49,10 +49,10 @@ namespace TransactionBenchmarkTest.YCSB
         /// </summary>
         static void YCSBTest()
         {
-            const int workerCount = 4;      // 4;
-            const int taskCountPerWorker = 25000;   // 50000;
-            const string dataFile = "ycsb_data_r.in";
-            const string operationFile = "ycsb_ops_r.in";
+            const int workerCount = 3;      // 4;
+            const int taskCountPerWorker = 2000000;   // 50000;
+            const string dataFile = "ycsb_data_lg_r.in";
+            const string operationFile = "ycsb_ops_lg_r.in";
 
 			// REDIS VERSION DB
 			// VersionDb versionDb = RedisVersionDb.Instance;

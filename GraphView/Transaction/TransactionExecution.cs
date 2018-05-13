@@ -216,7 +216,8 @@ namespace GraphView.Transaction
                     throw new TransactionException("Recycling tx Id failed.");
                 }
 
-                // Recycled successfully
+				// Recycled successfully
+				this.txId = recycleReq.TxId;
                 this.garbageQueue.Dequeue();
                 this.CurrentProc = null;
                 this.Progress = TxProgress.Open;

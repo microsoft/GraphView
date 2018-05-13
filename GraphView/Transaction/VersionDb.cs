@@ -114,6 +114,11 @@ namespace GraphView.Transaction
             throw new NotImplementedException();
         }
 
+		internal virtual void ClearTxTable()
+		{
+			throw new NotImplementedException();
+		}
+
         internal virtual void Visit(string tableId, int partitionKey)
         {
             throw new NotImplementedException();
