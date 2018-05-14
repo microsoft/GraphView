@@ -396,7 +396,7 @@ namespace GraphView.Transaction
             throw new NotImplementedException();
         }
 
-        internal virtual void RemoveTx(long txId)
+        internal virtual bool RemoveTx(long txId)
         {
             throw new NotImplementedException();
         }
@@ -412,6 +412,11 @@ namespace GraphView.Transaction
         }
 
         internal virtual InsertTxIdRequest EnqueueInsertTxId(long txId)
+        {
+            throw new NotImplementedException();
+        }
+
+        internal virtual RemoveTxRequest EnqueueRemoveTx(long txId)
         {
             throw new NotImplementedException();
         }

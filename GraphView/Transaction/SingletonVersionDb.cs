@@ -60,10 +60,11 @@ namespace GraphView.Transaction
             }
         }
 
-        internal override void RemoveTx(long txId)
+        internal override bool RemoveTx(long txId)
         {
             TxTableEntry te = null;
             this.txTable.TryRemove(txId, out te);
+            return te != null;
         }
 
         internal override bool RecycleTx(long txId)

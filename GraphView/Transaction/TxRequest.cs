@@ -286,6 +286,22 @@ namespace GraphView.Transaction
         }
     }
 
+    internal class RemoveTxRequest : TxEntryRequest
+    {
+        public RemoveTxRequest(long txId) : base(txId)
+        {
+
+        }
+
+        internal override void Accept(TxRequestVisitor visitor)
+        {
+            if (visitor != null)
+            {
+                visitor.Visit(this);
+            }
+        }
+    }
+
     internal class UpdateVersionMaxCommitTsRequest : VersionEntryRequest
     {
         internal long MaxCommitTs { get; }

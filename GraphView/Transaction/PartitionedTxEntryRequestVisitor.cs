@@ -31,6 +31,13 @@ namespace GraphView.Transaction
             req.Finished = true;
         }
 
+        internal override void Visit(RemoveTxRequest req)
+        {
+            this.txTable.Remove(req.TxId);
+            req.Result = true;
+            req.Finished = true;
+        }
+
         internal override void Visit(NewTxIdRequest req)
         {
             if (this.txTable.ContainsKey(req.TxId))
@@ -50,7 +57,7 @@ namespace GraphView.Transaction
         {
             TxTableEntry txEntry = this.txTable[req.TxId];
             txEntry.Reset();
-            req.Result = 1;
+            req.Result = 1L;
             req.Finished = true;
         }
 

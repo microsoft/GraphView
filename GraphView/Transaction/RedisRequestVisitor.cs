@@ -157,6 +157,28 @@ namespace GraphView.Transaction
             };
         }
 
+        internal override void Visit(RecycleTxRequest req)
+        {
+            this.HashId = req.TxId.ToString();
+            byte[][] keysBytes =
+            {
+                Encoding.ASCII.GetBytes(TxTableEntry.STATUS_STRING),
+                Encoding.ASCII.GetBytes(TxTableEntry.COMMIT_TIME_STRING),
+                Encoding.ASCII.GetBytes(TxTableEntry.COMMIT_LOWER_BOUND_STRING)
+            };
+            byte[][] valuesBytes =
+            {
+                BitConverter.GetBytes((int) TxStatus.Ongoing),
+                BitConverter.GetBytes(TxTableEntry.DEFAULT_COMMIT_TIME),
+                BitConverter.GetBytes(TxTableEntry.DEFAULT_LOWER_BOUND)
+            };
+
+            this.RedisReq = new RedisRequest(this.HashId, keysBytes, valuesBytes, RedisRequestType.HMSet)
+            {
+                ParentRequest = req
+            };
+        }
+
         internal override void Visit(SetCommitTsRequest req)
         {
             this.HashId = req.TxId.ToString();
@@ -199,6 +221,22 @@ namespace GraphView.Transaction
             byte[] valueBytes = BitConverter.GetBytes((int)req.TxStatus);
 
             this.RedisReq = new RedisRequest(this.HashId, keyBytes, valueBytes, RedisRequestType.HSet)
+            {
+                ParentRequest = req
+            };
+        }
+
+        internal override void Visit(RemoveTxRequest req)
+        {
+            this.HashId = req.TxId.ToString();
+            byte[][] keysBytes =
+            {
+                Encoding.ASCII.GetBytes(TxTableEntry.STATUS_STRING),
+                Encoding.ASCII.GetBytes(TxTableEntry.COMMIT_TIME_STRING),
+                Encoding.ASCII.GetBytes(TxTableEntry.COMMIT_LOWER_BOUND_STRING)
+            };
+
+            this.RedisReq = new RedisRequest(this.HashId, keysBytes, RedisRequestType.HDel)
             {
                 ParentRequest = req
             };

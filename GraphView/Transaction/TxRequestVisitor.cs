@@ -17,6 +17,7 @@ namespace GraphView.Transaction
         internal virtual void Visit(SetCommitTsRequest req) { }
         internal virtual void Visit(UpdateCommitLowerBoundRequest req) { }
         internal virtual void Visit(UpdateTxStatusRequest req) { }
+        internal virtual void Visit(RemoveTxRequest req) { }
         internal virtual void Visit(UpdateVersionMaxCommitTsRequest req) { }
         internal virtual void Visit(UploadVersionRequest req) { }
     }

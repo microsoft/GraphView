@@ -210,9 +210,20 @@
                                     req.SetVoid, req.SetError);
                                 break;
                             case RedisRequestType.HDel:
-                                pipe.QueueCommand(
-                                    r => ((RedisNativeClient)r).HDel(req.HashId, req.Key),
-                                        req.SetLong, req.SetError);
+                                // delete a single field
+                                if (req.Key != null)
+                                {
+                                    pipe.QueueCommand(
+                                        r => ((RedisNativeClient)r).HDel(req.HashId, req.Key),
+                                            req.SetLong, req.SetError);
+                                }
+                                // delete multiple fields
+                                else
+                                {
+                                    pipe.QueueCommand(
+                                        r => ((RedisNativeClient)r).HDel(req.HashId, req.Keys),
+                                            req.SetLong, req.SetError);
+                                }
                                 break;
                             case RedisRequestType.EvalSha:
                                 pipe.QueueCommand(

@@ -664,5 +664,91 @@
             versionTable.EnqueueTxRequest(lowerBoundReq);
             return lowerBoundReq;
         }
+
+        internal override bool RemoveTx(long txId)
+        {
+            string hashId = txId.ToString();
+            byte[][] keyBytes =
+            {
+                Encoding.ASCII.GetBytes(TxTableEntry.STATUS_STRING),
+                Encoding.ASCII.GetBytes(TxTableEntry.COMMIT_TIME_STRING),
+                Encoding.ASCII.GetBytes(TxTableEntry.COMMIT_LOWER_BOUND_STRING)
+            };
+
+            int partition = this.PhysicalPartitionByKey(hashId);
+            long ret = 0;
+            if (this.PipelineMode)
+            {
+                RedisRequest request = new RedisRequest(hashId, keyBytes, RedisRequestType.HDel);
+                RedisConnectionPool clientPool = this.RedisManager.GetClientPool(RedisVersionDb.TX_DB_INDEX, partition);
+                ret = clientPool.ProcessLongRequest(request);
+            }
+            else
+            {
+                using (RedisClient client = this.RedisManager.GetClient(RedisVersionDb.TX_DB_INDEX, partition))
+                {
+                    ret = client.HDel(hashId, keyBytes);
+                }
+            }
+            // ret is the number of fields been deleted
+            return ret > 0;
+        }
+
+        internal override RemoveTxRequest EnqueueRemoveTx(long txId)
+        {
+            VersionTable versionTable = this.GetVersionTable(VersionDb.TX_TABLE);
+            if (versionTable == null)
+            {
+                throw new TransactionException("The specified table does not exists.");
+            }
+
+            RemoveTxRequest removeTxReq = new RemoveTxRequest(txId);
+            versionTable.EnqueueTxRequest(removeTxReq);
+            return removeTxReq;
+        }
+
+        internal override bool RecycleTx(long txId)
+        {
+            string hashId = txId.ToString();
+            byte[][] keysBytes =
+            {
+                Encoding.ASCII.GetBytes(TxTableEntry.STATUS_STRING),
+                Encoding.ASCII.GetBytes(TxTableEntry.COMMIT_TIME_STRING),
+                Encoding.ASCII.GetBytes(TxTableEntry.COMMIT_LOWER_BOUND_STRING)
+            };
+            byte[][] valuesBytes =
+            {
+                BitConverter.GetBytes((int) TxStatus.Ongoing),
+                BitConverter.GetBytes(TxTableEntry.DEFAULT_COMMIT_TIME),
+                BitConverter.GetBytes(TxTableEntry.DEFAULT_LOWER_BOUND)
+            };
+
+            int txPartition = this.PhysicalPartitionByKey(hashId);
+            if (this.PipelineMode)
+            {
+                RedisRequest request = new RedisRequest(hashId, keysBytes, valuesBytes, RedisRequestType.HMSet);
+                RedisConnectionPool clientPool = this.RedisManager.GetClientPool(RedisVersionDb.TX_DB_INDEX, txPartition);
+                clientPool.ProcessVoidRequest(request);
+            }
+            using (RedisClient client = this.RedisManager.GetClient(RedisVersionDb.TX_DB_INDEX, txPartition))
+            {
+                client.HMSet(hashId, keysBytes, valuesBytes);
+            }
+
+            return true;
+        }
+
+        internal override RecycleTxRequest EnqueueRecycleTx(long txId)
+        {
+            VersionTable versionTable = this.GetVersionTable(VersionDb.TX_TABLE);
+            if (versionTable == null)
+            {
+                throw new TransactionException("The specified table does not exists.");
+            }
+
+            RecycleTxRequest recycleTxReq = new RecycleTxRequest(txId);
+            versionTable.EnqueueTxRequest(recycleTxReq);
+            return recycleTxReq;
+        }
     }
 }
