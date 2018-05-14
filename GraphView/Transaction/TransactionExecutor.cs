@@ -59,7 +59,7 @@ namespace GraphView.Transaction
         /// </summary>
         internal long RangeStart { get; }
 
-        internal static readonly long range = 1000000;
+        internal static readonly long range = 100000;
 
         private int localTxIndex = 0;
 
@@ -145,11 +145,13 @@ namespace GraphView.Transaction
         /// A queue of finished txs (committed or aborted) with their wall-clock time to be cleaned.
         /// A tx is cleaned after a certain period after it finishes post processing.
         /// </summary>
-        internal Queue<Tuple<long, long>> GarbageQueue { get; }
+        //internal Queue<Tuple<long, long>> GarbageQueue { get; }
+        internal Queue<long> GarbageQueueTxId { get; }
+        internal Queue<long> GarbageQueueFinishTime { get; }
 
         internal TxRange TxRange { get; }
 
-        internal static readonly long elapsed = 10000000L;      // 1 sec
+        internal static readonly long elapsed = 0L;      // 1 sec
 
         public TransactionExecutor(
             VersionDb versionDb,
@@ -165,7 +167,9 @@ namespace GraphView.Transaction
             this.activeTxs = new Dictionary<string, Tuple<TransactionExecution, Queue<TransactionRequest>>>();
             this.partitionedInstances = instances;
             this.txTimeoutSeconds = txTimeoutSeconds;
-            this.GarbageQueue = new Queue<Tuple<long, long>>();
+            //this.GarbageQueue = new Queue<Tuple<long, long>>();
+            this.GarbageQueueTxId = new Queue<long>();
+            this.GarbageQueueFinishTime = new Queue<long>();
             this.txRange = startRange < 0 ? null : new TxRange(startRange);
         }
 
@@ -321,7 +325,7 @@ namespace GraphView.Transaction
                                 }
 
                                 TransactionExecution exec = new TransactionExecution(
-                                    this.logStore, this.versionDb, txReq.Procedure, this.GarbageQueue, this.txRange);
+                                    this.logStore, this.versionDb, txReq.Procedure, this.GarbageQueueTxId, this.GarbageQueueFinishTime, this.txRange);
 
                                 this.activeTxs[txReq.SessionId] = txReq.Procedure != null ?
                                     Tuple.Create(exec, txReq.Procedure.RequestQueue) :
@@ -367,6 +371,7 @@ namespace GraphView.Transaction
         }
 
 		internal int RecycleCount = 0;
+        internal int InsertNewTxCount = 0;
         
         public long CreateTransaction()
         {
@@ -374,17 +379,17 @@ namespace GraphView.Transaction
 
             while (txId < 0)
             {
-                if (this.GarbageQueue != null && this.GarbageQueue.Count > 0)
+                if (this.GarbageQueueTxId != null && this.GarbageQueueTxId.Count > 0)
                 {
-                    Tuple<long, long> txTuple = this.GarbageQueue.Peek();
-                    long rtId = txTuple.Item1;
-                    long finishTime = txTuple.Item2;
+                    long rtId = this.GarbageQueueTxId.Peek();
+                    long finishTime = this.GarbageQueueFinishTime.Peek();
 
-					if (DateTime.Now.Ticks - finishTime >= TransactionExecutor.elapsed &&
-						this.versionDb.RecycleTx(rtId))
-					{
+                    if (DateTime.Now.Ticks - finishTime >= TransactionExecutor.elapsed &&
+                        this.versionDb.RecycleTx(rtId))
+                    {
 						this.RecycleCount++;
-                        this.GarbageQueue.Dequeue();
+                        this.GarbageQueueTxId.Dequeue();
+                        this.GarbageQueueFinishTime.Dequeue();
                         txId = rtId;
                         break;
                     }
@@ -392,6 +397,7 @@ namespace GraphView.Transaction
 
                 long proposedTxId = this.txRange.NextTxCandidate();
                 txId = this.versionDb.InsertNewTx(proposedTxId);
+                this.InsertNewTxCount++;
             }
 
 			//return new Transaction(this.logStore, this.versionDb, txId, this.GarbageQueue);
