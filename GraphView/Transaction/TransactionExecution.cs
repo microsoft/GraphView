@@ -1377,6 +1377,8 @@ namespace GraphView.Transaction
 
                     GetTxEntryRequest getTxReq = this.requestStack.Pop() as GetTxEntryRequest;
                     TxTableEntry pendingTx = getTxReq.Result as TxTableEntry;
+                    this.executor.ResourceManager.RecycleGetTxEntryRequest(getTxReq);
+
                     if (pendingTx == null)
                     {
                         // Failed to retrieve the status of the tx holding the version. 
