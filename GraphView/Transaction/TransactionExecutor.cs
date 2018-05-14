@@ -134,6 +134,11 @@ namespace GraphView.Transaction
         private Dictionary<string, Tuple<TransactionExecution, Queue<TransactionRequest>>> activeTxs;
 
         /// <summary>
+        /// A pool of free tx execution runtime to accommodate new incoming txs 
+        /// </summary>
+        private Queue<Tuple<TransactionExecution, Queue<TransactionRequest>>> txRuntimePool;
+
+        /// <summary>
         /// A list of (table Id, partition key) pairs, each of which represents a key-value instance. 
         /// This worker is responsible for processing key-value ops directed to the designated instances.
         /// </summary>
@@ -170,11 +175,11 @@ namespace GraphView.Transaction
             this.activeTxs = new Dictionary<string, Tuple<TransactionExecution, Queue<TransactionRequest>>>();
             this.partitionedInstances = instances;
             this.txTimeoutSeconds = txTimeoutSeconds;
-            //this.GarbageQueue = new Queue<Tuple<long, long>>();
             this.GarbageQueueTxId = new Queue<long>();
             this.GarbageQueueFinishTime = new Queue<long>();
             this.txRange = startRange < 0 ? null : new TxRange(startRange);
             this.ResourceManager = new TxResourceManager();
+            this.txRuntimePool = new Queue<Tuple<TransactionExecution, Queue<TransactionRequest>>>();
         }
 
         public void Execute()
@@ -311,7 +316,9 @@ namespace GraphView.Transaction
 
                 foreach (string sessionId in toRemoveSessions)
                 {
+                    Tuple<TransactionExecution, Queue<TransactionRequest>> runtime = this.activeTxs[sessionId];
                     this.activeTxs.Remove(sessionId);
+                    this.txRuntimePool.Enqueue(runtime);
                 }
                 toRemoveSessions.Clear();
 
@@ -328,12 +335,41 @@ namespace GraphView.Transaction
                                     continue;
                                 }
 
-                                TransactionExecution exec = new TransactionExecution(
-                                    this.logStore, this.versionDb, txReq.Procedure, this.GarbageQueueTxId, this.GarbageQueueFinishTime, this.txRange);
+                                TransactionExecution exec = null;
+                                if (this.txRuntimePool.Count > 0)
+                                {
+                                    Tuple<TransactionExecution, Queue<TransactionRequest>> runtime = 
+                                        this.txRuntimePool.Dequeue();
 
-                                this.activeTxs[txReq.SessionId] = txReq.Procedure != null ?
-                                    Tuple.Create(exec, txReq.Procedure.RequestQueue) :
-                                    Tuple.Create(exec, new Queue<TransactionRequest>());
+                                    exec = runtime.Item1;
+                                    Queue<TransactionRequest> reqQueue = runtime.Item2;
+
+                                    reqQueue.Clear();
+                                    if (txReq.Procedure != null)
+                                    {
+                                        txReq.Procedure.RequestQueue = reqQueue;
+                                    }
+
+                                    exec.Reset(txReq.Procedure);
+                                }
+                                else
+                                {
+                                    exec = new TransactionExecution(
+                                        this.logStore, 
+                                        this.versionDb, 
+                                        txReq.Procedure, 
+                                        this.GarbageQueueTxId, 
+                                        this.GarbageQueueFinishTime, 
+                                        this.txRange);
+
+                                    Queue<TransactionRequest> reqQueue = new Queue<TransactionRequest>();
+                                    if (txReq.Procedure != null)
+                                    {
+                                        txReq.Procedure.RequestQueue = reqQueue;
+                                    }
+
+                                    this.activeTxs[txReq.SessionId] = Tuple.Create(exec, reqQueue);
+                                }
 
                                 exec.Procedure?.Start();
                                 break;

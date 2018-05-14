@@ -131,6 +131,17 @@ namespace GraphView.Transaction
     /// </summary>
     public abstract partial class VersionDb
     {
+        internal void EnqueueVersionEntryRequest(string tableId, VersionEntryRequest req)
+        {
+            VersionTable versionTable = this.GetVersionTable(tableId);
+            if (versionTable == null)
+            {
+                throw new TransactionException("The specified table does not exists.");
+            }
+
+            versionTable.EnqueueTxRequest(req);
+        }
+
         internal IEnumerable<VersionEntry> GetVersionList(string tableId, object recordKey)
         {
             VersionTable versionTable = this.GetVersionTable(tableId);

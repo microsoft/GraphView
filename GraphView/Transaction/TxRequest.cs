@@ -1,9 +1,10 @@
 ﻿
 namespace GraphView.Transaction
 {
+    using System;
     using System.Collections.Generic;
 
-    internal abstract class TxRequest
+    internal abstract class TxRequest : IResource
     {
         internal bool Finished { get; set; } = false;
         internal object Result { get; set; }
@@ -15,6 +16,21 @@ namespace GraphView.Transaction
             {
                 visitor.Visit(this);
             }
+        }
+
+        public void Use()
+        {
+            this.InUse = true;
+        }
+
+        public bool IsActive()
+        {
+            return InUse;
+        }
+
+        public void Free()
+        {
+            this.InUse = false;
         }
     }
 
@@ -244,7 +260,7 @@ namespace GraphView.Transaction
 
     internal class SetCommitTsRequest : TxEntryRequest
     {
-        internal long ProposedCommitTs { get; }
+        internal long ProposedCommitTs { get; set; }
 
         public SetCommitTsRequest(long txId, long proposedCommitTs)
             : base(txId)
@@ -263,7 +279,7 @@ namespace GraphView.Transaction
 
     internal class UpdateCommitLowerBoundRequest : TxEntryRequest
     {
-        internal long CommitTsLowerBound { get; }
+        internal long CommitTsLowerBound { get; set; }
 
         public UpdateCommitLowerBoundRequest(long txId, long commitTsLowerBound)
             : base(txId)
