@@ -149,6 +149,8 @@ namespace GraphView.Transaction
 
         internal TxRange TxRange { get; }
 
+        internal TxResourceManager ResourceManager { get; }
+
         internal static readonly long elapsed = 10000000L;      // 1 sec
 
         public TransactionExecutor(
@@ -167,6 +169,7 @@ namespace GraphView.Transaction
             this.txTimeoutSeconds = txTimeoutSeconds;
             this.GarbageQueue = new Queue<Tuple<long, long>>();
             this.txRange = startRange < 0 ? null : new TxRange(startRange);
+            this.ResourceManager = new TxResourceManager();
         }
 
         public void Execute()

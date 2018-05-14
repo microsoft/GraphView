@@ -142,9 +142,9 @@ namespace GraphView.Transaction
             return versionTable.GetVersionList(recordKey);
         }
 
-        internal GetVersionListRequest EnqueueGetVersionList(string tableId, object recordKey)
+        internal void EnqueueGetVersionList(
+            string tableId, GetVersionListRequest req)
         {
-            GetVersionListRequest req = new GetVersionListRequest(tableId, recordKey);
             VersionTable versionTable = this.GetVersionTable(tableId);
             if (versionTable == null)
             {
@@ -152,7 +152,6 @@ namespace GraphView.Transaction
             }
 
             versionTable.EnqueueTxRequest(req);
-            return req;
         }
 
         /// <summary>
@@ -365,7 +364,8 @@ namespace GraphView.Transaction
             return versionTable.InitializeAndGetVersionList(recordKey);
         }
 
-        internal InitiGetVersionListRequest EnqueueInitializeAndGetVersionList(string tableId, object recordKey)
+        internal void EnqueueInitializeAndGetVersionList(
+            string tableId, InitiGetVersionListRequest req)
         {
             VersionTable versionTable = this.GetVersionTable(tableId);
             if (versionTable == null)
@@ -373,10 +373,7 @@ namespace GraphView.Transaction
                 throw new TransactionException("The specified table does not exists.");
             }
 
-            InitiGetVersionListRequest req = new InitiGetVersionListRequest(tableId, recordKey);
             versionTable.EnqueueTxRequest(req);
-
-            return req;
         }
     }
 

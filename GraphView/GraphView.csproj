@@ -341,6 +341,7 @@
     <Compile Include="Transaction\TransactionExecutor.cs" />
     <Compile Include="Transaction\TxRequest.cs" />
     <Compile Include="Transaction\TxRequestVisitor.cs" />
+    <Compile Include="Transaction\TxResourceManager.cs" />
     <Compile Include="Transaction\TxStatus.cs" />
     <Compile Include="Transaction\TxTableEntry.cs" />
     <Compile Include="Transaction\VersionBlob.cs" />

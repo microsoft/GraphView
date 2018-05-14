@@ -6,7 +6,7 @@ namespace GraphView.Transaction
     using System;
     using System.Collections.Generic;
 
-    internal class VersionEntry
+    internal class VersionEntry : IComparable<VersionEntry>
     {
         /// <summary>
         /// The offsets of fields in serialized binary data
@@ -144,6 +144,30 @@ namespace GraphView.Transaction
         {
             return new VersionEntry(recordKey, VersionEntry.VERSION_KEY_STRAT_INDEX,
                 VersionEntry.EMPTY_RECORD, VersionEntry.EMPTY_TXID);
+        }
+
+        public int CompareTo(VersionEntry other)
+        {
+            // Two version entries are only comparable if they belong to the same record
+            if (this.RecordKey != other.RecordKey)
+            {
+                return -1;
+            }
+            else
+            {
+                if (this.VersionKey < other.VersionKey)
+                {
+                    return -1;
+                }
+                else if (this.VersionKey == other.VersionKey)
+                {
+                    return 0;
+                }
+                else
+                {
+                    return 1;
+                }
+            }
         }
     }
 }

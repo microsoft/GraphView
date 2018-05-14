@@ -1,10 +1,13 @@
 ﻿
 namespace GraphView.Transaction
 {
+    using System.Collections.Generic;
+
     internal abstract class TxRequest
     {
         internal bool Finished { get; set; } = false;
         internal object Result { get; set; }
+        internal bool InUse { get; set; }
 
         internal virtual void Accept(TxRequestVisitor visitor)
         {
@@ -20,7 +23,7 @@ namespace GraphView.Transaction
     /// </summary>
     internal abstract class TxEntryRequest : TxRequest
     {
-        internal long TxId { get; private set; }
+        internal long TxId { get; set; }
 
         public TxEntryRequest(long txId)
         {
@@ -33,9 +36,9 @@ namespace GraphView.Transaction
     /// </summary>
     internal abstract class VersionEntryRequest : TxRequest
     {
-        internal string TableId { get; private set; }
-        internal object RecordKey { get; private set; }
-        internal long VersionKey { get; private set; }
+        internal string TableId { get; set; }
+        internal object RecordKey { get; set; }
+        internal long VersionKey { get; set; }
 
         public VersionEntryRequest(string tableId, object recordKey, long versionKey)
         {
@@ -76,8 +79,13 @@ namespace GraphView.Transaction
 
     internal class GetVersionListRequest : VersionEntryRequest
     {
-        public GetVersionListRequest(string tableId, object recordKey)
-            : base(tableId, recordKey, -1) { }
+        internal List<VersionEntry> Container { get; set; }
+
+        public GetVersionListRequest(string tableId, object recordKey, List<VersionEntry> container)
+            : base(tableId, recordKey, -1)
+        {
+            this.Container = container;
+        }
 
         internal override void Accept(TxRequestVisitor visitor)
         {
@@ -104,8 +112,13 @@ namespace GraphView.Transaction
 
     internal class InitiGetVersionListRequest : VersionEntryRequest
     {
-        public InitiGetVersionListRequest(string tableId, object recordKey)
-            : base(tableId, recordKey, -1) { }
+        internal List<VersionEntry> Container { get; set; }
+
+        public InitiGetVersionListRequest(string tableId, object recordKey, List<VersionEntry> container = null)
+            : base(tableId, recordKey, -1)
+        {
+            this.Container = container;
+        }
 
         internal override void Accept(TxRequestVisitor visitor)
         {

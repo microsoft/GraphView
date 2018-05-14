@@ -60,11 +60,13 @@ namespace GraphView.Transaction
 
         private Stack<Tuple<string, VersionEntry>> validateKeyList;
 
-        private Queue<VersionEntry> readVersionList;
+        private List<VersionEntry> readVersionList;
 
         private readonly Queue<Tuple<long, long>> garbageQueue;
 
         private readonly TxRange txRange;
+
+        private readonly TransactionExecutor executor;
 
         private long beginTicks;
 
@@ -88,7 +90,8 @@ namespace GraphView.Transaction
             VersionDb versionDb, 
             StoredProcedure procedure = null,
             Queue<Tuple<long, long>> garbageQueue = null,
-            TxRange txRange = null)
+            TxRange txRange = null, 
+            TransactionExecutor executor = null)
         {
             this.logStore = logStore;
             this.versionDb = versionDb;
@@ -99,6 +102,7 @@ namespace GraphView.Transaction
             this.largestVersionKeyMap = new Dictionary<string, Dictionary<object, long>>();
             this.garbageQueue = garbageQueue;
             this.txRange = txRange;
+            this.executor = executor;
 
             this.commitTs = TxTableEntry.DEFAULT_COMMIT_TIME;
             this.maxCommitTsOfWrites = -1L;
@@ -1259,15 +1263,24 @@ namespace GraphView.Transaction
                 // Have not sent the GetVersionListRequest
                 if (this.requestStack.Count == 0)
                 {
+                    List<VersionEntry> container = this.executor.ResourceManager.GetVersionList();
+
                     if (initi)
                     {
-                        InitiGetVersionListRequest initiGetVersionList = 
-                            this.versionDb.EnqueueInitializeAndGetVersionList(tableId, recordKey);
-                        this.requestStack.Push(initiGetVersionList);
+                        InitiGetVersionListRequest initiGetVersionListReq = 
+                            this.executor.ResourceManager.GetInitiGetVersionListRequest();
+                        initiGetVersionListReq.Container = container;
+
+                        this.versionDb.EnqueueInitializeAndGetVersionList(tableId, initiGetVersionListReq);
+                        this.requestStack.Push(initiGetVersionListReq);
                     }
                     else
                     {
-                        GetVersionListRequest getVlistReq = this.versionDb.EnqueueGetVersionList(tableId, recordKey);
+                        GetVersionListRequest getVlistReq =
+                            this.executor.ResourceManager.GetVersionListRequest();
+                        getVlistReq.Container = container;
+
+                        this.versionDb.EnqueueGetVersionList(tableId, getVlistReq);
                         this.requestStack.Push(getVlistReq);
                     }
                     
@@ -1281,8 +1294,12 @@ namespace GraphView.Transaction
                         return;
                     }
 
-                    IEnumerable<VersionEntry> versionList = this.requestStack.Pop().Result as IEnumerable<VersionEntry>;
-                    if (versionList == null)
+                    GetVersionListRequest getVersionListReq = this.requestStack.Pop() as GetVersionListRequest;
+                    this.readVersionList = getVersionListReq.Result as List<VersionEntry>;
+
+                    this.executor.ResourceManager.RecycleGetVersionListRequest(getVersionListReq);
+
+                    if (this.readVersionList == null)
                     {
                         received = true;
                         payload = null;
@@ -1290,7 +1307,8 @@ namespace GraphView.Transaction
                         return;
                     }
 
-                    this.readVersionList = new Queue<VersionEntry>(versionList.OrderByDescending(e => e.VersionKey));
+                    // Sort the version list by the descending order of version keys.
+                    this.readVersionList.Sort();
                 }
                 else if (this.requestStack.Count == 1 && this.requestStack.Peek() is InitiGetVersionListRequest)
                 {
@@ -1311,11 +1329,21 @@ namespace GraphView.Transaction
                         }
                         this.largestVersionKeyMap[tableId][recordKey] = VersionEntry.VERSION_KEY_STRAT_INDEX;
                         VersionEntry emptyEntry = VersionEntry.InitEmptyVersionEntry(initReq.RecordKey);
-                        this.readVersionList = new Queue<VersionEntry>(new VersionEntry[] { emptyEntry });
+
+                        this.readVersionList = initReq.Container;
+                        this.readVersionList.Add(emptyEntry);
+
+                        this.executor.ResourceManager.RecycleInitiGetVersionListRequest(initReq);
                     }
                     else
                     {
-                        GetVersionListRequest getVlistReq = this.versionDb.EnqueueGetVersionList(tableId, recordKey);
+                        this.executor.ResourceManager.RecycleInitiGetVersionListRequest(initReq);
+
+                        List<VersionEntry> container = this.executor.ResourceManager.GetVersionList();
+                        GetVersionListRequest getVlistReq = this.executor.ResourceManager.GetVersionListRequest();
+                        getVlistReq.Container = container;
+                            
+                        this.versionDb.EnqueueGetVersionList(tableId, getVlistReq);
                         this.requestStack.Push(getVlistReq);
                         return;
                     }
@@ -1339,17 +1367,19 @@ namespace GraphView.Transaction
                         return;
                     }
 
-                    TxTableEntry pendingTx = this.requestStack.Pop().Result as TxTableEntry;
+                    GetTxEntryRequest getTxReq = this.requestStack.Pop() as GetTxEntryRequest;
+                    TxTableEntry pendingTx = getTxReq.Result as TxTableEntry;
                     if (pendingTx == null)
                     {
                         // Failed to retrieve the status of the tx holding the version. 
                         // Moves on to the next version.
-                        this.readVersionList.Dequeue();
+                        this.readVersionList.RemoveAt(this.readVersionList.Count - 1);
                         continue;
                     }
 
                     // The last version entry is the one need to check whether visiable
-                    VersionEntry versionEntry = this.readVersionList.Dequeue();
+                    VersionEntry versionEntry = this.readVersionList[this.readVersionList.Count - 1];
+                    this.readVersionList.RemoveAt(this.readVersionList.Count - 1);
 
                     // If the version entry is a dirty write, skips the entry.
                     if (versionEntry.EndTimestamp == VersionEntry.DEFAULT_END_TIMESTAMP && 
@@ -1383,7 +1413,7 @@ namespace GraphView.Transaction
                 }
                 else if (this.requestStack.Count == 0)
                 {
-                    VersionEntry versionEntry = this.readVersionList.Peek();
+                    VersionEntry versionEntry = this.readVersionList[this.readVersionList.Count - 1];
 
                     if (versionEntry.TxId >= 0)
                     {
@@ -1411,7 +1441,7 @@ namespace GraphView.Transaction
                         }
                         else
                         {
-                            this.readVersionList.Dequeue();
+                            this.readVersionList.RemoveAt(this.readVersionList.Count - 1);
                         }
                     }
                 }
@@ -1454,7 +1484,9 @@ namespace GraphView.Transaction
                     visibleVersion.TxId,
                     visibleVersion.Record);
             }
+
             // reset read version list
+            this.executor.ResourceManager.RecycleVersionList(this.readVersionList);
             this.readVersionList = null;
             this.Progress = TxProgress.Open;
             received = true;
