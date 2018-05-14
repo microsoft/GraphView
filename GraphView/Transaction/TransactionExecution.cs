@@ -213,7 +213,10 @@ namespace GraphView.Transaction
                 RecycleTxRequest recycleReq = this.requestStack.Pop() as RecycleTxRequest;
                 if (recycleReq == null || (long)recycleReq.Result == 0)
                 {
-                    throw new TransactionException("Recycling tx Id failed.");
+                    // throw new TransactionException("Recycling tx Id failed.");
+                    this.requestStack.Clear();
+                    this.CurrentProc = new Procedure(this.Abort);
+                    this.CurrentProc();
                 }
 
 				// Recycled successfully
@@ -514,10 +517,10 @@ namespace GraphView.Transaction
 
                     continue;
                 }
-                else
-                {
-                    throw new TransactionException("An illegal state of the uploading phase.");
-                }
+                //else
+                //{
+                //    throw new TransactionException("An illegal state of the uploading phase.");
+                //}
             }
 
 			// Move on to the next phase
@@ -620,10 +623,10 @@ namespace GraphView.Transaction
                     return;
                 }
             }
-            else
-            {
-                throw new TransactionException("An illegal state when setting the tx's commit timestamp.");
-            }
+            //else
+            //{
+            //    throw new TransactionException("An illegal state when setting the tx's commit timestamp.");
+            //}
         }
 
         internal void Validate()
@@ -866,10 +869,10 @@ namespace GraphView.Transaction
                         continue;
                     }
                 }
-                else
-                {
-                    throw new TransactionException("An illegal state of tx validation.");
-                }
+                //else
+                //{
+                //    throw new TransactionException("An illegal state of tx validation.");
+                //}
             }
 
             // All versions pass validation. Move to the commit phase.
@@ -970,7 +973,10 @@ namespace GraphView.Transaction
 				{
 					this.Progress = TxProgress.Close;
 					this.CurrentProc = null;
-                    this.garbageQueue.Enqueue(Tuple.Create(this.txId, DateTime.Now.Ticks));
+                    if (this.garbageQueue != null)
+                    {
+                        this.garbageQueue.Enqueue(Tuple.Create(this.txId, DateTime.Now.Ticks));
+                    }
                 }
                 return;
             }
@@ -987,7 +993,10 @@ namespace GraphView.Transaction
                 // All post-processing records have been uploaded.
                 this.Progress = TxProgress.Close;
                 this.CurrentProc = null;
-                this.garbageQueue.Enqueue(Tuple.Create(this.txId, DateTime.Now.Ticks));
+                if (this.garbageQueue != null)
+                {
+                    this.garbageQueue.Enqueue(Tuple.Create(this.txId, DateTime.Now.Ticks));
+                }
                 return;
             }
         }
@@ -1030,7 +1039,10 @@ namespace GraphView.Transaction
 				{
 					this.Progress = TxProgress.Close;
 					this.CurrentProc = null;
-                    this.garbageQueue.Enqueue(new Tuple<long, long>(this.txId, DateTime.Now.Ticks));
+                    if (this.garbageQueue != null)
+                    {
+                        this.garbageQueue.Enqueue(new Tuple<long, long>(this.txId, DateTime.Now.Ticks));
+                    }
                 }
                 return;
 			}
@@ -1047,7 +1059,10 @@ namespace GraphView.Transaction
                 // All pending records have been reverted.
                 this.Progress = TxProgress.Close;
                 this.CurrentProc = null;
-                this.garbageQueue.Enqueue(Tuple.Create(this.txId, DateTime.Now.Ticks));
+                if (this.garbageQueue != null)
+                {
+                    this.garbageQueue.Enqueue(Tuple.Create(this.txId, DateTime.Now.Ticks));
+                }
                 return;
             }
         }
@@ -1098,7 +1113,7 @@ namespace GraphView.Transaction
                 {
                     this.CurrentProc = new Procedure(this.Abort);
                     this.CurrentProc();
-                    throw new TransactionException("Cannot insert the same record key twice.");
+                    //throw new TransactionException("Cannot insert the same record key twice.");
                 }
                 else
                 {
@@ -1113,7 +1128,7 @@ namespace GraphView.Transaction
             {
                 this.CurrentProc = new Procedure(this.Abort);
                 this.CurrentProc();
-                throw new TransactionException("The same record already exists.");
+                //throw new TransactionException("The same record already exists.");
             }
 
             // Add the new record to local writeSet
@@ -1144,7 +1159,7 @@ namespace GraphView.Transaction
                 {
                     this.CurrentProc = new Procedure(this.Abort);
                     this.CurrentProc();
-                    throw new TransactionException("The record to be updated has been deleted.");
+                    //throw new TransactionException("The record to be updated has been deleted.");
                 }
             }
             else if (this.readSet.ContainsKey(tableId) &&
@@ -1163,7 +1178,7 @@ namespace GraphView.Transaction
             {
                 this.CurrentProc = new Procedure(this.Abort);
                 this.CurrentProc();
-                throw new TransactionException("The record has not been read or does not exist. Cannot update it.");
+                //throw new TransactionException("The record has not been read or does not exist. Cannot update it.");
             }
         }
 
@@ -1182,7 +1197,7 @@ namespace GraphView.Transaction
                 {
                     this.CurrentProc = new Procedure(this.Abort);
                     this.CurrentProc();
-                    throw new TransactionException("The record to be deleted has been deleted by the same tx.");
+                    // throw new TransactionException("The record to be deleted has been deleted by the same tx.");
                 }
             }
             else if (this.readSet.ContainsKey(tableId) &&
@@ -1200,7 +1215,7 @@ namespace GraphView.Transaction
             {
                 this.CurrentProc = new Procedure(this.Abort);
                 this.CurrentProc();
-                throw new TransactionException("The record has not been read or does not exist. Cannot delete it.");
+                // throw new TransactionException("The record has not been read or does not exist. Cannot delete it.");
             }
         }
 
@@ -1305,10 +1320,10 @@ namespace GraphView.Transaction
                         return;
                     }
                 }
-                else
-                {
-                    throw new TransactionException("An illegal state of tx read");
-                }
+                //else
+                //{
+                //    throw new TransactionException("An illegal state of tx read");
+                //}
             }
 
             VersionEntry visibleVersion = null;
@@ -1400,10 +1415,10 @@ namespace GraphView.Transaction
                         }
                     }
                 }
-                else
-                {
-                    throw new TransactionException("An illegal state of tx read.");
-                }
+                //else
+                //{
+                //    throw new TransactionException("An illegal state of tx read.");
+                //}
 
                 // Retrieve the largest version key from commit version entry
                 if (!this.largestVersionKeyMap.ContainsKey(tableId))
