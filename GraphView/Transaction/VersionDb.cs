@@ -385,6 +385,11 @@ namespace GraphView.Transaction
     /// </summary>
     public abstract partial class VersionDb
     {
+        internal virtual void EnqueueTxEntryRequest(long txId, TxEntryRequest req)
+        {
+            throw new NotImplementedException();
+        }
+
         /// <summary>
         /// Generate an unique txId in the current transaction table and store the initial states in transaction
         /// table entry

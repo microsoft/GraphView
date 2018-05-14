@@ -151,7 +151,7 @@ namespace GraphView.Transaction
         /// </summary>
         /// <param name="txId">The specify txId to partition</param>
         /// <param name="txEntryRequest">The given request</param>
-        private void EnqueueTxEntryRequest(long txId, TxEntryRequest txEntryRequest)
+        internal override void EnqueueTxEntryRequest(long txId, TxEntryRequest txEntryRequest)
         {
             int pk = this.PhysicalPartitionByKey(txId);
             bool lockTaken = false;

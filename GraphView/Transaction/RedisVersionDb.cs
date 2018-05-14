@@ -191,13 +191,11 @@
                 //"127.0.0.1:6394",
                 //"127.0.0.1:6395",
             };
+
             this.RedisManager = new RedisClientManager(readWriteHosts);
 
             // Init lua script manager
             this.RedisLuaManager = new RedisLuaScriptManager(this.RedisManager);
-
-            // Create the transaction table
-            this.CreateVersionTable(RedisVersionDb.TX_TABLE, RedisVersionDb.TX_DB_INDEX);
         }
 
         public void Dispose()
@@ -332,7 +330,33 @@
     {
         internal override void Visit(string tableId, int partitionKey)
         {
-            this.GetVersionTable(tableId).Visit(partitionKey);
+            if (tableId == VersionDb.TX_TABLE)
+            {
+                RedisConnectionPool clientPool = this.RedisManager.GetClientPool(RedisVersionDb.TX_DB_INDEX, partitionKey);
+                clientPool.Visit();
+            }
+            else
+            {
+                VersionTable versionTable = this.GetVersionTable(tableId);
+                if (versionTable != null)
+                {
+                    versionTable.Visit(partitionKey);
+                }
+            }
+        }
+
+        internal override void EnqueueTxEntryRequest(long txId, TxEntryRequest req)
+        {
+            RedisRequestVisitor requestVisitor = new RedisRequestVisitor(this.RedisLuaManager);
+            requestVisitor.Invoke(req);
+
+            string hashId = requestVisitor.HashId;
+            RedisRequest redisReq = requestVisitor.RedisReq;
+            redisReq.ResponseVisitor = this.responseVisitor;
+
+            int partition = this.PhysicalPartitionByKey(hashId);
+            RedisConnectionPool clientPool = this.RedisManager.GetClientPool(RedisVersionDb.TX_DB_INDEX, partition);
+            clientPool.EnqueueRequest(redisReq);
         }
 
         /// <summary>
@@ -437,27 +461,16 @@
 
         internal override NewTxIdRequest EnqueueNewTxId()
         {
-            VersionTable versionTable = this.GetVersionTable(RedisVersionDb.TX_TABLE);
-            if (versionTable == null)
-            {
-                throw new TransactionException("The specified table does not exists.");
-            }
-
-            NewTxIdRequest req = new NewTxIdRequest(StaticRandom.RandIdentity());
-            versionTable.EnqueueTxRequest(req);
+            long txId = StaticRandom.RandIdentity();
+            NewTxIdRequest req = new NewTxIdRequest(txId);
+            this.EnqueueTxEntryRequest(txId, req);
             return req;
         }
 
         internal override InsertTxIdRequest EnqueueInsertTxId(long txId)
         {
-            VersionTable versionTable = this.GetVersionTable(RedisVersionDb.TX_TABLE);
-            if (versionTable == null)
-            {
-                throw new TransactionException("The specified table does not exists.");
-            }
-
             InsertTxIdRequest req = new InsertTxIdRequest(txId);
-            versionTable.EnqueueTxRequest(req);
+            this.EnqueueTxEntryRequest(txId, req);
             return req;
         }
 
@@ -508,14 +521,8 @@
 
         internal override GetTxEntryRequest EnqueueGetTxEntry(long txId)
         {
-            VersionTable versionTable = this.GetVersionTable(RedisVersionDb.TX_TABLE);
-            if (versionTable == null)
-            {
-                throw new TransactionException("The specified table does not exists.");
-            }
-
             GetTxEntryRequest req = new GetTxEntryRequest(txId);
-            versionTable.EnqueueTxRequest(req);
+            this.EnqueueTxEntryRequest(txId, req);
             return req;
         }
 
@@ -547,14 +554,8 @@
 
         internal override UpdateTxStatusRequest EnqueueUpdateTxStatus(long txId, TxStatus status)
         {
-            VersionTable versionTable = this.GetVersionTable(RedisVersionDb.TX_TABLE);
-            if (versionTable == null)
-            {
-                throw new TransactionException("The specified table does not exists.");
-            }
-
             UpdateTxStatusRequest req = new UpdateTxStatusRequest(txId, status);
-            versionTable.EnqueueTxRequest(req);
+            this.EnqueueTxEntryRequest(txId, req);
             return req;
         }
 
@@ -600,14 +601,8 @@
 
         internal override SetCommitTsRequest EnqueueSetCommitTs(long txId, long proposedCommitTs)
         {
-            VersionTable versionTable = this.GetVersionTable(RedisVersionDb.TX_TABLE);
-            if (versionTable == null)
-            {
-                throw new TransactionException("The specified table does not exists.");
-            }
-
             SetCommitTsRequest req = new SetCommitTsRequest(txId, proposedCommitTs);
-            versionTable.EnqueueTxRequest(req);
+            this.EnqueueTxEntryRequest(txId, req);
             return req;
         }
 
@@ -654,14 +649,8 @@
 
         internal override UpdateCommitLowerBoundRequest EnqueueUpdateCommitLowerBound(long txId, long lowerBound)
         {
-            VersionTable versionTable = this.GetVersionTable(RedisVersionDb.TX_TABLE);
-            if (versionTable == null)
-            {
-                throw new TransactionException("The specified table does not exists.");
-            }
-
             UpdateCommitLowerBoundRequest lowerBoundReq = new UpdateCommitLowerBoundRequest(txId, lowerBound);
-            versionTable.EnqueueTxRequest(lowerBoundReq);
+            this.EnqueueTxEntryRequest(txId, lowerBoundReq);
             return lowerBoundReq;
         }
 
@@ -696,14 +685,8 @@
 
         internal override RemoveTxRequest EnqueueRemoveTx(long txId)
         {
-            VersionTable versionTable = this.GetVersionTable(VersionDb.TX_TABLE);
-            if (versionTable == null)
-            {
-                throw new TransactionException("The specified table does not exists.");
-            }
-
             RemoveTxRequest removeTxReq = new RemoveTxRequest(txId);
-            versionTable.EnqueueTxRequest(removeTxReq);
+            this.EnqueueTxEntryRequest(txId, removeTxReq);
             return removeTxReq;
         }
 
@@ -739,15 +722,9 @@
         }
 
         internal override RecycleTxRequest EnqueueRecycleTx(long txId)
-        {
-            VersionTable versionTable = this.GetVersionTable(VersionDb.TX_TABLE);
-            if (versionTable == null)
-            {
-                throw new TransactionException("The specified table does not exists.");
-            }
-
+        { 
             RecycleTxRequest recycleTxReq = new RecycleTxRequest(txId);
-            versionTable.EnqueueTxRequest(recycleTxReq);
+            this.EnqueueTxEntryRequest(txId, recycleTxReq);
             return recycleTxReq;
         }
     }
