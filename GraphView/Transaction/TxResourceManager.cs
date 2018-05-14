@@ -46,7 +46,7 @@ namespace GraphView.Transaction
             this.versionLists.Enqueue(list);
         }
 
-        internal GetVersionListRequest GetVersionListRequest()
+        internal GetVersionListRequest GetVersionListRequest(string tableId, object recordKey)
         {
             int count = 0;
             int size = this.getVersionListRequests.Count;
@@ -69,6 +69,8 @@ namespace GraphView.Transaction
                 }
             }
 
+            req.TableId = tableId;
+            req.RecordKey = recordKey;
             return req;
         }
 
@@ -79,7 +81,7 @@ namespace GraphView.Transaction
             this.getVersionListRequests.Enqueue(req);
         }
 
-        internal InitiGetVersionListRequest GetInitiGetVersionListRequest()
+        internal InitiGetVersionListRequest GetInitiGetVersionListRequest(string tableId, object recordKey)
         {
             int count = 0;
             int size = this.initiGetVersionListRequests.Count;
@@ -102,6 +104,8 @@ namespace GraphView.Transaction
                 }
             }
 
+            req.TableId = tableId;
+            req.RecordKey = recordKey;
             return req;
         }
 

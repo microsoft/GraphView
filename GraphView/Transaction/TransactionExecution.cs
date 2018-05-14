@@ -93,8 +93,6 @@ namespace GraphView.Transaction
             StoredProcedure procedure = null,
             Queue<long> garbageQueueTxId = null,
             Queue<long> garbageQueueFinishTime = null,
-            TxRange txRange = null)
-            Queue<Tuple<long, long>> garbageQueue = null,
             TxRange txRange = null, 
             TransactionExecutor executor = null)
         {
@@ -1278,7 +1276,7 @@ namespace GraphView.Transaction
                     if (initi)
                     {
                         InitiGetVersionListRequest initiGetVersionListReq = 
-                            this.executor.ResourceManager.GetInitiGetVersionListRequest();
+                            this.executor.ResourceManager.GetInitiGetVersionListRequest(tableId, recordKey);
                         initiGetVersionListReq.Container = container;
 
                         this.versionDb.EnqueueInitializeAndGetVersionList(tableId, initiGetVersionListReq);
@@ -1287,7 +1285,7 @@ namespace GraphView.Transaction
                     else
                     {
                         GetVersionListRequest getVlistReq =
-                            this.executor.ResourceManager.GetVersionListRequest();
+                            this.executor.ResourceManager.GetVersionListRequest(tableId, recordKey);
                         getVlistReq.Container = container;
 
                         this.versionDb.EnqueueGetVersionList(tableId, getVlistReq);
@@ -1350,7 +1348,7 @@ namespace GraphView.Transaction
                         this.executor.ResourceManager.RecycleInitiGetVersionListRequest(initReq);
 
                         List<VersionEntry> container = this.executor.ResourceManager.GetVersionList();
-                        GetVersionListRequest getVlistReq = this.executor.ResourceManager.GetVersionListRequest();
+                        GetVersionListRequest getVlistReq = this.executor.ResourceManager.GetVersionListRequest(tableId, recordKey);
                         getVlistReq.Container = container;
                             
                         this.versionDb.EnqueueGetVersionList(tableId, getVlistReq);

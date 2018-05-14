@@ -153,7 +153,7 @@ namespace GraphView.Transaction
 
         internal TxResourceManager ResourceManager { get; }
 
-        internal static readonly long elapsed = 10000000L;      // 1 sec
+        //internal static readonly long elapsed = 10000000L;      // 1 sec
         internal static readonly long elapsed = 0L;      // 1 sec
 
         public TransactionExecutor(
