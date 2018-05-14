@@ -83,11 +83,12 @@
 			{
 				return false;
 			}
-			// try to commit here
-			if (tx.Commit())
-			{
-				return true;
-			}
+            // try to commit here
+            //if (tx.Commit())
+            //{
+            //	return true;
+            //}
+            tx.PostProcessingAfterCommit();
 			return false;
 		};
 
@@ -139,12 +140,13 @@
 			{
 				return false;
 			}
-			// try to commit here
-			if (tx.Commit())
-			{
-				return true;
-			}
-			return false;
+            // try to commit here
+            if (tx.Commit())
+            {
+                return true;
+            }
+            //tx.PostProcessingAfterCommit();
+            return false;
 		};
 
 		/// <summary>
@@ -241,7 +243,7 @@
 			for (int i = 0; i < this.workerCount; i++)
 			{
 				this.executors.Add(new TransactionExecutor(this.versionDb, null, null, null, i));
-				this.transactions.Add(new Transaction(null, this.versionDb, 10, this.executors[i].GarbageQueue));
+				this.transactions.Add(new Transaction(null, this.versionDb, 10, this.executors[i].GarbageQueueTxId, this.executors[i].GarbageQueueFinishTime));
 			}
         }
 
@@ -255,31 +257,42 @@
             versionDb.CreateVersionTable(TABLE_ID, REDIS_DB_INDEX);
             Console.WriteLine("Created version table {0}", TABLE_ID);
 
-            // step3: load data
-            using (StreamReader reader = new StreamReader(dataFile))
+            //         // step3: load data
+            //         using (StreamReader reader = new StreamReader(dataFile))
+            //         {
+            //             string line;
+            //             int count = 0;
+            //             while ((line = reader.ReadLine()) != null)
+            //             {
+            //                 string[] fields = this.ParseCommandFormat(line);
+            //                 TxWorkload workload = new TxWorkload(fields[0], TABLE_ID, fields[2], fields[3]);
+            //                 count++;
+
+            //                 ACTION(Tuple.Create(workload, this.versionDb));
+            //                 if (count % 5000 == 0)
+            //                 {
+            //                     Console.WriteLine("Loaded {0} records", count);
+            //                 }
+            //		if (count == 2000000)
+            //		{
+            //			break;
+            //		}
+            //             }
+            //             Console.WriteLine("Load records successfully, {0} records in total", count);
+            //         }
+
+            //this.versionDb.ClearTxTable();
+
+            //preload to make txtable and txqueue full.
+            for (int worker_index = 0; worker_index < this.workerCount; worker_index++)
             {
-                string line;
-                int count = 0;
-                while ((line = reader.ReadLine()) != null)
+                for (int i = 0; i < TxRange.range; i++)
                 {
-                    string[] fields = this.ParseCommandFormat(line);
-                    TxWorkload workload = new TxWorkload(fields[0], TABLE_ID, fields[2], fields[3]);
-                    count++;
-
-                    ACTION(Tuple.Create(workload, this.versionDb));
-                    if (count % 5000 == 0)
-                    {
-                        Console.WriteLine("Loaded {0} records", count);
-                    }
-					if (count == 2000000)
-					{
-						break;
-					}
+                    this.versionDb.InsertNewTx(i + worker_index * TxRange.range);
+                    this.executors[worker_index].GarbageQueueTxId.Enqueue(i + worker_index * TxRange.range);
+                    this.executors[worker_index].GarbageQueueFinishTime.Enqueue(0);
                 }
-                Console.WriteLine("Load records successfully, {0} records in total", count);
             }
-
-			this.versionDb.ClearTxTable();
 
             // step 4: fill workers' queue
             using (StreamReader reader = new StreamReader(operationFile))
@@ -349,8 +362,11 @@
                 totalTxs += this.workers[worker_index].FinishedTxs;
                 abortedTxs += this.workers[worker_index].AbortedTxs;
 				Console.WriteLine("Worker Index: {0}", worker_index);
-				Console.WriteLine("Throughput: {0} tx/second", (this.taskCountPerWorker-1000000)/this.workers[worker_index].RunSeconds);
+				//Console.WriteLine("Throughput: {0} tx/second", (this.taskCountPerWorker-1000000)/this.workers[worker_index].RunSeconds);
+				Console.WriteLine("Throughput: {0} tx/second", (this.taskCountPerWorker) / this.workers[worker_index].RunSeconds);
 				Console.WriteLine("RecycleCount: {0}", this.executors[worker_index].RecycleCount);
+                Console.WriteLine("InsertNewTxCount: {0}", this.executors[worker_index].InsertNewTxCount);
+                Console.WriteLine("Run Time: {0} second", this.workers[worker_index].RunSeconds);
 			}
 
 			Console.WriteLine("-----------------------------------------------------------------");

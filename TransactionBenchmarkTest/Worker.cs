@@ -79,18 +79,9 @@
 
         internal void Run()
         {
-			// this.PinThreadOnCores();
-			for (int i = 0; i < 1000000; i++)
-			{
-				bool commited = (bool)txTaskQueue[i].Run();
-				this.FinishedTxs++;
-				if (!commited)
-				{
-					this.AbortedTxs++;
-				}
-			}
-			this.testBeginTicks = DateTime.Now.Ticks;
-			for (int i = 1000000; i < this.taskCount; i++)
+            // this.PinThreadOnCores();
+            this.testBeginTicks = DateTime.Now.Ticks;
+            for (int i = 0; i < this.taskCount; i++)
             {
                 bool commited = (bool)txTaskQueue[i].Run();
                 this.FinishedTxs++;

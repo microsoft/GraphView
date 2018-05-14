@@ -107,7 +107,11 @@ namespace GraphView.Transaction
         /// </summary>
         private readonly Dictionary<string, Dictionary<object, long>> largestVersionKeyMap;
 
-        private readonly Queue<Tuple<long, long>> garbageQueue;
+        private readonly List<Tuple<string, VersionEntry>> validationVersions;
+
+        //private readonly Queue<Tuple<long, long>> garbageQueue;
+        private readonly Queue<long> garbageQueueTxId;
+        private readonly Queue<long> garbageQueueFinishTime;
 
         // only for benchmark test
         public TxStatus Status
@@ -149,7 +153,8 @@ namespace GraphView.Transaction
             ILogStore logStore, 
             VersionDb versionDb, 
             long txId = -1,
-            Queue<Tuple<long, long>> garbageQueue = null)
+            Queue<long> garbageQueueTxId = null,
+            Queue<long> garbageQueueFinishTime = null)
         {
             this.logStore = logStore;
             this.versionDb = versionDb;
@@ -158,6 +163,7 @@ namespace GraphView.Transaction
             this.abortSet = new Dictionary<string, Dictionary<object, List<PostProcessingEntry>>>();
             this.commitSet = new Dictionary<string, Dictionary<object, List<PostProcessingEntry>>>();
             this.largestVersionKeyMap = new Dictionary<string, Dictionary<object, long>>();
+            this.validationVersions = new List<Tuple<string, VersionEntry>>();
 
             this.txId = txId < 0 ? this.versionDb.InsertNewTx() : txId;
             this.txStatus = TxStatus.Ongoing;
@@ -166,7 +172,8 @@ namespace GraphView.Transaction
             this.maxCommitTsOfWrites = -1L;
             this.beginTimestamp = Transaction.DEFAULT_TX_BEGIN_TIMESTAMP;
 
-            this.garbageQueue = garbageQueue;
+            this.garbageQueueTxId = garbageQueueTxId;
+            this.garbageQueueFinishTime = garbageQueueFinishTime;
         }
 
 		public void Clear(long txId)
@@ -176,6 +183,7 @@ namespace GraphView.Transaction
 			this.abortSet.Clear();
 			this.commitSet.Clear();
 			this.largestVersionKeyMap.Clear();
+            this.validationVersions.Clear();
 
 			this.txId = txId;
 			this.txStatus = TxStatus.Ongoing;
@@ -417,8 +425,8 @@ namespace GraphView.Transaction
 
         internal bool Validate()
         {
-            List<Tuple<string, VersionEntry>> validationVersions = new List<Tuple<string, VersionEntry>>();
-
+            //List<Tuple<string, VersionEntry>> validationVersions = new List<Tuple<string, VersionEntry>>();
+            
             foreach (string tableId in this.readSet.Keys)
             {
                 // List<VersionPrimaryKey> validationKeys = new List<VersionPrimaryKey>();
@@ -434,7 +442,7 @@ namespace GraphView.Transaction
                     VersionEntry rereadEntry = this.versionDb.GetVersionEntryByKey(
                         tableId, recordKey, readSet[tableId][recordKey].VersionKey);
 
-                    validationVersions.Add(Tuple.Create(tableId, rereadEntry));
+                    this.validationVersions.Add(Tuple.Create(tableId, rereadEntry));
 
                     // validationKeys.Add(new VersionPrimaryKey(recordKey, readSet[tableId][recordKey].VersionKey));
                 }
@@ -448,7 +456,7 @@ namespace GraphView.Transaction
                 //}
             }
 
-            foreach (Tuple<string, VersionEntry> entry in validationVersions)
+            foreach (Tuple<string, VersionEntry> entry in this.validationVersions)
             {
                 //first get the version, compare its maxCommitTs with my CommitTs
                 VersionEntry versionEntry = entry.Item2;
@@ -576,9 +584,10 @@ namespace GraphView.Transaction
                 }
             }
 
-			if (this.garbageQueue != null)
+			if (this.garbageQueueTxId != null)
 			{
-				this.garbageQueue.Enqueue(Tuple.Create(this.txId, DateTime.Now.Ticks));
+				this.garbageQueueTxId.Enqueue(this.txId);
+                this.garbageQueueFinishTime.Enqueue(DateTime.Now.Ticks);
 			}
         }
 
@@ -642,9 +651,10 @@ namespace GraphView.Transaction
                 }
             }
 
-            if (this.garbageQueue != null)
+            if (this.garbageQueueTxId != null)
             {
-                this.garbageQueue.Enqueue(Tuple.Create(this.txId, DateTime.Now.Ticks));
+                this.garbageQueueTxId.Enqueue(this.txId);
+                this.garbageQueueFinishTime.Enqueue(DateTime.Now.Ticks);
             }
         }
 

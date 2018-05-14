@@ -49,7 +49,7 @@ namespace TransactionBenchmarkTest.YCSB
         /// </summary>
         static void YCSBTest()
         {
-            const int workerCount = 3;      // 4;
+            const int workerCount = 4;    // 4;
             const int taskCountPerWorker = 2000000;   // 50000;
             const string dataFile = "ycsb_data_lg_r.in";
             const string operationFile = "ycsb_ops_lg_r.in";
