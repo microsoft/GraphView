@@ -9,6 +9,12 @@ using ServiceStack.Redis;
 
 namespace TransactionBenchmarkTest.TPCC
 {
+    class TPCCStateTracer
+    {
+        public static NewOrderState[] nostates;  // = new NewOrderState[10];
+        public static PaymentState[] pmstates;
+    }
+
     // the state here means the loop is blocking in the state.
     public enum NewOrderState
     {
@@ -60,6 +66,7 @@ namespace TransactionBenchmarkTest.TPCC
 
         public TPCCNewOrderStoredProcedure(string sessionId, NewOrderInParameters inParams)
         {
+            this.pid = int.Parse(sessionId);
             this.sessionId = sessionId;
             this.input = inParams;
             this.currentState = NewOrderState.ToStart;
@@ -93,6 +100,11 @@ namespace TransactionBenchmarkTest.TPCC
             // the first step
             this.currentState = NewOrderState.ReadItems;
             ReadItem();
+        }
+
+        public void StoreCurrentState()
+        {
+            //TPCCStateTracer.nostates[pid] = this.currentState;
         }
 
         public override void ReadCallback(string tableId, object recordKey, object payload)
@@ -233,7 +245,8 @@ namespace TransactionBenchmarkTest.TPCC
                     break;
 
             }
-            
+
+            this.StoreCurrentState();            
         }
 
         public override void UpdateCallBack(string tableId, object recordKey, object newPayload)
@@ -267,11 +280,15 @@ namespace TransactionBenchmarkTest.TPCC
                     this.Close("exception update");
                     break;
             }
+
+            this.StoreCurrentState();
         }
 
         public override void DeleteCallBack(string tableId, object recordKey, object payload)
         {
             this.Close();
+
+            this.StoreCurrentState();
         }
 
         private void ReadStock()
@@ -326,10 +343,13 @@ namespace TransactionBenchmarkTest.TPCC
                     this.Close("exception insert");
                     break;
             }
+
+            this.StoreCurrentState();
         }
 
         private void Close(string closeMsg = "")
         {
+            //Console.WriteLine("[pid={0}] Close Msg:{1}", this.pid, closeMsg);
             this.errMsg = closeMsg;
             TransactionRequest closeReq = new TransactionRequest(this.sessionId,
                             null, null, null, OperationType.Close);
@@ -374,6 +394,7 @@ namespace TransactionBenchmarkTest.TPCC
         
         public TPCCPaymentStoredProcedure(string sessionId, PaymentInParameters inParams, RedisClient redisClient)
         {
+            this.pid = int.Parse(sessionId);
             this.sessionId = sessionId;
             this.input = inParams;
             this.currentState = PaymentState.ToStart;
@@ -414,7 +435,12 @@ namespace TransactionBenchmarkTest.TPCC
             this.AddReq(this.cpkStr);
         }
 
-        
+        public void StoreCurrentState()
+        {
+            //TPCCStateTracer.pmstates[pid] = this.currentState;
+        }
+
+
         public override void ReadCallback(string tableId, object recordKey, object payload)
         {
            switch (this.currentState)
@@ -422,7 +448,7 @@ namespace TransactionBenchmarkTest.TPCC
                 case PaymentState.ReadC:
                     if (payload == null)
                     {
-                        this.Close();
+                        this.Close("readC payload null");
                         break;
                     }
                     this.cpl = JsonConvert.DeserializeObject<CustomerPayload>(payload as string);
@@ -438,7 +464,7 @@ namespace TransactionBenchmarkTest.TPCC
                 case PaymentState.ReadW:
                     if (payload == null)
                     {
-                        this.Close();
+                        this.Close("readW payload null");
                         break;
                     }
                     this.currentState = PaymentState.UpdateW;
@@ -449,7 +475,7 @@ namespace TransactionBenchmarkTest.TPCC
                 case PaymentState.ReadD:
                     if (payload == null)
                     {
-                        this.Close();
+                        this.Close("readD payload null");
                         break;
                     }
                     this.currentState = PaymentState.UpdateD;
@@ -473,9 +499,11 @@ namespace TransactionBenchmarkTest.TPCC
                     this.AddReq(this.hpkStr, JsonConvert.SerializeObject(hpl), OperationType.Insert);
                     break;
                 default:
-                    this.Close();
+                    this.Close("unexcepted read");
                     break;
            }
+
+           this.StoreCurrentState();
         }
 
         public override void UpdateCallBack(string tableId, object recordKey, object newPayload)
@@ -510,14 +538,16 @@ namespace TransactionBenchmarkTest.TPCC
                     this.AddReq(this.hpkStr, null, OperationType.InitiRead);
                     break;                    
                 default:
-                    this.Close();
+                    this.Close("unexcepted update");
                     break;
             }
+            this.StoreCurrentState();
         }
 
         public override void DeleteCallBack(string tableId, object recordKey, object payload)
         {
-            this.Close();
+            this.StoreCurrentState();
+            this.Close("delete close");
         }
 
 
@@ -536,16 +566,18 @@ namespace TransactionBenchmarkTest.TPCC
             {
                 case PaymentState.InsertH:
                     this.buildOutput();
-                    this.Close();
+                    this.Close("normal close: insert");
                     break;
                 default:
-                    this.Close();
+                    this.Close("unexcepted insert");
                     break;
             }
+            this.StoreCurrentState();
         }
 
-        private void Close()
+        private void Close(string closeMsg = "")
         {
+            //Console.WriteLine("[pid={0}] Close Msg:{1}", this.pid, closeMsg);
             this.AddReq(null, null, OperationType.Close);
         }
     }

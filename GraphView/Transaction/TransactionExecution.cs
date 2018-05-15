@@ -20,6 +20,12 @@ namespace GraphView.Transaction
         Close,
     }
 
+
+    class TxAbortReasonTracer
+    {
+        public static string[] reasons;  // = new NewOrderState[10];
+    }
+
     public class TransactionExecution
     {
 		public bool DEBUG_MODE = false;
@@ -118,6 +124,11 @@ namespace GraphView.Transaction
             }
         }
 
+        internal void SetAbortMsg(string msg)
+        {
+            //TxAbortReasonTracer.reasons[this.Procedure.pid] = msg;
+        }
+
         internal void InitTx()
         {
             // Haven't sent the request
@@ -163,6 +174,7 @@ namespace GraphView.Transaction
                 InsertTxIdRequest insertTxReq = this.requestStack.Pop() as InsertTxIdRequest;
                 if (insertTxReq == null)
                 {
+                    this.SetAbortMsg("Insert Tx Id request failed");
                     this.CurrentProc = new Procedure(this.Abort);
                     this.CurrentProc();
                     return;
@@ -241,8 +253,9 @@ namespace GraphView.Transaction
                     bool uploadSuccess = uploadReq.Result == null ? false : Convert.ToBoolean(uploadReq.Result);
                     if (!uploadSuccess)
                     {
-						// Failed to upload the new image. Moves to the abort phase.
-						this.CurrentProc = new Procedure(this.Abort);
+                        // Failed to upload the new image. Moves to the abort phase.
+                        this.SetAbortMsg("Failed to upload the new image");
+                        this.CurrentProc = new Procedure(this.Abort);
 						if (!this.DEBUG_MODE)
 						{
 							this.CurrentProc();
@@ -298,7 +311,8 @@ namespace GraphView.Transaction
                     VersionEntry versionEntry = replaceReq.Result as VersionEntry;
                     if (versionEntry == null)
                     {
-						this.CurrentProc = new Procedure(this.Abort);
+                        this.SetAbortMsg("Version Entry null");
+                        this.CurrentProc = new Procedure(this.Abort);
 						if (!this.DEBUG_MODE)
 						{
 							this.CurrentProc();
@@ -344,6 +358,7 @@ namespace GraphView.Transaction
                     {
                         // The new version is failed to append to the tail of the version list, 
                         // because the old tail seen by this tx is not the tail anymore
+                        this.SetAbortMsg("Failed to append the tail version");
                         this.CurrentProc = new Procedure(this.Abort);
 						if (!this.DEBUG_MODE)
 						{
@@ -366,6 +381,7 @@ namespace GraphView.Transaction
                     TxTableEntry conflictTxStatus = getTxReq.Result as TxTableEntry;
                     if (conflictTxStatus == null || conflictTxStatus.Status == TxStatus.Ongoing)
                     {
+                        this.SetAbortMsg("conflict tx status Ongoing");
                         this.CurrentProc = new Procedure(this.Abort);
 						if (!this.DEBUG_MODE)
 						{
@@ -404,6 +420,7 @@ namespace GraphView.Transaction
                         // The owner tx of the lock has committed. This version entry is not the tail anymore.
                         if (conflictTxStatus.Status == TxStatus.Committed)
                         {
+                            this.SetAbortMsg("the owner tx of the lock committed");
                             this.CurrentProc = new Procedure(this.Abort);
 							if (!this.DEBUG_MODE)
 							{
@@ -443,6 +460,7 @@ namespace GraphView.Transaction
                     VersionEntry retryEntry = retryReq.Result as VersionEntry;
                     if (retryEntry == null || retryEntry.TxId != this.txId)
                     {
+                        this.SetAbortMsg("retry entry null...");
                         this.CurrentProc = new Procedure(this.Abort);
 						if (!this.DEBUG_MODE)
 						{
@@ -552,6 +570,7 @@ namespace GraphView.Transaction
                 long commitTime = setTsReq.Result == null ? -1 : (long)setTsReq.Result;
                 if (commitTime < 0)
                 {
+                    this.SetAbortMsg("commit time < 0");
                     this.CurrentProc = new Procedure(this.Abort);
 					if (!this.DEBUG_MODE)
 					{
@@ -622,6 +641,7 @@ namespace GraphView.Transaction
                     VersionEntry readEntry = req.Result as VersionEntry;
                     if (readEntry == null)
                     {
+                        this.SetAbortMsg("read entry null");
                         this.CurrentProc = new Procedure(this.Abort);
                         // A really serious bug, should clear the stack before enter the next step
                         this.requestStack.Clear();
@@ -667,6 +687,7 @@ namespace GraphView.Transaction
                             {
                                 // A new version has been created before this tx can commit.
                                 // Abort the tx.
+                                this.SetAbortMsg("a new version has been created before this commit");
                                 this.CurrentProc = new Procedure(this.Abort);
 								if (!this.DEBUG_MODE)
 								{
@@ -704,6 +725,7 @@ namespace GraphView.Transaction
                     VersionEntry readEntry = updateMaxTsReq.Result as VersionEntry;
                     if (readEntry == null)
                     {
+                        this.SetAbortMsg("read entry null: update Max Ts Req");
                         this.CurrentProc = new Procedure(this.Abort);
 						if (!this.DEBUG_MODE)
 						{
@@ -733,6 +755,7 @@ namespace GraphView.Transaction
                     TxTableEntry txEntry = getTxReq.Result as TxTableEntry;
                     if (txEntry == null)
                     {
+                        this.SetAbortMsg("tx table entry null");
                         this.CurrentProc = new Procedure(this.Abort);
 						if (!this.DEBUG_MODE)
 						{
@@ -751,6 +774,7 @@ namespace GraphView.Transaction
                     {
                         if (this.commitTs > txEntry.CommitTime)
                         {
+                            this.SetAbortMsg("this.commitTs > txEntry.CommitTime");
                             this.CurrentProc = new Procedure(this.Abort);
 							if (!this.DEBUG_MODE)
 							{
@@ -787,7 +811,8 @@ namespace GraphView.Transaction
 
 					if (txCommitTs == VersionDb.RETURN_ERROR_CODE)
 					{
-						this.CurrentProc = new Procedure(this.Abort);
+                        this.SetAbortMsg("txCommitTs == VersionDb.RETURN_ERROR_CODE");
+                        this.CurrentProc = new Procedure(this.Abort);
 						if (!this.DEBUG_MODE)
 						{
 							this.CurrentProc();
@@ -802,6 +827,7 @@ namespace GraphView.Transaction
                     }
                     else if (this.commitTs > txCommitTs)
                     {
+                        this.SetAbortMsg("this.commitTs > txCommitTs");
                         this.CurrentProc = new Procedure(this.Abort);
 						if (!this.DEBUG_MODE)
 						{
@@ -1004,6 +1030,7 @@ namespace GraphView.Transaction
         internal void TimeoutAbort()
         {
             this.requestStack.Clear();
+            this.SetAbortMsg("time out abort");
             this.CurrentProc = new Procedure(this.Abort);
         }
 
@@ -1042,6 +1069,7 @@ namespace GraphView.Transaction
             {
                 if (this.writeSet[tableId][recordKey] != null)
                 {
+                    this.SetAbortMsg("write set tableid recordkey null");
                     this.CurrentProc = new Procedure(this.Abort);
                     this.CurrentProc();
                     throw new TransactionException("Cannot insert the same record key twice.");
@@ -1057,6 +1085,7 @@ namespace GraphView.Transaction
             if (this.readSet.ContainsKey(tableId) &&
                 this.readSet[tableId].ContainsKey(recordKey))
             {
+                this.SetAbortMsg("record is already in the local read set");
                 this.CurrentProc = new Procedure(this.Abort);
                 this.CurrentProc();
                 throw new TransactionException("The same record already exists.");
@@ -1088,6 +1117,7 @@ namespace GraphView.Transaction
                 // The record has been deleted by this tx. Cannot be updated. 
                 else
                 {
+                    this.SetAbortMsg("record has been deleted by this tx");
                     this.CurrentProc = new Procedure(this.Abort);
                     this.CurrentProc();
                     throw new TransactionException("The record to be updated has been deleted.");
@@ -1107,6 +1137,7 @@ namespace GraphView.Transaction
             }
             else
             {
+                this.SetAbortMsg("update fail, some reason");
                 this.CurrentProc = new Procedure(this.Abort);
                 this.CurrentProc();
                 throw new TransactionException("The record has not been read or does not exist. Cannot update it.");
@@ -1126,6 +1157,7 @@ namespace GraphView.Transaction
                 }
                 else
                 {
+                    this.SetAbortMsg("delete fail reason1");
                     this.CurrentProc = new Procedure(this.Abort);
                     this.CurrentProc();
                     throw new TransactionException("The record to be deleted has been deleted by the same tx.");
@@ -1144,6 +1176,7 @@ namespace GraphView.Transaction
             }
             else
             {
+                this.SetAbortMsg("delete fail reason2");
                 this.CurrentProc = new Procedure(this.Abort);
                 this.CurrentProc();
                 throw new TransactionException("The record has not been read or does not exist. Cannot delete it.");
