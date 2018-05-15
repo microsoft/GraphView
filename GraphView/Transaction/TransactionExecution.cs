@@ -30,6 +30,8 @@ namespace GraphView.Transaction
 
         internal static readonly long UNSET_TX_COMMIT_TIMESTAMP = -2L;
 
+        internal static readonly int TX_REQUEST_GARBAGE_QUEUE_SIZE = 30;
+
         private readonly ILogStore logStore;
 
         private readonly VersionDb versionDb;
@@ -65,6 +67,13 @@ namespace GraphView.Transaction
         //private readonly Queue<Tuple<long, long>> garbageQueue;
         private readonly Queue<long> garbageQueueTxId;
         private readonly Queue<long> garbageQueueFinishTime;
+
+        /// <summary>
+        /// A garbage queue for tx requests
+        /// all tx requests will be enqueued in the current execution and will be 
+        /// recycled at the end of postprocessing phase
+        /// </summary>
+        private readonly Queue<TxRequest> txReqGarbageQueue;
 
         private readonly TxRange txRange;
 
@@ -117,6 +126,8 @@ namespace GraphView.Transaction
             this.garbageQueueFinishTime = garbageQueueFinishTime;
             this.txRange = txRange;
             this.executor = executor;
+
+            this.txReqGarbageQueue = new Queue<TxRequest>(TX_REQUEST_GARBAGE_QUEUE_SIZE);
 
             this.validateProc = new Procedure(this.Validate);
             this.uploadProc = new Procedure(this.Upload);
@@ -180,6 +191,8 @@ namespace GraphView.Transaction
             this.Procedure = procedure;
             this.isCommitted = false;
             this.beginTicks = DateTime.Now.Ticks;
+
+            this.txReqGarbageQueue.Clear();
 
             // init and get tx id
             this.InitTx();
@@ -1123,6 +1136,12 @@ namespace GraphView.Transaction
                     }
                 }
 
+                while (this.txReqGarbageQueue.Count > 0)
+                {
+                    TxRequest req = this.txReqGarbageQueue.Dequeue();
+                    this.executor.ResourceManager.RecycleTxRequest(ref req);
+                }
+
                 // All post-processing records have been uploaded.
                 this.Progress = TxProgress.Close;
                 this.CurrentProc = null;
@@ -1189,6 +1208,12 @@ namespace GraphView.Transaction
                     {
                         return;
                     }
+                }
+
+                while (this.txReqGarbageQueue.Count > 0)
+                {
+                    TxRequest req = this.txReqGarbageQueue.Dequeue();
+                    this.executor.ResourceManager.RecycleTxRequest(ref req);
                 }
 
                 // All pending records have been reverted.
