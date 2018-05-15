@@ -2,12 +2,10 @@
 namespace GraphView.Transaction
 {
     using System.Collections.Generic;
-    using System.Diagnostics;
     using System.Threading;
 
     internal class SingletonPartitionedVersionTable : VersionTable
     {
-        
         /// <summary>
         /// A dict array to store all versions, recordKey => {versionKey => versionEntry}
         /// Every version table may be stored on several partitions, and for every partition, it has a dict
@@ -21,6 +19,11 @@ namespace GraphView.Transaction
         /// Request queues for partitions
         /// </summary>
         private readonly Queue<VersionEntryRequest>[] requestQueues;
+
+        /// <summary>
+        /// A queue of version entry requests for each partition to be flushed to the k-v store
+        /// </summary>
+        private readonly Queue<VersionEntryRequest>[] flushQueues;
 
         /// <summary>
         /// Spinlocks for partitions
@@ -41,6 +44,7 @@ namespace GraphView.Transaction
             this.PartitionCount = partitionCount;
             this.dicts = new Dictionary<object, Dictionary<long, VersionEntry>>[partitionCount];
             this.requestQueues = new Queue<VersionEntryRequest>[partitionCount];
+            this.flushQueues = new Queue<VersionEntryRequest>[partitionCount];
             this.queueLocks = new SpinLock[partitionCount];
             this.requestVisitors = new PartitionVersionEntryRequestVisitor[partitionCount];
 
@@ -48,6 +52,7 @@ namespace GraphView.Transaction
             {
                 this.dicts[pid] = new Dictionary<object, Dictionary<long, VersionEntry>>(SingletonPartitionedVersionTable.RECORD_CAPACITY);
                 this.requestQueues[pid] = new Queue<VersionEntryRequest>();
+                this.flushQueues[pid] = new Queue<VersionEntryRequest>();
                 this.queueLocks[pid] = new SpinLock();
                 this.requestVisitors[pid] = new PartitionVersionEntryRequestVisitor(this.dicts[pid]);
             }
@@ -59,13 +64,12 @@ namespace GraphView.Transaction
             {
                 this.dicts[pid].Clear();
                 this.requestQueues[pid].Clear();
+                this.flushQueues[pid].Clear();
             }
         }
 
         internal override void EnqueueTxRequest(TxRequest req)
         {
-            // Debug.Assert(req is VersionEntryRequest);
-
             VersionEntryRequest verReq = req as VersionEntryRequest;
             int pk = this.VersionDb.PhysicalPartitionByKey(verReq.RecordKey);
 
@@ -85,27 +89,24 @@ namespace GraphView.Transaction
         }
 
         /// <summary>
-        /// Dequeue all items to an IEnumerable container
+        /// Move pending requests of a version table partition to the partition's flush queue. 
         /// </summary>
-        /// <param name="pk"></param>
-        /// <returns></returns>
-        private IEnumerable<VersionEntryRequest> DequeueRequests(int pk)
+        /// <param name="pk">The key of the version table partition to flush</param>
+        private void DequeueRequests(int pk)
         {
-            Queue<VersionEntryRequest> queue = this.requestQueues[pk];
-            VersionEntryRequest[] reqArray = null;
-
             // Check whether the queue is empty at first
-            if (queue.Count > 0)
+            if (this.requestQueues[pk].Count > 0)
             {
                 bool lockTaken = false;
                 try
                 {
                     this.queueLocks[pk].Enter(ref lockTaken);
                     // In case other running threads also flush the same queue
-                    if (queue.Count > 0)
+                    if (this.requestQueues[pk].Count > 0)
                     {
-                        reqArray = queue.ToArray();
-                        queue.Clear();
+                        Queue<VersionEntryRequest> freeQueue = this.flushQueues[pk];
+                        this.flushQueues[pk] = this.requestQueues[pk];
+                        this.requestQueues[pk] = freeQueue;
                     }
                 }
                 finally
@@ -116,23 +117,24 @@ namespace GraphView.Transaction
                     }
                 }
             }
-            return reqArray;
         }
 
         internal override void Visit(int partitionKey)
         {
-            IEnumerable<VersionEntryRequest> flushReqs = this.DequeueRequests(partitionKey);
+            this.DequeueRequests(partitionKey);
+            Queue<VersionEntryRequest> flushQueue = this.flushQueues[partitionKey];
 
-            if (flushReqs == null)
+            if (flushQueue.Count == 0)
             {
                 return;
             }
 
             PartitionVersionEntryRequestVisitor visitor = this.requestVisitors[partitionKey];
-            foreach (VersionEntryRequest req in flushReqs)
+            foreach (VersionEntryRequest req in flushQueue)
             {
                 visitor.Invoke(req);
             }
+            flushQueue.Clear();
         }
     }
 }
