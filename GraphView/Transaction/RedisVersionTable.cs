@@ -50,17 +50,11 @@
 
     internal partial class RedisVersionTable
     {
-        internal override void EnqueueTxRequest(TxRequest req)
+        internal override void EnqueueVersionEntryRequest(VersionEntryRequest req)
         {
-            RedisRequestVisitor requestVisitor = new RedisRequestVisitor(this.LuaManager);
-            requestVisitor.Invoke(req);
-            string hashId = requestVisitor.HashId;
-            RedisRequest redisReq = requestVisitor.RedisReq;
-            redisReq.ResponseVisitor = this.responseVisitor;
-
-            int partition = this.VersionDb.PhysicalPartitionByKey(hashId);
-            RedisConnectionPool clientPool = this.RedisManager.GetClientPool(this.redisDbIndex, partition);
-            clientPool.EnqueueRequest(redisReq);
+            int pk = this.VersionDb.PhysicalPartitionByKey(req.RecordKey);
+            RedisConnectionPool clientPool = this.RedisManager.GetClientPool(this.redisDbIndex, pk);
+            clientPool.EnqueueTxRequest(req);
         }
 
         /// <summary>

@@ -24,7 +24,7 @@ namespace GraphView.Transaction
             this.tableId = tableId;
         }
 
-        internal virtual void EnqueueTxRequest(TxRequest req)
+        internal virtual void EnqueueVersionEntryRequest(VersionEntryRequest req)
         {
             throw new NotImplementedException();
         }

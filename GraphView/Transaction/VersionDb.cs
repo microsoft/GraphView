@@ -139,7 +139,7 @@ namespace GraphView.Transaction
                 throw new TransactionException("The specified table does not exists.");
             }
 
-            versionTable.EnqueueTxRequest(req);
+            versionTable.EnqueueVersionEntryRequest(req);
         }
 
         internal IEnumerable<VersionEntry> GetVersionList(string tableId, object recordKey)
@@ -162,7 +162,7 @@ namespace GraphView.Transaction
                 throw new TransactionException("The specified table does not exists.");
             }
 
-            versionTable.EnqueueTxRequest(req);
+            versionTable.EnqueueVersionEntryRequest(req);
         }
 
         /// <summary>
@@ -230,7 +230,7 @@ namespace GraphView.Transaction
                 readTxId,
                 expectedEndTimestamp);
 
-            versionTable.EnqueueTxRequest(req);
+            versionTable.EnqueueVersionEntryRequest(req);
             return req;
         }
 
@@ -261,7 +261,7 @@ namespace GraphView.Transaction
                 versionKey,
                 versionEntry);
 
-            versionTable.EnqueueTxRequest(req);
+            versionTable.EnqueueVersionEntryRequest(req);
             return req;
         }
 
@@ -285,7 +285,7 @@ namespace GraphView.Transaction
             }
 
             UploadVersionRequest req = new UploadVersionRequest(tableId, recordKey, versionKey, versionEntry);
-            versionTable.EnqueueTxRequest(req);
+            versionTable.EnqueueVersionEntryRequest(req);
             return req;
         }
 
@@ -309,7 +309,7 @@ namespace GraphView.Transaction
             }
 
             UpdateVersionMaxCommitTsRequest req = new UpdateVersionMaxCommitTsRequest(tableId, recordKey, versionKey, commitTime);
-            versionTable.EnqueueTxRequest(req);
+            versionTable.EnqueueVersionEntryRequest(req);
 
             return req;
         }
@@ -335,7 +335,7 @@ namespace GraphView.Transaction
                 throw new TransactionException("The specified table does not exists.");
             }
 
-            versionTable.EnqueueTxRequest(req);
+            versionTable.EnqueueVersionEntryRequest(req);
             return req;
         }
 
@@ -359,7 +359,7 @@ namespace GraphView.Transaction
             }
 
             DeleteVersionRequest req = new DeleteVersionRequest(tableId, recordKey, versionKey);
-            versionTable.EnqueueTxRequest(req);
+            versionTable.EnqueueVersionEntryRequest(req);
 
             return req;
         }
@@ -384,7 +384,7 @@ namespace GraphView.Transaction
                 throw new TransactionException("The specified table does not exists.");
             }
 
-            versionTable.EnqueueTxRequest(req);
+            versionTable.EnqueueVersionEntryRequest(req);
         }
     }
 

@@ -80,9 +80,24 @@
         private IRedisClientsManager redisManagerPool;
 
         /// <summary>
-        /// Request queue holding the pending requests
+        /// Request queue holding the pending Redis requests
         /// </summary>
-        internal Queue<RedisRequest> requestQueue;
+        internal Queue<RedisRequest> redisRequestQueue;
+
+        /// <summary>
+        /// A queue of pending tx requests
+        /// </summary>
+        private Queue<TxRequest> txRequestQueue;
+
+        /// <summary>
+        /// A queue of tx requests to be flushed
+        /// </summary>
+        private Queue<TxRequest> flushTxRequestQueue;
+
+        private SpinLock txRequestQueueLock;
+
+        private readonly RedisRequestVisitor redisRequestVisitor;
+        private readonly RedisResponseVisitor redisResponseVisitor;
 
         /// <summary>
         /// Request Window Size, client manager can reset it by the propery
@@ -125,7 +140,13 @@
             this.WindowMicroSec = RedisConnectionPool.DEFAULT_WINDOW_MICRO_SEC;
             this.Active = true;
 
-            this.requestQueue = new Queue<RedisRequest>(this.RequestBatchSize);
+            this.redisRequestQueue = new Queue<RedisRequest>(this.RequestBatchSize);
+
+            this.txRequestQueue = new Queue<TxRequest>(this.RequestBatchSize);
+            this.flushTxRequestQueue = new Queue<TxRequest>(this.RequestBatchSize);
+            this.txRequestQueueLock = new SpinLock();
+            this.redisResponseVisitor = new RedisResponseVisitor();
+            // How to intialize RedisRequestVisitor?
 
             this.spinLock = new SpinLock();
             lastFlushTime = DateTime.Now.Ticks / 10;
@@ -147,19 +168,36 @@
         /// </summary>
         /// <param name="request">The incoming request</param>
         /// <returns>The index of the spot the request takes</returns>
-        internal void EnqueueRequest(RedisRequest request)
+        internal void EnqueueRedisRequest(RedisRequest request)
         {
             bool lockTaken = false;
             try
             {
                 this.spinLock.Enter(ref lockTaken);
-                this.requestQueue.Enqueue(request);
+                this.redisRequestQueue.Enqueue(request);
             }
             finally
             {
                 if (lockTaken)
                 {
                     this.spinLock.Exit();
+                }
+            }
+        }
+
+        internal void EnqueueTxRequest(TxRequest req)
+        {
+            bool lockTaken = false;
+            try
+            {
+                this.txRequestQueueLock.Enter(ref lockTaken);
+                this.txRequestQueue.Enqueue(req);
+            }
+            finally
+            {
+                if (lockTaken)
+                {
+                    this.txRequestQueueLock.Exit();
                 }
             }
         }
@@ -241,15 +279,48 @@
 
         internal void Visit()
         {
+            bool lockTaken = false;
+            try
+            {
+                this.txRequestQueueLock.Enter(ref lockTaken);
+
+                Queue<TxRequest> freeQueue = this.flushTxRequestQueue;
+                this.flushTxRequestQueue = this.txRequestQueue;
+                this.txRequestQueue = freeQueue;
+            }
+            finally
+            {
+                if (lockTaken)
+                {
+                    this.txRequestQueueLock.Exit();
+                }
+            }
+
+            foreach (TxRequest txReq in this.flushTxRequestQueue)
+            {
+                this.redisRequestVisitor.Invoke(txReq);
+                RedisRequest redisReq = this.redisRequestVisitor.RedisReq;
+                redisReq.ResponseVisitor = this.redisResponseVisitor;
+
+                this.redisRequestQueue.Enqueue(redisReq);
+            }
+
+            this.Flush(this.redisRequestQueue);
+            this.redisRequestQueue.Clear();
+            this.flushTxRequestQueue.Clear();
+        }
+
+        internal void VisitRedisRequestQueue()
+        {
             long now = DateTime.Now.Ticks / 10;
             if (now - lastFlushTime >= this.WindowMicroSec ||
-                this.requestQueue.Count >= this.RequestBatchSize)
+                this.redisRequestQueue.Count >= this.RequestBatchSize)
             {
-                if (this.requestQueue.Count > 0)
+                if (this.redisRequestQueue.Count > 0)
                 {
                     // ONLY FOR BENCHMARK TEST
                     Interlocked.Increment(ref RedisConnectionPool.FLUSH_TIMES);
-                    if (this.requestQueue.Count >= this.RequestBatchSize)
+                    if (this.redisRequestQueue.Count >= this.RequestBatchSize)
                     {
                         Interlocked.Increment(ref RedisConnectionPool.FLUSH_TIMES_UPTO_BATCH);
                     }
@@ -261,13 +332,13 @@
                         this.spinLock.Enter(ref lockTaken);
                         // Copy a batch of elements to an array and clear the request queue, then release the lock.
                         // It reduces the time holding the lock and let requests enqueue timely
-                        int flushCount = Math.Min(this.RequestBatchSize, this.requestQueue.Count);
+                        int flushCount = Math.Min(this.RequestBatchSize, this.redisRequestQueue.Count);
                         if (flushCount > 0)
                         {
                             flushReqs = new RedisRequest[flushCount];
                             for (int i = 0; i < flushCount; i++)
                             {
-                                flushReqs[i] = this.requestQueue.Dequeue();
+                                flushReqs[i] = this.redisRequestQueue.Dequeue();
                             }
                         }
                     }
@@ -288,51 +359,6 @@
             }
         }
 
-        /// <summary>
-        /// A daemon thread invokes the Monitor() method to monitor the request queue,  
-        /// periodically flushes queued request to Redis, and get back results for each request.
-        /// </summary>
-        internal void Monitor()
-        {
-            long now = DateTime.Now.Ticks / 10;
-            if (now - lastFlushTime >= this.WindowMicroSec ||
-                this.requestQueue.Count >= this.RequestBatchSize)
-            {
-                if (this.requestQueue.Count > 0)
-                {
-                    bool lockTaken = false;
-                    RedisRequest[] flushReqs = null;
-                    try
-                    {
-                        this.spinLock.Enter(ref lockTaken);
-
-                        // Copy a batch of elements to an array and clear the request queue, then release the lock.
-                        // It reduces the time holding the lock and let requests enqueue timely
-                        int flushCount = Math.Min(this.RequestBatchSize, this.requestQueue.Count);
-                        flushReqs = new RedisRequest[flushCount];
-                        for (int i = 0; i < flushCount; i++)
-                        {
-                            flushReqs[i] = this.requestQueue.Dequeue();
-                        }
-
-                    }
-                    finally
-                    {
-                        if (lockTaken)
-                        {
-                            this.spinLock.Exit();
-                        }
-                        if (flushReqs != null)
-                        {
-                            this.Flush(flushReqs);
-                        }
-                    }
-
-                }
-                lastFlushTime = DateTime.Now.Ticks / 10;
-            }
-        }
-
         public void Dispose()
         {
             this.Active = false;
@@ -340,7 +366,7 @@
 
         internal long ProcessLongRequest(RedisRequest redisRequest)
         {
-            this.EnqueueRequest(redisRequest);
+            this.EnqueueRedisRequest(redisRequest);
             lock (redisRequest)
             {
                 while (!redisRequest.Finished)
@@ -354,7 +380,7 @@
 
         internal byte[][] ProcessValuesRequest(RedisRequest redisRequest)
         {
-            this.EnqueueRequest(redisRequest);
+            this.EnqueueRedisRequest(redisRequest);
             lock (redisRequest)
             {
                 while (!redisRequest.Finished)
@@ -368,7 +394,7 @@
 
         internal byte[] ProcessValueRequest(RedisRequest redisRequest)
         {
-            this.EnqueueRequest(redisRequest);
+            this.EnqueueRedisRequest(redisRequest);
             lock (redisRequest)
             {
                 while (!redisRequest.Finished)
@@ -381,7 +407,7 @@
 
         internal void ProcessVoidRequest(RedisRequest redisRequest)
         {
-            this.EnqueueRequest(redisRequest);
+            this.EnqueueRedisRequest(redisRequest);
             lock (redisRequest)
             {
                 while (!redisRequest.Finished)
@@ -399,7 +425,7 @@
             {
                 count++;
                 lastRequest = req;
-                this.EnqueueRequest(req);
+                this.EnqueueRedisRequest(req);
             }
 
             // Since requests may be executed in different batch, we must enusre all
