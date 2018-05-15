@@ -87,39 +87,10 @@ namespace GraphView.Transaction
 
                 // The version list is newly created by this tx. 
                 // No meaningful versions exist, except for the artificial entry as a tail pointer. 
-                req.Result = null;
+                req.Result = 1L;
                 req.Finished = true;
                 return;
             }
-
-            Dictionary<long, VersionEntry> versionList = this.dict[req.RecordKey];
-            VersionEntry tailEntry = versionList[VersionEntry.VERSION_KEY_STRAT_INDEX];
-            if (tailEntry == null)
-            {
-                throw new TransactionException("The tail pointer is missing from the version list.");
-            }
-            long lastVersionKey = tailEntry.BeginTimestamp;
-
-            List<VersionEntry> localList = new List<VersionEntry>(2);
-            // Only returns top 2 newest versions. This is enough for serializability. 
-            // For other isolation levels, more versions may need to be returned.
-            // When old versions may be truncated, it is desirable to maintain a head pointer as well,
-            // so as to increase the lower bound of version keys and reduce the number of iterations. 
-            while (lastVersionKey >= 0 && localList.Count <= 2)
-            {
-                VersionEntry verEntry = null;
-                this.dict[req.RecordKey].TryGetValue(lastVersionKey, out verEntry);
-
-                if (verEntry != null)
-                {
-                    localList.Add(verEntry);
-                }
-
-                lastVersionKey--;
-            }
-
-            req.Result = localList;
-            req.Finished = true;
         }
 
         internal override void Visit(ReadVersionRequest req)

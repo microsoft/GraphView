@@ -3,6 +3,7 @@ namespace GraphView.Transaction
 {
     using System;
     using System.Collections.Generic;
+    using System.Threading;
 
     public class TransactionRequest
     {
@@ -88,7 +89,7 @@ namespace GraphView.Transaction
         /// <summary>
         /// The size of current working transaction set
         /// </summary>
-        private readonly int workingSetSize = 100;      // in terms of # of tx's
+        private readonly int workingSetSize = 1;      // in terms of # of tx's
 
         /// <summary>
         /// A queue of workloads accepted from clients
@@ -380,6 +381,7 @@ namespace GraphView.Transaction
                                     }
 
                                     exec.Reset(txReq.Procedure);
+                                    this.activeTxs[txReq.SessionId] = Tuple.Create(exec, reqQueue);
                                 }
                                 else
                                 {
@@ -389,7 +391,8 @@ namespace GraphView.Transaction
                                         txReq.Procedure, 
                                         this.GarbageQueueTxId, 
                                         this.GarbageQueueFinishTime, 
-                                        this.txRange);
+                                        this.txRange,
+                                        this);
 
                                     Queue<TransactionRequest> reqQueue = new Queue<TransactionRequest>();
                                     if (txReq.Procedure != null)

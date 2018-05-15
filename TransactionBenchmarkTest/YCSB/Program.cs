@@ -68,10 +68,11 @@ namespace TransactionBenchmarkTest.YCSB
 
         static void YCSBAsyncTest()
         {
-            const int executorCount = 4;
-            const int txCountPerExecutor = 50000;
-            const string dataFile = "ycsb_data.in";
-            const string operationFile = "ycsb_ops.in";
+            const int recordCount = 200000;
+            const int executorCount = 1;
+            const int txCountPerExecutor = 5;
+            const string dataFile = "ycsb_data_r.in";
+            const string operationFile = "ycsb_ops_r.in";
 
             // an executor is responsiable for all flush
             List<List<Tuple<string, int>>> instances = new List<List<Tuple<string, int>>>
@@ -81,16 +82,18 @@ namespace TransactionBenchmarkTest.YCSB
                     Tuple.Create(YCSBAsyncBenchmarkTest.TABLE_ID, 0),
                     Tuple.Create(RedisVersionDb.TX_TABLE, 0),
                 },
-                new List<Tuple<string, int>>()
-                {
-                    Tuple.Create(YCSBAsyncBenchmarkTest.TABLE_ID, 0),
-                    Tuple.Create(RedisVersionDb.TX_TABLE, 0),
-                }
+                //new List<Tuple<string, int>>()
+                //{
+                //    Tuple.Create(YCSBAsyncBenchmarkTest.TABLE_ID, 0),
+                //    Tuple.Create(RedisVersionDb.TX_TABLE, 0),
+                //}
             };
 
-            YCSBAsyncBenchmarkTest test = new YCSBAsyncBenchmarkTest(executorCount, txCountPerExecutor, instances);
+            SingletonPartitionedVersionDb versionDb = SingletonPartitionedVersionDb.Instance(1);
+            YCSBAsyncBenchmarkTest test = new YCSBAsyncBenchmarkTest(recordCount, 
+                executorCount, txCountPerExecutor, versionDb, instances);
             test.Setup(dataFile, operationFile);
-            test.Run();
+            // test.Run();
             test.Stats();
         }
 
@@ -116,13 +119,13 @@ namespace TransactionBenchmarkTest.YCSB
         {
             Program.args = args;
             // For the YCSB sync test
-            YCSBTest();
+            // YCSBTest();
 
             // For the redis benchmark Test
             // RedisBenchmarkTest();
 
             // For the YCSB async test
-            // YCSBAsyncTest();
+            YCSBAsyncTest();
 
             // ExecuteRedisRawTest();
         }

@@ -165,26 +165,31 @@ namespace GraphView.Transaction
             {
                 versionList.Clear();
             }
+            this.readSet.Clear();
 
             foreach (Dictionary<object, object> writeRecords in this.writeSet.Values)
             {
                 writeRecords.Clear();
             }
+            this.writeSet.Clear();
 
             foreach (Dictionary<object, List<PostProcessingEntry>> abortEntries in this.abortSet.Values)
             {
                 abortEntries.Clear();
             }
+            this.abortSet.Clear();
 
             foreach (Dictionary<object, List<PostProcessingEntry>> commitEntries in this.commitSet.Values)
             {
                 commitEntries.Clear();
             }
+            this.commitSet.Clear();
 
             foreach (Dictionary<object, long> keymap in this.largestVersionKeyMap.Values)
             {
                 keymap.Clear();
             }
+            this.largestVersionKeyMap.Clear();
 
             this.commitTs = TxTableEntry.DEFAULT_COMMIT_TIME;
             this.maxCommitTsOfWrites = -1L;
@@ -198,6 +203,10 @@ namespace GraphView.Transaction
             this.beginTicks = DateTime.Now.Ticks;
 
             this.txReqGarbageQueue.Clear();
+
+            // reset the list as null
+            this.readVersionList = null;
+            this.validateKeyList = null;
 
             // init and get tx id
             this.InitTx();
@@ -237,25 +246,26 @@ namespace GraphView.Transaction
                         this.versionDb.EnqueueTxEntryRequest(candidate, recycleReq);
                         this.txReqGarbageQueue.Enqueue(recycleReq);
                         this.requestStack.Push(recycleReq);
-                        return;
                     }
-                }
-
-                NewTxIdRequest newTxIdReq = null;
-                if (this.txRange == null)
-                {
-                    // TODO: should handle this case?
-                    newTxIdReq = this.versionDb.EnqueueNewTxId();
                 }
                 else
                 {
-                    long id = this.txRange.NextTxCandidate();
-                    newTxIdReq = this.executor.ResourceManager.NewTxIdRequest(id);
-                    this.versionDb.EnqueueTxEntryRequest(id, newTxIdReq);
-                    this.txReqGarbageQueue.Enqueue(newTxIdReq);
-                }
+                    NewTxIdRequest newTxIdReq = null;
+                    if (this.txRange == null)
+                    {
+                        // TODO: should handle this case?
+                        newTxIdReq = this.versionDb.EnqueueNewTxId();
+                    }
+                    else
+                    {
+                        long id = this.txRange.NextTxCandidate();
+                        newTxIdReq = this.executor.ResourceManager.NewTxIdRequest(id);
+                        this.versionDb.EnqueueTxEntryRequest(id, newTxIdReq);
+                        this.txReqGarbageQueue.Enqueue(newTxIdReq);
+                    }
 
-                this.requestStack.Push(newTxIdReq);
+                    this.requestStack.Push(newTxIdReq);
+                }
 
                 // set the current procedure as InitTx and wait for the executor check
                 this.CurrentProc = this.initiTxProc;
@@ -1441,7 +1451,6 @@ namespace GraphView.Transaction
         {
             received = false;
             payload = null;
-
             // In those two cases, the read process is non-blocked, so keep the progress as OPEN
             // try to find the record image in the local writeSet
             if (this.writeSet.ContainsKey(tableId) &&
