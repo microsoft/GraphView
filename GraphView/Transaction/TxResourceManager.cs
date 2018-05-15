@@ -21,25 +21,12 @@ namespace GraphView.Transaction
 
         internal T GetResource()
         {
-            int count = 0;
-            int size = this.resourcePool.Count;
-
-            T resource = this.resourcePool.Dequeue();
-            while (resource.IsActive())
+            if (this.resourcePool.Count == 0)
             {
-                this.resourcePool.Enqueue(resource);
-                count++;
-
-                if (count >= size)
-                {
-                    return default(T);
-                }
-                else
-                {
-                    resource = this.resourcePool.Dequeue();
-                }
+                return default(T);
             }
 
+            T resource = this.resourcePool.Dequeue();
             resource.Use();
             return resource;
         }
@@ -115,7 +102,8 @@ namespace GraphView.Transaction
             else
             {
                 List<VersionEntry> list = new List<VersionEntry>(8);
-                this.versionLists.Enqueue(list);
+                // Duplicated Enqueue
+                // this.versionLists.Enqueue(list);
                 return list;
             }
         }
@@ -133,7 +121,8 @@ namespace GraphView.Transaction
             if (req == null)
             {
                 req = new GetVersionListRequest(tableId, recordKey, null);
-                this.getVersionListRequests.AddNewResource(req);
+                // No need to add the req to ResoucePool, since it will be added when recycling
+                // And it shouldn't be set as Free until it has been used
             }
             else
             {
@@ -158,7 +147,6 @@ namespace GraphView.Transaction
             if (req == null)
             {
                 req = new InitiGetVersionListRequest(tableId, recordKey, null);
-                this.initiGetVersionListRequests.AddNewResource(req);
             }
             else
             {
@@ -176,14 +164,16 @@ namespace GraphView.Transaction
             req = null;
         }
 
+
+        /// <summary>
+        /// TxEntryRequest related recycling
+        /// </summary>
         internal GetTxEntryRequest GetTxEntryRequest(long txId)
         {
-           GetTxEntryRequest req = this.getTxEntryRequests.GetResource();
-
+            GetTxEntryRequest req = this.getTxEntryRequests.GetResource();
             if (req == null)
             {
                 req = new GetTxEntryRequest(txId);
-                this.getTxEntryRequests.AddNewResource(req);
             }
             else
             {
@@ -205,7 +195,6 @@ namespace GraphView.Transaction
             if (req == null)
             {
                 req = new InsertTxIdRequest(txId);
-                this.inserTxRequests.AddNewResource(req);
             }
             else
             {
@@ -227,7 +216,6 @@ namespace GraphView.Transaction
             if (req == null)
             {
                 req = new NewTxIdRequest(txId);
-                this.newTxRequests.AddNewResource(req);
             }
             else
             {
@@ -249,7 +237,6 @@ namespace GraphView.Transaction
             if (req == null)
             {
                 req = new UpdateCommitLowerBoundRequest(txId, lowerBound);
-                this.updateCommitLowerBoundRequests.AddNewResource(req);
             }
             else
             {
@@ -272,7 +259,6 @@ namespace GraphView.Transaction
             if (req == null)
             {
                 req = new SetCommitTsRequest(txId, commitTs);
-                this.setCommitTsRequests.AddNewResource(req);
             }
             else
             {
