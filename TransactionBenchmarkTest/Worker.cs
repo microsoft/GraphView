@@ -2,7 +2,8 @@
 {
     using GraphView.Transaction;
     using System;
-    using System.Diagnostics;
+	using System.Collections.Generic;
+	using System.Diagnostics;
     using System.Threading;
     using System.Threading.Tasks;
 
@@ -30,7 +31,27 @@
         /// </summary>
         private int taskCount;
 
-        internal int FinishedTxs { get; private set; }
+		/// <summary>
+		/// The exact ticks when the test starts
+		/// </summary>
+		private long testBeginTicks;
+
+		/// <summary>
+		/// The exact ticks when then test ends
+		/// </summary>
+		private long testEndTicks;
+
+		internal double RunSeconds
+		{
+			get
+			{
+				return ((this.testEndTicks - this.testBeginTicks) * 1.0) / 10000000;
+			}
+		}
+
+		internal List<double> throuputPerOneMillion;
+
+		internal int FinishedTxs { get; private set; }
 
         internal int AbortedTxs { get; private set; }
 
@@ -40,6 +61,8 @@
             this.TaskQueueSize = Math.Max(queueSize, DEFAULT_QUEUE_SIZE);
             this.txTaskQueue = new TxTask[this.TaskQueueSize];
             this.taskCount = 0;
+
+			this.throuputPerOneMillion = new List<double>();
         }
 
         internal void EnqueueTxTask(TxTask task)
@@ -57,7 +80,7 @@
         internal void Run()
         {
             // this.PinThreadOnCores();
-
+            this.testBeginTicks = DateTime.Now.Ticks;
             for (int i = 0; i < this.taskCount; i++)
             {
                 bool commited = (bool)txTaskQueue[i].Run();
@@ -66,8 +89,9 @@
                 {
                     this.AbortedTxs++;
                 }
-            }
-        }
+			}
+			this.testEndTicks = DateTime.Now.Ticks;
+		}
 
         internal void RunTxOnly()
         {

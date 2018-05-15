@@ -131,6 +131,18 @@ namespace GraphView.Transaction
                 BitConverter.ToInt64(returnBytes[1], 0);
         }
 
+        internal override void Visit(RecycleTxRequest req)
+        {
+            // There is no response from HMSet, always set the result as successful
+            req.Result = 1L;
+        }
+
+        internal override void Visit(RemoveTxRequest req)
+        {
+            byte[] returnBytes = req.Result as byte[];
+            req.Result = returnBytes == null ? 0L : BitConverter.ToInt64(returnBytes, 0);
+        }
+
         internal override void Visit(UpdateCommitLowerBoundRequest req)
         {
             byte[][] returnBytes = req.Result as byte[][];

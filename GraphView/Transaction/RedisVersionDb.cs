@@ -57,16 +57,9 @@
         public static readonly long META_DB_INDEX = 0;
         
         /// <summary>
-        /// The default transaction table name
-        /// </summary>
-        public static readonly string TX_TABLE = "tx_table";
-
-        /// <summary>
         /// The default transaction database index
         /// </summary>
         public static readonly long TX_DB_INDEX = 1;
-
-        public static bool DEFAULT_ASYNC_MODE = false;
 
         /// <summary>
         /// the map from tableId to redis version table
@@ -94,12 +87,6 @@
 		private readonly RedisResponseVisitor responseVisitor;
 
         /// <summary>
-        /// A list of (table Id, partition key) pairs, each of which represents a key-value instance. 
-        /// This worker is responsible for processing key-value ops directed to the designated instances.
-        /// </summary>
-        private Dictionary<string, List<int>> partitionedInstances;
-
-        /// <summary>
         /// A flag to declare if the async monitor is active, which will be set as false
         /// when the version db is closed
         /// </summary>
@@ -117,19 +104,12 @@
         /// </summary>
         public bool PipelineMode { get; set; } = false;
 
-        /// <summary>
-        /// If the version db is in async mode
-        /// </summary>
-        public bool AsyncMode { get; set; } = false;
-
         private RedisVersionDb()
         {
             this.tableLock = new object();
             this.versionTableMap = new Dictionary<string, RedisVersionTable>();
             this.responseVisitor = new RedisResponseVisitor();
 
-            // Read async mode from the file
-            this.AsyncMode = RedisVersionDb.DEFAULT_ASYNC_MODE;
             this.Setup();
         }
 
@@ -158,33 +138,6 @@
     /// </summary>
     public partial class RedisVersionDb
     {
-        /// <summary>
-        /// There will be daemon thread running to flush the requests
-        /// </summary>
-        public void Monitor()
-        {
-            while (this.AsyncMonitorActive)
-            {
-                foreach (KeyValuePair<string, List<int>> partition in this.partitionedInstances)
-                {
-                    string tableId = partition.Key;
-                    foreach (int partitionKey in partition.Value)
-                    {
-                        this.Visit(tableId, partitionKey);
-                    }
-                }
-            }
-        }
-
-
-        public void Dispose()
-        {
-            if (this.AsyncMode)
-            {
-                this.AsyncMonitorActive = false;
-            }
-        }
-
         /// <summary>
         /// Get redisDbIndex from meta hashset by tableId
         /// Take the System.Nullable<long> to wrap the return result, as it could 
@@ -218,53 +171,36 @@
            
             // Init the redis client manager
             // TODO: get readWriteHosts from config file
-            string[] readWriteHosts = new string[] { "127.0.0.1:6379" };
+            string[] readWriteHosts = new string[] 
+            {
+                "127.0.0.1:6379",
+                //"127.0.0.1:6381",
+                //"127.0.0.1:6382",
+                //"127.0.0.1:6383",
+                //"127.0.0.1:6384",
+                //"127.0.0.1:6385",
+                //"127.0.0.1:6386",
+                //"127.0.0.1:6387",
+                //"127.0.0.1:6388",
+                //"127.0.0.1:6389",
+                //"127.0.0.1:6390",
+                //"127.0.0.1:6390",
+                //"127.0.0.1:6391",
+                //"127.0.0.1:6392",
+                //"127.0.0.1:6393",
+                //"127.0.0.1:6394",
+                //"127.0.0.1:6395",
+            };
+
             this.RedisManager = new RedisClientManager(readWriteHosts);
 
             // Init lua script manager
             this.RedisLuaManager = new RedisLuaScriptManager(this.RedisManager);
-            if (this.AsyncMode)
-            {
-                // Add tableIds and partition instances
-                IEnumerable<string> tables = this.GetAllTables();
-                foreach (string tableId in tables)
-                {
-                    this.AddPartitionInstance(tableId);
-                }
-            }
-
-            // Create the transaction table
-            this.CreateVersionTable(RedisVersionDb.TX_TABLE, RedisVersionDb.TX_DB_INDEX);
-            if (this.AsyncMode)
-            {
-                // start a daemon thread to monitor the flush
-                Thread thread = new Thread(new ThreadStart(this.Monitor));
-                thread.Start();
-            }
         }
 
-        /// <summary>
-        /// Add partition instances for a given tableId
-        /// </summary>
-        /// <param name="tableId"></param>
-        private void AddPartitionInstance(string tableId)
-        {            
-            if (this.partitionedInstances == null)
-            {
-                this.partitionedInstances = new Dictionary<string, List<int>>();
-            }
-
-            if (this.partitionedInstances.ContainsKey(tableId))
-            {
-                return;
-            }
-
-            List<int> partitionKeys = new List<int>();
-            for (int partition = 0; partition < this.RedisManager.RedisInstanceCount; partition++)
-            {
-                partitionKeys.Add(partition);
-            }
-            this.partitionedInstances.Add(tableId, partitionKeys);
+        public void Dispose()
+        {
+            // do nothing
         }
     }
 
@@ -309,8 +245,6 @@
                         if (!this.versionTableMap.ContainsKey(tableId))
                         {
                             this.versionTableMap[tableId] = versionTable;
-                            // add instances for the created table
-                            this.AddPartitionInstance(tableId);
                         }
                     }
                 }
@@ -356,11 +290,25 @@
                         if (this.versionTableMap.ContainsKey(tableId))
                         {
                             this.versionTableMap.Remove(tableId);
-                            this.partitionedInstances.Remove(tableId);
                         }
                     }
                 }
                 return result == 1;
+            }
+        }
+
+        // Clear the database with FLUSHALL command
+        internal override void Clear()
+        {
+            int redisInstanceCount = this.RedisManager.RedisInstanceCount;
+            // The default redis db index
+            int redisDbIndex = 0;
+            for (int partition = 0; partition < redisInstanceCount; partition++)
+            {
+                using (RedisClient redisClient = this.RedisManager.GetClient(redisDbIndex, partition))
+                {
+                    redisClient.FlushAll();
+                }
             }
         }
     }
@@ -380,25 +328,80 @@
     /// </summary>
     public partial class RedisVersionDb
     {
-		internal override void EnqueueTxRequest(TxRequest req)
-		{
-            throw new NotImplementedException();
-		}
-
-		/// <summary>
-		/// Get a unique transaction Id and store the txTableEntry into the redis
-		/// This will be implemented in two steps since HSETNX can only have a field
-		/// 1. try a random txId and ensure that it is unique in redis with the command HSETNX
-		///    If it is a unique id, set it in hset to occupy it with the same atomic operation
-		/// 2. set other fields of txTableEntry by HSET command
-		/// </summary>
-		/// <returns>a transaction Id</returns>
-		internal override long InsertNewTx()
+        internal override void Visit(string tableId, int partitionKey)
         {
-            long txId = 0, ret = 0;
-            do
+            if (tableId == VersionDb.TX_TABLE)
             {
-                txId = this.RandomLong(0, long.MaxValue);
+                RedisConnectionPool clientPool = this.RedisManager.GetClientPool(RedisVersionDb.TX_DB_INDEX, partitionKey);
+                clientPool.Visit();
+            }
+            else
+            {
+                VersionTable versionTable = this.GetVersionTable(tableId);
+                if (versionTable != null)
+                {
+                    versionTable.Visit(partitionKey);
+                }
+            }
+        }
+
+        internal override void EnqueueTxEntryRequest(long txId, TxEntryRequest req)
+        {
+            RedisRequestVisitor requestVisitor = new RedisRequestVisitor(this.RedisLuaManager);
+            requestVisitor.Invoke(req);
+
+            string hashId = requestVisitor.HashId;
+            RedisRequest redisReq = requestVisitor.RedisReq;
+            redisReq.ResponseVisitor = this.responseVisitor;
+
+            int partition = this.PhysicalPartitionByKey(hashId);
+            RedisConnectionPool clientPool = this.RedisManager.GetClientPool(RedisVersionDb.TX_DB_INDEX, partition);
+            clientPool.EnqueueRequest(redisReq);
+        }
+
+        /// <summary>
+        /// Get a unique transaction Id and store the txTableEntry into the redis
+        /// This will be implemented in two steps since HSETNX can only have a field
+        /// 1. try a random txId and ensure that it is unique in redis with the command HSETNX
+        ///    If it is a unique id, set it in hset to occupy it with the same atomic operation
+        /// 2. set other fields of txTableEntry by HSET command
+        /// </summary>
+        /// <returns>a transaction Id</returns>
+        internal override long InsertNewTx(long txId = -1)
+        {
+            long ret = 0;
+
+            if (txId < 0)
+            {
+                do
+                {
+                    txId = StaticRandom.RandIdentity();
+
+                    string hashId = txId.ToString();
+                    byte[] keyBytes = Encoding.ASCII.GetBytes(TxTableEntry.TXID_STRING);
+                    byte[] valueBytes = BitConverter.GetBytes(txId);
+
+                    int partition = this.PhysicalPartitionByKey(hashId);
+                    // If the hashId doesn't exist or field doesn't exist, return 1
+                    // otherwise return 0
+                    if (this.PipelineMode)
+                    {
+                        RedisRequest request = new RedisRequest(hashId, keyBytes, valueBytes, RedisRequestType.HSetNX);
+                        RedisConnectionPool clientPool = this.RedisManager.GetClientPool(RedisVersionDb.TX_DB_INDEX, partition);
+                        ret = clientPool.ProcessLongRequest(request);
+                    }
+                    else
+                    {
+                        using (RedisClient client = this.RedisManager.GetClient(RedisVersionDb.TX_DB_INDEX, partition))
+                        {
+                            ret = client.HSetNX(hashId, keyBytes, valueBytes);
+                        }
+                    }
+                } while (ret == 0);
+            }
+            else
+            {
+                // txId = StaticRandom.RandIdentity();
 
                 string hashId = txId.ToString();
                 byte[] keyBytes = Encoding.ASCII.GetBytes(TxTableEntry.TXID_STRING);
@@ -418,10 +421,14 @@
                     using (RedisClient client = this.RedisManager.GetClient(RedisVersionDb.TX_DB_INDEX, partition))
                     {
                         ret = client.HSetNX(hashId, keyBytes, valueBytes);
-                    }    
+                    }
                 }
 
-            } while (ret == 0);
+                if (ret == 0)
+                {
+                    return -1;
+                }
+            }
 
             TxTableEntry txTableEntry = new TxTableEntry(txId);
             string txIdStr = txId.ToString();
@@ -450,6 +457,21 @@
                 client.HMSet(txIdStr, keysBytes, valuesBytes);
             }
             return txId;
+        }
+
+        internal override NewTxIdRequest EnqueueNewTxId()
+        {
+            long txId = StaticRandom.RandIdentity();
+            NewTxIdRequest req = new NewTxIdRequest(txId);
+            this.EnqueueTxEntryRequest(txId, req);
+            return req;
+        }
+
+        internal override InsertTxIdRequest EnqueueInsertTxId(long txId)
+        {
+            InsertTxIdRequest req = new InsertTxIdRequest(txId);
+            this.EnqueueTxEntryRequest(txId, req);
+            return req;
         }
 
         /// <summary>
@@ -497,6 +519,13 @@
                 BitConverter.ToInt64(valueBytes[2],0));
         }
 
+        internal override GetTxEntryRequest EnqueueGetTxEntry(long txId)
+        {
+            GetTxEntryRequest req = new GetTxEntryRequest(txId);
+            this.EnqueueTxEntryRequest(txId, req);
+            return req;
+        }
+
         /// <summary>
         /// Implemented by HSET command
         /// </summary>
@@ -521,6 +550,13 @@
                     ret = client.HSet(hashId, keyBytes, valueBytes);
                 }
             }
+        }
+
+        internal override UpdateTxStatusRequest EnqueueUpdateTxStatus(long txId, TxStatus status)
+        {
+            UpdateTxStatusRequest req = new UpdateTxStatusRequest(txId, status);
+            this.EnqueueTxEntryRequest(txId, req);
+            return req;
         }
 
         /// <summary>
@@ -563,6 +599,13 @@
             return BitConverter.ToInt64(returnBytes[1], 0);
         }
 
+        internal override SetCommitTsRequest EnqueueSetCommitTs(long txId, long proposedCommitTs)
+        {
+            SetCommitTsRequest req = new SetCommitTsRequest(txId, proposedCommitTs);
+            this.EnqueueTxEntryRequest(txId, req);
+            return req;
+        }
+
         /// <summary>
         /// It's implemeted by a CAS "UPDATE_COMMIT_LOWER_BOUND"
         /// </summary>s
@@ -602,6 +645,87 @@
 
             long ret = BitConverter.ToInt64(returnBytes[1], 0);
             return ret;
+        }
+
+        internal override UpdateCommitLowerBoundRequest EnqueueUpdateCommitLowerBound(long txId, long lowerBound)
+        {
+            UpdateCommitLowerBoundRequest lowerBoundReq = new UpdateCommitLowerBoundRequest(txId, lowerBound);
+            this.EnqueueTxEntryRequest(txId, lowerBoundReq);
+            return lowerBoundReq;
+        }
+
+        internal override bool RemoveTx(long txId)
+        {
+            string hashId = txId.ToString();
+            byte[][] keyBytes =
+            {
+                Encoding.ASCII.GetBytes(TxTableEntry.STATUS_STRING),
+                Encoding.ASCII.GetBytes(TxTableEntry.COMMIT_TIME_STRING),
+                Encoding.ASCII.GetBytes(TxTableEntry.COMMIT_LOWER_BOUND_STRING)
+            };
+
+            int partition = this.PhysicalPartitionByKey(hashId);
+            long ret = 0;
+            if (this.PipelineMode)
+            {
+                RedisRequest request = new RedisRequest(hashId, keyBytes, RedisRequestType.HDel);
+                RedisConnectionPool clientPool = this.RedisManager.GetClientPool(RedisVersionDb.TX_DB_INDEX, partition);
+                ret = clientPool.ProcessLongRequest(request);
+            }
+            else
+            {
+                using (RedisClient client = this.RedisManager.GetClient(RedisVersionDb.TX_DB_INDEX, partition))
+                {
+                    ret = client.HDel(hashId, keyBytes);
+                }
+            }
+            // ret is the number of fields been deleted
+            return ret > 0;
+        }
+
+        internal override RemoveTxRequest EnqueueRemoveTx(long txId)
+        {
+            RemoveTxRequest removeTxReq = new RemoveTxRequest(txId);
+            this.EnqueueTxEntryRequest(txId, removeTxReq);
+            return removeTxReq;
+        }
+
+        internal override bool RecycleTx(long txId)
+        {
+            string hashId = txId.ToString();
+            byte[][] keysBytes =
+            {
+                Encoding.ASCII.GetBytes(TxTableEntry.STATUS_STRING),
+                Encoding.ASCII.GetBytes(TxTableEntry.COMMIT_TIME_STRING),
+                Encoding.ASCII.GetBytes(TxTableEntry.COMMIT_LOWER_BOUND_STRING)
+            };
+            byte[][] valuesBytes =
+            {
+                BitConverter.GetBytes((int) TxStatus.Ongoing),
+                BitConverter.GetBytes(TxTableEntry.DEFAULT_COMMIT_TIME),
+                BitConverter.GetBytes(TxTableEntry.DEFAULT_LOWER_BOUND)
+            };
+
+            int txPartition = this.PhysicalPartitionByKey(hashId);
+            if (this.PipelineMode)
+            {
+                RedisRequest request = new RedisRequest(hashId, keysBytes, valuesBytes, RedisRequestType.HMSet);
+                RedisConnectionPool clientPool = this.RedisManager.GetClientPool(RedisVersionDb.TX_DB_INDEX, txPartition);
+                clientPool.ProcessVoidRequest(request);
+            }
+            using (RedisClient client = this.RedisManager.GetClient(RedisVersionDb.TX_DB_INDEX, txPartition))
+            {
+                client.HMSet(hashId, keysBytes, valuesBytes);
+            }
+
+            return true;
+        }
+
+        internal override RecycleTxRequest EnqueueRecycleTx(long txId)
+        { 
+            RecycleTxRequest recycleTxReq = new RecycleTxRequest(txId);
+            this.EnqueueTxEntryRequest(txId, recycleTxReq);
+            return recycleTxReq;
         }
     }
 }

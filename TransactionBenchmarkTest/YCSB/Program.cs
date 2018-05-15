@@ -3,18 +3,40 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading;
-using ServiceStack.Redis;
 
 namespace TransactionBenchmarkTest.YCSB
 {
     class Program
     {
+
+        private static string[] args;
+
+        static void ExecuteRedisRawTest()
+        {
+            RedisRawTest.BATCHES = 25000;
+            RedisRawTest.REDIS_INSTANCES = 4;
+
+            // ONLY FOR SEPARATE PROGRESS
+            RedisRawTest.REDIS_INSTANCES = 1;
+            //Console.Write("Input the Redis Id (start from 1): ");
+            //string line = Console.ReadLine();
+            string line = args[0];
+            int redisId = int.Parse(line);
+            RedisRawTest.OFFSET = redisId - 1;
+
+
+            new RedisRawTest().Test();
+
+            Console.Write("Type Enter to close...");
+            Console.Read();
+        }
+
         static void RedisBenchmarkTest()
         {
-            const int workerCount = 1;
-            const int taskCount = 500000;
-            const bool pipelineMode = false;
-            const int pipelineSize = 1000;
+            const int workerCount = 4;
+            const int taskCount = 1000000;
+            const bool pipelineMode = true;
+            const int pipelineSize = 100;
 
             RedisBenchmarkTest test = new RedisBenchmarkTest(workerCount, taskCount, pipelineMode, pipelineSize);
             test.Setup();
@@ -22,52 +44,24 @@ namespace TransactionBenchmarkTest.YCSB
             test.Stats();
         }
 
+        /// <summary>
+        /// For YCSB sync benchmark test
+        /// </summary>
         static void YCSBTest()
         {
-            const int workerCount = 4;      // 4;
-            const int taskCount = 25000;   // 50000;
-            const string dataFile = "ycsb_data_u.in";
-            const string operationFile = "ycsb_ops_u_shuffle.in";
+            const int workerCount = 4;    // 4;
+            const int taskCountPerWorker = 2000000;   // 50000;
+            const string dataFile = "ycsb_data_lg_r.in";
+            const string operationFile = "ycsb_ops_lg_r.in";
 
-            YCSBBenchmarkTest test = new YCSBBenchmarkTest(workerCount, taskCount);
+			// REDIS VERSION DB
+			// VersionDb versionDb = RedisVersionDb.Instance;
+			// SINGLETON VERSION DB
+			VersionDb versionDb = SingletonVersionDb.Instance;
+
+            YCSBBenchmarkTest test = new YCSBBenchmarkTest(workerCount, taskCountPerWorker, versionDb);
+
             test.Setup(dataFile, operationFile);
-
-            //Console.WriteLine("PLEASE INPUT RETURN TO CONTINUE...");
-            //Console.Read();
-
-            test.Run();
-            test.Stats();
-        }
-
-        static void TxOnlyTest()
-        {
-            const int workerCount = 8;      // 4;
-            const int taskCount = 25000;   // 50000;
-
-            YCSBBenchmarkTest test = new YCSBBenchmarkTest(workerCount, taskCount);
-            test.FlushRedis();
-
-            //Console.WriteLine("PLEASE INPUT RETURN TO CONTINUE...");
-            //Console.Read();
-
-            test.RunTxOnly();
-            
-            test.Stats();
-        }
-
-        static void YCSBReadOnlyTest()
-        {
-            const int workerCount = 4;      // 4;
-            const int taskCount = 50000;   // 50000;
-            const string dataFile = "ycsb_data_r.i";
-            const string operationFile = "ycsb_ops_r.in";
-
-            YCSBBenchmarkTest test = new YCSBBenchmarkTest(workerCount, taskCount);
-            test.SetupReadOnly(dataFile, operationFile);
-
-            //Console.WriteLine("PLEASE INPUT RETURN TO CONTINUE...");
-            //Console.Read();
-
             test.Run();
             test.Stats();
         }
@@ -100,7 +94,6 @@ namespace TransactionBenchmarkTest.YCSB
             test.Stats();
         }
 
-
         internal static void PinThreadOnCores()
         {
             Thread.BeginThreadAffinity();
@@ -121,20 +114,17 @@ namespace TransactionBenchmarkTest.YCSB
 
         public static void Main(string[] args)
         {
-            //byte[] bytes = BitConverter.GetBytes(5L);
-            //object value = BitConverter.ToInt64(bytes, 0);
-            //long longv = Convert.ToInt64(value);
+            Program.args = args;
+            // For the YCSB sync test
+            YCSBTest();
 
-            // PinThreadOnCores();
-            // YCSBTest();
+            // For the redis benchmark Test
             // RedisBenchmarkTest();
 
-            // TxOnlyTest();
+            // For the YCSB async test
+            // YCSBAsyncTest();
 
-            //YCSBReadOnlyTest();
-
-            YCSBAsyncTest();
+            // ExecuteRedisRawTest();
         }
-        
     }
 }

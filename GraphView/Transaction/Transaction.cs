@@ -46,7 +46,7 @@ namespace GraphView.Transaction
         /// <summary>
         /// Transaction id assigned to this transaction
         /// </summary>
-        private readonly long txId;
+        private long txId;
 
         /// <summary>
         /// The status of this transaction.
@@ -107,6 +107,12 @@ namespace GraphView.Transaction
         /// </summary>
         private readonly Dictionary<string, Dictionary<object, long>> largestVersionKeyMap;
 
+        private readonly List<Tuple<string, VersionEntry>> validationVersions;
+
+        //private readonly Queue<Tuple<long, long>> garbageQueue;
+        private readonly Queue<long> garbageQueueTxId;
+        private readonly Queue<long> garbageQueueFinishTime;
+
         // only for benchmark test
         public TxStatus Status
         {
@@ -143,7 +149,12 @@ namespace GraphView.Transaction
             }
         }
 
-        public Transaction(ILogStore logStore, VersionDb versionDb)
+        public Transaction(
+            ILogStore logStore, 
+            VersionDb versionDb, 
+            long txId = -1,
+            Queue<long> garbageQueueTxId = null,
+            Queue<long> garbageQueueFinishTime = null)
         {
             this.logStore = logStore;
             this.versionDb = versionDb;
@@ -152,14 +163,35 @@ namespace GraphView.Transaction
             this.abortSet = new Dictionary<string, Dictionary<object, List<PostProcessingEntry>>>();
             this.commitSet = new Dictionary<string, Dictionary<object, List<PostProcessingEntry>>>();
             this.largestVersionKeyMap = new Dictionary<string, Dictionary<object, long>>();
+            this.validationVersions = new List<Tuple<string, VersionEntry>>();
 
-            this.txId = this.versionDb.InsertNewTx();
+            this.txId = txId < 0 ? this.versionDb.InsertNewTx() : txId;
             this.txStatus = TxStatus.Ongoing;
 
             this.commitTs = TxTableEntry.DEFAULT_COMMIT_TIME;
             this.maxCommitTsOfWrites = -1L;
             this.beginTimestamp = Transaction.DEFAULT_TX_BEGIN_TIMESTAMP;
+
+            this.garbageQueueTxId = garbageQueueTxId;
+            this.garbageQueueFinishTime = garbageQueueFinishTime;
         }
+
+		public void Clear(long txId)
+		{
+			this.readSet.Clear();
+			this.writeSet.Clear();
+			this.abortSet.Clear();
+			this.commitSet.Clear();
+			this.largestVersionKeyMap.Clear();
+            this.validationVersions.Clear();
+
+			this.txId = txId;
+			this.txStatus = TxStatus.Ongoing;
+
+			this.commitTs = TxTableEntry.DEFAULT_COMMIT_TIME;
+			this.maxCommitTsOfWrites = -1L;
+			this.beginTimestamp = Transaction.DEFAULT_TX_BEGIN_TIMESTAMP;
+		}
     }
 
     // For record operations
@@ -393,31 +425,38 @@ namespace GraphView.Transaction
 
         internal bool Validate()
         {
-            List<Tuple<string, VersionEntry>> validationVersions = new List<Tuple<string, VersionEntry>>();
+            //List<Tuple<string, VersionEntry>> validationVersions = new List<Tuple<string, VersionEntry>>();
+            
             foreach (string tableId in this.readSet.Keys)
             {
-                List<VersionPrimaryKey> validationKeys = new List<VersionPrimaryKey>();
+                // List<VersionPrimaryKey> validationKeys = new List<VersionPrimaryKey>();
                 foreach (object recordKey in this.readSet[tableId].Keys)
                 {
-                    // For those recordKeys in the writeSet, they must be holden by the current tx and still visiabl
-                    // to the current tx
+                    // Validates records only in the read set but not in the write set.
+                    // Records in the write set are already held on the current tx. 
                     if (this.writeSet.ContainsKey(tableId) && this.writeSet[tableId].ContainsKey(recordKey))
                     {
                         continue;
                     }
-                    validationKeys.Add(new VersionPrimaryKey(recordKey, readSet[tableId][recordKey].VersionKey));
+
+                    VersionEntry rereadEntry = this.versionDb.GetVersionEntryByKey(
+                        tableId, recordKey, readSet[tableId][recordKey].VersionKey);
+
+                    this.validationVersions.Add(Tuple.Create(tableId, rereadEntry));
+
+                    // validationKeys.Add(new VersionPrimaryKey(recordKey, readSet[tableId][recordKey].VersionKey));
                 }
 
-                IDictionary<VersionPrimaryKey, VersionEntry> versionDict = 
-                    this.versionDb.GetVersionEntryByKey(tableId, validationKeys);
+                //IDictionary<VersionPrimaryKey, VersionEntry> versionDict = 
+                //    this.versionDb.GetVersionEntryByKey(tableId, validationKeys);
 
-                foreach (VersionEntry entry in versionDict.Values)
-                {
-                    validationVersions.Add(Tuple.Create(tableId, entry));
-                }
+                //foreach (VersionEntry entry in versionDict.Values)
+                //{
+                //    validationVersions.Add(Tuple.Create(tableId, entry));
+                //}
             }
 
-            foreach (Tuple<string, VersionEntry> entry in validationVersions)
+            foreach (Tuple<string, VersionEntry> entry in this.validationVersions)
             {
                 //first get the version, compare its maxCommitTs with my CommitTs
                 VersionEntry versionEntry = entry.Item2;
@@ -544,6 +583,12 @@ namespace GraphView.Transaction
                     }
                 }
             }
+
+			if (this.garbageQueueTxId != null)
+			{
+				this.garbageQueueTxId.Enqueue(this.txId);
+                this.garbageQueueFinishTime.Enqueue(DateTime.Now.Ticks);
+			}
         }
 
         internal void PostProcessingAfterCommit()
@@ -569,74 +614,85 @@ namespace GraphView.Transaction
                         }
                         else
                         {
-							// this is an old version replaced by myself
+                            if (this.versionDb is RedisVersionDb)
+                            {
+                                // Pass the whole version, need only 1 redis command.
+                                // Note that we set the current transaction's commitTs as the old version's maxCommitTs.
 
-							// cloud environment: just replace the begin, end, txId field, need lua script, 3 redis command.
-							// this.versionDb.ReplaceVersionEntry(
-							//	 tableId,
-							//	 recordKey,
-							//	 entry.VersionKey,
-							//	 entry.BeginTimestamp,
-							//	 this.commitTs,
-							//	 VersionEntry.EMPTY_TXID,
-							//	 this.txId,
-							//	 long.MaxValue);
-
-							// Single machine setting: pass the whole version, need only 1 redis command.
-							// Note that we set the current transaction's commitTs as the old version's maxCommitTs.
-							ReadSetEntry readEntry = this.readSet[tableId][recordKey];
-							this.versionDb.ReplaceWholeVersionEntry(
-								tableId,
-								recordKey,
-								entry.VersionKey,
-								new VersionEntry(
-									recordKey, 
-									entry.VersionKey, 
-									readEntry.BeginTimestamp, 
-									this.commitTs, 
-									readEntry.Record, 
-									VersionEntry.EMPTY_TXID, 
-									this.commitTs));
-						}
+                                ReadSetEntry readEntry = this.readSet[tableId][recordKey];
+                                this.versionDb.ReplaceWholeVersionEntry(
+                                    tableId,
+                                    recordKey,
+                                    entry.VersionKey,
+                                    new VersionEntry(
+                                        recordKey,
+                                        entry.VersionKey,
+                                        readEntry.BeginTimestamp,
+                                        this.commitTs,
+                                        readEntry.Record,
+                                        VersionEntry.EMPTY_TXID,
+                                        this.commitTs));
+                            }
+                            else
+                            {
+                                // Just replaces the begin, end and txId fields in post-processing
+                                this.versionDb.ReplaceVersionEntry(
+                                    tableId,
+                                    recordKey,
+                                    entry.VersionKey,
+                                    entry.BeginTimestamp,
+                                    this.commitTs,
+                                    VersionEntry.EMPTY_TXID,
+                                    this.txId,
+                                    long.MaxValue);
+                            }
+                        }
                     }
                 }
             }
+
+            if (this.garbageQueueTxId != null)
+            {
+                this.garbageQueueTxId.Enqueue(this.txId);
+                this.garbageQueueFinishTime.Enqueue(DateTime.Now.Ticks);
+            }
         }
 
-        public void Commit()
+        public bool Commit()
         {
             // Phase 3: Uploading Phase
             if (!this.UploadLocalWriteRecords())
             {
                 this.Abort();
-                throw new TransactionException("Upload");
+                return false;
             }
 
             // Phase 4: Choosing Commit Timestamp Phase
             if (!this.GetCommitTimestamp())
             {
                 this.Abort();
-                throw new TransactionException("Get CommitTs");
+                return false;
             }
 
             // Phase 5: Validate Phase
             if (!this.Validate())
             {
                 this.Abort();
-                throw new TransactionException("Validation");
+                return false;
             }
 
             // Phase 6: Commit Phase, Write to log and change the transaction status
             if (!this.WriteChangeToLog())
             {
                 this.Abort();
-                throw new TransactionException("WriteChangeToLog");
+                return false;
             }
             this.txStatus = TxStatus.Committed;
             this.versionDb.UpdateTxStatus(this.txId, TxStatus.Committed);
 
             // Phase 7: PostProcessing Phase
             this.PostProcessingAfterCommit();
+            return true;
         }
 
         private bool WriteChangeToLog()
@@ -679,7 +735,7 @@ namespace GraphView.Transaction
                 if (this.writeSet[tableId][recordKey] != null)
                 {
                     this.Abort();
-                    throw new TransactionException("Insert");
+                    return;
                 }
                 else
                 {
@@ -693,7 +749,7 @@ namespace GraphView.Transaction
                 this.readSet[tableId].ContainsKey(recordKey))
             {
                 this.Abort();
-                throw new TransactionException("Insert");
+                return;
             }
 
             //add the new record to local writeSet
@@ -784,7 +840,7 @@ namespace GraphView.Transaction
                 else
                 {
                     this.Abort();
-                    throw new TransactionException("Update");
+                    return;
                 }
             }
 
@@ -819,7 +875,7 @@ namespace GraphView.Transaction
             else
             {
                 this.Abort();
-                throw new TransactionException("Update");
+                return;
             }
         }
 
@@ -844,7 +900,7 @@ namespace GraphView.Transaction
                 else
                 {
                     this.Abort();
-                    throw new TransactionException("Delete");
+                    return;
                 }
             }
             //check whether the record is already exist in the local readSet
@@ -876,7 +932,7 @@ namespace GraphView.Transaction
             else
             {
                 this.Abort();
-                throw new TransactionException("Delete");
+                return;
             }
         }
 
@@ -946,6 +1002,12 @@ namespace GraphView.Transaction
         internal VersionEntry GetVisibleVersionEntry(IEnumerable<VersionEntry> versionList, out long largestVersionKey)
         {
             largestVersionKey = 0;
+
+            if (versionList == null)
+            {
+                return null;
+            }
+
             VersionEntry visibleVersion = null;
 
             foreach (VersionEntry versionEntry in versionList)

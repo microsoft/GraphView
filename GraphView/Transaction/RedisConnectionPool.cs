@@ -70,9 +70,9 @@
         /// </summary>
         public static readonly long DEFAULT_WINDOW_MICRO_SEC = 10000L;
 
-        public static readonly int DEFAULT_MAX_READ_POOL_SIZE = 10;
+        public static readonly int DEFAULT_MAX_READ_POOL_SIZE = 64;
 
-        public static readonly int DEFAULT_MAX_WRITE_POOL_SIZE = 10;
+        public static readonly int DEFAULT_MAX_WRITE_POOL_SIZE = 64;
         /// <summary>
         /// The real pool manager maintaining clients pool
         /// Which is from ServiceStack.Redis
@@ -210,9 +210,20 @@
                                     req.SetVoid, req.SetError);
                                 break;
                             case RedisRequestType.HDel:
-                                pipe.QueueCommand(
-                                    r => ((RedisNativeClient)r).HDel(req.HashId, req.Key),
-                                        req.SetLong, req.SetError);
+                                // delete a single field
+                                if (req.Key != null)
+                                {
+                                    pipe.QueueCommand(
+                                        r => ((RedisNativeClient)r).HDel(req.HashId, req.Key),
+                                            req.SetLong, req.SetError);
+                                }
+                                // delete multiple fields
+                                else
+                                {
+                                    pipe.QueueCommand(
+                                        r => ((RedisNativeClient)r).HDel(req.HashId, req.Keys),
+                                            req.SetLong, req.SetError);
+                                }
                                 break;
                             case RedisRequestType.EvalSha:
                                 pipe.QueueCommand(

@@ -54,7 +54,7 @@ namespace GraphView.Transaction
         }
 
         /// <summary>
-        /// for HMGet command
+        /// for HMGet command and HDel Commands
         /// </summary>
         public RedisRequest(string hashId, byte[][] keys, RedisRequestType type)
         {

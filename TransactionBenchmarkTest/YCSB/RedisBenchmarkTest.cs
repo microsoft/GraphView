@@ -8,7 +8,7 @@
     using System.Linq;
     using System.Threading;
 
-    class RedisWorkload
+    struct RedisWorkload
     {
         internal string hashId;
         internal byte[] key;
@@ -24,7 +24,6 @@
         HGet,
         HMGet,
         HGetAll,
-        EvalSha,
     }
 
     class RedisBenchmarkTest
@@ -35,33 +34,36 @@
 
         public static Func<object, object> ACTION = (object obj) =>
         {
-            RedisWorkload cmd = (RedisWorkload)obj;
-            using (RedisClient client = REDIS_VERSION_DB.RedisManager.GetClient(REDIS_DB_INDEX, 0))
+            Tuple<RedisWorkload, int> tuple = (Tuple<RedisWorkload, int>)obj;
+            RedisWorkload workload = (RedisWorkload)tuple.Item1;
+            int partition = tuple.Item2;
+
+            using (RedisClient client = REDIS_VERSION_DB.RedisManager.GetClient(REDIS_DB_INDEX, partition))
             {
-                switch (cmd.type)
+                switch (workload.type)
                 {
                     case RedisWorkloadType.HSet:
-                        client.HSet(cmd.hashId, cmd.key, cmd.value);
+                        client.HSet(workload.hashId, workload.key, workload.value);
                         break;
 
                     case RedisWorkloadType.HSetNX:
-                        client.HSetNX(cmd.hashId, cmd.key, cmd.value);
+                        client.HSetNX(workload.hashId, workload.key, workload.value);
                         break;
 
                     case RedisWorkloadType.HMSet:
-                        client.HMSet(cmd.hashId, new byte[][] { cmd.key }, new byte[][] { cmd.value });
+                        client.HMSet(workload.hashId, new byte[][] { workload.key }, new byte[][] { workload.value });
                         break;
 
                     case RedisWorkloadType.HGet:
-                        client.HGet(cmd.hashId, cmd.key);
+                        client.HGet(workload.hashId, workload.key);
                         break;
 
                     case RedisWorkloadType.HGetAll:
-                        client.HGetAll(cmd.hashId);
+                        client.HGetAll(workload.hashId);
                         break;
 
                     case RedisWorkloadType.HMGet:
-                        client.HMGet(cmd.hashId, new byte[][] { cmd.key });
+                        client.HMGet(workload.hashId, new byte[][] { workload.key });
                         break;
                 }
             }
@@ -70,37 +72,40 @@
 
         public static Func<object, object> PIPELINE_ACTION = (object obj) =>
         {
-            List<RedisWorkload> commands = (List<RedisWorkload>)obj;
-            using (RedisClient client = REDIS_VERSION_DB.RedisManager.GetClient(REDIS_DB_INDEX, 0))
+            Tuple<RedisWorkload[], int> tuple = (Tuple<RedisWorkload[], int>)obj;
+            RedisWorkload[] workloads = tuple.Item1;
+            int partition = tuple.Item2;
+
+            using (RedisClient client = REDIS_VERSION_DB.RedisManager.GetClient(REDIS_DB_INDEX, partition))
             {
                 using (IRedisPipeline pipe = client.CreatePipeline())
                 {
-                    foreach (RedisWorkload cmd in commands)
+                    foreach (RedisWorkload workload in workloads)
                     {
-                        switch (cmd.type)
+                        switch (workload.type)
                         {
                             case RedisWorkloadType.HSet:
-                                pipe.QueueCommand(r => ((RedisNativeClient)r).HSet(cmd.hashId, cmd.key, cmd.value));
+                                pipe.QueueCommand(r => ((RedisNativeClient)r).HSet(workload.hashId, workload.key, workload.value));
                                 break;
 
                             case RedisWorkloadType.HSetNX:
-                                pipe.QueueCommand(r => ((RedisNativeClient)r).HSetNX(cmd.hashId, cmd.key, cmd.value));
+                                pipe.QueueCommand(r => ((RedisNativeClient)r).HSetNX(workload.hashId, workload.key, workload.value));
                                 break;
 
                             case RedisWorkloadType.HMSet:
-                                pipe.QueueCommand(r => ((RedisNativeClient)r).HMSet(cmd.hashId, new byte[][] { cmd.key }, new byte[][] { cmd.value }));
+                                pipe.QueueCommand(r => ((RedisNativeClient)r).HMSet(workload.hashId, new byte[][] { workload.key }, new byte[][] { workload.value }));
                                 break;
 
                             case RedisWorkloadType.HGet:
-                                pipe.QueueCommand(r => ((RedisNativeClient)r).HGet(cmd.hashId, cmd.key));
+                                pipe.QueueCommand(r => ((RedisNativeClient)r).HGet(workload.hashId, workload.key));
                                 break;
 
                             case RedisWorkloadType.HGetAll:
-                                pipe.QueueCommand(r => ((RedisNativeClient)r).HGetAll(cmd.hashId));
+                                pipe.QueueCommand(r => ((RedisNativeClient)r).HGetAll(workload.hashId));
                                 break;
 
                             case RedisWorkloadType.HMGet:
-                                pipe.QueueCommand(r => ((RedisNativeClient)r).HMGet(cmd.hashId, new byte[][] { cmd.key }));
+                                pipe.QueueCommand(r => ((RedisNativeClient)r).HMGet(workload.hashId, new byte[][] { workload.key }));
                                 break;
                         }
                     }
@@ -201,32 +206,39 @@
             }
             Console.WriteLine("Flushed the database");
 
+            int count = 0, redisInstances = REDIS_VERSION_DB.RedisManager.RedisInstanceCount;
             foreach (Worker worker in workers)
             {
+                int partition = (worker.WorkerId - 1) % REDIS_VERSION_DB.RedisManager.RedisInstanceCount;
+
                 // non-pipeline mode
                 if (!this.pipelineMode)
                 {
                     for (int i = 0; i < this.taskCountPerWorker; i++)
                     {
-                        worker.EnqueueTxTask(new TxTask(ACTION, this.mockRedisWorkload()));
+                        worker.EnqueueTxTask(new TxTask(ACTION, Tuple.Create(mockRedisWorkload(), partition)));
                     }
                 }
                 // pipeline mode
                 else
                 {
-                    
                     int batchs = this.taskCountPerWorker / this.pipelineSize;
+                    RedisWorkload[] workloads = new RedisWorkload[this.pipelineSize];
                     for (int i = 0; i < batchs; i++)
                     {
-                        List<RedisWorkload> cmds = new List<RedisWorkload>(this.pipelineSize);
                         for (int j = 0; j < this.pipelineSize; j++)
                         {
-                            cmds.Add(this.mockRedisWorkload());
+                            workloads[j] = mockRedisWorkload(3);
                         }
-                        worker.EnqueueTxTask(new TxTask(PIPELINE_ACTION, cmds));
+                        worker.EnqueueTxTask(new TxTask(PIPELINE_ACTION, Tuple.Create(workloads, partition)));
                     }
                 }
+                Console.WriteLine("Setup {0} workers", ++count);
+            }
 
+            for (int redisIndex = 0; redisIndex < redisInstances; redisIndex++)
+            {
+                Console.WriteLine("Redis Instance: {0} has {1} workers", redisIndex, this.workerCount/redisInstances);
             }
             Console.WriteLine("Filled the workers' queue");
         }
@@ -247,6 +259,8 @@
                 threadList.Add(thread);
                 thread.Start();
             }
+
+            Console.WriteLine("Threads Count: {0}", threadList.Count);
 
             foreach (Thread thread in threadList)
             {
@@ -270,15 +284,23 @@
             Console.WriteLine();
         }
 
-        private RedisWorkload mockRedisWorkload()
-        {
-            RedisWorkload cmd = new RedisWorkload();
-            cmd.hashId = RandomString(4);
-            cmd.key = BitConverter.GetBytes(3);
-            cmd.value = RandomBytes(150);
-            cmd.type = (RedisWorkloadType)RAND.Next(0, 6);
-            // cmd.type = (RedisWorkloadType)3;
-            return cmd;
+        private static RedisWorkload mockRedisWorkload(int type = -1)
+        { 
+            RedisWorkload workload = new RedisWorkload();
+            workload.hashId = RandomString(10);
+            workload.key = BitConverter.GetBytes(RAND.Next(0, int.MaxValue));
+            workload.type = (RedisWorkloadType)(type == -1 ? RAND.Next(0, 6) : type);
+            if (workload.type == RedisWorkloadType.HGet ||
+                workload.type == RedisWorkloadType.HGetAll ||
+                workload.type == RedisWorkloadType.HMGet)
+            {
+                workload.value = null;
+            }
+            else
+            {
+                workload.value = RandomBytes(32);
+            }
+            return workload;
         }
 
         private long GetCurrentCommandCount()

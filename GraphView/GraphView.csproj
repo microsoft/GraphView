@@ -78,6 +78,9 @@
       <HintPath>..\packages\Newtonsoft.Json.6.0.8\lib\net45\Newtonsoft.Json.dll</HintPath>
       <Private>True</Private>
     </Reference>
+    <Reference Include="NonBlocking, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\NonBlocking.1.0.2\lib\netstandard1.0\NonBlocking.dll</HintPath>
+    </Reference>
     <Reference Include="ServiceStack, Version=3.9.71.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\packages\ServiceStack.Redis.Complete.1.0.0\lib\net35\ServiceStack.dll</HintPath>
       <Private>True</Private>
@@ -111,10 +114,19 @@
       <Private>True</Private>
     </Reference>
     <Reference Include="System" />
+    <Reference Include="System.ComponentModel.Composition" />
     <Reference Include="System.Core" />
     <Reference Include="System.Data.Entity" />
     <Reference Include="System.Data.Linq" />
+    <Reference Include="System.IO.Compression" />
+    <Reference Include="System.Net.Http" />
     <Reference Include="System.Numerics" />
+    <Reference Include="System.Runtime.CompilerServices.Unsafe, Version=4.0.2.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <HintPath>..\packages\System.Runtime.CompilerServices.Unsafe.4.3.0\lib\netstandard1.0\System.Runtime.CompilerServices.Unsafe.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Runtime.InteropServices.RuntimeInformation, Version=4.0.1.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <HintPath>..\packages\System.Runtime.InteropServices.RuntimeInformation.4.3.0\lib\net45\System.Runtime.InteropServices.RuntimeInformation.dll</HintPath>
+    </Reference>
     <Reference Include="System.Runtime.Serialization" />
     <Reference Include="System.Runtime.Serialization.Formatters.Soap" />
     <Reference Include="System.Windows.Forms" />
@@ -307,6 +319,8 @@
     <Compile Include="Transaction\LogRequest.cs" />
     <Compile Include="Transaction\CassandraVersionDb.cs" />
     <Compile Include="Transaction\CassandraVersionTable.cs" />
+    <Compile Include="Transaction\PartitionedTxEntryRequestVisitor.cs" />
+    <Compile Include="Transaction\PartitionVersionEntryRequestVisitor.cs" />
     <Compile Include="Transaction\PostProcessingEntry.cs" />
     <Compile Include="Transaction\ReadSetEntry.cs" />
     <Compile Include="Transaction\RedisClientManager.cs" />
@@ -317,6 +331,8 @@
     <Compile Include="Transaction\RedisRequestVisitor.cs" />
     <Compile Include="Transaction\RedisVersionDb.cs" />
     <Compile Include="Transaction\RedisVersionTable.cs" />
+    <Compile Include="Transaction\SingletonPartitionedVersionDb.cs" />
+    <Compile Include="Transaction\SingletonPartitionedVersionTable.cs" />
     <Compile Include="Transaction\SingletonVersionDb.cs" />
     <Compile Include="Transaction\SingletonVersionDictionaryTable.cs" />
     <Compile Include="Transaction\SingletonVersionTreeMapTable.cs" />
@@ -325,8 +341,10 @@
     <Compile Include="Transaction\TransactionExecutor.cs" />
     <Compile Include="Transaction\TxRequest.cs" />
     <Compile Include="Transaction\TxRequestVisitor.cs" />
+    <Compile Include="Transaction\TxResourceManager.cs" />
     <Compile Include="Transaction\TxStatus.cs" />
     <Compile Include="Transaction\TxTableEntry.cs" />
+    <Compile Include="Transaction\VersionBlob.cs" />
     <Compile Include="Transaction\VersionPrimaryKey.cs" />
     <Compile Include="Transaction\VersionDb.cs" />
     <Compile Include="Transaction\VersionEntry.cs" />

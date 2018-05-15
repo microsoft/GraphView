@@ -140,7 +140,7 @@
 
             if (ret == 1)
             {
-                return new List<VersionEntry>(new VersionEntry[] { emptyEntry });
+                return null;
             }
             return this.GetVersionList(recordKey);
         }

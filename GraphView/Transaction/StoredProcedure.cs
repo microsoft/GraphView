@@ -12,7 +12,7 @@ namespace GraphView.Transaction
     /// </summary>
     public class StoredProcedure
     {
-        internal Queue<TransactionRequest> RequestQueue { get; private set; }
+        internal Queue<TransactionRequest> RequestQueue { get; set; }
 
         /// <summary>
         /// stored procedure id
@@ -21,7 +21,6 @@ namespace GraphView.Transaction
 
         public StoredProcedure()
         {
-            this.RequestQueue = new Queue<TransactionRequest>();
         }
 
         public virtual void Start() { }

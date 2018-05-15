@@ -883,7 +883,6 @@ namespace TransactionUnitTest
 
 		[TestMethod]
         // can not insert
-        [ExpectedException(typeof(TransactionException))]
         public void TestInsertCase1()
         {
             Transaction txInsert = new Transaction(null, this.versionDb);
@@ -892,7 +891,6 @@ namespace TransactionUnitTest
         }
 
 		[TestMethod]
-		[ExpectedException(typeof(TransactionException))]
 		public void TestInsertCase1Event()
 		{
 			TransactionExecution texInsert = new TransactionExecution(null, this.versionDb);
@@ -977,7 +975,6 @@ namespace TransactionUnitTest
 
 		[TestMethod]
         // update -> insert
-        [ExpectedException(typeof(TransactionException))]
         public void TestInsertCase3()
         {
             Transaction txInsert = new Transaction(null, this.versionDb);
@@ -988,7 +985,6 @@ namespace TransactionUnitTest
 
 		[TestMethod]
 		// update -> insert
-		[ExpectedException(typeof(TransactionException))]
 		public void TestInsertCase3Event()
 		{
 			TransactionExecution texInsert = new TransactionExecution(null, this.versionDb);
@@ -1023,7 +1019,6 @@ namespace TransactionUnitTest
 
         [TestMethod]
         // delete -> update
-        [ExpectedException(typeof(TransactionException))]
         public void TestUpdateCase2()
         {
             Transaction txDelete = new Transaction(null, this.versionDb);
@@ -1034,7 +1029,6 @@ namespace TransactionUnitTest
 
 		[TestMethod]
 		// delete -> update
-		[ExpectedException(typeof(TransactionException))]
 		public void TestUpdateCase2Event()
 		{
 			TransactionExecution tex = new TransactionExecution(null, this.versionDb);
@@ -1151,7 +1145,6 @@ namespace TransactionUnitTest
 
 		[TestMethod]
         // delete -> delete
-        [ExpectedException(typeof(TransactionException))]
         public void TestDeleteCase3()
         {
             Transaction txDelete = new Transaction(null, this.versionDb);
@@ -1161,7 +1154,6 @@ namespace TransactionUnitTest
         }
 
 		[TestMethod]
-		[ExpectedException(typeof(TransactionException))]
 		public void TestDeleteCase3Event()
 		{
 			TransactionExecution tex = new TransactionExecution(null, this.versionDb);

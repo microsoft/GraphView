@@ -20,13 +20,12 @@ namespace GraphView.Transaction
         Close,
     }
 
-
     class TxAbortReasonTracer
     {
         public static string[] reasons;  // = new NewOrderState[10];
     }
 
-    public class TransactionExecution
+    internal class TransactionExecution
     {
 		public bool DEBUG_MODE = false;
 
@@ -66,7 +65,15 @@ namespace GraphView.Transaction
 
         private Stack<Tuple<string, VersionEntry>> validateKeyList;
 
-        private Queue<VersionEntry> readVersionList;
+        private List<VersionEntry> readVersionList;
+
+        //private readonly Queue<Tuple<long, long>> garbageQueue;
+        private readonly Queue<long> garbageQueueTxId;
+        private readonly Queue<long> garbageQueueFinishTime;
+
+        private readonly TxRange txRange;
+
+        private readonly TransactionExecutor executor;
 
         private long beginTicks;
 
@@ -75,6 +82,16 @@ namespace GraphView.Transaction
         internal TxProgress Progress { get; private set; }
 
         internal StoredProcedure Procedure { get; private set; }
+
+        internal bool RecycleMode { get; set; } = true;
+
+        private Procedure validateProc;
+        private Procedure setCommitTsProc;
+        private Procedure commitPostproProc;
+        private Procedure abortPostproProc;
+        private Procedure uploadProc;
+        private Procedure initiTxProc;
+        private Procedure abortProc;
 
         internal long ExecutionSeconds
         {
@@ -85,7 +102,14 @@ namespace GraphView.Transaction
             }
         }
 
-        public TransactionExecution(ILogStore logStore, VersionDb versionDb, StoredProcedure procedure = null)
+        public TransactionExecution(
+            ILogStore logStore,
+            VersionDb versionDb,
+            StoredProcedure procedure = null,
+            Queue<long> garbageQueueTxId = null,
+            Queue<long> garbageQueueFinishTime = null,
+            TxRange txRange = null, 
+            TransactionExecutor executor = null)
         {
             this.logStore = logStore;
             this.versionDb = versionDb;
@@ -94,6 +118,18 @@ namespace GraphView.Transaction
             this.abortSet = new Dictionary<string, Dictionary<object, List<PostProcessingEntry>>>();
             this.commitSet = new Dictionary<string, Dictionary<object, List<PostProcessingEntry>>>();
             this.largestVersionKeyMap = new Dictionary<string, Dictionary<object, long>>();
+            this.garbageQueueTxId = garbageQueueTxId;
+            this.garbageQueueFinishTime = garbageQueueFinishTime;
+            this.txRange = txRange;
+            this.executor = executor;
+
+            this.validateProc = new Procedure(this.Validate);
+            this.uploadProc = new Procedure(this.Upload);
+            this.setCommitTsProc = new Procedure(this.SetCommitTimestamp);
+            this.abortPostproProc = new Procedure(this.PostProcessingAfterAbort);
+            this.commitPostproProc = new Procedure(this.PostProcessingAfterCommit);
+            this.initiTxProc = new Procedure(this.InitTx);
+            this.abortProc = new Procedure(this.Abort);
 
             this.commitTs = TxTableEntry.DEFAULT_COMMIT_TIME;
             this.maxCommitTsOfWrites = -1L;
@@ -106,6 +142,48 @@ namespace GraphView.Transaction
 
             this.isCommitted = false;
 
+            this.beginTicks = DateTime.Now.Ticks;
+
+            // init and get tx id
+            this.InitTx();
+        }
+
+        internal void Reset(StoredProcedure procedure = null)
+        {
+            foreach (Dictionary<object, ReadSetEntry> versionList in this.readSet.Values)
+            {
+                versionList.Clear();
+            }
+
+            foreach (Dictionary<object, object> writeRecords in this.writeSet.Values)
+            {
+                writeRecords.Clear();
+            }
+
+            foreach (Dictionary<object, List<PostProcessingEntry>> abortEntries in this.abortSet.Values)
+            {
+                abortEntries.Clear();
+            }
+
+            foreach (Dictionary<object, List<PostProcessingEntry>> commitEntries in this.commitSet.Values)
+            {
+                commitEntries.Clear();
+            }
+
+            foreach (Dictionary<object, long> keymap in this.largestVersionKeyMap.Values)
+            {
+                keymap.Clear();
+            }
+
+            this.commitTs = TxTableEntry.DEFAULT_COMMIT_TIME;
+            this.maxCommitTsOfWrites = -1L;
+            this.beginTimestamp = TransactionExecution.DEFAULT_TX_BEGIN_TIMESTAMP;
+
+            this.Progress = TxProgress.Open;
+            this.requestStack.Clear();
+
+            this.Procedure = procedure;
+            this.isCommitted = false;
             this.beginTicks = DateTime.Now.Ticks;
 
             // init and get tx id
@@ -134,11 +212,37 @@ namespace GraphView.Transaction
             // Haven't sent the request
             if (this.requestStack.Count == 0)
             {
-                NewTxIdRequest newTxIdReq = this.versionDb.EnqueueNewTxId();
+                long candidateId = -1;
+                if (this.garbageQueueTxId != null && this.garbageQueueTxId.Count > 0)
+                {
+                    long candidate = this.garbageQueueTxId.Peek();
+                    long finishTime = this.garbageQueueFinishTime.Peek();
+
+                    if (DateTime.Now.Ticks - finishTime >= TransactionExecutor.elapsed)
+                    {
+                        RecycleTxRequest recycleReq = this.executor.ResourceManager.RecycleTxRequest(candidate);
+                        this.versionDb.EnqueueTxEntryRequest(candidate, recycleReq);
+                        this.requestStack.Push(recycleReq);
+                        return;
+                    }
+                }
+
+                NewTxIdRequest newTxIdReq = null;
+                if (this.txRange == null)
+                {
+                    newTxIdReq = this.versionDb.EnqueueNewTxId();
+                }
+                else
+                {
+                    long id = this.txRange.NextTxCandidate();
+                    newTxIdReq = this.executor.ResourceManager.NewTxIdRequest(id);
+                    this.versionDb.EnqueueTxEntryRequest(id, newTxIdReq);
+                }
+
                 this.requestStack.Push(newTxIdReq);
 
                 // set the current procedure as InitTx and wait for the executor check
-                this.CurrentProc = new Procedure(this.InitTx);
+                this.CurrentProc = this.initiTxProc;
                 this.Progress = TxProgress.Initi;
                 return;
             }
@@ -152,15 +256,28 @@ namespace GraphView.Transaction
                 NewTxIdRequest newTxIdReq = this.requestStack.Pop() as NewTxIdRequest;
                 if ((long)newTxIdReq.Result == 0)
                 {
+                    this.executor.ResourceManager.RecycleNewTxIdRequest(ref newTxIdReq);
+
                     // Retry in loop to get the unique txId
-                    NewTxIdRequest retryReq = this.versionDb.EnqueueNewTxId();
+                    NewTxIdRequest retryReq = null;
+                    if (this.txRange == null)
+                    {
+                        retryReq = this.versionDb.EnqueueNewTxId();
+                    }
+                    else
+                    {
+                        long id = this.txRange.NextTxCandidate();
+                        retryReq = this.executor.ResourceManager.NewTxIdRequest(id);
+                        this.versionDb.EnqueueTxEntryRequest(id, retryReq);
+                    }
                     this.requestStack.Push(retryReq);
                     return;
                 }
-
-                // assign the transaction's txId as the id got from tx
                 this.txId = newTxIdReq.TxId;
-                InsertTxIdRequest insertTxReq = this.versionDb.EnqueueInsertTxId(this.txId);
+                this.executor.ResourceManager.RecycleNewTxIdRequest(ref newTxIdReq);
+
+                InsertTxIdRequest insertTxReq = this.executor.ResourceManager.InsertTxRequest(this.txId);
+                this.versionDb.EnqueueTxEntryRequest(this.txId, insertTxReq); 
                 this.requestStack.Push(insertTxReq);
                 return;
             }
@@ -175,14 +292,44 @@ namespace GraphView.Transaction
                 if (insertTxReq == null)
                 {
                     this.SetAbortMsg("Insert Tx Id request failed");
-                    this.CurrentProc = new Procedure(this.Abort);
+                    this.CurrentProc = this.abortProc;
                     this.CurrentProc();
+
+                    this.executor.ResourceManager.RecycleInsertTxRequest(ref insertTxReq);
                     return;
                 }
 
+                this.executor.ResourceManager.RecycleInsertTxRequest(ref insertTxReq);
                 // Assume the tx has been inserted successfully, change the execution status
                 this.CurrentProc = null;
                 this.Progress = TxProgress.Open;
+            }
+            else if (this.requestStack.Count == 1 && this.requestStack.Peek() is RecycleTxRequest)
+            {
+                if (!this.requestStack.Peek().Finished)
+                {
+                    return;
+                }
+
+                RecycleTxRequest recycleReq = this.requestStack.Pop() as RecycleTxRequest;
+                if (recycleReq == null || (long)recycleReq.Result == 0)
+                {
+                    // throw new TransactionException("Recycling tx Id failed.");
+                    this.requestStack.Clear();
+                    this.CurrentProc = this.abortProc;
+                    this.CurrentProc();
+
+                    this.executor.ResourceManager.RecycleRecycleTxRequest(ref recycleReq);
+                }
+
+				// Recycled successfully
+				this.txId = recycleReq.TxId;
+                this.garbageQueueTxId.Dequeue();
+                this.garbageQueueFinishTime.Dequeue();
+                this.CurrentProc = null;
+                this.Progress = TxProgress.Open;
+
+                this.executor.ResourceManager.RecycleRecycleTxRequest(ref recycleReq);
             }
         }
 
@@ -217,9 +364,10 @@ namespace GraphView.Transaction
                                 payload,
                                 this.txId);
 
-                        UploadVersionRequest txRequest = this.versionDb.EnqueueUploadNewVersionEntry(
-                            tableId, recordKey, newImageEntry.VersionKey, newImageEntry);
-
+                        
+                        UploadVersionRequest txRequest = this.executor.ResourceManager.
+                            UploadVersionRequest(tableId, recordKey, newImageEntry.VersionKey, newImageEntry);
+                        this.versionDb.EnqueueVersionEntryRequest(tableId, txRequest);
                         // Enqueues the upload request and returns the control to the caller
                         this.requestStack.Push(txRequest);
                         return;
@@ -228,15 +376,17 @@ namespace GraphView.Transaction
                     else
                     {
                         ReadSetEntry readVersion = this.readSet[tableId][recordKey];
-                        ReplaceVersionRequest replaceVerReq = this.versionDb.EnqueueReplaceVersionEntry(
-                                tableId,
-                                recordKey,
-                                readVersion.VersionKey,
-                                readVersion.BeginTimestamp,
-                                long.MaxValue,
-                                this.txId,
-                                VersionEntry.EMPTY_TXID,
-                                long.MaxValue);
+                        ReplaceVersionRequest replaceVerReq = this.executor.ResourceManager.ReplaceVersionRequest(
+                            tableId,
+                            recordKey,
+                            readVersion.VersionKey,
+                            readVersion.BeginTimestamp,
+                            long.MaxValue,
+                            this.txId,
+                            VersionEntry.EMPTY_TXID,
+                            long.MaxValue);
+                        this.versionDb.EnqueueVersionEntryRequest(tableId, replaceVerReq);
+
                         this.requestStack.Push(replaceVerReq);
                         return;
                     }
@@ -248,6 +398,7 @@ namespace GraphView.Transaction
                         // The prior request hasn't been processed. Returns the control to the caller.
                         return;
                     }
+
                     UploadVersionRequest uploadReq = (this.requestStack.Pop()) as UploadVersionRequest;
 
                     bool uploadSuccess = uploadReq.Result == null ? false : Convert.ToBoolean(uploadReq.Result);
@@ -255,12 +406,16 @@ namespace GraphView.Transaction
                     {
                         // Failed to upload the new image. Moves to the abort phase.
                         this.SetAbortMsg("Failed to upload the new image");
-                        this.CurrentProc = new Procedure(this.Abort);
+						// Failed to upload the new image. Moves to the abort phase.
+						this.CurrentProc = this.abortProc;
 						if (!this.DEBUG_MODE)
 						{
 							this.CurrentProc();
 						}
-						return;
+                        // Recycle uploadRequest
+                        this.executor.ResourceManager.RecycleUploadVersionEntry(ref uploadReq);
+
+                        return;
                     }
 
                     string tableId = uploadReq.TableId;
@@ -272,6 +427,9 @@ namespace GraphView.Transaction
                     // Add the info to the commitSet
                     this.AddVersionToCommitSet(tableId, recordKey, uploadReq.VersionKey,
                         TransactionExecution.UNSET_TX_COMMIT_TIMESTAMP, long.MaxValue);
+
+                    // Recycle uploadRequest
+                    this.executor.ResourceManager.RecycleUploadVersionEntry(ref uploadReq);
 
                     if (!this.readSet.ContainsKey(tableId) || !this.readSet[tableId].ContainsKey(recordKey))
                     {
@@ -286,7 +444,7 @@ namespace GraphView.Transaction
                     // The first case indicates that no concurrent tx is locking the tail.
                     // The second case indicates that one concurrent tx is holding the tail. 
                     // The third case means that a concurrent tx is creating a new tail, which was seen by this tx. 
-                    ReplaceVersionRequest replaceReq = this.versionDb.EnqueueReplaceVersionEntry(
+                    ReplaceVersionRequest replaceReq = this.executor.ResourceManager.ReplaceVersionRequest(
                         tableId,
                         recordKey,
                         readVersion.VersionKey,
@@ -295,6 +453,7 @@ namespace GraphView.Transaction
                         this.txId,
                         VersionEntry.EMPTY_TXID,
                         long.MaxValue);
+                    this.versionDb.EnqueueVersionEntryRequest(tableId, replaceReq);
 
                     this.requestStack.Push(replaceReq);
                     return;
@@ -312,11 +471,13 @@ namespace GraphView.Transaction
                     if (versionEntry == null)
                     {
                         this.SetAbortMsg("Version Entry null");
-                        this.CurrentProc = new Procedure(this.Abort);
+						this.CurrentProc = this.abortProc;
 						if (!this.DEBUG_MODE)
 						{
 							this.CurrentProc();
 						}
+                        // Recycle replace request
+                        this.executor.ResourceManager.RecycleReplaceVersionRequest(ref replaceReq);
                         return;
                     }
 
@@ -341,6 +502,9 @@ namespace GraphView.Transaction
                             TransactionExecution.UNSET_TX_COMMIT_TIMESTAMP);
 
                         // Move on to the next write-set record or the next phase
+
+                        // Recycle replace request
+                        this.executor.ResourceManager.RecycleReplaceVersionRequest(ref replaceReq);
                         continue;
                     }
                     else if (versionEntry.TxId >= 0)
@@ -349,7 +513,8 @@ namespace GraphView.Transaction
                         // If the concurrent tx has finished (committed or aborted), there is a chance for this tx
                         // to re-gain the lock. 
                         // Enqueues a request to check the status of the tx that is holding the tail.
-                        TxRequest txStatusReq = this.versionDb.EnqueueGetTxEntry(versionEntry.TxId);
+                        GetTxEntryRequest txStatusReq = this.executor.ResourceManager.GetTxEntryRequest(versionEntry.TxId);
+                        this.versionDb.EnqueueTxEntryRequest(versionEntry.TxId, txStatusReq);
                         this.requestStack.Push(replaceReq);
                         this.requestStack.Push(txStatusReq);
                         return;
@@ -358,12 +523,15 @@ namespace GraphView.Transaction
                     {
                         // The new version is failed to append to the tail of the version list, 
                         // because the old tail seen by this tx is not the tail anymore
+
                         this.SetAbortMsg("Failed to append the tail version");
-                        this.CurrentProc = new Procedure(this.Abort);
+                        this.CurrentProc = this.abortProc;
 						if (!this.DEBUG_MODE)
 						{
 							this.CurrentProc();
 						}
+                        // Recycle replace request
+                        this.executor.ResourceManager.RecycleReplaceVersionRequest(ref replaceReq);
                         return;
                     }
                 }
@@ -379,14 +547,19 @@ namespace GraphView.Transaction
                     ReplaceVersionRequest replaceReq = requestStack.Pop() as ReplaceVersionRequest;
 
                     TxTableEntry conflictTxStatus = getTxReq.Result as TxTableEntry;
+                    // Recycle GetTxEntry Request
+                    this.executor.ResourceManager.RecycleGetTxEntryRequest(ref getTxReq);
+
                     if (conflictTxStatus == null || conflictTxStatus.Status == TxStatus.Ongoing)
                     {
                         this.SetAbortMsg("conflict tx status Ongoing");
-                        this.CurrentProc = new Procedure(this.Abort);
+                        this.CurrentProc = this.abortProc;
 						if (!this.DEBUG_MODE)
 						{
 							this.CurrentProc();
 						}
+
+                        this.executor.ResourceManager.RecycleReplaceVersionRequest(ref replaceReq);
                         return;
                     }
 
@@ -399,7 +572,7 @@ namespace GraphView.Transaction
                         // the current tx, who is trying to gain the lock of the tail. 
                         Debug.Assert(conflictTxStatus.Status == TxStatus.Committed);
 
-                        ReplaceVersionRequest retryRequest = this.versionDb.EnqueueReplaceVersionEntry(
+                        ReplaceVersionRequest retryRequest = this.executor.ResourceManager.ReplaceVersionRequest(
                             replaceReq.TableId,
                             replaceReq.RecordKey,
                             versionEntry.VersionKey,
@@ -408,6 +581,7 @@ namespace GraphView.Transaction
                             this.txId,
                             conflictTxStatus.TxId,
                             VersionEntry.DEFAULT_END_TIMESTAMP);
+                        this.versionDb.EnqueueVersionEntryRequest(replaceReq.TableId, retryRequest);
 
                         this.requestStack.Push(replaceReq);
                         this.requestStack.Push(retryRequest);
@@ -421,11 +595,12 @@ namespace GraphView.Transaction
                         if (conflictTxStatus.Status == TxStatus.Committed)
                         {
                             this.SetAbortMsg("the owner tx of the lock committed");
-                            this.CurrentProc = new Procedure(this.Abort);
+                            this.CurrentProc = this.abortProc;
 							if (!this.DEBUG_MODE)
 							{
 								this.CurrentProc();
 							}
+                            this.executor.ResourceManager.RecycleReplaceVersionRequest(ref replaceReq);
                             return;
                         }
                         else if (conflictTxStatus.Status == TxStatus.Aborted)
@@ -455,17 +630,22 @@ namespace GraphView.Transaction
                     }
 
                     ReplaceVersionRequest retryReq = this.requestStack.Pop() as ReplaceVersionRequest;
+                    ReplaceVersionRequest originReq = this.requestStack.Pop() as ReplaceVersionRequest;
+
                     this.requestStack.Pop();
 
                     VersionEntry retryEntry = retryReq.Result as VersionEntry;
                     if (retryEntry == null || retryEntry.TxId != this.txId)
                     {
                         this.SetAbortMsg("retry entry null...");
-                        this.CurrentProc = new Procedure(this.Abort);
+                        this.CurrentProc = this.abortProc;
 						if (!this.DEBUG_MODE)
 						{
 							this.CurrentProc();
 						}
+
+                        this.executor.ResourceManager.RecycleReplaceVersionRequest(ref retryReq);
+                        this.executor.ResourceManager.RecycleReplaceVersionRequest(ref originReq);
                         return;
                     }
 
@@ -480,17 +660,19 @@ namespace GraphView.Transaction
                     this.AddVersionToCommitSet(retryReq.TableId, retryReq.RecordKey, retryReq.VersionKey,
                         rolledBackBegin, TransactionExecution.UNSET_TX_COMMIT_TIMESTAMP);
 
-                    continue;
+                    // Recycle retry request and origin requests
+                    this.executor.ResourceManager.RecycleReplaceVersionRequest(ref retryReq);
+                    this.executor.ResourceManager.RecycleReplaceVersionRequest(ref originReq);
                 }
-                else
-                {
-                    throw new TransactionException("An illegal state of the uploading phase.");
-                }
+                //else
+                //{
+                //    throw new TransactionException("An illegal state of the uploading phase.");
+                //}
             }
 
 			// Move on to the next phase
 			this.writeKeyList = null;
-			this.CurrentProc = new Procedure(this.SetCommitTimestamp);
+            this.CurrentProc = this.setCommitTsProc;
 			if (!this.DEBUG_MODE)
 			{
 				this.CurrentProc();
@@ -554,7 +736,8 @@ namespace GraphView.Transaction
             // Haven't sent the SetCommitTime request
             if (this.requestStack.Count == 0)
             {
-                SetCommitTsRequest setTsReq = this.versionDb.EnqueueSetCommitTs(this.txId, this.commitTs);
+                SetCommitTsRequest setTsReq = this.executor.ResourceManager.SetCommitTsRequest(this.txId, this.commitTs);
+                this.versionDb.EnqueueTxEntryRequest(this.txId, setTsReq);
                 this.requestStack.Push(setTsReq);
                 return;
             }
@@ -568,10 +751,11 @@ namespace GraphView.Transaction
 
                 SetCommitTsRequest setTsReq = this.requestStack.Pop() as SetCommitTsRequest;
                 long commitTime = setTsReq.Result == null ? -1 : (long)setTsReq.Result;
+                this.executor.ResourceManager.RecycleSetCommitTsRequest(ref setTsReq);
                 if (commitTime < 0)
                 {
                     this.SetAbortMsg("commit time < 0");
-                    this.CurrentProc = new Procedure(this.Abort);
+                    this.CurrentProc = this.abortProc;
 					if (!this.DEBUG_MODE)
 					{
 						this.CurrentProc();
@@ -581,7 +765,7 @@ namespace GraphView.Transaction
                 else
                 {
                     this.commitTs = commitTime;
-                    this.CurrentProc = new Procedure(this.Validate);
+                    this.CurrentProc = this.validateProc;
 					if (!this.DEBUG_MODE)
 					{
 						this.CurrentProc();
@@ -589,10 +773,10 @@ namespace GraphView.Transaction
                     return;
                 }
             }
-            else
-            {
-                throw new TransactionException("An illegal state when setting the tx's commit timestamp.");
-            }
+            //else
+            //{
+            //    throw new TransactionException("An illegal state when setting the tx's commit timestamp.");
+            //}
         }
 
         internal void Validate()
@@ -642,7 +826,7 @@ namespace GraphView.Transaction
                     if (readEntry == null)
                     {
                         this.SetAbortMsg("read entry null");
-                        this.CurrentProc = new Procedure(this.Abort);
+                        this.CurrentProc = this.abortProc;
                         // A really serious bug, should clear the stack before enter the next step
                         this.requestStack.Clear();
 						if (!this.DEBUG_MODE)
@@ -688,7 +872,7 @@ namespace GraphView.Transaction
                                 // A new version has been created before this tx can commit.
                                 // Abort the tx.
                                 this.SetAbortMsg("a new version has been created before this commit");
-                                this.CurrentProc = new Procedure(this.Abort);
+                                this.CurrentProc = this.abortProc;
 								if (!this.DEBUG_MODE)
 								{
 									this.CurrentProc();
@@ -726,7 +910,7 @@ namespace GraphView.Transaction
                     if (readEntry == null)
                     {
                         this.SetAbortMsg("read entry null: update Max Ts Req");
-                        this.CurrentProc = new Procedure(this.Abort);
+                        this.CurrentProc = this.abortProc;
 						if (!this.DEBUG_MODE)
 						{
 							this.CurrentProc();
@@ -756,10 +940,10 @@ namespace GraphView.Transaction
                     if (txEntry == null)
                     {
                         this.SetAbortMsg("tx table entry null");
-                        this.CurrentProc = new Procedure(this.Abort);
+                        this.CurrentProc = this.abortProc;
 						if (!this.DEBUG_MODE)
 						{
-							this.CurrentProc();
+							this.CurrentProc(); 
 						}
                         return;
                     }
@@ -775,7 +959,7 @@ namespace GraphView.Transaction
                         if (this.commitTs > txEntry.CommitTime)
                         {
                             this.SetAbortMsg("this.commitTs > txEntry.CommitTime");
-                            this.CurrentProc = new Procedure(this.Abort);
+                            this.CurrentProc = this.abortProc;
 							if (!this.DEBUG_MODE)
 							{
 								this.CurrentProc();
@@ -791,8 +975,9 @@ namespace GraphView.Transaction
                     }
                     else
                     {
-                        UpdateCommitLowerBoundRequest updateCommitBoundReq = 
-                            this.versionDb.EnqueueUpdateCommitLowerBound(txEntry.TxId, this.commitTs + 1);
+                        UpdateCommitLowerBoundRequest updateCommitBoundReq =
+                            this.executor.ResourceManager.UpdateCommitLowerBound(txEntry.TxId, this.commitTs + 1);
+                        this.versionDb.EnqueueTxEntryRequest(txEntry.TxId, updateCommitBoundReq);
                         this.requestStack.Push(updateCommitBoundReq);
                         return;
                     }
@@ -808,11 +993,12 @@ namespace GraphView.Transaction
 
                     UpdateCommitLowerBoundRequest txCommitReq = this.requestStack.Pop() as UpdateCommitLowerBoundRequest;
                     long txCommitTs = txCommitReq.Result == null ? VersionDb.RETURN_ERROR_CODE : (long)txCommitReq.Result;
+                    this.executor.ResourceManager.RecycleUpateCommitLowerBound(ref txCommitReq);
 
 					if (txCommitTs == VersionDb.RETURN_ERROR_CODE)
 					{
                         this.SetAbortMsg("txCommitTs == VersionDb.RETURN_ERROR_CODE");
-                        this.CurrentProc = new Procedure(this.Abort);
+						this.CurrentProc = this.abortProc;
 						if (!this.DEBUG_MODE)
 						{
 							this.CurrentProc();
@@ -828,7 +1014,7 @@ namespace GraphView.Transaction
                     else if (this.commitTs > txCommitTs)
                     {
                         this.SetAbortMsg("this.commitTs > txCommitTs");
-                        this.CurrentProc = new Procedure(this.Abort);
+                        this.CurrentProc = this.abortProc;
 						if (!this.DEBUG_MODE)
 						{
 							this.CurrentProc();
@@ -842,10 +1028,10 @@ namespace GraphView.Transaction
                         continue;
                     }
                 }
-                else
-                {
-                    throw new TransactionException("An illegal state of tx validation.");
-                }
+                //else
+                //{
+                //    throw new TransactionException("An illegal state of tx validation.");
+                //}
             }
 
             // All versions pass validation. Move to the commit phase.
@@ -875,7 +1061,7 @@ namespace GraphView.Transaction
 
                 this.isCommitted = true;
                 this.requestStack.Pop();
-                this.CurrentProc = new Procedure(this.PostProcessingAfterCommit);
+                this.CurrentProc = this.commitPostproProc;
 				if (!this.DEBUG_MODE)
 				{
 					this.CurrentProc();
@@ -946,7 +1132,12 @@ namespace GraphView.Transaction
 				{
 					this.Progress = TxProgress.Close;
 					this.CurrentProc = null;
-				}
+                    if (this.garbageQueueTxId != null)
+                    {
+                        this.garbageQueueTxId.Enqueue(this.txId);
+                        this.garbageQueueFinishTime.Enqueue(DateTime.Now.Ticks);
+                    }
+                }
                 return;
             }
             else
@@ -962,6 +1153,11 @@ namespace GraphView.Transaction
                 // All post-processing records have been uploaded.
                 this.Progress = TxProgress.Close;
                 this.CurrentProc = null;
+                if (this.garbageQueueTxId != null)
+                {
+                    this.garbageQueueTxId.Enqueue(this.txId);
+                    this.garbageQueueFinishTime.Enqueue(DateTime.Now.Ticks);
+                }
                 return;
             }
         }
@@ -1004,8 +1200,13 @@ namespace GraphView.Transaction
 				{
 					this.Progress = TxProgress.Close;
 					this.CurrentProc = null;
-				}
-				return;
+                    if (this.garbageQueueTxId != null)
+                    {
+                        this.garbageQueueTxId.Enqueue(this.txId);
+                        this.garbageQueueFinishTime.Enqueue(DateTime.Now.Ticks);
+                    }
+                }
+                return;
 			}
             else
             {
@@ -1020,6 +1221,11 @@ namespace GraphView.Transaction
                 // All pending records have been reverted.
                 this.Progress = TxProgress.Close;
                 this.CurrentProc = null;
+                if (this.garbageQueueTxId != null)
+                {
+                    this.garbageQueueTxId.Enqueue(this.txId);
+                    this.garbageQueueFinishTime.Enqueue(DateTime.Now.Ticks);
+                }
                 return;
             }
         }
@@ -1031,7 +1237,7 @@ namespace GraphView.Transaction
         {
             this.requestStack.Clear();
             this.SetAbortMsg("time out abort");
-            this.CurrentProc = new Procedure(this.Abort);
+            this.CurrentProc = this.abortProc;
         }
 
         internal void Abort()
@@ -1052,7 +1258,7 @@ namespace GraphView.Transaction
                 }
 
                 this.requestStack.Pop();
-				this.CurrentProc = new Procedure(this.PostProcessingAfterAbort);
+				this.CurrentProc = this.abortPostproProc;
 				if (!this.DEBUG_MODE)
 				{
 					this.CurrentProc();
@@ -1070,9 +1276,9 @@ namespace GraphView.Transaction
                 if (this.writeSet[tableId][recordKey] != null)
                 {
                     this.SetAbortMsg("write set tableid recordkey null");
-                    this.CurrentProc = new Procedure(this.Abort);
+                    this.CurrentProc = this.abortProc;
                     this.CurrentProc();
-                    throw new TransactionException("Cannot insert the same record key twice.");
+                    //throw new TransactionException("Cannot insert the same record key twice.");
                 }
                 else
                 {
@@ -1086,9 +1292,9 @@ namespace GraphView.Transaction
                 this.readSet[tableId].ContainsKey(recordKey))
             {
                 this.SetAbortMsg("record is already in the local read set");
-                this.CurrentProc = new Procedure(this.Abort);
+                this.CurrentProc = this.abortProc;
                 this.CurrentProc();
-                throw new TransactionException("The same record already exists.");
+                //throw new TransactionException("The same record already exists.");
             }
 
             // Add the new record to local writeSet
@@ -1118,9 +1324,9 @@ namespace GraphView.Transaction
                 else
                 {
                     this.SetAbortMsg("record has been deleted by this tx");
-                    this.CurrentProc = new Procedure(this.Abort);
+                    this.CurrentProc = this.abortProc;
                     this.CurrentProc();
-                    throw new TransactionException("The record to be updated has been deleted.");
+                    //throw new TransactionException("The record to be updated has been deleted.");
                 }
             }
             else if (this.readSet.ContainsKey(tableId) &&
@@ -1138,9 +1344,9 @@ namespace GraphView.Transaction
             else
             {
                 this.SetAbortMsg("update fail, some reason");
-                this.CurrentProc = new Procedure(this.Abort);
+                this.CurrentProc = this.abortProc;
                 this.CurrentProc();
-                throw new TransactionException("The record has not been read or does not exist. Cannot update it.");
+                //throw new TransactionException("The record has not been read or does not exist. Cannot update it.");
             }
         }
 
@@ -1158,9 +1364,9 @@ namespace GraphView.Transaction
                 else
                 {
                     this.SetAbortMsg("delete fail reason1");
-                    this.CurrentProc = new Procedure(this.Abort);
+                    this.CurrentProc = this.abortProc;
                     this.CurrentProc();
-                    throw new TransactionException("The record to be deleted has been deleted by the same tx.");
+                    // throw new TransactionException("The record to be deleted has been deleted by the same tx.");
                 }
             }
             else if (this.readSet.ContainsKey(tableId) &&
@@ -1177,9 +1383,9 @@ namespace GraphView.Transaction
             else
             {
                 this.SetAbortMsg("delete fail reason2");
-                this.CurrentProc = new Procedure(this.Abort);
+                this.CurrentProc = this.abortProc;
                 this.CurrentProc();
-                throw new TransactionException("The record has not been read or does not exist. Cannot delete it.");
+                // throw new TransactionException("The record has not been read or does not exist. Cannot delete it.");
             }
         }
 
@@ -1223,15 +1429,24 @@ namespace GraphView.Transaction
                 // Have not sent the GetVersionListRequest
                 if (this.requestStack.Count == 0)
                 {
+                    List<VersionEntry> container = this.executor.ResourceManager.GetVersionList();
+
                     if (initi)
                     {
-                        InitiGetVersionListRequest initiGetVersionList = 
-                            this.versionDb.EnqueueInitializeAndGetVersionList(tableId, recordKey);
-                        this.requestStack.Push(initiGetVersionList);
+                        InitiGetVersionListRequest initiGetVersionListReq = 
+                            this.executor.ResourceManager.GetInitiGetVersionListRequest(tableId, recordKey);
+                        initiGetVersionListReq.Container = container;
+
+                        this.versionDb.EnqueueVersionEntryRequest(tableId, initiGetVersionListReq);
+                        this.requestStack.Push(initiGetVersionListReq);
                     }
                     else
                     {
-                        GetVersionListRequest getVlistReq = this.versionDb.EnqueueGetVersionList(tableId, recordKey);
+                        GetVersionListRequest getVlistReq =
+                            this.executor.ResourceManager.GetVersionListRequest(tableId, recordKey);
+                        getVlistReq.Container = container;
+
+                        this.versionDb.EnqueueVersionEntryRequest(tableId, getVlistReq);
                         this.requestStack.Push(getVlistReq);
                     }
                     
@@ -1245,8 +1460,12 @@ namespace GraphView.Transaction
                         return;
                     }
 
-                    IEnumerable<VersionEntry> versionList = this.requestStack.Pop().Result as IEnumerable<VersionEntry>;
-                    if (versionList == null)
+                    GetVersionListRequest getVersionListReq = this.requestStack.Pop() as GetVersionListRequest;
+                    this.readVersionList = getVersionListReq.Result as List<VersionEntry>;
+
+                    this.executor.ResourceManager.RecycleGetVersionListRequest(ref getVersionListReq);
+
+                    if (this.readVersionList == null)
                     {
                         received = true;
                         payload = null;
@@ -1254,7 +1473,8 @@ namespace GraphView.Transaction
                         return;
                     }
 
-                    this.readVersionList = new Queue<VersionEntry>(versionList.OrderByDescending(e => e.VersionKey));
+                    // Sort the version list by the descending order of version keys.
+                    this.readVersionList.Sort();
                 }
                 else if (this.requestStack.Count == 1 && this.requestStack.Peek() is InitiGetVersionListRequest)
                 {
@@ -1275,19 +1495,30 @@ namespace GraphView.Transaction
                         }
                         this.largestVersionKeyMap[tableId][recordKey] = VersionEntry.VERSION_KEY_STRAT_INDEX;
                         VersionEntry emptyEntry = VersionEntry.InitEmptyVersionEntry(initReq.RecordKey);
-                        this.readVersionList = new Queue<VersionEntry>(new VersionEntry[] { emptyEntry });
+
+                        this.readVersionList = initReq.Container;
+                        this.readVersionList.Add(emptyEntry);
+
+                        this.executor.ResourceManager.RecycleInitiGetVersionListRequest(ref initReq);
                     }
                     else
                     {
-                        GetVersionListRequest getVlistReq = this.versionDb.EnqueueGetVersionList(tableId, recordKey);
+                        this.executor.ResourceManager.RecycleInitiGetVersionListRequest(ref initReq);
+
+                        List<VersionEntry> container = this.executor.ResourceManager.GetVersionList();
+                        GetVersionListRequest getVlistReq = 
+                            this.executor.ResourceManager.GetVersionListRequest(tableId, recordKey);
+                        getVlistReq.Container = container;
+                            
+                        this.versionDb.EnqueueVersionEntryRequest(tableId, getVlistReq);
                         this.requestStack.Push(getVlistReq);
                         return;
                     }
                 }
-                else
-                {
-                    throw new TransactionException("An illegal state of tx read");
-                }
+                //else
+                //{
+                //    throw new TransactionException("An illegal state of tx read");
+                //}
             }
 
             VersionEntry visibleVersion = null;
@@ -1303,17 +1534,21 @@ namespace GraphView.Transaction
                         return;
                     }
 
-                    TxTableEntry pendingTx = this.requestStack.Pop().Result as TxTableEntry;
+                    GetTxEntryRequest getTxReq = this.requestStack.Pop() as GetTxEntryRequest;
+                    TxTableEntry pendingTx = getTxReq.Result as TxTableEntry;
+                    this.executor.ResourceManager.RecycleGetTxEntryRequest(ref getTxReq);
+
                     if (pendingTx == null)
                     {
                         // Failed to retrieve the status of the tx holding the version. 
                         // Moves on to the next version.
-                        this.readVersionList.Dequeue();
+                        this.readVersionList.RemoveAt(this.readVersionList.Count - 1);
                         continue;
                     }
 
                     // The last version entry is the one need to check whether visiable
-                    VersionEntry versionEntry = this.readVersionList.Dequeue();
+                    VersionEntry versionEntry = this.readVersionList[this.readVersionList.Count - 1];
+                    this.readVersionList.RemoveAt(this.readVersionList.Count - 1);
 
                     // If the version entry is a dirty write, skips the entry.
                     if (versionEntry.EndTimestamp == VersionEntry.DEFAULT_END_TIMESTAMP && 
@@ -1347,12 +1582,15 @@ namespace GraphView.Transaction
                 }
                 else if (this.requestStack.Count == 0)
                 {
-                    VersionEntry versionEntry = this.readVersionList.Peek();
+                    VersionEntry versionEntry = this.readVersionList[this.readVersionList.Count - 1];
 
                     if (versionEntry.TxId >= 0)
                     {
                         // Send the GetTxEntry request
-                        GetTxEntryRequest getTxReq = this.versionDb.EnqueueGetTxEntry(versionEntry.TxId);
+                        GetTxEntryRequest getTxReq = 
+                            this.executor.ResourceManager.GetTxEntryRequest(versionEntry.TxId);
+
+                        this.versionDb.EnqueueTxEntryRequest(versionEntry.TxId, getTxReq);    
                         this.requestStack.Push(getTxReq);
                         return;
                     }
@@ -1375,14 +1613,14 @@ namespace GraphView.Transaction
                         }
                         else
                         {
-                            this.readVersionList.Dequeue();
+                            this.readVersionList.RemoveAt(this.readVersionList.Count - 1);
                         }
                     }
                 }
-                else
-                {
-                    throw new TransactionException("An illegal state of tx read.");
-                }
+                //else
+                //{
+                //    throw new TransactionException("An illegal state of tx read.");
+                //}
 
                 // Retrieve the largest version key from commit version entry
                 if (!this.largestVersionKeyMap.ContainsKey(tableId))
@@ -1418,7 +1656,9 @@ namespace GraphView.Transaction
                     visibleVersion.TxId,
                     visibleVersion.Record);
             }
+
             // reset read version list
+            this.executor.ResourceManager.RecycleVersionList(ref this.readVersionList);
             this.readVersionList = null;
             this.Progress = TxProgress.Open;
             received = true;
@@ -1428,7 +1668,7 @@ namespace GraphView.Transaction
         {
             Debug.Assert(this.Progress == TxProgress.Open);
 
-            this.CurrentProc = new Procedure(this.Upload);
+            this.CurrentProc = this.uploadProc;
             this.CurrentProc();
             return;
         }

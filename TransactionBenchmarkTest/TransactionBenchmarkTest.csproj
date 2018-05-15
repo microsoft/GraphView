@@ -40,6 +40,7 @@
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+    <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
@@ -48,9 +49,11 @@
     <DefineConstants>TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+    <Prefer32Bit>false</Prefer32Bit>
+    <PlatformTarget>AnyCPU</PlatformTarget>
   </PropertyGroup>
   <PropertyGroup>
-    <StartupObject>TransactionBenchmarkTest.TPCC.Example</StartupObject>
+    <StartupObject>TransactionBenchmarkTest.YCSB.Program</StartupObject>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="Newtonsoft.Json, Version=11.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
@@ -119,6 +122,7 @@
     <Compile Include="Worker.cs" />
     <Compile Include="YCSB\Program.cs" />
     <Compile Include="YCSB\RedisBenchmarkTest.cs" />
+    <Compile Include="YCSB\RedisRawTest.cs" />
     <Compile Include="YCSB\TxTest.cs" />
     <Compile Include="YCSB\TxWorkload.cs" />
     <Compile Include="YCSB\YCSBAsyncBenchmarkTest.cs" />

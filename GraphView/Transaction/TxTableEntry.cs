@@ -97,5 +97,12 @@ namespace GraphView.Transaction
             return this.TxId == entry.TxId && this.status == entry.Status &&
                 this.commitTime == entry.CommitTime && this.commitLowerBound == entry.CommitLowerBound;
         }
+
+        internal void Reset()
+        {
+            this.status = TxStatus.Ongoing;
+            this.commitTime = TxTableEntry.DEFAULT_COMMIT_TIME;
+            this.commitLowerBound = TxTableEntry.DEFAULT_LOWER_BOUND;
+        }
     }
 }

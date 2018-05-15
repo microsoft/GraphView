@@ -6,7 +6,7 @@ namespace GraphView.Transaction
     using System;
     using System.Collections.Generic;
 
-    internal class VersionEntry
+    internal class VersionEntry : IComparable<VersionEntry>
     {
         /// <summary>
         /// The offsets of fields in serialized binary data
@@ -27,15 +27,19 @@ namespace GraphView.Transaction
         public static readonly object EMPTY_RECORD = "";
         public static readonly long EMPTY_TXID = -1L;
 
-        public static readonly long VERSION_KEY_STRAT_INDEX = 0L;
+        public static readonly long VERSION_KEY_STRAT_INDEX = -1L;
 
+        // The following three properties are readonly
         internal object RecordKey { get; }
         internal long VersionKey { get; }
-        internal long BeginTimestamp { get; }
-        internal long EndTimestamp { get; }
         internal object Record { get; }
-        internal long TxId { get; }
-        internal long MaxCommitTs { get; }
+
+        // The following properties may be changed during the lifetime
+        // of a tx, after a version entry is created
+        internal long BeginTimestamp { get; set; }
+        internal long EndTimestamp { get; set; }
+        internal long TxId { get; set; }
+        internal long MaxCommitTs { get; set; }
 
 
         public VersionEntry(
@@ -140,6 +144,30 @@ namespace GraphView.Transaction
         {
             return new VersionEntry(recordKey, VersionEntry.VERSION_KEY_STRAT_INDEX,
                 VersionEntry.EMPTY_RECORD, VersionEntry.EMPTY_TXID);
+        }
+
+        public int CompareTo(VersionEntry other)
+        {
+            // Two version entries are only comparable if they belong to the same record
+            if (this.RecordKey != other.RecordKey)
+            {
+                return -1;
+            }
+            else
+            {
+                if (this.VersionKey < other.VersionKey)
+                {
+                    return -1;
+                }
+                else if (this.VersionKey == other.VersionKey)
+                {
+                    return 0;
+                }
+                else
+                {
+                    return 1;
+                }
+            }
         }
     }
 }
