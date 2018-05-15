@@ -38,7 +38,7 @@ namespace TransactionBenchmarkTest.TPCC
                 var code = codes[i];
                 string line;
                 var cnt = 0;
-                int batchSize = 10;
+                int batchSize = 100;
                 bool eatup = false;
 
                 while(true)
@@ -113,9 +113,12 @@ namespace TransactionBenchmarkTest.TPCC
         static void TPCCNewOrderAsyncTest()
         {
             int workerCount = 1;
-            int workloadCountPerWorker = 2000;
-            string workloadFile = "D:\\tpcc-txns\\NEW_ORDER.csv";
+            int workloadCountPerWorker = 1000;
+            string workloadFile = "D:\\tpcc-txns\\NEW_ORDER.csv.shuffled";
             Console.WriteLine("\nNEW-ORDER: w={0}, N={1}", workerCount, workloadCountPerWorker);
+
+            //TPCCStateTracer.nostates = new NewOrderState[workerCount*workloadCountPerWorker + 1]; // ignore the first line
+            //TxAbortReasonTracer.reasons = new string[workerCount * workloadCountPerWorker + 1];
 
             // an executor is responsiable for all flush
             List<List<Tuple<string, int>>> instances = new List<List<Tuple<string, int>>>
@@ -147,14 +150,30 @@ namespace TransactionBenchmarkTest.TPCC
             bench.LoadNewOrderWorkload(workloadFile);
             bench.Run("NewOrder");
             bench.Stats();
+
+
+            //Console.WriteLine("Final state of each TX:");
+            //for (int i = 1; i < TPCCStateTracer.nostates.Length; i++)
+            //{
+            //    Console.WriteLine("pid={0} \t NewOrderState={1}", i, TPCCStateTracer.nostates[i]);
+            //}
+
+            //Console.WriteLine("Abort reason of each tx:");
+            //for (int i = 1; i < TxAbortReasonTracer.reasons.Length; i++)
+            //{
+            //    Console.WriteLine("pid={0} \t AbortReason={1}", i, TxAbortReasonTracer.reasons[i]);
+            //}
         }
 
         static void TPCCPaymentAsyncTest()
         {
-            int workerCount = 4;
-            int workloadCountPerWorker = 10000;
+            int workerCount = 1;
+            int workloadCountPerWorker = 1000;
             string workloadFile = "D:\\tpcc-txns\\PAYMENT.csv";
             Console.WriteLine("\nPAYMENT: w={0}, N={1}", workerCount, workloadCountPerWorker);
+
+            //TPCCStateTracer.pmstates = new PaymentState[workerCount * workloadCountPerWorker + 1]; // ignore the first line
+            //TxAbortReasonTracer.reasons = new string[workerCount * workloadCountPerWorker + 1];
 
             // an executor is responsiable for all flush
             List<List<Tuple<string, int>>> instances = new List<List<Tuple<string, int>>>
@@ -164,46 +183,79 @@ namespace TransactionBenchmarkTest.TPCC
                     Tuple.Create(Constants.DefaultTbl, 0),
                     Tuple.Create(RedisVersionDb.TX_TABLE, 0),
                 },
-                new List<Tuple<string, int>>()
-                {
-                    Tuple.Create(Constants.DefaultTbl, 0),
-                    Tuple.Create(RedisVersionDb.TX_TABLE, 0),
-                },
-                new List<Tuple<string, int>>()
-                {
-                    Tuple.Create(Constants.DefaultTbl, 0),
-                    Tuple.Create(RedisVersionDb.TX_TABLE, 0),
-                },
-                new List<Tuple<string, int>>()
-                {
-                    Tuple.Create(Constants.DefaultTbl, 0),
-                    Tuple.Create(RedisVersionDb.TX_TABLE, 0),
-                }
+                //new List<Tuple<string, int>>()
+                //{
+                //    Tuple.Create(Constants.DefaultTbl, 0),
+                //    Tuple.Create(RedisVersionDb.TX_TABLE, 0),
+                //},
+                //new List<Tuple<string, int>>()
+                //{
+                //    Tuple.Create(Constants.DefaultTbl, 0),
+                //    Tuple.Create(RedisVersionDb.TX_TABLE, 0),
+                //},
+                //new List<Tuple<string, int>>()
+                //{
+                //    Tuple.Create(Constants.DefaultTbl, 0),
+                //    Tuple.Create(RedisVersionDb.TX_TABLE, 0),
+                //}
             };
 
             TPCCAsyncBenchmark bench = new TPCCAsyncBenchmark(workerCount, workloadCountPerWorker, instances);
             bench.LoadPaymentWorkload(workloadFile);
             bench.Run("Payment");
             bench.Stats();
+
+            //
+            //Console.WriteLine("Final state of each TX:");
+            //for (int i = 1; i < TPCCStateTracer.pmstates.Length; i++)
+            //{
+            //    Console.WriteLine("pid={0} \t PaymentState={1}", i, TPCCStateTracer.pmstates[i]);
+            //}
+
+            //Console.WriteLine("Abort reason of each tx:");
+            //for (int i = 1; i < TxAbortReasonTracer.reasons.Length; i++)
+            //{
+            //    Console.WriteLine("pid={0} \t AbortReason={1}", i, TxAbortReasonTracer.reasons[i]);
+            //}
+        }
+
+        static void getchar(char c)
+        {
+            //Console.Beep(500, 600);
+            Console.WriteLine("\n**** Please input char <{0}>.", c);
+            while (true)
+            {
+                if (Console.Read() == c)
+                    break;
+            }
         }
 
 
         static void Main(string[] args)
         {
             string baseDir = "D:\\tpcc-tables\\";
-            //LoadTables(baseDir);
+            LoadTables(baseDir);
 
             //TPCCNewOrderTest();
             //TPCCPaymentTest();
 
-            TPCCNewOrderAsyncTest();
+            //getchar('`');
+            for (int i = 0; i < 100; i++)
+            {
+                TPCCNewOrderAsyncTest();
+                Console.WriteLine();
+            }
+            //TPCCNewOrderAsyncTest();
+
+            //getchar('`');
             //TPCCPaymentAsyncTest();
 
+            //Transaction tx = new Transaction(null, RedisVersionDb.Instance);
+            //var res = RedisVersionDb.Instance.GetVersionList("test", "D-2-1");
             Console.WriteLine("DONE");
-            while(true)
-            {
-                Console.Read();
-            }            
+
+            //getchar('`');
+
         }
 
     }

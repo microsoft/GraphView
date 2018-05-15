@@ -83,6 +83,8 @@ namespace GraphView.Transaction
 
     public class TransactionExecutor
     {
+        private int executorId = 0;
+
         /// <summary>
         /// The size of current working transaction set
         /// </summary>
@@ -180,6 +182,32 @@ namespace GraphView.Transaction
             this.txRange = startRange < 0 ? null : new TxRange(startRange);
             this.ResourceManager = new TxResourceManager();
             this.txRuntimePool = new Queue<Tuple<TransactionExecution, Queue<TransactionRequest>>>();
+        }
+
+        // add executor id
+        public TransactionExecutor(
+            VersionDb versionDb,
+            ILogStore logStore,
+            int executorId,
+            Queue<TransactionRequest> workload = null,
+            List<Tuple<string, int>> instances = null,
+            int txTimeoutSeconds = 0)
+        {
+            this.versionDb = versionDb;
+            this.logStore = logStore;
+            this.executorId = executorId;
+            this.workload = workload ?? new Queue<TransactionRequest>();
+            this.activeTxs = new Dictionary<string, Tuple<TransactionExecution, Queue<TransactionRequest>>>();
+            this.partitionedInstances = instances;
+            this.txTimeoutSeconds = txTimeoutSeconds;           
+        }
+
+        public void SetProgressBar()
+        {
+            if (this.FinishedTxs % 1000 == 0)
+            {
+                Console.WriteLine("Executor {0}:\t Finished Txs: {1}", this.executorId, this.FinishedTxs);
+            }
         }
 
         public void Execute()
@@ -306,6 +334,7 @@ namespace GraphView.Transaction
                             this.CommittedTxs += 1;
                         }
                         this.FinishedTxs += 1;
+                        //this.SetProgressBar();
                     }
                 }
 

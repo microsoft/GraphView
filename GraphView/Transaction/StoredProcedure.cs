@@ -14,6 +14,11 @@ namespace GraphView.Transaction
     {
         internal Queue<TransactionRequest> RequestQueue { get; set; }
 
+        /// <summary>
+        /// stored procedure id
+        /// </summary>
+        public int pid = 0;
+
         public StoredProcedure()
         {
         }
