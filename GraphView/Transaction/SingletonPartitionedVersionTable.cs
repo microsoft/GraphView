@@ -68,16 +68,15 @@ namespace GraphView.Transaction
             }
         }
 
-        internal override void EnqueueTxRequest(TxRequest req)
+        internal override void EnqueueVersionEntryRequest(VersionEntryRequest req)
         {
-            VersionEntryRequest verReq = req as VersionEntryRequest;
-            int pk = this.VersionDb.PhysicalPartitionByKey(verReq.RecordKey);
+            int pk = this.VersionDb.PhysicalPartitionByKey(req.RecordKey);
 
             bool lockTaken = false;
             try
             {
                 this.queueLocks[pk].Enter(ref lockTaken);
-                this.requestQueues[pk].Enqueue(verReq);
+                this.requestQueues[pk].Enqueue(req);
             }
             finally
             {

@@ -347,16 +347,9 @@
 
         internal override void EnqueueTxEntryRequest(long txId, TxEntryRequest req)
         {
-            RedisRequestVisitor requestVisitor = new RedisRequestVisitor(this.RedisLuaManager);
-            requestVisitor.Invoke(req);
-
-            string hashId = requestVisitor.HashId;
-            RedisRequest redisReq = requestVisitor.RedisReq;
-            redisReq.ResponseVisitor = this.responseVisitor;
-
-            int partition = this.PhysicalPartitionByKey(hashId);
-            RedisConnectionPool clientPool = this.RedisManager.GetClientPool(RedisVersionDb.TX_DB_INDEX, partition);
-            clientPool.EnqueueRequest(redisReq);
+            int pk = this.PhysicalPartitionByKey(txId);
+            RedisConnectionPool clientPool = this.RedisManager.GetClientPool(RedisVersionDb.TX_DB_INDEX, pk);
+            clientPool.EnqueueTxRequest(req);
         }
 
         /// <summary>
