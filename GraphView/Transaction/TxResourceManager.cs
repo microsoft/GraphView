@@ -1,6 +1,7 @@
 ﻿
 namespace GraphView.Transaction
 {
+    using System;
     using System.Collections.Generic;
 
     internal interface IResource
@@ -54,7 +55,9 @@ namespace GraphView.Transaction
     {
         internal static readonly int workingsetCapacity = 100;
 
+        // The list will be shared by get version entries and validate version entries
         private readonly Queue<List<VersionEntry>> versionLists;
+        private readonly Queue<List<string>> validateKeyList;
 
         // Version entry requests
         private readonly ResourcePool<GetVersionListRequest> getVersionListRequests;
@@ -78,7 +81,10 @@ namespace GraphView.Transaction
 
         public TxResourceManager()
         {
-            this.versionLists = new Queue<List<VersionEntry>>(TxResourceManager.workingsetCapacity);
+            // The list will be shared by get version entries and validate version entries
+            // Thus the size should be double
+            this.versionLists = new Queue<List<VersionEntry>>(2 * TxResourceManager.workingsetCapacity);
+            this.validateKeyList = new Queue<List<string>>(TxResourceManager.workingsetCapacity);
 
             // Version Entry Requests
             this.getVersionListRequests = new ResourcePool<GetVersionListRequest>(TxResourceManager.workingsetCapacity);
@@ -105,6 +111,7 @@ namespace GraphView.Transaction
             for (int i = 0; i < TxResourceManager.workingsetCapacity; i++)
             {
                 this.versionLists.Enqueue(new List<VersionEntry>(8));
+                this.validateKeyList.Enqueue(new List<string>(8));
 
                 this.getVersionListRequests.AddNewResource(new GetVersionListRequest(null, null, null));
                 this.initiGetVersionListRequests.AddNewResource(new InitiGetVersionListRequest(null, null, null));
@@ -148,6 +155,7 @@ namespace GraphView.Transaction
             }
         }
 
+
         internal void RecycleVersionList(ref List<VersionEntry> list)
         {
             list.Clear();
@@ -155,6 +163,25 @@ namespace GraphView.Transaction
             list = null;
         }
 
+        internal List<String> GetValidationKeyList()
+        {
+            if (this.validateKeyList.Count > 0)
+            {
+                return this.validateKeyList.Dequeue();
+            }
+            else
+            {
+                List<string> validationKeyList = new List<string>(8);
+                return validationKeyList;
+            }
+        }
+
+        internal void RecycleValidationKeyList(ref List<string> list)
+        {
+            list.Clear();
+            this.validateKeyList.Enqueue(list);
+            list = null;
+        }
         /// <summary>
         /// VersionEntry related recycling
         /// </summary>
