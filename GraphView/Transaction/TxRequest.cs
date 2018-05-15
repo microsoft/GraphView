@@ -203,11 +203,11 @@ namespace GraphView.Transaction
 
     internal class ReplaceVersionRequest : VersionEntryRequest
     {
-        internal long BeginTs { get; }
-        internal long EndTs { get; }
-        internal long TxId { get; }
-        internal long ReadTxId { get; }
-        internal long ExpectedEndTs { get; }
+        internal long BeginTs { get; set; }
+        internal long EndTs { get; set; }
+        internal long TxId { get; set; }
+        internal long ReadTxId { get; set; }
+        internal long ExpectedEndTs { get; set; }
 
         public ReplaceVersionRequest(
             string tableId, 
@@ -238,7 +238,7 @@ namespace GraphView.Transaction
 
     internal class ReplaceWholeVersionRequest : VersionEntryRequest
     {
-        internal VersionEntry VersionEntry { get; }
+        internal VersionEntry VersionEntry { get; set; }
 
         public ReplaceWholeVersionRequest(
             string tableId,
@@ -298,7 +298,7 @@ namespace GraphView.Transaction
 
     internal class UpdateTxStatusRequest : TxEntryRequest
     {
-        internal TxStatus TxStatus { get; }
+        internal TxStatus TxStatus { get; set; }
 
         public UpdateTxStatusRequest(long txId, TxStatus status)
             : base(txId)
@@ -333,7 +333,7 @@ namespace GraphView.Transaction
 
     internal class UpdateVersionMaxCommitTsRequest : VersionEntryRequest
     {
-        internal long MaxCommitTs { get; }
+        internal long MaxCommitTs { get; set; }
 
         public UpdateVersionMaxCommitTsRequest(
             string tableId, object recordKey, long versionKey, long commitTime)
@@ -353,7 +353,7 @@ namespace GraphView.Transaction
 
     internal class UploadVersionRequest : VersionEntryRequest
     {
-        internal VersionEntry VersionEntry { get; }
+        internal VersionEntry VersionEntry { get; set; }
 
         public UploadVersionRequest(
             string tableId, object recordKey, long versionKey, VersionEntry versionEntry)
