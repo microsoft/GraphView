@@ -27,6 +27,7 @@ namespace GraphView.Transaction
         /// requests of all tx operations
         /// </summary>
         private readonly Queue<TxEntryRequest>[] txEntryRequestQueues;
+        private readonly Queue<TxEntryRequest>[] flushQueues;
         private readonly SpinLock[] queueLocks;
         private readonly PartitionTxEntryRequestVisitor[] txRequestVisitors;
 
@@ -42,6 +43,7 @@ namespace GraphView.Transaction
 
             this.txTable = new Dictionary<long, TxTableEntry>[partitionCount];
             this.txEntryRequestQueues = new Queue<TxEntryRequest>[partitionCount];
+            this.flushQueues = new Queue<TxEntryRequest>[partitionCount];
             this.queueLocks = new SpinLock[partitionCount];
             this.txRequestVisitors = new PartitionTxEntryRequestVisitor[partitionCount];
 
@@ -49,6 +51,7 @@ namespace GraphView.Transaction
             {
                 this.txTable[pid] = new Dictionary<long, TxTableEntry>(100000);
                 this.txEntryRequestQueues[pid] = new Queue<TxEntryRequest>();
+                this.flushQueues[pid] = new Queue<TxEntryRequest>();
                 this.queueLocks[pid] = new SpinLock();
                 this.txRequestVisitors[pid] = new PartitionTxEntryRequestVisitor(this.txTable[pid]);
             }
@@ -169,9 +172,8 @@ namespace GraphView.Transaction
             }
         }
 
-        private IEnumerable<TxEntryRequest> DequeueTxEntryRequest(int partitionKey)
+        private void DequeueTxEntryRequest(int partitionKey)
         {
-            TxEntryRequest[] reqArray = null;
             Queue<TxEntryRequest> queue = this.txEntryRequestQueues[partitionKey];
 
             if (queue.Count > 0)
@@ -182,8 +184,9 @@ namespace GraphView.Transaction
                     this.queueLocks[partitionKey].Enter(ref lockTaken);
                     if (queue.Count > 0)
                     {
-                        reqArray = queue.ToArray();
-                        queue.Clear();
+                        Queue<TxEntryRequest> freeQueue = this.flushQueues[partitionKey];
+                        this.flushQueues[partitionKey] = queue;
+                        this.txEntryRequestQueues[partitionKey] = freeQueue;
                     }
                 }
                 finally
@@ -194,8 +197,6 @@ namespace GraphView.Transaction
                     }
                 }
             }
-
-            return reqArray;
         }
 
         internal override void Visit(string tableId, int partitionKey)
@@ -203,16 +204,18 @@ namespace GraphView.Transaction
             // Here try to flush the tx requests
             if (tableId == VersionDb.TX_TABLE)
             {
-                IEnumerable<TxEntryRequest> reqArray = this.DequeueTxEntryRequest(partitionKey);
-                if (reqArray == null)
+                this.DequeueTxEntryRequest(partitionKey);
+                Queue<TxEntryRequest> flushQueue = this.flushQueues[partitionKey];
+                if (flushQueue.Count == 0)
                 {
                     return;
                 }
 
-                foreach (TxEntryRequest req in reqArray)
+                foreach (TxEntryRequest req in flushQueue)
                 {
                     this.txRequestVisitors[partitionKey].Invoke(req);
                 }
+                flushQueue.Clear();
             }
             else
             {
