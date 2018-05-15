@@ -172,20 +172,22 @@ namespace GraphView.Transaction
             }
         }
 
+        /// <summary>
+        /// Move pending requests for a partition of the tx table to the partition's flush queue.
+        /// </summary>
+        /// <param name="partitionKey">The key of the tx table partition</param>
         private void DequeueTxEntryRequest(int partitionKey)
         {
-            Queue<TxEntryRequest> queue = this.txEntryRequestQueues[partitionKey];
-
-            if (queue.Count > 0)
+            if (this.txEntryRequestQueues[partitionKey].Count > 0)
             {
                 bool lockTaken = false;
                 try
                 {
                     this.queueLocks[partitionKey].Enter(ref lockTaken);
-                    if (queue.Count > 0)
+                    if (this.txEntryRequestQueues[partitionKey].Count > 0)
                     {
                         Queue<TxEntryRequest> freeQueue = this.flushQueues[partitionKey];
-                        this.flushQueues[partitionKey] = queue;
+                        this.flushQueues[partitionKey] = this.txEntryRequestQueues[partitionKey];
                         this.txEntryRequestQueues[partitionKey] = freeQueue;
                     }
                 }

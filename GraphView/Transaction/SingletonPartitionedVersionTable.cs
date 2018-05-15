@@ -70,8 +70,6 @@ namespace GraphView.Transaction
 
         internal override void EnqueueTxRequest(TxRequest req)
         {
-            // Debug.Assert(req is VersionEntryRequest);
-
             VersionEntryRequest verReq = req as VersionEntryRequest;
             int pk = this.VersionDb.PhysicalPartitionByKey(verReq.RecordKey);
 
@@ -91,26 +89,23 @@ namespace GraphView.Transaction
         }
 
         /// <summary>
-        /// Dequeue all items to an IEnumerable container
+        /// Move pending requests of a version table partition to the partition's flush queue. 
         /// </summary>
-        /// <param name="pk"></param>
-        /// <returns></returns>
+        /// <param name="pk">The key of the version table partition to flush</param>
         private void DequeueRequests(int pk)
         {
-            Queue<VersionEntryRequest> queue = this.requestQueues[pk];
-
             // Check whether the queue is empty at first
-            if (queue.Count > 0)
+            if (this.requestQueues[pk].Count > 0)
             {
                 bool lockTaken = false;
                 try
                 {
                     this.queueLocks[pk].Enter(ref lockTaken);
                     // In case other running threads also flush the same queue
-                    if (queue.Count > 0)
+                    if (this.requestQueues[pk].Count > 0)
                     {
                         Queue<VersionEntryRequest> freeQueue = this.flushQueues[pk];
-                        this.flushQueues[pk] = queue;
+                        this.flushQueues[pk] = this.requestQueues[pk];
                         this.requestQueues[pk] = freeQueue;
                     }
                 }
