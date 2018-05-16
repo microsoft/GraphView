@@ -72,7 +72,6 @@ namespace GraphView.Transaction
 
         internal override void Visit(InitiGetVersionListRequest req)
         {
-            Console.WriteLine("Execute Init: {0}", req.RecordKey);
             // The version list is empty
             if (!this.dict.ContainsKey(req.RecordKey))
             {
@@ -84,9 +83,8 @@ namespace GraphView.Transaction
                 newVersionList.Add(
                     VersionEntry.VERSION_KEY_STRAT_INDEX, VersionEntry.InitEmptyVersionEntry(req.RecordKey));
 
-                // Console.WriteLine(req.RecordKey);
                 this.dict.Add(req.RecordKey, newVersionList);
-                Console.WriteLine("Add recordKey {0}", req.RecordKey);
+
                 // The version list is newly created by this tx. 
                 // No meaningful versions exist, except for the artificial entry as a tail pointer. 
                 req.Result = 1L;
@@ -111,7 +109,6 @@ namespace GraphView.Transaction
 
         internal override void Visit(ReplaceVersionRequest req)
         {
-            Console.WriteLine("Execute recordKey: {0}", req.RecordKey);
             if (!this.dict.ContainsKey(req.RecordKey) || 
                 !this.dict[req.RecordKey].ContainsKey(req.VersionKey))
             {

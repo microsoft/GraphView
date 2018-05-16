@@ -278,7 +278,7 @@
             }
 
             // 3.3 Load in multiple workers
-            int workerCount = Math.Max(2, partitions), taskPerWorker = this.recordCount / workerCount;
+            int workerCount = Math.Max(1, partitions), taskPerWorker = this.recordCount / workerCount;
             List<TransactionExecutor> executors = new List<TransactionExecutor>();
             using (StreamReader reader = new StreamReader(dataFile))
             {
@@ -321,7 +321,7 @@
             while (true)
             {
                 // check whether all tasks finished every 100 ms
-                // Thread.Sleep(100);
+                Thread.Sleep(100);
                 times++;
 
                 bool allFinished = true;
@@ -333,7 +333,7 @@
                         allFinished = false;
                     }
                     loaded += executor.FinishedTxs;
-                    // Console.WriteLine("Loaded {0} records", loaded);
+                    Console.WriteLine("Loaded {0} records", loaded);
                 }
 
                 // Console.WriteLine("Loaded {0} records", loaded);

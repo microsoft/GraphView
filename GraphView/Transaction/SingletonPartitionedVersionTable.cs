@@ -1,9 +1,7 @@
 ﻿
 namespace GraphView.Transaction
 {
-    using System;
     using System.Collections.Generic;
-    using System.Diagnostics;
     using System.Threading;
 
     internal class SingletonPartitionedVersionTable : VersionTable
@@ -72,7 +70,6 @@ namespace GraphView.Transaction
 
         internal override void EnqueueVersionEntryRequest(VersionEntryRequest req)
         {
-            SingletonPartitionedVersionDb.CommandsEnqueued += 1;
             int pk = this.VersionDb.PhysicalPartitionByKey(req.RecordKey);
 
             bool lockTaken = false;
@@ -109,7 +106,6 @@ namespace GraphView.Transaction
                         Queue<VersionEntryRequest> freeQueue = this.flushQueues[pk];
                         this.flushQueues[pk] = this.requestQueues[pk];
                         this.requestQueues[pk] = freeQueue;
-                        SingletonPartitionedVersionDb.CommandsFromQueue += this.flushQueues[pk].Count;
                     }
                 }
                 finally
@@ -122,11 +118,8 @@ namespace GraphView.Transaction
             }
         }
 
-        private int localIndex = 0;
-
         internal override void Visit(int partitionKey)
         {
-            localIndex = 0;
             this.DequeueRequests(partitionKey);
             Queue<VersionEntryRequest> flushQueue = this.flushQueues[partitionKey];
 
@@ -135,12 +128,9 @@ namespace GraphView.Transaction
                 return;
             }
 
-            SingletonPartitionedVersionDb.CommandsFlushed += flushQueue.Count;
             PartitionVersionEntryRequestVisitor visitor = this.requestVisitors[partitionKey];
             foreach (VersionEntryRequest req in flushQueue)
             {
-                localIndex++;
-                Console.WriteLine("Name:{0}, RecordKey:{1}", req.GetType().Name, req.RecordKey);
                 visitor.Invoke(req);
             }
             flushQueue.Clear();

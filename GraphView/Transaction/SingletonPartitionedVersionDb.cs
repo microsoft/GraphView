@@ -149,12 +149,6 @@ namespace GraphView.Transaction
             return this.versionTables[tableId];
         }
 
-        public static int CommandsEnqueued = 0;
-
-        public static int CommandsFlushed = 0;
-
-        public static int CommandsFromQueue = 0;
-
         /// <summary>
         /// Enqueue Transcation Entry Requests
         /// </summary>
@@ -221,7 +215,6 @@ namespace GraphView.Transaction
 
                 foreach (TxEntryRequest req in flushQueue)
                 {
-                    Console.WriteLine("Name:{0}, TxId:{1}", req.GetType().Name, req.TxId);
                     this.txRequestVisitors[partitionKey].Invoke(req);
                 }
                 flushQueue.Clear();
