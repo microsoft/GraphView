@@ -31,6 +31,7 @@ namespace GraphView.Transaction
         public void Free()
         {
             this.InUse = false;
+            this.Finished = false;
         }
     }
 

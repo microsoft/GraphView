@@ -186,9 +186,9 @@ namespace GraphView.Transaction
                     this.queueLocks[partitionKey].Enter(ref lockTaken);
                     if (this.txEntryRequestQueues[partitionKey].Count > 0)
                     {
-                        Queue<TxEntryRequest> freeQueue = this.flushQueues[partitionKey];
-                        this.flushQueues[partitionKey] = this.txEntryRequestQueues[partitionKey];
-                        this.txEntryRequestQueues[partitionKey] = freeQueue;
+                        Queue<TxEntryRequest> freeQueue = Volatile.Read(ref this.flushQueues[partitionKey]);
+                        Volatile.Write(ref this.flushQueues[partitionKey], Volatile.Read(ref this.txEntryRequestQueues[partitionKey]));
+                        Volatile.Write(ref this.txEntryRequestQueues[partitionKey], freeQueue);
                     }
                 }
                 finally

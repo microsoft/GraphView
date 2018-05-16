@@ -278,7 +278,7 @@
             }
 
             // 3.3 Load in multiple workers
-            int workerCount = Math.Max(1, partitions), taskPerWorker = this.recordCount / workerCount;
+            int workerCount = Math.Max(2, partitions), taskPerWorker = this.recordCount / workerCount;
             List<TransactionExecutor> executors = new List<TransactionExecutor>();
             using (StreamReader reader = new StreamReader(dataFile))
             {
@@ -302,7 +302,7 @@
                     List<Tuple<string, int>> executorInstances =
                         i >= instances.Count ?
                         null :
-                        this.partitionedInstances[i];
+                        instances[i];
 
                     executors.Add(new TransactionExecutor(this.versionDb, null, reqQueue, executorInstances, i));
                 }

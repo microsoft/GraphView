@@ -103,9 +103,9 @@ namespace GraphView.Transaction
                     // In case other running threads also flush the same queue
                     if (this.requestQueues[pk].Count > 0)
                     {
-                        Queue<VersionEntryRequest> freeQueue = this.flushQueues[pk];
-                        this.flushQueues[pk] = this.requestQueues[pk];
-                        this.requestQueues[pk] = freeQueue;
+                        Queue<VersionEntryRequest> freeQueue = Volatile.Read(ref this.flushQueues[pk]);
+                        Volatile.Write(ref this.flushQueues[pk], Volatile.Read(ref this.requestQueues[pk]));
+                        Volatile.Write(ref this.requestQueues[pk], freeQueue);
                     }
                 }
                 finally
