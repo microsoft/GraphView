@@ -217,6 +217,7 @@ namespace GraphView.Transaction
 
             while (this.activeTxs.Count > 0 || this.workload.Count > 0)
             {
+                // Thread.Sleep(500);
                 foreach (string sessionId in activeTxs.Keys)
                 {
                     Tuple<TransactionExecution, Queue<TransactionRequest>> execTuple =
@@ -422,6 +423,7 @@ namespace GraphView.Transaction
             }
 
             // Set the finish flag as true
+            Console.WriteLine("Finish All Tasks");
             this.AllRequestsFinished = true;
             if (this.partitionedInstances != null)
             {
@@ -437,6 +439,7 @@ namespace GraphView.Transaction
             foreach (Tuple<string, int> tuple in this.partitionedInstances)
             {
                 string tableId = tuple.Item1;
+                Console.WriteLine("Thread {1} Flush {0}", tableId, Thread.CurrentThread.ManagedThreadId);
                 int partition = tuple.Item2;
                 this.versionDb.Visit(tableId, partition);
             }
