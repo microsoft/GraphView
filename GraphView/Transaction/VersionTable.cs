@@ -1,9 +1,9 @@
-﻿using Microsoft.SqlServer.TransactSql.ScriptDom;
-
+﻿
 namespace GraphView.Transaction
 {
     using System;
     using System.Collections.Generic;
+    using System.Threading;
 
     /// <summary>
     /// A version table for concurrency control.
@@ -13,20 +13,106 @@ namespace GraphView.Transaction
         public readonly string tableId;
 
         /// <summary>
+        /// Request queues for logical partitions of a version table
+        /// </summary>
+        protected readonly Queue<VersionEntryRequest>[] requestQueues;
+
+        /// <summary>
+        /// A queue of version entry requests for each partition to be flushed to the k-v store
+        /// </summary>
+        protected readonly Queue<VersionEntryRequest>[] flushQueues;
+
+        protected readonly SpinLock[] queueLocks;
+
+        protected readonly VersionTableVisitor[] tableVisitors;
+
+        /// <summary>
         /// The version db instance of the current version table
         /// In case of version db may hold some information about the index, partition etc.
         /// </summary>
         internal VersionDb VersionDb { get; set; }
 
-        public VersionTable(VersionDb versionDb, string tableId)
+        public VersionTable(VersionDb versionDb, string tableId, int partitionCount = 4)
         {
             this.VersionDb = versionDb;
             this.tableId = tableId;
+
+            this.requestQueues = new Queue<VersionEntryRequest>[partitionCount];
+            this.flushQueues = new Queue<VersionEntryRequest>[partitionCount];
+            this.queueLocks = new SpinLock[partitionCount];
+            this.tableVisitors = new VersionTableVisitor[partitionCount];
+
+            for (int pid = 0; pid < partitionCount; pid++)
+            {
+                this.requestQueues[pid] = new Queue<VersionEntryRequest>();
+                this.flushQueues[pid] = new Queue<VersionEntryRequest>();
+                this.queueLocks[pid] = new SpinLock();
+            }
         }
 
-        internal virtual void EnqueueVersionEntryRequest(VersionEntryRequest req)
+        internal void EnqueueVersionEntryRequest(VersionEntryRequest req)
         {
-            throw new NotImplementedException();
+            int pk = this.VersionDb.PhysicalPartitionByKey(req.RecordKey);
+
+            bool lockTaken = false;
+            try
+            {
+                this.queueLocks[pk].Enter(ref lockTaken);
+                this.requestQueues[pk].Enqueue(req);
+            }
+            finally
+            {
+                if (lockTaken)
+                {
+                    this.queueLocks[pk].Exit();
+                }
+            }
+        }
+
+        /// <summary>
+        /// Move pending requests of a version table partition to the partition's flush queue. 
+        /// </summary>
+        /// <param name="pk">The key of the version table partition to flush</param>
+        protected void DequeueVersionEntryRequests(int pk)
+        {
+            // Check whether the queue is empty at first
+            if (this.requestQueues[pk].Count > 0)
+            {
+                bool lockTaken = false;
+                try
+                {
+                    this.queueLocks[pk].Enter(ref lockTaken);
+                    // In case other running threads also flush the same queue
+                    if (this.requestQueues[pk].Count > 0)
+                    {
+                        Queue<VersionEntryRequest> freeQueue = Volatile.Read(ref this.flushQueues[pk]);
+                        Volatile.Write(ref this.flushQueues[pk], Volatile.Read(ref this.requestQueues[pk]));
+                        Volatile.Write(ref this.requestQueues[pk], freeQueue);
+                    }
+                }
+                finally
+                {
+                    if (lockTaken)
+                    {
+                        this.queueLocks[pk].Exit();
+                    }
+                }
+            }
+        }
+
+        internal void Visit(int partitionKey)
+        {
+            this.DequeueVersionEntryRequests(partitionKey);
+            Queue<VersionEntryRequest> flushQueue = this.flushQueues[partitionKey];
+
+            if (flushQueue.Count == 0)
+            {
+                return;
+            }
+
+            VersionTableVisitor visitor = this.tableVisitors[partitionKey];
+            visitor.Invoke(flushQueue);
+            flushQueue.Clear();
         }
 
         /// <summary>
@@ -135,11 +221,6 @@ namespace GraphView.Transaction
         /// </summary>
         /// <returns></returns>
         internal virtual bool DeleteVersionEntry(object recordKey, long versionKey)
-        {
-            throw new NotImplementedException();
-        }
-
-        internal virtual void Visit(int partitionKey)
         {
             throw new NotImplementedException();
         }

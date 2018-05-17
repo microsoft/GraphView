@@ -6,7 +6,7 @@ namespace GraphView.Transaction
     using System;
     using System.Collections.Generic;
 
-    internal class VersionEntry : IComparable<VersionEntry>
+    public class VersionEntry : IComparable<VersionEntry>
     {
         /// <summary>
         /// The offsets of fields in serialized binary data
@@ -40,7 +40,6 @@ namespace GraphView.Transaction
         internal long EndTimestamp { get; set; }
         internal long TxId { get; set; }
         internal long MaxCommitTs { get; set; }
-
 
         public VersionEntry(
             object recordKey,

@@ -385,7 +385,8 @@ namespace TransactionUnitTest
 			}
 			Assert.AreEqual(new Procedure(texUpdate.PostProcessingAfterCommit), texUpdate.CurrentProc);
 
-			GetTxEntryRequest getTxReq = this.versionDb.EnqueueGetTxEntry(texUpdate.txId);
+			GetTxEntryRequest getTxReq = new GetTxEntryRequest(texUpdate.txId);
+            this.versionDb.EnqueueTxEntryRequest(texUpdate.txId, getTxReq);
 			this.versionDb.Visit(RedisVersionDb.TX_TABLE, 0);
 			while (getTxReq.Result == null)
 			{
@@ -714,7 +715,8 @@ namespace TransactionUnitTest
 				texDelete.CurrentProc();
 			}
 
-			GetTxEntryRequest getTxReq = this.versionDb.EnqueueGetTxEntry(texDelete.txId);
+			GetTxEntryRequest getTxReq = new GetTxEntryRequest(texDelete.txId);
+            this.versionDb.EnqueueTxEntryRequest(texDelete.txId, getTxReq);
 			this.versionDb.Visit(RedisVersionDb.TX_TABLE, 0);
 			while (getTxReq.Result == null)
 			{
@@ -780,8 +782,10 @@ namespace TransactionUnitTest
 				texDelete.CurrentProc();
 			}
 
-			GetTxEntryRequest getTxReq = this.versionDb.EnqueueGetTxEntry(texDelete.txId);
-			this.versionDb.Visit(RedisVersionDb.TX_TABLE, 0);
+            GetTxEntryRequest getTxReq = new GetTxEntryRequest(texDelete.txId);
+            this.versionDb.EnqueueTxEntryRequest(texDelete.txId, getTxReq);
+
+            this.versionDb.Visit(RedisVersionDb.TX_TABLE, 0);
 			while (getTxReq.Result == null)
 			{
 				this.versionDb.Visit(RedisVersionDb.TX_TABLE, 0);
@@ -947,7 +951,8 @@ namespace TransactionUnitTest
 				texInsert.CurrentProc();
 			}
 
-			GetTxEntryRequest getTxReq = this.versionDb.EnqueueGetTxEntry(texInsert.txId);
+			GetTxEntryRequest getTxReq = new GetTxEntryRequest(texInsert.txId);
+            this.versionDb.EnqueueTxEntryRequest(texInsert.txId, getTxReq);
 			this.versionDb.Visit(RedisVersionDb.TX_TABLE, 0);
 			while (getTxReq.Result == null)
 			{

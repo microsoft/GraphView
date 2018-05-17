@@ -27,9 +27,17 @@
     /// </summary>
     internal partial class CassandraVersionTable : VersionTable
     {
-        public CassandraVersionTable(VersionDb versionDb, string tableId)
+        internal int PartitionCount { get; private set; }
+
+        public CassandraVersionTable(VersionDb versionDb, string tableId, int partitionCount = 4)
             : base(versionDb, tableId)
-        { 
+        {
+            this.PartitionCount = partitionCount;
+           
+            for (int pid = 0; pid < this.PartitionCount; pid++)
+            {
+                this.tableVisitors[pid] = new CassandraVersionTableVisitor();
+            }
         }
     }
 }

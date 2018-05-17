@@ -43,7 +43,9 @@ namespace TransactionUnitTest
 				tex.CurrentProc();
 			}
 
-			GetTxEntryRequest getTxReq = this.versionDb.EnqueueGetTxEntry(tex.txId);
+			GetTxEntryRequest getTxReq = new GetTxEntryRequest(tex.txId);
+            this.versionDb.EnqueueTxEntryRequest(tex.txId, getTxReq);
+
 			this.versionDb.Visit(RedisVersionDb.TX_TABLE, 0);
 			while (getTxReq.Result == null)
 			{
@@ -90,7 +92,8 @@ namespace TransactionUnitTest
 				tex.CurrentProc();
 			}
 
-			GetTxEntryRequest getTxReq = this.versionDb.EnqueueGetTxEntry(tex.txId);
+			GetTxEntryRequest getTxReq = new GetTxEntryRequest(tex.txId);
+            this.versionDb.EnqueueTxEntryRequest(tex.txId, getTxReq);
 			this.versionDb.Visit(RedisVersionDb.TX_TABLE, 0);
 			while (getTxReq.Result == null)
 			{
@@ -159,7 +162,8 @@ namespace TransactionUnitTest
 				tex.CurrentProc();
 			}
 
-			GetTxEntryRequest getTxReq = this.versionDb.EnqueueGetTxEntry(tex.txId);
+			GetTxEntryRequest getTxReq = new GetTxEntryRequest(tex.txId);
+            this.versionDb.EnqueueTxEntryRequest(tex.txId, getTxReq);
 			this.versionDb.Visit(RedisVersionDb.TX_TABLE, 0);
 			while (getTxReq.Result == null)
 			{
@@ -230,7 +234,8 @@ namespace TransactionUnitTest
 				tex.CurrentProc();
 			}
 
-			GetTxEntryRequest getTxReq = this.versionDb.EnqueueGetTxEntry(tex.txId);
+			GetTxEntryRequest getTxReq = new GetTxEntryRequest(tex.txId);
+            this.versionDb.EnqueueTxEntryRequest(tex.txId, getTxReq);
 			this.versionDb.Visit(RedisVersionDb.TX_TABLE, 0);
 			while (getTxReq.Result == null)
 			{
@@ -257,7 +262,9 @@ namespace TransactionUnitTest
 		[TestMethod]
 		public void TestSetGetCommitTs5Event()
 		{
-			UpdateVersionMaxCommitTsRequest req = this.versionDb.EnqueueUpdateVersionMaxCommitTs(TABLE_ID, DEFAULT_KEY, 1L, 5L);
+            UpdateVersionMaxCommitTsRequest req = new UpdateVersionMaxCommitTsRequest(TABLE_ID, DEFAULT_KEY, 1L, 5L);
+            this.versionDb.GetVersionTable(TABLE_ID).EnqueueVersionEntryRequest(req);
+
 			while (req.Result == null)
 			{
 				this.versionDb.Visit(TABLE_ID, 0);
@@ -284,7 +291,8 @@ namespace TransactionUnitTest
 				tex.CurrentProc();
 			}
 
-			GetTxEntryRequest getTxReq = this.versionDb.EnqueueGetTxEntry(tex.txId);
+			GetTxEntryRequest getTxReq = new GetTxEntryRequest(tex.txId);
+            this.versionDb.EnqueueTxEntryRequest(tex.txId, getTxReq);
 			this.versionDb.Visit(RedisVersionDb.TX_TABLE, 0);
 			while (getTxReq.Result == null)
 			{

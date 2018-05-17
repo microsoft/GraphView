@@ -41,22 +41,22 @@
         }
 
         public RedisVersionTable(VersionDb versionDb, string tableId, long redisDbIndex)
-            : base(versionDb, tableId)
+            : base(versionDb, tableId, versionDb.PartitionCount)
         {
             this.redisDbIndex = redisDbIndex;
             this.responseVisitor = new RedisResponseVisitor();
+
+            for (int pid = 0; pid < versionDb.PartitionCount; pid++)
+            {
+                RedisConnectionPool clientPool = this.RedisManager.GetClientPool(
+                    this.redisDbIndex, pid);
+                this.tableVisitors[pid] = new RedisVersionTableVisitor(clientPool);
+            }
         }
     }
 
     internal partial class RedisVersionTable
     {
-        internal override void EnqueueVersionEntryRequest(VersionEntryRequest req)
-        {
-            int pk = this.VersionDb.PhysicalPartitionByKey(req.RecordKey);
-            RedisConnectionPool clientPool = this.RedisManager.GetClientPool(this.redisDbIndex, pk);
-            clientPool.EnqueueTxRequest(req);
-        }
-
         /// <summary>
         /// Get all version entries by the command HGETALL
         /// MIND: HGETALL in ServiceStack.Redis only supports a string type as the hashId 
@@ -463,12 +463,6 @@
                 versionEntries.Add(new VersionPrimaryKey(recordKey, versionKey), entry);
             }
             return versionEntries;
-        }
-
-        internal override void Visit(int partitionKey)
-        {
-            RedisConnectionPool clientPool = this.RedisManager.GetClientPool(this.redisDbIndex, partitionKey);
-            clientPool.Visit();
         }
     }
 }

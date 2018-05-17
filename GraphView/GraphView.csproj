@@ -316,11 +316,14 @@
     <Compile Include="Transaction\CassandraClusterManager.cs" />
     <Compile Include="Transaction\CassandraLogConnectionPool.cs" />
     <Compile Include="Transaction\CassandraLogStore.cs" />
+    <Compile Include="Transaction\CassandraVersionDbVisitor.cs" />
+    <Compile Include="Transaction\CassandraVersionTableVisitor.cs" />
+    <Compile Include="Transaction\RedisVersionTableVisitor.cs" />
     <Compile Include="Transaction\LogRequest.cs" />
     <Compile Include="Transaction\CassandraVersionDb.cs" />
     <Compile Include="Transaction\CassandraVersionTable.cs" />
     <Compile Include="Transaction\PartitionedTxEntryRequestVisitor.cs" />
-    <Compile Include="Transaction\PartitionVersionEntryRequestVisitor.cs" />
+    <Compile Include="Transaction\PartitionedVersionTableVisitor.cs" />
     <Compile Include="Transaction\PostProcessingEntry.cs" />
     <Compile Include="Transaction\ReadSetEntry.cs" />
     <Compile Include="Transaction\RedisClientManager.cs" />
@@ -330,6 +333,7 @@
     <Compile Include="Transaction\RedisResponseVisitor.cs" />
     <Compile Include="Transaction\RedisRequestVisitor.cs" />
     <Compile Include="Transaction\RedisVersionDb.cs" />
+    <Compile Include="Transaction\RedisVersionDbVisitor.cs" />
     <Compile Include="Transaction\RedisVersionTable.cs" />
     <Compile Include="Transaction\SingletonPartitionedVersionDb.cs" />
     <Compile Include="Transaction\SingletonPartitionedVersionTable.cs" />
@@ -345,6 +349,7 @@
     <Compile Include="Transaction\TxStatus.cs" />
     <Compile Include="Transaction\TxTableEntry.cs" />
     <Compile Include="Transaction\VersionBlob.cs" />
+    <Compile Include="Transaction\VersionDbVisitor.cs" />
     <Compile Include="Transaction\VersionPrimaryKey.cs" />
     <Compile Include="Transaction\VersionDb.cs" />
     <Compile Include="Transaction\VersionEntry.cs" />
@@ -352,6 +357,7 @@
     <Compile Include="Transaction\VersionTable.cs" />
     <Compile Include="Transaction\ILogStore.cs" />
     <Compile Include="Transaction\Transaction.cs" />
+    <Compile Include="Transaction\VersionTableVisitor.cs" />
     <Compile Include="TSQL Syntax Tree\WControlFlow.cs" />
     <Compile Include="TSQL Syntax Tree\WCreateViewStatement.cs" />
     <Compile Include="TSQL Syntax Tree\WDeclareVariableStatement.cs" />

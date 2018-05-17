@@ -250,19 +250,10 @@ namespace GraphView.Transaction
                 }
                 else
                 {
-                    NewTxIdRequest newTxIdReq = null;
-                    if (this.txRange == null)
-                    {
-                        // TODO: should handle this case?
-                        newTxIdReq = this.versionDb.EnqueueNewTxId();
-                    }
-                    else
-                    {
-                        long id = this.txRange.NextTxCandidate();
-                        newTxIdReq = this.executor.ResourceManager.NewTxIdRequest(id);
-                        this.versionDb.EnqueueTxEntryRequest(id, newTxIdReq);
-                        this.txReqGarbageQueue.Enqueue(newTxIdReq);
-                    }
+                    long id = this.txRange.NextTxCandidate();
+                    NewTxIdRequest newTxIdReq = this.executor.ResourceManager.NewTxIdRequest(id);
+                    this.versionDb.EnqueueTxEntryRequest(id, newTxIdReq);
+                    this.txReqGarbageQueue.Enqueue(newTxIdReq);
 
                     this.requestStack.Push(newTxIdReq);
                 }
@@ -283,18 +274,10 @@ namespace GraphView.Transaction
                 if ((long)newTxIdReq.Result == 0)
                 {
                     // Retry in loop to get the unique txId
-                    NewTxIdRequest retryReq = null;
-                    if (this.txRange == null)
-                    {
-                        retryReq = this.versionDb.EnqueueNewTxId();
-                    }
-                    else
-                    {
-                        long id = this.txRange.NextTxCandidate();
-                        retryReq = this.executor.ResourceManager.NewTxIdRequest(id);
-                        this.versionDb.EnqueueTxEntryRequest(id, retryReq);
-                        this.txReqGarbageQueue.Enqueue(retryReq);
-                    }
+                    long id = this.txRange.NextTxCandidate();
+                    NewTxIdRequest retryReq = this.executor.ResourceManager.NewTxIdRequest(id);
+                    this.versionDb.EnqueueTxEntryRequest(id, retryReq);
+                    this.txReqGarbageQueue.Enqueue(retryReq);
                     this.requestStack.Push(retryReq);
                     return;
                 }

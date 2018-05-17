@@ -30,7 +30,7 @@ namespace GraphView.Transaction
 
         internal override void Visit(GetVersionListRequest req)
         {
-            List<VersionEntry> versionList = new List<VersionEntry>();
+            List<VersionEntry> versionList = req.Container != null ? req.Container : new List<VersionEntry>();
 
             byte[][] returnBytes = req.Result as byte[][];
             if (returnBytes != null && returnBytes.Length != 0)

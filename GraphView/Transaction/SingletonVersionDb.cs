@@ -12,11 +12,10 @@ namespace GraphView.Transaction
         private static readonly object initlock = new object();
 
         private readonly NonBlocking.ConcurrentDictionary<long, TxTableEntry> txTable;
-        private readonly Dictionary<string, SingletonDictionaryVersionTable> versionTables;
 
         private SingletonVersionDb()
+            :base(1)
         {
-            this.versionTables = new Dictionary<string, SingletonDictionaryVersionTable>();
             this.txTable = new ConcurrentDictionary<long, TxTableEntry>();
         }
 
@@ -181,7 +180,7 @@ namespace GraphView.Transaction
                 return this.versionTables[tableId];
             }
 
-            SingletonDictionaryVersionTable versionTable = null; 
+            VersionTable versionTable = null; 
             lock (this.versionTables)
             {
                 if (!this.versionTables.ContainsKey(tableId))
@@ -236,7 +235,7 @@ namespace GraphView.Transaction
 
 			foreach (string tableId in this.versionTables.Keys)
 			{
-				SingletonDictionaryVersionTable versionTable = this.versionTables[tableId];
+				VersionTable versionTable = this.versionTables[tableId];
 				versionTable.Clear();
 			}
 		}

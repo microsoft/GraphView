@@ -49,7 +49,7 @@
     /// 2. Collect results. 
     /// redis client pool provide a interface to get the redis client
     /// </summary>
-    internal class RedisConnectionPool
+    public class RedisConnectionPool
     {
         // THOSE TWO VARIABLES ARE ONLY FOR BENCHMARK TEST
         /// <summary>
@@ -82,21 +82,10 @@
         /// <summary>
         /// Request queue holding the pending Redis requests
         /// </summary>
-        internal Queue<RedisRequest> redisRequestQueue;
+        private Queue<RedisRequest> redisRequestQueue;
 
-        /// <summary>
-        /// A queue of pending tx requests
-        /// </summary>
-        private Queue<TxRequest> txRequestQueue;
-
-        /// <summary>
-        /// A queue of tx requests to be flushed
-        /// </summary>
-        private Queue<TxRequest> flushTxRequestQueue;
-
-        private SpinLock txRequestQueueLock;
-
-        private readonly RedisRequestVisitor redisRequestVisitor;
+        private readonly RedisTxEntryRequestVisitor txEntryVisitor;
+        private readonly RedisVersionEntryRequestVisitor versionEntryVisitor;
         private readonly RedisResponseVisitor redisResponseVisitor;
 
         /// <summary>
@@ -142,9 +131,6 @@
 
             this.redisRequestQueue = new Queue<RedisRequest>(this.RequestBatchSize);
 
-            this.txRequestQueue = new Queue<TxRequest>(this.RequestBatchSize);
-            this.flushTxRequestQueue = new Queue<TxRequest>(this.RequestBatchSize);
-            this.txRequestQueueLock = new SpinLock();
             this.redisResponseVisitor = new RedisResponseVisitor();
             // How to intialize RedisRequestVisitor?
 
@@ -168,7 +154,7 @@
         /// </summary>
         /// <param name="request">The incoming request</param>
         /// <returns>The index of the spot the request takes</returns>
-        internal void EnqueueRedisRequest(RedisRequest request)
+        private void EnqueueRedisRequest(RedisRequest request)
         {
             bool lockTaken = false;
             try
@@ -181,23 +167,6 @@
                 if (lockTaken)
                 {
                     this.spinLock.Exit();
-                }
-            }
-        }
-
-        internal void EnqueueTxRequest(TxRequest req)
-        {
-            bool lockTaken = false;
-            try
-            {
-                this.txRequestQueueLock.Enter(ref lockTaken);
-                this.txRequestQueue.Enqueue(req);
-            }
-            finally
-            {
-                if (lockTaken)
-                {
-                    this.txRequestQueueLock.Exit();
                 }
             }
         }
@@ -277,37 +246,28 @@
             }
         }
 
+        internal void EnqueueTxEntryRequest(TxEntryRequest req)
+        {
+            this.txEntryVisitor.Invoke(req);
+            RedisRequest redisReq = this.txEntryVisitor.RedisReq;
+            redisReq.ResponseVisitor = this.redisResponseVisitor;
+
+            this.redisRequestQueue.Enqueue(redisReq);
+        }
+
+        internal void EnqueueVersionEntryRequest(VersionEntryRequest req)
+        {
+            this.versionEntryVisitor.Invoke(req);
+            RedisRequest redisReq = this.versionEntryVisitor.RedisReq;
+            redisReq.ResponseVisitor = this.redisResponseVisitor;
+
+            this.redisRequestQueue.Enqueue(redisReq);
+        }
+
         internal void Visit()
         {
-            bool lockTaken = false;
-            try
-            {
-                this.txRequestQueueLock.Enter(ref lockTaken);
-
-                Queue<TxRequest> freeQueue = Volatile.Read(ref this.flushTxRequestQueue);
-                Volatile.Write(ref this.flushTxRequestQueue, Volatile.Read(ref this.txRequestQueue));
-                Volatile.Write(ref this.txRequestQueue, freeQueue);
-            }
-            finally
-            {
-                if (lockTaken)
-                {
-                    this.txRequestQueueLock.Exit();
-                }
-            }
-
-            foreach (TxRequest txReq in this.flushTxRequestQueue)
-            {
-                this.redisRequestVisitor.Invoke(txReq);
-                RedisRequest redisReq = this.redisRequestVisitor.RedisReq;
-                redisReq.ResponseVisitor = this.redisResponseVisitor;
-
-                this.redisRequestQueue.Enqueue(redisReq);
-            }
-
             this.Flush(this.redisRequestQueue);
             this.redisRequestQueue.Clear();
-            this.flushTxRequestQueue.Clear();
         }
 
         internal void VisitRedisRequestQueue()

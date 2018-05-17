@@ -4,20 +4,13 @@ namespace GraphView.Transaction
     using System;
     using System.Collections.Generic;
 
-    internal abstract class TxRequest : IResource
+    public abstract class TxRequest : IResource
     {
         internal bool Finished { get; set; } = false;
         internal object Result { get; set; }
         internal bool InUse { get; set; }
 
-        internal virtual void Accept(TxRequestVisitor visitor)
-        {
-            if (visitor != null)
-            {
-                visitor.Visit(this);
-            }
-        }
-
+        
         public void Use()
         {
             this.InUse = true;
@@ -33,29 +26,45 @@ namespace GraphView.Transaction
             this.InUse = false;
             this.Finished = false;
         }
+
+        internal virtual void Accept(TxRequestVisitor visitor)
+        {
+            if (visitor != null)
+            {
+                visitor.Visit(this);
+            }
+        }
     }
 
     /// <summary>
     /// Tx requests towards tx entries
     /// </summary>
-    internal abstract class TxEntryRequest : TxRequest
+    public abstract class TxEntryRequest : TxRequest
     {
-        internal long TxId { get; set; }
+        public long TxId { get; internal set; }
 
         public TxEntryRequest(long txId)
         {
             this.TxId = txId;
+        }
+
+        internal virtual void Accept(TxEntryVisitor visitor)
+        {
+            if (visitor != null)
+            {
+                visitor.Visit(this);
+            }
         }
     }
 
     /// <summary>
     /// Tx requests toward version entries
     /// </summary>
-    internal abstract class VersionEntryRequest : TxRequest
+    public abstract class VersionEntryRequest : TxRequest
     {
-        internal string TableId { get; set; }
-        internal object RecordKey { get; set; }
-        internal long VersionKey { get; set; }
+        public string TableId { get; internal set; }
+        public object RecordKey { get; internal set; }
+        public long VersionKey { get; internal set; }
 
         public VersionEntryRequest(string tableId, object recordKey, long versionKey)
         {
@@ -63,29 +72,8 @@ namespace GraphView.Transaction
             this.RecordKey = recordKey;
             this.VersionKey = versionKey;
         }
-    }
 
-    //internal class BulkReadVersionsRequest : TxRequest
-    //{
-    //    internal string TableId { get; }
-    //    internal Dictionary<VersionPrimaryKey, VersionEntry> BulkRecords { get; }
-
-    //    public BulkReadVersionsRequest(string tableId, IEnumerable<VersionPrimaryKey> recordVersionKeys)
-    //    {
-    //        this.BulkRecords = new Dictionary<VersionPrimaryKey, VersionEntry>();
-    //        foreach (VersionPrimaryKey vpk in recordVersionKeys)
-    //        {
-    //            this.BulkRecords.Add(vpk, null);
-    //        }
-    //    }
-    //}
-
-    internal class DeleteVersionRequest : VersionEntryRequest
-    {
-        public DeleteVersionRequest(string tableId, object recordKey, long versionKey)
-            : base(tableId, recordKey, versionKey) { }
-
-        internal override void Accept(TxRequestVisitor visitor)
+        internal virtual void Accept(VersionEntryVisitor visitor)
         {
             if (visitor != null)
             {
@@ -94,9 +82,23 @@ namespace GraphView.Transaction
         }
     }
 
-    internal class GetVersionListRequest : VersionEntryRequest
+    public class DeleteVersionRequest : VersionEntryRequest
     {
-        internal List<VersionEntry> Container { get; set; }
+        public DeleteVersionRequest(string tableId, object recordKey, long versionKey)
+            : base(tableId, recordKey, versionKey) { }
+
+        internal override void Accept(VersionEntryVisitor visitor)
+        {
+            if (visitor != null)
+            {
+                visitor.Visit(this);
+            }
+        }
+    }
+
+    public class GetVersionListRequest : VersionEntryRequest
+    {
+        public List<VersionEntry> Container { get; internal set; }
 
         public GetVersionListRequest(string tableId, object recordKey, List<VersionEntry> container)
             : base(tableId, recordKey, -1)
@@ -104,7 +106,7 @@ namespace GraphView.Transaction
             this.Container = container;
         }
 
-        internal override void Accept(TxRequestVisitor visitor)
+        internal override void Accept(VersionEntryVisitor visitor)
         {
             if (visitor != null)
             {
@@ -113,12 +115,12 @@ namespace GraphView.Transaction
         }
     }
 
-    internal class GetTxEntryRequest : TxEntryRequest
+    public class GetTxEntryRequest : TxEntryRequest
     {
         public GetTxEntryRequest(long txId)
             : base(txId) { }
 
-        internal override void Accept(TxRequestVisitor visitor)
+        internal override void Accept(TxEntryVisitor visitor)
         {
             if (visitor != null)
             {
@@ -127,9 +129,9 @@ namespace GraphView.Transaction
         }
     }
 
-    internal class InitiGetVersionListRequest : VersionEntryRequest
+    public class InitiGetVersionListRequest : VersionEntryRequest
     {
-        internal List<VersionEntry> Container { get; set; }
+        public List<VersionEntry> Container { get; internal set; }
 
         public InitiGetVersionListRequest(string tableId, object recordKey, List<VersionEntry> container = null)
             : base(tableId, recordKey, -1)
@@ -137,7 +139,7 @@ namespace GraphView.Transaction
             this.Container = container;
         }
 
-        internal override void Accept(TxRequestVisitor visitor)
+        internal override void Accept(VersionEntryVisitor visitor)
         {
             if (visitor != null)
             {
@@ -146,12 +148,12 @@ namespace GraphView.Transaction
         }
     }
 
-    internal class InsertTxIdRequest : TxEntryRequest
+    public class InsertTxIdRequest : TxEntryRequest
     {
         public InsertTxIdRequest(long txId)
             : base(txId) { }
 
-        internal override void Accept(TxRequestVisitor visitor)
+        internal override void Accept(TxEntryVisitor visitor)
         {
             if (visitor != null)
             {
@@ -160,12 +162,12 @@ namespace GraphView.Transaction
         }
     }
 
-    internal class NewTxIdRequest : TxEntryRequest
+    public class NewTxIdRequest : TxEntryRequest
     {
         public NewTxIdRequest(long txId)
             : base(txId) { }
 
-        internal override void Accept(TxRequestVisitor visitor)
+        internal override void Accept(TxEntryVisitor visitor)
         {
             if (visitor != null)
             {
@@ -174,12 +176,12 @@ namespace GraphView.Transaction
         }
     }
 
-    internal class RecycleTxRequest : TxEntryRequest
+    public class RecycleTxRequest : TxEntryRequest
     {
         public RecycleTxRequest(long txId)
             : base(txId) { }
 
-        internal override void Accept(TxRequestVisitor visitor)
+        internal override void Accept(TxEntryVisitor visitor)
         {
             if (visitor != null)
             {
@@ -188,12 +190,12 @@ namespace GraphView.Transaction
         }
     }
 
-    internal class ReadVersionRequest : VersionEntryRequest
+    public class ReadVersionRequest : VersionEntryRequest
     {
         public ReadVersionRequest(string tableId, object recordKey, long versionKey)
             : base(tableId, recordKey, versionKey) { }
 
-        internal override void Accept(TxRequestVisitor visitor)
+        internal override void Accept(VersionEntryVisitor visitor)
         {
             if (visitor != null)
             {
@@ -202,13 +204,13 @@ namespace GraphView.Transaction
         }
     }
 
-    internal class ReplaceVersionRequest : VersionEntryRequest
+    public class ReplaceVersionRequest : VersionEntryRequest
     {
-        internal long BeginTs { get; set; }
-        internal long EndTs { get; set; }
-        internal long TxId { get; set; }
-        internal long ReadTxId { get; set; }
-        internal long ExpectedEndTs { get; set; }
+        public long BeginTs { get; internal set; }
+        public long EndTs { get; internal set; }
+        public long TxId { get; internal set; }
+        public long ReadTxId { get; internal set; }
+        public long ExpectedEndTs { get; internal set; }
 
         public ReplaceVersionRequest(
             string tableId, 
@@ -228,7 +230,7 @@ namespace GraphView.Transaction
             this.ExpectedEndTs = expectedEndTimestamp;
         }
 
-        internal override void Accept(TxRequestVisitor visitor)
+        internal override void Accept(VersionEntryVisitor visitor)
         {
             if (visitor != null)
             {
@@ -237,9 +239,9 @@ namespace GraphView.Transaction
         }
     }
 
-    internal class ReplaceWholeVersionRequest : VersionEntryRequest
+    public class ReplaceWholeVersionRequest : VersionEntryRequest
     {
-        internal VersionEntry VersionEntry { get; set; }
+        public VersionEntry VersionEntry { get; internal set; }
 
         public ReplaceWholeVersionRequest(
             string tableId,
@@ -250,7 +252,7 @@ namespace GraphView.Transaction
         {
             this.VersionEntry = versionEntry;
         }
-		internal override void Accept(TxRequestVisitor visitor)
+		internal override void Accept(VersionEntryVisitor visitor)
 		{
 			if (visitor != null)
 			{
@@ -259,9 +261,9 @@ namespace GraphView.Transaction
 		}
 	}
 
-    internal class SetCommitTsRequest : TxEntryRequest
+    public class SetCommitTsRequest : TxEntryRequest
     {
-        internal long ProposedCommitTs { get; set; }
+        public long ProposedCommitTs { get; internal set; }
 
         public SetCommitTsRequest(long txId, long proposedCommitTs)
             : base(txId)
@@ -269,7 +271,7 @@ namespace GraphView.Transaction
             this.ProposedCommitTs = proposedCommitTs;
         }
 
-        internal override void Accept(TxRequestVisitor visitor)
+        internal override void Accept(TxEntryVisitor visitor)
         {
             if (visitor != null)
             {
@@ -278,9 +280,9 @@ namespace GraphView.Transaction
         }
     }
 
-    internal class UpdateCommitLowerBoundRequest : TxEntryRequest
+    public class UpdateCommitLowerBoundRequest : TxEntryRequest
     {
-        internal long CommitTsLowerBound { get; set; }
+        public long CommitTsLowerBound { get; internal set; }
 
         public UpdateCommitLowerBoundRequest(long txId, long commitTsLowerBound)
             : base(txId)
@@ -288,7 +290,7 @@ namespace GraphView.Transaction
             this.CommitTsLowerBound = commitTsLowerBound;
         }
 
-        internal override void Accept(TxRequestVisitor visitor)
+        internal override void Accept(TxEntryVisitor visitor)
         {
             if (visitor != null)
             {
@@ -297,9 +299,9 @@ namespace GraphView.Transaction
         }
     }
 
-    internal class UpdateTxStatusRequest : TxEntryRequest
+    public class UpdateTxStatusRequest : TxEntryRequest
     {
-        internal TxStatus TxStatus { get; set; }
+        public TxStatus TxStatus { get; internal set; }
 
         public UpdateTxStatusRequest(long txId, TxStatus status)
             : base(txId)
@@ -307,7 +309,7 @@ namespace GraphView.Transaction
             this.TxStatus = status;
         }
 
-        internal override void Accept(TxRequestVisitor visitor)
+        internal override void Accept(TxEntryVisitor visitor)
         {
             if (visitor != null)
             {
@@ -316,14 +318,14 @@ namespace GraphView.Transaction
         }
     }
 
-    internal class RemoveTxRequest : TxEntryRequest
+    public class RemoveTxRequest : TxEntryRequest
     {
         public RemoveTxRequest(long txId) : base(txId)
         {
 
         }
 
-        internal override void Accept(TxRequestVisitor visitor)
+        internal override void Accept(TxEntryVisitor visitor)
         {
             if (visitor != null)
             {
@@ -332,9 +334,9 @@ namespace GraphView.Transaction
         }
     }
 
-    internal class UpdateVersionMaxCommitTsRequest : VersionEntryRequest
+    public class UpdateVersionMaxCommitTsRequest : VersionEntryRequest
     {
-        internal long MaxCommitTs { get; set; }
+        public long MaxCommitTs { get; internal set; }
 
         public UpdateVersionMaxCommitTsRequest(
             string tableId, object recordKey, long versionKey, long commitTime)
@@ -343,7 +345,7 @@ namespace GraphView.Transaction
             this.MaxCommitTs = commitTime;
         }
 
-        internal override void Accept(TxRequestVisitor visitor)
+        internal override void Accept(VersionEntryVisitor visitor)
         {
             if (visitor != null)
             {
@@ -352,9 +354,9 @@ namespace GraphView.Transaction
         }
     }
 
-    internal class UploadVersionRequest : VersionEntryRequest
+    public class UploadVersionRequest : VersionEntryRequest
     {
-        internal VersionEntry VersionEntry { get; set; }
+        public VersionEntry VersionEntry { get; internal set; }
 
         public UploadVersionRequest(
             string tableId, object recordKey, long versionKey, VersionEntry versionEntry)
@@ -363,7 +365,7 @@ namespace GraphView.Transaction
             this.VersionEntry = versionEntry;
         }
 
-        internal override void Accept(TxRequestVisitor visitor)
+        internal override void Accept(VersionEntryVisitor visitor)
         {
             if (visitor != null)
             {

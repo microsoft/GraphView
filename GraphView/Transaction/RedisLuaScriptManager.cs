@@ -16,7 +16,7 @@
     /// When the manager is inititlized, it will check and register lua scripts, after that it loads
     /// the sha1 map from redis and has a interface to query sha1 by name
     /// </summary>
-    internal class RedisLuaScriptManager
+    public class RedisLuaScriptManager
     {
         /// <summary>
         /// A transient map from script name to sha1, it will be filled when the instance is created

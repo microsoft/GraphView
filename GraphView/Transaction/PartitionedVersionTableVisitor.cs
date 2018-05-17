@@ -4,19 +4,14 @@ namespace GraphView.Transaction
     using System;
     using System.Collections.Generic;
 
-    internal class PartitionVersionEntryRequestVisitor : TxRequestVisitor
+    internal class PartitionedVersionTableVisitor : VersionTableVisitor
     {
         // A reference to the dict in version table
         private readonly Dictionary<object, Dictionary<long, VersionEntry>> dict;
 
-        public PartitionVersionEntryRequestVisitor(Dictionary<object, Dictionary<long, VersionEntry>> dict)
+        public PartitionedVersionTableVisitor(Dictionary<object, Dictionary<long, VersionEntry>> dict)
         {
             this.dict = dict;
-        }
-
-        internal void Invoke(VersionEntryRequest req)
-        {
-            req.Accept(this);
         }
 
         internal override void Visit(DeleteVersionRequest req)

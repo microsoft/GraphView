@@ -21,16 +21,21 @@ namespace TransactionUnitTest
 		[TestMethod]
 		public void TestValidation1Event()
 		{
-			//Test the function of UpdateVersionMaxCommitTs() in the event-driven senario.
-			UpdateVersionMaxCommitTsRequest req = this.versionDb.EnqueueUpdateVersionMaxCommitTs(TABLE_ID, DEFAULT_KEY, 1L, 5L);
-			while (req.Result == null)
+            //Test the function of UpdateVersionMaxCommitTs() in the event-driven senario.
+
+            UpdateVersionMaxCommitTsRequest req = new UpdateVersionMaxCommitTsRequest(TABLE_ID, DEFAULT_KEY, 1L, 5L);
+            this.versionDb.GetVersionTable(TABLE_ID).EnqueueVersionEntryRequest(req);
+
+            while (req.Result == null)
 			{
 				this.versionDb.Visit(TABLE_ID, 0);
 			}
 			VersionEntry versionEntry = req.Result as VersionEntry;
 			Assert.AreEqual(5L, versionEntry.MaxCommitTs);
 
-			req = this.versionDb.EnqueueUpdateVersionMaxCommitTs(TABLE_ID, DEFAULT_KEY, 1L, 3L);
+            req = new UpdateVersionMaxCommitTsRequest(TABLE_ID, DEFAULT_KEY, 1L, 3L);
+            this.versionDb.GetVersionTable(TABLE_ID).EnqueueVersionEntryRequest(req);
+
 			while (req.Result == null)
 			{
 				this.versionDb.Visit(TABLE_ID, 0);
@@ -68,14 +73,17 @@ namespace TransactionUnitTest
 				tex1.InitTx();
 			}
 
-			UpdateCommitLowerBoundRequest txCommitReq = this.versionDb.EnqueueUpdateCommitLowerBound(tex1.txId, 5L);
+			UpdateCommitLowerBoundRequest txCommitReq = new UpdateCommitLowerBoundRequest(tex1.txId, 5L);
+            this.versionDb.EnqueueTxEntryRequest(tex1.txId, txCommitReq);
+
 			this.versionDb.Visit(RedisVersionDb.TX_TABLE, 0);
 			while (txCommitReq.Result == null)
 			{
 				this.versionDb.Visit(RedisVersionDb.TX_TABLE, 0);
 			}
 			long txCommitTs = txCommitReq.Result == null ? VersionDb.RETURN_ERROR_CODE : (long)txCommitReq.Result;
-			GetTxEntryRequest getTxReq = this.versionDb.EnqueueGetTxEntry(tex1.txId);
+			GetTxEntryRequest getTxReq = new GetTxEntryRequest(tex1.txId);
+            this.versionDb.EnqueueTxEntryRequest(tex1.txId, getTxReq);
 			while (getTxReq.Result == null)
 			{
 				this.versionDb.Visit(RedisVersionDb.TX_TABLE, 0);
@@ -85,7 +93,8 @@ namespace TransactionUnitTest
 			Assert.AreEqual(-1L, txCommitTs);
 
 			//Test the function of SetCommitTs() in the event-driven senario.
-			SetCommitTsRequest setTsReq = this.versionDb.EnqueueSetCommitTs(tex1.txId, 6L);
+			SetCommitTsRequest setTsReq = new SetCommitTsRequest(tex1.txId, 6L);
+            this.versionDb.EnqueueTxEntryRequest(tex1.txId, setTsReq);
 			while (setTsReq.Result == null)
 			{
 				this.versionDb.Visit(RedisVersionDb.TX_TABLE, 0);
@@ -117,7 +126,9 @@ namespace TransactionUnitTest
 		[TestMethod]
 		public void TestValidation3Event()
 		{
-			UpdateVersionMaxCommitTsRequest req = this.versionDb.EnqueueUpdateVersionMaxCommitTs(TABLE_ID, DEFAULT_KEY, 1L, 5L);
+            UpdateVersionMaxCommitTsRequest req = new UpdateVersionMaxCommitTsRequest(TABLE_ID, DEFAULT_KEY, 1L, 5L);
+            this.versionDb.GetVersionTable(TABLE_ID).EnqueueVersionEntryRequest(req);
+
 			while (req.Result == null)
 			{
 				this.versionDb.Visit(TABLE_ID, 0);
@@ -517,7 +528,8 @@ namespace TransactionUnitTest
 			}
 			Assert.AreEqual(new Procedure(tex.WriteToLog), tex.CurrentProc);
 
-			GetTxEntryRequest getTxReq = this.versionDb.EnqueueGetTxEntry(tex.txId);
+			GetTxEntryRequest getTxReq = new GetTxEntryRequest(tex.txId);
+            this.versionDb.EnqueueTxEntryRequest(tex.txId, getTxReq);
 			this.versionDb.Visit(RedisVersionDb.TX_TABLE, 0);
 			while (getTxReq.Result == null)
 			{
