@@ -31,6 +31,12 @@
         private string[] readWriteHosts;
 
         /// <summary>
+        /// A redis lua manager instance from the redis version db
+        /// ONLY FOR REQUEST VISITOR
+        /// </summary>
+        private RedisLuaScriptManager redisLuaScriptManager;
+
+        /// <summary>
         /// The number of redis instances
         /// </summary>
         internal int RedisInstanceCount
@@ -50,13 +56,19 @@
         /// Init a redis client manager with given read and write hosts
         /// </summary>
         /// <param name="readWriteHosts">An array of connections strings, with host and port</param>
-        internal RedisClientManager(string[] readWriteHosts) 
+        internal RedisClientManager(string[] readWriteHosts, RedisLuaScriptManager luaScriptManager) 
         {
             if (readWriteHosts == null || readWriteHosts.Length == 0)
             {
                 throw new ArgumentException("readWriteHosts at least have a host");
             }
             this.readWriteHosts = readWriteHosts;
+
+            if (luaScriptManager == null)
+            {
+                throw new ArgumentException("luaScriptManager must be not null");
+            }
+            this.redisLuaScriptManager = luaScriptManager;
         }
         
         internal RedisClient GetClient(long redisDbIndex, int partition)
@@ -83,7 +95,7 @@
         /// <returns></returns>
         internal RedisClient GetLastestClient(long redisDbIndex, int partition)
         {
-            RedisConnectionPool pool = new RedisConnectionPool(this.readWriteHosts[partition], redisDbIndex);
+            RedisConnectionPool pool = new RedisConnectionPool(this.readWriteHosts[partition], redisDbIndex, this.redisLuaScriptManager);
             return pool.GetRedisClient();
         }
 
@@ -118,7 +130,8 @@
         /// <param name="redisDbIndex"></param>
         private void StartNewRedisClientPool(RedisConnectionKey key)
         {
-            RedisConnectionPool pool = new RedisConnectionPool(this.readWriteHosts[key.RedisInstanceIndex], key.RedisDbIndex);
+            RedisConnectionPool pool = new RedisConnectionPool(
+                this.readWriteHosts[key.RedisInstanceIndex], key.RedisDbIndex, this.redisLuaScriptManager);
             this.clientPools.Add(key, pool);
 
             // If the redis version db in pipeline mode, start a daemon thread

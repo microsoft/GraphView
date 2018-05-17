@@ -192,10 +192,11 @@
                 //"127.0.0.1:6395",
             };
 
-            this.RedisManager = new RedisClientManager(readWriteHosts);
+            // Init lua script manager, it will access the meta database
+            // The first redis instance always be the meta database
+            this.RedisLuaManager = new RedisLuaScriptManager(readWriteHosts[0], RedisVersionDb.META_DB_INDEX);
 
-            // Init lua script manager
-            this.RedisLuaManager = new RedisLuaScriptManager(this.RedisManager);
+            this.RedisManager = new RedisClientManager(readWriteHosts, this.RedisLuaManager);
         }
 
         public void Dispose()

@@ -26,13 +26,18 @@
         /// <summary>
         /// The redis client manager to call
         /// </summary>
-        private RedisClientManager redisManager;
+        private RedisClient redisClient;
 
-        internal RedisLuaScriptManager(RedisClientManager redisManager)
+        internal RedisLuaScriptManager(string metaDataConnStr, long metaDataDbIndex)
         {
-            this.redisManager = redisManager;
+            this.redisClient = this.CreateRedisClient(metaDataConnStr, metaDataDbIndex);
+
+            // check and register 
             this.CheckAndLoadLuaScripts();
             this.LoadLuaScriptMapFromRedis();
+
+            // Dispose the redis client
+            this.redisClient.Dispose();
         }
 
         /// <summary>
@@ -54,23 +59,19 @@
         /// </summary>
         private void LoadLuaScriptMapFromRedis()
         {
-            using (RedisClient redisClient = this.redisManager.
-                GetClient(RedisVersionDb.META_DB_INDEX, RedisVersionDb.META_DATA_PARTITION))
+            string hashId = RedisVersionDb.META_SCRIPT_KEY;
+            byte[][] valueBytes = this.redisClient.HGetAll(hashId);
+
+            if (valueBytes == null || valueBytes.Length == 0)
             {
-                string hashId = RedisVersionDb.META_SCRIPT_KEY;
-                byte[][] valueBytes = redisClient.HGetAll(hashId);
+                return;
+            }
 
-                if (valueBytes == null || valueBytes.Length == 0)
-                {
-                    return;
-                }
-
-                for (int i = 0; i < valueBytes.Length; i += 2)
-                {
-                    string scriptName = Encoding.ASCII.GetString(valueBytes[i]);
-                    string sha1 = Encoding.ASCII.GetString(valueBytes[i+1]);
-                    this.luaScriptSha1Map[scriptName] = sha1;
-                }
+            for (int i = 0; i < valueBytes.Length; i += 2)
+            {
+                string scriptName = Encoding.ASCII.GetString(valueBytes[i]);
+                string sha1 = Encoding.ASCII.GetString(valueBytes[i + 1]);
+                this.luaScriptSha1Map[scriptName] = sha1;
             }
         }
 
@@ -109,41 +110,50 @@
         /// <returns></returns>
         private bool RegisterLuaScripts(string scriptKey, string luaBody)
         {
-            using (RedisClient redisClient = this.redisManager.
-                GetClient(RedisVersionDb.META_DB_INDEX, RedisVersionDb.META_DATA_PARTITION))
+           // Extract the command sha1
+            byte[] scriptKeyBytes = Encoding.UTF8.GetBytes(scriptKey);
+            byte[] sha1Bytes = this.redisClient.HGet(RedisVersionDb.META_SCRIPT_KEY, scriptKeyBytes);
+
+            // We will register the lua script only if the sha1 isn't in script table or sha1 is not in the redis cache 
+            bool hasRegistered = false;
+            if (sha1Bytes != null)
             {
-                // Extract the command sha1
-                byte[] scriptKeyBytes = Encoding.UTF8.GetBytes(scriptKey);
-                byte[] sha1Bytes = redisClient.HGet(RedisVersionDb.META_SCRIPT_KEY, scriptKeyBytes);
-
-                // We will register the lua script only if the sha1 isn't in script table or sha1 is not in the redis cache 
-                bool hasRegistered = false;
-                if (sha1Bytes != null)
+                byte[][] returnBytes = this.redisClient.ScriptExists(new byte[][] { sha1Bytes });
+                if (returnBytes != null && returnBytes.Length != 0)
                 {
-                    byte[][] returnBytes = redisClient.ScriptExists(new byte[][] { sha1Bytes });
-                    if (returnBytes != null && returnBytes.Length != 0)
-                    {
-                        // The return value == "1" means scripts have been registered
-                        // SCRIPT EXISTS will return an array of string
-                        hasRegistered = Encoding.ASCII.GetString(returnBytes[0]) == "1";
-                    }
+                    // The return value == "1" means scripts have been registered
+                    // SCRIPT EXISTS will return an array of string
+                    hasRegistered = Encoding.ASCII.GetString(returnBytes[0]) == "1";
                 }
+            }
 
-                // Register the lua scripts when it has not been registered
-                if (!hasRegistered)
+            // Register the lua scripts when it has not been registered
+            if (!hasRegistered)
+            {
+                // register and load the script
+                byte[] scriptSha1Bytes = this.redisClient.ScriptLoad(luaBody);
+                if (scriptSha1Bytes == null)
                 {
-                    // register and load the script
-                    byte[] scriptSha1Bytes = redisClient.ScriptLoad(luaBody);
-                    if (scriptSha1Bytes == null)
-                    {
-                        return false;
-                    }
-                    // insert into the script hashset
-                    long result = redisClient.HSet(RedisVersionDb.META_SCRIPT_KEY, scriptKeyBytes, scriptSha1Bytes);
-                    return true;
+                    return false;
                 }
+                // insert into the script hashset
+                long result = this.redisClient.HSet(RedisVersionDb.META_SCRIPT_KEY, scriptKeyBytes, scriptSha1Bytes);
                 return true;
             }
+            return true;
+        }
+
+        private RedisClient CreateRedisClient(string metaDataConnStr, long metaDataDbIndex)
+        {
+            string[] hostPort = metaDataConnStr.Split(':');
+            string host = hostPort[0];
+            int port = int.Parse(hostPort[1]);
+
+            // create and change to the meta data db
+            RedisClient redisClient = new RedisClientFactory().CreateRedisClient(host, port);
+            redisClient.ChangeDb(metaDataDbIndex);
+
+            return redisClient;
         }
     }
 }

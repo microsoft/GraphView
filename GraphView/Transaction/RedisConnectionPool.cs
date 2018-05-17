@@ -122,7 +122,7 @@
 
         private long lastFlushTime;
 
-        public RedisConnectionPool(string redisConnectionString, long database)
+        public RedisConnectionPool(string redisConnectionString, long database, RedisLuaScriptManager luaScriptManager)
         {
             // Init the pooledRedisClient Manager
             RedisClientManagerConfig config = new RedisClientManagerConfig();
@@ -284,9 +284,9 @@
             {
                 this.txRequestQueueLock.Enter(ref lockTaken);
 
-                Queue<TxRequest> freeQueue = this.flushTxRequestQueue;
-                this.flushTxRequestQueue = this.txRequestQueue;
-                this.txRequestQueue = freeQueue;
+                Queue<TxRequest> freeQueue = Volatile.Read(ref this.flushTxRequestQueue);
+                Volatile.Write(ref this.flushTxRequestQueue, Volatile.Read(ref this.txRequestQueue));
+                Volatile.Write(ref this.txRequestQueue, freeQueue);
             }
             finally
             {
