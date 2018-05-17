@@ -346,9 +346,9 @@ namespace GraphView.Transaction
 
                 foreach (string sessionId in toRemoveSessions)
                 {
-                    Tuple<TransactionExecution, Queue<TransactionRequest>> runtime = this.activeTxs[sessionId];
+                    Tuple<TransactionExecution, Queue<TransactionRequest>> runtimeTuple = this.activeTxs[sessionId];
                     this.activeTxs.Remove(sessionId);
-                    this.txRuntimePool.Enqueue(runtime);
+                    this.txRuntimePool.Enqueue(runtimeTuple);
                 }
                 toRemoveSessions.Clear();
 
@@ -368,11 +368,11 @@ namespace GraphView.Transaction
                                 TransactionExecution exec = null;
                                 if (this.txRuntimePool.Count > 0)
                                 {
-                                    Tuple<TransactionExecution, Queue<TransactionRequest>> runtime = 
+                                    Tuple<TransactionExecution, Queue<TransactionRequest>> runtimeTuple = 
                                         this.txRuntimePool.Dequeue();
 
-                                    exec = runtime.Item1;
-                                    Queue<TransactionRequest> reqQueue = runtime.Item2;
+                                    exec = runtimeTuple.Item1;
+                                    Queue<TransactionRequest> reqQueue = runtimeTuple.Item2;
 
                                     reqQueue.Clear();
                                     if (txReq.Procedure != null)
@@ -381,7 +381,7 @@ namespace GraphView.Transaction
                                     }
 
                                     exec.Reset(txReq.Procedure);
-                                    this.activeTxs[txReq.SessionId] = Tuple.Create(exec, reqQueue);
+                                    this.activeTxs[txReq.SessionId] = runtimeTuple;
                                 }
                                 else
                                 {
