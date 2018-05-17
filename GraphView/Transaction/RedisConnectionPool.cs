@@ -132,7 +132,7 @@
             this.redisRequestQueue = new Queue<RedisRequest>(this.RequestBatchSize);
 
             this.redisResponseVisitor = new RedisResponseVisitor();
-            // How to intialize RedisRequestVisitor?
+            this.redisRequestVisitor = new RedisRequestVisitor(luaScriptManager);
 
             this.spinLock = new SpinLock();
             lastFlushTime = DateTime.Now.Ticks / 10;
