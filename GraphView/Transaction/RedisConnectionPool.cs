@@ -145,8 +145,9 @@
             this.txRequestQueue = new Queue<TxRequest>(this.RequestBatchSize);
             this.flushTxRequestQueue = new Queue<TxRequest>(this.RequestBatchSize);
             this.txRequestQueueLock = new SpinLock();
+
             this.redisResponseVisitor = new RedisResponseVisitor();
-            // How to intialize RedisRequestVisitor?
+            this.redisRequestVisitor = new RedisRequestVisitor(luaScriptManager);
 
             this.spinLock = new SpinLock();
             lastFlushTime = DateTime.Now.Ticks / 10;
