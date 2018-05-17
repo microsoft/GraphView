@@ -74,6 +74,11 @@ namespace GraphView.Transaction
 
                 return Math.Abs(longRand);
             }
+
+            public static int Seed()
+            {
+                return seed;
+            }
         }
 
         public VersionDb(int partitionCount = 4)

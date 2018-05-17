@@ -32,6 +32,8 @@
             {
                 this.dbVisitors[pid] = new CassandraVersionDbVisitor();
             }
+
+            this.PhysicalPartitionByKey = key => StaticRandom.Seed() % this.PartitionCount;
         }
 
         internal static CassandraVersionDb Instance(int partitionCount = 4)
