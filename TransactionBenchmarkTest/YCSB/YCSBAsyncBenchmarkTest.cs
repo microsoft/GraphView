@@ -333,8 +333,9 @@
                         allFinished = false;
                     }
                     loaded += executor.FinishedTxs;
-                    Console.WriteLine("Loaded {0} records", loaded);
                 }
+
+                Console.WriteLine("Loaded {0} records", loaded);
 
                 // Console.WriteLine("Loaded {0} records", loaded);
                 // Shutdown all workers

@@ -47,6 +47,8 @@
 
             // make sure tx_table exists
             this.CQLExecute(string.Format(CassandraVersionDb.CQL_CREATE_TX_TABLE, VersionDb.TX_TABLE));
+
+            this.PhysicalPartitionByKey = key => StaticRandom.Seed() % this.PartitionCount;
         }
 
         internal static CassandraVersionDb Instance(int partitionCount = 4)

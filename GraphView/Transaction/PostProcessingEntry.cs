@@ -8,9 +8,16 @@ namespace GraphView.Transaction
 {
     class PostProcessingEntry
     {
-        internal long VersionKey { get; private set; }
-        internal long BeginTimestamp { get; private set; }
-        internal long EndTimestamp { get; private set; }
+        internal string TableId { get; set; }
+        internal object RecordKey { get; set; }
+        internal long VersionKey { get; set; }
+        internal long BeginTimestamp { get; set; }
+        internal long EndTimestamp { get; set; }
+
+        public PostProcessingEntry()
+        {
+
+        }
 
         public PostProcessingEntry(long versionKey, long beginTimestamp, long endTimestamp)
         {

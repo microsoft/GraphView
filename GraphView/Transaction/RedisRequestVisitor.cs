@@ -10,6 +10,11 @@ namespace GraphView.Transaction
         internal string HashId { get; private set; }
         private RedisLuaScriptManager redisLuaScriptManager;
 
+        public RedisTxEntryRequestVisitor(RedisLuaScriptManager redisLuaScriptManager)
+        {
+            this.redisLuaScriptManager = redisLuaScriptManager;
+        }
+
         internal RedisRequest Invoke(TxEntryRequest txReq)
         {
             txReq.Accept(this);

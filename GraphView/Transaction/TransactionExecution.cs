@@ -63,9 +63,19 @@ namespace GraphView.Transaction
 
         internal Dictionary<string, Dictionary<object, long>> largestVersionKeyMap;
 
-        private Queue<Tuple<string, object>> writeKeyList;
 
-        private List<string> validateKeyList;
+        /// <summary>
+        /// The list resource in the execution phase
+        /// If it ends the current procedure normally, those list resource will be recycled at 
+        /// the end of every phase. 
+        /// 
+        /// If it will go to abort during any phase, those list resource will be recycled at
+        /// the end of every phase normally. 
+        /// </summary>
+        // The tableIdList will be shared in different phase
+        private List<string> tableIdList;
+
+        private List<object> recordKeyList;
 
         // The readVersionEntry method and validation method share a read version list,
         // Since they are in different stage, there won't conflicts
@@ -101,6 +111,7 @@ namespace GraphView.Transaction
         private Procedure uploadProc;
         private Procedure initiTxProc;
         private Procedure abortProc;
+        private Procedure writeToLogProc;
 
         internal long ExecutionSeconds
         {
@@ -141,6 +152,7 @@ namespace GraphView.Transaction
             this.commitPostproProc = new Procedure(this.PostProcessingAfterCommit);
             this.initiTxProc = new Procedure(this.InitTx);
             this.abortProc = new Procedure(this.Abort);
+            this.writeToLogProc = new Procedure(this.WriteToLog);
 
             this.commitTs = TxTableEntry.DEFAULT_COMMIT_TIME;
             this.maxCommitTsOfWrites = -1L;
@@ -165,31 +177,28 @@ namespace GraphView.Transaction
             {
                 versionList.Clear();
             }
-            this.readSet.Clear();
+            // It will not clear the whole readSet, writeSet, abortSet, commitSet, largestVersionKeymap
+            // Since we assume that the tableId is always same, there is no need to clear them and append again
 
             foreach (Dictionary<object, object> writeRecords in this.writeSet.Values)
             {
                 writeRecords.Clear();
             }
-            this.writeSet.Clear();
 
             foreach (Dictionary<object, List<PostProcessingEntry>> abortEntries in this.abortSet.Values)
             {
                 abortEntries.Clear();
             }
-            this.abortSet.Clear();
 
             foreach (Dictionary<object, List<PostProcessingEntry>> commitEntries in this.commitSet.Values)
             {
                 commitEntries.Clear();
             }
-            this.commitSet.Clear();
 
             foreach (Dictionary<object, long> keymap in this.largestVersionKeyMap.Values)
             {
                 keymap.Clear();
             }
-            this.largestVersionKeyMap.Clear();
 
             this.commitTs = TxTableEntry.DEFAULT_COMMIT_TIME;
             this.maxCommitTsOfWrites = -1L;
@@ -206,7 +215,8 @@ namespace GraphView.Transaction
 
             // reset the list as null
             this.readVersionList = null;
-            this.validateKeyList = null;
+            this.tableIdList = null;
+            this.recordKeyList = null;
 
             // init and get tx id
             this.InitTx();
@@ -214,12 +224,14 @@ namespace GraphView.Transaction
 
         private void PopulateWriteKeyList()
         {
-            this.writeKeyList = new Queue<Tuple<string, object>>();
+            this.tableIdList = this.executor.ResourceManager.GetTableIdList();
+            this.recordKeyList = this.executor.ResourceManager.GetRecordKeyLisy();
             foreach (string tableId in this.writeSet.Keys)
             {
                 foreach (object recordKey in this.writeSet[tableId].Keys)
                 {
-                    this.writeKeyList.Enqueue(new Tuple<string, object>(tableId, recordKey));
+                    this.tableIdList.Add(tableId);
+                    this.recordKeyList.Add(recordKey);
                 }
             }
         }
@@ -242,6 +254,9 @@ namespace GraphView.Transaction
 
                     if (DateTime.Now.Ticks - finishTime >= TransactionExecutor.elapsed)
                     {
+                        this.garbageQueueTxId.Dequeue();
+                        this.garbageQueueFinishTime.Dequeue();
+
                         RecycleTxRequest recycleReq = this.executor.ResourceManager.RecycleTxRequest(candidate);
                         this.versionDb.EnqueueTxEntryRequest(candidate, recycleReq);
                         this.txReqGarbageQueue.Enqueue(recycleReq);
@@ -328,8 +343,6 @@ namespace GraphView.Transaction
 
 				// Recycled successfully
 				this.txId = recycleReq.TxId;
-                this.garbageQueueTxId.Dequeue();
-                this.garbageQueueFinishTime.Dequeue();
                 this.CurrentProc = null;
                 this.Progress = TxProgress.Open;
             }
@@ -339,21 +352,23 @@ namespace GraphView.Transaction
         {
             this.Progress = TxProgress.Final;
 
-            if (this.writeKeyList == null)
+            if (this.recordKeyList == null)
             {
                 this.PopulateWriteKeyList();
             }
 
-            while (this.writeKeyList.Count > 0 || this.requestStack.Count > 0)
+            while (this.recordKeyList.Count > 0 || this.requestStack.Count > 0)
             {
                 if (requestStack.Count == 0)     // Prior write set entry has been uploaded successfully
                 {
-                    Debug.Assert(writeKeyList.Count > 0);
+                    Debug.Assert(this.recordKeyList.Count > 0);
+                    int lastIndex = this.recordKeyList.Count - 1;
 
-                    Tuple<string, object> writeTuple = writeKeyList.Dequeue();
+                    string tableId = this.tableIdList[lastIndex];
+                    this.tableIdList.RemoveAt(lastIndex);
+                    object recordKey = this.recordKeyList[lastIndex];
+                    this.recordKeyList.RemoveAt(lastIndex);
 
-                    string tableId = writeTuple.Item1;
-                    object recordKey = writeTuple.Item2;
                     object payload = this.writeSet[tableId][recordKey];
 
                     // should check the type of writes, insert/update/delete
@@ -410,6 +425,7 @@ namespace GraphView.Transaction
                         this.SetAbortMsg("Failed to upload the new image");
 						// Failed to upload the new image. Moves to the abort phase.
 						this.CurrentProc = this.abortProc;
+
 						if (!this.DEBUG_MODE)
 						{
 							this.CurrentProc();
@@ -651,8 +667,10 @@ namespace GraphView.Transaction
                 //}
             }
 
-			// Move on to the next phase
-			this.writeKeyList = null;
+            // Move on to the next phase
+            this.executor.ResourceManager.RecycleTableIdList(ref this.tableIdList);
+            this.executor.ResourceManager.RecycleRecordKeyList(ref this.recordKeyList);
+
             this.CurrentProc = this.setCommitTsProc;
 			if (!this.DEBUG_MODE)
 			{
@@ -764,7 +782,7 @@ namespace GraphView.Transaction
         internal void Validate()
         {
             // Have sent the GetVersionEntry request, but not received the response yet
-            if (this.validateKeyList == null)
+            if (this.tableIdList == null)
             {
                 if (this.requestStack.Count == 0)
                 {
@@ -805,7 +823,7 @@ namespace GraphView.Transaction
                 }
 
                 // All re-reading ops have finished
-                this.validateKeyList = this.executor.ResourceManager.GetValidationKeyList();
+                this.tableIdList = this.executor.ResourceManager.GetTableIdList();
                 this.readVersionList = this.executor.ResourceManager.GetVersionList();
                 foreach (TxRequest req in this.requestStack)
                 {
@@ -815,8 +833,6 @@ namespace GraphView.Transaction
                     {
                         this.SetAbortMsg("read entry null");
 
-                        this.executor.ResourceManager.RecycleVersionList(ref this.readVersionList);
-                        this.executor.ResourceManager.RecycleValidationKeyList(ref this.validateKeyList);
                         // A really serious bug, should clear the stack before enter the next step
                         this.requestStack.Clear();
                         this.CurrentProc = this.abortProc;
@@ -828,7 +844,7 @@ namespace GraphView.Transaction
                         return;
                     }
 
-                    this.validateKeyList.Add(readVersionReq.TableId);
+                    this.tableIdList.Add(readVersionReq.TableId);
                     this.readVersionList.Add(readEntry);
                 }
 
@@ -836,14 +852,14 @@ namespace GraphView.Transaction
             }
 
             // Already re-read the version entries back, need to check visiable
-            while (this.validateKeyList.Count > 0 || this.requestStack.Count > 0)
+            while (this.tableIdList.Count > 0 || this.requestStack.Count > 0)
             {
-                int lastIndex = this.validateKeyList.Count - 1;
+                int lastIndex = this.tableIdList.Count - 1;
                 // No concurrent txs hold the version or already received the response
                 if (this.requestStack.Count == 0)
                 {
                     // validateKeyList and readVersionList both have the same size, they share a lastIndex variable
-                    string tableId = this.validateKeyList[lastIndex];
+                    string tableId = this.tableIdList[lastIndex];
                     VersionEntry readVersion = this.readVersionList[lastIndex];
 
                     if (readVersion.MaxCommitTs >= this.commitTs)
@@ -878,7 +894,7 @@ namespace GraphView.Transaction
                             {
                                 // No new version has bee created. This record passes validation. 
                                 // remove the last item will be an O(1) operation
-                                this.validateKeyList.RemoveAt(lastIndex);
+                                this.tableIdList.RemoveAt(lastIndex);
                                 this.readVersionList.RemoveAt(lastIndex);
                                 continue;
                             }
@@ -954,7 +970,7 @@ namespace GraphView.Transaction
                     if (txEntry.Status == TxStatus.Aborted)
                     {
                         // The tx holding the version has been aborted. Validation passed.
-                        this.validateKeyList.RemoveAt(lastIndex);
+                        this.tableIdList.RemoveAt(lastIndex);
                         this.readVersionList.RemoveAt(lastIndex);
                         continue;
                     }
@@ -973,7 +989,7 @@ namespace GraphView.Transaction
                         else
                         {
                             // pass the validation
-                            this.validateKeyList.RemoveAt(lastIndex);
+                            this.tableIdList.RemoveAt(lastIndex);
                             this.readVersionList.RemoveAt(lastIndex);
                             continue;
                         }
@@ -1013,7 +1029,7 @@ namespace GraphView.Transaction
                     else if (txCommitTs == TxTableEntry.DEFAULT_COMMIT_TIME)
                     {
                         // The tx who is locking the version has not had its commit timestamp.
-                        this.validateKeyList.RemoveAt(lastIndex);
+                        this.tableIdList.RemoveAt(lastIndex);
                         this.readVersionList.RemoveAt(lastIndex);
                         continue;
                     }
@@ -1030,7 +1046,7 @@ namespace GraphView.Transaction
                     else if (this.commitTs <= txCommitTs)
                     {
                         // pass the validation
-                        this.validateKeyList.RemoveAt(lastIndex);
+                        this.tableIdList.RemoveAt(lastIndex);
                         this.readVersionList.RemoveAt(lastIndex);
                         continue;
                     }
@@ -1042,8 +1058,10 @@ namespace GraphView.Transaction
             }
 
             // All versions pass validation. Move to the commit phase.
-            this.validateKeyList = null;
-            this.CurrentProc = new Procedure(this.WriteToLog);
+            this.executor.ResourceManager.RecycleVersionList(ref this.readVersionList);
+            this.executor.ResourceManager.RecycleTableIdList(ref this.tableIdList);
+
+            this.CurrentProc = this.writeToLogProc;
 			if (!this.DEBUG_MODE)
 			{
 				this.CurrentProc();
@@ -1155,6 +1173,12 @@ namespace GraphView.Transaction
                         this.garbageQueueTxId.Enqueue(this.txId);
                         this.garbageQueueFinishTime.Enqueue(DateTime.Now.Ticks);
                     }
+
+                    while (this.txReqGarbageQueue.Count > 0)
+                    {
+                        TxRequest req = this.txReqGarbageQueue.Dequeue();
+                        this.executor.ResourceManager.RecycleTxRequest(ref req);
+                    }
                 }
                 return;
             }
@@ -1252,6 +1276,12 @@ namespace GraphView.Transaction
                     this.executor.ResourceManager.RecycleTxRequest(ref req);
                 }
 
+                while (this.txReqGarbageQueue.Count > 0)
+                {
+                    TxRequest req = this.txReqGarbageQueue.Dequeue();
+                    this.executor.ResourceManager.RecycleTxRequest(ref req);
+                }
+
                 // All pending records have been reverted.
                 this.Progress = TxProgress.Close;
                 this.CurrentProc = null;
@@ -1276,6 +1306,9 @@ namespace GraphView.Transaction
 
         internal void Abort()
         {
+            // Retry to recycle the list resources
+            this.RecycleContainerResource();
+
             this.Progress = TxProgress.Final;
 
             if (this.requestStack.Count == 0)
@@ -1558,6 +1591,7 @@ namespace GraphView.Transaction
             VersionEntry committedVersion = null;
             while (this.readVersionList.Count > 0)
             {
+                int lastIndex = this.readVersionList.Count - 1;
                 // Wait for the GetTxEntry response
                 if (this.requestStack.Count == 1 && this.requestStack.Peek() is GetTxEntryRequest)
                 {
@@ -1573,13 +1607,13 @@ namespace GraphView.Transaction
                     {
                         // Failed to retrieve the status of the tx holding the version. 
                         // Moves on to the next version.
-                        this.readVersionList.RemoveAt(this.readVersionList.Count - 1);
+                        this.readVersionList.RemoveAt(lastIndex);
                         continue;
                     }
 
                     // The last version entry is the one need to check whether visiable
                     VersionEntry versionEntry = this.readVersionList[this.readVersionList.Count - 1];
-                    this.readVersionList.RemoveAt(this.readVersionList.Count - 1);
+                    this.readVersionList.RemoveAt(lastIndex);
 
                     // If the version entry is a dirty write, skips the entry.
                     if (versionEntry.EndTimestamp == VersionEntry.DEFAULT_END_TIMESTAMP && 
@@ -1645,7 +1679,7 @@ namespace GraphView.Transaction
                         }
                         else
                         {
-                            this.readVersionList.RemoveAt(this.readVersionList.Count - 1);
+                            this.readVersionList.RemoveAt(lastIndex);
                         }
                     }
                 }
@@ -1691,7 +1725,6 @@ namespace GraphView.Transaction
 
             // reset read version list
             this.executor.ResourceManager.RecycleVersionList(ref this.readVersionList);
-            this.readVersionList = null;
             this.Progress = TxProgress.Open;
             received = true;
         }
@@ -1703,6 +1736,24 @@ namespace GraphView.Transaction
             this.CurrentProc = this.uploadProc;
             this.CurrentProc();
             return;
+        }
+
+        private void RecycleContainerResource()
+        {
+            if (this.readVersionList != null)
+            {
+                this.executor.ResourceManager.RecycleVersionList(ref this.readVersionList);
+            }
+
+            if (this.tableIdList != null)
+            {
+                this.executor.ResourceManager.RecycleTableIdList(ref this.tableIdList);
+            }
+
+            if (this.recordKeyList != null)
+            {
+                this.executor.ResourceManager.RecycleRecordKeyList(ref this.recordKeyList);
+            }
         }
     }
 }
