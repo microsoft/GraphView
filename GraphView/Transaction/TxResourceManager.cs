@@ -80,6 +80,10 @@ namespace GraphView.Transaction
         private readonly ResourcePool<UpdateTxStatusRequest> updateTxStatusRequests;
         private readonly ResourcePool<RemoveTxRequest> removeTxRequests;
 
+        // Entry Resource
+        private readonly Queue<ReadSetEntry> readSetEntries;
+        private readonly Queue<PostProcessingEntry> postprocessingEntries;
+
         public TxResourceManager()
         {
             // The list will be shared by get version entries and validate version entries
@@ -111,6 +115,9 @@ namespace GraphView.Transaction
             this.updateTxStatusRequests = new ResourcePool<UpdateTxStatusRequest>(TxResourceManager.workingsetCapacity);
             this.removeTxRequests = new ResourcePool<RemoveTxRequest>(TxResourceManager.workingsetCapacity);
 
+            this.readSetEntries = new Queue<ReadSetEntry>();
+            this.postprocessingEntries = new Queue<PostProcessingEntry>();
+
             for (int i = 0; i < TxResourceManager.workingsetCapacity; i++)
             {
                 this.versionLists.Enqueue(new List<VersionEntry>(8));
@@ -134,6 +141,9 @@ namespace GraphView.Transaction
                 this.recycleTxRequests.AddNewResource(new RecycleTxRequest(-1));
                 this.updateTxStatusRequests.AddNewResource(new UpdateTxStatusRequest(-1, TxStatus.Aborted));
                 this.removeTxRequests.AddNewResource(new RemoveTxRequest(-1));
+
+                this.readSetEntries.Enqueue(new ReadSetEntry());
+                this.postprocessingEntries.Enqueue(new PostProcessingEntry());
             }
         }
 
@@ -158,7 +168,6 @@ namespace GraphView.Transaction
                 return list;
             }
         }
-
 
         internal void RecycleVersionList(ref List<VersionEntry> list)
         {
@@ -205,6 +214,42 @@ namespace GraphView.Transaction
             list.Clear();
             this.recordKeyList.Enqueue(list);
             list = null;
+        }
+
+        internal ReadSetEntry GetReadSetEntry()
+        {
+            if (this.readSetEntries.Count > 0)
+            {
+                return this.readSetEntries.Dequeue();
+            }
+            else
+            {
+                return new ReadSetEntry();
+            }
+        }
+
+        internal void RecycleReadSetEntry(ref ReadSetEntry entry)
+        {
+            this.readSetEntries.Enqueue(entry);
+            entry = null;
+        }
+
+        internal PostProcessingEntry GetPostProcessingEntry()
+        {
+            if (this.postprocessingEntries.Count > 0)
+            {
+                return this.postprocessingEntries.Dequeue();
+            }
+            else
+            {
+                return new PostProcessingEntry();
+            }
+        }
+
+        internal void RecyclePostProcessingEntry(ref PostProcessingEntry entry)
+        {
+            this.postprocessingEntries.Enqueue(entry);
+            entry = null;
         }
 
         /// <summary>

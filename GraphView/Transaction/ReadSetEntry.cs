@@ -2,11 +2,18 @@
 {
     internal class ReadSetEntry
     {
-        internal long VersionKey { get; private set; }
-        internal long BeginTimestamp { get; private set; }
-        internal long EndTimestamp { get; private set; }
-        internal long TxId { get; private set; }
-        internal object Record { get; private set; }
+        internal string TableId { get; set; }
+        internal object RecordKey { get; set; }
+        internal long VersionKey { get; set; }
+        internal long BeginTimestamp { get; set; }
+        internal long EndTimestamp { get; set; }
+        internal long TxId { get; set; }
+        internal object Record { get; set; }
+
+        public ReadSetEntry()
+        {
+
+        }
 
         public ReadSetEntry(long versionKey, long beginTimestamp, long endTimestamp, long txId, object record)
         {
