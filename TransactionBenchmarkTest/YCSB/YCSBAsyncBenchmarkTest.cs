@@ -190,20 +190,23 @@
                 thread.Start();
             }
 
+            int finishedTasks = 0;
             while (true)
             {
                 // check whether all tasks finished every 100 ms
                 Thread.Sleep(100);
-
+                finishedTasks = 0;
                 bool allFinished = true;
+
                 foreach (TransactionExecutor executor in this.executorList)
                 {
                     if (!executor.AllRequestsFinished)
                     {
                         allFinished = false;
-                        break;
+                        finishedTasks += executor.FinishedTxs;
                     }
                 }
+                Console.WriteLine("Execute {0} Tasks", finishedTasks);
                 // Shutdown all workers
                 if (allFinished)
                 {
@@ -309,47 +312,49 @@
             }
 
             // 3.4 load records
-            List<Thread> threadList = new List<Thread>();
-            foreach (TransactionExecutor executor in executors)
-            {
-                Thread thread = new Thread(new ThreadStart(executor.Execute));
-                threadList.Add(thread);
-                thread.Start();
-            }
+            //List<Thread> threadList = new List<Thread>();
+            //foreach (TransactionExecutor executor in executors)
+            //{
+            //    Thread thread = new Thread(new ThreadStart(executor.Execute));
+            //    threadList.Add(thread);
+            //    thread.Start();
+            //}
 
-            int loaded = 0, times = 0;
-            while (true)
-            {
-                // check whether all tasks finished every 100 ms
-                Thread.Sleep(100);
-                times++;
+            //int loaded = 0, times = 0;
+            //while (true)
+            //{
+            //    // check whether all tasks finished every 100 ms
+            //    Thread.Sleep(100);
+            //    times++;
 
-                bool allFinished = true;
-                loaded = 0;
-                foreach (TransactionExecutor executor in executors)
-                {
-                    if (!executor.AllRequestsFinished)
-                    {
-                        allFinished = false;
-                    }
-                    loaded += executor.FinishedTxs;
-                }
+            //    bool allFinished = true;
+            //    loaded = 0;
+            //    foreach (TransactionExecutor executor in executors)
+            //    {
+            //        if (!executor.AllRequestsFinished)
+            //        {
+            //            allFinished = false;
+            //        }
+            //        loaded += executor.FinishedTxs;
+            //    }
 
-                Console.WriteLine("Loaded {0} records", loaded);
+            //    Console.WriteLine("Loaded {0} records", loaded);
 
-                // Console.WriteLine("Loaded {0} records", loaded);
-                // Shutdown all workers
-                if (allFinished)
-                {
-                    foreach (TransactionExecutor executor in executors)
-                    {
-                        executor.Active = false;
-                    }
-                    break;
-                }
-            }
+            //    // Console.WriteLine("Loaded {0} records", loaded);
+            //    // Shutdown all workers
+            //    if (allFinished)
+            //    {
+            //        foreach (TransactionExecutor executor in executors)
+            //        {
+            //            executor.Active = false;
+            //        }
+            //        break;
+            //    }
+            //}
 
+            int loaded = 0;
             Console.WriteLine("Load records successfully, {0} records in total", loaded);
+            Console.WriteLine("END");
         }
 
         private void LoadDataSequentially(string dataFile)

@@ -14,6 +14,17 @@ namespace GraphView.Transaction
         private static readonly object initlock = new object();
 
         /// <summary>
+        /// Whether the version db is in deamon mode
+        /// In deamon mode, for every partition, it will have a thread to flush
+        /// In non-daemon mode, the executor will flush requests
+        /// </summary>
+        internal bool DaemonMode { get; set; } = true;
+
+        internal bool Active { get; set; } = false;
+
+        internal long FlushWaitTicks { get; set; } = 0L;
+
+        /// <summary>
         /// The version table maps
         /// </summary>
 
@@ -22,7 +33,7 @@ namespace GraphView.Transaction
         /// </summary>
         private readonly Dictionary<long, TxTableEntry>[] txTable;
 
-        private SingletonPartitionedVersionDb(int partitionCount)
+        private SingletonPartitionedVersionDb(int partitionCount, bool daemonMode)
             : base(partitionCount)
         {
             this.txTable = new Dictionary<long, TxTableEntry>[partitionCount];
@@ -34,6 +45,17 @@ namespace GraphView.Transaction
             }
 
             this.PhysicalPartitionByKey = key => key.GetHashCode() % this.PartitionCount;
+
+            this.DaemonMode = daemonMode;
+            if (this.DaemonMode)
+            {
+                this.Active = true;
+                for (int pk = 0; pk < this.PartitionCount; pk++)
+                {
+                    Thread thread = new Thread(this.Monitor);
+                    thread.Start(pk);
+                }
+            }
         }
 
         /// <summary>
@@ -41,7 +63,7 @@ namespace GraphView.Transaction
         /// </summary>
         /// <param name="partitionCount">The number of partitions</param>
         /// <returns></returns>
-        internal static SingletonPartitionedVersionDb Instance(int partitionCount = 4)
+        internal static SingletonPartitionedVersionDb Instance(int partitionCount = 4, bool daemonMode = false)
         {
             if (SingletonPartitionedVersionDb.instance == null)
             {
@@ -49,7 +71,7 @@ namespace GraphView.Transaction
                 {
                     if (SingletonPartitionedVersionDb.instance == null)
                     {
-                        SingletonPartitionedVersionDb.instance = new SingletonPartitionedVersionDb(partitionCount);
+                        SingletonPartitionedVersionDb.instance = new SingletonPartitionedVersionDb(partitionCount, daemonMode);
                     }
                 }
             }
@@ -123,6 +145,24 @@ namespace GraphView.Transaction
                 return null;
             }
             return this.versionTables[tableId];
+        }
+
+        internal void Monitor(object obj)
+        {
+            int pk = (int)obj;
+            long lastFlushTicks = DateTime.Now.Ticks;
+
+            while (this.Active)
+            {
+                while (DateTime.Now.Ticks - lastFlushTicks < this.FlushWaitTicks) { }
+                // Console.WriteLine("Flush");
+                lastFlushTicks = DateTime.Now.Ticks;
+                this.Visit(VersionDb.TX_TABLE, pk);
+                foreach (string tableId in this.versionTables.Keys.ToArray())
+                {
+                    this.Visit(tableId, pk);
+                }
+            }
         }
     }
 }
