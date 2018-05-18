@@ -57,7 +57,8 @@ namespace GraphView.Transaction
 
         // The list will be shared by get version entries and validate version entries
         private readonly Queue<List<VersionEntry>> versionLists;
-        private readonly Queue<List<string>> validateKeyList;
+        private readonly Queue<List<string>> tableIdList;
+        private readonly Queue<List<object>> recordKeyList;
 
         // Version entry requests
         private readonly ResourcePool<GetVersionListRequest> getVersionListRequests;
@@ -84,7 +85,9 @@ namespace GraphView.Transaction
             // The list will be shared by get version entries and validate version entries
             // Thus the size should be double
             this.versionLists = new Queue<List<VersionEntry>>(2 * TxResourceManager.workingsetCapacity);
-            this.validateKeyList = new Queue<List<string>>(TxResourceManager.workingsetCapacity);
+            // The list will be shared by writeKeyList and validateKeyList
+            this.tableIdList = new Queue<List<string>>(2 * TxResourceManager.workingsetCapacity);
+            this.recordKeyList = new Queue<List<object>>(TxResourceManager.workingsetCapacity);
 
             // Version Entry Requests
             this.getVersionListRequests = new ResourcePool<GetVersionListRequest>(TxResourceManager.workingsetCapacity);
@@ -111,7 +114,8 @@ namespace GraphView.Transaction
             for (int i = 0; i < TxResourceManager.workingsetCapacity; i++)
             {
                 this.versionLists.Enqueue(new List<VersionEntry>(8));
-                this.validateKeyList.Enqueue(new List<string>(8));
+                this.tableIdList.Enqueue(new List<string>(8));
+                this.recordKeyList.Enqueue(new List<object>(8));
 
                 this.getVersionListRequests.AddNewResource(new GetVersionListRequest(null, null, null));
                 this.initiGetVersionListRequests.AddNewResource(new InitiGetVersionListRequest(null, null, null));
@@ -163,25 +167,46 @@ namespace GraphView.Transaction
             list = null;
         }
 
-        internal List<String> GetValidationKeyList()
+        internal List<String> GetTableIdList()
         {
-            if (this.validateKeyList.Count > 0)
+            if (this.tableIdList.Count > 0)
             {
-                return this.validateKeyList.Dequeue();
+                return this.tableIdList.Dequeue();
             }
             else
             {
-                List<string> validationKeyList = new List<string>(8);
-                return validationKeyList;
+                List<string> tableIdList = new List<string>(8);
+                return tableIdList;
             }
         }
 
-        internal void RecycleValidationKeyList(ref List<string> list)
+        internal void RecycleTableIdList(ref List<string> list)
         {
             list.Clear();
-            this.validateKeyList.Enqueue(list);
+            this.tableIdList.Enqueue(list);
             list = null;
         }
+
+        internal List<object> GetRecordKeyLisy()
+        {
+            if (this.recordKeyList.Count > 0)
+            {
+                return this.recordKeyList.Dequeue();
+            }
+            else
+            {
+                List<object> list = new List<object>(8);
+                return list;
+            }
+        }
+
+        internal void RecycleRecordKeyList(ref List<object> list)
+        {
+            list.Clear();
+            this.recordKeyList.Enqueue(list);
+            list = null;
+        }
+
         /// <summary>
         /// VersionEntry related recycling
         /// </summary>
