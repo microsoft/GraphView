@@ -196,7 +196,7 @@ namespace GraphView.Transaction
             list = null;
         }
 
-        internal List<object> GetRecordKeyLisy()
+        internal List<object> GetRecordKeyList()
         {
             if (this.recordKeyList.Count > 0)
             {
