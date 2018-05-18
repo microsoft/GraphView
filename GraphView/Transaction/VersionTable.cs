@@ -22,9 +22,9 @@ namespace GraphView.Transaction
         /// </summary>
         protected readonly Queue<VersionEntryRequest>[] flushQueues;
 
-        protected readonly SpinLock[] queueLocks;
-
         protected readonly VersionTableVisitor[] tableVisitors;
+
+        private readonly int[] queueLatches;
 
         /// <summary>
         /// The version db instance of the current version table
@@ -39,14 +39,14 @@ namespace GraphView.Transaction
 
             this.requestQueues = new Queue<VersionEntryRequest>[partitionCount];
             this.flushQueues = new Queue<VersionEntryRequest>[partitionCount];
-            this.queueLocks = new SpinLock[partitionCount];
             this.tableVisitors = new VersionTableVisitor[partitionCount];
+            this.queueLatches = new int[partitionCount];
 
             for (int pid = 0; pid < partitionCount; pid++)
             {
-                this.requestQueues[pid] = new Queue<VersionEntryRequest>();
-                this.flushQueues[pid] = new Queue<VersionEntryRequest>();
-                this.queueLocks[pid] = new SpinLock();
+                this.requestQueues[pid] = new Queue<VersionEntryRequest>(1024);
+                this.flushQueues[pid] = new Queue<VersionEntryRequest>(1024);
+                this.queueLatches[pid] = 0;
             }
         }
 
@@ -54,19 +54,10 @@ namespace GraphView.Transaction
         {
             int pk = this.VersionDb.PhysicalPartitionByKey(req.RecordKey);
 
-            bool lockTaken = false;
-            try
-            {
-                this.queueLocks[pk].Enter(ref lockTaken);
-                this.requestQueues[pk].Enqueue(req);
-            }
-            finally
-            {
-                if (lockTaken)
-                {
-                    this.queueLocks[pk].Exit();
-                }
-            }
+            while (Interlocked.CompareExchange(ref queueLatches[pk], 1, 0) != 0) ;
+            Queue<VersionEntryRequest> reqQueue = Volatile.Read(ref this.requestQueues[pk]);
+            reqQueue.Enqueue(req);
+            Interlocked.Exchange(ref queueLatches[pk], 0);
         }
 
         /// <summary>
@@ -78,25 +69,13 @@ namespace GraphView.Transaction
             // Check whether the queue is empty at first
             if (this.requestQueues[pk].Count > 0)
             {
-                bool lockTaken = false;
-                try
-                {
-                    this.queueLocks[pk].Enter(ref lockTaken);
-                    // In case other running threads also flush the same queue
-                    if (this.requestQueues[pk].Count > 0)
-                    {
-                        Queue<VersionEntryRequest> freeQueue = Volatile.Read(ref this.flushQueues[pk]);
-                        Volatile.Write(ref this.flushQueues[pk], Volatile.Read(ref this.requestQueues[pk]));
-                        Volatile.Write(ref this.requestQueues[pk], freeQueue);
-                    }
-                }
-                finally
-                {
-                    if (lockTaken)
-                    {
-                        this.queueLocks[pk].Exit();
-                    }
-                }
+                while (Interlocked.CompareExchange(ref queueLatches[pk], 1, 0) != 0) ;
+
+                Queue<VersionEntryRequest> freeQueue = this.flushQueues[pk];
+                this.flushQueues[pk] = this.requestQueues[pk];
+                this.requestQueues[pk] = freeQueue;
+
+                Interlocked.Exchange(ref queueLatches[pk], 0);
             }
         }
 

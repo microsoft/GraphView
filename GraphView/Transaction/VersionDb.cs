@@ -54,8 +54,9 @@ namespace GraphView.Transaction
         /// </summary>
         protected readonly Queue<TxEntryRequest>[] txEntryRequestQueues;
         protected readonly Queue<TxEntryRequest>[] flushQueues;
-        protected readonly SpinLock[] queueLocks;
         protected readonly VersionDbVisitor[] dbVisitors;
+
+        private readonly int[] queueLatches;
 
         internal int PartitionCount { get; private set; }
 
@@ -88,14 +89,14 @@ namespace GraphView.Transaction
             this.PartitionCount = partitionCount;
             this.txEntryRequestQueues = new Queue<TxEntryRequest>[partitionCount];
             this.flushQueues = new Queue<TxEntryRequest>[partitionCount];
-            this.queueLocks = new SpinLock[partitionCount];
             this.dbVisitors = new VersionDbVisitor[partitionCount];
+            this.queueLatches = new int[partitionCount];
 
             for (int pid = 0; pid < partitionCount; pid++)
             {
-                this.txEntryRequestQueues[pid] = new Queue<TxEntryRequest>();
-                this.flushQueues[pid] = new Queue<TxEntryRequest>();
-                this.queueLocks[pid] = new SpinLock();
+                this.txEntryRequestQueues[pid] = new Queue<TxEntryRequest>(1024);
+                this.flushQueues[pid] = new Queue<TxEntryRequest>(1024);
+                this.queueLatches[pid] = 0;
             }
 
             this.PhysicalPartitionByKey = key => key.GetHashCode() % this.PartitionCount;
@@ -109,20 +110,11 @@ namespace GraphView.Transaction
         internal void EnqueueTxEntryRequest(long txId, TxEntryRequest txEntryRequest)
         {
             int pk = this.PhysicalPartitionByKey(txId);
-            bool lockTaken = false;
-            try
-            {
-                this.queueLocks[pk].Enter(ref lockTaken);
-                Queue<TxEntryRequest> reqQueue = Volatile.Read(ref this.txEntryRequestQueues[pk]);
-                reqQueue.Enqueue(txEntryRequest);
-            }
-            finally
-            {
-                if (lockTaken)
-                {
-                    this.queueLocks[pk].Exit();
-                }
-            }
+
+            while (Interlocked.CompareExchange(ref queueLatches[pk], 1, 0) != 0) ;
+            Queue<TxEntryRequest> reqQueue = Volatile.Read(ref this.txEntryRequestQueues[pk]);
+            reqQueue.Enqueue(txEntryRequest);
+            Interlocked.Exchange(ref queueLatches[pk], 0);
         }
 
         /// <summary>
@@ -133,24 +125,13 @@ namespace GraphView.Transaction
         {
             if (this.txEntryRequestQueues[partitionKey].Count > 0)
             {
-                bool lockTaken = false;
-                try
-                {
-                    this.queueLocks[partitionKey].Enter(ref lockTaken);
-                    if (this.txEntryRequestQueues[partitionKey].Count > 0)
-                    {
-                        Queue<TxEntryRequest> freeQueue = Volatile.Read(ref this.flushQueues[partitionKey]);
-                        Volatile.Write(ref this.flushQueues[partitionKey], Volatile.Read(ref this.txEntryRequestQueues[partitionKey]));
-                        Volatile.Write(ref this.txEntryRequestQueues[partitionKey], freeQueue);
-                    }
-                }
-                finally
-                {
-                    if (lockTaken)
-                    {
-                        this.queueLocks[partitionKey].Exit();
-                    }
-                }
+                while (Interlocked.CompareExchange(ref queueLatches[partitionKey], 1, 0) != 0) ;
+
+                Queue<TxEntryRequest> freeQueue = this.flushQueues[partitionKey];
+                this.flushQueues[partitionKey] = this.txEntryRequestQueues[partitionKey];
+                this.txEntryRequestQueues[partitionKey] = freeQueue;
+
+                Interlocked.Exchange(ref queueLatches[partitionKey], 0);
             }
         }
 
