@@ -53,7 +53,7 @@
     <PlatformTarget>AnyCPU</PlatformTarget>
   </PropertyGroup>
   <PropertyGroup>
-    <StartupObject>TransactionBenchmarkTest.TPCC.CassandraTest</StartupObject>
+    <StartupObject>TransactionBenchmarkTest.YCSB.Program</StartupObject>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="Cassandra, Version=3.99.0.0, Culture=neutral, PublicKeyToken=10b231fbfc8c4b4d, processorArchitecture=MSIL">
@@ -150,7 +150,6 @@
     <Compile Include="YCSB\YCSBStoredProcedure.cs" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="app.config" />
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>

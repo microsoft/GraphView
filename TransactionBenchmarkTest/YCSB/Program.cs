@@ -68,33 +68,27 @@ namespace TransactionBenchmarkTest.YCSB
 
         static void YCSBAsyncTest()
         {
-            const int recordCount = 200000;
-            const int executorCount = 1;
-            const int txCountPerExecutor = 5;
-            const string dataFile = "ycsb_data_r.in";
-            const string operationFile = "ycsb_ops_r.in";
+            const int partitionCount = 1;
+            const int recordCount = 0;
+            const int executorCount = 4;
+            const int txCountPerExecutor = 1500000;
+            const bool daemonMode = true;
+            const string dataFile = "ycsb_data_lg_r.in";
+            const string operationFile = "ycsb_ops_lg_r.in";
 
             // an executor is responsiable for all flush
-            List<List<Tuple<string, int>>> instances = new List<List<Tuple<string, int>>>
-            {
-                new List<Tuple<string, int>>()
-                {
-                    Tuple.Create(YCSBAsyncBenchmarkTest.TABLE_ID, 0),
-                    Tuple.Create(RedisVersionDb.TX_TABLE, 0),
-                },
-                //new List<Tuple<string, int>>()
-                //{
-                //    Tuple.Create(YCSBAsyncBenchmarkTest.TABLE_ID, 0),
-                //    Tuple.Create(RedisVersionDb.TX_TABLE, 0),
-                //}
-            };
+            List<List<Tuple<string, int>>> instances = new List<List<Tuple<string, int>>>();
 
-            SingletonPartitionedVersionDb versionDb = SingletonPartitionedVersionDb.Instance(1);
+            // The default mode of versionDb is daemonMode
+            SingletonPartitionedVersionDb versionDb = SingletonPartitionedVersionDb.Instance(partitionCount, daemonMode);
             YCSBAsyncBenchmarkTest test = new YCSBAsyncBenchmarkTest(recordCount, 
                 executorCount, txCountPerExecutor, versionDb, instances);
+
             test.Setup(dataFile, operationFile);
-            // test.Run();
+            test.Run();
             test.Stats();
+
+            versionDb.Active = false;
         }
 
         internal static void PinThreadOnCores()

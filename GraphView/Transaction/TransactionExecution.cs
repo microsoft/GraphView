@@ -57,9 +57,9 @@ namespace GraphView.Transaction
 
         internal Dictionary<string, Dictionary<object, object>> writeSet;
 
-        internal Dictionary<string, Dictionary<object, List<PostProcessingEntry>>> abortSet;
+        internal List<PostProcessingEntry> abortSet;
 
-        internal Dictionary<string, Dictionary<object, List<PostProcessingEntry>>> commitSet;
+        internal List<PostProcessingEntry> commitSet;
 
         internal Dictionary<string, Dictionary<object, long>> largestVersionKeyMap;
 
@@ -135,8 +135,8 @@ namespace GraphView.Transaction
             this.versionDb = versionDb;
             this.readSet = new Dictionary<string, Dictionary<object, ReadSetEntry>>();
             this.writeSet = new Dictionary<string, Dictionary<object, object>>();
-            this.abortSet = new Dictionary<string, Dictionary<object, List<PostProcessingEntry>>>();
-            this.commitSet = new Dictionary<string, Dictionary<object, List<PostProcessingEntry>>>();
+            this.abortSet = new List<PostProcessingEntry>();
+            this.commitSet = new List<PostProcessingEntry>();
             this.largestVersionKeyMap = new Dictionary<string, Dictionary<object, long>>();
             this.garbageQueueTxId = garbageQueueTxId;
             this.garbageQueueFinishTime = garbageQueueFinishTime;
@@ -185,15 +185,8 @@ namespace GraphView.Transaction
                 writeRecords.Clear();
             }
 
-            foreach (Dictionary<object, List<PostProcessingEntry>> abortEntries in this.abortSet.Values)
-            {
-                abortEntries.Clear();
-            }
-
-            foreach (Dictionary<object, List<PostProcessingEntry>> commitEntries in this.commitSet.Values)
-            {
-                commitEntries.Clear();
-            }
+            this.abortSet.Clear();
+            this.commitSet.Clear();
 
             foreach (Dictionary<object, long> keymap in this.largestVersionKeyMap.Values)
             {
@@ -225,7 +218,7 @@ namespace GraphView.Transaction
         private void PopulateWriteKeyList()
         {
             this.tableIdList = this.executor.ResourceManager.GetTableIdList();
-            this.recordKeyList = this.executor.ResourceManager.GetRecordKeyLisy();
+            this.recordKeyList = this.executor.ResourceManager.GetRecordKeyList();
             foreach (string tableId in this.writeSet.Keys)
             {
                 foreach (object recordKey in this.writeSet[tableId].Keys)
@@ -681,30 +674,24 @@ namespace GraphView.Transaction
 
         private void AddVersionToAbortSet(string tableId, object recordKey, long versionKey, long beginTs, long endTs)
         {
-            if (!this.abortSet.ContainsKey(tableId))
-            {
-                this.abortSet[tableId] = new Dictionary<object, List<PostProcessingEntry>>();
-            }
-
-            if (!this.abortSet[tableId].ContainsKey(recordKey))
-            {
-                this.abortSet[tableId][recordKey] = new List<PostProcessingEntry>(TransactionExecution.POSTPROCESSING_LIST_MAX_CAPACITY);
-            }
-            this.abortSet[tableId][recordKey].Add(new PostProcessingEntry(versionKey, beginTs, endTs));
+            PostProcessingEntry abortEntry = this.executor.ResourceManager.GetPostProcessingEntry();
+            abortEntry.TableId = tableId;
+            abortEntry.RecordKey = recordKey;
+            abortEntry.VersionKey = versionKey;
+            abortEntry.BeginTimestamp = beginTs;
+            abortEntry.EndTimestamp = endTs;
+            this.abortSet.Add(abortEntry);
         }
 
         private void AddVersionToCommitSet(string tableId, object recordKey, long versionKey, long beginTs, long endTs)
         {
-            if (!this.commitSet.ContainsKey(tableId))
-            {
-                this.commitSet[tableId] = new Dictionary<object, List<PostProcessingEntry>>();
-            }
-
-            if (!this.commitSet[tableId].ContainsKey(recordKey))
-            {
-                this.commitSet[tableId][recordKey] = new List<PostProcessingEntry>(TransactionExecution.POSTPROCESSING_LIST_MAX_CAPACITY);
-            }
-            this.commitSet[tableId][recordKey].Add(new PostProcessingEntry(versionKey, beginTs, endTs));
+            PostProcessingEntry commitEntry = this.executor.ResourceManager.GetPostProcessingEntry();
+            commitEntry.TableId = tableId;
+            commitEntry.RecordKey = recordKey;
+            commitEntry.VersionKey = versionKey;
+            commitEntry.BeginTimestamp = beginTs;
+            commitEntry.EndTimestamp = endTs;
+            this.commitSet.Add(commitEntry);
         }
 
         internal void SetCommitTimestamp()
@@ -1102,69 +1089,65 @@ namespace GraphView.Transaction
         {
             if (this.requestStack.Count == 0)
             {
-                foreach (string tableId in this.commitSet.Keys)
+                for (int iter = 0; iter < this.commitSet.Count; iter++)
                 {
-                    foreach (object recordKey in this.commitSet[tableId].Keys)
+                    PostProcessingEntry entry = this.commitSet[iter];
+                    if (entry.BeginTimestamp == TransactionExecution.UNSET_TX_COMMIT_TIMESTAMP)
                     {
-                        foreach (PostProcessingEntry entry in this.commitSet[tableId][recordKey])
-                        {
-                            if (entry.BeginTimestamp == TransactionExecution.UNSET_TX_COMMIT_TIMESTAMP)
-                            {
-                                ReplaceVersionRequest replaceVerReq = this.executor.ResourceManager.ReplaceVersionRequest(
-                                    tableId,
-                                    recordKey,
-                                    entry.VersionKey,
-                                    this.commitTs,
-                                    entry.EndTimestamp,
-                                    VersionEntry.EMPTY_TXID,
-                                    this.txId,
-                                    -1);
-                                this.versionDb.EnqueueVersionEntryRequest(tableId, replaceVerReq);
-                                this.txReqGarbageQueue.Enqueue(replaceVerReq);
+                        ReplaceVersionRequest replaceVerReq = this.executor.ResourceManager.ReplaceVersionRequest(
+                            entry.TableId,
+                            entry.RecordKey,
+                            entry.VersionKey,
+                            this.commitTs,
+                            entry.EndTimestamp,
+                            VersionEntry.EMPTY_TXID,
+                            this.txId,
+                            -1);
+                        this.versionDb.EnqueueVersionEntryRequest(entry.TableId, replaceVerReq);
+                        this.txReqGarbageQueue.Enqueue(replaceVerReq);
 
-								this.requestStack.Push(replaceVerReq);
-							}
-                            else
-                            {
-                                // cloud environment: just replace the begin, end, txId field, need lua script, 3 redis command.
-                                //ReplaceVersionRequest replaceVerReq = this.executor.ResourceManager.ReplaceVersionRequest(
-                                //    tableId,
-                                //    recordKey,
-                                //    entry.VersionKey,
-                                //    entry.BeginTimestamp,
-                                //    this.commitTs,
-                                //    VersionEntry.EMPTY_TXID,
-                                //    this.txId,
-                                //    long.MaxValue);
-                                //this.versionDb.EnqueueVersionEntryRequest(tableId, replaceVerReq);
-                                //this.txReqGarbageQueue.Enqueue(replaceVerReq);
-                                //this.requestStack.Push(replaceVerReq);
-
-                                // Single machine setting: pass the whole version, need only 1 redis command.
-                                ReadSetEntry readEntry = this.readSet[tableId][recordKey];
-								ReplaceWholeVersionRequest replaceWholeVerReq = this.executor.ResourceManager.ReplaceWholeVersionRequest(
-									tableId,
-									recordKey,
-									entry.VersionKey,
-									new VersionEntry(
-										recordKey,
-										entry.VersionKey,
-										readEntry.BeginTimestamp,
-										this.commitTs,
-										readEntry.Record,
-										VersionEntry.EMPTY_TXID,
-										this.commitTs));
-
-                                this.versionDb.EnqueueVersionEntryRequest(tableId, replaceWholeVerReq);
-                                this.txReqGarbageQueue.Enqueue(replaceWholeVerReq);
-								this.requestStack.Push(replaceWholeVerReq);
-							}
-                        }
+                        this.requestStack.Push(replaceVerReq);
                     }
+                    else
+                    {
+                        // cloud environment: just replace the begin, end, txId field, need lua script, 3 redis command.
+                        //ReplaceVersionRequest replaceVerReq = this.executor.ResourceManager.ReplaceVersionRequest(
+                        //    tableId,
+                        //    recordKey,
+                        //    entry.VersionKey,
+                        //    entry.BeginTimestamp,
+                        //    this.commitTs,
+                        //    VersionEntry.EMPTY_TXID,
+                        //    this.txId,
+                        //    long.MaxValue);
+                        //this.versionDb.EnqueueVersionEntryRequest(tableId, replaceVerReq);
+                        //this.txReqGarbageQueue.Enqueue(replaceVerReq);
+                        //this.requestStack.Push(replaceVerReq);
+
+                        // Single machine setting: pass the whole version, need only 1 redis command.
+                        ReadSetEntry readEntry = this.readSet[entry.TableId][entry.RecordKey];
+                        ReplaceWholeVersionRequest replaceWholeVerReq = this.executor.ResourceManager.ReplaceWholeVersionRequest(
+                            entry.TableId,
+                            entry.RecordKey,
+                            entry.VersionKey,
+                            new VersionEntry(
+                                entry.RecordKey,
+                                entry.VersionKey,
+                                readEntry.BeginTimestamp,
+                                this.commitTs,
+                                readEntry.Record,
+                                VersionEntry.EMPTY_TXID,
+                                this.commitTs));
+
+                        this.versionDb.EnqueueVersionEntryRequest(entry.TableId, replaceWholeVerReq);
+                        this.txReqGarbageQueue.Enqueue(replaceWholeVerReq);
+                        this.requestStack.Push(replaceWholeVerReq);
+                    }
+                    this.executor.ResourceManager.RecyclePostProcessingEntry(ref entry);
                 }
 
-				// No post processing ops are needed.
-				if (this.requestStack.Count == 0)
+                // No post processing ops are needed.
+                if (this.requestStack.Count == 0)
 				{
 					this.Progress = TxProgress.Close;
 					this.CurrentProc = null;
@@ -1214,37 +1197,33 @@ namespace GraphView.Transaction
         {
             if (this.requestStack.Count == 0)
             {
-                foreach (string tableId in this.abortSet.Keys)
+                for (int iter = 0; iter < this.abortSet.Count; iter++)
                 {
-                    foreach (object recordKey in this.abortSet[tableId].Keys)
+                    PostProcessingEntry entry = this.abortSet[iter];
+                    if (entry.BeginTimestamp == VersionEntry.DEFAULT_BEGIN_TIMESTAMP)
                     {
-                        foreach (PostProcessingEntry entry in this.abortSet[tableId][recordKey])
-                        {
-                            if (entry.BeginTimestamp == VersionEntry.DEFAULT_BEGIN_TIMESTAMP)
-                            {
-                                DeleteVersionRequest delVerReq = this.executor.ResourceManager.DeleteVersionRequest(
-                                    tableId, recordKey, entry.VersionKey);
-                                this.versionDb.EnqueueVersionEntryRequest(tableId, delVerReq);
-                                this.txReqGarbageQueue.Enqueue(delVerReq);
-                                this.requestStack.Push(delVerReq);
-                            }
-                            else
-                            {
-                                ReplaceVersionRequest replaceVerReq = this.executor.ResourceManager.ReplaceVersionRequest(
-                                    tableId,
-                                    recordKey,
-                                    entry.VersionKey,
-                                    entry.BeginTimestamp,
-                                    entry.EndTimestamp,
-                                    VersionEntry.EMPTY_TXID,
-                                    this.txId,
-                                    long.MaxValue);
-                                this.versionDb.EnqueueVersionEntryRequest(tableId, replaceVerReq);
-                                this.txReqGarbageQueue.Enqueue(replaceVerReq);
-                                this.requestStack.Push(replaceVerReq);
-                            }
-                        }
+                        DeleteVersionRequest delVerReq = this.executor.ResourceManager.DeleteVersionRequest(
+                            entry.TableId, entry.RecordKey, entry.VersionKey);
+                        this.versionDb.EnqueueVersionEntryRequest(entry.TableId, delVerReq);
+                        this.txReqGarbageQueue.Enqueue(delVerReq);
+                        this.requestStack.Push(delVerReq);
                     }
+                    else
+                    {
+                        ReplaceVersionRequest replaceVerReq = this.executor.ResourceManager.ReplaceVersionRequest(
+                            entry.TableId,
+                            entry.RecordKey,
+                            entry.VersionKey,
+                            entry.BeginTimestamp,
+                            entry.EndTimestamp,
+                            VersionEntry.EMPTY_TXID,
+                            this.txId,
+                            long.MaxValue);
+                        this.versionDb.EnqueueVersionEntryRequest(entry.TableId, replaceVerReq);
+                        this.txReqGarbageQueue.Enqueue(replaceVerReq);
+                        this.requestStack.Push(replaceVerReq);
+                    }
+                    this.executor.ResourceManager.RecyclePostProcessingEntry(ref entry);
                 }
 
 				// No post processing ops are needed.
