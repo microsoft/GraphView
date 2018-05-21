@@ -82,7 +82,7 @@ namespace GraphView.Transaction
 
     }
 
-    public class TransactionExecutor
+    internal class TransactionExecutor
     {
         private int executorId = 0;
 
@@ -170,7 +170,8 @@ namespace GraphView.Transaction
             Queue<TransactionRequest> workload = null,
             List<Tuple<string, int>> instances = null,
             int startRange = -1,
-            int txTimeoutSeconds = 0)
+            int txTimeoutSeconds = 0,
+            TxResourceManager resourceManager = null)
         {
             this.versionDb = versionDb;
             this.logStore = logStore;
@@ -181,7 +182,7 @@ namespace GraphView.Transaction
             this.GarbageQueueTxId = new Queue<long>();
             this.GarbageQueueFinishTime = new Queue<long>();
             this.txRange = startRange < 0 ? null : new TxRange(startRange);
-            this.ResourceManager = new TxResourceManager();
+            this.ResourceManager = resourceManager == null ? new TxResourceManager() : resourceManager;
             this.txRuntimePool = new Queue<Tuple<TransactionExecution, Queue<TransactionRequest>>>();
         }
 
@@ -428,6 +429,67 @@ namespace GraphView.Transaction
                 while (this.Active)
                 {
                     this.FlushInstances();
+                }
+            }
+        }
+
+        public void ExecuteNoFlush()
+        {
+            TransactionExecution exec = new TransactionExecution(
+                this.logStore,
+                this.versionDb,
+                null,
+                this.GarbageQueueTxId,
+                this.GarbageQueueFinishTime,
+                this.txRange,
+                this);
+
+            string priorSessionId = "";
+
+            while (this.workload.Count > 0)
+            {
+                TransactionRequest req = this.workload.Peek();
+
+                switch (req.OperationType)
+                {
+                    case OperationType.Open:
+                        if (req.SessionId != priorSessionId)
+                        {
+                            if (priorSessionId == "" || exec.Progress == TxProgress.Close)
+                            {
+                                this.workload.Dequeue();
+                                priorSessionId = req.SessionId;
+                                exec.Reset(null);
+                                while (exec.CurrentProc != null)
+                                {
+                                    exec.CurrentProc();
+                                }
+                            }
+                            else
+                            {
+                                while (exec.CurrentProc != null)
+                                {
+                                    exec.CurrentProc();
+                                }
+                            }
+                        }
+                        else
+                        {
+                            this.workload.Dequeue();
+                            priorSessionId = req.SessionId;
+                        }
+                        break;
+                    case OperationType.Close:
+                        this.workload.Dequeue();
+                        priorSessionId = req.SessionId;
+                        exec.Commit();
+                        while (exec.CurrentProc != null)
+                        {
+                            exec.CurrentProc();
+                        }
+                        break;
+                    default:
+                        break;
                 }
             }
         }

@@ -107,7 +107,7 @@ namespace GraphView.Transaction
         /// </summary>
         /// <param name="txId">The specify txId to partition</param>
         /// <param name="txEntryRequest">The given request</param>
-        internal void EnqueueTxEntryRequest(long txId, TxEntryRequest txEntryRequest)
+        internal virtual void EnqueueTxEntryRequest(long txId, TxEntryRequest txEntryRequest)
         {
             int pk = this.PhysicalPartitionByKey(txId);
 

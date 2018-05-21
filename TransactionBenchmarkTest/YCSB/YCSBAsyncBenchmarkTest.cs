@@ -131,12 +131,15 @@
             }
         }
 
+        internal TxResourceManager resourceManager;
+
         public YCSBAsyncBenchmarkTest(
             int recordCount,
             int executorCount, 
             int txCountPerExecutor, 
             VersionDb versionDb, 
-            List<List<Tuple<string, int>>> instances = null)
+            List<List<Tuple<string, int>>> instances = null,
+            TxResourceManager resourceManager = null)
         {
             this.versionDb = versionDb;
             this.recordCount = recordCount;
@@ -150,6 +153,8 @@
                 throw new ArgumentException("instances mustn't be null and the size should be smaller or equal to executorCount");
             }
             this.partitionedInstances = instances;
+
+            this.resourceManager = resourceManager;
         }
 
         internal void Setup(string dataFile, string operationFile)
@@ -162,7 +167,7 @@
             this.versionDb.CreateVersionTable(TABLE_ID, REDIS_DB_INDEX);
 
             // step3: load data
-            this.loadDataParallely(dataFile);
+            // this.loadDataParallely(dataFile);
             // this.LoadDataSequentially(dataFile);
 
             // step 4: fill workers' queue
@@ -185,7 +190,7 @@
 
             foreach (TransactionExecutor executor in this.executorList)
             {
-                Thread thread = new Thread(new ThreadStart(executor.Execute));
+                Thread thread = new Thread(new ThreadStart(executor.ExecuteNoFlush));
                 threadList.Add(thread);
                 thread.Start();
             }
@@ -307,7 +312,7 @@
                         null :
                         instances[i];
 
-                    executors.Add(new TransactionExecutor(this.versionDb, null, reqQueue, executorInstances, i));
+                    executors.Add(new TransactionExecutor(this.versionDb, null, reqQueue, executorInstances, i, 0, this.resourceManager));
                 }
             }
 
@@ -406,7 +411,7 @@
                         null :
                         this.partitionedInstances[instanceIndex++];
 
-                    this.executorList.Add(new TransactionExecutor(this.versionDb, null, reqQueue, executorInstances, i));
+                    this.executorList.Add(new TransactionExecutor(this.versionDb, null, reqQueue, executorInstances, i, 0, this.resourceManager));
                 }
             }
         }

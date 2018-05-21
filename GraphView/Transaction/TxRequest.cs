@@ -9,7 +9,6 @@ namespace GraphView.Transaction
         internal bool Finished { get; set; } = false;
         internal object Result { get; set; }
         internal bool InUse { get; set; }
-
         
         public void Use()
         {
@@ -25,6 +24,7 @@ namespace GraphView.Transaction
         {
             this.InUse = false;
             this.Finished = false;
+            this.Result = null;
         }
 
         internal virtual void Accept(TxRequestVisitor visitor)

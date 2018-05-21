@@ -13,77 +13,35 @@ namespace GraphView.Transaction
         public static readonly long DEFAULT_COMMIT_TIME = -1L;
         public static readonly long DEFAULT_LOWER_BOUND = 0L;
 
-        private readonly long txId;
-        private TxStatus status;
-        private long commitTime;
-        private long commitLowerBound;
+        internal long TxId { get; set; }
+        internal TxStatus Status { get; set; }
+        internal long CommitTime { get; set; }
+        internal long CommitLowerBound { get; set; }
 
-        public long TxId
+        public TxTableEntry()
         {
-            get
-            {
-                return this.txId;
-            }
-        }
 
-        public TxStatus Status
-        {
-            get
-            {
-                return this.status;
-            }
-            set
-            {
-                this.status = value;
-            }
-        }
-
-        public long CommitTime
-        {
-            get
-            {
-                return this.commitTime;
-            }
-            set
-            {
-                this.commitTime = value;
-
-            }
-        }
-
-        public long CommitLowerBound
-        {
-            get
-            {
-                return this.commitLowerBound;
-
-            }
-            set
-            {
-                this.commitLowerBound = value;
-
-            }
         }
 
         public TxTableEntry(long txId)
         {
-            this.txId = txId;
-            this.status = TxStatus.Ongoing;
-            this.commitTime = TxTableEntry.DEFAULT_COMMIT_TIME;
-            this.commitLowerBound = TxTableEntry.DEFAULT_LOWER_BOUND;
+            this.TxId = txId;
+            this.Status = TxStatus.Ongoing;
+            this.CommitTime = TxTableEntry.DEFAULT_COMMIT_TIME;
+            this.CommitLowerBound = TxTableEntry.DEFAULT_LOWER_BOUND;
         }
 
         public TxTableEntry(long txId, TxStatus status, long commitTime, long commitLowerBound)
         {
-            this.txId = txId;
-            this.status = status;
-            this.commitTime = commitTime;
-            this.commitLowerBound = commitLowerBound;
+            this.TxId = txId;
+            this.Status = status;
+            this.CommitTime = commitTime;
+            this.CommitLowerBound = commitLowerBound;
         }
 
         public override int GetHashCode()
         {
-            return this.txId.GetHashCode();   
+            return this.TxId.GetHashCode();   
         }
 
         public override bool Equals(object obj)
@@ -94,15 +52,15 @@ namespace GraphView.Transaction
                 return false;
             }
 
-            return this.TxId == entry.TxId && this.status == entry.Status &&
-                this.commitTime == entry.CommitTime && this.commitLowerBound == entry.CommitLowerBound;
+            return this.TxId == entry.TxId && this.Status == entry.Status &&
+                this.CommitTime == entry.CommitTime && this.CommitLowerBound == entry.CommitLowerBound;
         }
 
         internal void Reset()
         {
-            this.status = TxStatus.Ongoing;
-            this.commitTime = TxTableEntry.DEFAULT_COMMIT_TIME;
-            this.commitLowerBound = TxTableEntry.DEFAULT_LOWER_BOUND;
+            this.Status = TxStatus.Ongoing;
+            this.CommitTime = TxTableEntry.DEFAULT_COMMIT_TIME;
+            this.CommitLowerBound = TxTableEntry.DEFAULT_LOWER_BOUND;
         }
     }
 }

@@ -13,28 +13,26 @@ namespace GraphView.Transaction
 
         private readonly NonBlocking.ConcurrentDictionary<long, TxTableEntry> txTable;
 
-        private SingletonVersionDb()
+        private SingletonVersionDb(TxResourceManager resourceManager)
             :base(1)
         {
             this.txTable = new ConcurrentDictionary<long, TxTableEntry>();
+            this.dbVisitors[0] = new SingletonVersionDbVisitor(this.txTable, resourceManager);
         }
 
-        internal static SingletonVersionDb Instance
+        internal static SingletonVersionDb Instance(TxResourceManager resourceManager = null)
         {
-            get
+            if (SingletonVersionDb.instance == null)
             {
-                if (SingletonVersionDb.instance == null)
+                lock (initlock)
                 {
-                    lock (initlock)
+                    if (SingletonVersionDb.instance == null)
                     {
-                        if (SingletonVersionDb.instance == null)
-                        {
-                            SingletonVersionDb.instance = new SingletonVersionDb();
-                        }
+                        SingletonVersionDb.instance = new SingletonVersionDb(resourceManager);
                     }
                 }
-                return SingletonVersionDb.instance;
             }
+            return SingletonVersionDb.instance;
         }
     }
 
@@ -104,6 +102,11 @@ namespace GraphView.Transaction
             {
                 throw new TransactionException("A tx's status has been updated by another tx concurrently.");
             }
+        }
+
+        internal override void EnqueueTxEntryRequest(long txId, TxEntryRequest txEntryRequest)
+        {
+            this.dbVisitors[0].Invoke(txEntryRequest);
         }
 
         internal override long SetAndGetCommitTime(long txId, long proposedCommitTs)
