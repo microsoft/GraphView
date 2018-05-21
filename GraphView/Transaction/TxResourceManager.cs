@@ -261,6 +261,7 @@ namespace GraphView.Transaction
             if (req == null)
             {
                 req = new GetVersionListRequest(tableId, recordKey, null);
+                req.Use();
                 this.getVersionListRequests.AddNewResource(req);
             }
             else
@@ -286,6 +287,7 @@ namespace GraphView.Transaction
             if (req == null)
             {
                 req = new InitiGetVersionListRequest(tableId, recordKey, null);
+                req.Use();
                 this.initiGetVersionListRequests.AddNewResource(req);
             }
             else
@@ -310,6 +312,7 @@ namespace GraphView.Transaction
             if (req == null)
             {
                 req = new ReadVersionRequest(tableId, recordKey, versionKey);
+                req.Use();
                 this.readVersionRequests.AddNewResource(req);
             }
             else
@@ -342,6 +345,7 @@ namespace GraphView.Transaction
             {
                 req = new ReplaceVersionRequest(tableId, recordKey, versionKey, beginTime, endTime,
                     txId, readTxId, expectedEndTimestamp);
+                req.Use();
                 this.replaceVersionRequests.AddNewResource(req);
             }
             else
@@ -374,6 +378,7 @@ namespace GraphView.Transaction
             if (req == null)
             {
                 req = new ReplaceWholeVersionRequest(tableId, recordKey, versionKey, entry);
+                req.Use();
                 this.replaceWholeVersionRequests.AddNewResource(req);
             }
             else
@@ -398,6 +403,7 @@ namespace GraphView.Transaction
             if (req == null)
             {
                 req = new DeleteVersionRequest(tableId, recordKey, versionKey);
+                req.Use();
                 this.deleteVersionRequests.AddNewResource(req);
             }
             else
@@ -425,6 +431,7 @@ namespace GraphView.Transaction
             if (req == null)
             {
                 req = new UpdateVersionMaxCommitTsRequest(tableId, recordKey, versionKey, maxCommitTs);
+                req.Use();
                 this.updateVersionMaxCommitTsRequests.AddNewResource(req);
             }
             else
@@ -453,6 +460,7 @@ namespace GraphView.Transaction
             if (req == null)
             {
                 req = new UploadVersionRequest(tableId, recordKey, versionKey, entry);
+                req.Use();
                 this.uploadVersionRequests.AddNewResource(req);
             }
             else
@@ -480,6 +488,7 @@ namespace GraphView.Transaction
             if (req == null)
             {
                 req = new GetTxEntryRequest(txId);
+                req.Use();
                 this.getTxEntryRequests.AddNewResource(req);
             }
             else
@@ -502,6 +511,7 @@ namespace GraphView.Transaction
             if (req == null)
             {
                 req = new InsertTxIdRequest(txId);
+                req.Use();
                 this.inserTxRequests.AddNewResource(req);
             }
             else
@@ -524,6 +534,7 @@ namespace GraphView.Transaction
             if (req == null)
             {
                 req = new NewTxIdRequest(txId);
+                req.Use();
                 this.newTxRequests.AddNewResource(req);
             }
             else
@@ -546,6 +557,7 @@ namespace GraphView.Transaction
             if (req == null)
             {
                 req = new UpdateCommitLowerBoundRequest(txId, lowerBound);
+                req.Use();
                 this.updateCommitLowerBoundRequests.AddNewResource(req);
             }
             else
@@ -569,6 +581,7 @@ namespace GraphView.Transaction
             if (req == null)
             {
                 req = new SetCommitTsRequest(txId, commitTs);
+                req.Use();
                 this.setCommitTsRequests.AddNewResource(req);
             }
             else
@@ -592,6 +605,7 @@ namespace GraphView.Transaction
             if (req == null)
             {
                 req = new RecycleTxRequest(txId);
+                req.Use();
                 this.recycleTxRequests.AddNewResource(req);
             }
             else
@@ -614,6 +628,7 @@ namespace GraphView.Transaction
             if (req == null)
             {
                 req = new UpdateTxStatusRequest(txId, status);
+                req.Use();
                 this.updateTxStatusRequests.AddNewResource(req);
             }
             else
@@ -636,6 +651,7 @@ namespace GraphView.Transaction
             if (req == null)
             {
                 req = new RemoveTxRequest(txId);
+                req.Use();
                 this.removeTxRequests.AddNewResource(req);
             }
             else
