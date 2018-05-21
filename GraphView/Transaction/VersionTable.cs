@@ -50,7 +50,7 @@ namespace GraphView.Transaction
             }
         }
 
-        internal void EnqueueVersionEntryRequest(VersionEntryRequest req)
+        internal virtual void EnqueueVersionEntryRequest(VersionEntryRequest req)
         {
             int pk = this.VersionDb.PhysicalPartitionByKey(req.RecordKey);
 
