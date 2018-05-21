@@ -432,6 +432,67 @@ namespace GraphView.Transaction
             }
         }
 
+        public void ExecuteNoFlush()
+        {
+            TransactionExecution exec = new TransactionExecution(
+                this.logStore,
+                this.versionDb,
+                null,
+                this.GarbageQueueTxId,
+                this.GarbageQueueFinishTime,
+                this.txRange,
+                this);
+
+            string priorSessionId = "";
+
+            while (this.workload.Count > 0)
+            {
+                TransactionRequest req = this.workload.Peek();
+
+                switch (req.OperationType)
+                {
+                    case OperationType.Open:
+                        if (req.SessionId != priorSessionId)
+                        {
+                            if (priorSessionId == "" || exec.Progress == TxProgress.Close)
+                            {
+                                this.workload.Dequeue();
+                                priorSessionId = req.SessionId;
+                                exec.Reset(null);
+                                while (exec.CurrentProc != null)
+                                {
+                                    exec.CurrentProc();
+                                }
+                            }
+                            else
+                            {
+                                while (exec.CurrentProc != null)
+                                {
+                                    exec.CurrentProc();
+                                }
+                            }
+                        }
+                        else
+                        {
+                            this.workload.Dequeue();
+                            priorSessionId = req.SessionId;
+                        }
+                        break;
+                    case OperationType.Close:
+                        this.workload.Dequeue();
+                        priorSessionId = req.SessionId;
+                        exec.Commit();
+                        while (exec.CurrentProc != null)
+                        {
+                            exec.CurrentProc();
+                        }
+                        break;
+                    default:
+                        break;
+                }
+            }
+        }
+
         private void FlushInstances()
         {
             foreach (Tuple<string, int> tuple in this.partitionedInstances)

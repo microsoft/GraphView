@@ -164,5 +164,12 @@ namespace GraphView.Transaction
                 }
             }
         }
+
+        internal override void EnqueueTxEntryRequest(long txId, TxEntryRequest txEntryRequest)
+        {
+            int pk = this.PhysicalPartitionByKey(txId);
+
+            this.dbVisitors[pk].Invoke(txEntryRequest);
+        }
     }
 }
