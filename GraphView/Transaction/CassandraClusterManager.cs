@@ -69,7 +69,10 @@
 		{
 			this.ClusterNodeCount = CassandraSessionManager.DEFAULT_CLUSTER_NODE_COUNT;
 			this.ReadWriteHosts = new string[] { "127.0.0.1" };
-			this.cluster = Cluster.Builder().AddContactPoints(this.ReadWriteHosts).Build();
+            // to ensure strong consistency
+            QueryOptions queryOptions = new QueryOptions().SetConsistencyLevel(ConsistencyLevel.Quorum)
+                                                          .SetSerialConsistencyLevel(ConsistencyLevel.Serial);
+			this.cluster = Cluster.Builder().AddContactPoints(this.ReadWriteHosts).WithQueryOptions(queryOptions).Build();
 			this.sessionPool = new Dictionary<string, ISession>();
 		}
 
@@ -81,7 +84,7 @@
 				{
 					if (!this.sessionPool.ContainsKey(keyspace))
 					{
-						this.sessionPool[keyspace] = this.cluster.Connect();
+						this.sessionPool[keyspace] = this.cluster.Connect(keyspace);
 					}
 				}
 			}

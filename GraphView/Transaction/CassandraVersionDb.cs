@@ -73,7 +73,7 @@
     internal partial class CassandraVersionDb
     {
         public static readonly string CQL_CREATE_VERSION_TABLE =
-                "CREATE TABLE {0} (" +              // there is no need IF NOT EXISTS
+                "CREATE TABLE IF NOT EXISTS {0} (" +
                     "recordKey          ascii," +
                     "versionKey         bigint," +
                     "beginTimestamp     bigint," +
@@ -99,16 +99,18 @@
             "DROP TABLE IF EXISTS {0}";
 
         public static readonly string CQL_DROP_KEYSPACE =
-            "DROP KEYSPACE {0}";
+            "DROP KEYSPACE IF EXISTS {0}";
 
         public static readonly string CQL_INSERT_NEW_TX =
-            "INSERT INTO {0} (txId, status, commitTime, commitLowerBound) VALUES ({1}, {2}, {3}, {4})";
+            "INSERT INTO {0} (txId, status, commitTime, commitLowerBound) " +
+            "VALUES ({1}, {2}, {3}, {4}) " +
+            "IF NOT EXISTS";
 
         public static readonly string CQL_GET_TX_TABLE_ENTRY =
             "SELECT * FROM {0} WHERE txId = {1}";
 
         public static readonly string CQL_UPDATE_TX_STATUS =
-            "UPDATE {0} SET status={1} IF txId={2}";
+            "UPDATE {0} SET status={1} WHERE txId={2} IF EXISTS";
 
         public static readonly string CQL_SET_COMMIT_TIME =     // light weight Transaction
             "UPDATE {0} SET commitTime={1} WHERE txId={2} IF commitTime<{1}";
@@ -119,11 +121,12 @@
             "IF commitTime < 0 AND commitLowerBound < {1}";
 
         public static readonly string CQL_REMOVE_TX =
-            "DELETE FROM {0} WHERE txId={1}";
+            "DELETE FROM {0} WHERE txId={1} IF EXISTS";
 
         public static readonly string CQL_RECYCLE_TX =
             "UPDATE {0} SET status={1}, commitTime={2}, commitLowerBound={3} " +
-            "WHERE txId={4}";
+            "WHERE txId={4} " +
+            "IF EXISTS";
     }
 
     /// <summary>
@@ -141,11 +144,27 @@
             return this.SessionManager.GetSession(CassandraVersionDb.DEFAULT_KEYSPACE).Execute(cql);
         }
 
+        /// <summary>
+        /// Execute with Light Weight Transaction (IF)
+        /// result RowSet just has one row, whose `[applied]` column indicates 
+        /// the execution's state
+        /// </summary>
+        /// <param name="cql"></param>
+        /// <returns>applied or not</returns>
+        internal bool CQLExecuteWithIf(string cql)
+        {
+            var rs = this.SessionManager.GetSession(CassandraVersionDb.DEFAULT_KEYSPACE).Execute(cql);
+            return rs.GetEnumerator().Current.GetValue<bool>("[applied]");
+        }
+
         internal override VersionTable CreateVersionTable(string tableId, long redisDbIndex = 0)
         {
-            // Create Version Table
-            // todo: if the table exists ?
-            this.CQLExecute(string.Format(CassandraVersionDb.CQL_CREATE_VERSION_TABLE, tableId));            
+            bool applied = this.CQLExecuteWithIf(string.Format(CassandraVersionDb.CQL_CREATE_VERSION_TABLE, tableId));
+            if (!applied)   // if `tableId` exists
+            {
+                return null;
+            }
+
             return this.GetVersionTable(tableId);
         }
 
@@ -180,7 +199,8 @@
 
         internal override bool DeleteTable(string tableId)
         {
-            this.CQLExecute(string.Format(CassandraVersionDb.CQL_DROP_TABLE, tableId));
+            this.CQLExecuteWithIf(string.Format(CassandraVersionDb.CQL_DROP_TABLE, tableId));
+            // we do not care whether the tableId exists or not
 
             if (this.versionTables.ContainsKey(tableId))
             {
@@ -202,8 +222,8 @@
 
         internal override void Clear()
         {
-            this.CQLExecute(string.Format(CassandraVersionDb.CQL_DROP_KEYSPACE, CassandraVersionDb.DEFAULT_KEYSPACE));
-
+            this.CQLExecuteWithIf(string.Format(CassandraVersionDb.CQL_DROP_KEYSPACE, CassandraVersionDb.DEFAULT_KEYSPACE));
+            
             this.versionTables.Clear();
 
             for (int pid = 0; pid < this.PartitionCount; pid++)
@@ -227,20 +247,24 @@
             }
             
             while (true)
-            {
-                try
+            {   
+                // we assume txId conflicts rarely,
+                // otherwise, it is the cause of txId generator
+                bool applied = this.CQLExecuteWithIf(
+                    string.Format(CassandraVersionDb.CQL_INSERT_NEW_TX, 
+                                  VersionDb.TX_TABLE,
+                                  txId,
+                                  (sbyte)TxStatus.Ongoing,     // default status
+                                  TxTableEntry.DEFAULT_COMMIT_TIME,
+                                  TxTableEntry.DEFAULT_LOWER_BOUND));
+                if (applied)
                 {
-                    this.CQLExecute(string.Format(CassandraVersionDb.CQL_INSERT_NEW_TX, 
-                                                  VersionDb.TX_TABLE,
-                                                  txId,
-                                                  TxStatus.Ongoing,     // default status
-                                                  TxTableEntry.DEFAULT_COMMIT_TIME,
-                                                  TxTableEntry.DEFAULT_LOWER_BOUND));
                     break;
-                } catch (DriverException e)
+                } else
                 {
+                    // txId exists
                     txId = StaticRandom.RandIdentity();
-                }
+                }   
             }
 
             return txId;
@@ -248,49 +272,35 @@
 
         internal override TxTableEntry GetTxTableEntry(long txId)
         {
-            try
-            {
-                var rs = this.CQLExecute(string.Format(CassandraVersionDb.CQL_GET_TX_TABLE_ENTRY, 
-                                                       VersionDb.TX_TABLE, txId));
-                if (rs == null)
-                {
-                    return null;
-                }
-                Row row = rs.GetEnumerator().Current;
-                if (row == null)
-                {
-                    return null;
-                }
-                return new TxTableEntry(
-                    txId,
-                    row.GetValue<TxStatus>("status"),
-                    row.GetValue<long>("commitTime"),
-                    row.GetValue<long>("commitLowerBound"));
-
-            } catch (DriverException e)
+            var rs = this.CQLExecute(string.Format(CassandraVersionDb.CQL_GET_TX_TABLE_ENTRY, 
+                                                    VersionDb.TX_TABLE, txId));                
+            Row row = rs.GetEnumerator().Current;
+            if (row == null)
             {
                 return null;
             }
+
+            return new TxTableEntry(
+                txId,
+                (TxStatus)row.GetValue<sbyte>("status"),
+                row.GetValue<long>("commitTime"),
+                row.GetValue<long>("commitLowerBound"));
         }
 
         internal override void UpdateTxStatus(long txId, TxStatus status)
         {
-            this.CQLExecute(string.Format(CassandraVersionDb.CQL_UPDATE_TX_STATUS,
-                                                       VersionDb.TX_TABLE, status, txId));
+            this.CQLExecuteWithIf(string.Format(CassandraVersionDb.CQL_UPDATE_TX_STATUS,
+                                                VersionDb.TX_TABLE, (sbyte)status, txId));
         }
 
         internal override long SetAndGetCommitTime(long txId, long proposedCommitTime)
         {
-            this.CQLExecute(string.Format(CassandraVersionDb.CQL_SET_COMMIT_TIME,
-                                                   VersionDb.TX_TABLE,
-                                                   proposedCommitTime,
-                                                   txId));
+            this.CQLExecuteWithIf(string.Format(CassandraVersionDb.CQL_SET_COMMIT_TIME,
+                                                VersionDb.TX_TABLE,
+                                                proposedCommitTime,
+                                                txId));
             var rs = this.CQLExecute(string.Format(CassandraVersionDb.CQL_GET_TX_TABLE_ENTRY,
-                                                   VersionDb.TX_TABLE, txId));
-            if (rs == null)
-            {
-                return -1;
-            }
+                                                   VersionDb.TX_TABLE, txId));            
             Row row = rs.GetEnumerator().Current;
             if (row == null)
             {
@@ -302,62 +312,34 @@
 
         internal override long UpdateCommitLowerBound(long txId, long lowerBound)
         {
-            try
-            {
-                this.CQLExecute(string.Format(CassandraVersionDb.CQL_UPDATE_COMMIT_LB,
-                                          VersionDb.TX_TABLE, lowerBound, txId));
+            this.CQLExecuteWithIf(string.Format(CassandraVersionDb.CQL_UPDATE_COMMIT_LB,
+                                                VersionDb.TX_TABLE, lowerBound, txId));
 
-                var rs = this.CQLExecute(string.Format(CassandraVersionDb.CQL_GET_TX_TABLE_ENTRY,
-                                                       VersionDb.TX_TABLE, txId));
-                if (rs == null)
-                {
-                    return -2L;
-                }
-
-                Row row = rs.GetEnumerator().Current;
-                if (row == null)
-                {
-                    return -2L;
-                }
-
-                return row.GetValue<long>("commitTime");
-            } catch (DriverException e)
+            var rs = this.CQLExecute(string.Format(CassandraVersionDb.CQL_GET_TX_TABLE_ENTRY,
+                                                   VersionDb.TX_TABLE, txId));
+            Row row = rs.GetEnumerator().Current;
+            if (row == null)
             {
                 return -2L;
             }
+
+            return row.GetValue<long>("commitTime");
         }
 
         internal override bool RemoveTx(long txId)
         {
-            try
-            {
-                this.CQLExecute(string.Format(CassandraVersionDb.CQL_REMOVE_TX, 
-                                              VersionDb.TX_TABLE, txId));
-
-            } catch (DriverException e)
-            {
-                return false;
-            }
-
-            return true;
+            return this.CQLExecuteWithIf(string.Format(CassandraVersionDb.CQL_REMOVE_TX, 
+                                                       VersionDb.TX_TABLE, txId));
         }
 
         internal override bool RecycleTx(long txId)
         {
-            try
-            {
-                this.CQLExecute(string.Format(CassandraVersionDb.CQL_RECYCLE_TX,
-                                                      VersionDb.TX_TABLE,
-                                                      TxStatus.Ongoing,     // default status
-                                                      TxTableEntry.DEFAULT_COMMIT_TIME,
-                                                      TxTableEntry.DEFAULT_LOWER_BOUND,
-                                                      txId));
-            } catch (DriverException e)
-            {
-                return false;
-            }
-
-            return true;
+            return this.CQLExecuteWithIf(string.Format(CassandraVersionDb.CQL_RECYCLE_TX,
+                                                       VersionDb.TX_TABLE,
+                                                       (sbyte)TxStatus.Ongoing,     // default status
+                                                       TxTableEntry.DEFAULT_COMMIT_TIME,
+                                                       TxTableEntry.DEFAULT_LOWER_BOUND,
+                                                       txId));
         }
     }
 }
