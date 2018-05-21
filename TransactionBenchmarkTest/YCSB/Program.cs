@@ -57,7 +57,7 @@ namespace TransactionBenchmarkTest.YCSB
 			// REDIS VERSION DB
 			// VersionDb versionDb = RedisVersionDb.Instance;
 			// SINGLETON VERSION DB
-			VersionDb versionDb = SingletonVersionDb.Instance;
+			VersionDb versionDb = SingletonVersionDb.Instance();
 
             YCSBBenchmarkTest test = new YCSBBenchmarkTest(workerCount, taskCountPerWorker, versionDb);
 
@@ -70,25 +70,29 @@ namespace TransactionBenchmarkTest.YCSB
         {
             const int partitionCount = 1;
             const int recordCount = 0;
-            const int executorCount = 4;
+            const int executorCount = 1;
             const int txCountPerExecutor = 1500000;
-            const bool daemonMode = true;
+            //const bool daemonMode = true;
+            const bool daemonMode = false;
             const string dataFile = "ycsb_data_lg_r.in";
             const string operationFile = "ycsb_ops_lg_r.in";
 
             // an executor is responsiable for all flush
             List<List<Tuple<string, int>>> instances = new List<List<Tuple<string, int>>>();
 
+            TxResourceManager resourceManager = new TxResourceManager();
+
             // The default mode of versionDb is daemonMode
-            SingletonPartitionedVersionDb versionDb = SingletonPartitionedVersionDb.Instance(partitionCount, daemonMode);
+            //SingletonPartitionedVersionDb versionDb = SingletonPartitionedVersionDb.Instance(partitionCount, daemonMode);
+            SingletonVersionDb versionDb = SingletonVersionDb.Instance(resourceManager);
             YCSBAsyncBenchmarkTest test = new YCSBAsyncBenchmarkTest(recordCount, 
-                executorCount, txCountPerExecutor, versionDb, instances);
+                executorCount, txCountPerExecutor, versionDb, instances, resourceManager);
 
             test.Setup(dataFile, operationFile);
             test.Run();
             test.Stats();
 
-            versionDb.Active = false;
+            //versionDb.Active = false;
         }
 
         internal static void PinThreadOnCores()

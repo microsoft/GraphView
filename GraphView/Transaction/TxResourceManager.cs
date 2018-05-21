@@ -83,6 +83,8 @@ namespace GraphView.Transaction
         // Entry Resource
         private readonly Queue<ReadSetEntry> readSetEntries;
         private readonly Queue<PostProcessingEntry> postprocessingEntries;
+        private readonly Queue<TxTableEntry> txTableEntries;
+        private readonly Queue<VersionEntry> versionEntries;
 
         public TxResourceManager()
         {
@@ -117,6 +119,8 @@ namespace GraphView.Transaction
 
             this.readSetEntries = new Queue<ReadSetEntry>();
             this.postprocessingEntries = new Queue<PostProcessingEntry>();
+            this.txTableEntries = new Queue<TxTableEntry>();
+            this.versionEntries = new Queue<VersionEntry>();
 
             for (int i = 0; i < TxResourceManager.workingsetCapacity; i++)
             {
@@ -144,6 +148,8 @@ namespace GraphView.Transaction
 
                 this.readSetEntries.Enqueue(new ReadSetEntry());
                 this.postprocessingEntries.Enqueue(new PostProcessingEntry());
+                this.txTableEntries.Enqueue(new TxTableEntry());
+                this.versionEntries.Enqueue(new VersionEntry());
             }
         }
 
@@ -249,6 +255,42 @@ namespace GraphView.Transaction
         internal void RecyclePostProcessingEntry(ref PostProcessingEntry entry)
         {
             this.postprocessingEntries.Enqueue(entry);
+            entry = null;
+        }
+
+        internal TxTableEntry GetTxTableEntry()
+        {
+            if (this.txTableEntries.Count > 0)
+            {
+                return this.txTableEntries.Dequeue();
+            }
+            else
+            {
+                return new TxTableEntry();
+            }
+        }
+
+        internal void RecycleTxTableEntry(ref TxTableEntry entry)
+        {
+            this.txTableEntries.Enqueue(entry);
+            entry = null;
+        }
+
+        internal VersionEntry GetVersionEntry()
+        {
+            if (this.versionEntries.Count > 0)
+            {
+                return this.versionEntries.Dequeue();
+            }
+            else
+            {
+                return new VersionEntry();
+            }
+        }
+
+        internal void RecycleVersionEntry(ref VersionEntry entry)
+        {
+            this.versionEntries.Enqueue(entry);
             entry = null;
         }
 
