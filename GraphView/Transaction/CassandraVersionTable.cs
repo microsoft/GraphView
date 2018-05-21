@@ -57,11 +57,6 @@
         public static readonly string CQL_GET_VERSION_TOP_2 =
             "SELECT * FROM {0} WHERE recordKey = {1} ORDER BY versionKey DESC LIMIT 2";
 
-        public static readonly string CQL_INIT_VERSION =
-            "INSERT INTO {0} (recordKey, versionKey, beginTimestamp, endTimestamp, record, txId, maxCommitTs) " +
-            "VALUES ({1}, {2}, {3}, {4}, {5}, {6}, {7}) " +
-            "IF NOT EXISTS";
-
         public static readonly string CQL_REPLACE_VERSION =
             "UPDATE {0} SET beginTimestamp={1}, endTimestamp={2}, txId={3} " +
             "WHERE recordKey={4} AND versionKey={5} " +
@@ -140,7 +135,7 @@
         {
             VersionEntry emptyEntry = VersionEntry.InitEmptyVersionEntry(recordKey);
 
-            bool applied = this.CQLExecuteWithIf(string.Format(CassandraVersionTable.CQL_INIT_VERSION,
+            bool applied = this.CQLExecuteWithIf(string.Format(CassandraVersionTable.CQL_UPLOAD_VERSION_ENTRY,
                                                                 this.tableId,
                                                                 emptyEntry.RecordKey,
                                                                 emptyEntry.VersionKey,

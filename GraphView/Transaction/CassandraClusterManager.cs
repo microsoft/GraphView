@@ -84,6 +84,9 @@
 				{
 					if (!this.sessionPool.ContainsKey(keyspace))
 					{
+                        ISession session = cluster.Connect();
+                        session.Execute($@"CREATE KEYSPACE IF NOT EXISTS {keyspace} WITH replication = " +
+                                   "{'class':'SimpleStrategy', 'replication_factor':'3'};");
 						this.sessionPool[keyspace] = this.cluster.Connect(keyspace);
 					}
 				}
