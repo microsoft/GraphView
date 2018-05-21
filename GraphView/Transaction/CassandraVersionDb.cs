@@ -148,6 +148,8 @@
         /// Execute with Light Weight Transaction (IF)
         /// result RowSet just has one row, whose `[applied]` column indicates 
         /// the execution's state
+        /// NOTE: `CREATE TABLE IF ...` can not execute with this function, 
+        /// catch `AlreadyExistsException` instead
         /// </summary>
         /// <param name="cql"></param>
         /// <returns>applied or not</returns>
@@ -159,8 +161,10 @@
 
         internal override VersionTable CreateVersionTable(string tableId, long redisDbIndex = 0)
         {
-            bool applied = this.CQLExecuteWithIf(string.Format(CassandraVersionDb.CQL_CREATE_VERSION_TABLE, tableId));
-            if (!applied)   // if `tableId` exists
+            try
+            {
+                this.CQLExecute(string.Format(CassandraVersionDb.CQL_CREATE_VERSION_TABLE, tableId));
+            } catch (AlreadyExistsException e)  // if `tableId` exists
             {
                 return null;
             }
