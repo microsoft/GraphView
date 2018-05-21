@@ -257,42 +257,43 @@
             versionDb.CreateVersionTable(TABLE_ID, REDIS_DB_INDEX);
             Console.WriteLine("Created version table {0}", TABLE_ID);
 
-            //         // step3: load data
-            //         using (StreamReader reader = new StreamReader(dataFile))
-            //         {
-            //             string line;
-            //             int count = 0;
-            //             while ((line = reader.ReadLine()) != null)
-            //             {
-            //                 string[] fields = this.ParseCommandFormat(line);
-            //                 TxWorkload workload = new TxWorkload(fields[0], TABLE_ID, fields[2], fields[3]);
-            //                 count++;
+            // step3: load data
+            using (StreamReader reader = new StreamReader(dataFile))
+            {
+                string line;
+                int count = 0;
+                while ((line = reader.ReadLine()) != null)
+                {
+                    string[] fields = this.ParseCommandFormat(line);
+                    TxWorkload workload = new TxWorkload(fields[0], TABLE_ID, fields[2], fields[3]);
+                    count++;
 
-            //                 ACTION(Tuple.Create(workload, this.versionDb));
-            //                 if (count % 5000 == 0)
-            //                 {
-            //                     Console.WriteLine("Loaded {0} records", count);
-            //                 }
-            //		if (count == 2000000)
-            //		{
-            //			break;
-            //		}
-            //             }
-            //             Console.WriteLine("Load records successfully, {0} records in total", count);
-            //         }
+                    ACTION(Tuple.Create(workload, this.versionDb));
+                    if (count % 10000 == 0)
+                    {
+                        Console.WriteLine("Loaded {0} records", count);
+                    }
+                    if (count == 2000000)
+                    //if (count == 5000)
+                    {
+                        break;
+                    }
+                }
+                Console.WriteLine("Load records successfully, {0} records in total", count);
+            }
 
             //this.versionDb.ClearTxTable();
 
             //preload to make txtable and txqueue full.
-            for (int worker_index = 0; worker_index < this.workerCount; worker_index++)
-            {
-                for (int i = 0; i < TxRange.range; i++)
-                {
-                    this.versionDb.InsertNewTx(i + worker_index * TxRange.range);
-                    this.executors[worker_index].GarbageQueueTxId.Enqueue(i + worker_index * TxRange.range);
-                    this.executors[worker_index].GarbageQueueFinishTime.Enqueue(0);
-                }
-            }
+            //for (int worker_index = 0; worker_index < this.workerCount; worker_index++)
+            //{
+            //    for (int i = 0; i < TxRange.range; i++)
+            //    {
+            //        this.versionDb.InsertNewTx(i + worker_index * TxRange.range);
+            //        this.executors[worker_index].GarbageQueueTxId.Enqueue(i + worker_index * TxRange.range);
+            //        this.executors[worker_index].GarbageQueueFinishTime.Enqueue(0);
+            //    }
+            //}
 
             // step 4: fill workers' queue
             using (StreamReader reader = new StreamReader(operationFile))

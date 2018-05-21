@@ -69,8 +69,11 @@
 		{
 			this.ClusterNodeCount = CassandraSessionManager.DEFAULT_CLUSTER_NODE_COUNT;
 			this.ReadWriteHosts = new string[] { "127.0.0.1" };
-            // to ensure strong consistency
-            QueryOptions queryOptions = new QueryOptions().SetConsistencyLevel(ConsistencyLevel.Quorum)
+
+            // Ensure strong consistency
+            // NOTE: IF there are more than 1 replica, `SetConsistencyLevel(ConsistencyLevel.Quorum)` 
+            // to ensure strong consistency; otherwise,  `SetConsistencyLevel(ConsistencyLevel.One)` is enough.
+            QueryOptions queryOptions = new QueryOptions().SetConsistencyLevel(ConsistencyLevel.One)
                                                           .SetSerialConsistencyLevel(ConsistencyLevel.Serial);
 			this.cluster = Cluster.Builder().AddContactPoints(this.ReadWriteHosts).WithQueryOptions(queryOptions).Build();
 			this.sessionPool = new Dictionary<string, ISession>();
@@ -86,7 +89,7 @@
 					{
                         ISession session = cluster.Connect();
                         session.Execute($@"CREATE KEYSPACE IF NOT EXISTS {keyspace} WITH replication = " +
-                                   "{'class':'SimpleStrategy', 'replication_factor':'3'};");
+                                   "{'class':'SimpleStrategy', 'replication_factor':'1'};");    // there is just 1 replica
 						this.sessionPool[keyspace] = this.cluster.Connect(keyspace);
 					}
 				}

@@ -1,4 +1,5 @@
-﻿using GraphView.Transaction;
+﻿using Cassandra;
+using GraphView.Transaction;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -66,6 +67,55 @@ namespace TransactionBenchmarkTest.YCSB
             test.Stats();
         }
 
+        static void YCSBSyncTestWithCassandra()
+        {
+            const int workerCount = 1;    // 4;
+            const int taskCountPerWorker = 2000;   // 50000;
+            const string dataFile = "ycsb_data_r.in";
+            const string operationFile = "ycsb_ops_r.in";
+
+            // Cassandra version db
+            VersionDb versionDb = CassandraVersionDb.Instance();
+
+            YCSBBenchmarkTest test = new YCSBBenchmarkTest(workerCount, taskCountPerWorker, versionDb);
+
+            test.Setup(dataFile, operationFile);
+            test.Run();
+            test.Stats();
+
+            Console.WriteLine("done");
+            Console.ReadLine();
+        }
+
+        static void test_cassandra()
+        {
+            Cluster cluster = Cluster.Builder().AddContactPoints(new string[] { "127.0.0.1" }).Build();
+            ISession session = cluster.Connect("msra");
+
+            //var rs = session.Execute("INSERT INTO testapply2 (id, k, v) VALUES (3, 2, 3) IF NOT EXISTS");
+            var rs = session.Execute("INSERT INTO test4 (id, k, v, txid) VALUES (1, 'k1', 0x12, -1) IF NOT EXISTS");
+
+            Console.WriteLine("--");
+            var a = rs.GetEnumerator();
+            a.MoveNext();
+            var b = a.Current;
+            var c = b.GetValue<bool>(0);
+
+
+
+            //bool applied = rs.GetEnumerator().Current.GetValue<bool>(0);
+            //Console.WriteLine("applied = {0}", applied);
+
+            //foreach (var row in rs)
+            //{
+            //    Console.WriteLine("applied={0}", row.GetValue<bool>("[applied]"));
+            //    //Console.WriteLine("applied={0}", row.GetValue<bool>(0));
+            //}
+
+            Console.WriteLine("Done");
+            Console.ReadLine();
+        }
+
         static void YCSBAsyncTest()
         {
             const int partitionCount = 1;
@@ -114,12 +164,14 @@ namespace TransactionBenchmarkTest.YCSB
             Program.args = args;
             // For the YCSB sync test
             // YCSBTest();
+            YCSBSyncTestWithCassandra();
+            // test_cassandra();
 
             // For the redis benchmark Test
             // RedisBenchmarkTest();
 
             // For the YCSB async test
-            YCSBAsyncTest();
+            //YCSBAsyncTest();
 
             // ExecuteRedisRawTest();
         }
