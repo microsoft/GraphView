@@ -1,8 +1,8 @@
 ﻿
-using System;
-
 namespace GraphView.Transaction
 {
+    using System;
+
     internal enum RedisRequestType
     {
         HGet,
@@ -15,7 +15,7 @@ namespace GraphView.Transaction
         EvalSha,
     }
 
-    internal class RedisRequest
+    internal class RedisRequest : IResource
     {
         internal object Result { get; private set; }
 
@@ -28,10 +28,13 @@ namespace GraphView.Transaction
         internal int NumberKeysInArgs { get; private set; }
         internal bool Finished { get; set; } = false;
         internal RedisRequestType Type { get; private set; }
+        internal bool InUse { get; set; }
 
         internal TxRequest ParentRequest { get; set; }
         internal RedisResponseVisitor ResponseVisitor { get; set; }
         
+        public RedisRequest() { }
+
         /// <summary>
         /// for HSet, HSetNX command
         /// </summary>
@@ -149,6 +152,21 @@ namespace GraphView.Transaction
             {
                 this.ParentRequest.Finished = true;
             }
+        }
+
+        public void Use()
+        {
+            this.InUse = true;
+        }
+
+        public bool IsActive()
+        {
+            return this.InUse;
+        }
+
+        public void Free()
+        {
+            this.InUse = false;
         }
     }
 }
