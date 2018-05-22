@@ -84,11 +84,11 @@
 				return false;
 			}
             // try to commit here
-            //if (tx.Commit())
-            //{
-            //	return true;
-            //}
-            tx.PostProcessingAfterCommit();
+            if (tx.Commit())
+            {
+                return true;
+            }
+            //tx.PostProcessingAfterCommit();
 			return false;
 		};
 
@@ -247,6 +247,89 @@
 			}
         }
 
+        /// <summary>
+        /// split function "Setup" into `LoadData` and `LoadWorkloads` 
+        /// </summary>
+        /// <param name="dataFile"></param>
+        internal void LoadData(string dataFile, int loadCountMax = -1)
+        {
+            // step1: clear the database
+            this.versionDb.Clear();
+            Console.WriteLine("Cleared the database");
+
+            // step2: create version table
+            versionDb.CreateVersionTable(TABLE_ID, REDIS_DB_INDEX);
+            Console.WriteLine("Created version table {0}", TABLE_ID);
+
+            // step3: load data
+            using (StreamReader reader = new StreamReader(dataFile))
+            {
+                string line;
+                int count = 0;
+                while ((line = reader.ReadLine()) != null)
+                {
+                    string[] fields = this.ParseCommandFormat(line);
+                    TxWorkload workload = new TxWorkload(fields[0], TABLE_ID, fields[2], fields[3]);
+                    count++;
+
+                    ACTION(Tuple.Create(workload, this.versionDb));
+                    if (count % 100 == 0)
+                    {
+                        Console.WriteLine("Loaded {0} records", count);
+                    }
+                    if (count == loadCountMax)
+                    {
+                        break;
+                    }
+                }
+                Console.WriteLine("Load records successfully, {0} records in total", count);
+            }
+        }
+
+        internal void Reset(int workerCount, int taskCountPerWorker, VersionDb versionDb = null)
+        {
+            this.workerCount = workerCount;
+            this.taskCountPerWorker = taskCountPerWorker;
+
+            if (versionDb != null)
+            {
+                this.versionDb = versionDb;
+            }
+
+            this.workers.Clear();
+            for (int i = 0; i < this.workerCount; i++)
+            {
+                this.workers.Add(new Worker(i + 1, taskCountPerWorker));
+            }
+
+            this.executors.Clear();
+            this.transactions.Clear();
+            for (int i = 0; i < this.workerCount; i++)
+            {
+                this.executors.Add(new TransactionExecutor(this.versionDb, null, null, null, i));
+                this.transactions.Add(new Transaction(null, this.versionDb, 10, this.executors[i].GarbageQueueTxId, this.executors[i].GarbageQueueFinishTime));
+            }
+        }
+
+        internal void LoadWorkloads(string opFile)
+        {
+            // step 4: fill workers' queue
+            using (StreamReader reader = new StreamReader(opFile))
+            {
+                string line;
+                for (int worker_index = 0; worker_index < this.workerCount; worker_index++)
+                {
+                    for (int i = 0; i < this.taskCountPerWorker; i++)
+                    {
+                        line = reader.ReadLine();
+                        string[] fields = this.ParseCommandFormat(line);
+                        TxWorkload workload = new TxWorkload(fields[0], TABLE_ID, fields[2], fields[3]);
+                        this.workers[worker_index].EnqueueTxTask(new TxTask(ACTION, Tuple.Create(workload, this.versionDb)));
+                    }
+                }
+            }
+        }
+
         internal void Setup(string dataFile, string operationFile)
         {
             // step1: clear the database
@@ -306,8 +389,8 @@
                         line = reader.ReadLine();
                         string[] fields = this.ParseCommandFormat(line);
                         TxWorkload workload = new TxWorkload(fields[0], TABLE_ID, fields[2], fields[3]);
-						//this.workers[worker_index].EnqueueTxTask(new TxTask(ACTION, Tuple.Create(workload, this.versionDb)));
-						this.workers[worker_index].EnqueueTxTask(new TxTask(ACTION_1, Tuple.Create(workload, this.executors[worker_index], this.transactions[worker_index])));
+						this.workers[worker_index].EnqueueTxTask(new TxTask(ACTION, Tuple.Create(workload, this.versionDb)));
+						//this.workers[worker_index].EnqueueTxTask(new TxTask(ACTION_1, Tuple.Create(workload, this.executors[worker_index], this.transactions[worker_index])));
                     }
                 }
             }
@@ -349,6 +432,15 @@
 
             Console.WriteLine("Finished all tasks");
         }
+
+        internal void rerun(int workerCount, int workloadCountPerWorker, string opFile, VersionDb versionDb = null)
+        {
+            this.Reset(workerCount, workloadCountPerWorker, versionDb);
+            this.LoadWorkloads(opFile);
+            this.Run();
+            this.Stats();
+        }
+
 
         internal void Stats()
         {
