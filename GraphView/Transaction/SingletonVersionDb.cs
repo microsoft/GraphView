@@ -106,7 +106,8 @@ namespace GraphView.Transaction
 
         internal override void EnqueueTxEntryRequest(long txId, TxEntryRequest txEntryRequest)
         {
-            this.dbVisitors[0].Invoke(txEntryRequest);
+            int partitionKey = this.PhysicalPartitionByKey(txId);
+            this.dbVisitors[partitionKey].Invoke(txEntryRequest);
         }
 
         internal override long SetAndGetCommitTime(long txId, long proposedCommitTs)

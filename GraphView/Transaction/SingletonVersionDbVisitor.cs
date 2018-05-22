@@ -60,11 +60,11 @@ namespace GraphView.Transaction
             if (this.txTable.TryGetValue(req.TxId, out txEntry))
             {
                 txEntry.Reset();
-                req.Result = true;
+                req.Result = 1L;
             }
             else
             {
-                req.Result = false;
+                req.Result = 0L;
             }
             req.Finished = true;
         }
@@ -175,6 +175,7 @@ namespace GraphView.Transaction
                 throw new TransactionException("A tx's status has been updated by another tx concurrently.");
             }
 
+            this.resourceManager.RecycleTxTableEntry(ref txEntry);
             req.Result = null;
             req.Finished = true;
         }
