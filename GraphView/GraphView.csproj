@@ -335,6 +335,7 @@
     <Compile Include="Transaction\RedisVersionDb.cs" />
     <Compile Include="Transaction\RedisVersionDbVisitor.cs" />
     <Compile Include="Transaction\RedisVersionTable.cs" />
+    <Compile Include="Transaction\RequestQueue.cs" />
     <Compile Include="Transaction\SingletonPartitionedVersionDb.cs" />
     <Compile Include="Transaction\SingletonPartitionedVersionTable.cs" />
     <Compile Include="Transaction\SingletonVersionDb.cs" />
