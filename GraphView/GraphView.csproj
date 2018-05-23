@@ -339,6 +339,7 @@
     <Compile Include="Transaction\SingletonPartitionedVersionDb.cs" />
     <Compile Include="Transaction\SingletonPartitionedVersionTable.cs" />
     <Compile Include="Transaction\SingletonVersionDb.cs" />
+    <Compile Include="Transaction\SingletonVersionDbVisitor.cs" />
     <Compile Include="Transaction\SingletonVersionDictionaryTable.cs" />
     <Compile Include="Transaction\SingletonVersionTreeMapTable.cs" />
     <Compile Include="Transaction\StoredProcedure.cs" />

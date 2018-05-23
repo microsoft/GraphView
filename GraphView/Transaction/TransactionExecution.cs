@@ -802,14 +802,6 @@ namespace GraphView.Transaction
                             this.requestStack.Push(readReq);
                         }
                     }
-
-                    // Enqueues all requests re-reading the versions. 
-                    // Enqueue requests if the request stack is not empty, if the current transaction 
-                    // has no versions need to be validated, there is no need to return the control
-                    if (this.requestStack.Count != 0)
-                    {
-                        return;
-                    } 
                 }
 
                 foreach (TxRequest req in this.requestStack)
@@ -873,7 +865,6 @@ namespace GraphView.Transaction
                             this.versionDb.EnqueueTxEntryRequest(readVersion.TxId, getTxReq);
                             this.txReqGarbageQueue.Enqueue(getTxReq);
                             this.requestStack.Push(getTxReq);
-                            return;
                         }
                         else
                         {
@@ -907,7 +898,6 @@ namespace GraphView.Transaction
                         this.versionDb.EnqueueVersionEntryRequest(tableId, updateMaxTsReq);
                         this.txReqGarbageQueue.Enqueue(updateMaxTsReq);
                         this.requestStack.Push(updateMaxTsReq);
-                        return;
                     }
                 }
                 // Try to push the version's maxCommitTimestamp if necessary
@@ -1000,7 +990,6 @@ namespace GraphView.Transaction
                         this.versionDb.EnqueueTxEntryRequest(txEntry.TxId, updateCommitBoundReq);
                         this.txReqGarbageQueue.Enqueue(updateCommitBoundReq);
                         this.requestStack.Push(updateCommitBoundReq);
-                        return;
                     }
                 }
                 // The re-read version entry is holden by a concurrent tx and we received the reponse of pushing commit lower bound
@@ -1477,7 +1466,7 @@ namespace GraphView.Transaction
             this.Progress = TxProgress.Read;
 
             // Have not got the version list from GetVersionList request yet.
-            if (this.readVersionList == null)
+            while (this.readVersionList == null)
             {
                 // Have not sent the GetVersionListRequest
                 if (this.requestStack.Count == 0)
@@ -1504,8 +1493,6 @@ namespace GraphView.Transaction
                         this.txReqGarbageQueue.Enqueue(getVlistReq);
                         this.requestStack.Push(getVlistReq);
                     }
-                    
-                    return;
                 }
                 // The reqeust have been sent and now waits for response from GetVersionList request
                 else if (this.requestStack.Count == 1 && this.requestStack.Peek() is GetVersionListRequest)
@@ -1528,6 +1515,7 @@ namespace GraphView.Transaction
 
                     // Sort the version list by the descending order of version keys.
                     this.readVersionList.Sort();
+                    break;
                 }
                 else if (this.requestStack.Count == 1 && this.requestStack.Peek() is InitiGetVersionListRequest)
                 {
@@ -1551,6 +1539,8 @@ namespace GraphView.Transaction
 
                         this.readVersionList = initReq.Container;
                         this.readVersionList.Add(emptyEntry);
+                        // break to keep finishing the remained steps
+                        break;
                     }
                     else
                     {
@@ -1562,7 +1552,6 @@ namespace GraphView.Transaction
                         this.versionDb.EnqueueVersionEntryRequest(tableId, getVlistReq);
                         this.txReqGarbageQueue.Enqueue(getVlistReq);
                         this.requestStack.Push(getVlistReq);
-                        return;
                     }
                 }
                 //else
@@ -1643,7 +1632,6 @@ namespace GraphView.Transaction
                         this.versionDb.EnqueueTxEntryRequest(versionEntry.TxId, getTxReq);
                         this.txReqGarbageQueue.Enqueue(getTxReq);
                         this.requestStack.Push(getTxReq);
-                        return;
                     }
                     else
                     {

@@ -1,4 +1,5 @@
-﻿using GraphView.Transaction;
+﻿using Cassandra;
+using GraphView.Transaction;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -57,7 +58,7 @@ namespace TransactionBenchmarkTest.YCSB
 			// REDIS VERSION DB
 			// VersionDb versionDb = RedisVersionDb.Instance;
 			// SINGLETON VERSION DB
-			VersionDb versionDb = SingletonVersionDb.Instance;
+			VersionDb versionDb = SingletonVersionDb.Instance();
 
             YCSBBenchmarkTest test = new YCSBBenchmarkTest(workerCount, taskCountPerWorker, versionDb);
 
@@ -66,29 +67,82 @@ namespace TransactionBenchmarkTest.YCSB
             test.Stats();
         }
 
+        static void YCSBSyncTestWithCassandra()
+        {
+            const int workerCount = 1;    // 4;
+            const int taskCountPerWorker = 2000;   // 50000;
+            const string dataFile = "ycsb_data_r.in";
+            const string operationFile = "ycsb_ops_r.in";
+
+            // Cassandra version db
+            VersionDb versionDb = CassandraVersionDb.Instance();
+
+            YCSBBenchmarkTest test = new YCSBBenchmarkTest(workerCount, taskCountPerWorker, versionDb);
+
+            test.Setup(dataFile, operationFile);
+            test.Run();
+            test.Stats();
+
+            Console.WriteLine("done");
+            Console.ReadLine();
+        }
+
+        static void test_cassandra()
+        {
+            Cluster cluster = Cluster.Builder().AddContactPoints(new string[] { "127.0.0.1" }).Build();
+            ISession session = cluster.Connect("msra");
+
+            //var rs = session.Execute("INSERT INTO testapply2 (id, k, v) VALUES (3, 2, 3) IF NOT EXISTS");
+            var rs = session.Execute("INSERT INTO test4 (id, k, v, txid) VALUES (1, 'k1', 0x12, -1) IF NOT EXISTS");
+
+            Console.WriteLine("--");
+            var a = rs.GetEnumerator();
+            a.MoveNext();
+            var b = a.Current;
+            var c = b.GetValue<bool>(0);
+
+
+
+            //bool applied = rs.GetEnumerator().Current.GetValue<bool>(0);
+            //Console.WriteLine("applied = {0}", applied);
+
+            //foreach (var row in rs)
+            //{
+            //    Console.WriteLine("applied={0}", row.GetValue<bool>("[applied]"));
+            //    //Console.WriteLine("applied={0}", row.GetValue<bool>(0));
+            //}
+
+            Console.WriteLine("Done");
+            Console.ReadLine();
+        }
+
         static void YCSBAsyncTest()
         {
             const int partitionCount = 1;
             const int recordCount = 0;
-            const int executorCount = 4;
+            const int executorCount = 1;
             const int txCountPerExecutor = 1500000;
-            const bool daemonMode = true;
+            //const bool daemonMode = true;
+            const bool daemonMode = false;
             const string dataFile = "ycsb_data_lg_r.in";
             const string operationFile = "ycsb_ops_lg_r.in";
 
             // an executor is responsiable for all flush
             List<List<Tuple<string, int>>> instances = new List<List<Tuple<string, int>>>();
 
+            TxResourceManager resourceManager = new TxResourceManager();
+
             // The default mode of versionDb is daemonMode
-            SingletonPartitionedVersionDb versionDb = SingletonPartitionedVersionDb.Instance(partitionCount, daemonMode);
+            //SingletonPartitionedVersionDb versionDb = SingletonPartitionedVersionDb.Instance(partitionCount, daemonMode);
+            SingletonVersionDb versionDb = SingletonVersionDb.Instance(resourceManager);
             YCSBAsyncBenchmarkTest test = new YCSBAsyncBenchmarkTest(recordCount, 
-                executorCount, txCountPerExecutor, versionDb, instances);
+                executorCount, txCountPerExecutor, versionDb, instances, resourceManager);
 
             test.Setup(dataFile, operationFile);
             test.Run();
             test.Stats();
 
-            versionDb.Active = false;
+            //versionDb.Active = false;
         }
 
         internal static void PinThreadOnCores()
@@ -114,12 +168,14 @@ namespace TransactionBenchmarkTest.YCSB
             Program.args = args;
             // For the YCSB sync test
             // YCSBTest();
+            YCSBSyncTestWithCassandra();
+            // test_cassandra();
 
             // For the redis benchmark Test
             // RedisBenchmarkTest();
 
             // For the YCSB async test
-            YCSBAsyncTest();
+            //YCSBAsyncTest();
 
             // ExecuteRedisRawTest();
         }

@@ -82,7 +82,7 @@ namespace GraphView.Transaction
 
     }
 
-    public class TransactionExecutor
+    internal class TransactionExecutor
     {
         private int executorId = 0;
 
@@ -170,7 +170,8 @@ namespace GraphView.Transaction
             Queue<TransactionRequest> workload = null,
             List<Tuple<string, int>> instances = null,
             int startRange = -1,
-            int txTimeoutSeconds = 0)
+            int txTimeoutSeconds = 0,
+            TxResourceManager resourceManager = null)
         {
             this.versionDb = versionDb;
             this.logStore = logStore;
@@ -181,7 +182,7 @@ namespace GraphView.Transaction
             this.GarbageQueueTxId = new Queue<long>();
             this.GarbageQueueFinishTime = new Queue<long>();
             this.txRange = startRange < 0 ? null : new TxRange(startRange);
-            this.ResourceManager = new TxResourceManager();
+            this.ResourceManager = resourceManager == null ? new TxResourceManager() : resourceManager;
             this.txRuntimePool = new Queue<Tuple<TransactionExecution, Queue<TransactionRequest>>>();
         }
 

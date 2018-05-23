@@ -55,32 +55,32 @@
     internal partial class CassandraVersionTable
     {
         public static readonly string CQL_GET_VERSION_TOP_2 =
-            "SELECT * FROM {0} WHERE recordKey = {1} ORDER BY versionKey DESC LIMIT 2";
+            "SELECT * FROM {0} WHERE recordKey = '{1}' ORDER BY versionKey DESC LIMIT 2";
 
         public static readonly string CQL_REPLACE_VERSION =
             "UPDATE {0} SET beginTimestamp={1}, endTimestamp={2}, txId={3} " +
-            "WHERE recordKey={4} AND versionKey={5} " +
+            "WHERE recordKey='{4}' AND versionKey={5} " +
             "IF txId={6} AND endTimestamp={7}";
 
         public static readonly string CQL_GET_VERSION_ENTRY =
-            "SELECT * FROM {0} WHERE recordKey={1} AND versionKey={2}";
+            "SELECT * FROM {0} WHERE recordKey='{1}' AND versionKey={2}";
 
         public static readonly string CQL_REPLACE_WHOLE_VERSION =
             "UPDATE {0} SET beginTimestamp={1}, endTimestamp={2}, record={3}, txId={4}, maxCommitTs={5} " +
-            "WHERE recordKey={6} AND versionKey={7} ";
+            "WHERE recordKey='{6}' AND versionKey={7} ";
 
         public static readonly string CQL_UPLOAD_VERSION_ENTRY =
             "INSERT INTO {0} (recordKey, versionKey, beginTimestamp, endTimestamp, record, txId, maxCommitTs) " +
-            "VALUES ({1}, {2}, {3}, {4}, {5}, {6}, {7}) " +
+            "VALUES ('{1}', {2}, {3}, {4}, {5}, {6}, {7}) " +
             "IF NOT EXISTS";
 
         public static readonly string CQL_UPDATE_MAX_COMMIT_TIMESTAMP =
             "UPDATE {0} SET maxCommitTs = {1} " +
-            "WHERE recordKey={2} AND versionKey={3} " +
+            "WHERE recordKey='{2}' AND versionKey={3} " +
             "IF maxCommitTs < {1}";
 
         public static readonly string CQL_DELETE_VERSION_ENTRY =
-            "DELETE FROM {0} WHERE recordKey = {1} AND versionKey = {2} IF EXISTS";
+            "DELETE FROM {0} WHERE recordKey = '{1}' AND versionKey = {2} IF EXISTS";
           
     }
 
@@ -98,16 +98,20 @@
         }
 
         /// <summary>
-        /// Execute with Light Weight Transaction (IF)
+        /// Execute statements with Light Weight Transaction (IF),
         /// result RowSet just has one row, whose `[applied]` column indicates 
         /// the execution's state
+        /// NOTE: `CREATE TABLE IF ...` can not be executed with this function, 
+        /// catch `AlreadyExistsException` instead
         /// </summary>
         /// <param name="cql"></param>
         /// <returns>applied or not</returns>
-        internal bool CQLExecuteWithIf(string cql)
+        internal bool CQLExecuteWithIfApplied(string cql)
         {
             var rs = this.SessionManager.GetSession(CassandraVersionDb.DEFAULT_KEYSPACE).Execute(cql);
-            return rs.GetEnumerator().Current.GetValue<bool>("[applied]");
+            var rse = rs.GetEnumerator();
+            rse.MoveNext();
+            return rse.Current.GetValue<bool>("[applied]");
         }
 
         internal override IEnumerable<VersionEntry> GetVersionList(object recordKey)
@@ -118,13 +122,13 @@
             foreach (var row in rs)
             {
                 entries.Add(new VersionEntry(
-                    row.GetValue<string>("recordKey"),
-                    row.GetValue<long>("versionKey"),
-                    row.GetValue<long>("beginTimestamp"),
-                    row.GetValue<long>("endTimestamp"),
+                    row.GetValue<string>("recordkey"),
+                    row.GetValue<long>("versionkey"),
+                    row.GetValue<long>("begintimestamp"),
+                    row.GetValue<long>("endtimestamp"),
                     BytesSerializer.Deserialize(row.GetValue<byte[]>("record")),
-                    row.GetValue<long>("txId"),
-                    row.GetValue<long>("maxCommitTs")
+                    row.GetValue<long>("txid"),
+                    row.GetValue<long>("maxcommitts")
                 ));
             }
 
@@ -135,7 +139,7 @@
         {
             VersionEntry emptyEntry = VersionEntry.InitEmptyVersionEntry(recordKey);
 
-            bool applied = this.CQLExecuteWithIf(string.Format(CassandraVersionTable.CQL_UPLOAD_VERSION_ENTRY,
+            bool applied = this.CQLExecuteWithIfApplied(string.Format(CassandraVersionTable.CQL_UPLOAD_VERSION_ENTRY,
                                                                 this.tableId,
                                                                 emptyEntry.RecordKey,
                                                                 emptyEntry.VersionKey,
@@ -156,7 +160,7 @@
         internal override VersionEntry ReplaceVersionEntry(object recordKey, long versionKey, long beginTimestamp, long endTimestamp, long txId, long readTxId, long expectedEndTimestamp)
         {
             
-            this.CQLExecuteWithIf(string.Format(CassandraVersionTable.CQL_REPLACE_VERSION,
+            this.CQLExecuteWithIfApplied(string.Format(CassandraVersionTable.CQL_REPLACE_VERSION,
                                                 this.tableId, beginTimestamp, endTimestamp, txId,
                                                 recordKey as string, versionKey,
                                                 readTxId, expectedEndTimestamp));
@@ -178,7 +182,7 @@
 
         internal override bool UploadNewVersionEntry(object recordKey, long versionKey, VersionEntry versionEntry)
         {
-            return this.CQLExecuteWithIf(string.Format(CassandraVersionTable.CQL_UPLOAD_VERSION_ENTRY,
+            return this.CQLExecuteWithIfApplied(string.Format(CassandraVersionTable.CQL_UPLOAD_VERSION_ENTRY,
                                                       this.tableId,
                                                       versionEntry.RecordKey as string,
                                                       versionEntry.VersionKey,
@@ -191,14 +195,14 @@
 
         internal override VersionEntry UpdateVersionMaxCommitTs(object recordKey, long versionKey, long commitTs)
         {           
-            this.CQLExecuteWithIf(string.Format(CassandraVersionTable.CQL_UPDATE_MAX_COMMIT_TIMESTAMP,
+            this.CQLExecuteWithIfApplied(string.Format(CassandraVersionTable.CQL_UPDATE_MAX_COMMIT_TIMESTAMP,
                                             this.tableId, commitTs, recordKey as string, versionKey));
             return this.GetVersionEntryByKey(recordKey, versionKey);
         }
 
         internal override bool DeleteVersionEntry(object recordKey, long versionKey)
         {
-            return this.CQLExecuteWithIf(string.Format(CassandraVersionTable.CQL_DELETE_VERSION_ENTRY,
+            return this.CQLExecuteWithIfApplied(string.Format(CassandraVersionTable.CQL_DELETE_VERSION_ENTRY,
                                                        recordKey as string, versionKey));
         }
 
@@ -213,11 +217,11 @@
             }
 
             return new VersionEntry(
-                recordKey, versionKey, row.GetValue<long>("beginTimestamp"),
-                row.GetValue<long>("endTimestamp"),
+                recordKey, versionKey, row.GetValue<long>("begintimestamp"),
+                row.GetValue<long>("endtimestamp"),
                 BytesSerializer.Deserialize(row.GetValue<byte[]>("record")),
-                row.GetValue<long>("txId"),
-                row.GetValue<long>("maxCommitTs"));
+                row.GetValue<long>("txid"),
+                row.GetValue<long>("maxcommitts"));
         }
 
         internal override IDictionary<VersionPrimaryKey, VersionEntry> GetVersionEntryByKey(IEnumerable<VersionPrimaryKey> batch)

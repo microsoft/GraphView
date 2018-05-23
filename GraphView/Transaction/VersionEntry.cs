@@ -41,6 +41,11 @@ namespace GraphView.Transaction
         internal long TxId { get; set; }
         internal long MaxCommitTs { get; set; }
 
+        public VersionEntry()
+        {
+
+        }
+
         public VersionEntry(
             object recordKey,
             long versionKey,
