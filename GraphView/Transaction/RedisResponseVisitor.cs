@@ -91,7 +91,7 @@ namespace GraphView.Transaction
             catch (Exception)
             {
                 req.Result = 0L;
-            } 
+            }
         }
 
         internal override void Visit(ReadVersionRequest req)

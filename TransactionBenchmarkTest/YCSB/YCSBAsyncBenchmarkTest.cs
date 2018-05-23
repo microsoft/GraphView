@@ -131,15 +131,12 @@
             }
         }
 
-        internal TxResourceManager resourceManager;
-
         public YCSBAsyncBenchmarkTest(
             int recordCount,
             int executorCount, 
             int txCountPerExecutor, 
             VersionDb versionDb, 
-            List<List<Tuple<string, int>>> instances = null,
-            TxResourceManager resourceManager = null)
+            List<List<Tuple<string, int>>> instances = null)
         {
             this.versionDb = versionDb;
             this.recordCount = recordCount;
@@ -153,8 +150,6 @@
                 throw new ArgumentException("instances mustn't be null and the size should be smaller or equal to executorCount");
             }
             this.partitionedInstances = instances;
-
-            this.resourceManager = resourceManager;
         }
 
         internal void Setup(string dataFile, string operationFile)
@@ -190,7 +185,7 @@
 
             foreach (TransactionExecutor executor in this.executorList)
             {
-                Thread thread = new Thread(new ThreadStart(executor.ExecuteNoFlush));
+                Thread thread = new Thread(new ThreadStart(executor.ExecuteNoFlush_1));
                 threadList.Add(thread);
                 thread.Start();
             }
@@ -312,7 +307,7 @@
                         null :
                         instances[i];
 
-                    executors.Add(new TransactionExecutor(this.versionDb, null, reqQueue, executorInstances, i, 0, this.resourceManager));
+                    executors.Add(new TransactionExecutor(this.versionDb, null, reqQueue, executorInstances, i, 0));
                 }
             }
 
@@ -411,7 +406,7 @@
                         null :
                         this.partitionedInstances[instanceIndex++];
 
-                    this.executorList.Add(new TransactionExecutor(this.versionDb, null, reqQueue, executorInstances, i, 0, this.resourceManager));
+                    this.executorList.Add(new TransactionExecutor(this.versionDb, null, reqQueue, executorInstances, i, 0));
                 }
             }
         }

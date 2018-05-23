@@ -1734,9 +1734,9 @@ namespace GraphView.Transaction
         {
             Debug.Assert(this.Progress == TxProgress.Open);
 
-            //this.CurrentProc = this.uploadProc;
-            //this.CurrentProc();
-            this.WriteToLog();
+            this.CurrentProc = this.uploadProc;
+            this.CurrentProc();
+            //this.WriteToLog();
         }
 
         private void RecycleContainerResource()

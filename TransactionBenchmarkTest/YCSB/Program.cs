@@ -69,22 +69,53 @@ namespace TransactionBenchmarkTest.YCSB
 
         static void YCSBSyncTestWithCassandra()
         {
-            const int workerCount = 1;    // 4;
-            const int taskCountPerWorker = 2000;   // 50000;
+            //const int workerCount = 1;    // 4;
+            //const int taskCountPerWorker = 2000;   // 50000;
+
             const string dataFile = "ycsb_data_r.in";
             const string operationFile = "ycsb_ops_r.in";
 
             // Cassandra version db
             VersionDb versionDb = CassandraVersionDb.Instance();
+            YCSBBenchmarkTest test = new YCSBBenchmarkTest(0, 0, versionDb);
+            //test.LoadData(dataFile);
 
-            YCSBBenchmarkTest test = new YCSBBenchmarkTest(workerCount, taskCountPerWorker, versionDb);
+            //test.rerun(1, 2000, operationFile);
+            //Console.WriteLine("*****************************************************");
 
-            test.Setup(dataFile, operationFile);
-            test.Run();
-            test.Stats();
+            //test.rerun(1, 10000, operationFile);
+            //Console.WriteLine("*****************************************************");
+
+            //test.rerun(2, 10000, operationFile);
+            //Console.WriteLine("*****************************************************");
+
+            //test.rerun(4, 10000, operationFile);
+            //Console.WriteLine("*****************************************************");
+
+            //test.rerun(6, 10000, operationFile);
+            //Console.WriteLine("*****************************************************");
+
+            //test.rerun(8, 10000, operationFile);
+            //Console.WriteLine("*****************************************************");
+
+            //test.rerun(10, 10000, operationFile);
+            //Console.WriteLine("*****************************************************");
+
+            //test.rerun(20, 10000, operationFile);
+            //Console.WriteLine("*****************************************************");
+
+            //test.rerun(50, 10000, operationFile);
+            //Console.WriteLine("*****************************************************");
+
+            test.rerun(100, 5000, operationFile);
+            Console.WriteLine("*****************************************************");
+
+            test.rerun(200, 2500, operationFile);
+            Console.WriteLine("*****************************************************");
+
 
             Console.WriteLine("done");
-            Console.ReadLine();
+            //Console.ReadLine();
         }
 
         static void test_cassandra()
@@ -120,8 +151,8 @@ namespace TransactionBenchmarkTest.YCSB
         {
             const int partitionCount = 1;
             const int recordCount = 0;
-            const int executorCount = 1;
-            const int txCountPerExecutor = 1500000;
+            const int executorCount = 8;
+            const int txCountPerExecutor = 1000000;
             //const bool daemonMode = true;
             const bool daemonMode = false;
             const string dataFile = "ycsb_data_lg_r.in";
@@ -130,13 +161,17 @@ namespace TransactionBenchmarkTest.YCSB
             // an executor is responsiable for all flush
             List<List<Tuple<string, int>>> instances = new List<List<Tuple<string, int>>>();
 
-            TxResourceManager resourceManager = new TxResourceManager();
+            List<TxResourceManager> resourceManagers = new List<TxResourceManager>();
+            for (int i = 0; i < executorCount; i++)
+            {
+                resourceManagers.Add(new TxResourceManager());
+            }
 
             // The default mode of versionDb is daemonMode
             //SingletonPartitionedVersionDb versionDb = SingletonPartitionedVersionDb.Instance(partitionCount, daemonMode);
-            SingletonVersionDb versionDb = SingletonVersionDb.Instance(resourceManager);
+            SingletonVersionDb versionDb = SingletonVersionDb.Instance(resourceManagers);
             YCSBAsyncBenchmarkTest test = new YCSBAsyncBenchmarkTest(recordCount, 
-                executorCount, txCountPerExecutor, versionDb, instances, resourceManager);
+                executorCount, txCountPerExecutor, versionDb, instances);
 
             test.Setup(dataFile, operationFile);
             test.Run();
@@ -168,14 +203,14 @@ namespace TransactionBenchmarkTest.YCSB
             Program.args = args;
             // For the YCSB sync test
             // YCSBTest();
-            YCSBSyncTestWithCassandra();
+            // YCSBSyncTestWithCassandra();
             // test_cassandra();
 
             // For the redis benchmark Test
             // RedisBenchmarkTest();
 
             // For the YCSB async test
-            //YCSBAsyncTest();
+            YCSBAsyncTest();
 
             // ExecuteRedisRawTest();
         }
