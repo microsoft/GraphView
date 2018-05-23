@@ -63,6 +63,9 @@ namespace GraphView.Transaction
 
         internal Dictionary<string, Dictionary<object, long>> largestVersionKeyMap;
 
+        private string readTableId;
+
+        private object readRecordKey;
 
         /// <summary>
         /// The list resource in the execution phase
@@ -126,6 +129,9 @@ namespace GraphView.Transaction
         private List<ReplaceVersionRequest> replaceReqList = new List<ReplaceVersionRequest>();
         private Procedure commitVersionProc;
 
+        private Procedure readVersionListProc;
+        private Procedure readCheckVersionEntryProc;
+
         internal long ExecutionSeconds
         {
             get
@@ -168,6 +174,8 @@ namespace GraphView.Transaction
             this.commitTsProc = new Procedure(this.FinalizeCommitTs);
             this.updateTxProc = new Procedure(this.UpdateTxStatus);
             this.commitVersionProc = new Procedure(this.CommitModifications);
+            this.readVersionListProc = new Procedure(this.ReadVersionList);
+            this.readCheckVersionEntryProc = new Procedure(this.ReadCheckVersionEntry);
 
             this.commitTs = TxTableEntry.DEFAULT_COMMIT_TIME;
             this.maxCommitTsOfWrites = -1L;
@@ -1326,12 +1334,10 @@ namespace GraphView.Transaction
                 else
                 {
                     this.writeSet[tableId][recordKey] = record;
-                    return;
                 }
             }
-
             // Checks whether the record is already in the local read set
-            if (this.readSet.ContainsKey(tableId) &&
+            else if (this.readSet.ContainsKey(tableId) &&
                 this.readSet[tableId].ContainsKey(recordKey))
             {
                 this.SetAbortMsg("record is already in the local read set");
@@ -1339,19 +1345,29 @@ namespace GraphView.Transaction
                 this.CurrentProc();
                 //throw new TransactionException("The same record already exists.");
             }
-
-            // Add the new record to local writeSet
-            if (!this.writeSet.ContainsKey(tableId))
+            // Neither the readSet and writeSet have the recordKey
+            else
             {
-                this.writeSet[tableId] = new Dictionary<object, object>();
-            }
+                // Add the new record to local writeSet
+                if (!this.writeSet.ContainsKey(tableId))
+                {
+                    this.writeSet[tableId] = new Dictionary<object, object>();
+                }
 
-            this.writeSet[tableId][recordKey] = record;
+                this.writeSet[tableId][recordKey] = record;
+            }
+            this.Procedure?.InsertCallBack(tableId, recordKey, record);
         }
 
         public void Read(string tableId, object recordKey, out bool received, out object payload)
         {
             this.Read(tableId, recordKey, false, out received, out payload);
+
+            // If it has read the payload back, execute the read callback
+            if (received)
+            {
+                this.Procedure?.ReadCallback(tableId, recordKey, payload);
+            }
         }
 
         public void Update(string tableId, object recordKey, object payload)
@@ -1391,6 +1407,8 @@ namespace GraphView.Transaction
                 this.CurrentProc();
                 //throw new TransactionException("The record has not been read or does not exist. Cannot update it.");
             }
+
+            this.Procedure?.UpdateCallBack(tableId, recordKey, payload);
         }
 
         public void Delete(string tableId, object recordKey, out object payload)
@@ -1430,6 +1448,7 @@ namespace GraphView.Transaction
                 this.CurrentProc();
                 // throw new TransactionException("The record has not been read or does not exist. Cannot delete it.");
             }
+            this.Procedure?.DeleteCallBack(tableId, recordKey, payload);
         }
 
         public void ReadAndInitialize(string tableId, object recordKey, out bool received, out object payload)
@@ -1448,6 +1467,7 @@ namespace GraphView.Transaction
             {
                 payload = this.writeSet[tableId][recordKey];
                 received = true;
+                this.Procedure?.ReadCallback(tableId, recordKey, payload);
                 return;
             }
 
@@ -1457,6 +1477,7 @@ namespace GraphView.Transaction
             {
                 payload =  this.readSet[tableId][recordKey].Record;
                 received = true;
+                this.Procedure?.ReadCallback(tableId, recordKey, payload);
                 return;
             }
 
@@ -1464,102 +1485,107 @@ namespace GraphView.Transaction
             // the tx should send requests to get version list from storage, set the Progress as READ 
             // to prevent other operations.
             this.Progress = TxProgress.Read;
-
-            // Have not got the version list from GetVersionList request yet.
-            while (this.readVersionList == null)
+            List<VersionEntry> container = this.executor.ResourceManager.GetVersionList();
+            if (initi)
             {
-                // Have not sent the GetVersionListRequest
-                if (this.requestStack.Count == 0)
-                {
-                    List<VersionEntry> container = this.executor.ResourceManager.GetVersionList();
+                InitiGetVersionListRequest initiGetVersionListReq =
+                    this.executor.ResourceManager.GetInitiGetVersionListRequest(tableId, recordKey);
+                initiGetVersionListReq.Container = container;
 
-                    if (initi)
-                    {
-                        InitiGetVersionListRequest initiGetVersionListReq = 
-                            this.executor.ResourceManager.GetInitiGetVersionListRequest(tableId, recordKey);
-                        initiGetVersionListReq.Container = container;
+                this.versionDb.EnqueueVersionEntryRequest(tableId, initiGetVersionListReq);
+                this.txReqGarbageQueue.Enqueue(initiGetVersionListReq);
+                this.requestStack.Push(initiGetVersionListReq);
+            }
+            else
+            {
+                GetVersionListRequest getVlistReq =
+                    this.executor.ResourceManager.GetVersionListRequest(tableId, recordKey);
+                getVlistReq.Container = container;
 
-                        this.versionDb.EnqueueVersionEntryRequest(tableId, initiGetVersionListReq);
-                        this.txReqGarbageQueue.Enqueue(initiGetVersionListReq);
-                        this.requestStack.Push(initiGetVersionListReq);
-                    }
-                    else
-                    {
-                        GetVersionListRequest getVlistReq =
-                            this.executor.ResourceManager.GetVersionListRequest(tableId, recordKey);
-                        getVlistReq.Container = container;
-
-                        this.versionDb.EnqueueVersionEntryRequest(tableId, getVlistReq);
-                        this.txReqGarbageQueue.Enqueue(getVlistReq);
-                        this.requestStack.Push(getVlistReq);
-                    }
-                }
-                // The reqeust have been sent and now waits for response from GetVersionList request
-                else if (this.requestStack.Count == 1 && this.requestStack.Peek() is GetVersionListRequest)
-                {
-                    if (!this.requestStack.Peek().Finished)
-                    {
-                        return;
-                    }
-
-                    GetVersionListRequest getVersionListReq = this.requestStack.Pop() as GetVersionListRequest;
-                    this.readVersionList = getVersionListReq.Result as List<VersionEntry>;
-
-                    if (this.readVersionList == null)
-                    {
-                        received = true;
-                        payload = null;
-                        this.Progress = TxProgress.Open;
-                        return;
-                    }
-
-                    // Sort the version list by the descending order of version keys.
-                    this.readVersionList.Sort();
-                    break;
-                }
-                else if (this.requestStack.Count == 1 && this.requestStack.Peek() is InitiGetVersionListRequest)
-                {
-                    if (!this.requestStack.Peek().Finished)
-                    {
-                        return;
-                    }
-
-                    InitiGetVersionListRequest initReq = this.requestStack.Pop() as InitiGetVersionListRequest;
-                    // The current version list is empty and initilized
-                    if ((long)initReq.Result == 1)
-                    {
-                        received = true;
-                        payload = null;
-                        if (!this.largestVersionKeyMap.ContainsKey(tableId))
-                        {
-                            this.largestVersionKeyMap[tableId] = new Dictionary<object, long>();
-                        }
-                        this.largestVersionKeyMap[tableId][recordKey] = VersionEntry.VERSION_KEY_STRAT_INDEX;
-                        VersionEntry emptyEntry = VersionEntry.InitEmptyVersionEntry(initReq.RecordKey);
-
-                        this.readVersionList = initReq.Container;
-                        this.readVersionList.Add(emptyEntry);
-                        // break to keep finishing the remained steps
-                        break;
-                    }
-                    else
-                    {
-                        List<VersionEntry> container = this.executor.ResourceManager.GetVersionList();
-                        GetVersionListRequest getVlistReq = 
-                            this.executor.ResourceManager.GetVersionListRequest(tableId, recordKey);
-                        getVlistReq.Container = container;
-                            
-                        this.versionDb.EnqueueVersionEntryRequest(tableId, getVlistReq);
-                        this.txReqGarbageQueue.Enqueue(getVlistReq);
-                        this.requestStack.Push(getVlistReq);
-                    }
-                }
-                //else
-                //{
-                //    throw new TransactionException("An illegal state of tx read");
-                //}
+                this.versionDb.EnqueueVersionEntryRequest(tableId, getVlistReq);
+                this.txReqGarbageQueue.Enqueue(getVlistReq);
+                this.requestStack.Push(getVlistReq);
             }
 
+            this.readTableId = tableId;
+            this.readRecordKey = recordKey;
+            this.CurrentProc = this.readVersionListProc;
+            this.CurrentProc();
+        }
+
+        //private string tableId;
+        //private object recordKey;
+
+        internal void ReadVersionList()
+        {
+            // The reqeust have been sent and now waits for response from GetVersionList request
+            if (this.requestStack.Count == 1 && this.requestStack.Peek() is GetVersionListRequest)
+            {
+                if (!this.requestStack.Peek().Finished)
+                {
+                    return;
+                }
+
+                GetVersionListRequest getVersionListReq = this.requestStack.Pop() as GetVersionListRequest;
+                this.readVersionList = getVersionListReq.Result as List<VersionEntry>;
+
+                if (this.readVersionList == null)
+                { 
+                    // abort or continue?
+                    this.Progress = TxProgress.Open;
+                    this.CurrentProc = null;
+                    this.Procedure?.ReadCallback(this.readTableId, this.readRecordKey, null);
+                    return;
+                }
+
+                // Sort the version list by the descending order of version keys.
+                this.readVersionList.Sort();
+                this.CurrentProc = this.readCheckVersionEntryProc;
+                this.CurrentProc();
+            }
+            else if (this.requestStack.Count == 1 && this.requestStack.Peek() is InitiGetVersionListRequest)
+            {
+                if (!this.requestStack.Peek().Finished)
+                {
+                    return;
+                }
+
+                InitiGetVersionListRequest initReq = this.requestStack.Pop() as InitiGetVersionListRequest;
+                // The current version list is empty and initilized
+                if ((long)initReq.Result == 1)
+                {
+                    if (!this.largestVersionKeyMap.ContainsKey(this.readTableId))
+                    {
+                        this.largestVersionKeyMap[this.readTableId] = new Dictionary<object, long>();
+                    }
+                    this.largestVersionKeyMap[this.readTableId][this.readRecordKey] = VersionEntry.VERSION_KEY_STRAT_INDEX;
+                    VersionEntry emptyEntry = VersionEntry.InitEmptyVersionEntry(initReq.RecordKey);
+
+                    this.readVersionList = initReq.Container;
+                    this.readVersionList.Add(emptyEntry);
+
+                    this.CurrentProc = this.readCheckVersionEntryProc;
+                    this.CurrentProc();
+                }
+                else
+                {
+                    List<VersionEntry> container = this.executor.ResourceManager.GetVersionList();
+                    GetVersionListRequest getVlistReq =
+                        this.executor.ResourceManager.GetVersionListRequest(this.readTableId, this.readRecordKey);
+                    getVlistReq.Container = container;
+
+                    this.versionDb.EnqueueVersionEntryRequest(this.readTableId, getVlistReq);
+                    this.txReqGarbageQueue.Enqueue(getVlistReq);
+                    this.requestStack.Push(getVlistReq);
+
+                    this.CurrentProc = this.readVersionListProc;
+                    this.CurrentProc();
+                }
+            }
+        }
+
+        internal void ReadCheckVersionEntry()
+        {
             VersionEntry visibleVersion = null;
             // Keep a committed version to retrieve the largest version key
             VersionEntry committedVersion = null;
@@ -1590,7 +1616,7 @@ namespace GraphView.Transaction
                     this.readVersionList.RemoveAt(lastIndex);
 
                     // If the version entry is a dirty write, skips the entry.
-                    if (versionEntry.EndTimestamp == VersionEntry.DEFAULT_END_TIMESTAMP && 
+                    if (versionEntry.EndTimestamp == VersionEntry.DEFAULT_END_TIMESTAMP &&
                         (pendingTx.Status == TxStatus.Ongoing || pendingTx.Status == TxStatus.Aborted))
                     {
                         continue;
@@ -1626,7 +1652,7 @@ namespace GraphView.Transaction
                     if (versionEntry.TxId >= 0)
                     {
                         // Send the GetTxEntry request
-                        GetTxEntryRequest getTxReq = 
+                        GetTxEntryRequest getTxReq =
                             this.executor.ResourceManager.GetTxEntryRequest(versionEntry.TxId);
 
                         this.versionDb.EnqueueTxEntryRequest(versionEntry.TxId, getTxReq);
@@ -1637,11 +1663,11 @@ namespace GraphView.Transaction
                     {
                         committedVersion = versionEntry;
                         // When a tx has a begin timestamp after intialization
-                        if (this.beginTimestamp >= 0 && 
-                            this.beginTimestamp >= versionEntry.BeginTimestamp && 
+                        if (this.beginTimestamp >= 0 &&
+                            this.beginTimestamp >= versionEntry.BeginTimestamp &&
                             this.beginTimestamp < versionEntry.EndTimestamp)
                         {
-                            
+
                             visibleVersion = versionEntry;
                         }
                         // When a tx has no begin timestamp after intialization, the tx is under serializability. 
@@ -1662,13 +1688,13 @@ namespace GraphView.Transaction
                 //}
 
                 // Retrieve the largest version key from commit version entry
-                if (!this.largestVersionKeyMap.ContainsKey(tableId))
+                if (!this.largestVersionKeyMap.ContainsKey(this.readTableId))
                 {
-                    this.largestVersionKeyMap[tableId] = new Dictionary<object, long>();
+                    this.largestVersionKeyMap[this.readTableId] = new Dictionary<object, long>();
                 }
-                if (!this.largestVersionKeyMap[tableId].ContainsKey(recordKey) && committedVersion != null)
+                if (!this.largestVersionKeyMap[this.readTableId].ContainsKey(this.readRecordKey) && committedVersion != null)
                 {
-                    this.largestVersionKeyMap[tableId][recordKey] = committedVersion.VersionKey;
+                    this.largestVersionKeyMap[this.readTableId][this.readRecordKey] = committedVersion.VersionKey;
                 }
 
                 // Break the loop once find a visiable version
@@ -1678,17 +1704,18 @@ namespace GraphView.Transaction
                 }
             }
 
+            object payload = null;
             if (visibleVersion != null)
             {
                 payload = visibleVersion.Record;
 
                 // Add the record to local readSet
-                if (!this.readSet.ContainsKey(tableId))
+                if (!this.readSet.ContainsKey(this.readTableId))
                 {
-                    this.readSet[tableId] = new Dictionary<object, ReadSetEntry>();
+                    this.readSet[this.readTableId] = new Dictionary<object, ReadSetEntry>();
                 }
 
-                this.readSet[tableId][recordKey] = new ReadSetEntry(
+                this.readSet[this.readTableId][this.readRecordKey] = new ReadSetEntry(
                     visibleVersion.VersionKey,
                     visibleVersion.BeginTimestamp,
                     visibleVersion.EndTimestamp,
@@ -1696,10 +1723,11 @@ namespace GraphView.Transaction
                     visibleVersion.Record);
             }
 
-            // reset read version list
-            this.executor.ResourceManager.RecycleVersionList(ref this.readVersionList);
             this.Progress = TxProgress.Open;
-            received = true;
+            this.CurrentProc = null;
+            this.executor.ResourceManager.RecycleVersionList(ref this.readVersionList);
+            // read call back
+            this.Procedure?.ReadCallback(this.readTableId, this.readRecordKey, payload);
         }
 
         public void Commit()
