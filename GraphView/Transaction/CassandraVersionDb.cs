@@ -65,6 +65,12 @@
             }
             return CassandraVersionDb.instance;
         }
+
+        internal override void EnqueueTxEntryRequest(long txId, TxEntryRequest txEntryRequest)
+        {
+            int pk = this.PhysicalPartitionByKey(txId);
+            this.dbVisitors[pk].Invoke(txEntryRequest);
+        }
     }
 
     /// <summary>
@@ -290,8 +296,10 @@
         internal override TxTableEntry GetTxTableEntry(long txId)
         {
             var rs = this.CQLExecute(string.Format(CassandraVersionDb.CQL_GET_TX_TABLE_ENTRY, 
-                                                    VersionDb.TX_TABLE, txId));                
-            Row row = rs.GetEnumerator().Current;
+                                                    VersionDb.TX_TABLE, txId));
+            var rse = rs.GetEnumerator();
+            rse.MoveNext();
+            Row row = rse.Current;
             if (row == null)
             {
                 return null;
@@ -317,11 +325,13 @@
                                                 proposedCommitTime,
                                                 txId));
             var rs = this.CQLExecute(string.Format(CassandraVersionDb.CQL_GET_TX_TABLE_ENTRY,
-                                                   VersionDb.TX_TABLE, txId));            
-            Row row = rs.GetEnumerator().Current;
+                                                   VersionDb.TX_TABLE, txId));
+            var rse = rs.GetEnumerator();
+            rse.MoveNext();
+            Row row = rse.Current;
             if (row == null)
             {
-                return -1;
+                return -1L;
             }
 
             return row.GetValue<long>("committime");
@@ -334,7 +344,9 @@
 
             var rs = this.CQLExecute(string.Format(CassandraVersionDb.CQL_GET_TX_TABLE_ENTRY,
                                                    VersionDb.TX_TABLE, txId));
-            Row row = rs.GetEnumerator().Current;
+            var rse = rs.GetEnumerator();
+            rse.MoveNext();
+            Row row = rse.Current;
             if (row == null)
             {
                 return -2L;

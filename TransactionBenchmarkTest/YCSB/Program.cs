@@ -69,22 +69,53 @@ namespace TransactionBenchmarkTest.YCSB
 
         static void YCSBSyncTestWithCassandra()
         {
-            const int workerCount = 1;    // 4;
-            const int taskCountPerWorker = 2000;   // 50000;
+            //const int workerCount = 1;    // 4;
+            //const int taskCountPerWorker = 2000;   // 50000;
+
             const string dataFile = "ycsb_data_r.in";
             const string operationFile = "ycsb_ops_r.in";
 
             // Cassandra version db
             VersionDb versionDb = CassandraVersionDb.Instance();
+            YCSBBenchmarkTest test = new YCSBBenchmarkTest(0, 0, versionDb);
+            //test.LoadData(dataFile);
 
-            YCSBBenchmarkTest test = new YCSBBenchmarkTest(workerCount, taskCountPerWorker, versionDb);
+            //test.rerun(1, 2000, operationFile);
+            //Console.WriteLine("*****************************************************");
 
-            test.Setup(dataFile, operationFile);
-            test.Run();
-            test.Stats();
+            //test.rerun(1, 10000, operationFile);
+            //Console.WriteLine("*****************************************************");
+
+            //test.rerun(2, 10000, operationFile);
+            //Console.WriteLine("*****************************************************");
+
+            //test.rerun(4, 10000, operationFile);
+            //Console.WriteLine("*****************************************************");
+
+            //test.rerun(6, 10000, operationFile);
+            //Console.WriteLine("*****************************************************");
+
+            //test.rerun(8, 10000, operationFile);
+            //Console.WriteLine("*****************************************************");
+
+            //test.rerun(10, 10000, operationFile);
+            //Console.WriteLine("*****************************************************");
+
+            //test.rerun(20, 10000, operationFile);
+            //Console.WriteLine("*****************************************************");
+
+            //test.rerun(50, 10000, operationFile);
+            //Console.WriteLine("*****************************************************");
+
+            test.rerun(100, 5000, operationFile);
+            Console.WriteLine("*****************************************************");
+
+            test.rerun(200, 2500, operationFile);
+            Console.WriteLine("*****************************************************");
+
 
             Console.WriteLine("done");
-            Console.ReadLine();
+            //Console.ReadLine();
         }
 
         static void test_cassandra()
