@@ -294,7 +294,7 @@ namespace GraphView.Transaction
                     txReq = this.workload.Peek();
                 }
 
-                for (int sid = 0; sid < this.workingSet.Count; sid++)
+                for (int sid = 0; sid < this.workingSet.Count;)
                 {
                     Tuple<TransactionExecution, Queue<TransactionRequest>> execTuple =
                         this.activeTxs[this.workingSet[sid]];
@@ -306,7 +306,10 @@ namespace GraphView.Transaction
                     // Keep executing a tx until it's blocked.
                     do
                     {
-                        txExec.CurrentProc?.Invoke();
+                        if (txExec.CurrentProc != null)
+                        {
+                            txExec.CurrentProc();
+                        }
 
                         if (txExec.CurrentProc == null && queue.Count > 0)
                         {
