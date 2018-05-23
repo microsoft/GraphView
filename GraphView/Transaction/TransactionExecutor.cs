@@ -34,6 +34,7 @@ namespace GraphView.Transaction
             this.SessionId = sessionId;
             this.Procedure = procedure;
             this.OperationType = OperationType.Open;
+            //this.OperationType = OperationType.Close;
         }
 
         public TransactionRequest() { }
@@ -590,6 +591,47 @@ namespace GraphView.Transaction
                     this.FlushInstances();
                 }
             }
+        }
+
+        public void ExecuteNoFlush_1()
+        {
+            TransactionExecution exec = new TransactionExecution(
+                this.logStore,
+                this.versionDb,
+                null,
+                this.GarbageQueueTxId,
+                this.GarbageQueueFinishTime,
+                this.txRange,
+                this);
+
+            string priorSessionId = "";
+
+            while (this.workload.Count > 0)
+            {
+                TransactionRequest req = this.workload.Peek();
+
+                switch (req.OperationType)
+                {
+                    case OperationType.Close:
+                        this.workload.Dequeue();
+                        priorSessionId = req.SessionId;
+                        exec.Commit();
+                        if (exec.isCommitted)
+                        {
+                            this.CommittedTxs++;
+                        }
+                        this.FinishedTxs++;
+                        if (this.workload.Count > 0)
+                        {
+                            exec.Reset();
+                        }
+                        break;
+                    default:
+                        throw new TransactionException("Should not go to this!");
+                        break;
+                }
+            }
+            this.AllRequestsFinished = true;
         }
 
         public void ExecuteNoFlush()

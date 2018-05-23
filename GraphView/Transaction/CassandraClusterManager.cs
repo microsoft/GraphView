@@ -79,8 +79,9 @@
 			this.sessionPool = new Dictionary<string, ISession>();
 		}
 
-		internal ISession GetSession(string keyspace)
+		internal ISession GetSession(string keyspace, int threadId = -1)
 		{
+            //string sessionKey = keyspace + "_" + threadId.ToString();
 			if (!this.sessionPool.ContainsKey(keyspace))
 			{
 				lock (this.dictLock)
