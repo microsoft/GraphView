@@ -32,25 +32,35 @@ namespace GraphView.Transaction
             return rse.Current.GetValue<bool>("[applied]");
         }
 
-        internal override void Visit(GetTxEntryRequest req)
+
+        internal TxTableEntry GetTxTableEntry(long txId)
         {
             var rs = this.CQLExecute(string.Format(CassandraVersionDb.CQL_GET_TX_TABLE_ENTRY,
-                                                    VersionDb.TX_TABLE, req.TxId));
+                                                    VersionDb.TX_TABLE, txId));
             var rse = rs.GetEnumerator();
             rse.MoveNext();
             Row row = rse.Current;
             if (row == null)
             {
-                req.Result = null;
-            } else
-            {
-                req.Result = new TxTableEntry(
-                    req.TxId,
-                    (TxStatus)row.GetValue<sbyte>("status"),
-                    row.GetValue<long>("committime"),
-                    row.GetValue<long>("commitlowerbound"));
+                return null;
             }
 
+            IsCommitTsOrLB isCommitTsOrLB = (IsCommitTsOrLB)row.GetValue<sbyte>("iscommittsorlb");
+            long commitTime = row.GetValue<long>("committime");
+            long realCommitTime = isCommitTsOrLB ==
+                IsCommitTsOrLB.CommitTs ? commitTime : TxTableEntry.DEFAULT_COMMIT_TIME;
+
+            return new TxTableEntry(
+                txId,
+                (TxStatus)row.GetValue<sbyte>("status"),
+                realCommitTime,
+                commitTime);
+        }
+
+
+        internal override void Visit(GetTxEntryRequest req)
+        {
+            req.Result = this.GetTxTableEntry(req.TxId);
             req.Finished = true;
         }
 
@@ -72,7 +82,7 @@ namespace GraphView.Transaction
                                 req.TxId,
                                 (sbyte)TxStatus.Ongoing,     // default status
                                 TxTableEntry.DEFAULT_COMMIT_TIME,
-                                TxTableEntry.DEFAULT_LOWER_BOUND));
+                                IsCommitTsOrLB.CommitLowerBound));
             if (applied)
             {
                 req.Result = 1L;
@@ -91,7 +101,7 @@ namespace GraphView.Transaction
                                                        VersionDb.TX_TABLE,
                                                        (sbyte)TxStatus.Ongoing,     // default status
                                                        TxTableEntry.DEFAULT_COMMIT_TIME,
-                                                       TxTableEntry.DEFAULT_LOWER_BOUND,
+                                                       (sbyte)IsCommitTsOrLB.CommitLowerBound,
                                                        req.TxId));
             req.Result = applied ? 1L : 0L;
             req.Finished = true;
@@ -107,21 +117,27 @@ namespace GraphView.Transaction
 
         internal override void Visit(SetCommitTsRequest req)
         {
-            this.CQLExecuteWithIfApplied(string.Format(CassandraVersionDb.CQL_SET_COMMIT_TIME,
-                                                VersionDb.TX_TABLE,
-                                                req.ProposedCommitTs,
-                                                req.TxId));
-            var rs = this.CQLExecute(string.Format(CassandraVersionDb.CQL_GET_TX_TABLE_ENTRY,
-                                                   VersionDb.TX_TABLE, req.TxId));
-            var rse = rs.GetEnumerator();
-            rse.MoveNext();
-            Row row = rse.Current;
-            if (row == null)
+            bool applied = this.CQLExecuteWithIfApplied(string.Format(CassandraVersionDb.CQL_SET_COMMIT_TIME,
+                                                                    VersionDb.TX_TABLE,
+                                                                    req.ProposedCommitTs,
+                                                                    IsCommitTsOrLB.CommitTs,
+                                                                    req.TxId));
+            if (!applied)
+            {
+                this.CQLExecuteWithIfApplied(string.Format(CassandraVersionDb.CQL_SET_COMMIT_TIME_SET_FLAG,
+                                                        VersionDb.TX_TABLE,
+                                                        IsCommitTsOrLB.CommitTs,
+                                                        req.TxId,
+                                                        IsCommitTsOrLB.CommitLowerBound));
+            }
+
+            TxTableEntry entry = this.GetTxTableEntry(req.TxId);
+            if (entry == null)
             {
                 req.Result = -1L;
             } else
             {
-                req.Result = row.GetValue<long>("committime");
+                req.Result = entry.CommitTime;
             }
             req.Finished = true;
         }
@@ -129,19 +145,15 @@ namespace GraphView.Transaction
         internal override void Visit(UpdateCommitLowerBoundRequest req)
         {
             this.CQLExecuteWithIfApplied(string.Format(CassandraVersionDb.CQL_UPDATE_COMMIT_LB,
-                                                VersionDb.TX_TABLE, req.CommitTsLowerBound, req.TxId));
+                                                VersionDb.TX_TABLE, req.CommitTsLowerBound, req.TxId, (sbyte)IsCommitTsOrLB.CommitLowerBound));
 
-            var rs = this.CQLExecute(string.Format(CassandraVersionDb.CQL_GET_TX_TABLE_ENTRY,
-                                                   VersionDb.TX_TABLE, req.TxId));
-            var rse = rs.GetEnumerator();
-            rse.MoveNext();
-            Row row = rse.Current;
-            if (row == null)
+            TxTableEntry entry = this.GetTxTableEntry(req.TxId);
+            if (entry == null)
             {
                 req.Result = -2L;
             } else
             {
-                req.Result = row.GetValue<long>("committime");
+                req.Result = entry.CommitTime;
             }
             req.Finished = true;
         }

@@ -101,6 +101,7 @@
         /// </summary>
         internal RowSet CQLExecute(string cql)
         {
+            CassandraSessionManager.CqlCnt += 1;
             return this.SessionManager.GetSession(CassandraVersionDb.DEFAULT_KEYSPACE).Execute(cql);
         }
 
@@ -115,6 +116,7 @@
         /// <returns>applied or not</returns>
         internal bool CQLExecuteWithIfApplied(string cql)
         {
+            CassandraSessionManager.CqlIfCnt += 1;
             var rs = this.SessionManager.GetSession(CassandraVersionDb.DEFAULT_KEYSPACE).Execute(cql);
             var rse = rs.GetEnumerator();
             rse.MoveNext();

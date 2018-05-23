@@ -80,6 +80,15 @@ namespace TransactionBenchmarkTest.YCSB
             YCSBBenchmarkTest test = new YCSBBenchmarkTest(0, 0, versionDb);
             //test.LoadData(dataFile);
 
+            Console.WriteLine("++++++++ Before");
+            CassandraSessionManager.CqlCountShow();
+            test.rerun(1, 1000, operationFile);
+            Console.WriteLine("*****************************************************");
+            Console.WriteLine("++++++++ After");
+            CassandraSessionManager.CqlCountShow();
+
+
+
             //test.rerun(1, 2000, operationFile);
             //Console.WriteLine("*****************************************************");
 
@@ -107,15 +116,15 @@ namespace TransactionBenchmarkTest.YCSB
             //test.rerun(50, 10000, operationFile);
             //Console.WriteLine("*****************************************************");
 
-            test.rerun(100, 5000, operationFile);
-            Console.WriteLine("*****************************************************");
+            //test.rerun(100, 5000, operationFile);
+            //Console.WriteLine("*****************************************************");
 
-            test.rerun(200, 2500, operationFile);
-            Console.WriteLine("*****************************************************");
+            //test.rerun(200, 2500, operationFile);
+            //Console.WriteLine("*****************************************************");
 
 
             Console.WriteLine("done");
-            //Console.ReadLine();
+            Console.ReadLine();
         }
 
         static void test_cassandra()
@@ -124,7 +133,9 @@ namespace TransactionBenchmarkTest.YCSB
             ISession session = cluster.Connect("msra");
 
             //var rs = session.Execute("INSERT INTO testapply2 (id, k, v) VALUES (3, 2, 3) IF NOT EXISTS");
-            var rs = session.Execute("INSERT INTO test4 (id, k, v, txid) VALUES (1, 'k1', 0x12, -1) IF NOT EXISTS");
+            //var rs = session.Execute("INSERT INTO test4 (id, k, v, txid) VALUES (1, 'k1', 0x12, -1) IF NOT EXISTS");
+            var rs = session.Execute("BEGIN BATCH UPDATE testapply set k=9,v=8 where id=1 if k<9 ;" +
+                                                 "UPDATE testapply set v=8 where id=1 if v=11; APPLY BATCH");
 
             Console.WriteLine("--");
             var a = rs.GetEnumerator();
@@ -200,7 +211,7 @@ namespace TransactionBenchmarkTest.YCSB
             // For the YCSB sync test
             // YCSBTest();
             YCSBSyncTestWithCassandra();
-            // test_cassandra();
+            //test_cassandra();
 
             // For the redis benchmark Test
             // RedisBenchmarkTest();
