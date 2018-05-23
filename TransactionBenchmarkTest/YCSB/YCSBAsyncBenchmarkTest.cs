@@ -406,7 +406,8 @@
                         null :
                         this.partitionedInstances[instanceIndex++];
 
-                    this.executorList.Add(new TransactionExecutor(this.versionDb, null, reqQueue, executorInstances, i, 0));
+                    this.executorList.Add(new TransactionExecutor(this.versionDb, null, reqQueue, executorInstances, i, 0, 
+                        this.versionDb.GetResourceManagerByPartitionIndex(i)));
                 }
             }
         }

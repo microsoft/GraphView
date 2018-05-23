@@ -21,11 +21,15 @@ namespace TransactionBenchmarkTest.YCSB
                     workload.TableId, workload.Key, workload.Value, OperationType.InitiRead);
                 this.RequestQueue.Enqueue(initiReadReq);
             }
-            else
+            else if (workload.Type == "READ")
             {
                 TransactionRequest readReq = new TransactionRequest(this.sessionId,
                     workload.TableId, workload.Key, workload.Value, OperationType.Read);
                 this.RequestQueue.Enqueue(readReq);
+            }
+            else
+            {
+                this.Close();
             }
         }
 

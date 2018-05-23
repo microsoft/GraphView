@@ -13,17 +13,31 @@ namespace GraphView.Transaction
 
         private readonly NonBlocking.ConcurrentDictionary<long, TxTableEntry> txTable;
 
-        private SingletonVersionDb(List<TxResourceManager> resourceManagers)
-            :base(resourceManagers.Count)
+        private readonly List<TxResourceManager> txResourceManagers;
+
+        private SingletonVersionDb(int partitionCount)
+            :base(partitionCount)
         {
             this.txTable = new ConcurrentDictionary<long, TxTableEntry>();
-            for (int i = 0; i < resourceManagers.Count; i++)
+            this.txResourceManagers = new List<TxResourceManager>();
+
+            for (int i = 0; i < partitionCount; i++)
             {
-                this.dbVisitors[i] = new SingletonVersionDbVisitor(this.txTable, resourceManagers[i]);
+                this.txResourceManagers.Add(new TxResourceManager());
+                this.dbVisitors[i] = new SingletonVersionDbVisitor(this.txTable, this.txResourceManagers[i]);
             }
         }
 
-        internal static SingletonVersionDb Instance(List<TxResourceManager> resourceManagers = null)
+        internal override TxResourceManager GetResourceManagerByPartitionIndex(int partition)
+        {
+            if (partition >= this.PartitionCount)
+            {
+                throw new TransactionException("The partition index exceeds the number of patition!");
+            }
+            return this.txResourceManagers[partition];
+        }
+
+        internal static SingletonVersionDb Instance(int partitionCount = 1)
         {
             if (SingletonVersionDb.instance == null)
             {
@@ -31,7 +45,7 @@ namespace GraphView.Transaction
                 {
                     if (SingletonVersionDb.instance == null)
                     {
-                        SingletonVersionDb.instance = new SingletonVersionDb(resourceManagers);
+                        SingletonVersionDb.instance = new SingletonVersionDb(partitionCount);
                     }
                 }
             }
