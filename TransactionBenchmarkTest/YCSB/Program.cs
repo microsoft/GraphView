@@ -120,8 +120,8 @@ namespace TransactionBenchmarkTest.YCSB
         {
             const int partitionCount = 1;
             const int recordCount = 0;
-            const int executorCount = 1;
-            const int txCountPerExecutor = 1500000;
+            const int executorCount = 8;
+            const int txCountPerExecutor = 1000000;
             //const bool daemonMode = true;
             const bool daemonMode = false;
             const string dataFile = "ycsb_data_lg_r.in";
@@ -130,13 +130,17 @@ namespace TransactionBenchmarkTest.YCSB
             // an executor is responsiable for all flush
             List<List<Tuple<string, int>>> instances = new List<List<Tuple<string, int>>>();
 
-            TxResourceManager resourceManager = new TxResourceManager();
+            List<TxResourceManager> resourceManagers = new List<TxResourceManager>();
+            for (int i = 0; i < executorCount; i++)
+            {
+                resourceManagers.Add(new TxResourceManager());
+            }
 
             // The default mode of versionDb is daemonMode
             //SingletonPartitionedVersionDb versionDb = SingletonPartitionedVersionDb.Instance(partitionCount, daemonMode);
-            SingletonVersionDb versionDb = SingletonVersionDb.Instance(resourceManager);
+            SingletonVersionDb versionDb = SingletonVersionDb.Instance(resourceManagers);
             YCSBAsyncBenchmarkTest test = new YCSBAsyncBenchmarkTest(recordCount, 
-                executorCount, txCountPerExecutor, versionDb, instances, resourceManager);
+                executorCount, txCountPerExecutor, versionDb, instances);
 
             test.Setup(dataFile, operationFile);
             test.Run();
@@ -168,14 +172,14 @@ namespace TransactionBenchmarkTest.YCSB
             Program.args = args;
             // For the YCSB sync test
             // YCSBTest();
-            YCSBSyncTestWithCassandra();
+            // YCSBSyncTestWithCassandra();
             // test_cassandra();
 
             // For the redis benchmark Test
             // RedisBenchmarkTest();
 
             // For the YCSB async test
-            //YCSBAsyncTest();
+            YCSBAsyncTest();
 
             // ExecuteRedisRawTest();
         }

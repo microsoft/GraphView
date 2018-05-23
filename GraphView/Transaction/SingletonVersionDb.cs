@@ -13,14 +13,17 @@ namespace GraphView.Transaction
 
         private readonly NonBlocking.ConcurrentDictionary<long, TxTableEntry> txTable;
 
-        private SingletonVersionDb(TxResourceManager resourceManager)
-            :base(1)
+        private SingletonVersionDb(List<TxResourceManager> resourceManagers)
+            :base(resourceManagers.Count)
         {
             this.txTable = new ConcurrentDictionary<long, TxTableEntry>();
-            this.dbVisitors[0] = new SingletonVersionDbVisitor(this.txTable, resourceManager);
+            for (int i = 0; i < resourceManagers.Count; i++)
+            {
+                this.dbVisitors[i] = new SingletonVersionDbVisitor(this.txTable, resourceManagers[i]);
+            }
         }
 
-        internal static SingletonVersionDb Instance(TxResourceManager resourceManager = null)
+        internal static SingletonVersionDb Instance(List<TxResourceManager> resourceManagers = null)
         {
             if (SingletonVersionDb.instance == null)
             {
@@ -28,7 +31,7 @@ namespace GraphView.Transaction
                 {
                     if (SingletonVersionDb.instance == null)
                     {
-                        SingletonVersionDb.instance = new SingletonVersionDb(resourceManager);
+                        SingletonVersionDb.instance = new SingletonVersionDb(resourceManagers);
                     }
                 }
             }
@@ -106,7 +109,8 @@ namespace GraphView.Transaction
 
         internal override void EnqueueTxEntryRequest(long txId, TxEntryRequest txEntryRequest)
         {
-            int partitionKey = this.PhysicalPartitionByKey(txId);
+            //int partitionKey = this.PhysicalPartitionByKey(txId);
+            int partitionKey = (int) (txId / TxRange.range);
             this.dbVisitors[partitionKey].Invoke(txEntryRequest);
         }
 
