@@ -3,6 +3,7 @@ using GraphView.Transaction;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Threading;
 
 namespace TransactionBenchmarkTest.YCSB
@@ -80,6 +81,17 @@ namespace TransactionBenchmarkTest.YCSB
             YCSBBenchmarkTest test = new YCSBBenchmarkTest(0, 0, versionDb);
             //test.LoadData(dataFile);
 
+            Console.WriteLine("++++++++ Before");
+            CassandraSessionManager.CqlCountShow();
+
+            test.rerun(1, 50000, operationFile);
+            Console.WriteLine("*****************************************************");
+
+            Console.WriteLine("++++++++ After");
+            CassandraSessionManager.CqlCountShow();
+
+
+
             //test.rerun(1, 2000, operationFile);
             //Console.WriteLine("*****************************************************");
 
@@ -107,44 +119,176 @@ namespace TransactionBenchmarkTest.YCSB
             //test.rerun(50, 10000, operationFile);
             //Console.WriteLine("*****************************************************");
 
-            test.rerun(100, 5000, operationFile);
-            Console.WriteLine("*****************************************************");
+            //test.rerun(100, 5000, operationFile);
+            //Console.WriteLine("*****************************************************");
 
-            test.rerun(200, 2500, operationFile);
-            Console.WriteLine("*****************************************************");
+            //test.rerun(200, 2500, operationFile);
+            //Console.WriteLine("*****************************************************");
 
 
             Console.WriteLine("done");
-            //Console.ReadLine();
+            Console.ReadLine();
         }
 
         static void test_cassandra()
         {
             Cluster cluster = Cluster.Builder().AddContactPoints(new string[] { "127.0.0.1" }).Build();
-            ISession session = cluster.Connect("msra");
+            //ISession session = cluster.Connect("msra");
+            ISession session = cluster.Connect("versiondb");
 
-            //var rs = session.Execute("INSERT INTO testapply2 (id, k, v) VALUES (3, 2, 3) IF NOT EXISTS");
-            var rs = session.Execute("INSERT INTO test4 (id, k, v, txid) VALUES (1, 'k1', 0x12, -1) IF NOT EXISTS");
+            string cmd_file = "cql1-50000.txt";
+            string[] cmd_arr = new string[300000];
+            StreamReader reader = new StreamReader(cmd_file);
+            int cnt = 0;
+            string line;
+            while ((line = reader.ReadLine()) != null)
+            {
+                cmd_arr[cnt++] = line;
+            }
+            Console.WriteLine("cmd count: {0}", cnt);
 
-            Console.WriteLine("--");
-            var a = rs.GetEnumerator();
-            a.MoveNext();
-            var b = a.Current;
-            var c = b.GetValue<bool>(0);
+            // create tx_table
+            //session.Execute(cmd_arr[0]);
 
+            //Console.ReadLine();
+            Console.WriteLine("start running...");
 
+            int cycle = 6;
 
-            //bool applied = rs.GetEnumerator().Current.GetValue<bool>(0);
-            //Console.WriteLine("applied = {0}", applied);
+            void runCQL(int s, int e) // [s, e)
+            {
+                for (int ii=s; ii<e; ii+=cycle)
+                {
+                    var rs = session.Execute(cmd_arr[ii]);
+                }
+            }
 
-            //foreach (var row in rs)
-            //{
-            //    Console.WriteLine("applied={0}", row.GetValue<bool>("[applied]"));
-            //    //Console.WriteLine("applied={0}", row.GetValue<bool>(0));
-            //}
+            void runCycle(int s, int e) // [s, e)
+            {
+                for (int ii = s; ii < e; ii++)
+                {
+                    var rs = session.Execute(cmd_arr[ii]);
+                }
+            }
+
+            int[] num_t_arr = new int[] { 4, 8, 20, 50, 1, };
+
+            // run each CQL
+            foreach (int num_t in num_t_arr)
+            {
+                Console.WriteLine("{0} THREADs @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@", num_t);
+                session.Execute("TRUNCATE TABLE tx_table");
+
+                int num_per_t = cnt / num_t;
+
+                for (int k = 0; k < cycle; k++)
+                {
+                    Console.WriteLine("running cql {0} with {1} thread*********************", k, num_t);
+                    // 
+                    List<Thread> threadList = new List<Thread>();
+                    for (int j = 0; j < num_t; j++)
+                    {
+                        int s = j * num_per_t + k;
+                        int e = (j + 1) * num_per_t + k;
+                        Thread thread = new Thread(() => runCQL(s, e));
+                        threadList.Add(thread);
+                    }
+
+                    // start
+                    long start = DateTime.Now.Ticks;
+                    foreach (Thread thread in threadList)
+                    {
+                        thread.Start();
+                    }
+                    foreach (Thread thread in threadList)
+                    {
+                        thread.Join();
+                    }
+                    long end = DateTime.Now.Ticks;
+
+                    // compute throughput
+                    double delta = (end - start) * 1.0 / 10000000;  // seconds
+                    double throughput = (cnt / 6) / delta;
+
+                    Console.WriteLine("cql type {0}, {1} thread, throughput = {2}/s", k, num_t, throughput);
+                }
+            }
+
+            Console.WriteLine();
+            Console.WriteLine("Runing cycles using threads...");            
+
+            // run cycle
+            foreach (int num_t in num_t_arr)
+            {
+                Console.WriteLine("{0} THREADs %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%", num_t);
+                session.Execute("TRUNCATE TABLE tx_table");
+
+                int num_per_t = cnt / num_t;
+                
+                // build thread
+                List<Thread> threadList = new List<Thread>();
+                for (int j = 0; j < num_t; j++)
+                {
+                    int s = j * num_per_t;
+                    int e = (j + 1) * num_per_t;
+                    Thread thread = new Thread(() => runCycle(s, e));
+                    threadList.Add(thread);
+                }
+
+                // start
+                long start = DateTime.Now.Ticks;
+                foreach (Thread thread in threadList)
+                {
+                    thread.Start();
+                }
+                foreach (Thread thread in threadList)
+                {
+                    thread.Join();
+                }
+                long end = DateTime.Now.Ticks;
+
+                // compute throughput
+                double delta = (end - start) * 1.0 / 10000000;  // seconds
+                double throughput = cnt / delta;
+
+                Console.WriteLine("run CYCLE with {0} thread, throughput = {1}/s", num_t, throughput);
+            }
 
             Console.WriteLine("Done");
             Console.ReadLine();
+        }
+
+        static void YCSBAsyncTestWithCassandra()
+        {
+            const int partitionCount = 1;
+            const int recordCount = 0;
+            const int executorCount = 1;
+            const int txCountPerExecutor = 1500000;
+
+            const string dataFile = "ycsb_data_r.in";
+            const string operationFile = "ycsb_ops_r.in";
+
+            // an executor is responsiable for all flush
+            List<List<Tuple<string, int>>> instances = new List<List<Tuple<string, int>>>
+            {
+                //new List<Tuple<string, int>>()
+                //{
+                //    Tuple.Create(Constants.DefaultTbl, 0),
+                //    Tuple.Create(RedisVersionDb.TX_TABLE, 0),
+                //},
+            };
+
+            TxResourceManager resourceManager = new TxResourceManager();
+
+            // The default mode of versionDb is daemonMode
+            CassandraVersionDb versionDb = CassandraVersionDb.Instance(partitionCount);
+            YCSBAsyncBenchmarkTest test = new YCSBAsyncBenchmarkTest(recordCount,
+                executorCount, txCountPerExecutor, versionDb, instances, resourceManager);
+
+            test.Setup(dataFile, operationFile);
+            test.Run();
+            test.Stats();
+
         }
 
         static void YCSBAsyncTest()
@@ -215,7 +359,8 @@ namespace TransactionBenchmarkTest.YCSB
             // RedisBenchmarkTest();
 
             // For the YCSB async test
-            YCSBAsyncTest();
+            // YCSBAsyncTest();
+            YCSBAsyncTestWithCassandra();
 
             // ExecuteRedisRawTest();
         }

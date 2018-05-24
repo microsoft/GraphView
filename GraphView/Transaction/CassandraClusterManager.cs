@@ -47,6 +47,18 @@
 		/// </summary>
 		internal int ClusterNodeCount { get; private set; }
 
+        /// <summary>
+        /// Count how many CQLs are executed
+        /// </summary>
+        public static int CqlCnt = 0;
+        public static int CqlIfCnt = 0;
+        public static void CqlCountShow()
+        {
+            Console.WriteLine("CQL total  = {0}", CassandraSessionManager.CqlCnt + CassandraSessionManager.CqlIfCnt);
+            Console.WriteLine("CQL        = {0}", CassandraSessionManager.CqlCnt);
+            Console.WriteLine("CQL IF     = {0}", CassandraSessionManager.CqlIfCnt);
+        }
+
         public static CassandraSessionManager Instance
         {
             get
