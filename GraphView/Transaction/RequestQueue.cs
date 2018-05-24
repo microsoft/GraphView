@@ -54,7 +54,15 @@ namespace GraphView.Transaction
 
         private Segment[] headCollection;
         private Segment[] tailCollection;
-        private Segment[] freeCollection;
+
+        /// <summary>
+        /// Each partition maintains a queue/list of free segments to be re-used.
+        /// Recycling a segment appends it to the tail, 
+        /// while obtaining a segment detaches it from the head.
+        /// </summary>
+        private Segment[] freeHeadCollection;
+        private Segment[] freeTailCollection;
+
         private int latch;
         private int dequeueIndex;
 
@@ -62,19 +70,39 @@ namespace GraphView.Transaction
         {
             this.headCollection = new Segment[128];
             this.tailCollection = new Segment[128];
-            this.freeCollection = new Segment[128];
+            this.freeHeadCollection = new Segment[128];
+            this.freeTailCollection = new Segment[128];
+
+            for (int pk = 0; pk < this.headCollection.Length; pk++)
+            {
+                Segment firstSegment = new Segment();
+                this.headCollection[pk] = firstSegment;
+                this.tailCollection[pk] = firstSegment;
+
+                Segment firstFreeSegment = new Segment();
+                this.freeHeadCollection[pk] = firstFreeSegment;
+                this.freeTailCollection[pk] = firstFreeSegment;
+            }
         }
 
         private Segment GetNewSegment(int pk)
         {
-            if (this.freeCollection[pk] == null)
+            // At any time, the free segment list contains at least one segment, 
+            // so as to create a barrier to isolate enqueue and dequeue threads. 
+            // The enqueue thread appends to the tail by updating its next pointer, 
+            // while the dequeue thread removes the head and advances the head pointer its follower.
+            // Having at least one segment guarantees that the two threads modify no common data and 
+            // therefore need no synchronization at all.  
+            if (this.freeHeadCollection[pk].next == null)
             {
+                // The free list has only one segment. 
+                // This segment cannot be re-used until a new free segment is appended to the tail.  
                 return new Segment();
             }
             else
             {
-                Segment newSegment = this.freeCollection[pk];
-                this.freeCollection[pk] = newSegment.next;
+                Segment newSegment = this.freeHeadCollection[pk];
+                this.freeHeadCollection[pk] = newSegment.next;
                 newSegment.next = null;
                 return newSegment;
             }
@@ -84,15 +112,8 @@ namespace GraphView.Transaction
         {
             seg.Reset();
 
-            if (this.freeCollection[pk] == null)
-            {
-                this.freeCollection[pk] = seg;
-            }
-            else
-            {
-                seg.next = this.freeCollection[pk];
-                this.freeCollection[pk] = seg;
-            }
+            this.freeTailCollection[pk].next = seg;
+            this.freeTailCollection[pk] = seg;
         }
 
         public void Enqueue(T element, int pk)
@@ -110,22 +131,30 @@ namespace GraphView.Transaction
                     Segment[] newHeadArray = new Segment[newCapacity];
                     Array.Copy(this.headCollection, newHeadArray, this.headCollection.Length);
 
-                    Segment[] newFreeArray = new Segment[newCapacity];
-                    Array.Copy(this.freeCollection, newFreeArray, this.freeCollection.Length);
+                    Segment[] newFreeHeadArray = new Segment[newCapacity];
+                    Array.Copy(this.freeHeadCollection, newFreeHeadArray, this.freeHeadCollection.Length);
 
-                    Interlocked.Exchange(ref this.freeCollection, newFreeArray);
+                    Segment[] newFreeTailArray = new Segment[newCapacity];
+                    Array.Copy(this.freeTailCollection, newFreeTailArray, this.freeTailCollection.Length);
+
+                    for (int pid = this.tailCollection.Length; pid < newCapacity; pid++)
+                    {
+                        Segment firstSegment = new Segment();
+                        this.headCollection[pid] = firstSegment;
+                        this.tailCollection[pid] = firstSegment;
+
+                        Segment firstFreeSegment = new Segment();
+                        this.freeHeadCollection[pid] = firstFreeSegment;
+                        this.freeTailCollection[pid] = firstFreeSegment;
+                    }
+
+                    Interlocked.Exchange(ref this.freeHeadCollection, newFreeHeadArray);
+                    Interlocked.Exchange(ref this.freeTailCollection, newFreeTailArray);
                     Interlocked.Exchange(ref this.tailCollection, newTailArray);
                     Interlocked.Exchange(ref this.headCollection, newHeadArray);
 
                     Interlocked.Exchange(ref latch, 0);
                 }
-            }
-
-            if (this.tailCollection[pk] == null)
-            {
-                Segment segment = this.GetNewSegment(pk);
-                this.tailCollection[pk] = segment;
-                this.headCollection[pk] = segment;
             }
 
             Segment tailSegment = this.tailCollection[pk];
@@ -166,7 +195,7 @@ namespace GraphView.Transaction
 
         private bool TryDequeue(int pk, out T element)
         {
-            if (pk >= this.headCollection.Length || this.headCollection[pk] == null)
+            if (pk >= this.headCollection.Length)
             {
                 element = default(T);
                 return false;
