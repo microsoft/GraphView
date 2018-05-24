@@ -24,6 +24,7 @@ namespace GraphView.Transaction
 
         internal long FlushWaitTicks { get; set; } = 0L;
 
+        internal TxResourceManager[] resourceManagers;
         /// <summary>
         /// The version table maps
         /// </summary>
@@ -42,6 +43,12 @@ namespace GraphView.Transaction
             {
                 this.txTable[pid] = new Dictionary<long, TxTableEntry>(100000);
                 this.dbVisitors[pid] = new PartitionedVersionDbVisitor(this.txTable[pid]);
+            }
+
+            this.resourceManagers = new TxResourceManager[partitionCount];
+            for (int i = 0; i < partitionCount; i++)
+            {
+                this.resourceManagers[i] = new TxResourceManager();
             }
 
             this.PhysicalPartitionByKey = key => key.GetHashCode() % this.PartitionCount;
@@ -145,6 +152,15 @@ namespace GraphView.Transaction
                 return null;
             }
             return this.versionTables[tableId];
+        }
+
+        internal override TxResourceManager GetResourceManagerByPartitionIndex(int partition)
+        {
+            if (partition >= this.PartitionCount)
+            {
+                throw new ArgumentException("partition should be smaller then partitionCount");
+            }
+            return this.resourceManagers[partition];
         }
 
         internal void Monitor(object obj)
