@@ -185,7 +185,7 @@
 
             foreach (TransactionExecutor executor in this.executorList)
             {
-                Thread thread = new Thread(new ThreadStart(executor.ExecuteNoFlush_1));
+                Thread thread = new Thread(new ThreadStart(executor.Execute2));
                 threadList.Add(thread);
                 thread.Start();
             }
@@ -393,7 +393,8 @@
                         line = reader.ReadLine();
                         string[] fields = this.ParseCommandFormat(line);
 
-                        TxWorkload workload = new TxWorkload(fields[0], TABLE_ID, fields[2], fields[3]);
+                        //TxWorkload workload = new TxWorkload(fields[0], TABLE_ID, fields[2], fields[3]);
+                        TxWorkload workload = new TxWorkload("CLOSE", TABLE_ID, fields[2], fields[3]);
                         string sessionId = ((i * this.txCountPerExecutor) + j + 1).ToString();
                         YCSBStoredProcedure procedure = new YCSBStoredProcedure(sessionId, workload);
                         TransactionRequest req = new TransactionRequest(sessionId, procedure);

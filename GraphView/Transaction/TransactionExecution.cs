@@ -369,7 +369,7 @@ namespace GraphView.Transaction
 
             // Recycled successfully
             this.txId = this.recycleTxReq.TxId;
-            this.recycleTxReq = null;
+            this.executor.ResourceManager.RecycleRecycleTxRequest(ref this.recycleTxReq);
             this.CurrentProc = null;
             this.Progress = TxProgress.Open;
         }

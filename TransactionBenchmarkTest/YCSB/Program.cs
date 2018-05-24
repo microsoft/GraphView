@@ -151,7 +151,7 @@ namespace TransactionBenchmarkTest.YCSB
         {
             const int partitionCount = 1;
             const int recordCount = 0;
-            const int executorCount = 2;
+            const int executorCount = 3;
             const int txCountPerExecutor = 1000000;
             //const bool daemonMode = true;
             const bool daemonMode = false;

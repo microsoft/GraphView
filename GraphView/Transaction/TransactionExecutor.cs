@@ -285,17 +285,25 @@ namespace GraphView.Transaction
                             }
 
                             newExecTuple.Item1.Reset(txReq.Procedure);
+                            newExecTuple.Item1.Procedure?.Start();
                             this.activeTxs.Add(txReq.SessionId, newExecTuple);
                             this.workingSet.Add(txReq.SessionId);
                         }
                         // Requests targeting unopen sessions are disgarded. 
                     }
 
-                    txReq = this.workload.Peek();
+                    if (this.workload.Count > 0)
+                    {
+                        txReq = this.workload.Peek();
+                    }
+                    else
+                    {
+                        break;
+                    }
                 }
 
                 for (int sid = 0; sid < this.workingSet.Count;)
-                {
+                {                  
                     Tuple<TransactionExecution, Queue<TransactionRequest>> execTuple =
                         this.activeTxs[this.workingSet[sid]];
 
@@ -358,8 +366,16 @@ namespace GraphView.Transaction
 
                     if (txExec.Progress == TxProgress.Close)
                     {
+                        Tuple<TransactionExecution, Queue<TransactionRequest>> runtimeTuple = this.activeTxs[this.workingSet[sid]];
                         this.activeTxs.Remove(this.workingSet[sid]);
+                        
+                        this.txRuntimePool.Enqueue(runtimeTuple);
                         this.workingSet.RemoveAt(sid);
+                        if (txExec.isCommitted)
+                        {
+                            this.CommittedTxs += 1;
+                        }
+                        this.FinishedTxs += 1;
                     }
                     else
                     {
@@ -373,6 +389,8 @@ namespace GraphView.Transaction
                     this.FlushInstances();
                 }
             }
+
+            this.AllRequestsFinished = true;
         }
 
         public void Execute()
