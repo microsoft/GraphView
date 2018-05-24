@@ -34,6 +34,7 @@ namespace GraphView.Transaction
             this.SessionId = sessionId;
             this.Procedure = procedure;
             this.OperationType = OperationType.Open;
+            //this.OperationType = OperationType.Close;
         }
 
         public TransactionRequest() { }
@@ -147,6 +148,8 @@ namespace GraphView.Transaction
         /// </summary>
         private List<Tuple<string, int>> partitionedInstances;
 
+        private List<string> workingSet;
+
         private TxRange txRange;
 
         /// <summary>
@@ -184,6 +187,7 @@ namespace GraphView.Transaction
             this.txRange = startRange < 0 ? null : new TxRange(startRange);
             this.ResourceManager = resourceManager == null ? new TxResourceManager() : resourceManager;
             this.txRuntimePool = new Queue<Tuple<TransactionExecution, Queue<TransactionRequest>>>();
+            this.workingSet = new List<string>(this.workingSetSize);
         }
 
         // add executor id
@@ -201,7 +205,8 @@ namespace GraphView.Transaction
             this.workload = workload ?? new Queue<TransactionRequest>();
             this.activeTxs = new Dictionary<string, Tuple<TransactionExecution, Queue<TransactionRequest>>>();
             this.partitionedInstances = instances;
-            this.txTimeoutSeconds = txTimeoutSeconds;           
+            this.txTimeoutSeconds = txTimeoutSeconds;
+            this.workingSet = new List<string>(this.workingSetSize);
         }
 
         public void SetProgressBar()
@@ -210,6 +215,182 @@ namespace GraphView.Transaction
             {
                 Console.WriteLine("Executor {0}:\t Finished Txs: {1}", this.executorId, this.FinishedTxs);
             }
+        }
+
+        private Tuple<TransactionExecution, Queue<TransactionRequest>> AllocateNewTxExecution()
+        {
+            TransactionExecution exec = null;
+            if (this.txRuntimePool.Count > 0)
+            {
+                Tuple<TransactionExecution, Queue<TransactionRequest>> runtimeTuple =
+                    this.txRuntimePool.Dequeue();
+
+                exec = runtimeTuple.Item1;
+                Queue<TransactionRequest> reqQueue = runtimeTuple.Item2;
+
+                if (reqQueue.Count > 0)
+                {
+                    reqQueue.Clear();
+                }
+
+                return runtimeTuple;
+
+                
+            }
+            else
+            {
+                exec = new TransactionExecution(
+                    this.logStore,
+                    this.versionDb,
+                    null,
+                    this.GarbageQueueTxId,
+                    this.GarbageQueueFinishTime,
+                    this.txRange,
+                    this);
+
+                Queue<TransactionRequest> reqQueue = new Queue<TransactionRequest>();
+
+                return Tuple.Create(exec, reqQueue);
+            }
+        }
+
+        public void Execute2()
+        {
+            while (this.workingSet.Count > 0 || this.workload.Count > 0)
+            {
+                TransactionRequest txReq = this.workload.Peek();
+                // Dequeue incoming tx requests until the working set is full.
+                while (this.activeTxs.Count < this.workingSetSize || this.activeTxs.ContainsKey(txReq.SessionId))
+                {
+                    this.workload.Dequeue();
+
+                    if (this.activeTxs.ContainsKey(txReq.SessionId))
+                    {
+                        Tuple<TransactionExecution, Queue<TransactionRequest>> execTuple =
+                            this.activeTxs[txReq.SessionId];
+
+                        Queue<TransactionRequest> queue = execTuple.Item2;
+                        queue.Enqueue(txReq);
+                    }
+                    else
+                    {
+                        if (txReq.OperationType == OperationType.Open)
+                        {
+                            Tuple<TransactionExecution, Queue<TransactionRequest>> newExecTuple =
+                            this.AllocateNewTxExecution();
+
+                            if (txReq.Procedure != null)
+                            {
+                                txReq.Procedure.RequestQueue = newExecTuple.Item2;
+                            }
+
+                            newExecTuple.Item1.Reset(txReq.Procedure);
+                            newExecTuple.Item1.Procedure?.Start();
+                            this.activeTxs.Add(txReq.SessionId, newExecTuple);
+                            this.workingSet.Add(txReq.SessionId);
+                        }
+                        // Requests targeting unopen sessions are disgarded. 
+                    }
+
+                    if (this.workload.Count > 0)
+                    {
+                        txReq = this.workload.Peek();
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+
+                for (int sid = 0; sid < this.workingSet.Count;)
+                {                  
+                    Tuple<TransactionExecution, Queue<TransactionRequest>> execTuple =
+                        this.activeTxs[this.workingSet[sid]];
+
+                    TransactionExecution txExec = execTuple.Item1;
+                    Queue<TransactionRequest> queue = execTuple.Item2;
+
+                    // A tx runtime is blocked when CurrProc is not null. 
+                    // Keep executing a tx until it's blocked.
+                    do
+                    {
+                        if (txExec.CurrentProc != null)
+                        {
+                            txExec.CurrentProc();
+                        }
+
+                        if (txExec.CurrentProc == null && queue.Count > 0)
+                        {
+                            TransactionRequest opReq = queue.Dequeue();
+
+                            bool received = false;
+                            object payload = null;
+
+                            switch (opReq.OperationType)
+                            {
+                                case OperationType.Read:
+                                    {
+                                        txExec.Read(opReq.TableId, opReq.RecordKey, out received, out payload);
+                                        break;
+                                    }
+                                case OperationType.InitiRead:
+                                    {
+                                        txExec.ReadAndInitialize(opReq.TableId, opReq.RecordKey, out received, out payload);
+                                        break;
+                                    }
+                                case OperationType.Insert:
+                                    {
+                                        txExec.Insert(opReq.TableId, opReq.RecordKey, opReq.Payload);
+                                        break;
+                                    }
+                                case OperationType.Update:
+                                    {
+                                        txExec.Update(opReq.TableId, opReq.RecordKey, opReq.Payload);
+                                        break;
+                                    }
+                                case OperationType.Delete:
+                                    {
+                                        txExec.Delete(opReq.TableId, opReq.RecordKey, out payload);
+                                        break;
+                                    }
+                                case OperationType.Close:
+                                    {
+                                        txExec.Commit();
+                                        break;
+                                    }
+                                default:
+                                    break;
+                            }
+                        }
+                    } while (txExec.CurrentProc == null && txExec.Progress == TxProgress.Open && queue.Count > 0);
+
+                    if (txExec.Progress == TxProgress.Close)
+                    {
+                        Tuple<TransactionExecution, Queue<TransactionRequest>> runtimeTuple = this.activeTxs[this.workingSet[sid]];
+                        this.activeTxs.Remove(this.workingSet[sid]);
+                        
+                        this.txRuntimePool.Enqueue(runtimeTuple);
+                        this.workingSet.RemoveAt(sid);
+                        if (txExec.isCommitted)
+                        {
+                            this.CommittedTxs += 1;
+                        }
+                        this.FinishedTxs += 1;
+                    }
+                    else
+                    {
+                        sid++;
+                    }
+                }
+
+                // The implementation of the flush logic needs to be refined.
+                if (this.partitionedInstances != null && this.partitionedInstances.Count > 0)
+                {
+                    this.FlushInstances();
+                }
+            }
+
+            this.AllRequestsFinished = true;
         }
 
         public void Execute()
@@ -431,6 +612,47 @@ namespace GraphView.Transaction
                     this.FlushInstances();
                 }
             }
+        }
+
+        public void ExecuteNoFlush_1()
+        {
+            TransactionExecution exec = new TransactionExecution(
+                this.logStore,
+                this.versionDb,
+                null,
+                this.GarbageQueueTxId,
+                this.GarbageQueueFinishTime,
+                this.txRange,
+                this);
+
+            string priorSessionId = "";
+
+            while (this.workload.Count > 0)
+            {
+                TransactionRequest req = this.workload.Peek();
+
+                switch (req.OperationType)
+                {
+                    case OperationType.Close:
+                        this.workload.Dequeue();
+                        priorSessionId = req.SessionId;
+                        exec.Commit();
+                        if (exec.isCommitted)
+                        {
+                            this.CommittedTxs++;
+                        }
+                        this.FinishedTxs++;
+                        if (this.workload.Count > 0)
+                        {
+                            exec.Reset();
+                        }
+                        break;
+                    default:
+                        throw new TransactionException("Should not go to this!");
+                        break;
+                }
+            }
+            this.AllRequestsFinished = true;
         }
 
         public void ExecuteNoFlush()

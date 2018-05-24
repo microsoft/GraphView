@@ -295,8 +295,8 @@ namespace TransactionBenchmarkTest.YCSB
         {
             const int partitionCount = 1;
             const int recordCount = 0;
-            const int executorCount = 1;
-            const int txCountPerExecutor = 1500000;
+            const int executorCount = 3;
+            const int txCountPerExecutor = 1000000;
             //const bool daemonMode = true;
             const bool daemonMode = false;
             const string dataFile = "ycsb_data_lg_r.in";
@@ -305,13 +305,11 @@ namespace TransactionBenchmarkTest.YCSB
             // an executor is responsiable for all flush
             List<List<Tuple<string, int>>> instances = new List<List<Tuple<string, int>>>();
 
-            TxResourceManager resourceManager = new TxResourceManager();
-
             // The default mode of versionDb is daemonMode
             //SingletonPartitionedVersionDb versionDb = SingletonPartitionedVersionDb.Instance(partitionCount, daemonMode);
-            SingletonVersionDb versionDb = SingletonVersionDb.Instance(resourceManager);
+            SingletonVersionDb versionDb = SingletonVersionDb.Instance(executorCount);
             YCSBAsyncBenchmarkTest test = new YCSBAsyncBenchmarkTest(recordCount, 
-                executorCount, txCountPerExecutor, versionDb, instances, resourceManager);
+                executorCount, txCountPerExecutor, versionDb, instances);
 
             test.Setup(dataFile, operationFile);
             test.Run();

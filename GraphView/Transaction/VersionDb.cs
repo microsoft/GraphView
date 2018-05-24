@@ -102,6 +102,11 @@ namespace GraphView.Transaction
             this.PhysicalPartitionByKey = key => key.GetHashCode() % this.PartitionCount;
         }
 
+        internal virtual TxResourceManager GetResourceManagerByPartitionIndex(int partition)
+        {
+            throw new NotImplementedException();
+        }
+
         /// <summary>
         /// Enqueue Transcation Entry Requests
         /// </summary>

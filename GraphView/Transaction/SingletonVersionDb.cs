@@ -13,14 +13,31 @@ namespace GraphView.Transaction
 
         private readonly NonBlocking.ConcurrentDictionary<long, TxTableEntry> txTable;
 
-        private SingletonVersionDb(TxResourceManager resourceManager)
-            :base(1)
+        private readonly List<TxResourceManager> txResourceManagers;
+
+        private SingletonVersionDb(int partitionCount)
+            :base(partitionCount)
         {
             this.txTable = new ConcurrentDictionary<long, TxTableEntry>();
-            this.dbVisitors[0] = new SingletonVersionDbVisitor(this.txTable, resourceManager);
+            this.txResourceManagers = new List<TxResourceManager>();
+
+            for (int i = 0; i < partitionCount; i++)
+            {
+                this.txResourceManagers.Add(new TxResourceManager());
+                this.dbVisitors[i] = new SingletonVersionDbVisitor(this.txTable, this.txResourceManagers[i]);
+            }
         }
 
-        internal static SingletonVersionDb Instance(TxResourceManager resourceManager = null)
+        internal override TxResourceManager GetResourceManagerByPartitionIndex(int partition)
+        {
+            if (partition >= this.PartitionCount)
+            {
+                throw new TransactionException("The partition index exceeds the number of patition!");
+            }
+            return this.txResourceManagers[partition];
+        }
+
+        internal static SingletonVersionDb Instance(int partitionCount = 1)
         {
             if (SingletonVersionDb.instance == null)
             {
@@ -28,7 +45,7 @@ namespace GraphView.Transaction
                 {
                     if (SingletonVersionDb.instance == null)
                     {
-                        SingletonVersionDb.instance = new SingletonVersionDb(resourceManager);
+                        SingletonVersionDb.instance = new SingletonVersionDb(partitionCount);
                     }
                 }
             }
@@ -106,7 +123,8 @@ namespace GraphView.Transaction
 
         internal override void EnqueueTxEntryRequest(long txId, TxEntryRequest txEntryRequest)
         {
-            int partitionKey = this.PhysicalPartitionByKey(txId);
+            //int partitionKey = this.PhysicalPartitionByKey(txId);
+            int partitionKey = (int) (txId / TxRange.range);
             this.dbVisitors[partitionKey].Invoke(txEntryRequest);
         }
 
