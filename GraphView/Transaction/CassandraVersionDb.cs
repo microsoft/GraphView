@@ -66,7 +66,7 @@
             return CassandraVersionDb.instance;
         }
 
-        internal override void EnqueueTxEntryRequest(long txId, TxEntryRequest txEntryRequest)
+        internal override void EnqueueTxEntryRequest(long txId, TxEntryRequest txEntryRequest, int execPartition = 0)
         {
             int pk = this.PhysicalPartitionByKey(txId);
             this.dbVisitors[pk].Invoke(txEntryRequest);

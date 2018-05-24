@@ -149,10 +149,10 @@ namespace TransactionBenchmarkTest.YCSB
 
         static void YCSBAsyncTest()
         {
-            const int partitionCount = 1;
+            const int partitionCount = 3;
             const int recordCount = 0;
-            const int executorCount = 1;
-            const int txCountPerExecutor = 1;
+            const int executorCount = partitionCount;
+            const int txCountPerExecutor = 1000000;
             //const bool daemonMode = true;
             const bool daemonMode = false;
             const string dataFile = "ycsb_data_lg_r.in";

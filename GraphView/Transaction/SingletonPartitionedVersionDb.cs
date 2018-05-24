@@ -52,6 +52,7 @@ namespace GraphView.Transaction
             }
 
             this.PhysicalPartitionByKey = key => key.GetHashCode() % this.PartitionCount;
+            // this.PhysicalPartitionByKey = key => Convert.ToInt32(key) / (int)TxRange.range;
 
             this.DaemonMode = daemonMode;
             if (this.DaemonMode)
@@ -171,7 +172,6 @@ namespace GraphView.Transaction
             while (this.Active)
             {
                 while (DateTime.Now.Ticks - lastFlushTicks < this.FlushWaitTicks) { }
-                // Console.WriteLine("Flush");
                 lastFlushTicks = DateTime.Now.Ticks;
                 this.Visit(VersionDb.TX_TABLE, pk);
                 foreach (string tableId in this.versionTables.Keys.ToArray())
@@ -181,11 +181,17 @@ namespace GraphView.Transaction
             }
         }
 
-        internal override void EnqueueTxEntryRequest(long txId, TxEntryRequest txEntryRequest)
+        internal override void EnqueueTxEntryRequest(long txId, TxEntryRequest txEntryRequest, int execPartition = 0)
         {
             int pk = this.PhysicalPartitionByKey(txId);
-
-            this.dbVisitors[pk].Invoke(txEntryRequest);
+            if (pk == execPartition)
+            {
+                this.dbVisitors[pk].Invoke(txEntryRequest);
+            }
+            else
+            {
+                base.EnqueueTxEntryRequest(txId, txEntryRequest, execPartition);
+            }
         }
     }
 }

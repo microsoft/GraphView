@@ -48,7 +48,7 @@
             }
         }
 
-        internal override void EnqueueVersionEntryRequest(VersionEntryRequest req)
+        internal override void EnqueueVersionEntryRequest(VersionEntryRequest req, int execPartition = 0)
         {
             int pk = this.VersionDb.PhysicalPartitionByKey(req.RecordKey);
             this.tableVisitors[pk].Visit(req);

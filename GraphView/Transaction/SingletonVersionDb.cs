@@ -121,7 +121,7 @@ namespace GraphView.Transaction
             }
         }
 
-        internal override void EnqueueTxEntryRequest(long txId, TxEntryRequest txEntryRequest)
+        internal override void EnqueueTxEntryRequest(long txId, TxEntryRequest txEntryRequest, int execPartition = 0)
         {
             //int partitionKey = this.PhysicalPartitionByKey(txId);
             int partitionKey = (int) (txId / TxRange.range);
