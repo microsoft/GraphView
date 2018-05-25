@@ -1,8 +1,51 @@
 ﻿namespace GraphView.Transaction
 {
+    using System;
     using System.Collections.Generic;
     using System.Threading;
     using NonBlocking;
+
+    //internal class VersionBlob
+    //{
+    //    internal long BeginTimestamp;
+    //    internal long EndTimestamp;
+    //    internal object Payload;
+    //    internal long TxId;
+    //    internal long MaxCommitTs;
+
+    //    public VersionBlob()
+    //    {
+
+    //    }
+
+    //    public VersionBlob(long beginTs, long endTs, object payload, long txId, long maxCommitTs)
+    //    {
+    //        this.BeginTimestamp = beginTs;
+    //        this.EndTimestamp = endTs;
+    //        this.Payload = payload;
+    //        this.TxId = txId;
+    //        this.MaxCommitTs = maxCommitTs;
+    //    }
+
+    //    public override bool Equals(object obj)
+    //    {
+    //        VersionBlob blob = obj as VersionBlob;
+    //        if (blob == null)
+    //        {
+    //            return false;
+    //        }
+
+    //        return this.BeginTimestamp == blob.BeginTimestamp &&
+    //            this.EndTimestamp == blob.EndTimestamp &&
+    //            this.TxId == blob.TxId &&
+    //            this.MaxCommitTs == blob.MaxCommitTs;
+    //    }
+
+    //    public override int GetHashCode()
+    //    {
+    //        return this.BeginTimestamp.GetHashCode();
+    //    }
+    //}
 
     /// <summary>
     /// A version table implementation in single machine environment.
@@ -10,105 +53,71 @@
     /// </summary>
     internal partial class SingletonDictionaryVersionTable : VersionTable
     {
-        private class VersionBlob
-        {
-            internal long beginTimestamp;
-            internal long endTimestamp;
-            internal object payload;
-            internal long txId;
-            internal long maxCommitTs;
+        private readonly NonBlocking.ConcurrentDictionary<object, NonBlocking.ConcurrentDictionary<long, VersionEntry>> dict;
 
-            public VersionBlob(long beginTs, long endTs, object payload, long txId, long maxCommitTs)
-            {
-                this.beginTimestamp = beginTs;
-                this.endTimestamp = endTs;
-                this.payload = payload;
-                this.txId = txId;
-                this.maxCommitTs = maxCommitTs;
-            }
-
-            public override bool Equals(object obj)
-            {
-                VersionBlob blob = obj as VersionBlob;
-                if (blob == null)
-                {
-                    return false;
-                }
-
-                return beginTimestamp == blob.beginTimestamp &&
-                    endTimestamp == blob.endTimestamp &&
-                    txId == blob.txId &&
-                    maxCommitTs == blob.maxCommitTs;
-            }
-
-            public override int GetHashCode()
-            {
-                return this.beginTimestamp.GetHashCode();
-            }
-        }
-
-        private readonly NonBlocking.ConcurrentDictionary<object, NonBlocking.ConcurrentDictionary<long, VersionBlob>> dict;
-
-        private static readonly long TAIL_KEY = -1L;
+        public static readonly long TAIL_KEY = -1L;
 
         private static readonly int RECORD_CAPACITY = 1000000;
 
-        private static readonly int VERSION_CAPACITY = 32;
+        public static readonly int VERSION_CAPACITY = 32;
 
-        public SingletonDictionaryVersionTable(VersionDb versionDb, string tableId)
-            : base(versionDb, tableId)
+        public SingletonDictionaryVersionTable(VersionDb versionDb, string tableId, 
+            int partitionCount, List<TxResourceManager> txResourceManagers)
+            : base(versionDb, tableId, partitionCount)
         {
-            this.dict = new ConcurrentDictionary<object, ConcurrentDictionary<long, VersionBlob>>(
+            this.dict = new ConcurrentDictionary<object, ConcurrentDictionary<long, VersionEntry>>(
                 SingletonDictionaryVersionTable.RECORD_CAPACITY);
-            
+
+            for (int i = 0; i < partitionCount; i++)
+            {
+                this.tableVisitors[i] = new SingletonVersionTableVisitor(this.dict, txResourceManagers[i]);
+            }
+        }
+
+        internal override void EnqueueVersionEntryRequest(VersionEntryRequest req, int execPartition = 0)
+        {
+            this.tableVisitors[execPartition].Invoke(req);
         }
 
         internal override bool DeleteVersionEntry(object recordKey, long versionKey)
         {
-            ConcurrentDictionary<long, VersionBlob> versionList = null;
+            ConcurrentDictionary<long, VersionEntry> versionList = null;
             if (!this.dict.TryGetValue(recordKey, out versionList))
             {
                 return true;
             }
 
-            VersionBlob versionBlob = null;
-            return versionList.TryRemove(versionKey, out versionBlob);
+            VersionEntry versionEntry = null;
+            return versionList.TryRemove(versionKey, out versionEntry);
         }
 
         internal override VersionEntry GetVersionEntryByKey(object recordKey, long versionKey)
         {
-            ConcurrentDictionary<long, VersionBlob> versionList = null;
+            ConcurrentDictionary<long, VersionEntry> versionList = null;
             if (!this.dict.TryGetValue(recordKey, out versionList))
             {
                 return null;
             }
 
-            VersionBlob versionBlob = null;
-            if (!versionList.TryGetValue(versionKey, out versionBlob))
+            VersionEntry versionEntry = null;
+            if (!versionList.TryGetValue(versionKey, out versionEntry))
             {
                 return null;
             }
 
-            return new VersionEntry(
-                recordKey,
-                versionKey,
-                versionBlob.beginTimestamp,
-                versionBlob.endTimestamp,
-                versionBlob.payload,
-                versionBlob.txId,
-                versionBlob.maxCommitTs);
+            return versionEntry;
         }
 
         internal override IEnumerable<VersionEntry> InitializeAndGetVersionList(object recordKey)
         {
-            ConcurrentDictionary<long, VersionBlob> versionList = null;
+            ConcurrentDictionary<long, VersionEntry> versionList = null;
             if (!this.dict.TryGetValue(recordKey, out versionList))
             {
-                ConcurrentDictionary<long, VersionBlob> newVersionList = 
-                    new ConcurrentDictionary<long, VersionBlob>(SingletonDictionaryVersionTable.VERSION_CAPACITY);
+                ConcurrentDictionary<long, VersionEntry> newVersionList = 
+                    new ConcurrentDictionary<long, VersionEntry>(SingletonDictionaryVersionTable.VERSION_CAPACITY);
                 // Adds a special entry whose key is -1 when the list is initialized.
                 // The entry uses beginTimestamp as a pointer pointing to the newest verion in the list.
-                newVersionList.Add(SingletonDictionaryVersionTable.TAIL_KEY, new VersionBlob(-1, -1, null, -1, -1));
+                newVersionList.Add(SingletonDictionaryVersionTable.TAIL_KEY, new VersionEntry(recordKey, -1, -1, -1, null, -1, -1));
 
                 if (this.dict.TryAdd(recordKey, newVersionList))
                 {
@@ -119,12 +128,12 @@
             }
 
             // Retrieves the tail pointer. 
-            VersionBlob tailBlob = null;
-            if(!versionList.TryGetValue(SingletonDictionaryVersionTable.TAIL_KEY, out tailBlob))
+            VersionEntry tailEntry = null;
+            if(!versionList.TryGetValue(SingletonDictionaryVersionTable.TAIL_KEY, out tailEntry))
             {
                 throw new TransactionException("The tail pointer is missing from the version list.");
             }
-            long lastVersionKey = Interlocked.Read(ref tailBlob.beginTimestamp);
+            long lastVersionKey = Interlocked.Read(ref tailEntry.VersionKey);
 
             List<VersionEntry> localList = new List<VersionEntry>(2);
 
@@ -134,21 +143,13 @@
             // so as to increase the lower bound of version keys and reduce the number of iterations. 
             while (lastVersionKey >= 0 && localList.Count <= 2)
             {
-                VersionBlob verBlob = null;
-                if (!versionList.TryGetValue(lastVersionKey, out verBlob))
+                VersionEntry verEntry = null;
+                if (!versionList.TryGetValue(lastVersionKey, out verEntry))
                 {
                     lastVersionKey--;
                     continue;
                 }
 
-                VersionEntry verEntry = new VersionEntry(
-                    recordKey,
-                    lastVersionKey,
-                    verBlob.beginTimestamp,
-                    verBlob.endTimestamp,
-                    verBlob.payload,
-                    verBlob.txId,
-                    verBlob.maxCommitTs);
                 localList.Add(verEntry);
             }
 
@@ -164,88 +165,67 @@
             long readTxId,
             long expectedEndTimestamp)
         {
-            ConcurrentDictionary<long, VersionBlob> versionList = null;
+            ConcurrentDictionary<long, VersionEntry> versionList = null;
             if (!this.dict.TryGetValue(recordKey, out versionList))
             {
                 throw new TransactionException("The specified record does not exist.");
             }
 
-            VersionBlob blob = null;
-            if (!versionList.TryGetValue(versionKey, out blob))
+            VersionEntry entry = null;
+            if (!versionList.TryGetValue(versionKey, out entry))
             {
                 throw new TransactionException("The specified version does not exist.");
             }
 
-            if (blob.txId == readTxId && blob.endTimestamp == expectedEndTimestamp)
+            if (entry.TxId == readTxId && entry.EndTimestamp == expectedEndTimestamp)
             {
-                VersionBlob newBlob = new VersionBlob(
-                    beginTimestamp, endTimestamp, blob.payload, txId, blob.maxCommitTs);
+                VersionEntry newEntry = new VersionEntry(
+                    recordKey, versionKey, beginTimestamp, endTimestamp, entry.Record, txId, entry.MaxCommitTs);
 
-                if (versionList.TryUpdate(versionKey, newBlob, blob))
+                if (versionList.TryUpdate(versionKey, newEntry, entry))
                 {
                     // Successfully replaces the version. Returns the new version entry.
-                    return new VersionEntry(
-                        recordKey, 
-                        versionKey, 
-                        beginTimestamp, 
-                        endTimestamp, 
-                        newBlob.payload, 
-                        txId, 
-                        newBlob.maxCommitTs);
+                    return newEntry;
                 }
                 else
                 {
                     // The version entry has been updated since the prior retrieval,  
                     // causing the replacement failed. Re-read to get a new image. 
-                    versionList.TryGetValue(versionKey, out blob);
+                    versionList.TryGetValue(versionKey, out entry);
                 }
             }
-            
-            return new VersionEntry(
-                recordKey, 
-                versionKey, 
-                blob.beginTimestamp, 
-                blob.endTimestamp, 
-                blob.payload, 
-                blob.txId, 
-                blob.maxCommitTs);
+
+            return entry;
         }
 
         internal override bool UploadNewVersionEntry(object recordKey, long versionKey, VersionEntry versionEntry)
         {
-            ConcurrentDictionary<long, VersionBlob> versionList = null;
+            ConcurrentDictionary<long, VersionEntry> versionList = null;
             if (!this.dict.TryGetValue(recordKey, out versionList))
             {
                 throw new TransactionException("The specified record does not exist.");
             }
 
-            VersionBlob versionBlob = new VersionBlob(
-                versionEntry.BeginTimestamp, 
-                versionEntry.EndTimestamp, 
-                versionEntry.Record, 
-                versionEntry.TxId, 
-                versionEntry.MaxCommitTs);
-
-            if (versionList.TryAdd(versionKey, versionBlob))
+            if (versionList.TryAdd(versionKey, versionEntry))
             {
                 // The new version has been inserted successfully. Re-directs the tail pointer to the new version.  
 
-                VersionBlob tailBlob = null;
-                versionList.TryGetValue(SingletonDictionaryVersionTable.TAIL_KEY, out tailBlob);
+                VersionEntry tailEntry = null;
+                versionList.TryGetValue(SingletonDictionaryVersionTable.TAIL_KEY, out tailEntry);
 
-                if (tailBlob == null)
+                if (tailEntry == null)
                 {
                     throw new TransactionException("Tail pointer is missing from the version list.");
                 }
 
-                long tailKey = tailBlob.beginTimestamp;
+                long tailKey = tailEntry.VersionKey;
                 while (tailKey < versionKey)
                 {
                     // Here we use Interlocked to atomically update the tail entry, instead of ConcurrentDict.TryUpdate().
                     // This is because once created, the whole tail entry always stays and is never replaced.
                     // All concurrent tx's only access the tail pointer, i.e., the beginTimestamp field.  
-                    Interlocked.CompareExchange(ref tailBlob.beginTimestamp, versionKey, tailKey);
-                    tailKey = tailBlob.beginTimestamp;
+                    Interlocked.CompareExchange(ref tailEntry.VersionKey, versionKey, tailKey);
+                    tailKey = tailEntry.VersionKey;
                 }
 
                 return true;
@@ -260,47 +240,40 @@
 
         internal override VersionEntry UpdateVersionMaxCommitTs(object recordKey, long versionKey, long commitTs)
         {
-            ConcurrentDictionary<long, VersionBlob> versionList = null;
+            ConcurrentDictionary<long, VersionEntry> versionList = null;
             if (!this.dict.TryGetValue(recordKey, out versionList))
             {
                 throw new TransactionException("The specified record does not exist.");
             }
 
-            VersionBlob verBlob = null;
-            if (!versionList.TryGetValue(versionKey, out verBlob))
+            VersionEntry verEntry = null;
+            if (!versionList.TryGetValue(versionKey, out verEntry))
             {
                 throw new TransactionException("The specified version does not exist.");
             }
 
-            while (verBlob.maxCommitTs < commitTs)
+            while (verEntry.MaxCommitTs < commitTs)
             {
-                VersionBlob newBlob = new VersionBlob(
-                    verBlob.beginTimestamp, verBlob.endTimestamp, verBlob.payload, verBlob.txId, commitTs);
+                VersionEntry newEntry = new VersionEntry(recordKey, versionKey,
+                    verEntry.BeginTimestamp, verEntry.EndTimestamp, verEntry.Record, verEntry.TxId, commitTs);
 
-                if (versionList.TryUpdate(versionKey, newBlob, verBlob))
+                if (versionList.TryUpdate(versionKey, newEntry, verEntry))
                 {
-                    verBlob = newBlob;
+                    verEntry = newEntry;
                     break;
                 }
                 else
                 {
-                    versionList.TryGetValue(versionKey, out verBlob);
+                    versionList.TryGetValue(versionKey, out verEntry);
                 }
             }
 
-            return new VersionEntry(
-                recordKey,
-                versionKey,
-                verBlob.beginTimestamp,
-                verBlob.endTimestamp,
-                verBlob.payload,
-                verBlob.txId,
-                verBlob.maxCommitTs);
+            return verEntry;
         }
 
         internal override IEnumerable<VersionEntry> GetVersionList(object recordKey)
         {
-            ConcurrentDictionary<long, VersionBlob> versionList = null;
+            ConcurrentDictionary<long, VersionEntry> versionList = null;
             if (!this.dict.TryGetValue(recordKey, out versionList))
             {
                 return null;
@@ -308,9 +281,9 @@
 
             // The value at -1 in the version list is a special entry, 
             // whose beginTimestamp points to the newest version. 
-            VersionBlob tailBlob = null;
-            versionList.TryGetValue(SingletonDictionaryVersionTable.TAIL_KEY, out tailBlob);
-            long lastVersionKey = Interlocked.Read(ref tailBlob.beginTimestamp);
+            VersionEntry tailEntry = null;
+            versionList.TryGetValue(SingletonDictionaryVersionTable.TAIL_KEY, out tailEntry);
+            long lastVersionKey = Interlocked.Read(ref tailEntry.VersionKey);
 
             List<VersionEntry> localList = new List<VersionEntry>(2);
 
@@ -320,18 +293,9 @@
             // so as to increase the lower bound of version keys and reduce the number of iterations. 
             while (lastVersionKey >= 0 && localList.Count <= 2)
             {
-                VersionBlob verBlob = null;
-                if (versionList.TryGetValue(lastVersionKey, out verBlob))
+                VersionEntry verEntry = null;
+                if (versionList.TryGetValue(lastVersionKey, out verEntry))
                 {
-                    VersionEntry verEntry = new VersionEntry(
-                        recordKey,
-                        lastVersionKey,
-                        verBlob.beginTimestamp,
-                        verBlob.endTimestamp,
-                        verBlob.payload,
-                        verBlob.txId,
-                        verBlob.maxCommitTs);
-
                     localList.Add(verEntry);
                 }
 

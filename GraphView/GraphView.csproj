@@ -341,6 +341,7 @@
     <Compile Include="Transaction\SingletonVersionDb.cs" />
     <Compile Include="Transaction\SingletonVersionDbVisitor.cs" />
     <Compile Include="Transaction\SingletonVersionDictionaryTable.cs" />
+    <Compile Include="Transaction\SingletonVersionTableVisitor.cs" />
     <Compile Include="Transaction\SingletonVersionTreeMapTable.cs" />
     <Compile Include="Transaction\StoredProcedure.cs" />
     <Compile Include="Transaction\TransactionExecution.cs" />

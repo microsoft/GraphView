@@ -1,7 +1,7 @@
 ﻿
 namespace GraphView.Transaction
 {
-    using System;
+    using System.Collections.Generic;
     using System.Threading;
 
     /// <summary>
@@ -13,7 +13,7 @@ namespace GraphView.Transaction
     /// The integrity is guaranteed through the invariant: head < tail. 
     /// </summary>
     /// <typeparam name="T"></typeparam>
-    internal class RequestQueue<T>
+    public class RequestQueue<T>
     {
         public static readonly int segmentSize = 128;
 
@@ -64,14 +64,14 @@ namespace GraphView.Transaction
         private Segment[] freeTailCollection;
 
         private int latch;
-        private int dequeueIndex;
+        private int partitionIndex;
 
-        public RequestQueue()
+        public RequestQueue(int partitionCount)
         {
-            this.headCollection = new Segment[128];
-            this.tailCollection = new Segment[128];
-            this.freeHeadCollection = new Segment[128];
-            this.freeTailCollection = new Segment[128];
+            this.headCollection = new Segment[partitionCount];
+            this.tailCollection = new Segment[partitionCount];
+            this.freeHeadCollection = new Segment[partitionCount];
+            this.freeTailCollection = new Segment[partitionCount];
 
             for (int pk = 0; pk < this.headCollection.Length; pk++)
             {
@@ -118,45 +118,6 @@ namespace GraphView.Transaction
 
         public void Enqueue(T element, int pk)
         {
-            while (pk >= this.tailCollection.Length)
-            {
-                // # of partitions exceeds allocated capacity, which should be extremely rare.
-                if (Interlocked.CompareExchange(ref latch, 1, 0) == 0)
-                {
-                    int newCapacity = this.tailCollection.Length * 2;
-
-                    Segment[] newTailArray = new Segment[newCapacity];
-                    Array.Copy(this.tailCollection, newTailArray, this.tailCollection.Length);
-
-                    Segment[] newHeadArray = new Segment[newCapacity];
-                    Array.Copy(this.headCollection, newHeadArray, this.headCollection.Length);
-
-                    Segment[] newFreeHeadArray = new Segment[newCapacity];
-                    Array.Copy(this.freeHeadCollection, newFreeHeadArray, this.freeHeadCollection.Length);
-
-                    Segment[] newFreeTailArray = new Segment[newCapacity];
-                    Array.Copy(this.freeTailCollection, newFreeTailArray, this.freeTailCollection.Length);
-
-                    for (int pid = this.tailCollection.Length; pid < newCapacity; pid++)
-                    {
-                        Segment firstSegment = new Segment();
-                        this.headCollection[pid] = firstSegment;
-                        this.tailCollection[pid] = firstSegment;
-
-                        Segment firstFreeSegment = new Segment();
-                        this.freeHeadCollection[pid] = firstFreeSegment;
-                        this.freeTailCollection[pid] = firstFreeSegment;
-                    }
-
-                    Interlocked.Exchange(ref this.freeHeadCollection, newFreeHeadArray);
-                    Interlocked.Exchange(ref this.freeTailCollection, newFreeTailArray);
-                    Interlocked.Exchange(ref this.tailCollection, newTailArray);
-                    Interlocked.Exchange(ref this.headCollection, newHeadArray);
-
-                    Interlocked.Exchange(ref latch, 0);
-                }
-            }
-
             Segment tailSegment = this.tailCollection[pk];
             tailSegment[tailSegment.localTail] = element;
             Interlocked.Increment(ref tailSegment.localTail);
@@ -175,10 +136,10 @@ namespace GraphView.Transaction
             int capacity = this.tailCollection.Length;
             bool success = true;
 
-            while (!this.TryDequeue(this.dequeueIndex, out element))
+            while (!this.TryDequeue(this.partitionIndex, out element))
             {
-                this.dequeueIndex++;
-                this.dequeueIndex = this.dequeueIndex >= this.tailCollection.Length ? 0 : this.dequeueIndex;
+                this.partitionIndex++;
+                this.partitionIndex = this.partitionIndex >= this.tailCollection.Length ? 0 : this.partitionIndex;
                 count++;
 
                 if (count >= capacity)
@@ -187,13 +148,37 @@ namespace GraphView.Transaction
                     break;
                 }
             }
-            this.dequeueIndex++;
-            this.dequeueIndex = this.dequeueIndex >= this.tailCollection.Length ? 0 : this.dequeueIndex;
+            this.partitionIndex++;
+            this.partitionIndex = this.partitionIndex >= this.tailCollection.Length ? 0 : this.partitionIndex;
 
             return success;
         }
 
-        private bool TryDequeue(int pk, out T element)
+        public void Dequeue(Queue<T> outputQueue, int expectedCount)
+        {
+            int elementCount = 0;
+            int partitionCount = 0;
+
+            while (elementCount < expectedCount && partitionCount < this.tailCollection.Length)
+            {
+                T element = default(T);
+
+                if (this.TryDequeue(this.partitionIndex, out element))
+                {
+                    outputQueue.Enqueue(element);
+                    elementCount++;
+                }
+                else
+                {
+                    this.partitionIndex++;
+                    this.partitionIndex = this.partitionIndex >= this.tailCollection.Length ? 0 : this.partitionIndex;
+
+                    partitionCount++;
+                }
+            }
+        }
+
+        internal bool TryDequeue(int pk, out T element)
         {
             if (pk >= this.headCollection.Length)
             {
@@ -228,6 +213,23 @@ namespace GraphView.Transaction
                 element = default(T);
                 return false;
             }
+        }
+
+        internal int FreeSegmentCount()
+        {
+            int count = 0;
+
+            for (int pk = 0; pk < this.freeHeadCollection.Length; pk++)
+            {
+                Segment seg = this.freeHeadCollection[pk];
+                while (seg.next != null)
+                {
+                    count++;
+                    seg = seg.next;
+                }
+            }
+
+            return count;
         }
     }
 }

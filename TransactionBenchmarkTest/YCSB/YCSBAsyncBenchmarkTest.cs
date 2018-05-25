@@ -163,7 +163,7 @@
 
             // step3: load data
             // this.loadDataParallely(dataFile);
-            // this.LoadDataSequentially(dataFile);
+            this.LoadDataSequentially(dataFile);
 
             // step 4: fill workers' queue
             this.FillWorkerQueue(operationFile);
@@ -271,6 +271,7 @@
                 partitions = ((SingletonPartitionedVersionDb)this.versionDb).PartitionCount;
             }
 
+
             // 3.2 fill the flushedInstances
             List<List<Tuple<string, int>>> instances = new List<List<Tuple<string, int>>>(partitions);
             for (int partition = 0; partition < partitions; partition++)
@@ -377,6 +378,10 @@
                     if (count % 10000 == 0)
                     {
                         Console.WriteLine("Loaded {0} records", count);
+                        if (count == 1000000)
+                        {
+                            break;
+                        }
                     }
                 }
                 Console.WriteLine("Load records successfully, {0} records in total", count);
@@ -399,8 +404,8 @@
                         //line = reader.ReadLine();
                         //string[] fields = this.ParseCommandFormat(line);
 
-                        //TxWorkload workload = new TxWorkload(fields[0], TABLE_ID, fields[2], fields[3]);
-                        TxWorkload workload = new TxWorkload("CLOSE", TABLE_ID, fields[2], fields[3]);
+                        TxWorkload workload = new TxWorkload(fields[0], TABLE_ID, fields[2], fields[3]);
+                        //TxWorkload workload = new TxWorkload("CLOSE", TABLE_ID, fields[2], fields[3]);
                         string sessionId = ((i * this.txCountPerExecutor) + j + 1).ToString();
                         YCSBStoredProcedure procedure = new YCSBStoredProcedure(sessionId, workload);
                         TransactionRequest req = new TransactionRequest(sessionId, procedure);
