@@ -153,6 +153,11 @@ namespace GraphView.Transaction
         private TxRange txRange;
 
         /// <summary>
+        /// The partition of current executor flushed
+        /// </summary>
+        internal int Partition { get; private set; } 
+
+        /// <summary>
         /// A queue of finished txs (committed or aborted) with their wall-clock time to be cleaned.
         /// A tx is cleaned after a certain period after it finishes post processing.
         /// </summary>
@@ -188,6 +193,11 @@ namespace GraphView.Transaction
             this.ResourceManager = resourceManager == null ? new TxResourceManager() : resourceManager;
             this.txRuntimePool = new Queue<Tuple<TransactionExecution, Queue<TransactionRequest>>>();
             this.workingSet = new List<string>(this.workingSetSize);
+
+            if (instances != null)
+            {
+                this.Partition = instances[0].Item2;
+            }
         }
 
         // add executor id
@@ -207,6 +217,11 @@ namespace GraphView.Transaction
             this.partitionedInstances = instances;
             this.txTimeoutSeconds = txTimeoutSeconds;
             this.workingSet = new List<string>(this.workingSetSize);
+
+            if (instances != null)
+            {
+                this.Partition = instances[0].Item2;
+            }
         }
 
         public void SetProgressBar()
@@ -232,10 +247,7 @@ namespace GraphView.Transaction
                 {
                     reqQueue.Clear();
                 }
-
                 return runtimeTuple;
-
-                
             }
             else
             {
@@ -258,11 +270,15 @@ namespace GraphView.Transaction
         {
             while (this.workingSet.Count > 0 || this.workload.Count > 0)
             {
-                TransactionRequest txReq = this.workload.Peek();
+                // TransactionRequest txReq = this.workload.Peek();
                 // Dequeue incoming tx requests until the working set is full.
-                while (this.activeTxs.Count < this.workingSetSize || this.activeTxs.ContainsKey(txReq.SessionId))
+                while (this.activeTxs.Count < this.workingSetSize)
                 {
-                    this.workload.Dequeue();
+                    if (this.workload.Count == 0)
+                    {
+                        break;  
+                    }
+                    TransactionRequest txReq = this.workload.Dequeue();
 
                     if (this.activeTxs.ContainsKey(txReq.SessionId))
                     {
@@ -290,15 +306,6 @@ namespace GraphView.Transaction
                             this.workingSet.Add(txReq.SessionId);
                         }
                         // Requests targeting unopen sessions are disgarded. 
-                    }
-
-                    if (this.workload.Count > 0)
-                    {
-                        txReq = this.workload.Peek();
-                    }
-                    else
-                    {
-                        break;
                     }
                 }
 
@@ -391,6 +398,13 @@ namespace GraphView.Transaction
             }
 
             this.AllRequestsFinished = true;
+            while (this.Active)
+            {
+                if (this.partitionedInstances != null && this.partitionedInstances.Count > 0)
+                {
+                    this.FlushInstances();
+                }
+            }
         }
 
         public void Execute()

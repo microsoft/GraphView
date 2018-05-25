@@ -12,5 +12,10 @@ namespace GraphView.Transaction
                 req.Accept(this);
             }
         }
+
+        public virtual void Invoke(VersionEntryRequest req)
+        {
+            req.Accept(this);
+        }
     }
 }

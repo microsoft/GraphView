@@ -112,7 +112,7 @@ namespace GraphView.Transaction
         /// </summary>
         /// <param name="txId">The specify txId to partition</param>
         /// <param name="txEntryRequest">The given request</param>
-        internal virtual void EnqueueTxEntryRequest(long txId, TxEntryRequest txEntryRequest)
+        internal virtual void EnqueueTxEntryRequest(long txId, TxEntryRequest txEntryRequest, int executorPK = 0)
         {
             int pk = this.PhysicalPartitionByKey(txId);
 
@@ -232,7 +232,7 @@ namespace GraphView.Transaction
     /// </summary>
     public abstract partial class VersionDb
     {
-        internal void EnqueueVersionEntryRequest(string tableId, VersionEntryRequest req)
+        internal void EnqueueVersionEntryRequest(string tableId, VersionEntryRequest req, int execPartition)
         {
             VersionTable versionTable = this.GetVersionTable(tableId);
             if (versionTable == null)
@@ -240,7 +240,7 @@ namespace GraphView.Transaction
                 throw new TransactionException("The specified table does not exists.");
             }
 
-            versionTable.EnqueueVersionEntryRequest(req);
+            versionTable.EnqueueVersionEntryRequest(req, execPartition);
         }
 
         internal IEnumerable<VersionEntry> GetVersionList(string tableId, object recordKey)

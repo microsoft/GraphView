@@ -200,11 +200,13 @@
 
                 foreach (TransactionExecutor executor in this.executorList)
                 {
+                    finishedTasks += executor.FinishedTxs;
                     if (!executor.AllRequestsFinished)
                     {
                         allFinished = false;
-                        finishedTasks += executor.FinishedTxs;
+                        // Console.WriteLine(executor.FinishedTxs);
                     }
+                    // Console.WriteLine(executorList[1].FinishedTxs);
                 }
                 Console.WriteLine("Execute {0} Tasks", finishedTasks);
                 // Shutdown all workers
@@ -289,6 +291,8 @@
                 int count = 0;
                 for (int i = 0; i < workerCount; i++)
                 {
+                    //line = reader.ReadLine();
+                    //string[] fields = this.ParseCommandFormat(line);
                     Queue<TransactionRequest> reqQueue = new Queue<TransactionRequest>();
                     for (int j = 0; j < taskPerWorker; j++)
                     {
@@ -387,11 +391,13 @@
                 int instanceIndex = 0;
                 for (int i = 0; i < this.executorCount; i++)
                 {
+                    line = reader.ReadLine();
+                    string[] fields = this.ParseCommandFormat(line);
                     Queue<TransactionRequest> reqQueue = new Queue<TransactionRequest>();
                     for (int j = 0; j < this.txCountPerExecutor; j++)
                     {
-                        line = reader.ReadLine();
-                        string[] fields = this.ParseCommandFormat(line);
+                        //line = reader.ReadLine();
+                        //string[] fields = this.ParseCommandFormat(line);
 
                         //TxWorkload workload = new TxWorkload(fields[0], TABLE_ID, fields[2], fields[3]);
                         TxWorkload workload = new TxWorkload("CLOSE", TABLE_ID, fields[2], fields[3]);
@@ -400,6 +406,8 @@
                         TransactionRequest req = new TransactionRequest(sessionId, procedure);
                         reqQueue.Enqueue(req);
                     }
+
+                    Console.WriteLine("Filled {0} executors", i+1);
 
                     this.totalTasks += reqQueue.Count;
                     List<Tuple<string, int>> executorInstances =

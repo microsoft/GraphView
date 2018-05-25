@@ -40,6 +40,20 @@ namespace GraphView.Transaction
             }
         }
 
+        internal override void EnqueueVersionEntryRequest(VersionEntryRequest req, int execPartition = 0)
+        {
+            int pk = this.VersionDb.PhysicalPartitionByKey(req.RecordKey);
+
+            if (pk == execPartition)
+            {
+                this.tableVisitors[pk].Invoke(req);
+            }
+            else
+            {
+                base.EnqueueVersionEntryRequest(req, execPartition);
+            }
+        }
+
         internal override void Clear()
         {
             for (int pid = 0; pid < this.PartitionCount; pid++)

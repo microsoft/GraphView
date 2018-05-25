@@ -24,6 +24,7 @@ namespace GraphView.Transaction
 
         internal long FlushWaitTicks { get; set; } = 0L;
 
+        internal TxResourceManager[] resourceManagers;
         /// <summary>
         /// The version table maps
         /// </summary>
@@ -44,7 +45,14 @@ namespace GraphView.Transaction
                 this.dbVisitors[pid] = new PartitionedVersionDbVisitor(this.txTable[pid]);
             }
 
+            this.resourceManagers = new TxResourceManager[partitionCount];
+            for (int i = 0; i < partitionCount; i++)
+            {
+                this.resourceManagers[i] = new TxResourceManager();
+            }
+
             this.PhysicalPartitionByKey = key => key.GetHashCode() % this.PartitionCount;
+            // this.PhysicalPartitionByKey = key => Convert.ToInt32(key) / (int)TxRange.range;
 
             this.DaemonMode = daemonMode;
             if (this.DaemonMode)
@@ -147,6 +155,15 @@ namespace GraphView.Transaction
             return this.versionTables[tableId];
         }
 
+        internal override TxResourceManager GetResourceManagerByPartitionIndex(int partition)
+        {
+            if (partition >= this.PartitionCount)
+            {
+                throw new ArgumentException("partition should be smaller then partitionCount");
+            }
+            return this.resourceManagers[partition];
+        }
+
         internal void Monitor(object obj)
         {
             int pk = (int)obj;
@@ -155,7 +172,6 @@ namespace GraphView.Transaction
             while (this.Active)
             {
                 while (DateTime.Now.Ticks - lastFlushTicks < this.FlushWaitTicks) { }
-                // Console.WriteLine("Flush");
                 lastFlushTicks = DateTime.Now.Ticks;
                 this.Visit(VersionDb.TX_TABLE, pk);
                 foreach (string tableId in this.versionTables.Keys.ToArray())
@@ -165,11 +181,17 @@ namespace GraphView.Transaction
             }
         }
 
-        internal override void EnqueueTxEntryRequest(long txId, TxEntryRequest txEntryRequest)
+        internal override void EnqueueTxEntryRequest(long txId, TxEntryRequest txEntryRequest, int execPartition = 0)
         {
             int pk = this.PhysicalPartitionByKey(txId);
-
-            this.dbVisitors[pk].Invoke(txEntryRequest);
+            if (pk == execPartition)
+            {
+                this.dbVisitors[pk].Invoke(txEntryRequest);
+            }
+            else
+            {
+                base.EnqueueTxEntryRequest(txId, txEntryRequest, execPartition);
+            }
         }
     }
 }

@@ -313,9 +313,9 @@ namespace TransactionBenchmarkTest.YCSB
 
         static void YCSBAsyncTest()
         {
-            const int partitionCount = 1;
+            const int partitionCount = 3;
             const int recordCount = 0;
-            const int executorCount = 3;
+            const int executorCount = partitionCount;
             const int txCountPerExecutor = 1000000;
             //const bool daemonMode = true;
             const bool daemonMode = false;
@@ -324,10 +324,21 @@ namespace TransactionBenchmarkTest.YCSB
 
             // an executor is responsiable for all flush
             List<List<Tuple<string, int>>> instances = new List<List<Tuple<string, int>>>();
+            if (!daemonMode)
+            {
+                for (int i = 0; i < partitionCount; i++)
+                {
+                    instances.Add(new List<Tuple<string, int>>
+                    {
+                        Tuple.Create(VersionDb.TX_TABLE, i),
+                        Tuple.Create(YCSBAsyncBenchmarkTest.TABLE_ID, i),
+                    });
+                }
+            }
 
             // The default mode of versionDb is daemonMode
-            //SingletonPartitionedVersionDb versionDb = SingletonPartitionedVersionDb.Instance(partitionCount, daemonMode);
-            SingletonVersionDb versionDb = SingletonVersionDb.Instance(executorCount);
+            SingletonPartitionedVersionDb versionDb = SingletonPartitionedVersionDb.Instance(partitionCount, daemonMode);
+            // SingletonVersionDb versionDb = SingletonVersionDb.Instance(executorCount);
             YCSBAsyncBenchmarkTest test = new YCSBAsyncBenchmarkTest(recordCount, 
                 executorCount, txCountPerExecutor, versionDb, instances);
 
