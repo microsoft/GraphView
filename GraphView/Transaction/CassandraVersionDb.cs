@@ -38,7 +38,9 @@
         /// lock to init the singleton instance
         /// </summary>
         private static readonly object initlock = new object();
-                
+
+        internal TxResourceManager[] resourceManagers;
+
         internal CassandraSessionManager SessionManager
         {
             get
@@ -50,9 +52,11 @@
         private CassandraVersionDb(int partitionCount)
             : base(partitionCount)
         {
+            this.resourceManagers = new TxResourceManager[partitionCount];
             for (int pid = 0; pid < partitionCount; pid++)
             {
                 this.dbVisitors[pid] = new CassandraVersionDbVisitor();
+                this.resourceManagers[pid] = new TxResourceManager();
             }
 
             // make sure tx_table exists
@@ -76,10 +80,20 @@
             return CassandraVersionDb.instance;
         }
 
+        internal override TxResourceManager GetResourceManagerByPartitionIndex(int partition)
+        {
+            if (partition >= this.PartitionCount)
+            {
+                throw new ArgumentException("partition should be smaller then partitionCount");
+            }
+            return this.resourceManagers[partition];
+        }
+
         internal override void EnqueueTxEntryRequest(long txId, TxEntryRequest txEntryRequest, int execPartition = 0)
         {
-            int pk = this.PhysicalPartitionByKey(txId);
-            this.dbVisitors[pk].Invoke(txEntryRequest);
+            //int pk = this.PhysicalPartitionByKey(txId);
+            //this.dbVisitors[pk].Invoke(txEntryRequest);
+            this.dbVisitors[execPartition].Invoke(txEntryRequest);            
         }
     }
 
@@ -167,8 +181,8 @@
         /// <returns></returns>
         internal RowSet CQLExecute(string cql)
         {
-            CassandraSessionManager.CqlCnt += 1;
-            Console.WriteLine(cql);
+            //CassandraSessionManager.CqlCnt += 1;
+            //Console.WriteLine(cql);
             return this.SessionManager.GetSession(CassandraVersionDb.DEFAULT_KEYSPACE).Execute(cql);
         }
 
@@ -183,8 +197,8 @@
         /// <returns>applied or not</returns>
         internal bool CQLExecuteWithIfApplied(string cql)
         {
-            CassandraSessionManager.CqlIfCnt += 1;
-            Console.WriteLine(cql);
+            //CassandraSessionManager.CqlIfCnt += 1;
+            //Console.WriteLine(cql);
             var rs = this.SessionManager.GetSession(CassandraVersionDb.DEFAULT_KEYSPACE).Execute(cql);
             var rse = rs.GetEnumerator();
             rse.MoveNext();

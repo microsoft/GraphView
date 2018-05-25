@@ -53,7 +53,7 @@
     <PlatformTarget>AnyCPU</PlatformTarget>
   </PropertyGroup>
   <PropertyGroup>
-    <StartupObject>TransactionBenchmarkTest.YCSB.Program</StartupObject>
+    <StartupObject>TransactionBenchmarkTest.YCSB.Example</StartupObject>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="Cassandra, Version=3.99.0.0, Culture=neutral, PublicKeyToken=10b231fbfc8c4b4d, processorArchitecture=MSIL">
@@ -140,6 +140,7 @@
     <Compile Include="TPCC\Utils.cs" />
     <Compile Include="TxTask.cs" />
     <Compile Include="Worker.cs" />
+    <Compile Include="YCSB\Main.cs" />
     <Compile Include="YCSB\Program.cs" />
     <Compile Include="YCSB\RedisBenchmarkTest.cs" />
     <Compile Include="YCSB\RedisRawTest.cs" />

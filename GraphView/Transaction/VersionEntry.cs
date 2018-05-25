@@ -30,9 +30,9 @@ namespace GraphView.Transaction
         public static readonly long VERSION_KEY_STRAT_INDEX = -1L;
 
         // The following three properties are readonly
-        internal object RecordKey { get; }
-        internal long VersionKey { get; }
-        internal object Record { get; }
+        internal object RecordKey { get; set; }
+        internal long VersionKey;
+        internal object Record { get; set; }
 
         // The following properties may be changed during the lifetime
         // of a tx, after a version entry is created

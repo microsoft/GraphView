@@ -50,8 +50,9 @@
 
         internal override void EnqueueVersionEntryRequest(VersionEntryRequest req, int execPartition = 0)
         {
-            int pk = this.VersionDb.PhysicalPartitionByKey(req.RecordKey);
-            this.tableVisitors[pk].Visit(req);
+            //int pk = this.VersionDb.PhysicalPartitionByKey(req.RecordKey);
+            //this.tableVisitors[pk].Visit(req);
+            this.tableVisitors[execPartition].Visit(req);
         }
     }
 
@@ -101,8 +102,8 @@
         /// </summary>
         internal RowSet CQLExecute(string cql)
         {
-            CassandraSessionManager.CqlCnt += 1;
-            Console.WriteLine(cql);
+            //CassandraSessionManager.CqlCnt += 1;
+            //Console.WriteLine(cql);
             return this.SessionManager.GetSession(CassandraVersionDb.DEFAULT_KEYSPACE).Execute(cql);
         }
 
@@ -117,8 +118,8 @@
         /// <returns>applied or not</returns>
         internal bool CQLExecuteWithIfApplied(string cql)
         {
-            CassandraSessionManager.CqlIfCnt += 1;
-            Console.WriteLine(cql);
+            //CassandraSessionManager.CqlIfCnt += 1;
+            //Console.WriteLine(cql);
             var rs = this.SessionManager.GetSession(CassandraVersionDb.DEFAULT_KEYSPACE).Execute(cql);
             var rse = rs.GetEnumerator();
             rse.MoveNext();
