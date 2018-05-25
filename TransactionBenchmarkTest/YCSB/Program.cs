@@ -147,13 +147,25 @@ namespace TransactionBenchmarkTest.YCSB
             }
             Console.WriteLine("cmd count: {0}", cnt);
 
-            // create tx_table
-            //session.Execute(cmd_arr[0]);
+            SimpleStatement[] cql_statements = new SimpleStatement[cnt];
+            for (int i=0; i<cnt; i++)
+            {
+                cql_statements[i] = new SimpleStatement(cmd_arr[i]);
+            }
 
             //Console.ReadLine();
             Console.WriteLine("start running...");
 
             int cycle = 6;
+
+            //int[] num_t_arr = new int[] { 4, 8, 20, 50, };
+            int[] num_t_arr = new int[] { 4, };
+
+            ISession[] sess_arr = new ISession[50];
+            for (int i = 0; i < 50; i++)
+            {
+                sess_arr[i] = cluster.Connect("versiondb");
+            }
 
             void runCQL(int s, int e) // [s, e)
             {
@@ -163,56 +175,64 @@ namespace TransactionBenchmarkTest.YCSB
                 }
             }
 
-            void runCycle(int s, int e) // [s, e)
+            void runCycle(int tid, int s, int e) // [s, e)
             {
                 for (int ii = s; ii < e; ii++)
                 {
-                    var rs = session.Execute(cmd_arr[ii]);
+                    //var rs = session.Execute(cql_statements[ii]);
+                    //var rs = sess_arr[tid].Execute(cql_statements[ii]);
+                    var rs =  session.ExecuteAsync(cql_statements[ii]);
+                    //var statement = new SimpleStatement(cmd_arr[ii]);                    
+                    //var rs = sess_arr[tid].Execute(statement);
+                    //var rs = sess_arr[tid].ExecuteAsync(cmd_arr[ii]);
                 }
             }
 
-            int[] num_t_arr = new int[] { 4, 8, 20, 50, 1, };
+            
+
+
 
             // run each CQL
-            foreach (int num_t in num_t_arr)
-            {
-                Console.WriteLine("{0} THREADs @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@", num_t);
-                session.Execute("TRUNCATE TABLE tx_table");
+            //foreach (int num_t in num_t_arr)
+            //{
+            //    Console.WriteLine("{0} THREADs @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@", num_t);
+            //    session.Execute("TRUNCATE TABLE tx_table");
+                
 
-                int num_per_t = cnt / num_t;
+            //    int num_per_t = cnt / num_t;
 
-                for (int k = 0; k < cycle; k++)
-                {
-                    Console.WriteLine("running cql {0} with {1} thread*********************", k, num_t);
-                    // 
-                    List<Thread> threadList = new List<Thread>();
-                    for (int j = 0; j < num_t; j++)
-                    {
-                        int s = j * num_per_t + k;
-                        int e = (j + 1) * num_per_t + k;
-                        Thread thread = new Thread(() => runCQL(s, e));
-                        threadList.Add(thread);
-                    }
+            //    for (int k = 0; k < cycle; k++)
+            //    {
+            //        Console.WriteLine("running cql {0} with {1} thread*********************", k, num_t);
+            //        // 
+            //        List<Thread> threadList = new List<Thread>();
+            //        for (int j = 0; j < num_t; j++)
+            //        {
+            //            int s = j * num_per_t + k;
+            //            int e = (j + 1) * num_per_t + k;
+            //            Thread thread = new Thread(() => runCQL(s, e));
+            //            threadList.Add(thread);
+            //        }
 
-                    // start
-                    long start = DateTime.Now.Ticks;
-                    foreach (Thread thread in threadList)
-                    {
-                        thread.Start();
-                    }
-                    foreach (Thread thread in threadList)
-                    {
-                        thread.Join();
-                    }
-                    long end = DateTime.Now.Ticks;
+            //        // start
+            //        long start = DateTime.Now.Ticks;
+            //        foreach (Thread thread in threadList)
+            //        {
+            //            thread.Start();
+            //        }
+            //        foreach (Thread thread in threadList)
+            //        {
+            //            thread.Join();
+            //        }
+            //        long end = DateTime.Now.Ticks;
 
-                    // compute throughput
-                    double delta = (end - start) * 1.0 / 10000000;  // seconds
-                    double throughput = (cnt / 6) / delta;
+            //        // compute throughput
+            //        double delta = (end - start) * 1.0 / 10000000;  // seconds
+            //        double throughput = (cnt / 6) / delta;
 
-                    Console.WriteLine("cql type {0}, {1} thread, throughput = {2}/s", k, num_t, throughput);
-                }
-            }
+            //        Console.WriteLine("cql type {0}, {1} thread, throughput = {2}/s", k, num_t, throughput);
+            //    }
+            //}
 
             Console.WriteLine();
             Console.WriteLine("Runing cycles using threads...");            
@@ -222,7 +242,7 @@ namespace TransactionBenchmarkTest.YCSB
             {
                 Console.WriteLine("{0} THREADs %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%", num_t);
                 session.Execute("TRUNCATE TABLE tx_table");
-
+                
                 int num_per_t = cnt / num_t;
                 
                 // build thread
@@ -231,7 +251,7 @@ namespace TransactionBenchmarkTest.YCSB
                 {
                     int s = j * num_per_t;
                     int e = (j + 1) * num_per_t;
-                    Thread thread = new Thread(() => runCycle(s, e));
+                    Thread thread = new Thread(() => runCycle(j, s, e));
                     threadList.Add(thread);
                 }
 
@@ -261,9 +281,9 @@ namespace TransactionBenchmarkTest.YCSB
         static void YCSBAsyncTestWithCassandra()
         {
             const int partitionCount = 1;
-            const int recordCount = 0;
+            const int recordCount = 10000;
             const int executorCount = 1;
-            const int txCountPerExecutor = 1500000;
+            const int txCountPerExecutor = 10000;
 
             const string dataFile = "ycsb_data_r.in";
             const string operationFile = "ycsb_ops_r.in";
@@ -271,19 +291,19 @@ namespace TransactionBenchmarkTest.YCSB
             // an executor is responsiable for all flush
             List<List<Tuple<string, int>>> instances = new List<List<Tuple<string, int>>>
             {
-                //new List<Tuple<string, int>>()
-                //{
-                //    Tuple.Create(Constants.DefaultTbl, 0),
-                //    Tuple.Create(RedisVersionDb.TX_TABLE, 0),
-                //},
+                new List<Tuple<string, int>>()
+                {
+                    Tuple.Create(Constants.DefaultTbl, 0),
+                    Tuple.Create(RedisVersionDb.TX_TABLE, 0),
+                },
             };
 
-            TxResourceManager resourceManager = new TxResourceManager();
+            //TxResourceManager resourceManager = new TxResourceManager();
 
             // The default mode of versionDb is daemonMode
             CassandraVersionDb versionDb = CassandraVersionDb.Instance(partitionCount);
             YCSBAsyncBenchmarkTest test = new YCSBAsyncBenchmarkTest(recordCount,
-                executorCount, txCountPerExecutor, versionDb, instances, resourceManager);
+                executorCount, txCountPerExecutor, versionDb, instances);
 
             test.Setup(dataFile, operationFile);
             test.Run();
@@ -342,14 +362,14 @@ namespace TransactionBenchmarkTest.YCSB
             // For the YCSB sync test
             // YCSBTest();
             // YCSBSyncTestWithCassandra();
-            // test_cassandra();
+            test_cassandra();
 
             // For the redis benchmark Test
             // RedisBenchmarkTest();
 
             // For the YCSB async test
             // YCSBAsyncTest();
-            YCSBAsyncTestWithCassandra();
+            //YCSBAsyncTestWithCassandra();
 
             // ExecuteRedisRawTest();
         }
