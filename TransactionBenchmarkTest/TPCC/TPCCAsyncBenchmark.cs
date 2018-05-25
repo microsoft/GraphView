@@ -118,7 +118,7 @@ namespace TransactionBenchmarkTest.TPCC
 
                 List<Tuple<string, int>> executorInstances = instanceIndex >= this.partitionedInstances.Count ? null :
                    this.partitionedInstances[instanceIndex++];
-                this.executorList.Add(new TransactionExecutor(this.redisVersionDb, null, i, reqQueue, executorInstances));
+                this.executorList.Add(new TransactionExecutor(this.redisVersionDb, null, reqQueue, i, i));
             }
         }
 
@@ -172,7 +172,7 @@ namespace TransactionBenchmarkTest.TPCC
 
                 List<Tuple<string, int>> executorInstances = instanceIndex >= this.partitionedInstances.Count ? null :
                    this.partitionedInstances[instanceIndex++];
-                this.executorList.Add(new TransactionExecutor(this.redisVersionDb, null, i, reqQueue, executorInstances));
+                this.executorList.Add(new TransactionExecutor(this.redisVersionDb, null, reqQueue, i, i));
             }
         }
 

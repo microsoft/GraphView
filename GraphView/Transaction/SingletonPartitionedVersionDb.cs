@@ -13,6 +13,8 @@ namespace GraphView.Transaction
         private static volatile SingletonPartitionedVersionDb instance;
         private static readonly object initlock = new object();
 
+        internal static int EnqueuedRequests = 0; 
+
         /// <summary>
         /// Whether the version db is in deamon mode
         /// In deamon mode, for every partition, it will have a thread to flush
@@ -51,7 +53,7 @@ namespace GraphView.Transaction
                 this.resourceManagers[i] = new TxResourceManager();
             }
 
-            this.PhysicalPartitionByKey = key => key.GetHashCode() % this.PartitionCount;
+            this.PhysicalPartitionByKey = key => Math.Abs(key.GetHashCode()) % this.PartitionCount;
             // this.PhysicalPartitionByKey = key => Convert.ToInt32(key) / (int)TxRange.range;
 
             this.DaemonMode = daemonMode;
@@ -190,6 +192,7 @@ namespace GraphView.Transaction
             }
             else
             {
+                Interlocked.Increment(ref SingletonPartitionedVersionDb.EnqueuedRequests);   
                 base.EnqueueTxEntryRequest(txId, txEntryRequest, execPartition);
             }
         }

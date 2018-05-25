@@ -152,6 +152,8 @@ namespace GraphView.Transaction
 
         private TxRange txRange;
 
+        private string[] flushTables;
+
         /// <summary>
         /// The partition of current executor flushed
         /// </summary>
@@ -176,16 +178,17 @@ namespace GraphView.Transaction
             VersionDb versionDb,
             ILogStore logStore,
             Queue<TransactionRequest> workload = null,
-            List<Tuple<string, int>> instances = null,
+            int partition = 0,
             int startRange = -1,
             int txTimeoutSeconds = 0,
-            TxResourceManager resourceManager = null)
+            TxResourceManager resourceManager = null,
+            string[] flushTables = null)
         {
             this.versionDb = versionDb;
             this.logStore = logStore;
             this.workload = workload ?? new Queue<TransactionRequest>();
             this.activeTxs = new Dictionary<string, Tuple<TransactionExecution, Queue<TransactionRequest>>>();
-            this.partitionedInstances = instances;
+
             this.txTimeoutSeconds = txTimeoutSeconds;
             this.GarbageQueueTxId = new Queue<long>();
             this.GarbageQueueFinishTime = new Queue<long>();
@@ -194,35 +197,33 @@ namespace GraphView.Transaction
             this.txRuntimePool = new Queue<Tuple<TransactionExecution, Queue<TransactionRequest>>>();
             this.workingSet = new List<string>(this.workingSetSize);
 
-            if (instances != null)
-            {
-                this.Partition = instances[0].Item2;
-            }
+            this.Partition = partition;
+            this.flushTables = flushTables;
         }
 
         // add executor id
-        public TransactionExecutor(
-            VersionDb versionDb,
-            ILogStore logStore,
-            int executorId,
-            Queue<TransactionRequest> workload = null,
-            List<Tuple<string, int>> instances = null,
-            int txTimeoutSeconds = 0)
-        {
-            this.versionDb = versionDb;
-            this.logStore = logStore;
-            this.executorId = executorId;
-            this.workload = workload ?? new Queue<TransactionRequest>();
-            this.activeTxs = new Dictionary<string, Tuple<TransactionExecution, Queue<TransactionRequest>>>();
-            this.partitionedInstances = instances;
-            this.txTimeoutSeconds = txTimeoutSeconds;
-            this.workingSet = new List<string>(this.workingSetSize);
+        //public TransactionExecutor(
+        //    VersionDb versionDb,
+        //    ILogStore logStore,
+        //    int executorId,
+        //    Queue<TransactionRequest> workload = null,
+        //    List<Tuple<string, int>> instances = null,
+        //    int txTimeoutSeconds = 0)
+        //{
+        //    this.versionDb = versionDb;
+        //    this.logStore = logStore;
+        //    this.executorId = executorId;
+        //    this.workload = workload ?? new Queue<TransactionRequest>();
+        //    this.activeTxs = new Dictionary<string, Tuple<TransactionExecution, Queue<TransactionRequest>>>();
+        //    this.partitionedInstances = instances;
+        //    this.txTimeoutSeconds = txTimeoutSeconds;
+        //    this.workingSet = new List<string>(this.workingSetSize);
 
-            if (instances != null)
-            {
-                this.Partition = instances[0].Item2;
-            }
-        }
+        //    if (instances != null)
+        //    {
+        //        this.Partition = instances[0].Item2;
+        //    }
+        //}
 
         public void SetProgressBar()
         {
@@ -391,7 +392,7 @@ namespace GraphView.Transaction
                 }
 
                 // The implementation of the flush logic needs to be refined.
-                if (this.partitionedInstances != null && this.partitionedInstances.Count > 0)
+                if (this.flushTables != null && this.flushTables.Length > 0)
                 {
                     this.FlushInstances();
                 }
@@ -400,7 +401,7 @@ namespace GraphView.Transaction
             this.AllRequestsFinished = true;
             while (this.Active)
             {
-                if (this.partitionedInstances != null && this.partitionedInstances.Count > 0)
+                if (this.flushTables != null && this.flushTables.Length > 0)
                 {
                     this.FlushInstances();
                 }
@@ -535,7 +536,7 @@ namespace GraphView.Transaction
                     }
                 }
 
-                if (this.partitionedInstances != null)
+                if (this.flushTables != null)
                 {
                     this.FlushInstances();
                 }
@@ -619,7 +620,7 @@ namespace GraphView.Transaction
 
             // Set the finish flag as true
             this.AllRequestsFinished = true;
-            if (this.partitionedInstances != null)
+            if (this.flushTables != null)
             {
                 while (this.Active)
                 {
@@ -732,11 +733,9 @@ namespace GraphView.Transaction
 
         private void FlushInstances()
         {
-            foreach (Tuple<string, int> tuple in this.partitionedInstances)
+            for (int i = 0; i < this.flushTables.Length; i++)
             {
-                string tableId = tuple.Item1;
-                int partition = tuple.Item2;
-                this.versionDb.Visit(tableId, partition);
+                this.versionDb.Visit(this.flushTables[i], this.Partition);
             }
         }
 

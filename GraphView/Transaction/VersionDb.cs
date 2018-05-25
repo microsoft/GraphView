@@ -99,7 +99,7 @@ namespace GraphView.Transaction
                 this.queueLatches[pid] = 0;
             }
 
-            this.PhysicalPartitionByKey = key => key.GetHashCode() % this.PartitionCount;
+            this.PhysicalPartitionByKey = key => Math.Abs(key.GetHashCode()) % this.PartitionCount;
         }
 
         internal virtual TxResourceManager GetResourceManagerByPartitionIndex(int partition)

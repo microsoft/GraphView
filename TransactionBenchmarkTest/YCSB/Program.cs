@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Threading;
+using TransactionBenchmarkTest.TPCC;
 
 namespace TransactionBenchmarkTest.YCSB
 {
@@ -303,7 +304,7 @@ namespace TransactionBenchmarkTest.YCSB
             // The default mode of versionDb is daemonMode
             CassandraVersionDb versionDb = CassandraVersionDb.Instance(partitionCount);
             YCSBAsyncBenchmarkTest test = new YCSBAsyncBenchmarkTest(recordCount,
-                executorCount, txCountPerExecutor, versionDb, instances);
+                executorCount, txCountPerExecutor, versionDb);
 
             test.Setup(dataFile, operationFile);
             test.Run();
@@ -321,31 +322,27 @@ namespace TransactionBenchmarkTest.YCSB
             const bool daemonMode = false;
             const string dataFile = "ycsb_data_lg_r.in";
             const string operationFile = "ycsb_ops_lg_r.in";
+            YCSBAsyncBenchmarkTest.RESHUFFLE = false;
+
 
             // an executor is responsiable for all flush
-            List<List<Tuple<string, int>>> instances = new List<List<Tuple<string, int>>>();
-            if (!daemonMode)
+            string[] tables = 
             {
-                for (int i = 0; i < partitionCount; i++)
-                {
-                    instances.Add(new List<Tuple<string, int>>
-                    {
-                        Tuple.Create(VersionDb.TX_TABLE, i),
-                        Tuple.Create(YCSBAsyncBenchmarkTest.TABLE_ID, i),
-                    });
-                }
-            }
+                YCSBAsyncBenchmarkTest.TABLE_ID,
+                VersionDb.TX_TABLE
+            };
 
             // The default mode of versionDb is daemonMode
             SingletonPartitionedVersionDb versionDb = SingletonPartitionedVersionDb.Instance(partitionCount, daemonMode);
             // SingletonVersionDb versionDb = SingletonVersionDb.Instance(executorCount);
-            YCSBAsyncBenchmarkTest test = new YCSBAsyncBenchmarkTest(recordCount, 
-                executorCount, txCountPerExecutor, versionDb, instances);
+            YCSBAsyncBenchmarkTest test = new YCSBAsyncBenchmarkTest(recordCount,
+                executorCount, txCountPerExecutor, versionDb, tables);
 
             test.Setup(dataFile, operationFile);
             test.Run();
             test.Stats();
 
+            Console.WriteLine("Enqueued Requests: {0}", SingletonPartitionedVersionDb.EnqueuedRequests);
             //versionDb.Active = false;
         }
 
@@ -373,13 +370,13 @@ namespace TransactionBenchmarkTest.YCSB
             // For the YCSB sync test
             // YCSBTest();
             // YCSBSyncTestWithCassandra();
-            test_cassandra();
+            // test_cassandra();
 
             // For the redis benchmark Test
             // RedisBenchmarkTest();
 
             // For the YCSB async test
-            // YCSBAsyncTest();
+            YCSBAsyncTest();
             //YCSBAsyncTestWithCassandra();
 
             // ExecuteRedisRawTest();

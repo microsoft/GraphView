@@ -13,6 +13,8 @@
 
         public static readonly long REDIS_DB_INDEX = 7L;
 
+        public static bool RESHUFFLE = true;
+
         public static Func<object, object> ACTION = (object obj) =>
         {
             Tuple<VersionDb, TxWorkload> tuple = (Tuple<VersionDb, TxWorkload>)obj;
@@ -101,9 +103,9 @@
         private int totalTasks = 0;
 
         /// <summary>
-        /// The partitioned instances to flush
+        /// the tables should be flushed
         /// </summary>
-        private List<List<Tuple<string, int>>> partitionedInstances;
+        private string[] tables;
 
         internal int TxThroughput
         {
@@ -135,8 +137,8 @@
             int recordCount,
             int executorCount, 
             int txCountPerExecutor, 
-            VersionDb versionDb, 
-            List<List<Tuple<string, int>>> instances = null)
+            VersionDb versionDb,
+            string[] flushTables = null)
         {
             this.versionDb = versionDb;
             this.recordCount = recordCount;
@@ -144,12 +146,7 @@
             this.txCountPerExecutor = txCountPerExecutor;
             this.executorList = new List<TransactionExecutor>();
             this.totalTasks = 0;
-
-            if (instances == null || instances.Count > executorCount)
-            {
-                throw new ArgumentException("instances mustn't be null and the size should be smaller or equal to executorCount");
-            }
-            this.partitionedInstances = instances;
+            this.tables = flushTables;
         }
 
         internal void Setup(string dataFile, string operationFile)
@@ -166,7 +163,14 @@
             // this.LoadDataSequentially(dataFile);
 
             // step 4: fill workers' queue
-            this.FillWorkerQueue(operationFile);
+            if (this.versionDb is SingletonPartitionedVersionDb && RESHUFFLE)
+            {
+                this.ReshuffleFillWorkerQueue(operationFile, this.executorCount, this.executorCount * this.txCountPerExecutor);
+            }
+            else
+            {
+                this.FillWorkerQueue(operationFile);
+            }
         }
 
         internal void Run()
@@ -284,36 +288,8 @@
 
             // 3.3 Load in multiple workers
             int workerCount = Math.Max(2, partitions), taskPerWorker = this.recordCount / workerCount;
-            List<TransactionExecutor> executors = new List<TransactionExecutor>();
-            using (StreamReader reader = new StreamReader(dataFile))
-            {
-                string line;
-                int count = 0;
-                for (int i = 0; i < workerCount; i++)
-                {
-                    //line = reader.ReadLine();
-                    //string[] fields = this.ParseCommandFormat(line);
-                    Queue<TransactionRequest> reqQueue = new Queue<TransactionRequest>();
-                    for (int j = 0; j < taskPerWorker; j++)
-                    {
-                        line = reader.ReadLine();
-                        string[] fields = this.ParseCommandFormat(line);
-                        count++;
-
-                        TxWorkload workload = new TxWorkload(fields[0], TABLE_ID, fields[2], fields[3]);
-                        string sessionId = ((i * this.txCountPerExecutor) + j + 1).ToString();
-                        YCSBStoredProcedure procedure = new YCSBStoredProcedure(sessionId, workload);
-                        TransactionRequest req = new TransactionRequest(sessionId, procedure);
-                        reqQueue.Enqueue(req);
-                    }
-                    List<Tuple<string, int>> executorInstances =
-                        i >= instances.Count ?
-                        null :
-                        instances[i];
-
-                    executors.Add(new TransactionExecutor(this.versionDb, null, reqQueue, executorInstances, i, 0));
-                }
-            }
+            List<TransactionExecutor> executors = 
+                this.ReshuffleFillWorkerQueue(dataFile, workerCount, taskPerWorker);
 
             // 3.4 load records
             //List<Thread> threadList = new List<Thread>();
@@ -407,18 +383,59 @@
                         reqQueue.Enqueue(req);
                     }
 
-                    Console.WriteLine("Filled {0} executors", i+1);
+                    Console.WriteLine("Filled {0} executors", i + 1);
 
                     this.totalTasks += reqQueue.Count;
-                    List<Tuple<string, int>> executorInstances =
-                        instanceIndex >= this.partitionedInstances.Count ?
-                        null :
-                        this.partitionedInstances[instanceIndex++];
-
-                    this.executorList.Add(new TransactionExecutor(this.versionDb, null, reqQueue, executorInstances, i, 0, 
-                        this.versionDb.GetResourceManagerByPartitionIndex(i)));
+                    this.executorList.Add(new TransactionExecutor(this.versionDb, null, reqQueue, i, i, 0,
+                        this.versionDb.GetResourceManagerByPartitionIndex(i), tables));
                 }
             }
+        }
+
+        // Reshuffle the workloads and make sure all workloads in the same executor
+        // will have the same partition key
+        private List<TransactionExecutor> ReshuffleFillWorkerQueue(string operationFile, int executorCount, int totalWorkloads)
+        {
+            // new transaction queues at first
+            Queue<TransactionRequest>[] queueArray = new Queue<TransactionRequest>[executorCount];
+            List<TransactionExecutor> executors = new List<TransactionExecutor>(executorCount);
+
+            for (int i = 0; i < executorCount; i++)
+            {
+                queueArray[i] = new Queue<TransactionRequest>();
+            }
+
+            using (StreamReader reader = new StreamReader(operationFile))
+            {
+                string line;
+                for (int i = 0; i < totalWorkloads; i++)
+                {
+                    line = reader.ReadLine();
+                    string[] fields = this.ParseCommandFormat(line);
+
+                    TxWorkload workload = new TxWorkload("CLOSE", TABLE_ID, fields[2], fields[3]);
+                    string sessionId = (i+1).ToString();
+                    YCSBStoredProcedure procedure = new YCSBStoredProcedure(sessionId, workload);
+                    TransactionRequest req = new TransactionRequest(sessionId, procedure);
+
+                    int pk = this.versionDb.PhysicalPartitionByKey(fields[2]);
+                    queueArray[pk].Enqueue(req);
+                }
+            }
+
+            for (int pk = 0; pk < executorCount; pk++)
+            {
+                Queue<TransactionRequest> txQueue = queueArray[pk];
+                this.totalTasks += txQueue.Count;
+                TxResourceManager manager = this.versionDb.GetResourceManagerByPartitionIndex(pk);
+
+                executors.Add(
+                    new TransactionExecutor(this.versionDb, null, txQueue, pk, pk, 0, manager, tables));
+
+                Console.WriteLine("Executor {0} workloads count: {1}", pk, txQueue.Count);
+            }
+
+            return executors;
         }
 
         private string[] ParseCommandFormat(string line)

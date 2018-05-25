@@ -242,7 +242,7 @@
 			this.transactions = new List<Transaction>();
 			for (int i = 0; i < this.workerCount; i++)
 			{
-				this.executors.Add(new TransactionExecutor(this.versionDb, null, null, null, i));
+				this.executors.Add(new TransactionExecutor(this.versionDb, null, null, 0, i));
 				this.transactions.Add(new Transaction(null, this.versionDb, 10, this.executors[i].GarbageQueueTxId, this.executors[i].GarbageQueueFinishTime));
 			}
         }
@@ -306,7 +306,7 @@
             this.transactions.Clear();
             for (int i = 0; i < this.workerCount; i++)
             {
-                this.executors.Add(new TransactionExecutor(this.versionDb, null, null, null, i));
+                this.executors.Add(new TransactionExecutor(this.versionDb, null, null, 0, i));
                 this.transactions.Add(new Transaction(null, this.versionDb, 10, this.executors[i].GarbageQueueTxId, this.executors[i].GarbageQueueFinishTime));
             }
         }
