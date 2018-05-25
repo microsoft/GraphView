@@ -208,7 +208,7 @@
                     }
                     // Console.WriteLine(executorList[1].FinishedTxs);
                 }
-                Console.WriteLine("Execute {0} Tasks", finishedTasks);
+                if (finishedTasks % 10000 == 0) Console.WriteLine("Execute {0} Tasks", finishedTasks);
                 // Shutdown all workers
                 if (allFinished)
                 {

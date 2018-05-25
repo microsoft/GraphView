@@ -82,7 +82,7 @@ namespace GraphView.Transaction
                                 req.TxId,
                                 (sbyte)TxStatus.Ongoing,     // default status
                                 TxTableEntry.DEFAULT_COMMIT_TIME,
-                                IsCommitTsOrLB.CommitLowerBound));
+                                (sbyte)IsCommitTsOrLB.CommitLowerBound));
             if (applied)
             {
                 req.Result = 1L;
@@ -120,15 +120,15 @@ namespace GraphView.Transaction
             bool applied = this.CQLExecuteWithIfApplied(string.Format(CassandraVersionDb.CQL_SET_COMMIT_TIME,
                                                                     VersionDb.TX_TABLE,
                                                                     req.ProposedCommitTs,
-                                                                    IsCommitTsOrLB.CommitTs,
+                                                                    (sbyte)IsCommitTsOrLB.CommitTs,
                                                                     req.TxId));
             if (!applied)
             {
                 this.CQLExecuteWithIfApplied(string.Format(CassandraVersionDb.CQL_SET_COMMIT_TIME_SET_FLAG,
                                                         VersionDb.TX_TABLE,
-                                                        IsCommitTsOrLB.CommitTs,
+                                                        (sbyte)IsCommitTsOrLB.CommitTs,
                                                         req.TxId,
-                                                        IsCommitTsOrLB.CommitLowerBound));
+                                                        (sbyte)IsCommitTsOrLB.CommitLowerBound));
             }
 
             TxTableEntry entry = this.GetTxTableEntry(req.TxId);

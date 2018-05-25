@@ -280,10 +280,10 @@ namespace TransactionBenchmarkTest.YCSB
 
         static void YCSBAsyncTestWithCassandra()
         {
-            const int partitionCount = 1;
-            const int recordCount = 10000;
-            const int executorCount = 1;
-            const int txCountPerExecutor = 10000;
+            const int partitionCount = 20;
+            const int recordCount = 500000;
+            const int executorCount = 20;
+            const int txCountPerExecutor = 25000;
 
             const string dataFile = "ycsb_data_r.in";
             const string operationFile = "ycsb_ops_r.in";
@@ -293,8 +293,23 @@ namespace TransactionBenchmarkTest.YCSB
             {
                 new List<Tuple<string, int>>()
                 {
-                    Tuple.Create(Constants.DefaultTbl, 0),
-                    Tuple.Create(RedisVersionDb.TX_TABLE, 0),
+                    Tuple.Create(VersionDb.TX_TABLE, 0),
+                    Tuple.Create(YCSBAsyncBenchmarkTest.TABLE_ID, 0)
+                },
+                new List<Tuple<string, int>>()
+                {
+                    Tuple.Create(VersionDb.TX_TABLE, 0),
+                    Tuple.Create(YCSBAsyncBenchmarkTest.TABLE_ID, 0)
+                },
+                new List<Tuple<string, int>>()
+                {
+                    Tuple.Create(VersionDb.TX_TABLE, 0),
+                    Tuple.Create(YCSBAsyncBenchmarkTest.TABLE_ID, 0)
+                },
+                new List<Tuple<string, int>>()
+                {
+                    Tuple.Create(VersionDb.TX_TABLE, 0),
+                    Tuple.Create(YCSBAsyncBenchmarkTest.TABLE_ID, 0)
                 },
             };
 
@@ -308,6 +323,9 @@ namespace TransactionBenchmarkTest.YCSB
             test.Setup(dataFile, operationFile);
             test.Run();
             test.Stats();
+
+            Console.WriteLine("done");
+            Console.ReadLine();
 
         }
 
@@ -373,14 +391,14 @@ namespace TransactionBenchmarkTest.YCSB
             // For the YCSB sync test
             // YCSBTest();
             // YCSBSyncTestWithCassandra();
-            test_cassandra();
+            // test_cassandra();
 
             // For the redis benchmark Test
             // RedisBenchmarkTest();
 
             // For the YCSB async test
             // YCSBAsyncTest();
-            //YCSBAsyncTestWithCassandra();
+            YCSBAsyncTestWithCassandra();
 
             // ExecuteRedisRawTest();
         }
