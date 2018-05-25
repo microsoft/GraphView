@@ -293,7 +293,7 @@ namespace TransactionBenchmarkTest.YCSB
             {
                 new List<Tuple<string, int>>()
                 {
-                    Tuple.Create(Constants.DefaultTbl, 0),
+                    Tuple.Create(VersionDb.TX_TABLE, 0),
                     Tuple.Create(RedisVersionDb.TX_TABLE, 0),
                 },
             };
@@ -313,7 +313,7 @@ namespace TransactionBenchmarkTest.YCSB
 
         static void YCSBAsyncTest()
         {
-            const int partitionCount = 3;
+            const int partitionCount = 4;
             const int recordCount = 0;
             const int executorCount = partitionCount;
             const int txCountPerExecutor = 1000000;
@@ -337,8 +337,8 @@ namespace TransactionBenchmarkTest.YCSB
             }
 
             // The default mode of versionDb is daemonMode
-            SingletonPartitionedVersionDb versionDb = SingletonPartitionedVersionDb.Instance(partitionCount, daemonMode);
-            // SingletonVersionDb versionDb = SingletonVersionDb.Instance(executorCount);
+            // SingletonPartitionedVersionDb versionDb = SingletonPartitionedVersionDb.Instance(partitionCount, daemonMode);
+            SingletonVersionDb versionDb = SingletonVersionDb.Instance(executorCount);
             YCSBAsyncBenchmarkTest test = new YCSBAsyncBenchmarkTest(recordCount, 
                 executorCount, txCountPerExecutor, versionDb, instances);
 
@@ -373,13 +373,13 @@ namespace TransactionBenchmarkTest.YCSB
             // For the YCSB sync test
             // YCSBTest();
             // YCSBSyncTestWithCassandra();
-            test_cassandra();
+            // test_cassandra();
 
             // For the redis benchmark Test
             // RedisBenchmarkTest();
 
             // For the YCSB async test
-            // YCSBAsyncTest();
+            YCSBAsyncTest();
             //YCSBAsyncTestWithCassandra();
 
             // ExecuteRedisRawTest();

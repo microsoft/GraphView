@@ -1,5 +1,4 @@
-﻿
-namespace GraphView.Transaction
+﻿namespace GraphView.Transaction
 {
     using System;
     using System.Collections.Generic;
@@ -123,9 +122,7 @@ namespace GraphView.Transaction
 
         internal override void EnqueueTxEntryRequest(long txId, TxEntryRequest txEntryRequest, int execPartition = 0)
         {
-            //int partitionKey = this.PhysicalPartitionByKey(txId);
-            int partitionKey = (int) (txId / TxRange.range);
-            this.dbVisitors[partitionKey].Invoke(txEntryRequest);
+            this.dbVisitors[execPartition].Invoke(txEntryRequest);
         }
 
         internal override long SetAndGetCommitTime(long txId, long proposedCommitTs)
@@ -207,7 +204,7 @@ namespace GraphView.Transaction
             {
                 if (!this.versionTables.ContainsKey(tableId))
                 {
-                    versionTable = new SingletonDictionaryVersionTable(this, tableId);
+                    versionTable = new SingletonDictionaryVersionTable(this, tableId, this.PartitionCount, this.txResourceManagers);
                     this.versionTables.Add(tableId, versionTable);
                 }
                 else
