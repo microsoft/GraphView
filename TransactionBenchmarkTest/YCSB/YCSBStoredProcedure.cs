@@ -4,6 +4,8 @@ namespace TransactionBenchmarkTest.YCSB
 {
     class YCSBStoredProcedure : StoredProcedure
     {
+        internal static bool ONLY_CLOSE = false;
+
         private string sessionId;
 
         private TxWorkload workload;
@@ -15,17 +17,24 @@ namespace TransactionBenchmarkTest.YCSB
 
         public override void Start()
         {
-            if (workload.Type == "INSERT")
+            if (!YCSBStoredProcedure.ONLY_CLOSE)
             {
-                TransactionRequest initiReadReq = new TransactionRequest(this.sessionId,
-                    workload.TableId, workload.Key, workload.Value, OperationType.InitiRead);
-                this.RequestQueue.Enqueue(initiReadReq);
-            }
-            else if (workload.Type == "READ")
-            {
-                TransactionRequest readReq = new TransactionRequest(this.sessionId,
-                    workload.TableId, workload.Key, workload.Value, OperationType.Read);
-                this.RequestQueue.Enqueue(readReq);
+                if (workload.Type == "INSERT")
+                {
+                    TransactionRequest initiReadReq = new TransactionRequest(this.sessionId,
+                        workload.TableId, workload.Key, workload.Value, OperationType.InitiRead);
+                    this.RequestQueue.Enqueue(initiReadReq);
+                }
+                else if (workload.Type == "READ")
+                {
+                    TransactionRequest readReq = new TransactionRequest(this.sessionId,
+                        workload.TableId, workload.Key, workload.Value, OperationType.Read);
+                    this.RequestQueue.Enqueue(readReq);
+                }
+                else
+                {
+                    this.Close();
+                }
             }
             else
             {

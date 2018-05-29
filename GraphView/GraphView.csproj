@@ -346,9 +346,11 @@
     <Compile Include="Transaction\StoredProcedure.cs" />
     <Compile Include="Transaction\TransactionExecution.cs" />
     <Compile Include="Transaction\TransactionExecutor.cs" />
+    <Compile Include="Transaction\TxEntryList.cs" />
     <Compile Include="Transaction\TxRequest.cs" />
     <Compile Include="Transaction\TxRequestVisitor.cs" />
     <Compile Include="Transaction\TxResourceManager.cs" />
+    <Compile Include="Transaction\TxSetEntry.cs" />
     <Compile Include="Transaction\TxStatus.cs" />
     <Compile Include="Transaction\TxTableEntry.cs" />
     <Compile Include="Transaction\VersionBlob.cs" />
@@ -361,6 +363,7 @@
     <Compile Include="Transaction\ILogStore.cs" />
     <Compile Include="Transaction\Transaction.cs" />
     <Compile Include="Transaction\VersionTableVisitor.cs" />
+    <Compile Include="Transaction\WriteSetEntry.cs" />
     <Compile Include="TSQL Syntax Tree\WControlFlow.cs" />
     <Compile Include="TSQL Syntax Tree\WCreateViewStatement.cs" />
     <Compile Include="TSQL Syntax Tree\WDeclareVariableStatement.cs" />

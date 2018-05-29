@@ -83,8 +83,11 @@ namespace GraphView.Transaction
         private readonly ResourcePool<RemoveTxRequest> removeTxRequests;
 
         // Entry Resource
-        private readonly Queue<ReadSetEntry> readSetEntries;
-        private readonly Queue<PostProcessingEntry> postprocessingEntries;
+        private readonly ResourcePool<ReadSetEntry> readSetEntries;
+        private readonly ResourcePool<PostProcessingEntry> postprocessingEntries;
+        private readonly ResourcePool<WriteSetEntry> writeSetEntries;
+
+
         private readonly Queue<TxTableEntry> txTableEntries;
         private readonly Queue<VersionEntry> versionEntries;
 
@@ -120,8 +123,10 @@ namespace GraphView.Transaction
             this.updateTxStatusRequests = new ResourcePool<UpdateTxStatusRequest>(TxResourceManager.workingsetCapacity);
             this.removeTxRequests = new ResourcePool<RemoveTxRequest>(TxResourceManager.workingsetCapacity);
 
-            this.readSetEntries = new Queue<ReadSetEntry>();
-            this.postprocessingEntries = new Queue<PostProcessingEntry>();
+            this.readSetEntries = new ResourcePool<ReadSetEntry>(TxResourceManager.workingsetCapacity);
+            this.postprocessingEntries = new ResourcePool<PostProcessingEntry>(TxResourceManager.workingsetCapacity);
+            this.writeSetEntries = new ResourcePool<WriteSetEntry>(TxResourceManager.workingsetCapacity);
+
             this.txTableEntries = new Queue<TxTableEntry>();
             this.versionEntries = new Queue<VersionEntry>();
 
@@ -150,8 +155,10 @@ namespace GraphView.Transaction
                 this.updateTxStatusRequests.AddNewResource(new UpdateTxStatusRequest(-1, TxStatus.Aborted));
                 this.removeTxRequests.AddNewResource(new RemoveTxRequest(-1));
 
-                this.readSetEntries.Enqueue(new ReadSetEntry());
-                this.postprocessingEntries.Enqueue(new PostProcessingEntry());
+                this.readSetEntries.AddNewResource(new ReadSetEntry());
+                this.postprocessingEntries.AddNewResource(new PostProcessingEntry());
+                this.writeSetEntries.AddNewResource(new WriteSetEntry());
+
                 this.txTableEntries.Enqueue(new TxTableEntry());
                 this.versionEntries.Enqueue(new VersionEntry());
             }
@@ -162,6 +169,12 @@ namespace GraphView.Transaction
         {
             req.Free();
             req = null;
+        }
+
+        internal void RecycleTxSetEntry(ref TxSetEntry entry)
+        {
+            entry.Free();
+            entry = null;
         }
 
         internal List<VersionEntry> GetVersionList()
@@ -249,39 +262,58 @@ namespace GraphView.Transaction
 
         internal ReadSetEntry GetReadSetEntry()
         {
-            if (this.readSetEntries.Count > 0)
+            ReadSetEntry entry = this.readSetEntries.GetResource();
+            if (entry == null)
             {
-                return this.readSetEntries.Dequeue();
+                entry = new ReadSetEntry();
+                entry.Use();
+                this.readSetEntries.AddNewResource(entry);
             }
-            else
-            {
-                return new ReadSetEntry();
-            }
+            return entry;
         }
 
         internal void RecycleReadSetEntry(ref ReadSetEntry entry)
         {
-            this.readSetEntries.Enqueue(entry);
+            this.readSetEntries.Recycle(entry);
             entry = null;
         }
 
         internal PostProcessingEntry GetPostProcessingEntry()
         {
-            if (this.postprocessingEntries.Count > 0)
+            PostProcessingEntry entry = this.postprocessingEntries.GetResource();
+            if (entry == null)
             {
-                return this.postprocessingEntries.Dequeue();
+                entry = new PostProcessingEntry();
+                entry.Use();
+                this.postprocessingEntries.AddNewResource(entry);
             }
-            else
-            {
-                return new PostProcessingEntry();
-            }
+            return entry;
         }
 
         internal void RecyclePostProcessingEntry(ref PostProcessingEntry entry)
         {
-            this.postprocessingEntries.Enqueue(entry);
+            this.postprocessingEntries.Recycle(entry);
             entry = null;
         }
+
+        internal WriteSetEntry GetWriteSetEntry()
+        {
+            WriteSetEntry entry = this.writeSetEntries.GetResource();
+            if (entry == null)
+            {
+                entry = new WriteSetEntry();
+                entry.Use();
+                this.writeSetEntries.AddNewResource(entry);
+            }
+            return entry;
+        }
+
+        internal void RecycleWriteSetEntry(ref WriteSetEntry entry)
+        {
+            this.writeSetEntries.Recycle(entry);
+            entry = null;
+        }
+
 
         internal TxTableEntry GetTxTableEntry()
         {

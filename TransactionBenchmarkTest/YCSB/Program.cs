@@ -56,10 +56,10 @@ namespace TransactionBenchmarkTest.YCSB
             const string dataFile = "ycsb_data_lg_r.in";
             const string operationFile = "ycsb_ops_lg_r.in";
 
-			// REDIS VERSION DB
-			// VersionDb versionDb = RedisVersionDb.Instance;
-			// SINGLETON VERSION DB
-			VersionDb versionDb = SingletonVersionDb.Instance();
+            // REDIS VERSION DB
+            // VersionDb versionDb = RedisVersionDb.Instance;
+            // SINGLETON VERSION DB
+            VersionDb versionDb = SingletonVersionDb.Instance();
 
             YCSBBenchmarkTest test = new YCSBBenchmarkTest(workerCount, taskCountPerWorker, versionDb);
 
@@ -148,7 +148,7 @@ namespace TransactionBenchmarkTest.YCSB
             Console.WriteLine("cmd count: {0}", cnt);
 
             SimpleStatement[] cql_statements = new SimpleStatement[cnt];
-            for (int i=0; i<cnt; i++)
+            for (int i = 0; i < cnt; i++)
             {
                 cql_statements[i] = new SimpleStatement(cmd_arr[i]);
             }
@@ -169,7 +169,7 @@ namespace TransactionBenchmarkTest.YCSB
 
             void runCQL(int s, int e) // [s, e)
             {
-                for (int ii=s; ii<e; ii+=cycle)
+                for (int ii = s; ii < e; ii += cycle)
                 {
                     var rs = session.Execute(cmd_arr[ii]);
                 }
@@ -181,14 +181,14 @@ namespace TransactionBenchmarkTest.YCSB
                 {
                     //var rs = session.Execute(cql_statements[ii]);
                     //var rs = sess_arr[tid].Execute(cql_statements[ii]);
-                    var rs =  session.ExecuteAsync(cql_statements[ii]);
+                    var rs = session.ExecuteAsync(cql_statements[ii]);
                     //var statement = new SimpleStatement(cmd_arr[ii]);                    
                     //var rs = sess_arr[tid].Execute(statement);
                     //var rs = sess_arr[tid].ExecuteAsync(cmd_arr[ii]);
                 }
             }
 
-            
+
 
 
 
@@ -197,7 +197,7 @@ namespace TransactionBenchmarkTest.YCSB
             //{
             //    Console.WriteLine("{0} THREADs @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@", num_t);
             //    session.Execute("TRUNCATE TABLE tx_table");
-                
+
 
             //    int num_per_t = cnt / num_t;
 
@@ -235,16 +235,16 @@ namespace TransactionBenchmarkTest.YCSB
             //}
 
             Console.WriteLine();
-            Console.WriteLine("Runing cycles using threads...");            
+            Console.WriteLine("Runing cycles using threads...");
 
             // run cycle
             foreach (int num_t in num_t_arr)
             {
                 Console.WriteLine("{0} THREADs %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%", num_t);
                 session.Execute("TRUNCATE TABLE tx_table");
-                
+
                 int num_per_t = cnt / num_t;
-                
+
                 // build thread
                 List<Thread> threadList = new List<Thread>();
                 for (int j = 0; j < num_t; j++)
@@ -313,19 +313,18 @@ namespace TransactionBenchmarkTest.YCSB
 
         static void YCSBAsyncTest()
         {
-            const int partitionCount = 4;
-            const int recordCount = 0;
+            const int partitionCount = 1;
+            const int recordCount = 200000;
             const int executorCount = partitionCount;
-            const int txCountPerExecutor = 1000000;
+            const int txCountPerExecutor = 500000;
             //const bool daemonMode = true;
             const bool daemonMode = false;
-            const string dataFile = "ycsb_data_lg_r.in";
-            const string operationFile = "ycsb_ops_lg_r.in";
-            YCSBAsyncBenchmarkTest.RESHUFFLE = false;
-
+            const string dataFile = "ycsb_data_r.in";
+            const string operationFile = "ycsb_ops_r.in";
+            YCSBAsyncBenchmarkTest.RESHUFFLE = true;
 
             // an executor is responsiable for all flush
-            string[] tables = 
+            string[] tables =
             {
                 YCSBAsyncBenchmarkTest.TABLE_ID,
                 VersionDb.TX_TABLE

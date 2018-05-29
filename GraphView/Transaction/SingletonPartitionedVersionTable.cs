@@ -1,6 +1,7 @@
 ﻿
 namespace GraphView.Transaction
 {
+    using System;
     using System.Collections.Generic;
     using System.Threading;
 
@@ -28,12 +29,12 @@ namespace GraphView.Transaction
         internal int PartitionCount { get; private set; }
 
         public SingletonPartitionedVersionTable(VersionDb versionDb, string tableId, int partitionCount)
-            : base (versionDb, tableId, partitionCount)
+            : base(versionDb, tableId, partitionCount)
         {
             this.PartitionCount = partitionCount;
             this.dicts = new Dictionary<object, Dictionary<long, VersionEntry>>[partitionCount];
-           
-            for (int pid = 0; pid < partitionCount; pid ++)
+
+            for (int pid = 0; pid < partitionCount; pid++)
             {
                 this.dicts[pid] = new Dictionary<object, Dictionary<long, VersionEntry>>(SingletonPartitionedVersionTable.RECORD_CAPACITY);
                 this.tableVisitors[pid] = new PartitionedVersionTableVisitor(this.dicts[pid]);
@@ -43,6 +44,7 @@ namespace GraphView.Transaction
         internal override void EnqueueVersionEntryRequest(VersionEntryRequest req, int execPartition = 0)
         {
             int pk = this.VersionDb.PhysicalPartitionByKey(req.RecordKey);
+            // Interlocked.Increment(ref SingletonPartitionedVersionDb.EnqueuedRequests);
 
             if (pk == execPartition)
             {

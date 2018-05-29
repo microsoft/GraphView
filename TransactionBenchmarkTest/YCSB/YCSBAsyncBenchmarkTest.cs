@@ -135,8 +135,8 @@
 
         public YCSBAsyncBenchmarkTest(
             int recordCount,
-            int executorCount, 
-            int txCountPerExecutor, 
+            int executorCount,
+            int txCountPerExecutor,
             VersionDb versionDb,
             string[] flushTables = null)
         {
@@ -159,13 +159,14 @@
             this.versionDb.CreateVersionTable(TABLE_ID, REDIS_DB_INDEX);
 
             // step3: load data
-            // this.loadDataParallely(dataFile);
-            this.LoadDataSequentially(dataFile);
+            this.loadDataParallely(dataFile);
+            // this.LoadDataSequentially(dataFile);
+            SingletonPartitionedVersionDb.EnqueuedRequests = 0;
 
             // step 4: fill workers' queue
             if (this.versionDb is SingletonPartitionedVersionDb && RESHUFFLE)
             {
-                this.ReshuffleFillWorkerQueue(operationFile, this.executorCount, this.executorCount * this.txCountPerExecutor);
+                this.executorList = this.ReshuffleFillWorkerQueue(operationFile, this.executorCount, this.executorCount * this.txCountPerExecutor);
             }
             else
             {
@@ -175,6 +176,8 @@
 
         internal void Run()
         {
+            TransactionExecution.TEST = true;
+            YCSBStoredProcedure.ONLY_CLOSE = false;
             Console.WriteLine("Try to run {0} tasks in {1} workers", (this.executorCount * this.txCountPerExecutor), this.executorCount);
             Console.WriteLine("Running......");
 
@@ -212,10 +215,12 @@
                     }
                     // Console.WriteLine(executorList[1].FinishedTxs);
                 }
-                if (finishedTasks % 10000 == 0) Console.WriteLine("Execute {0} Tasks", finishedTasks);
+                Console.WriteLine("Execute {0} Tasks", finishedTasks);
+
                 // Shutdown all workers
                 if (allFinished)
                 {
+                    this.testEndTicks = DateTime.Now.Ticks;
                     foreach (TransactionExecutor executor in this.executorList)
                     {
                         executor.Active = false;
@@ -223,8 +228,6 @@
                     break;
                 }
             }
-
-            this.testEndTicks = DateTime.Now.Ticks;
 
             if (this.versionDb is RedisVersionDb)
             {
@@ -237,6 +240,7 @@
 
         internal void Stats()
         {
+            this.totalTasks = this.executorCount * this.txCountPerExecutor;
             Console.WriteLine("\nFinshed {0} requests in {1} seconds", (this.executorCount * this.txCountPerExecutor), this.RunSeconds);
             Console.WriteLine("Transaction Throughput: {0} tx/second", this.TxThroughput);
 
@@ -264,6 +268,7 @@
         /// <param name="dataFile"></param>
         private void loadDataParallely(string dataFile)
         {
+            long beginTicks = DateTime.Now.Ticks;
             // 3.1 compute the number of partitions
             int partitions = 0;
             if (this.versionDb is RedisVersionDb)
@@ -275,66 +280,56 @@
                 partitions = ((SingletonPartitionedVersionDb)this.versionDb).PartitionCount;
             }
 
-
-            // 3.2 fill the flushedInstances
-            List<List<Tuple<string, int>>> instances = new List<List<Tuple<string, int>>>(partitions);
-            for (int partition = 0; partition < partitions; partition++)
-            {
-                instances.Add(new List<Tuple<string, int>>()
-                {
-                    Tuple.Create(VersionDb.TX_TABLE, partition),
-                    Tuple.Create(TABLE_ID, partition)
-                });
-            }
-
-            // 3.3 Load in multiple workers
-            int workerCount = Math.Max(2, partitions), taskPerWorker = this.recordCount / workerCount;
-            List<TransactionExecutor> executors = 
-                this.ReshuffleFillWorkerQueue(dataFile, workerCount, taskPerWorker);
+            // 3.2 Load in multiple workers
+            List<TransactionExecutor> executors =
+                this.ReshuffleFillWorkerQueue(dataFile, partitions, this.recordCount);
 
             // 3.4 load records
-            //List<Thread> threadList = new List<Thread>();
-            //foreach (TransactionExecutor executor in executors)
-            //{
-            //    Thread thread = new Thread(new ThreadStart(executor.Execute));
-            //    threadList.Add(thread);
-            //    thread.Start();
-            //}
+            List<Thread> threadList = new List<Thread>();
+            foreach (TransactionExecutor executor in executors)
+            {
+                Thread thread = new Thread(new ThreadStart(executor.Execute2));
+                threadList.Add(thread);
+                thread.Start();
+            }
 
-            //int loaded = 0, times = 0;
-            //while (true)
-            //{
-            //    // check whether all tasks finished every 100 ms
-            //    Thread.Sleep(100);
-            //    times++;
+            int loaded = 0, times = 0;
+            while (true)
+            {
+                // check whether all tasks finished every 100 ms
+                Thread.Sleep(100);
+                times++;
 
-            //    bool allFinished = true;
-            //    loaded = 0;
-            //    foreach (TransactionExecutor executor in executors)
-            //    {
-            //        if (!executor.AllRequestsFinished)
-            //        {
-            //            allFinished = false;
-            //        }
-            //        loaded += executor.FinishedTxs;
-            //    }
+                bool allFinished = true;
+                loaded = 0;
+                foreach (TransactionExecutor executor in executors)
+                {
+                    if (!executor.AllRequestsFinished)
+                    {
+                        allFinished = false;
+                    }
+                    loaded += executor.FinishedTxs;
+                }
 
-            //    Console.WriteLine("Loaded {0} records", loaded);
+                Console.WriteLine("Loaded {0} records", loaded);
 
-            //    // Console.WriteLine("Loaded {0} records", loaded);
-            //    // Shutdown all workers
-            //    if (allFinished)
-            //    {
-            //        foreach (TransactionExecutor executor in executors)
-            //        {
-            //            executor.Active = false;
-            //        }
-            //        break;
-            //    }
-            //}
+                // Console.WriteLine("Loaded {0} records", loaded);
+                // Shutdown all workers
+                if (allFinished)
+                {
+                    foreach (TransactionExecutor executor in executors)
+                    {
+                        executor.Active = false;
+                    }
+                    break;
+                }
+            }
 
-            int loaded = 0;
-            Console.WriteLine("Load records successfully, {0} records in total", loaded);
+            long endTicks = DateTime.Now.Ticks;
+
+            //int loaded = 0;
+            Console.WriteLine("Load records successfully, {0} records in total in {1} seconds",
+                loaded, (endTicks - beginTicks) * 1.0 / 10000000);
             Console.WriteLine("END");
         }
 
@@ -372,16 +367,16 @@
                 int instanceIndex = 0;
                 for (int i = 0; i < this.executorCount; i++)
                 {
-                    line = reader.ReadLine();
-                    string[] fields = this.ParseCommandFormat(line);
+                    //line = reader.ReadLine();
+                    //string[] fields = this.ParseCommandFormat(line);
                     Queue<TransactionRequest> reqQueue = new Queue<TransactionRequest>();
                     for (int j = 0; j < this.txCountPerExecutor; j++)
                     {
-                        //line = reader.ReadLine();
-                        //string[] fields = this.ParseCommandFormat(line);
+                        line = reader.ReadLine();
+                        string[] fields = this.ParseCommandFormat(line);
 
                         TxWorkload workload = new TxWorkload(fields[0], TABLE_ID, fields[2], fields[3]);
-                        //TxWorkload workload = new TxWorkload("CLOSE", TABLE_ID, fields[2], fields[3]);
+                        // TxWorkload workload = new TxWorkload("CLOSE", TABLE_ID, fields[2], fields[3]);
                         string sessionId = ((i * this.txCountPerExecutor) + j + 1).ToString();
                         YCSBStoredProcedure procedure = new YCSBStoredProcedure(sessionId, workload);
                         TransactionRequest req = new TransactionRequest(sessionId, procedure);
@@ -418,8 +413,8 @@
                     line = reader.ReadLine();
                     string[] fields = this.ParseCommandFormat(line);
 
-                    TxWorkload workload = new TxWorkload("CLOSE", TABLE_ID, fields[2], fields[3]);
-                    string sessionId = (i+1).ToString();
+                    TxWorkload workload = new TxWorkload(fields[0], TABLE_ID, fields[2], fields[3]);
+                    string sessionId = (i + 1).ToString();
                     YCSBStoredProcedure procedure = new YCSBStoredProcedure(sessionId, workload);
                     TransactionRequest req = new TransactionRequest(sessionId, procedure);
 
@@ -431,7 +426,6 @@
             for (int pk = 0; pk < executorCount; pk++)
             {
                 Queue<TransactionRequest> txQueue = queueArray[pk];
-                this.totalTasks += txQueue.Count;
                 TxResourceManager manager = this.versionDb.GetResourceManagerByPartitionIndex(pk);
 
                 executors.Add(

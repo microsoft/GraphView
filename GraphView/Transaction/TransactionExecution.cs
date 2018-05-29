@@ -29,6 +29,8 @@ namespace GraphView.Transaction
     {
 		public bool DEBUG_MODE = false;
 
+        internal static bool TEST = false;
+
         internal static readonly long DEFAULT_TX_BEGIN_TIMESTAMP = -1L;
 
         internal static readonly int POSTPROCESSING_LIST_MAX_CAPACITY = 2;
@@ -53,9 +55,9 @@ namespace GraphView.Transaction
 
         internal bool isCommitted;
 
-        internal Dictionary<string, Dictionary<object, ReadSetEntry>> readSet;
+        internal TxEntryList<ReadSetEntry> readSet;
 
-        internal Dictionary<string, Dictionary<object, object>> writeSet;
+        internal TxEntryList<WriteSetEntry> writeSet;
 
         internal List<PostProcessingEntry> abortSet;
 
@@ -94,6 +96,8 @@ namespace GraphView.Transaction
         /// recycled at the end of postprocessing phase
         /// </summary>
         private readonly Queue<TxRequest> txReqGarbageQueue;
+
+        private readonly Queue<TxSetEntry> txSetEntryGCQueue; 
 
         private readonly TxRange txRange;
 
@@ -141,8 +145,6 @@ namespace GraphView.Transaction
             }
         }
 
-        public static int t = 0;
-
         public TransactionExecution(
             ILogStore logStore,
             VersionDb versionDb,
@@ -154,8 +156,8 @@ namespace GraphView.Transaction
         {
             this.logStore = logStore;
             this.versionDb = versionDb;
-            this.readSet = new Dictionary<string, Dictionary<object, ReadSetEntry>>();
-            this.writeSet = new Dictionary<string, Dictionary<object, object>>();
+            this.readSet = new TxEntryList<ReadSetEntry>();
+            this.writeSet = new TxEntryList<WriteSetEntry>();
             this.abortSet = new List<PostProcessingEntry>();
             this.commitSet = new List<PostProcessingEntry>();
             this.largestVersionKeyMap = new Dictionary<string, Dictionary<object, long>>();
@@ -165,6 +167,7 @@ namespace GraphView.Transaction
             this.executor = executor;
 
             this.txReqGarbageQueue = new Queue<TxRequest>(TX_REQUEST_GARBAGE_QUEUE_SIZE);
+            this.txSetEntryGCQueue = new Queue<TxSetEntry>(TX_REQUEST_GARBAGE_QUEUE_SIZE);
 
             this.validateProc = new Procedure(this.Validate);
             this.uploadProc = new Procedure(this.Upload);
@@ -198,17 +201,8 @@ namespace GraphView.Transaction
 
         internal void Reset(StoredProcedure procedure = null)
         {
-            foreach (Dictionary<object, ReadSetEntry> versionList in this.readSet.Values)
-            {
-                versionList.Clear();
-            }
-            // It will not clear the whole readSet, writeSet, abortSet, commitSet, largestVersionKeymap
-            // Since we assume that the tableId is always same, there is no need to clear them and append again
-
-            foreach (Dictionary<object, object> writeRecords in this.writeSet.Values)
-            {
-                writeRecords.Clear();
-            }
+            this.readSet.Clear();
+            this.writeSet.Clear();
 
             this.abortSet.Clear();
             this.commitSet.Clear();
@@ -256,13 +250,12 @@ namespace GraphView.Transaction
         {
             this.tableIdList = this.executor.ResourceManager.GetTableIdList();
             this.recordKeyList = this.executor.ResourceManager.GetRecordKeyList();
-            foreach (string tableId in this.writeSet.Keys)
+            int size = this.writeSet.Count;
+            for (int i = 0; i < size; i++)
             {
-                foreach (object recordKey in this.writeSet[tableId].Keys)
-                {
-                    this.tableIdList.Add(tableId);
-                    this.recordKeyList.Add(recordKey);
-                }
+                WriteSetEntry entry = this.writeSet[i];
+                this.tableIdList.Add(entry.TableId);
+                this.recordKeyList.Add(entry.RecordKey);
             }
         }
 
@@ -270,8 +263,6 @@ namespace GraphView.Transaction
         {
             //TxAbortReasonTracer.reasons[this.Procedure.pid] = msg;
         }
-
-        
 
         internal void InitTx()
         {
@@ -302,11 +293,6 @@ namespace GraphView.Transaction
             this.newTxIdReq = this.executor.ResourceManager.NewTxIdRequest(id);
             this.txReqGarbageQueue.Enqueue(this.newTxIdReq);
             this.versionDb.EnqueueTxEntryRequest(id, this.newTxIdReq, this.executor.Partition);
-            if (TransactionExecution.t == 1)
-            {
-                int t = 1;
-            }
-            TransactionExecution.t += 1;
             this.CurrentProc = this.newTxIdProc;
             this.NewTxId();
         }
@@ -390,7 +376,11 @@ namespace GraphView.Transaction
                 this.PopulateWriteKeyList();
             }
 
-            while (this.recordKeyList.Count > 0)
+            while (this.recordKeyList.Count > 0||
+                    this.replaceReq != null ||
+                    this.uploadReq != null ||
+                    this.getTxReq != null ||
+                    this.retryReplaceReq != null)
             {
                 // Prior write set entry has been uploaded successfully
                 if (this.replaceReq == null && 
@@ -406,8 +396,8 @@ namespace GraphView.Transaction
                     object recordKey = this.recordKeyList[lastIndex];
                     this.recordKeyList.RemoveAt(lastIndex);
 
-                    object payload = this.writeSet[tableId][recordKey];
-
+                    WriteSetEntry writeEntry = this.FindWriteSetEntry(tableId, recordKey);
+                    object payload = writeEntry.Payload;
                     // should check the type of writes, insert/update/delete
                     // The write-set record is an insert or update record, try to insert the new version
                     if (payload != null)
@@ -426,7 +416,8 @@ namespace GraphView.Transaction
                     // The write-set record is an delete record, only replace the old version
                     else
                     {
-                        ReadSetEntry readVersion = this.readSet[tableId][recordKey];
+
+                        ReadSetEntry readVersion = this.FindReadSetEntry(tableId, recordKey);
                         this.replaceReq = this.executor.ResourceManager.ReplaceVersionRequest(
                             tableId,
                             recordKey,
@@ -478,14 +469,14 @@ namespace GraphView.Transaction
 
                     this.uploadReq = null;
 
-                    if (!this.readSet.ContainsKey(tableId) || !this.readSet[tableId].ContainsKey(recordKey))
+                    ReadSetEntry readVersion = this.FindReadSetEntry(tableId, recordKey);
+                    if (readVersion == null)
                     {
                         // The write-set record is an insert record. 
                         // Moves to the next write-set record or the next phase.
                         continue;
                     }
 
-                    ReadSetEntry readVersion = this.readSet[tableId][recordKey];
                     // Initiates a new request to append the new image to the tail of the version list.
                     // The tail entry could be [Ts, inf, -1], [Ts, inf, txId1] or [-1, -1, txId1].
                     // The first case indicates that no concurrent tx is locking the tail.
@@ -713,6 +704,7 @@ namespace GraphView.Transaction
         private void AddVersionToAbortSet(string tableId, object recordKey, long versionKey, long beginTs, long endTs)
         {
             PostProcessingEntry abortEntry = this.executor.ResourceManager.GetPostProcessingEntry();
+            this.txSetEntryGCQueue.Enqueue(abortEntry);
             abortEntry.TableId = tableId;
             abortEntry.RecordKey = recordKey;
             abortEntry.VersionKey = versionKey;
@@ -724,6 +716,8 @@ namespace GraphView.Transaction
         private void AddVersionToCommitSet(string tableId, object recordKey, long versionKey, long beginTs, long endTs)
         {
             PostProcessingEntry commitEntry = this.executor.ResourceManager.GetPostProcessingEntry();
+            this.txSetEntryGCQueue.Enqueue(commitEntry);
+
             commitEntry.TableId = tableId;
             commitEntry.RecordKey = recordKey;
             commitEntry.VersionKey = versionKey;
@@ -737,19 +731,17 @@ namespace GraphView.Transaction
             Debug.Assert(this.commitTs < 0);
 
             long proposedCommitTs = this.maxCommitTsOfWrites + 1;
-            foreach (string tableId in this.readSet.Keys)
+            int size = this.readSet.Count;
+            for (int i = 0; i < size; i++)
             {
-                foreach (object recordKey in this.readSet[tableId].Keys)
+                ReadSetEntry entry = this.readSet[i];
+                if (this.FindWriteSetEntry(entry.TableId, entry.RecordKey) != null)
                 {
-                    ReadSetEntry entry = this.readSet[tableId][recordKey];
-                    if (this.writeSet.ContainsKey(tableId) && this.writeSet[tableId].ContainsKey(recordKey))
-                    {
-                        proposedCommitTs = Math.Max(proposedCommitTs, entry.BeginTimestamp + 1);
-                    }
-                    else
-                    {
-                        proposedCommitTs = Math.Max(proposedCommitTs, entry.BeginTimestamp);
-                    }
+                    proposedCommitTs = Math.Max(proposedCommitTs, entry.BeginTimestamp + 1);
+                }
+                else
+                {
+                    proposedCommitTs = Math.Max(proposedCommitTs, entry.BeginTimestamp);
                 }
             }
 
@@ -802,21 +794,19 @@ namespace GraphView.Transaction
                 if (this.requestStack.Count == 0)
                 {
                     // Enqueues all requests re-reading the version to be validated 
-                    foreach (string tableId in this.readSet.Keys)
+                    int size = this.readSet.Count;
+                    for (int i = 0; i < size; i++)
                     {
-                        foreach (object recordKey in this.readSet[tableId].Keys)
+                        ReadSetEntry entry = this.readSet[i];
+                        if (this.FindWriteSetEntry(entry.TableId, entry.Record) != null)
                         {
-                            if (this.writeSet.ContainsKey(tableId) && this.writeSet[tableId].ContainsKey(recordKey))
-                            {
-                                continue;
-                            }
-
-                            ReadVersionRequest readReq = this.executor.ResourceManager.ReadVersionRequest(
-                                tableId, recordKey, readSet[tableId][recordKey].VersionKey);
-                            this.versionDb.EnqueueVersionEntryRequest(tableId, readReq, this.executor.Partition);
-                            this.txReqGarbageQueue.Enqueue(readReq);
-                            this.requestStack.Push(readReq);
+                            continue;
                         }
+                        ReadVersionRequest readReq = this.executor.ResourceManager.ReadVersionRequest(
+                                entry.TableId, entry.RecordKey, entry.VersionKey);
+                        this.versionDb.EnqueueVersionEntryRequest(entry.TableId, readReq, this.executor.Partition);
+                        this.txReqGarbageQueue.Enqueue(readReq);
+                        this.requestStack.Push(readReq);
                     }
                 }
 
@@ -1167,6 +1157,12 @@ namespace GraphView.Transaction
                     this.executor.ResourceManager.RecycleTxRequest(ref req);
                 }
 
+                while (this.txSetEntryGCQueue.Count > 0)
+                {
+                    TxSetEntry entry = this.txSetEntryGCQueue.Dequeue();
+                    this.executor.ResourceManager.RecycleTxSetEntry(ref entry);
+                }
+
                 return;
             }
             else
@@ -1190,6 +1186,12 @@ namespace GraphView.Transaction
             {
                 TxRequest req = this.txReqGarbageQueue.Dequeue();
                 this.executor.ResourceManager.RecycleTxRequest(ref req);
+            }
+
+            while (this.txSetEntryGCQueue.Count > 0)
+            {
+                TxSetEntry entry = this.txSetEntryGCQueue.Dequeue();
+                this.executor.ResourceManager.RecycleTxSetEntry(ref entry);
             }
 
             // All post-processing records have been uploaded.
@@ -1266,10 +1268,10 @@ namespace GraphView.Transaction
                     this.executor.ResourceManager.RecycleTxRequest(ref req);
                 }
 
-                while (this.txReqGarbageQueue.Count > 0)
+                while (this.txSetEntryGCQueue.Count > 0)
                 {
-                    TxRequest req = this.txReqGarbageQueue.Dequeue();
-                    this.executor.ResourceManager.RecycleTxRequest(ref req);
+                    TxSetEntry entry = this.txSetEntryGCQueue.Dequeue();
+                    this.executor.ResourceManager.RecycleTxSetEntry(ref entry);
                 }
 
                 // All pending records have been reverted.
@@ -1329,10 +1331,11 @@ namespace GraphView.Transaction
         public void Insert(string tableId, object recordKey, object record)
         {
             // Checks whether the record is in the local write set
-            if (this.writeSet.ContainsKey(tableId) &&
-                this.writeSet[tableId].ContainsKey(recordKey))
+            WriteSetEntry writeEntry = this.FindWriteSetEntry(tableId, recordKey);
+            ReadSetEntry readEntry = this.FindReadSetEntry(tableId, recordKey);
+            if (writeEntry != null)
             {
-                if (this.writeSet[tableId][recordKey] != null)
+                if (writeEntry.Payload != null)
                 {
                     this.SetAbortMsg("write set tableid recordkey null");
                     this.CurrentProc = this.abortProc;
@@ -1341,12 +1344,11 @@ namespace GraphView.Transaction
                 }
                 else
                 {
-                    this.writeSet[tableId][recordKey] = record;
+                    writeEntry.Payload = record;
                 }
             }
             // Checks whether the record is already in the local read set
-            else if (this.readSet.ContainsKey(tableId) &&
-                this.readSet[tableId].ContainsKey(recordKey))
+            else if (readEntry != null)
             {
                 this.SetAbortMsg("record is already in the local read set");
                 this.CurrentProc = this.abortProc;
@@ -1356,13 +1358,19 @@ namespace GraphView.Transaction
             // Neither the readSet and writeSet have the recordKey
             else
             {
-                // Add the new record to local writeSet
-                if (!this.writeSet.ContainsKey(tableId))
-                {
-                    this.writeSet[tableId] = new Dictionary<object, object>();
-                }
+                //// Add the new record to local writeSet
+                //if (!this.writeSet.ContainsKey(tableId))
+                //{
+                //    this.writeSet[tableId] = new Dictionary<object, object>();
+                //}
 
-                this.writeSet[tableId][recordKey] = record;
+                //this.writeSet[tableId][recordKey] = record;
+                WriteSetEntry entry = this.executor.ResourceManager.GetWriteSetEntry();
+                entry.TableId = tableId;
+                entry.RecordKey = recordKey;
+                entry.Payload = record;
+                this.writeSet.Add(entry);
+                this.txSetEntryGCQueue.Enqueue(entry);
             }
             this.Procedure?.InsertCallBack(tableId, recordKey, record);
         }
@@ -1380,12 +1388,13 @@ namespace GraphView.Transaction
 
         public void Update(string tableId, object recordKey, object payload)
         {
-            if (this.writeSet.ContainsKey(tableId) &&
-                this.writeSet[tableId].ContainsKey(recordKey))
+            WriteSetEntry writeEntry = this.FindWriteSetEntry(tableId, recordKey);
+            ReadSetEntry readEntry = this.FindReadSetEntry(tableId, recordKey);
+            if (writeEntry != null)
             {
-                if (this.writeSet[tableId][recordKey] != null)
+                if (writeEntry.Payload != null)
                 {
-                    this.writeSet[tableId][recordKey] = payload;
+                    writeEntry.Payload = payload;
                 }
                 // The record has been deleted by this tx. Cannot be updated. 
                 else
@@ -1396,17 +1405,14 @@ namespace GraphView.Transaction
                     //throw new TransactionException("The record to be updated has been deleted.");
                 }
             }
-            else if (this.readSet.ContainsKey(tableId) &&
-                     this.readSet[tableId].ContainsKey(recordKey))
+            else if (readSet != null)
             {
-                ReadSetEntry entry = this.readSet[tableId][recordKey];
-
-                if (!this.writeSet.ContainsKey(tableId))
-                {
-                    this.writeSet[tableId] = new Dictionary<object, object>();
-                }
-
-                this.writeSet[tableId][recordKey] = payload;
+                WriteSetEntry entry = this.executor.ResourceManager.GetWriteSetEntry();
+                entry.TableId = tableId;
+                entry.RecordKey = recordKey;
+                entry.Payload = payload;
+                this.writeSet.Add(entry);
+                this.txSetEntryGCQueue.Enqueue(entry);
             }
             else
             {
@@ -1422,13 +1428,14 @@ namespace GraphView.Transaction
         public void Delete(string tableId, object recordKey, out object payload)
         {
             payload = null;
-            if (this.writeSet.ContainsKey(tableId) &&
-                this.writeSet[tableId].ContainsKey(recordKey))
+            WriteSetEntry writeEntry = this.FindWriteSetEntry(tableId, recordKey);
+            ReadSetEntry readEntry = this.FindReadSetEntry(tableId, recordKey);
+            if (writeEntry != null)
             {
-                if (this.writeSet[tableId][recordKey] != null)
+                if (writeEntry != null)
                 {
-                    payload = this.writeSet[tableId][recordKey];
-                    this.writeSet[tableId][recordKey] = null;
+                    payload = writeEntry.Payload;
+                    writeEntry.Payload = null;
                 }
                 else
                 {
@@ -1438,16 +1445,16 @@ namespace GraphView.Transaction
                     // throw new TransactionException("The record to be deleted has been deleted by the same tx.");
                 }
             }
-            else if (this.readSet.ContainsKey(tableId) &&
-                this.readSet[tableId].ContainsKey(recordKey))
+            else if (readEntry != null)
             {
-                payload = this.readSet[tableId][recordKey].Record;
+                payload = readEntry.Record;
 
-                if (!this.writeSet.ContainsKey(tableId))
-                {
-                    this.writeSet[tableId] = new Dictionary<object, object>();
-                }
-                this.writeSet[tableId][recordKey] = null;
+                WriteSetEntry entry = this.executor.ResourceManager.GetWriteSetEntry();
+                entry.TableId = tableId;
+                entry.RecordKey = recordKey;
+                entry.Payload = null;
+                this.writeSet.Add(entry);
+                this.txSetEntryGCQueue.Enqueue(entry);
             }
             else
             {
@@ -1468,22 +1475,24 @@ namespace GraphView.Transaction
         {
             received = false;
             payload = null;
+
+            WriteSetEntry writeEntry = this.FindWriteSetEntry(tableId, recordKey);
+            ReadSetEntry readEntry = this.FindReadSetEntry(tableId, recordKey);
+
             // In those two cases, the read process is non-blocked, so keep the progress as OPEN
             // try to find the record image in the local writeSet
-            if (this.writeSet.ContainsKey(tableId) &&
-                this.writeSet[tableId].ContainsKey(recordKey))
+            if (writeEntry != null)
             {
-                payload = this.writeSet[tableId][recordKey];
                 received = true;
+                payload = writeEntry.Payload;
                 this.Procedure?.ReadCallback(tableId, recordKey, payload);
                 return;
             }
 
             // try to find the obejct in the local readSet
-            if (this.readSet.ContainsKey(tableId) &&
-                this.readSet[tableId].ContainsKey(recordKey))
+            if (readEntry != null)
             {
-                payload =  this.readSet[tableId][recordKey].Record;
+                payload = readEntry.Record;
                 received = true;
                 this.Procedure?.ReadCallback(tableId, recordKey, payload);
                 return;
@@ -1718,17 +1727,37 @@ namespace GraphView.Transaction
                 payload = visibleVersion.Record;
 
                 // Add the record to local readSet
-                if (!this.readSet.ContainsKey(this.readTableId))
-                {
-                    this.readSet[this.readTableId] = new Dictionary<object, ReadSetEntry>();
-                }
+                ReadSetEntry readEntry = this.FindReadSetEntry(this.readTableId, this.readRecordKey);
+                ReadSetEntry newReadEntry = null;
 
-                this.readSet[this.readTableId][this.readRecordKey] = new ReadSetEntry(
-                    visibleVersion.VersionKey,
-                    visibleVersion.BeginTimestamp,
-                    visibleVersion.EndTimestamp,
-                    visibleVersion.TxId,
-                    visibleVersion.Record);
+                // add new read entry
+                if (readEntry == null)
+                {
+                    newReadEntry = this.executor.ResourceManager.GetReadSetEntry();
+                    newReadEntry.TableId = this.readTableId;
+                    newReadEntry.RecordKey = this.readRecordKey;
+                    newReadEntry.VersionKey = visibleVersion.VersionKey;
+                    newReadEntry.BeginTimestamp = visibleVersion.BeginTimestamp;
+                    newReadEntry.EndTimestamp = visibleVersion.EndTimestamp;
+                    newReadEntry.TxId = visibleVersion.TxId;
+                    newReadEntry.Record = visibleVersion.Record;
+
+                    this.readSet.Add(newReadEntry);
+                    this.txSetEntryGCQueue.Enqueue(newReadEntry);
+                }
+                // update current read entry
+                else
+                {
+                    newReadEntry = readEntry;
+
+                    newReadEntry.TableId = this.readTableId;
+                    newReadEntry.RecordKey = this.readRecordKey;
+                    newReadEntry.VersionKey = visibleVersion.VersionKey;
+                    newReadEntry.BeginTimestamp = visibleVersion.BeginTimestamp;
+                    newReadEntry.EndTimestamp = visibleVersion.EndTimestamp;
+                    newReadEntry.TxId = visibleVersion.TxId;
+                    newReadEntry.Record = visibleVersion.Record;
+                }
             }
 
             this.Progress = TxProgress.Open;
@@ -1765,6 +1794,22 @@ namespace GraphView.Transaction
             {
                 this.executor.ResourceManager.RecycleRecordKeyList(ref this.recordKeyList);
             }
+        }
+
+        private ReadSetEntry dummyReadSetEntry = new ReadSetEntry();
+        private ReadSetEntry FindReadSetEntry(string tableId, object recordKey)
+        {
+            dummyReadSetEntry.TableId = tableId;
+            dummyReadSetEntry.RecordKey = recordKey;
+            return this.readSet.Find(dummyReadSetEntry);
+        }
+
+        private WriteSetEntry dummyWriteSetEntry = new WriteSetEntry();
+        private WriteSetEntry FindWriteSetEntry(string tableId, object recordKey)
+        {
+            dummyWriteSetEntry.TableId = tableId;
+            dummyWriteSetEntry.RecordKey = recordKey;
+            return this.writeSet.Find(dummyWriteSetEntry);
         }
     }
 }
