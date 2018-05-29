@@ -78,9 +78,9 @@ namespace GraphView.Transaction
         /// the end of every phase normally. 
         /// </summary>
         // The tableIdList will be shared in different phase
-        private List<string> tableIdList;
+        // private List<string> tableIdList;
 
-        private List<object> recordKeyList;
+        // private List<object> recordKeyList;
 
         // The readVersionEntry method and validation method share a read version list,
         // Since they are in different stage, there won't conflicts
@@ -130,11 +130,22 @@ namespace GraphView.Transaction
         private Procedure commitTsProc;
         private UpdateTxStatusRequest updateTxReq;
         private Procedure updateTxProc;
+        private GetVersionListRequest getVListReq;
+        private InitiGetVersionListRequest initiGetVListReq;
         private List<ReplaceVersionRequest> replaceReqList = new List<ReplaceVersionRequest>();
         private Procedure commitVersionProc;
 
         private Procedure readVersionListProc;
         private Procedure readCheckVersionEntryProc;
+
+
+        // List Resources
+        private List<VersionEntry> versionList = new List<VersionEntry>();
+
+        private TxEntryList<object> recordKeyList = new TxEntryList<object>();
+        private TxEntryList<string> tableIdList = new TxEntryList<string>();
+
+        private bool writeKeyListPoped = false;
 
         internal long ExecutionSeconds
         {
@@ -235,12 +246,15 @@ namespace GraphView.Transaction
             this.recycleTxReq = null;
             this.commitTsReq = null;
             this.updateTxReq = null;
+            this.getVListReq = null;
+            this.initiGetVListReq = null;
             
             // reset the list as null
             this.readVersionList = null;
-            this.tableIdList = null;
-            this.recordKeyList = null;
             this.replaceReqList.Clear();
+
+            this.ClearLocalList();
+            this.writeKeyListPoped = false;
 
             // init and get tx id
             this.InitTx();
@@ -248,14 +262,20 @@ namespace GraphView.Transaction
 
         private void PopulateWriteKeyList()
         {
-            this.tableIdList = this.executor.ResourceManager.GetTableIdList();
-            this.recordKeyList = this.executor.ResourceManager.GetRecordKeyList();
-            int size = this.writeSet.Count;
-            for (int i = 0; i < size; i++)
+            if (TransactionExecution.TEST)
             {
-                WriteSetEntry entry = this.writeSet[i];
-                this.tableIdList.Add(entry.TableId);
-                this.recordKeyList.Add(entry.RecordKey);
+
+            }
+            else
+            {
+                int size = this.writeSet.Count;
+                this.writeKeyListPoped = true;
+                for (int i = 0; i < size; i++)
+                {
+                    WriteSetEntry entry = this.writeSet[i];
+                    this.tableIdList.Add(entry.TableId);
+                    this.recordKeyList.Add(entry.RecordKey);
+                }
             }
         }
 
@@ -371,7 +391,7 @@ namespace GraphView.Transaction
         {
             this.Progress = TxProgress.Final;
 
-            if (this.recordKeyList == null)
+            if (!this.writeKeyListPoped)
             {
                 this.PopulateWriteKeyList();
             }
@@ -391,10 +411,8 @@ namespace GraphView.Transaction
                     Debug.Assert(this.recordKeyList.Count > 0);
                     int lastIndex = this.recordKeyList.Count - 1;
 
-                    string tableId = this.tableIdList[lastIndex];
-                    this.tableIdList.RemoveAt(lastIndex);
-                    object recordKey = this.recordKeyList[lastIndex];
-                    this.recordKeyList.RemoveAt(lastIndex);
+                    string tableId = this.tableIdList.PopRight();
+                    object recordKey = this.recordKeyList.PopRight();
 
                     WriteSetEntry writeEntry = this.FindWriteSetEntry(tableId, recordKey);
                     object payload = writeEntry.Payload;
@@ -537,6 +555,7 @@ namespace GraphView.Transaction
                             rolledBackBegin,
                             TransactionExecution.UNSET_TX_COMMIT_TIMESTAMP);
 
+                        this.replaceReq = null;
                         // Move on to the next write-set record or the next phase
                         continue;
                     }
@@ -694,10 +713,6 @@ namespace GraphView.Transaction
                 }
             }
 
-            // Move on to the next phase
-            this.executor.ResourceManager.RecycleTableIdList(ref this.tableIdList);
-            this.executor.ResourceManager.RecycleRecordKeyList(ref this.recordKeyList);
-
             this.SetCommitTimestamp();
         }
 
@@ -789,271 +804,271 @@ namespace GraphView.Transaction
         internal void Validate()
         {
             // Have sent the GetVersionEntry request, but not received the response yet
-            if (this.tableIdList == null)
-            {
-                if (this.requestStack.Count == 0)
-                {
-                    // Enqueues all requests re-reading the version to be validated 
-                    int size = this.readSet.Count;
-                    for (int i = 0; i < size; i++)
-                    {
-                        ReadSetEntry entry = this.readSet[i];
-                        if (this.FindWriteSetEntry(entry.TableId, entry.Record) != null)
-                        {
-                            continue;
-                        }
-                        ReadVersionRequest readReq = this.executor.ResourceManager.ReadVersionRequest(
-                                entry.TableId, entry.RecordKey, entry.VersionKey);
-                        this.versionDb.EnqueueVersionEntryRequest(entry.TableId, readReq, this.executor.Partition);
-                        this.txReqGarbageQueue.Enqueue(readReq);
-                        this.requestStack.Push(readReq);
-                    }
-                }
+     //       if (this.tableIdList == null)
+     //       {
+     //           if (this.requestStack.Count == 0)
+     //           {
+     //               // Enqueues all requests re-reading the version to be validated 
+     //               int size = this.readSet.Count;
+     //               for (int i = 0; i < size; i++)
+     //               {
+     //                   ReadSetEntry entry = this.readSet[i];
+     //                   if (this.FindWriteSetEntry(entry.TableId, entry.Record) != null)
+     //                   {
+     //                       continue;
+     //                   }
+     //                   ReadVersionRequest readReq = this.executor.ResourceManager.ReadVersionRequest(
+     //                           entry.TableId, entry.RecordKey, entry.VersionKey);
+     //                   this.versionDb.EnqueueVersionEntryRequest(entry.TableId, readReq, this.executor.Partition);
+     //                   this.txReqGarbageQueue.Enqueue(readReq);
+     //                   this.requestStack.Push(readReq);
+     //               }
+     //           }
 
-                foreach (TxRequest req in this.requestStack)
-                {
-                    // If any of the re-reading ops has not finished, returns the control to the caller.
-                    if (!req.Finished)
-                    {
-                        return;
-                    }
-                }
+     //           foreach (TxRequest req in this.requestStack)
+     //           {
+     //               // If any of the re-reading ops has not finished, returns the control to the caller.
+     //               if (!req.Finished)
+     //               {
+     //                   return;
+     //               }
+     //           }
 
-                // All re-reading ops have finished
-                this.tableIdList = this.executor.ResourceManager.GetTableIdList();
-                this.readVersionList = this.executor.ResourceManager.GetVersionList();
-                foreach (TxRequest req in this.requestStack)
-                {
-                    ReadVersionRequest readVersionReq = req as ReadVersionRequest;
-                    VersionEntry readEntry = req.Result as VersionEntry;
-                    if (readEntry == null)
-                    {
-                        this.SetAbortMsg("read entry null");
+     //           // All re-reading ops have finished
+     //           this.tableIdList = this.executor.ResourceManager.GetTableIdList();
+     //           this.readVersionList = this.executor.ResourceManager.GetVersionList();
+     //           foreach (TxRequest req in this.requestStack)
+     //           {
+     //               ReadVersionRequest readVersionReq = req as ReadVersionRequest;
+     //               VersionEntry readEntry = req.Result as VersionEntry;
+     //               if (readEntry == null)
+     //               {
+     //                   this.SetAbortMsg("read entry null");
 
-                        // A really serious bug, should clear the stack before enter the next step
-                        this.requestStack.Clear();
-                        this.CurrentProc = this.abortProc;
+     //                   // A really serious bug, should clear the stack before enter the next step
+     //                   this.requestStack.Clear();
+     //                   this.CurrentProc = this.abortProc;
 
-						if (!this.DEBUG_MODE)
-						{
-							this.CurrentProc();
-						}
-                        return;
-                    }
+					//	if (!this.DEBUG_MODE)
+					//	{
+					//		this.CurrentProc();
+					//	}
+     //                   return;
+     //               }
 
-                    this.tableIdList.Add(readVersionReq.TableId);
-                    this.readVersionList.Add(readEntry);
-                }
+     //               this.tableIdList.Add(readVersionReq.TableId);
+     //               this.readVersionList.Add(readEntry);
+     //           }
 
-                this.requestStack.Clear();
-            }
+     //           this.requestStack.Clear();
+     //       }
 
-            // Already re-read the version entries back, need to check visiable
-            while (this.tableIdList.Count > 0 || this.requestStack.Count > 0)
-            {
-                int lastIndex = this.tableIdList.Count - 1;
-                // No concurrent txs hold the version or already received the response
-                if (this.requestStack.Count == 0)
-                {
-                    // validateKeyList and readVersionList both have the same size, they share a lastIndex variable
-                    string tableId = this.tableIdList[lastIndex];
-                    VersionEntry readVersion = this.readVersionList[lastIndex];
+     //       // Already re-read the version entries back, need to check visiable
+     //       while (this.tableIdList.Count > 0 || this.requestStack.Count > 0)
+     //       {
+     //           int lastIndex = this.tableIdList.Count - 1;
+     //           // No concurrent txs hold the version or already received the response
+     //           if (this.requestStack.Count == 0)
+     //           {
+     //               // validateKeyList and readVersionList both have the same size, they share a lastIndex variable
+     //               string tableId = this.tableIdList[lastIndex];
+     //               VersionEntry readVersion = this.readVersionList[lastIndex];
 
-                    if (readVersion.MaxCommitTs >= this.commitTs)
-                    {
-                        // No need to update the version's maxCommitTs.
-                        // Check whether or not the re-read version is occupied by another tx.
-                        if (readVersion.TxId != VersionEntry.EMPTY_TXID)
-                        {
-                            // A concurrent tx is locking the version. Checks the tx's status to decide how to move forward, 
-                            // i.e., abort or pass validation.
-                            GetTxEntryRequest getTxReq = this.executor.ResourceManager.GetTxEntryRequest(readVersion.TxId);
-                            this.versionDb.EnqueueTxEntryRequest(readVersion.TxId, getTxReq, this.executor.Partition);
-                            this.txReqGarbageQueue.Enqueue(getTxReq);
-                            this.requestStack.Push(getTxReq);
-                        }
-                        else
-                        {
-                            if (this.commitTs > readVersion.EndTimestamp)
-                            {
-                                // A new version has been created before this tx can commit.
-                                // Abort the tx.
-                                this.SetAbortMsg("a new version has been created before this commit");
-                                this.CurrentProc = this.abortProc;
-								if (!this.DEBUG_MODE)
-								{
-									this.CurrentProc();
-								}
-                                return;
-                            }
-                            else
-                            {
-                                // No new version has bee created. This record passes validation. 
-                                // remove the last item will be an O(1) operation
-                                this.tableIdList.RemoveAt(lastIndex);
-                                this.readVersionList.RemoveAt(lastIndex);
-                                continue;
-                            }
-                        }
-                    }
-                    else
-                    {
-                        // Updates the version's max commit timestamp
-                        UpdateVersionMaxCommitTsRequest updateMaxTsReq = this.executor.ResourceManager.UpdateVersionMaxCommitTsRequest(
-                            tableId, readVersion.RecordKey, readVersion.VersionKey, this.commitTs);
-                        this.versionDb.EnqueueVersionEntryRequest(tableId, updateMaxTsReq, this.executor.Partition);
-                        this.txReqGarbageQueue.Enqueue(updateMaxTsReq);
-                        this.requestStack.Push(updateMaxTsReq);
-                    }
-                }
-                // Try to push the version's maxCommitTimestamp if necessary
-                else if (this.requestStack.Count == 1 && this.requestStack.Peek() is UpdateVersionMaxCommitTsRequest)
-                {
-                    if (!this.requestStack.Peek().Finished)
-                    {
-                        // The pending request hasn't been processed. Returns the control to the caller.
-                        return;
-                    }
+     //               if (readVersion.MaxCommitTs >= this.commitTs)
+     //               {
+     //                   // No need to update the version's maxCommitTs.
+     //                   // Check whether or not the re-read version is occupied by another tx.
+     //                   if (readVersion.TxId != VersionEntry.EMPTY_TXID)
+     //                   {
+     //                       // A concurrent tx is locking the version. Checks the tx's status to decide how to move forward, 
+     //                       // i.e., abort or pass validation.
+     //                       GetTxEntryRequest getTxReq = this.executor.ResourceManager.GetTxEntryRequest(readVersion.TxId);
+     //                       this.versionDb.EnqueueTxEntryRequest(readVersion.TxId, getTxReq, this.executor.Partition);
+     //                       this.txReqGarbageQueue.Enqueue(getTxReq);
+     //                       this.requestStack.Push(getTxReq);
+     //                   }
+     //                   else
+     //                   {
+     //                       if (this.commitTs > readVersion.EndTimestamp)
+     //                       {
+     //                           // A new version has been created before this tx can commit.
+     //                           // Abort the tx.
+     //                           this.SetAbortMsg("a new version has been created before this commit");
+     //                           this.CurrentProc = this.abortProc;
+					//			if (!this.DEBUG_MODE)
+					//			{
+					//				this.CurrentProc();
+					//			}
+     //                           return;
+     //                       }
+     //                       else
+     //                       {
+     //                           // No new version has bee created. This record passes validation. 
+     //                           // remove the last item will be an O(1) operation
+     //                           this.tableIdList.RemoveAt(lastIndex);
+     //                           this.readVersionList.RemoveAt(lastIndex);
+     //                           continue;
+     //                       }
+     //                   }
+     //               }
+     //               else
+     //               {
+     //                   // Updates the version's max commit timestamp
+     //                   UpdateVersionMaxCommitTsRequest updateMaxTsReq = this.executor.ResourceManager.UpdateVersionMaxCommitTsRequest(
+     //                       tableId, readVersion.RecordKey, readVersion.VersionKey, this.commitTs);
+     //                   this.versionDb.EnqueueVersionEntryRequest(tableId, updateMaxTsReq, this.executor.Partition);
+     //                   this.txReqGarbageQueue.Enqueue(updateMaxTsReq);
+     //                   this.requestStack.Push(updateMaxTsReq);
+     //               }
+     //           }
+     //           // Try to push the version's maxCommitTimestamp if necessary
+     //           else if (this.requestStack.Count == 1 && this.requestStack.Peek() is UpdateVersionMaxCommitTsRequest)
+     //           {
+     //               if (!this.requestStack.Peek().Finished)
+     //               {
+     //                   // The pending request hasn't been processed. Returns the control to the caller.
+     //                   return;
+     //               }
                     
-                    UpdateVersionMaxCommitTsRequest updateMaxTsReq = this.requestStack.Pop() as UpdateVersionMaxCommitTsRequest;
-                    VersionEntry readEntry = updateMaxTsReq.Result as VersionEntry;
-                    if (readEntry == null)
-                    {
-                        this.SetAbortMsg("read entry null: update Max Ts Req");
-                        this.CurrentProc = this.abortProc;
-						if (!this.DEBUG_MODE)
-						{
-							this.CurrentProc();
-						}
-                        return;
-                    }
+     //               UpdateVersionMaxCommitTsRequest updateMaxTsReq = this.requestStack.Pop() as UpdateVersionMaxCommitTsRequest;
+     //               VersionEntry readEntry = updateMaxTsReq.Result as VersionEntry;
+     //               if (readEntry == null)
+     //               {
+     //                   this.SetAbortMsg("read entry null: update Max Ts Req");
+     //                   this.CurrentProc = this.abortProc;
+					//	if (!this.DEBUG_MODE)
+					//	{
+					//		this.CurrentProc();
+					//	}
+     //                   return;
+     //               }
 
-                    // Successfully updated the version's max commit ts. 
-                    // Replaces the old version entry by the new one.
-                    // REALLY SMART HERE
+     //               // Successfully updated the version's max commit ts. 
+     //               // Replaces the old version entry by the new one.
+     //               // REALLY SMART HERE
 
-                    //Tuple<string, VersionEntry> valTuple = this.validateKeyList.Pop();
-                    //this.validateKeyList.Push(Tuple.Create(valTuple.Item1, readEntry));
-                    this.readVersionList.RemoveAt(lastIndex);
-                    this.readVersionList.Add(readEntry);
+     //               //Tuple<string, VersionEntry> valTuple = this.validateKeyList.Pop();
+     //               //this.validateKeyList.Push(Tuple.Create(valTuple.Item1, readEntry));
+     //               this.readVersionList.RemoveAt(lastIndex);
+     //               this.readVersionList.Add(readEntry);
 
-                    continue;
-                }
-                // The re-read version entry is holden by a concurrent tx and we already got tx's state
-                // we should check the commit status and commit time to determine whether to push tx's lowerBound
-                else if (this.requestStack.Count == 1 && this.requestStack.Peek() is GetTxEntryRequest)
-                {
-                    if (!this.requestStack.Peek().Finished)
-                    {
-                        // The pending request hasn't been processed. Returns the control to the caller.
-                        return;
-                    }
+     //               continue;
+     //           }
+     //           // The re-read version entry is holden by a concurrent tx and we already got tx's state
+     //           // we should check the commit status and commit time to determine whether to push tx's lowerBound
+     //           else if (this.requestStack.Count == 1 && this.requestStack.Peek() is GetTxEntryRequest)
+     //           {
+     //               if (!this.requestStack.Peek().Finished)
+     //               {
+     //                   // The pending request hasn't been processed. Returns the control to the caller.
+     //                   return;
+     //               }
 
-                    GetTxEntryRequest getTxReq = this.requestStack.Pop() as GetTxEntryRequest;
-                    TxTableEntry txEntry = getTxReq.Result as TxTableEntry;
-                    if (txEntry == null)
-                    {
-                        this.SetAbortMsg("tx table entry null");
-                        this.CurrentProc = this.abortProc;
-						if (!this.DEBUG_MODE)
-						{
-							this.CurrentProc(); 
-						}
-                        return;
-                    }
+     //               GetTxEntryRequest getTxReq = this.requestStack.Pop() as GetTxEntryRequest;
+     //               TxTableEntry txEntry = getTxReq.Result as TxTableEntry;
+     //               if (txEntry == null)
+     //               {
+     //                   this.SetAbortMsg("tx table entry null");
+     //                   this.CurrentProc = this.abortProc;
+					//	if (!this.DEBUG_MODE)
+					//	{
+					//		this.CurrentProc(); 
+					//	}
+     //                   return;
+     //               }
 
-                    if (txEntry.Status == TxStatus.Aborted)
-                    {
-                        // The tx holding the version has been aborted. Validation passed.
-                        this.tableIdList.RemoveAt(lastIndex);
-                        this.readVersionList.RemoveAt(lastIndex);
-                        continue;
-                    }
-                    else if (txEntry.Status == TxStatus.Committed || txEntry.CommitTime >= 0)
-                    {
-                        if (this.commitTs > txEntry.CommitTime)
-                        {
-                            this.SetAbortMsg("this.commitTs > txEntry.CommitTime");
-                            this.CurrentProc = this.abortProc;
-							if (!this.DEBUG_MODE)
-							{
-								this.CurrentProc();
-							}
-                            return;
-                        }
-                        else
-                        {
-                            // pass the validation
-                            this.tableIdList.RemoveAt(lastIndex);
-                            this.readVersionList.RemoveAt(lastIndex);
-                            continue;
-                        }
-                    }
-                    else
-                    {
-                        UpdateCommitLowerBoundRequest updateCommitBoundReq =
-                            this.executor.ResourceManager.UpdateCommitLowerBound(txEntry.TxId, this.commitTs + 1);
-                        this.versionDb.EnqueueTxEntryRequest(txEntry.TxId, updateCommitBoundReq, this.executor.Partition);
-                        this.txReqGarbageQueue.Enqueue(updateCommitBoundReq);
-                        this.requestStack.Push(updateCommitBoundReq);
-                    }
-                }
-                // The re-read version entry is holden by a concurrent tx and we received the reponse of pushing commit lower bound
-                else if (this.requestStack.Count == 1 && this.requestStack.Peek() is UpdateCommitLowerBoundRequest)
-                {
-                    if (!this.requestStack.Peek().Finished)
-                    {
-                        // The pending request hasn't been processed. Returns the control to the caller.
-                        return;
-                    }
+     //               if (txEntry.Status == TxStatus.Aborted)
+     //               {
+     //                   // The tx holding the version has been aborted. Validation passed.
+     //                   this.tableIdList.RemoveAt(lastIndex);
+     //                   this.readVersionList.RemoveAt(lastIndex);
+     //                   continue;
+     //               }
+     //               else if (txEntry.Status == TxStatus.Committed || txEntry.CommitTime >= 0)
+     //               {
+     //                   if (this.commitTs > txEntry.CommitTime)
+     //                   {
+     //                       this.SetAbortMsg("this.commitTs > txEntry.CommitTime");
+     //                       this.CurrentProc = this.abortProc;
+					//		if (!this.DEBUG_MODE)
+					//		{
+					//			this.CurrentProc();
+					//		}
+     //                       return;
+     //                   }
+     //                   else
+     //                   {
+     //                       // pass the validation
+     //                       this.tableIdList.RemoveAt(lastIndex);
+     //                       this.readVersionList.RemoveAt(lastIndex);
+     //                       continue;
+     //                   }
+     //               }
+     //               else
+     //               {
+     //                   UpdateCommitLowerBoundRequest updateCommitBoundReq =
+     //                       this.executor.ResourceManager.UpdateCommitLowerBound(txEntry.TxId, this.commitTs + 1);
+     //                   this.versionDb.EnqueueTxEntryRequest(txEntry.TxId, updateCommitBoundReq, this.executor.Partition);
+     //                   this.txReqGarbageQueue.Enqueue(updateCommitBoundReq);
+     //                   this.requestStack.Push(updateCommitBoundReq);
+     //               }
+     //           }
+     //           // The re-read version entry is holden by a concurrent tx and we received the reponse of pushing commit lower bound
+     //           else if (this.requestStack.Count == 1 && this.requestStack.Peek() is UpdateCommitLowerBoundRequest)
+     //           {
+     //               if (!this.requestStack.Peek().Finished)
+     //               {
+     //                   // The pending request hasn't been processed. Returns the control to the caller.
+     //                   return;
+     //               }
 
-                    UpdateCommitLowerBoundRequest txCommitReq = this.requestStack.Pop() as UpdateCommitLowerBoundRequest;
-                    long txCommitTs = txCommitReq.Result == null ? VersionDb.RETURN_ERROR_CODE : (long)txCommitReq.Result;
+     //               UpdateCommitLowerBoundRequest txCommitReq = this.requestStack.Pop() as UpdateCommitLowerBoundRequest;
+     //               long txCommitTs = txCommitReq.Result == null ? VersionDb.RETURN_ERROR_CODE : (long)txCommitReq.Result;
 
-					if (txCommitTs == VersionDb.RETURN_ERROR_CODE)
-					{
-                        this.SetAbortMsg("txCommitTs == VersionDb.RETURN_ERROR_CODE");
-						this.CurrentProc = this.abortProc;
-						if (!this.DEBUG_MODE)
-						{
-							this.CurrentProc();
-						}
-                        return;
-                    }
-                    else if (txCommitTs == TxTableEntry.DEFAULT_COMMIT_TIME)
-                    {
-                        // The tx who is locking the version has not had its commit timestamp.
-                        this.tableIdList.RemoveAt(lastIndex);
-                        this.readVersionList.RemoveAt(lastIndex);
-                        continue;
-                    }
-                    else if (this.commitTs > txCommitTs)
-                    {
-                        this.SetAbortMsg("this.commitTs > txCommitTs");
-                        this.CurrentProc = this.abortProc;
-						if (!this.DEBUG_MODE)
-						{
-							this.CurrentProc();
-						}
-                        return;
-                    }
-                    else if (this.commitTs <= txCommitTs)
-                    {
-                        // pass the validation
-                        this.tableIdList.RemoveAt(lastIndex);
-                        this.readVersionList.RemoveAt(lastIndex);
-                        continue;
-                    }
-                }
-                //else
-                //{
-                //    throw new TransactionException("An illegal state of tx validation.");
-                //}
-            }
+					//if (txCommitTs == VersionDb.RETURN_ERROR_CODE)
+					//{
+     //                   this.SetAbortMsg("txCommitTs == VersionDb.RETURN_ERROR_CODE");
+					//	this.CurrentProc = this.abortProc;
+					//	if (!this.DEBUG_MODE)
+					//	{
+					//		this.CurrentProc();
+					//	}
+     //                   return;
+     //               }
+     //               else if (txCommitTs == TxTableEntry.DEFAULT_COMMIT_TIME)
+     //               {
+     //                   // The tx who is locking the version has not had its commit timestamp.
+     //                   this.tableIdList.RemoveAt(lastIndex);
+     //                   this.readVersionList.RemoveAt(lastIndex);
+     //                   continue;
+     //               }
+     //               else if (this.commitTs > txCommitTs)
+     //               {
+     //                   this.SetAbortMsg("this.commitTs > txCommitTs");
+     //                   this.CurrentProc = this.abortProc;
+					//	if (!this.DEBUG_MODE)
+					//	{
+					//		this.CurrentProc();
+					//	}
+     //                   return;
+     //               }
+     //               else if (this.commitTs <= txCommitTs)
+     //               {
+     //                   // pass the validation
+     //                   this.tableIdList.RemoveAt(lastIndex);
+     //                   this.readVersionList.RemoveAt(lastIndex);
+     //                   continue;
+     //               }
+     //           }
+     //           //else
+     //           //{
+     //           //    throw new TransactionException("An illegal state of tx validation.");
+     //           //}
+     //       }
 
-            // All versions pass validation. Move to the commit phase.
-            this.executor.ResourceManager.RecycleVersionList(ref this.readVersionList);
-            this.executor.ResourceManager.RecycleTableIdList(ref this.tableIdList);
+     //       // All versions pass validation. Move to the commit phase.
+     //       this.executor.ResourceManager.RecycleVersionList(ref this.readVersionList);
+     //       this.executor.ResourceManager.RecycleTableIdList(ref this.tableIdList);
 
             this.WriteToLog();
         }
@@ -1298,27 +1313,23 @@ namespace GraphView.Transaction
 
         internal void Abort()
         {
-            // Retry to recycle the list resources
-            this.RecycleContainerResource();
-
             this.Progress = TxProgress.Final;
 
-            if (this.requestStack.Count == 0)
+            if (this.updateTxReq == null)
             {
                 UpdateTxStatusRequest updateTxReq = this.executor.ResourceManager.UpdateTxStatusRequest(this.txId, TxStatus.Aborted);
                 this.versionDb.EnqueueTxEntryRequest(this.txId, updateTxReq, this.executor.Partition);
                 this.txReqGarbageQueue.Enqueue(updateTxReq);
-                this.requestStack.Push(updateTxReq);
                 return;
             }
-            else if (this.requestStack.Count == 1 && this.requestStack.Peek() is UpdateTxStatusRequest)
+            else if (this.updateTxReq != null)
             {
-                if (!this.requestStack.Peek().Finished)
+                if (!this.updateTxReq.Finished)
                 {
                     return;
                 }
+                this.updateTxReq = null;
 
-                this.requestStack.Pop();
 				this.CurrentProc = this.abortPostproProc;
 				if (!this.DEBUG_MODE)
 				{
@@ -1358,13 +1369,6 @@ namespace GraphView.Transaction
             // Neither the readSet and writeSet have the recordKey
             else
             {
-                //// Add the new record to local writeSet
-                //if (!this.writeSet.ContainsKey(tableId))
-                //{
-                //    this.writeSet[tableId] = new Dictionary<object, object>();
-                //}
-
-                //this.writeSet[tableId][recordKey] = record;
                 WriteSetEntry entry = this.executor.ResourceManager.GetWriteSetEntry();
                 entry.TableId = tableId;
                 entry.RecordKey = recordKey;
@@ -1498,11 +1502,26 @@ namespace GraphView.Transaction
                 return;
             }
 
+            //if (TransactionExecution.TEST)
+            //{
+            //    received = true;
+            //    this.Procedure?.ReadCallback(tableId, recordKey, payload);
+            //    return;
+            //}
+
             // if the version entry would be read is not in the local version list,
             // the tx should send requests to get version list from storage, set the Progress as READ 
             // to prevent other operations.
             this.Progress = TxProgress.Read;
-            List<VersionEntry> container = this.executor.ResourceManager.GetVersionList();
+            List<VersionEntry> container = this.versionList;
+
+            //if (TransactionExecution.TEST)
+            //{
+            //    received = true;
+            //    this.Procedure?.ReadCallback(tableId, recordKey, payload);
+            //    return;
+            //}
+
             if (initi)
             {
                 InitiGetVersionListRequest initiGetVersionListReq =
@@ -1511,7 +1530,7 @@ namespace GraphView.Transaction
 
                 this.versionDb.EnqueueVersionEntryRequest(tableId, initiGetVersionListReq, this.executor.Partition);
                 this.txReqGarbageQueue.Enqueue(initiGetVersionListReq);
-                this.requestStack.Push(initiGetVersionListReq);
+                this.initiGetVListReq = initiGetVersionListReq;
             }
             else
             {
@@ -1521,7 +1540,7 @@ namespace GraphView.Transaction
 
                 this.versionDb.EnqueueVersionEntryRequest(tableId, getVlistReq, this.executor.Partition);
                 this.txReqGarbageQueue.Enqueue(getVlistReq);
-                this.requestStack.Push(getVlistReq);
+                this.getVListReq = getVlistReq;
             }
 
             this.readTableId = tableId;
@@ -1530,21 +1549,18 @@ namespace GraphView.Transaction
             this.CurrentProc();
         }
 
-        //private string tableId;
-        //private object recordKey;
-
         internal void ReadVersionList()
         {
             // The reqeust have been sent and now waits for response from GetVersionList request
-            if (this.requestStack.Count == 1 && this.requestStack.Peek() is GetVersionListRequest)
+            if (this.getVListReq != null)
             {
-                if (!this.requestStack.Peek().Finished)
+                if (!this.getVListReq.Finished)
                 {
                     return;
                 }
 
-                GetVersionListRequest getVersionListReq = this.requestStack.Pop() as GetVersionListRequest;
-                this.readVersionList = getVersionListReq.Result as List<VersionEntry>;
+                this.readVersionList = this.getVListReq.Result as List<VersionEntry>;
+                this.getVListReq = null;
 
                 if (this.readVersionList == null)
                 { 
@@ -1560,14 +1576,15 @@ namespace GraphView.Transaction
                 this.CurrentProc = this.readCheckVersionEntryProc;
                 this.CurrentProc();
             }
-            else if (this.requestStack.Count == 1 && this.requestStack.Peek() is InitiGetVersionListRequest)
+            else if (this.initiGetVListReq != null && this.getVListReq == null)
             {
-                if (!this.requestStack.Peek().Finished)
+                if (!this.initiGetVListReq.Finished)
                 {
                     return;
                 }
 
-                InitiGetVersionListRequest initReq = this.requestStack.Pop() as InitiGetVersionListRequest;
+                InitiGetVersionListRequest initReq = this.initiGetVListReq as InitiGetVersionListRequest;
+                this.initiGetVListReq = null;
                 // The current version list is empty and initilized
                 if ((long)initReq.Result == 1)
                 {
@@ -1578,22 +1595,22 @@ namespace GraphView.Transaction
                     this.largestVersionKeyMap[this.readTableId][this.readRecordKey] = VersionEntry.VERSION_KEY_STRAT_INDEX;
                     VersionEntry emptyEntry = VersionEntry.InitEmptyVersionEntry(initReq.RecordKey);
 
-                    this.readVersionList = initReq.Container;
-                    this.readVersionList.Add(emptyEntry);
+                    this.versionList = initReq.Container;
+                    this.versionList.Add(emptyEntry);
 
                     this.CurrentProc = this.readCheckVersionEntryProc;
                     this.CurrentProc();
                 }
                 else
                 {
-                    List<VersionEntry> container = this.executor.ResourceManager.GetVersionList();
+                    List<VersionEntry> container = this.versionList;
                     GetVersionListRequest getVlistReq =
                         this.executor.ResourceManager.GetVersionListRequest(this.readTableId, this.readRecordKey);
                     getVlistReq.Container = container;
 
                     this.versionDb.EnqueueVersionEntryRequest(this.readTableId, getVlistReq, this.executor.Partition);
                     this.txReqGarbageQueue.Enqueue(getVlistReq);
-                    this.requestStack.Push(getVlistReq);
+                    this.getVListReq = getVlistReq;
 
                     this.CurrentProc = this.readVersionListProc;
                     this.CurrentProc();
@@ -1606,31 +1623,31 @@ namespace GraphView.Transaction
             VersionEntry visibleVersion = null;
             // Keep a committed version to retrieve the largest version key
             VersionEntry committedVersion = null;
-            while (this.readVersionList.Count > 0)
+            while (this.versionList.Count > 0)
             {
-                int lastIndex = this.readVersionList.Count - 1;
+                int lastIndex = this.versionList.Count - 1;
                 // Wait for the GetTxEntry response
-                if (this.requestStack.Count == 1 && this.requestStack.Peek() is GetTxEntryRequest)
+                if (this.getTxReq != null)
                 {
-                    if (!this.requestStack.Peek().Finished)
+                    if (!this.getTxReq.Finished)
                     {
                         return;
                     }
 
-                    GetTxEntryRequest getTxReq = this.requestStack.Pop() as GetTxEntryRequest;
-                    TxTableEntry pendingTx = getTxReq.Result as TxTableEntry;
+                    TxTableEntry pendingTx = this.getTxReq.Result as TxTableEntry;
+                    this.getTxReq = null;
 
                     if (pendingTx == null)
                     {
                         // Failed to retrieve the status of the tx holding the version. 
                         // Moves on to the next version.
-                        this.readVersionList.RemoveAt(lastIndex);
+                        this.versionList.RemoveAt(lastIndex);
                         continue;
                     }
 
                     // The last version entry is the one need to check whether visiable
-                    VersionEntry versionEntry = this.readVersionList[this.readVersionList.Count - 1];
-                    this.readVersionList.RemoveAt(lastIndex);
+                    VersionEntry versionEntry = this.versionList[lastIndex];
+                    this.versionList.RemoveAt(lastIndex);
 
                     // If the version entry is a dirty write, skips the entry.
                     if (versionEntry.EndTimestamp == VersionEntry.DEFAULT_END_TIMESTAMP &&
@@ -1664,7 +1681,7 @@ namespace GraphView.Transaction
                 }
                 else if (this.requestStack.Count == 0)
                 {
-                    VersionEntry versionEntry = this.readVersionList[this.readVersionList.Count - 1];
+                    VersionEntry versionEntry = this.versionList[lastIndex];
 
                     if (versionEntry.TxId >= 0)
                     {
@@ -1674,7 +1691,7 @@ namespace GraphView.Transaction
 
                         this.versionDb.EnqueueTxEntryRequest(versionEntry.TxId, getTxReq, this.executor.Partition);
                         this.txReqGarbageQueue.Enqueue(getTxReq);
-                        this.requestStack.Push(getTxReq);
+                        this.getTxReq = getTxReq;
                     }
                     else
                     {
@@ -1695,7 +1712,7 @@ namespace GraphView.Transaction
                         }
                         else
                         {
-                            this.readVersionList.RemoveAt(lastIndex);
+                            this.versionList.RemoveAt(lastIndex);
                         }
                     }
                 }
@@ -1762,7 +1779,6 @@ namespace GraphView.Transaction
 
             this.Progress = TxProgress.Open;
             this.CurrentProc = null;
-            this.executor.ResourceManager.RecycleVersionList(ref this.readVersionList);
             // read call back
             this.Procedure?.ReadCallback(this.readTableId, this.readRecordKey, payload);
         }
@@ -1778,22 +1794,16 @@ namespace GraphView.Transaction
             //this.WriteToLog();
         }
 
-        private void RecycleContainerResource()
+        private void ClearLocalList()
         {
-            if (this.readVersionList != null)
+            while (this.versionList.Count > 0)
             {
-                this.executor.ResourceManager.RecycleVersionList(ref this.readVersionList);
+                int lastIndex = this.versionList.Count - 1;
+                this.versionList.RemoveAt(lastIndex);
             }
 
-            if (this.tableIdList != null)
-            {
-                this.executor.ResourceManager.RecycleTableIdList(ref this.tableIdList);
-            }
-
-            if (this.recordKeyList != null)
-            {
-                this.executor.ResourceManager.RecycleRecordKeyList(ref this.recordKeyList);
-            }
+            this.tableIdList.Clear();
+            this.recordKeyList.Clear();
         }
 
         private ReadSetEntry dummyReadSetEntry = new ReadSetEntry();

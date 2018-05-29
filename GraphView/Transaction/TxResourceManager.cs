@@ -96,9 +96,6 @@ namespace GraphView.Transaction
             // The list will be shared by get version entries and validate version entries
             // Thus the size should be double
             this.versionLists = new Queue<List<VersionEntry>>(2 * TxResourceManager.workingsetCapacity);
-            // The list will be shared by writeKeyList and validateKeyList
-            this.tableIdLists = new Queue<List<string>>(2 * TxResourceManager.workingsetCapacity);
-            this.recordKeyLists = new Queue<List<object>>(TxResourceManager.workingsetCapacity);
             this.concurrentDictionaries = new Queue<ConcurrentDictionary<long, VersionEntry>>(TxResourceManager.workingsetCapacity);
 
             // Version Entry Requests
@@ -133,8 +130,6 @@ namespace GraphView.Transaction
             for (int i = 0; i < TxResourceManager.workingsetCapacity; i++)
             {
                 this.versionLists.Enqueue(new List<VersionEntry>(8));
-                this.tableIdLists.Enqueue(new List<string>(8));
-                this.recordKeyLists.Enqueue(new List<object>(8));
                 this.concurrentDictionaries.Enqueue(new ConcurrentDictionary<long, VersionEntry>(SingletonDictionaryVersionTable.VERSION_CAPACITY));
 
                 this.getVersionListRequests.AddNewResource(new GetVersionListRequest(null, null, null));
@@ -194,48 +189,12 @@ namespace GraphView.Transaction
 
         internal void RecycleVersionList(ref List<VersionEntry> list)
         {
+            if (TransactionExecution.TEST)
+            {
+                Console.WriteLine("RecycleVersionList");
+            }
             list.Clear();
             this.versionLists.Enqueue(list);
-            list = null;
-        }
-
-        internal List<String> GetTableIdList()
-        {
-            if (this.tableIdLists.Count > 0)
-            {
-                return this.tableIdLists.Dequeue();
-            }
-            else
-            {
-                List<string> tableIdList = new List<string>(8);
-                return tableIdList;
-            }
-        }
-
-        internal void RecycleTableIdList(ref List<string> list)
-        {
-            list.Clear();
-            this.tableIdLists.Enqueue(list);
-            list = null;
-        }
-
-        internal List<object> GetRecordKeyList()
-        {
-            if (this.recordKeyLists.Count > 0)
-            {
-                return this.recordKeyLists.Dequeue();
-            }
-            else
-            {
-                List<object> list = new List<object>(8);
-                return list;
-            }
-        }
-
-        internal void RecycleRecordKeyList(ref List<object> list)
-        {
-            list.Clear();
-            this.recordKeyLists.Enqueue(list);
             list = null;
         }
 

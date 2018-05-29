@@ -201,7 +201,7 @@
             while (true)
             {
                 // check whether all tasks finished every 100 ms
-                Thread.Sleep(100);
+                Thread.Sleep(10);
                 finishedTasks = 0;
                 bool allFinished = true;
 
