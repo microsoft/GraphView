@@ -194,12 +194,7 @@ namespace GraphView.Transaction
 
         internal void RecycleVersionList(ref List<VersionEntry> list)
         {
-            while (list.Count > 0)
-            {
-                int lastIndex = list.Count - 1;
-                list.RemoveAt(lastIndex);
-            }
-
+            list.Clear();
             this.versionLists.Enqueue(list);
             list = null;
         }
