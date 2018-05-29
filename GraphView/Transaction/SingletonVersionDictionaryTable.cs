@@ -144,13 +144,12 @@
             while (lastVersionKey >= 0 && localList.Count <= 2)
             {
                 VersionEntry verEntry = null;
-                if (!versionList.TryGetValue(lastVersionKey, out verEntry))
+                if (versionList.TryGetValue(lastVersionKey, out verEntry))
                 {
-                    lastVersionKey--;
-                    continue;
+                    localList.Add(verEntry);
                 }
 
-                localList.Add(verEntry);
+                lastVersionKey--;
             }
 
             return localList;

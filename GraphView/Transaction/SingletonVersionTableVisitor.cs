@@ -44,29 +44,6 @@ namespace GraphView.Transaction
             }
         }
 
-        internal override void Visit(VersionEntryRequest req)
-        {
-            ConcurrentDictionary<long, VersionEntry> versionList = null;
-            if (!this.dict.TryGetValue(req.RecordKey, out versionList))
-            {
-                req.Result = null;
-                req.Finished = true;
-                return;
-            }
-
-            VersionEntry versionEntry = null;
-            if (!versionList.TryGetValue(req.VersionKey, out versionEntry))
-            {
-                req.Result = null;
-                req.Finished = true;
-            }
-            else
-            {
-                req.Result = versionEntry;
-                req.Finished = true;
-            }
-        }
-
         internal override void Visit(InitiGetVersionListRequest req)
         {
             ConcurrentDictionary<long, VersionEntry> versionList = null;
@@ -89,39 +66,16 @@ namespace GraphView.Transaction
                 {
                     // The version list is newly created by this tx. 
                     // No meaningful versions exist, except for the artificial entry as a tail pointer. 
-                    req.Result = null;
+                    req.Result = 1L;
                     req.Finished = true;
                     return;
                 }
             }
-
-            // Retrieves the tail pointer. 
-            VersionEntry tailEntry = null;
-            if (!versionList.TryGetValue(SingletonDictionaryVersionTable.TAIL_KEY, out tailEntry))
+            else
             {
-                throw new TransactionException("The tail pointer is missing from the version list.");
+                req.Result = 0L;
+                req.Finished = true;
             }
-            long lastVersionKey = Interlocked.Read(ref tailEntry.VersionKey);
-
-            List<VersionEntry> localList = this.txResourceManager.GetVersionList();
-
-            // Only returns top 2 newest versions. This is enough for serializability. 
-            // For other isolation levels, more versions may need to be returned.
-            // When old versions may be truncated, it is desirable to maintain a head pointer as well,
-            // so as to increase the lower bound of version keys and reduce the number of iterations. 
-            while (lastVersionKey >= 0 && localList.Count <= 2)
-            {
-                VersionEntry verEntry = null;
-                if (!versionList.TryGetValue(lastVersionKey, out verEntry))
-                {
-                    lastVersionKey--;
-                    continue;
-                }
-                localList.Add(verEntry);
-            }
-
-            req.Result = localList;
-            req.Finished = true;
         }
 
         internal override void Visit(ReplaceVersionRequest req)
@@ -286,6 +240,29 @@ namespace GraphView.Transaction
 
             req.Result = localList;
             req.Finished = true;
+        }
+
+        internal override void Visit(ReadVersionRequest req)
+        {
+            ConcurrentDictionary<long, VersionEntry> versionList = null;
+            if (!this.dict.TryGetValue(req.RecordKey, out versionList))
+            {
+                req.Result = null;
+                req.Finished = true;
+                return;
+            }
+
+            VersionEntry versionEntry = null;
+            if (!versionList.TryGetValue(req.VersionKey, out versionEntry))
+            {
+                req.Result = null;
+                req.Finished = true;
+            }
+            else
+            {
+                req.Result = versionEntry;
+                req.Finished = true;
+            }
         }
     }
 }
