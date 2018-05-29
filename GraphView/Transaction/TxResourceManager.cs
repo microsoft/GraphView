@@ -60,6 +60,7 @@ namespace GraphView.Transaction
         private readonly Queue<List<VersionEntry>> versionLists;
         private readonly Queue<List<string>> tableIdLists;
         private readonly Queue<List<object>> recordKeyLists;
+        private readonly Queue<Dictionary<object, ReadSetEntry>> readSetDicts;
         private readonly Queue<ConcurrentDictionary<long, VersionEntry>> concurrentDictionaries;
 
         // Version entry requests
@@ -96,6 +97,7 @@ namespace GraphView.Transaction
             // The list will be shared by writeKeyList and validateKeyList
             this.tableIdLists = new Queue<List<string>>(2 * TxResourceManager.workingsetCapacity);
             this.recordKeyLists = new Queue<List<object>>(TxResourceManager.workingsetCapacity);
+            this.readSetDicts = new Queue<Dictionary<object, ReadSetEntry>>(TxResourceManager.workingsetCapacity);
             this.concurrentDictionaries = new Queue<ConcurrentDictionary<long, VersionEntry>>(TxResourceManager.workingsetCapacity);
 
             // Version Entry Requests
@@ -120,8 +122,8 @@ namespace GraphView.Transaction
             this.updateTxStatusRequests = new ResourcePool<UpdateTxStatusRequest>(TxResourceManager.workingsetCapacity);
             this.removeTxRequests = new ResourcePool<RemoveTxRequest>(TxResourceManager.workingsetCapacity);
 
-            this.readSetEntries = new Queue<ReadSetEntry>();
-            this.postprocessingEntries = new Queue<PostProcessingEntry>();
+            this.readSetEntries = new Queue<ReadSetEntry>(TxResourceManager.workingsetCapacity);
+            this.postprocessingEntries = new Queue<PostProcessingEntry>(TxResourceManager.workingsetCapacity);
             this.txTableEntries = new Queue<TxTableEntry>();
             this.versionEntries = new Queue<VersionEntry>();
 
@@ -130,6 +132,7 @@ namespace GraphView.Transaction
                 this.versionLists.Enqueue(new List<VersionEntry>(8));
                 this.tableIdLists.Enqueue(new List<string>(8));
                 this.recordKeyLists.Enqueue(new List<object>(8));
+                this.readSetDicts.Enqueue(new Dictionary<object, ReadSetEntry>(1));
                 this.concurrentDictionaries.Enqueue(new ConcurrentDictionary<long, VersionEntry>(SingletonDictionaryVersionTable.VERSION_CAPACITY));
 
                 this.getVersionListRequests.AddNewResource(new GetVersionListRequest(null, null, null));
@@ -155,6 +158,25 @@ namespace GraphView.Transaction
                 this.txTableEntries.Enqueue(new TxTableEntry());
                 this.versionEntries.Enqueue(new VersionEntry());
             }
+        }
+
+        internal Dictionary<object, ReadSetEntry> GetReadSetDict()
+        {
+            if (this.readSetDicts.Count > 0)
+            {
+                return this.readSetDicts.Dequeue();
+            }
+            else
+            {
+                return new Dictionary<object, ReadSetEntry>(1);
+            }
+        }
+
+        internal void RecycleReadSetDict(ref Dictionary<object, ReadSetEntry> dict)
+        {
+            dict.Clear();
+            this.readSetDicts.Enqueue(dict);
+            dict = null;
         }
 
         // Free the tx Request

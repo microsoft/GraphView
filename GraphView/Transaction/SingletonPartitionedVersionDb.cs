@@ -11,9 +11,10 @@ namespace GraphView.Transaction
     internal class SingletonPartitionedVersionDb : VersionDb
     {
         private static volatile SingletonPartitionedVersionDb instance;
+
         private static readonly object initlock = new object();
 
-        internal static int EnqueuedRequests = 0; 
+        internal static int EnqueuedRequests = 0;
 
         /// <summary>
         /// Whether the version db is in deamon mode
@@ -54,7 +55,7 @@ namespace GraphView.Transaction
             }
 
             this.PhysicalPartitionByKey = key => Math.Abs(key.GetHashCode()) % this.PartitionCount;
-            // this.PhysicalPartitionByKey = key => Convert.ToInt32(key) / (int)TxRange.range;
+            this.PhysicalTxPartitionByKey = key => (int)((long)key / TxRange.range);
 
             this.DaemonMode = daemonMode;
             if (this.DaemonMode)
@@ -185,14 +186,14 @@ namespace GraphView.Transaction
 
         internal override void EnqueueTxEntryRequest(long txId, TxEntryRequest txEntryRequest, int execPartition = 0)
         {
-            int pk = this.PhysicalPartitionByKey(txId);
+            int pk = this.PhysicalTxPartitionByKey(txId);
+            // Interlocked.Increment(ref SingletonPartitionedVersionDb.EnqueuedRequests);
             if (pk == execPartition)
             {
                 this.dbVisitors[pk].Invoke(txEntryRequest);
             }
             else
-            {
-                Interlocked.Increment(ref SingletonPartitionedVersionDb.EnqueuedRequests);   
+            { 
                 base.EnqueueTxEntryRequest(txId, txEntryRequest, execPartition);
             }
         }
