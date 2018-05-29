@@ -313,15 +313,16 @@ namespace TransactionBenchmarkTest.YCSB
 
         static void YCSBAsyncTest()
         {
-            const int partitionCount = 1;
-            const int recordCount = 200000;
+            const int partitionCount = 4;
+            const int recordCount = 0;
             const int executorCount = partitionCount;
-            const int txCountPerExecutor = 500000;
+            const int txCountPerExecutor = 1000000;
             //const bool daemonMode = true;
             const bool daemonMode = false;
-            const string dataFile = "ycsb_data_r.in";
-            const string operationFile = "ycsb_ops_r.in";
-            YCSBAsyncBenchmarkTest.RESHUFFLE = true;
+            const string dataFile = "ycsb_data_lg_r.in";
+            const string operationFile = "ycsb_ops_lg_r.in";
+            YCSBAsyncBenchmarkTest.RESHUFFLE = false;
+
 
             // an executor is responsiable for all flush
             string[] tables = 

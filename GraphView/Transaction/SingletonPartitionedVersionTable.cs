@@ -1,7 +1,6 @@
 ﻿
 namespace GraphView.Transaction
 {
-    using System;
     using System.Collections.Generic;
     using System.Threading;
 
@@ -44,8 +43,7 @@ namespace GraphView.Transaction
         internal override void EnqueueVersionEntryRequest(VersionEntryRequest req, int execPartition = 0)
         {
             int pk = this.VersionDb.PhysicalPartitionByKey(req.RecordKey);
-            // Interlocked.Increment(ref SingletonPartitionedVersionDb.EnqueuedRequests);
-            
+
             if (pk == execPartition)
             {
                 this.tableVisitors[pk].Invoke(req);
