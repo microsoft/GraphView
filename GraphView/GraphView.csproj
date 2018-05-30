@@ -355,6 +355,7 @@
     <Compile Include="Transaction\TxTableEntry.cs" />
     <Compile Include="Transaction\VersionBlob.cs" />
     <Compile Include="Transaction\VersionDbVisitor.cs" />
+    <Compile Include="Transaction\VersionKeyEntry.cs" />
     <Compile Include="Transaction\VersionPrimaryKey.cs" />
     <Compile Include="Transaction\VersionDb.cs" />
     <Compile Include="Transaction\VersionEntry.cs" />

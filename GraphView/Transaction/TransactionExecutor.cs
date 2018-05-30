@@ -379,7 +379,7 @@ namespace GraphView.Transaction
                         
                         this.txRuntimePool.Enqueue(runtimeTuple);
                         this.workingSet.RemoveAt(sid);
-                        if (txExec.isCommitted)
+                        if (txExec.TxStatus == TxStatus.Committed)
                         {
                             this.CommittedTxs += 1;
                         }
@@ -411,7 +411,7 @@ namespace GraphView.Transaction
         public void Execute()
         {
             HashSet<string> toRemoveSessions = new HashSet<string>();
-
+           
             while (this.activeTxs.Count > 0 || this.workload.Count > 0)
             {
                 foreach (string sessionId in activeTxs.Keys)
@@ -527,7 +527,7 @@ namespace GraphView.Transaction
                     else if (txExec.Progress == TxProgress.Close)
                     {
                         toRemoveSessions.Add(sessionId);
-                        if (txExec.isCommitted)
+                        if (txExec.TxStatus == TxStatus.Committed)
                         {
                             this.CommittedTxs += 1;
                         }
@@ -652,7 +652,7 @@ namespace GraphView.Transaction
                         this.workload.Dequeue();
                         priorSessionId = req.SessionId;
                         exec.Commit();
-                        if (exec.isCommitted)
+                        if (exec.TxStatus == TxStatus.Committed)
                         {
                             this.CommittedTxs++;
                         }

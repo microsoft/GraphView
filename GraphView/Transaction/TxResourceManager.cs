@@ -86,7 +86,7 @@ namespace GraphView.Transaction
         private readonly ResourcePool<ReadSetEntry> readSetEntries;
         private readonly ResourcePool<PostProcessingEntry> postprocessingEntries;
         private readonly ResourcePool<WriteSetEntry> writeSetEntries;
-
+        private readonly ResourcePool<VersionKeyEntry> versionKeyEntries;
 
         private readonly Queue<TxTableEntry> txTableEntries;
         private readonly Queue<VersionEntry> versionEntries;
@@ -123,6 +123,7 @@ namespace GraphView.Transaction
             this.readSetEntries = new ResourcePool<ReadSetEntry>(TxResourceManager.workingsetCapacity);
             this.postprocessingEntries = new ResourcePool<PostProcessingEntry>(TxResourceManager.workingsetCapacity);
             this.writeSetEntries = new ResourcePool<WriteSetEntry>(TxResourceManager.workingsetCapacity);
+            this.versionKeyEntries = new ResourcePool<VersionKeyEntry>(TxResourceManager.workingsetCapacity);
 
             this.txTableEntries = new Queue<TxTableEntry>();
             this.versionEntries = new Queue<VersionEntry>();
@@ -153,6 +154,7 @@ namespace GraphView.Transaction
                 this.readSetEntries.AddNewResource(new ReadSetEntry());
                 this.postprocessingEntries.AddNewResource(new PostProcessingEntry());
                 this.writeSetEntries.AddNewResource(new WriteSetEntry());
+                this.versionKeyEntries.AddNewResource(new VersionKeyEntry());
 
                 this.txTableEntries.Enqueue(new TxTableEntry());
                 this.versionEntries.Enqueue(new VersionEntry());
@@ -219,7 +221,15 @@ namespace GraphView.Transaction
             dict = null;
         }
 
-        internal ReadSetEntry GetReadSetEntry()
+        internal ReadSetEntry GetReadSetEntry(
+            string tableId,
+            object recordKey,
+            long versionKey,
+            long beginTimestamp,
+            long endTimestamp,
+            long txId,
+            object record,
+            long tailKey)
         {
             ReadSetEntry entry = this.readSetEntries.GetResource();
             if (entry == null)
@@ -228,6 +238,16 @@ namespace GraphView.Transaction
                 entry.Use();
                 this.readSetEntries.AddNewResource(entry);
             }
+
+            entry.TableId = tableId;
+            entry.RecordKey = recordKey;
+            entry.VersionKey = versionKey;
+            entry.BeginTimestamp = beginTimestamp;
+            entry.EndTimestamp = endTimestamp;
+            entry.TxId = txId;
+            entry.Record = record;
+            entry.TailKey = tailKey;
+
             return entry;
         }
 
@@ -237,7 +257,12 @@ namespace GraphView.Transaction
             entry = null;
         }
 
-        internal PostProcessingEntry GetPostProcessingEntry()
+        internal PostProcessingEntry GetPostProcessingEntry(
+            string tableId, 
+            object recordKey, 
+            long versionKey, 
+            long beginTimestamp, 
+            long endTimestamp)
         {
             PostProcessingEntry entry = this.postprocessingEntries.GetResource();
             if (entry == null)
@@ -246,6 +271,13 @@ namespace GraphView.Transaction
                 entry.Use();
                 this.postprocessingEntries.AddNewResource(entry);
             }
+
+            entry.TableId = tableId;
+            entry.RecordKey = recordKey;
+            entry.VersionKey = versionKey;
+            entry.BeginTimestamp = beginTimestamp;
+            entry.EndTimestamp = endTimestamp;
+
             return entry;
         }
 
@@ -255,7 +287,7 @@ namespace GraphView.Transaction
             entry = null;
         }
 
-        internal WriteSetEntry GetWriteSetEntry()
+        internal WriteSetEntry GetWriteSetEntry(string tableId, object recordKey, object payload, long versionKey)
         {
             WriteSetEntry entry = this.writeSetEntries.GetResource();
             if (entry == null)
@@ -264,6 +296,11 @@ namespace GraphView.Transaction
                 entry.Use();
                 this.writeSetEntries.AddNewResource(entry);
             }
+
+            entry.TableId = tableId;
+            entry.RecordKey = recordKey;
+            entry.Payload = payload;
+            entry.VersionKey = versionKey;
             return entry;
         }
 
@@ -273,6 +310,28 @@ namespace GraphView.Transaction
             entry = null;
         }
 
+
+        internal VersionKeyEntry GetVersionKeyEntry(string tableId, object recordKey, long versionKey)
+        {
+            VersionKeyEntry entry = this.versionKeyEntries.GetResource();
+            if (entry == null)
+            {
+                entry = new VersionKeyEntry();
+                entry.Use();
+                this.versionKeyEntries.AddNewResource(entry);
+            }
+            entry.TableId = tableId;
+            entry.RecordKey = recordKey;
+            entry.VersionKey = versionKey;
+
+            return entry;
+        }
+
+        internal void RecycleVersionKeyEntry(ref VersionKeyEntry entry)
+        {
+            this.versionKeyEntries.Recycle(entry);
+            entry = null;
+        }
 
         internal TxTableEntry GetTxTableEntry()
         {

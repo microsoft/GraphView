@@ -14,6 +14,14 @@
             }
         }
 
+        public bool IsEmpty
+        {
+            get
+            {
+                return this.localIndex == -1;
+            }
+        }
+
         private T[] entries;
 
         private int localIndex = -1;

@@ -7,6 +7,7 @@
         internal long EndTimestamp { get; set; }
         internal long TxId { get; set; }
         internal object Record { get; set; }
+        internal long TailKey { get; set; }
 
         public ReadSetEntry()
         {
@@ -29,13 +30,15 @@
             long beginTimestamp,
             long endTimestamp,
             long txId,
-            object record) : base(tableId, recordKey)
+            object record,
+            long tailKey) : base(tableId, recordKey)
         {
             this.VersionKey = versionKey;
             this.BeginTimestamp = beginTimestamp;
             this.EndTimestamp = endTimestamp;
             this.TxId = txId;
             this.Record = record;
+            this.TailKey = tailKey;
         }
 
         public override bool Equals(object obj)

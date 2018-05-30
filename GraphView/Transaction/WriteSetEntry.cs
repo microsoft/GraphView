@@ -10,6 +10,8 @@ namespace GraphView.Transaction
     {
         internal object Payload { get; set; }
 
+        internal long VersionKey { get; set; }
+
         public WriteSetEntry()
         {
 
@@ -24,6 +26,14 @@ namespace GraphView.Transaction
             : base(tableId, recordKey)
         {
             this.Payload = payload;
+            this.VersionKey = 0;
+        }
+
+        public WriteSetEntry(string tableId, object recordKey, object payload, long versionKey)
+            : base(tableId, recordKey)
+        {
+            this.Payload = payload;
+            this.VersionKey = versionKey;
         }
 
         public override bool Equals(object obj)
