@@ -2,7 +2,7 @@
 {
     using System;
 
-    class TxEntryList<T>
+    class TxList<T>
     {
         public static readonly int CAPACITY = 20;
 
@@ -28,9 +28,9 @@
 
         private int capacity;
 
-        public TxEntryList(int capacity = 0)
+        public TxList(int capacity = 0)
         {
-            this.capacity = capacity == 0 ? TxEntryList<T>.CAPACITY : capacity;
+            this.capacity = capacity == 0 ? TxList<T>.CAPACITY : capacity;
             this.entries = new T[this.capacity];
         }
 

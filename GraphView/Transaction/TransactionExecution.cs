@@ -70,11 +70,11 @@ namespace GraphView.Transaction
         private readonly Queue<TxSetEntry> txSetEntryGCQueue; 
 
         // entrySet part
-        internal TxEntryList<ReadSetEntry> readSet;
-        internal TxEntryList<WriteSetEntry> writeSet;
-        internal TxEntryList<PostProcessingEntry> abortSet;
-        internal TxEntryList<PostProcessingEntry> commitSet;
-        internal TxEntryList<VersionKeyEntry> largestVersionKeySet;
+        internal TxList<ReadSetEntry> readSet;
+        internal TxList<WriteSetEntry> writeSet;
+        internal TxList<PostProcessingEntry> abortSet;
+        internal TxList<PostProcessingEntry> commitSet;
+        internal TxList<VersionKeyEntry> largestVersionKeySet;
 
         // procedure part
         private Procedure newTxIdProc;
@@ -146,11 +146,11 @@ namespace GraphView.Transaction
             this.Procedure = procedure;
             this.beginTicks = DateTime.Now.Ticks;
 
-            this.readSet = new TxEntryList<ReadSetEntry>();
-            this.writeSet = new TxEntryList<WriteSetEntry>();
-            this.abortSet = new TxEntryList<PostProcessingEntry>();
-            this.commitSet = new TxEntryList<PostProcessingEntry>();
-            this.largestVersionKeySet = new TxEntryList<VersionKeyEntry>();
+            this.readSet = new TxList<ReadSetEntry>();
+            this.writeSet = new TxList<WriteSetEntry>();
+            this.abortSet = new TxList<PostProcessingEntry>();
+            this.commitSet = new TxList<PostProcessingEntry>();
+            this.largestVersionKeySet = new TxList<VersionKeyEntry>();
 
             this.garbageQueueTxId = garbageQueueTxId;
             this.garbageQueueFinishTime = garbageQueueFinishTime;
