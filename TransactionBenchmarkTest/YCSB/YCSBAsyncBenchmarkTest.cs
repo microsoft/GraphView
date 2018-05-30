@@ -57,6 +57,11 @@
                 default:
                     break;
             }
+            tx.Commit();
+            if (tx.Status != TxStatus.Committed)
+            {
+                throw new TransactionException("Failed when loading data.");
+            }
             return true;
         };
 
@@ -159,8 +164,8 @@
             this.versionDb.CreateVersionTable(TABLE_ID, REDIS_DB_INDEX);
 
             // step3: load data
-            this.loadDataParallely(dataFile);
-            // this.LoadDataSequentially(dataFile);
+            // this.loadDataParallely(dataFile);
+            this.LoadDataSequentially(dataFile);
             SingletonPartitionedVersionDb.EnqueuedRequests = 0;
 
             // step 4: fill workers' queue
@@ -349,10 +354,6 @@
                     if (count % 10000 == 0)
                     {
                         Console.WriteLine("Loaded {0} records", count);
-                        if (count == 1000000)
-                        {
-                            break;
-                        }
                     }
                 }
                 Console.WriteLine("Load records successfully, {0} records in total", count);

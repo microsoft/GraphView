@@ -107,8 +107,7 @@ namespace GraphView.Transaction
                 {
                     // Successfully replaces the version. Returns the new version entry.
                     this.txResourceManager.RecycleVersionEntry(ref entry);
-                    req.Result = newEntry;
-                    req.Finished = true;
+                    entry = newEntry;
                 }
                 else
                 {

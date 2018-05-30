@@ -815,7 +815,7 @@ namespace GraphView.Transaction
                 else if (this.updateMaxTsReq != null && this.getTxReq == null &&
                     this.readReq == null && this.updateBoundReq == null)
                 {
-                    if (this.updateMaxTsReq.Finished)
+                    if (!this.updateMaxTsReq.Finished)
                     {
                         return;
                     }
