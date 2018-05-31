@@ -49,7 +49,7 @@ namespace GraphView.Transaction
             ConcurrentDictionary<long, VersionEntry> versionList = null;
             if (!this.dict.TryGetValue(req.RecordKey, out versionList))
             {
-                ConcurrentDictionary<long, VersionEntry> newVersionList = this.txResourceManager.GetConcurrentDictionary();
+                ConcurrentDictionary<long, VersionEntry> newVersionList = new ConcurrentDictionary<long, VersionEntry>();
                 // Adds a special entry whose key is -1 when the list is initialized.
                 // The entry uses beginTimestamp as a pointer pointing to the newest verion in the list.
                 VersionEntry entry = this.txResourceManager.GetVersionEntry();
@@ -209,7 +209,7 @@ namespace GraphView.Transaction
             ConcurrentDictionary<long, VersionEntry> versionList = null;
             if (!this.dict.TryGetValue(req.RecordKey, out versionList))
             {
-                req.Result = null;
+                req.Result = req.Container;
                 req.Finished = true;
                 return;
             }
@@ -220,7 +220,7 @@ namespace GraphView.Transaction
             versionList.TryGetValue(SingletonDictionaryVersionTable.TAIL_KEY, out tailEntry);
             long lastVersionKey = Interlocked.Read(ref tailEntry.VersionKey);
 
-            List<VersionEntry> localList = this.txResourceManager.GetVersionList();
+            List<VersionEntry> localList = req.Container;
 
             // Only returns top 2 newest versions. This is enough for serializability. 
             // For other isolation levels, more versions may need to be returned.
@@ -232,6 +232,10 @@ namespace GraphView.Transaction
                 if (versionList.TryGetValue(lastVersionKey, out verEntry))
                 {
                     localList.Add(verEntry);
+                    if (verEntry.TxId == VersionEntry.EMPTY_TXID)
+                    {
+                        break;
+                    }
                 }
 
                 lastVersionKey--;

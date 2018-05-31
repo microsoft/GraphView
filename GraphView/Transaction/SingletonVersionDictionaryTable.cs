@@ -76,6 +76,7 @@
 
         internal override void EnqueueVersionEntryRequest(VersionEntryRequest req, int execPartition = 0)
         {
+            // Console.WriteLine(req.GetType().Name);
             this.tableVisitors[execPartition].Invoke(req);
         }
 
@@ -147,6 +148,10 @@
                 if (versionList.TryGetValue(lastVersionKey, out verEntry))
                 {
                     localList.Add(verEntry);
+                    if (verEntry.TxId == VersionEntry.EMPTY_TXID)
+                    {
+                        break;
+                    }
                 }
 
                 lastVersionKey--;
@@ -296,6 +301,10 @@
                 if (versionList.TryGetValue(lastVersionKey, out verEntry))
                 {
                     localList.Add(verEntry);
+                    if (verEntry.TxId == VersionEntry.EMPTY_TXID)
+                    {
+                        break;
+                    }
                 }
 
                 lastVersionKey--;

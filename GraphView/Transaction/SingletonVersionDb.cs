@@ -122,6 +122,7 @@
 
         internal override void EnqueueTxEntryRequest(long txId, TxEntryRequest txEntryRequest, int execPartition = 0)
         {
+            // Console.WriteLine(txEntryRequest.GetType().Name);
             this.dbVisitors[execPartition].Invoke(txEntryRequest);
         }
 

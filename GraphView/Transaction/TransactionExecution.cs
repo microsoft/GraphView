@@ -1369,7 +1369,7 @@ namespace GraphView.Transaction
                 this.versionList = this.getVListReq.Result as List<VersionEntry>;
                 this.getVListReq = null;
 
-                if (this.versionList == null)
+                if (this.versionList.Count == 0)
                 { 
                     // abort or continue?
                     this.Progress = TxProgress.Open;

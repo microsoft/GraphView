@@ -60,7 +60,6 @@ namespace GraphView.Transaction
         private readonly Queue<List<VersionEntry>> versionLists;
         private readonly Queue<List<string>> tableIdLists;
         private readonly Queue<List<object>> recordKeyLists;
-        private readonly Queue<ConcurrentDictionary<long, VersionEntry>> concurrentDictionaries;
 
         // Version entry requests
         private readonly ResourcePool<GetVersionListRequest> getVersionListRequests;
@@ -96,7 +95,6 @@ namespace GraphView.Transaction
             // The list will be shared by get version entries and validate version entries
             // Thus the size should be double
             this.versionLists = new Queue<List<VersionEntry>>(2 * TxResourceManager.workingsetCapacity);
-            this.concurrentDictionaries = new Queue<ConcurrentDictionary<long, VersionEntry>>(TxResourceManager.workingsetCapacity);
 
             // Version Entry Requests
             this.getVersionListRequests = new ResourcePool<GetVersionListRequest>(TxResourceManager.workingsetCapacity);
@@ -131,7 +129,6 @@ namespace GraphView.Transaction
             for (int i = 0; i < TxResourceManager.workingsetCapacity; i++)
             {
                 this.versionLists.Enqueue(new List<VersionEntry>(8));
-                this.concurrentDictionaries.Enqueue(new ConcurrentDictionary<long, VersionEntry>(SingletonDictionaryVersionTable.VERSION_CAPACITY));
 
                 this.getVersionListRequests.AddNewResource(new GetVersionListRequest(null, null, null));
                 this.initiGetVersionListRequests.AddNewResource(new InitiGetVersionListRequest(null, null, null));
@@ -198,27 +195,6 @@ namespace GraphView.Transaction
             list.Clear();
             this.versionLists.Enqueue(list);
             list = null;
-        }
-
-        internal ConcurrentDictionary<long, VersionEntry> GetConcurrentDictionary()
-        {
-            if (this.concurrentDictionaries.Count > 0)
-            {
-                return this.concurrentDictionaries.Dequeue();
-            }
-            else
-            {
-                ConcurrentDictionary<long, VersionEntry> dict = 
-                    new ConcurrentDictionary<long, VersionEntry>(SingletonDictionaryVersionTable.VERSION_CAPACITY);
-                return dict;
-            }
-        }
-
-        internal void RecycleConcurrentDictionary(ref ConcurrentDictionary<long, VersionEntry> dict)
-        {
-            dict.Clear();
-            this.concurrentDictionaries.Enqueue(dict);
-            dict = null;
         }
 
         internal ReadSetEntry GetReadSetEntry(
