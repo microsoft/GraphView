@@ -179,6 +179,18 @@
             }
         }
 
+        //This method is for SingletonVersionDb only.
+        internal void Reset(string operationFile)
+        {
+            this.executorList.Clear();
+            this.totalTasks = 0;
+            this.commandCount = 0;
+            // just clear the txtable, do not clear version table, so we do not need to load the data entry time.
+            // this.versionDb.ClearTxTable();
+            // fill workers' queue
+            this.FillWorkerQueue(operationFile);
+    }
+
         internal void Run()
         {
             TransactionExecution.TEST = true;
@@ -344,19 +356,40 @@
             {
                 string line;
                 int count = 0;
+
+                Queue<TransactionRequest> reqQueue = new Queue<TransactionRequest>();
+
                 while ((line = reader.ReadLine()) != null)
                 {
                     string[] fields = this.ParseCommandFormat(line);
                     TxWorkload workload = new TxWorkload(fields[0], TABLE_ID, fields[2], fields[3]);
                     count++;
 
-                    ACTION(Tuple.Create(this.versionDb, workload));
-                    if (count % 10000 == 0)
+                    string sessionId = count.ToString();
+                    YCSBStoredProcedure procedure = new YCSBStoredProcedure(sessionId, workload);
+                    TransactionRequest req = new TransactionRequest(sessionId, procedure);
+                    reqQueue.Enqueue(req);
+                    // ACTION(Tuple.Create(this.versionDb, workload));
+                    if (count % 500 == 0)
                     {
-                        Console.WriteLine("Loaded {0} records", count);
+                        // Console.WriteLine("Loaded {0} records", count);
+                        Console.WriteLine("Enqueued {0} tx insert request", count);
+                        break;
                     }
                 }
-                Console.WriteLine("Load records successfully, {0} records in total", count);
+                Console.WriteLine("Filled 1 executor to load data");
+                TransactionExecutor executor = new TransactionExecutor(this.versionDb, null, reqQueue, 0, 0, 0,
+                    this.versionDb.GetResourceManagerByPartitionIndex(0), this.tables);
+                // new a thread to run the executor
+                Thread thread = new Thread(new ThreadStart(executor.Execute2));
+                thread.Start();
+                while (!executor.AllRequestsFinished)
+                {
+                    Console.WriteLine("Loaded {0} records", executor.CommittedTxs);
+                }
+                Console.WriteLine("Load records successfully, {0} records in total", executor.CommittedTxs);
+                executor.Active = false;
+                thread.Abort();
             }
         }
 

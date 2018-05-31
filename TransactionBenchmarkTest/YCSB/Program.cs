@@ -361,6 +361,56 @@ namespace TransactionBenchmarkTest.YCSB
             Thread.EndThreadAffinity();
         }
 
+        // args[0]: dataFile
+        // args[1]: opsFile
+        // args[2]: partitionCount
+        // args[3]: txCountPerExecutor
+        static void YCSBAsyncTestWithSingletonVersionDb(string[] args)
+        {
+            int partitionCount = 2;
+            int executorCount = partitionCount;
+            int txCountPerExecutor = 100;
+            string dataFile = "ycsb_data_r_.in";
+            string operationFile = "ycsb_ops_r_.in";
+            if (args.Length > 0)
+            {
+                dataFile = args[0];
+                operationFile = args[1];
+                partitionCount = Int32.Parse(args[2]);
+                executorCount = partitionCount;
+                txCountPerExecutor = args.Length > 3 ? Int32.Parse(args[3]) : txCountPerExecutor;
+            }
+
+            // these three settings are useless in SingletonVersionDb environment.
+            const bool daemonMode = false;
+            YCSBAsyncBenchmarkTest.RESHUFFLE = false;
+            const int recordCount = 200000;
+
+            string[] tables =
+            {
+                YCSBAsyncBenchmarkTest.TABLE_ID,
+                VersionDb.TX_TABLE
+            };
+
+            SingletonVersionDb versionDb = SingletonVersionDb.Instance(executorCount);
+            YCSBAsyncBenchmarkTest test = new YCSBAsyncBenchmarkTest(recordCount,
+                executorCount, txCountPerExecutor, versionDb, tables);
+
+            for (int i = 1; i <= partitionCount; i++)
+            {
+                if (i == 1)
+                {
+                    test.Setup(dataFile, operationFile);
+                }
+                else
+                {
+                    test.Reset(operationFile);
+                }
+                test.Run();
+                test.Stats();
+            }
+        }
+
         public static void Main(string[] args)
         {
             Program.args = args;
@@ -373,8 +423,9 @@ namespace TransactionBenchmarkTest.YCSB
             // RedisBenchmarkTest();
 
             // For the YCSB async test
-            YCSBAsyncTest();
-            //YCSBAsyncTestWithCassandra();
+            // YCSBAsyncTest();
+            YCSBAsyncTestWithSingletonVersionDb(args);
+            // YCSBAsyncTestWithCassandra();
 
             // ExecuteRedisRawTest();
         }
