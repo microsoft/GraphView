@@ -42,7 +42,7 @@ namespace GraphView.Transaction
             VersionEntry tailPointer = this.dict[req.RecordKey][VersionEntry.VERSION_KEY_STRAT_INDEX];
             long lastVersionKey = tailPointer.BeginTimestamp;
 
-            List<VersionEntry> localList = req.Container;
+            TxList<VersionEntry> localList = req.Container;
             // Only returns top 2 newest versions. This is enough for serializability. 
             // For other isolation levels, more versions may need to be returned.
             // When old versions may be truncated, it is desirable to maintain a head pointer as well,
@@ -65,7 +65,6 @@ namespace GraphView.Transaction
                 lastVersionKey--;
             }
 
-            req.Result = localList;
             req.Finished = true;
         }
 

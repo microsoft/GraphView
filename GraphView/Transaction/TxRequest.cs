@@ -98,9 +98,9 @@ namespace GraphView.Transaction
 
     public class GetVersionListRequest : VersionEntryRequest
     {
-        public List<VersionEntry> Container { get; internal set; }
+        public TxList<VersionEntry> Container { get; internal set; }
 
-        public GetVersionListRequest(string tableId, object recordKey, List<VersionEntry> container)
+        public GetVersionListRequest(string tableId, object recordKey, TxList<VersionEntry> container)
             : base(tableId, recordKey, -1)
         {
             this.Container = container;
@@ -131,9 +131,9 @@ namespace GraphView.Transaction
 
     public class InitiGetVersionListRequest : VersionEntryRequest
     {
-        public List<VersionEntry> Container { get; internal set; }
+        public TxList<VersionEntry> Container { get; internal set; }
 
-        public InitiGetVersionListRequest(string tableId, object recordKey, List<VersionEntry> container = null)
+        public InitiGetVersionListRequest(string tableId, object recordKey, TxList<VersionEntry> container = null)
             : base(tableId, recordKey, -1)
         {
             this.Container = container;

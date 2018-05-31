@@ -2,7 +2,7 @@
 {
     using System;
 
-    class TxList<T>
+    public class TxList<T>
     {
         public static readonly int CAPACITY = 20;
 
@@ -127,6 +127,11 @@
 
             this.entries = newEntryArray;
             this.capacity = newCapacity;
+        }
+
+        public void Sort()
+        {
+            Array.Sort(this.entries, 0, this.Count);
         }
     }
 }

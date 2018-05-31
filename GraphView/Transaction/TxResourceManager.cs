@@ -56,11 +56,6 @@ namespace GraphView.Transaction
     {
         internal static readonly int workingsetCapacity = 100;
 
-        // The list will be shared by get version entries and validate version entries
-        private readonly Queue<List<VersionEntry>> versionLists;
-        private readonly Queue<List<string>> tableIdLists;
-        private readonly Queue<List<object>> recordKeyLists;
-
         // Version entry requests
         private readonly ResourcePool<GetVersionListRequest> getVersionListRequests;
         private readonly ResourcePool<InitiGetVersionListRequest> initiGetVersionListRequests;
@@ -92,10 +87,6 @@ namespace GraphView.Transaction
 
         public TxResourceManager()
         {
-            // The list will be shared by get version entries and validate version entries
-            // Thus the size should be double
-            this.versionLists = new Queue<List<VersionEntry>>(2 * TxResourceManager.workingsetCapacity);
-
             // Version Entry Requests
             this.getVersionListRequests = new ResourcePool<GetVersionListRequest>(TxResourceManager.workingsetCapacity);
             this.initiGetVersionListRequests = new ResourcePool<InitiGetVersionListRequest>(TxResourceManager.workingsetCapacity);
@@ -128,8 +119,6 @@ namespace GraphView.Transaction
 
             for (int i = 0; i < TxResourceManager.workingsetCapacity; i++)
             {
-                this.versionLists.Enqueue(new List<VersionEntry>(8));
-
                 this.getVersionListRequests.AddNewResource(new GetVersionListRequest(null, null, null));
                 this.initiGetVersionListRequests.AddNewResource(new InitiGetVersionListRequest(null, null, null));
                 this.readVersionRequests.AddNewResource(new ReadVersionRequest(null, null, -1));
@@ -171,32 +160,6 @@ namespace GraphView.Transaction
             entry = null;
         }
 
-        internal List<VersionEntry> GetVersionList()
-        {
-            if (this.versionLists.Count > 0)
-            {
-                return this.versionLists.Dequeue();
-            }
-            else
-            {
-                List<VersionEntry> list = new List<VersionEntry>(8);
-                // Duplicated Enqueue
-                // this.versionLists.Enqueue(list);
-                return list;
-            }
-        }
-
-        internal void RecycleVersionList(ref List<VersionEntry> list)
-        {
-            if (TransactionExecution.TEST)
-            {
-                Console.WriteLine("RecycleVersionList");
-            }
-            list.Clear();
-            this.versionLists.Enqueue(list);
-            list = null;
-        }
-
         internal ReadSetEntry GetReadSetEntry(
             string tableId,
             object recordKey,
@@ -227,12 +190,6 @@ namespace GraphView.Transaction
             return entry;
         }
 
-        internal void RecycleReadSetEntry(ref ReadSetEntry entry)
-        {
-            this.readSetEntries.Recycle(entry);
-            entry = null;
-        }
-
         internal PostProcessingEntry GetPostProcessingEntry(
             string tableId, 
             object recordKey, 
@@ -257,12 +214,6 @@ namespace GraphView.Transaction
             return entry;
         }
 
-        internal void RecyclePostProcessingEntry(ref PostProcessingEntry entry)
-        {
-            this.postprocessingEntries.Recycle(entry);
-            entry = null;
-        }
-
         internal WriteSetEntry GetWriteSetEntry(string tableId, object recordKey, object payload, long versionKey)
         {
             WriteSetEntry entry = this.writeSetEntries.GetResource();
@@ -280,13 +231,6 @@ namespace GraphView.Transaction
             return entry;
         }
 
-        internal void RecycleWriteSetEntry(ref WriteSetEntry entry)
-        {
-            this.writeSetEntries.Recycle(entry);
-            entry = null;
-        }
-
-
         internal VersionKeyEntry GetVersionKeyEntry(string tableId, object recordKey, long versionKey)
         {
             VersionKeyEntry entry = this.versionKeyEntries.GetResource();
@@ -301,12 +245,6 @@ namespace GraphView.Transaction
             entry.VersionKey = versionKey;
 
             return entry;
-        }
-
-        internal void RecycleVersionKeyEntry(ref VersionKeyEntry entry)
-        {
-            this.versionKeyEntries.Recycle(entry);
-            entry = null;
         }
 
         internal TxTableEntry GetTxTableEntry()

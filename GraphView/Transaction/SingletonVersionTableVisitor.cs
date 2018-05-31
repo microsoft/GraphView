@@ -220,7 +220,7 @@ namespace GraphView.Transaction
             versionList.TryGetValue(SingletonDictionaryVersionTable.TAIL_KEY, out tailEntry);
             long lastVersionKey = Interlocked.Read(ref tailEntry.VersionKey);
 
-            List<VersionEntry> localList = req.Container;
+            TxList<VersionEntry> localList = req.Container;
 
             // Only returns top 2 newest versions. This is enough for serializability. 
             // For other isolation levels, more versions may need to be returned.
@@ -241,7 +241,6 @@ namespace GraphView.Transaction
                 lastVersionKey--;
             }
 
-            req.Result = localList;
             req.Finished = true;
         }
 
