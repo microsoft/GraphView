@@ -367,9 +367,9 @@ namespace TransactionBenchmarkTest.YCSB
         // args[3]: txCountPerExecutor
         static void YCSBAsyncTestWithSingletonVersionDb(string[] args)
         {
-            int partitionCount = 2;
+            int partitionCount = 8;
             int executorCount = partitionCount;
-            int txCountPerExecutor = 100;
+            int txCountPerExecutor = 1000000;
             string dataFile = "ycsb_data_r_.in";
             string operationFile = "ycsb_ops_r_.in";
             if (args.Length > 0)
@@ -392,19 +392,21 @@ namespace TransactionBenchmarkTest.YCSB
                 VersionDb.TX_TABLE
             };
 
+            int currentExecutorCount = 1;
+
             SingletonVersionDb versionDb = SingletonVersionDb.Instance(executorCount);
             YCSBAsyncBenchmarkTest test = new YCSBAsyncBenchmarkTest(recordCount,
-                executorCount, txCountPerExecutor, versionDb, tables);
+                currentExecutorCount, txCountPerExecutor, versionDb, tables);
 
-            for (int i = 1; i <= partitionCount; i++)
+            for (; currentExecutorCount <= partitionCount; currentExecutorCount++)
             {
-                if (i == 1)
+                if (currentExecutorCount == 1)
                 {
                     test.Setup(dataFile, operationFile);
                 }
                 else
                 {
-                    test.Reset(operationFile);
+                    test.ResetAndFillWorkerQueue(operationFile, currentExecutorCount);
                 }
                 test.Run();
                 test.Stats();
@@ -423,8 +425,8 @@ namespace TransactionBenchmarkTest.YCSB
             // RedisBenchmarkTest();
 
             // For the YCSB async test
-            YCSBAsyncTest();
-            // YCSBAsyncTestWithSingletonVersionDb(args);
+            // YCSBAsyncTest();
+            YCSBAsyncTestWithSingletonVersionDb(args);
             // YCSBAsyncTestWithCassandra();
 
             // ExecuteRedisRawTest();

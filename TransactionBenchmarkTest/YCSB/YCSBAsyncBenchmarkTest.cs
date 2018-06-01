@@ -164,8 +164,8 @@
             this.versionDb.CreateVersionTable(TABLE_ID, REDIS_DB_INDEX);
 
             // step3: load data
-            this.loadDataParallely(dataFile);
-            // this.LoadDataSequentially(dataFile);
+            // this.loadDataParallely(dataFile);
+            this.LoadDataSequentially(dataFile);
             SingletonPartitionedVersionDb.EnqueuedRequests = 0;
 
             // step 4: fill workers' queue
@@ -180,11 +180,19 @@
         }
 
         //This method is for SingletonVersionDb only.
-        internal void Reset(string operationFile)
+        internal void ResetAndFillWorkerQueue(string operationFile, int currentExecutorCount)
         {
+            if (this.versionDb is SingletonVersionDb)
+            {
+                foreach (TransactionExecutor executor in this.executorList)
+                {
+                    executor.RecycleTxTableEntryAfterFinished();
+                }
+            }
             this.executorList.Clear();
             this.totalTasks = 0;
             this.commandCount = 0;
+            this.executorCount = currentExecutorCount;
             // fill workers' queue
             this.FillWorkerQueue(operationFile);
         }
@@ -239,7 +247,6 @@
                     foreach (TransactionExecutor executor in this.executorList)
                     {
                         executor.Active = false;
-                        executor.RecycleTxTableEntryAfterFinished();
                     }
                     break;
                 }
@@ -361,18 +368,17 @@
                 while ((line = reader.ReadLine()) != null)
                 {
                     string[] fields = this.ParseCommandFormat(line);
-                    YCSBWorkload workload = new YCSBWorkload(fields[0], TABLE_ID, fields[2], fields[3]);
+                   YCSBWorkload workload = new YCSBWorkload(fields[0], TABLE_ID, fields[2], fields[3]);
                     count++;
 
                     string sessionId = count.ToString();
                     TransactionRequest req = new TransactionRequest(sessionId, workload, StoredProcedureType.YCSBStordProcedure);
                     reqQueue.Enqueue(req);
                     // ACTION(Tuple.Create(this.versionDb, workload));
-                    if (count % 500 == 0)
+                    if (count % 500000 == 0)
                     {
                         // Console.WriteLine("Loaded {0} records", count);
                         Console.WriteLine("Enqueued {0} tx insert request", count);
-                        break;
                     }
                 }
                 Console.WriteLine("Filled 1 executor to load data");
@@ -383,7 +389,12 @@
                 thread.Start();
                 while (!executor.AllRequestsFinished)
                 {
-                    Console.WriteLine("Loaded {0} records", executor.CommittedTxs);
+                    // Console.WriteLine("Loaded {0} records", executor.CommittedTxs);
+                    if (executor.CommittedTxs > 0 && executor.CommittedTxs % 500000 == 0)
+                    {
+                        // Console.WriteLine("Loaded {0} records", count);
+                        Console.WriteLine("Executed {0} tx insert request", executor.CommittedTxs);
+                    }
                 }
                 Console.WriteLine("Load records successfully, {0} records in total", executor.CommittedTxs);
                 executor.Active = false;
@@ -408,8 +419,8 @@
                         line = reader.ReadLine();
                         string[] fields = this.ParseCommandFormat(line);
 
-                        YCSBWorkload workload = new YCSBWorkload(fields[0], TABLE_ID, fields[2], fields[3]);
-                        // TxWorkload workload = new TxWorkload("CLOSE", TABLE_ID, fields[2], fields[3]);
+                        // YCSBWorkload workload = new YCSBWorkload(fields[0], TABLE_ID, fields[2], fields[3]);
+                        YCSBWorkload workload = new YCSBWorkload("CLOSE", TABLE_ID, fields[2], fields[3]);
                         string sessionId = ((i * this.txCountPerExecutor) + j + 1).ToString();
                         TransactionRequest req = new TransactionRequest(sessionId, workload, StoredProcedureType.YCSBStordProcedure);
                         reqQueue.Enqueue(req);

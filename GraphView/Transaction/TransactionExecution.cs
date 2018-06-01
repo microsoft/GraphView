@@ -63,7 +63,7 @@ namespace GraphView.Transaction
         /// all tx requests will be enqueued in the current execution and will be 
         /// recycled at the end of postprocessing phase
         /// </summary>
-        private readonly Queue<long> garbageQueueTxId;
+        internal readonly Queue<long> garbageQueueTxId;
         private readonly Queue<long> garbageQueueFinishTime;
         private readonly Queue<TxRequest> txReqGarbageQueue;
         private readonly Queue<TxSetEntry> txSetEntryGCQueue; 
