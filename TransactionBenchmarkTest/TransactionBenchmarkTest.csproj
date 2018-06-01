@@ -148,7 +148,6 @@
     <Compile Include="YCSB\TxWorkload.cs" />
     <Compile Include="YCSB\YCSBAsyncBenchmarkTest.cs" />
     <Compile Include="YCSB\YCSBBenchmarkTest.cs" />
-    <Compile Include="YCSB\YCSBStoredProcedure.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

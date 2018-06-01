@@ -5,15 +5,29 @@ namespace GraphView.Transaction
     using System.Collections.Generic;
     using System.Threading;
 
-    public class TransactionRequest
+    /// <summary>
+    /// There will be two types TransactionRequest:
+    /// (1) command request, with the sessionId, tableId, recordKey and payload
+    /// (2) stored procedure request, with the sessionId, workload
+    /// </summary>
+    public class TransactionRequest : IResource
     {
+        private bool inUse;
         internal string SessionId { get; set; }
+
         internal string TableId { get; set; }
         internal object RecordKey { get; set; }
         internal object Payload { get; set; }
         internal OperationType OperationType;
 
-        internal StoredProcedure Procedure { get; set; }
+        /// <summary>
+        /// The workload for StoredProcedure. StoredProcedure may have different 
+        /// parameters, so here define a workload to store variables
+        /// </summary>
+        internal StoredProcedureWorkload Workload { get; set; }
+        internal bool IsStoredProcedure { get; set; }
+
+        internal StoredProcedureType ProcedureType { get; set; }
 
         public TransactionRequest(
             string sessionId, 
@@ -27,17 +41,37 @@ namespace GraphView.Transaction
             this.RecordKey = recordKey;
             this.Payload = payload;
             this.OperationType = operationType;
+            this.IsStoredProcedure = false;
         }
 
-        public TransactionRequest(string sessionId, StoredProcedure procedure)
+        public TransactionRequest(
+            string sessionId,
+            StoredProcedureWorkload workload,
+            StoredProcedureType type)
         {
             this.SessionId = sessionId;
-            this.Procedure = procedure;
+            this.Workload = workload;
             this.OperationType = OperationType.Open;
-            //this.OperationType = OperationType.Close;
+            this.IsStoredProcedure = true;
+            this.ProcedureType = type;
         }
 
         public TransactionRequest() { }
+
+        public void Use()
+        {
+            this.inUse = true;
+        }
+
+        public bool IsActive()
+        {
+            return this.inUse;
+        }
+
+        public void Free()
+        {
+            this.inUse = false;
+        }
     }
 
     public enum OperationType
@@ -269,22 +303,28 @@ namespace GraphView.Transaction
 
         public void RecycleTxTableEntryAfterFinished()
         {
-            while (this.txRuntimePool.Count > 0)
-            {
-                Tuple<TransactionExecution, Queue<TransactionRequest>> runtimeTuple =
-                    this.txRuntimePool.Dequeue();
+            //while (this.txRuntimePool.Count > 0)
+            //{
+            //    Tuple<TransactionExecution, Queue<TransactionRequest>> runtimeTuple =
+            //        this.txRuntimePool.Dequeue();
 
-                TransactionExecution exec = runtimeTuple.Item1;
-                TxTableEntry txTableEntry = this.versionDb.GetTxTableEntry(exec.txId);
-                this.ResourceManager.RecycleTxTableEntry(ref txTableEntry);
-                this.versionDb.RemoveTx(exec.txId);
-            }
+            //    TransactionExecution exec = runtimeTuple.Item1;
+            //    TxTableEntry txTableEntry = this.versionDb.GetTxTableEntry(exec.txId);
+            //    this.ResourceManager.RecycleTxTableEntry(ref txTableEntry);
+            //    this.versionDb.RemoveTx(exec.txId);
+            //}
         }
 
         public void Execute2()
         {
+            long beginTicks = DateTime.Now.Ticks;
             while (this.workingSet.Count > 0 || this.workload.Count > 0)
             {
+                //if (DateTime.Now.Ticks - beginTicks > 20000000)
+                //{
+                //    Console.WriteLine(123);
+                //}
+
                 // TransactionRequest txReq = this.workload.Peek();
                 // Dequeue incoming tx requests until the working set is full.
                 while (this.activeTxs.Count < this.workingSetSize)
@@ -308,15 +348,23 @@ namespace GraphView.Transaction
                         if (txReq.OperationType == OperationType.Open)
                         {
                             Tuple<TransactionExecution, Queue<TransactionRequest>> newExecTuple =
-                            this.AllocateNewTxExecution();
+                                this.AllocateNewTxExecution();
 
-                            if (txReq.Procedure != null)
+                            TransactionExecution txExec = newExecTuple.Item1;
+                            txExec.Reset();
+                            if (txReq.IsStoredProcedure)
                             {
-                                txReq.Procedure.RequestQueue = newExecTuple.Item2;
+                                // TODO: handle variable procedures?
+                                if (txExec.Procedure == null)
+                                {
+                                    txExec.Procedure = StoredProcedureFactory.CreateStoredProcedure(
+                                           txReq.ProcedureType, this.ResourceManager);
+                                    txExec.Procedure.RequestQueue = newExecTuple.Item2;
+                                }
+                                txExec.Procedure.Reset();
+                                txExec.Procedure.Start(txReq.SessionId, txReq.Workload);
                             }
 
-                            newExecTuple.Item1.Reset(txReq.Procedure);
-                            newExecTuple.Item1.Procedure?.Start();
                             this.activeTxs.Add(txReq.SessionId, newExecTuple);
                             this.workingSet.Add(txReq.SessionId);
                         }
@@ -576,50 +624,32 @@ namespace GraphView.Transaction
                                     continue;
                                 }
 
-                                TransactionExecution exec = null;
-                                if (this.txRuntimePool.Count > 0)
+                                Tuple<TransactionExecution, Queue<TransactionRequest>> newExecTuple = 
+                                    this.AllocateNewTxExecution();
+
+                                TransactionExecution txExec = newExecTuple.Item1;
+                                txExec.Reset();
+                                if (txReq.IsStoredProcedure)
                                 {
-                                    Tuple<TransactionExecution, Queue<TransactionRequest>> runtimeTuple = 
-                                        this.txRuntimePool.Dequeue();
-
-                                    exec = runtimeTuple.Item1;
-                                    Queue<TransactionRequest> reqQueue = runtimeTuple.Item2;
-
-                                    reqQueue.Clear();
-                                    if (txReq.Procedure != null)
+                                    // TODO: handle variable procedures?
+                                    if (txExec.Procedure == null)
                                     {
-                                        txReq.Procedure.RequestQueue = reqQueue;
+                                        txExec.Procedure = StoredProcedureFactory.CreateStoredProcedure(
+                                            txReq.ProcedureType, this.ResourceManager);
+                                        txExec.Procedure.RequestQueue = newExecTuple.Item2;
                                     }
-
-                                    exec.Reset(txReq.Procedure);
-                                    this.activeTxs[txReq.SessionId] = runtimeTuple;
-                                }
-                                else
-                                {
-                                    exec = new TransactionExecution(
-                                        this.logStore, 
-                                        this.versionDb, 
-                                        txReq.Procedure, 
-                                        this.GarbageQueueTxId, 
-                                        this.GarbageQueueFinishTime, 
-                                        this.txRange,
-                                        this);
-
-                                    Queue<TransactionRequest> reqQueue = new Queue<TransactionRequest>();
-                                    if (txReq.Procedure != null)
-                                    {
-                                        txReq.Procedure.RequestQueue = reqQueue;
-                                    }
-
-                                    this.activeTxs[txReq.SessionId] = Tuple.Create(exec, reqQueue);
+                                    txExec.Procedure.Reset();
+                                    txExec.Procedure.Start(txReq.SessionId, txReq.Workload);
                                 }
 
-                                exec.Procedure?.Start();
+                                this.activeTxs.Add(txReq.SessionId, newExecTuple);
+                                this.workingSet.Add(txReq.SessionId);
                                 break;
                             }
+
                         default:
                             {
-                                if (this.activeTxs.ContainsKey(txReq.SessionId))
+                                if (!this.activeTxs.ContainsKey(txReq.SessionId))
                                 {
                                     continue;
                                 }
@@ -684,6 +714,7 @@ namespace GraphView.Transaction
             this.AllRequestsFinished = true;
         }
 
+        // TODO: it's supposed to have some issues here, it should be fixed if you want to run it
         public void ExecuteNoFlush()
         {
             TransactionExecution exec = new TransactionExecution(
@@ -710,7 +741,7 @@ namespace GraphView.Transaction
                             {
                                 this.workload.Dequeue();
                                 priorSessionId = req.SessionId;
-                                exec.Reset(null);
+                                exec.Reset();
                                 while (exec.CurrentProc != null)
                                 {
                                     exec.CurrentProc();

@@ -164,8 +164,8 @@
             this.versionDb.CreateVersionTable(TABLE_ID, REDIS_DB_INDEX);
 
             // step3: load data
-            // this.loadDataParallely(dataFile);
-            this.LoadDataSequentially(dataFile);
+            this.loadDataParallely(dataFile);
+            // this.LoadDataSequentially(dataFile);
             SingletonPartitionedVersionDb.EnqueuedRequests = 0;
 
             // step 4: fill workers' queue
@@ -187,7 +187,7 @@
             this.commandCount = 0;
             // fill workers' queue
             this.FillWorkerQueue(operationFile);
-    }
+        }
 
         internal void Run()
         {
@@ -216,7 +216,7 @@
             while (true)
             {
                 // check whether all tasks finished every 100 ms
-                Thread.Sleep(10);
+                Thread.Sleep(100);
                 finishedTasks = 0;
                 bool allFinished = true;
 
@@ -313,7 +313,7 @@
             while (true)
             {
                 // check whether all tasks finished every 100 ms
-                Thread.Sleep(100);
+                Thread.Sleep(1000);
                 times++;
 
                 bool allFinished = true;
@@ -361,12 +361,11 @@
                 while ((line = reader.ReadLine()) != null)
                 {
                     string[] fields = this.ParseCommandFormat(line);
-                    TxWorkload workload = new TxWorkload(fields[0], TABLE_ID, fields[2], fields[3]);
+                    YCSBWorkload workload = new YCSBWorkload(fields[0], TABLE_ID, fields[2], fields[3]);
                     count++;
 
                     string sessionId = count.ToString();
-                    YCSBStoredProcedure procedure = new YCSBStoredProcedure(sessionId, workload);
-                    TransactionRequest req = new TransactionRequest(sessionId, procedure);
+                    TransactionRequest req = new TransactionRequest(sessionId, workload, StoredProcedureType.YCSBStordProcedure);
                     reqQueue.Enqueue(req);
                     // ACTION(Tuple.Create(this.versionDb, workload));
                     if (count % 500 == 0)
@@ -409,11 +408,10 @@
                         line = reader.ReadLine();
                         string[] fields = this.ParseCommandFormat(line);
 
-                        TxWorkload workload = new TxWorkload(fields[0], TABLE_ID, fields[2], fields[3]);
+                        YCSBWorkload workload = new YCSBWorkload(fields[0], TABLE_ID, fields[2], fields[3]);
                         // TxWorkload workload = new TxWorkload("CLOSE", TABLE_ID, fields[2], fields[3]);
                         string sessionId = ((i * this.txCountPerExecutor) + j + 1).ToString();
-                        YCSBStoredProcedure procedure = new YCSBStoredProcedure(sessionId, workload);
-                        TransactionRequest req = new TransactionRequest(sessionId, procedure);
+                        TransactionRequest req = new TransactionRequest(sessionId, workload, StoredProcedureType.YCSBStordProcedure);
                         reqQueue.Enqueue(req);
                     }
 
@@ -447,10 +445,9 @@
                     line = reader.ReadLine();
                     string[] fields = this.ParseCommandFormat(line);
 
-                    TxWorkload workload = new TxWorkload(fields[0], TABLE_ID, fields[2], fields[3]);
+                    YCSBWorkload workload = new YCSBWorkload(fields[0], TABLE_ID, fields[2], fields[3]);
                     string sessionId = (i + 1).ToString();
-                    YCSBStoredProcedure procedure = new YCSBStoredProcedure(sessionId, workload);
-                    TransactionRequest req = new TransactionRequest(sessionId, procedure);
+                    TransactionRequest req = new TransactionRequest(sessionId, workload, StoredProcedureType.YCSBStordProcedure);
 
                     int pk = this.versionDb.PhysicalPartitionByKey(fields[2]);
                     queueArray[pk].Enqueue(req);

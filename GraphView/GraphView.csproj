@@ -344,6 +344,8 @@
     <Compile Include="Transaction\SingletonVersionTableVisitor.cs" />
     <Compile Include="Transaction\SingletonVersionTreeMapTable.cs" />
     <Compile Include="Transaction\StoredProcedure.cs" />
+    <Compile Include="Transaction\StoredProcedureFactory.cs" />
+    <Compile Include="Transaction\StoredProcedureWorkload.cs" />
     <Compile Include="Transaction\TransactionExecution.cs" />
     <Compile Include="Transaction\TransactionExecutor.cs" />
     <Compile Include="Transaction\TxList.cs" />
@@ -365,6 +367,7 @@
     <Compile Include="Transaction\Transaction.cs" />
     <Compile Include="Transaction\VersionTableVisitor.cs" />
     <Compile Include="Transaction\WriteSetEntry.cs" />
+    <Compile Include="Transaction\YCSBStoredProcedure.cs" />
     <Compile Include="TSQL Syntax Tree\WControlFlow.cs" />
     <Compile Include="TSQL Syntax Tree\WCreateViewStatement.cs" />
     <Compile Include="TSQL Syntax Tree\WDeclareVariableStatement.cs" />

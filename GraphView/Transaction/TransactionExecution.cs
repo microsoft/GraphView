@@ -3,7 +3,6 @@ namespace GraphView.Transaction
 {
     using System;
     using System.Collections.Generic;
-    using System.Linq;
     using System.Diagnostics;
 
     internal delegate void Procedure();
@@ -55,7 +54,7 @@ namespace GraphView.Transaction
         private long beginTicks;
         internal Procedure CurrentProc { get; private set; }
         internal TxProgress Progress { get; private set; }
-        internal StoredProcedure Procedure { get; private set; }
+        internal StoredProcedure Procedure { get; set; }
 
         //Garbage Queue Part
 
@@ -171,7 +170,7 @@ namespace GraphView.Transaction
             this.readCheckVersionEntryProc = new Procedure(this.ReadCheckVersionEntry);
         }
 
-        internal void Reset(StoredProcedure procedure = null)
+        internal void Reset()
         {
             this.commitTs = TxTableEntry.DEFAULT_COMMIT_TIME;
             this.maxCommitTsOfWrites = -1L;
@@ -180,7 +179,6 @@ namespace GraphView.Transaction
 
             this.Progress = TxProgress.Open;
             this.CurrentProc = null;
-            this.Procedure = procedure;
             this.beginTicks = DateTime.Now.Ticks;
 
             this.uploadReq = null;

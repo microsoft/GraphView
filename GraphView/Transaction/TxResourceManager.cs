@@ -85,6 +85,8 @@ namespace GraphView.Transaction
         private readonly Queue<TxTableEntry> txTableEntries;
         private readonly Queue<VersionEntry> versionEntries;
 
+        private ResourcePool<TransactionRequest> transRequests;
+
         public TxResourceManager()
         {
             // Version Entry Requests
@@ -117,6 +119,8 @@ namespace GraphView.Transaction
             this.txTableEntries = new Queue<TxTableEntry>();
             this.versionEntries = new Queue<VersionEntry>();
 
+            this.transRequests = new ResourcePool<TransactionRequest>(TxResourceManager.workingsetCapacity);
+
             for (int i = 0; i < TxResourceManager.workingsetCapacity; i++)
             {
                 this.getVersionListRequests.AddNewResource(new GetVersionListRequest(null, null, null));
@@ -144,6 +148,7 @@ namespace GraphView.Transaction
 
                 this.txTableEntries.Enqueue(new TxTableEntry());
                 this.versionEntries.Enqueue(new VersionEntry());
+                this.transRequests.AddNewResource(new TransactionRequest());
             }
         }
 
@@ -696,6 +701,36 @@ namespace GraphView.Transaction
         {
             this.removeTxRequests.Recycle(req);
             req = null;
+        }
+
+        internal TransactionRequest TransactionRequest(
+            string sessionId,
+            string tableId,
+            object key,
+            object value,
+            OperationType operationType)
+        {
+            TransactionRequest transReq = this.transRequests.GetResource();
+            if (transReq == null)
+            {
+                transReq = new TransactionRequest();
+                transReq.Use();
+                this.transRequests.AddNewResource(transReq);
+            }
+
+            transReq.SessionId = sessionId;
+            transReq.TableId = tableId;
+            transReq.RecordKey = key;
+            transReq.Payload = value;
+            transReq.OperationType = operationType;
+
+            return transReq;
+        }
+
+        internal void RecycleTransRequest(ref TransactionRequest transReq)
+        {
+            transReq.Free();
+            transReq = null;
         }
     }
 }

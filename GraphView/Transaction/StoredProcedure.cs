@@ -1,6 +1,7 @@
 ﻿
 namespace GraphView.Transaction
 {
+    using System;
     using System.Collections.Generic;
 
     /// <summary>
@@ -10,20 +11,27 @@ namespace GraphView.Transaction
     /// User-defined procedures should inherit this class and overrides virtual methods, 
     /// to implement user-defined computation logic. 
     /// </summary>
-    public class StoredProcedure
+    internal class StoredProcedure
     {
         internal Queue<TransactionRequest> RequestQueue { get; set; }
-
         /// <summary>
         /// stored procedure id
-        /// </summary>
+        /// </summary> 
         public int pid = 0;
 
         public StoredProcedure()
         {
+
         }
 
         public virtual void Start() { }
+
+        public virtual void Start(
+            string sessionId, 
+            StoredProcedureWorkload workload)
+        {
+            throw new NotImplementedException();
+        }
 
         public virtual void ReadCallback(
             string tableId,
@@ -48,5 +56,20 @@ namespace GraphView.Transaction
             object recordKey,
             object newPayload)
         { }
+
+        internal virtual void InitializeCallBack(
+            string tableId,
+            string recordKey)
+        { }
+
+        public virtual void Reset()
+        {
+            while (this.RequestQueue.Count > 0)
+            {
+                this.RequestQueue.Dequeue();
+            }
+        }
     }
+
+
 }

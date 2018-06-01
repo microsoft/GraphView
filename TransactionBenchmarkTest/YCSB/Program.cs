@@ -423,8 +423,8 @@ namespace TransactionBenchmarkTest.YCSB
             // RedisBenchmarkTest();
 
             // For the YCSB async test
-            // YCSBAsyncTest();
-            YCSBAsyncTestWithSingletonVersionDb(args);
+            YCSBAsyncTest();
+            // YCSBAsyncTestWithSingletonVersionDb(args);
             // YCSBAsyncTestWithCassandra();
 
             // ExecuteRedisRawTest();
