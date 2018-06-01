@@ -185,8 +185,6 @@
             this.executorList.Clear();
             this.totalTasks = 0;
             this.commandCount = 0;
-            // just clear the txtable, do not clear version table, so we do not need to load the data entry time.
-            // this.versionDb.ClearTxTable();
             // fill workers' queue
             this.FillWorkerQueue(operationFile);
     }
@@ -241,6 +239,7 @@
                     foreach (TransactionExecutor executor in this.executorList)
                     {
                         executor.Active = false;
+                        executor.RecycleTxTableEntryAfterFinished();
                     }
                     break;
                 }
@@ -389,6 +388,7 @@
                 }
                 Console.WriteLine("Load records successfully, {0} records in total", executor.CommittedTxs);
                 executor.Active = false;
+                executor.RecycleTxTableEntryAfterFinished();
                 thread.Abort();
             }
         }

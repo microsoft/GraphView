@@ -52,14 +52,7 @@ namespace GraphView.Transaction
                 ConcurrentDictionary<long, VersionEntry> newVersionList = new ConcurrentDictionary<long, VersionEntry>();
                 // Adds a special entry whose key is -1 when the list is initialized.
                 // The entry uses beginTimestamp as a pointer pointing to the newest verion in the list.
-                VersionEntry entry = this.txResourceManager.GetVersionEntry();
-                entry.RecordKey = req.RecordKey;
-                entry.VersionKey = -1;
-                entry.BeginTimestamp = -1;
-                entry.EndTimestamp = -1;
-                entry.Record = null;
-                entry.TxId = -1;
-                entry.MaxCommitTs = -1;
+                VersionEntry entry = VersionEntry.InitEmptyVersionEntry(req.RecordKey);
                 newVersionList.Add(SingletonDictionaryVersionTable.TAIL_KEY, entry);
 
                 if (this.dict.TryAdd(req.RecordKey, newVersionList))

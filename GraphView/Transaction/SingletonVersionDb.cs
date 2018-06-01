@@ -259,10 +259,5 @@
 				versionTable.Clear();
 			}
 		}
-
-		internal override void ClearTxTable()
-		{
-			this.txTable.Clear();
-		}
     }
 }

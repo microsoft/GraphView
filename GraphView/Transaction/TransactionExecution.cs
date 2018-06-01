@@ -1397,6 +1397,7 @@ namespace GraphView.Transaction
                     // No read call back is invoked. 
                     this.Progress = TxProgress.Open;
                     this.CurrentProc = null;
+                   this.Procedure?.ReadCallback(this.readTableId, this.readRecordKey, null);
                     return;
                 }
                 else

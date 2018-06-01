@@ -229,11 +229,6 @@ namespace GraphView.Transaction
         {
             throw new NotImplementedException();
         }
-
-        internal virtual void ClearTxTable()
-        {
-            throw new NotImplementedException();
-        }
     }
 
     /// <summary>

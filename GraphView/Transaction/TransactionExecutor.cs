@@ -267,6 +267,20 @@ namespace GraphView.Transaction
             }
         }
 
+        public void RecycleTxTableEntryAfterFinished()
+        {
+            while (this.txRuntimePool.Count > 0)
+            {
+                Tuple<TransactionExecution, Queue<TransactionRequest>> runtimeTuple =
+                    this.txRuntimePool.Dequeue();
+
+                TransactionExecution exec = runtimeTuple.Item1;
+                TxTableEntry txTableEntry = this.versionDb.GetTxTableEntry(exec.txId);
+                this.ResourceManager.RecycleTxTableEntry(ref txTableEntry);
+                this.versionDb.RemoveTx(exec.txId);
+            }
+        }
+
         public void Execute2()
         {
             while (this.workingSet.Count > 0 || this.workload.Count > 0)
