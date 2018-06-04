@@ -12,6 +12,8 @@ namespace GraphView.Transaction
     {
         public readonly string tableId;
 
+        protected readonly RequestQueue<VersionEntryRequest>[] requestUDFQueues;
+
         /// <summary>
         /// Request queues for logical partitions of a version table
         /// </summary>
@@ -37,6 +39,7 @@ namespace GraphView.Transaction
             this.VersionDb = versionDb;
             this.tableId = tableId;
 
+            this.requestUDFQueues = new RequestQueue<VersionEntryRequest>[partitionCount];
             this.requestQueues = new Queue<VersionEntryRequest>[partitionCount];
             this.flushQueues = new Queue<VersionEntryRequest>[partitionCount];
             this.tableVisitors = new VersionTableVisitor[partitionCount];
@@ -44,6 +47,7 @@ namespace GraphView.Transaction
 
             for (int pid = 0; pid < partitionCount; pid++)
             {
+                this.requestUDFQueues[pid] = new RequestQueue<VersionEntryRequest>(partitionCount);
                 this.requestQueues[pid] = new Queue<VersionEntryRequest>(1024);
                 this.flushQueues[pid] = new Queue<VersionEntryRequest>(1024);
                 this.queueLatches[pid] = 0;
@@ -53,11 +57,18 @@ namespace GraphView.Transaction
         internal virtual void EnqueueVersionEntryRequest(VersionEntryRequest req, int execPartition = 0)
         {
             int pk = this.VersionDb.PhysicalPartitionByKey(req.RecordKey);
-
-            while (Interlocked.CompareExchange(ref queueLatches[pk], 1, 0) != 0) ;
-            Queue<VersionEntryRequest> reqQueue = Volatile.Read(ref this.requestQueues[pk]);
-            reqQueue.Enqueue(req);
-            Interlocked.Exchange(ref queueLatches[pk], 0);
+            if (VersionDb.UDF_QUEUE)
+            {
+                // Here we have checked that pk != execPartition in override methods
+                this.requestUDFQueues[execPartition].Enqueue(req, pk);
+            }
+            else
+            {
+                while (Interlocked.CompareExchange(ref queueLatches[pk], 1, 0) != 0) ;
+                Queue<VersionEntryRequest> reqQueue = Volatile.Read(ref this.requestQueues[pk]);
+                reqQueue.Enqueue(req);
+                Interlocked.Exchange(ref queueLatches[pk], 0);
+            }
         }
 
         /// <summary>
@@ -81,17 +92,29 @@ namespace GraphView.Transaction
 
         internal void Visit(int partitionKey)
         {
-            this.DequeueVersionEntryRequests(partitionKey);
-            Queue<VersionEntryRequest> flushQueue = this.flushQueues[partitionKey];
-
-            if (flushQueue.Count == 0)
+            if (VersionDb.UDF_QUEUE)
             {
-                return;
+                VersionEntryRequest req = null;
+                VersionTableVisitor visitor = this.tableVisitors[partitionKey];
+                while (this.requestUDFQueues[partitionKey].TryDequeue(out req))
+                {
+                    visitor.Invoke(req);
+                }
             }
+            else
+            {
+                this.DequeueVersionEntryRequests(partitionKey);
+                Queue<VersionEntryRequest> flushQueue = this.flushQueues[partitionKey];
 
-            VersionTableVisitor visitor = this.tableVisitors[partitionKey];
-            visitor.Invoke(flushQueue);
-            flushQueue.Clear();
+                if (flushQueue.Count == 0)
+                {
+                    return;
+                }
+
+                VersionTableVisitor visitor = this.tableVisitors[partitionKey];
+                visitor.Invoke(flushQueue);
+                flushQueue.Clear();
+            }
         }
 
         /// <summary>

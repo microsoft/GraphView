@@ -16,6 +16,11 @@ namespace GraphView.Transaction
     // basic part with fields and its own methods
     public abstract partial class VersionDb
     {
+        /// <summary>
+        /// Whether to use user defined queue
+        /// </summary>
+        public static bool UDF_QUEUE = false;
+
         public static readonly long RETURN_ERROR_CODE = -2L;
 
         /// <summary>
@@ -64,6 +69,8 @@ namespace GraphView.Transaction
         protected readonly Queue<TxEntryRequest>[] flushQueues;
         protected readonly VersionDbVisitor[] dbVisitors;
 
+        protected readonly RequestQueue<TxEntryRequest>[] requestUDFQueues;
+            
         private readonly int[] queueLatches;
 
         internal int PartitionCount { get; private set; }
@@ -99,12 +106,14 @@ namespace GraphView.Transaction
             this.flushQueues = new Queue<TxEntryRequest>[partitionCount];
             this.dbVisitors = new VersionDbVisitor[partitionCount];
             this.queueLatches = new int[partitionCount];
+            this.requestUDFQueues = new RequestQueue<TxEntryRequest>[partitionCount];
 
             for (int pid = 0; pid < partitionCount; pid++)
             {
                 this.txEntryRequestQueues[pid] = new Queue<TxEntryRequest>(1024);
                 this.flushQueues[pid] = new Queue<TxEntryRequest>(1024);
                 this.queueLatches[pid] = 0;
+                this.requestUDFQueues[pid] = new RequestQueue<TxEntryRequest>(partitionCount);
             }
 
             this.PhysicalPartitionByKey = key => Math.Abs(key.GetHashCode()) % this.PartitionCount;
@@ -124,11 +133,18 @@ namespace GraphView.Transaction
         internal virtual void EnqueueTxEntryRequest(long txId, TxEntryRequest txEntryRequest, int executorPK = 0)
         {
             int pk = this.PhysicalPartitionByKey(txId);
-
-            while (Interlocked.CompareExchange(ref queueLatches[pk], 1, 0) != 0) ;
-            Queue<TxEntryRequest> reqQueue = Volatile.Read(ref this.txEntryRequestQueues[pk]);
-            reqQueue.Enqueue(txEntryRequest);
-            Interlocked.Exchange(ref queueLatches[pk], 0);
+            if (VersionDb.UDF_QUEUE)
+            {
+                // Here we have checked that pk != execPartition in override methods
+                this.requestUDFQueues[executorPK].Enqueue(txEntryRequest, pk);
+            }
+            else
+            {
+                while (Interlocked.CompareExchange(ref queueLatches[pk], 1, 0) != 0) ;
+                Queue<TxEntryRequest> reqQueue = Volatile.Read(ref this.txEntryRequestQueues[pk]);
+                reqQueue.Enqueue(txEntryRequest);
+                Interlocked.Exchange(ref queueLatches[pk], 0);
+            }
         }
 
         /// <summary>
@@ -154,15 +170,27 @@ namespace GraphView.Transaction
             // Here try to flush the tx requests
             if (tableId == VersionDb.TX_TABLE)
             {
-                this.DequeueTxEntryRequest(partitionKey);
-                Queue<TxEntryRequest> flushQueue = this.flushQueues[partitionKey];
-                if (flushQueue.Count == 0)
+                if (VersionDb.UDF_QUEUE)
                 {
-                    return;
+                    TxEntryRequest req = null;
+                    VersionDbVisitor visitor = this.dbVisitors[partitionKey];
+                    while (this.requestUDFQueues[partitionKey].TryDequeue(out req))
+                    {
+                        visitor.Invoke(req);
+                    }
                 }
+                else
+                {
+                    this.DequeueTxEntryRequest(partitionKey);
+                    Queue<TxEntryRequest> flushQueue = this.flushQueues[partitionKey];
+                    if (flushQueue.Count == 0)
+                    {
+                        return;
+                    }
 
-                this.dbVisitors[partitionKey].Invoke(flushQueue);
-                flushQueue.Clear();
+                    this.dbVisitors[partitionKey].Invoke(flushQueue);
+                    flushQueue.Clear();
+                }
             }
             else
             {

@@ -164,8 +164,8 @@
             this.versionDb.CreateVersionTable(TABLE_ID, REDIS_DB_INDEX);
 
             // step3: load data
-            // this.loadDataParallely(dataFile);
-            this.LoadDataSequentially(dataFile);
+            this.loadDataParallely(dataFile);
+            // this.LoadDataSequentially(dataFile);
             SingletonPartitionedVersionDb.EnqueuedRequests = 0;
 
             // step 4: fill workers' queue

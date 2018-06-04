@@ -316,12 +316,13 @@ namespace TransactionBenchmarkTest.YCSB
             const int partitionCount = 1;
             const int recordCount = 200000;
             const int executorCount = partitionCount;
-            const int txCountPerExecutor = 500000;
+            const int txCountPerExecutor = 200000;
             //const bool daemonMode = true;
             const bool daemonMode = false;
             const string dataFile = "ycsb_data_r.in";
             const string operationFile = "ycsb_ops_r.in";
             YCSBAsyncBenchmarkTest.RESHUFFLE = true;
+            VersionDb.UDF_QUEUE = false;
 
             // an executor is responsiable for all flush
             string[] tables =
@@ -425,8 +426,8 @@ namespace TransactionBenchmarkTest.YCSB
             // RedisBenchmarkTest();
 
             // For the YCSB async test
-            // YCSBAsyncTest();
-            YCSBAsyncTestWithSingletonVersionDb(args);
+            YCSBAsyncTest();
+            // YCSBAsyncTestWithSingletonVersionDb(args);
             // YCSBAsyncTestWithCassandra();
 
             // ExecuteRedisRawTest();
