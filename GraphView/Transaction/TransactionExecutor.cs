@@ -208,6 +208,10 @@ namespace GraphView.Transaction
         //internal static readonly long elapsed = 10000000L;      // 1 sec
         internal static readonly long elapsed = 0L;      // 1 sec
 
+        private ManualResetEventSlim startEventSlim;
+
+        private CountdownEvent countdownEvent;
+
         public TransactionExecutor(
             VersionDb versionDb,
             ILogStore logStore,
@@ -216,7 +220,9 @@ namespace GraphView.Transaction
             int startRange = -1,
             int txTimeoutSeconds = 0,
             TxResourceManager resourceManager = null,
-            string[] flushTables = null)
+            string[] flushTables = null,
+            ManualResetEventSlim startEventSlim = null,
+            CountdownEvent countdownEvent = null)
         {
             this.versionDb = versionDb;
             this.logStore = logStore;
@@ -233,6 +239,10 @@ namespace GraphView.Transaction
 
             this.Partition = partition;
             this.flushTables = flushTables;
+
+
+            this.startEventSlim = startEventSlim;
+            this.countdownEvent = countdownEvent;
         }
 
         // add executor id
@@ -322,6 +332,11 @@ namespace GraphView.Transaction
 
         public void Execute2()
         {
+            if (this.startEventSlim != null)
+            {
+                this.startEventSlim.Wait();
+            }
+
             long beginTicks = DateTime.Now.Ticks;
             while (this.workingSet.Count > 0 || this.workload.Count > 0)
             {
@@ -466,6 +481,11 @@ namespace GraphView.Transaction
             }
 
             this.AllRequestsFinished = true;
+            if (this.countdownEvent != null)
+            {
+                this.countdownEvent.Signal();
+            }
+
             while (this.Active)
             {
                 if (this.flushTables != null && this.flushTables.Length > 0)

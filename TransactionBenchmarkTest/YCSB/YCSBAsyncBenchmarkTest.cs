@@ -112,6 +112,14 @@
         /// </summary>
         private string[] tables;
 
+
+        /// <summary>
+        /// Events to control task start end end
+        /// </summary>
+        private ManualResetEventSlim startEventSlim;
+
+        private CountdownEvent countdownEvent;
+
         internal int TxThroughput
         {
             get
@@ -152,6 +160,9 @@
             this.executorList = new List<TransactionExecutor>();
             this.totalTasks = 0;
             this.tables = flushTables;
+
+            this.startEventSlim = new ManualResetEventSlim();
+            this.countdownEvent = new CountdownEvent(this.executorCount);
         }
 
         internal void Setup(string dataFile, string operationFile)
@@ -164,7 +175,7 @@
             this.versionDb.CreateVersionTable(TABLE_ID, REDIS_DB_INDEX);
 
             // step3: load data
-            this.loadDataParallely(dataFile);
+            this.LoadDataParallely(dataFile);
             // this.LoadDataSequentially(dataFile);
             SingletonPartitionedVersionDb.EnqueuedRequests = 0;
 
@@ -199,8 +210,12 @@
 
         internal void Run()
         {
+            this.startEventSlim.Reset();
+            this.countdownEvent.Reset();
+
             TransactionExecution.TEST = true;
             YCSBStoredProcedure.ONLY_CLOSE = false;
+
             Console.WriteLine("Try to run {0} tasks in {1} workers", (this.executorCount * this.txCountPerExecutor), this.executorCount);
             Console.WriteLine("Running......");
 
@@ -210,48 +225,22 @@
                 commandCountBeforeRun = this.GetCurrentCommandCount();
             }
 
-            this.testBeginTicks = DateTime.Now.Ticks;
-            List<Thread> threadList = new List<Thread>();
-
             foreach (TransactionExecutor executor in this.executorList)
             {
                 Thread thread = new Thread(new ThreadStart(executor.Execute2));
-                threadList.Add(thread);
                 thread.Start();
             }
 
-            int finishedTasks = 0;
-            while (true)
+            this.startEventSlim.Set();
+            this.testBeginTicks = DateTime.Now.Ticks;
+
+            this.countdownEvent.Wait();
+            this.testEndTicks = DateTime.Now.Ticks;
+            foreach (TransactionExecutor executor in this.executorList)
             {
-                // check whether all tasks finished every 100 ms
-                Thread.Sleep(100);
-                finishedTasks = 0;
-                bool allFinished = true;
-
-                foreach (TransactionExecutor executor in this.executorList)
-                {
-                    finishedTasks += executor.FinishedTxs;
-                    if (!executor.AllRequestsFinished)
-                    {
-                        allFinished = false;
-                        // Console.WriteLine(executor.FinishedTxs);
-                    }
-                    // Console.WriteLine(executorList[1].FinishedTxs);
-                }
-                Console.WriteLine("Execute {0} Tasks", finishedTasks);
-
-                // Shutdown all workers
-                if (allFinished)
-                {
-                    this.testEndTicks = DateTime.Now.Ticks;
-                    foreach (TransactionExecutor executor in this.executorList)
-                    {
-                        executor.Active = false;
-                    }
-                    break;
-                }
+                executor.Active = false;
             }
-
+           
             if (this.versionDb is RedisVersionDb)
             {
                 long commandCountAfterRun = this.GetCurrentCommandCount();
@@ -289,7 +278,7 @@
         /// Load record by multiple threads
         /// </summary>
         /// <param name="dataFile"></param>
-        private void loadDataParallely(string dataFile)
+        private void LoadDataParallely(string dataFile)
         {
             long beginTicks = DateTime.Now.Ticks;
             // 3.1 compute the number of partitions
@@ -316,43 +305,17 @@
                 thread.Start();
             }
 
-            int loaded = 0, times = 0;
-            while (true)
+            this.startEventSlim.Set();
+            this.countdownEvent.Wait();
+
+            foreach (TransactionExecutor executor in executors)
             {
-                // check whether all tasks finished every 100 ms
-                Thread.Sleep(1000);
-                times++;
-
-                bool allFinished = true;
-                loaded = 0;
-                foreach (TransactionExecutor executor in executors)
-                {
-                    if (!executor.AllRequestsFinished)
-                    {
-                        allFinished = false;
-                    }
-                    loaded += executor.FinishedTxs;
-                }
-
-                Console.WriteLine("Loaded {0} records", loaded);
-
-                // Console.WriteLine("Loaded {0} records", loaded);
-                // Shutdown all workers
-                if (allFinished)
-                {
-                    foreach (TransactionExecutor executor in executors)
-                    {
-                        executor.Active = false;
-                    }
-                    break;
-                }
+                executor.Active = false;
             }
 
             long endTicks = DateTime.Now.Ticks;
-
-            //int loaded = 0;
             Console.WriteLine("Load records successfully, {0} records in total in {1} seconds",
-                loaded, (endTicks - beginTicks) * 1.0 / 10000000);
+                this.recordCount, (endTicks - beginTicks) * 1.0 / 10000000);
             Console.WriteLine("END");
         }
 
@@ -368,7 +331,7 @@
                 while ((line = reader.ReadLine()) != null)
                 {
                     string[] fields = this.ParseCommandFormat(line);
-                   YCSBWorkload workload = new YCSBWorkload(fields[0], TABLE_ID, fields[2], fields[3]);
+                    YCSBWorkload workload = new YCSBWorkload(fields[0], TABLE_ID, fields[2], fields[3]);
                     count++;
 
                     string sessionId = count.ToString();
@@ -430,7 +393,7 @@
 
                     this.totalTasks += reqQueue.Count;
                     this.executorList.Add(new TransactionExecutor(this.versionDb, null, reqQueue, i, i, 0,
-                        this.versionDb.GetResourceManagerByPartitionIndex(i), tables));
+                        this.versionDb.GetResourceManagerByPartitionIndex(i), tables, this.startEventSlim, this.countdownEvent));
                 }
             }
         }
@@ -471,7 +434,7 @@
                 TxResourceManager manager = this.versionDb.GetResourceManagerByPartitionIndex(pk);
 
                 executors.Add(
-                    new TransactionExecutor(this.versionDb, null, txQueue, pk, pk, 0, manager, tables));
+                    new TransactionExecutor(this.versionDb, null, txQueue, pk, pk, 0, manager, tables, this.startEventSlim, this.countdownEvent));
 
                 Console.WriteLine("Executor {0} workloads count: {1}", pk, txQueue.Count);
             }
