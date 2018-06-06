@@ -3,6 +3,7 @@ namespace GraphView.Transaction
 {
     using System;
     using System.Collections.Generic;
+    using System.Diagnostics;
     using System.Threading;
 
     /// <summary>
@@ -330,8 +331,31 @@ namespace GraphView.Transaction
             }
         }
 
+        internal static void PinThreadOnCores(long coreIndex)
+        {
+            int offset = ((int)coreIndex % 4) * 16 + ((int)coreIndex / 4) * 2;
+            long allowMask = (1L << offset);
+            Thread.BeginThreadAffinity();
+            Process Proc = Process.GetCurrentProcess();
+            foreach (ProcessThread pthread in Proc.Threads)
+            {
+                if (pthread.Id == AppDomain.GetCurrentThreadId())
+                {
+                    long AffinityMask = (long)Proc.ProcessorAffinity;
+                    AffinityMask &= allowMask;
+                    // AffinityMask &= 0x007F;
+                    pthread.ProcessorAffinity = (IntPtr)AffinityMask;
+                }
+            }
+
+            Thread.EndThreadAffinity();
+        }
+
         public void Execute2()
         {
+            // Only pin cores on server
+            // TransactionExecutor.PinThreadOnCores(this.Partition);
+
             if (this.startEventSlim != null)
             {
                 this.startEventSlim.Wait();

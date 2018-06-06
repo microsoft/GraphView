@@ -1,19 +1,14 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Threading;
-using NonBlocking;
-
-namespace GraphView.Transaction
+﻿namespace GraphView.Transaction
 {
+    using System.Threading;
+    using System.Collections.Concurrent;
+
     internal class SingletonVersionTableVisitor : VersionTableVisitor
     {
-        private readonly NonBlocking.ConcurrentDictionary<object, NonBlocking.ConcurrentDictionary<long, VersionEntry>> dict;
+        private readonly ConcurrentDictionary<object, ConcurrentDictionary<long, VersionEntry>> dict;
         private readonly TxResourceManager txResourceManager;
 
-        public SingletonVersionTableVisitor(NonBlocking.ConcurrentDictionary<object, NonBlocking.ConcurrentDictionary<long, VersionEntry>> dict, 
+        public SingletonVersionTableVisitor(ConcurrentDictionary<object, ConcurrentDictionary<long, VersionEntry>> dict,
             TxResourceManager txResourceManager)
         {
             this.dict = dict;
@@ -53,7 +48,7 @@ namespace GraphView.Transaction
                 // Adds a special entry whose key is -1 when the list is initialized.
                 // The entry uses beginTimestamp as a pointer pointing to the newest verion in the list.
                 VersionEntry entry = VersionEntry.InitEmptyVersionEntry(req.RecordKey);
-                newVersionList.Add(SingletonDictionaryVersionTable.TAIL_KEY, entry);
+                newVersionList.TryAdd(SingletonDictionaryVersionTable.TAIL_KEY, entry);
 
                 if (this.dict.TryAdd(req.RecordKey, newVersionList))
                 {

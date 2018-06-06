@@ -3,14 +3,14 @@
     using System;
     using System.Collections.Generic;
     using System.Threading;
-    using NonBlocking;
+    using System.Collections.Concurrent;
 
     internal partial class SingletonVersionDb : VersionDb
     {
         private static volatile SingletonVersionDb instance;
         private static readonly object initlock = new object();
 
-        private readonly NonBlocking.ConcurrentDictionary<long, TxTableEntry> txTable;
+        private readonly ConcurrentDictionary<long, TxTableEntry> txTable;
 
         private readonly List<TxResourceManager> txResourceManagers;
 

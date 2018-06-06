@@ -1,17 +1,14 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.Collections.Concurrent;
 
 namespace GraphView.Transaction
 {
     internal class SingletonVersionDbVisitor : VersionDbVisitor
     {
-        private readonly NonBlocking.ConcurrentDictionary<long, TxTableEntry> txTable;
+        private readonly ConcurrentDictionary<long, TxTableEntry> txTable;
         private readonly TxResourceManager resourceManager;
 
-        public SingletonVersionDbVisitor(NonBlocking.ConcurrentDictionary<long, TxTableEntry> txTable, 
+        public SingletonVersionDbVisitor(ConcurrentDictionary<long, TxTableEntry> txTable,
             TxResourceManager resourceManager)
         {
             this.txTable = txTable;
@@ -175,7 +172,12 @@ namespace GraphView.Transaction
                 throw new TransactionException("A tx's status has been updated by another tx concurrently.");
             }
 
+            this.txTable[req.TxId] = txNewEntry;
+
             this.resourceManager.RecycleTxTableEntry(ref txEntry);
+
+
+
             req.Result = null;
             req.Finished = true;
         }
