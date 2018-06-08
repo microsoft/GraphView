@@ -23,8 +23,9 @@
             int partitionCount, List<TxResourceManager> txResourceManagers)
             : base(versionDb, tableId, partitionCount)
         {
+            int maxConcurrency = Math.Max(1, this.VersionDb.PartitionCount / 2);
             this.dict = new ConcurrentDictionary<object, ConcurrentDictionary<long, VersionEntry>>(
-                this.VersionDb.PartitionCount / 2, SingletonDictionaryVersionTable.RECORD_CAPACITY);
+                maxConcurrency, SingletonDictionaryVersionTable.RECORD_CAPACITY);
 
             for (int i = 0; i < partitionCount; i++)
             {
@@ -34,7 +35,7 @@
 
         internal override void EnqueueVersionEntryRequest(VersionEntryRequest req, int execPartition = 0)
         {
-            // Console.WriteLine(req.GetType().Name);
+            // Interlocked.Increment(ref VersionDb.EnqueuedRequests);
             this.tableVisitors[execPartition].Invoke(req);
         }
 

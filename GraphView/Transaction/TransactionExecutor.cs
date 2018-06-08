@@ -6,118 +6,6 @@ namespace GraphView.Transaction
     using System.Diagnostics;
     using System.Threading;
 
-    /// <summary>
-    /// There will be two types TransactionRequest:
-    /// (1) command request, with the sessionId, tableId, recordKey and payload
-    /// (2) stored procedure request, with the sessionId, workload
-    /// </summary>
-    public class TransactionRequest : IResource
-    {
-        private bool inUse;
-        internal string SessionId { get; set; }
-
-        internal string TableId { get; set; }
-        internal object RecordKey { get; set; }
-        internal object Payload { get; set; }
-        internal OperationType OperationType;
-
-        /// <summary>
-        /// The workload for StoredProcedure. StoredProcedure may have different 
-        /// parameters, so here define a workload to store variables
-        /// </summary>
-        internal StoredProcedureWorkload Workload { get; set; }
-        internal bool IsStoredProcedure { get; set; }
-
-        internal StoredProcedureType ProcedureType { get; set; }
-
-        public TransactionRequest(
-            string sessionId, 
-            string tableId, 
-            string recordKey, 
-            string payload, 
-            OperationType operationType)
-        {
-            this.SessionId = sessionId;
-            this.TableId = tableId;
-            this.RecordKey = recordKey;
-            this.Payload = payload;
-            this.OperationType = operationType;
-            this.IsStoredProcedure = false;
-        }
-
-        public TransactionRequest(
-            string sessionId,
-            StoredProcedureWorkload workload,
-            StoredProcedureType type)
-        {
-            this.SessionId = sessionId;
-            this.Workload = workload;
-            this.OperationType = OperationType.Open;
-            this.IsStoredProcedure = true;
-            this.ProcedureType = type;
-        }
-
-        public TransactionRequest() { }
-
-        public void Use()
-        {
-            this.inUse = true;
-        }
-
-        public bool IsActive()
-        {
-            return this.inUse;
-        }
-
-        public void Free()
-        {
-            this.inUse = false;
-        }
-    }
-
-    public enum OperationType
-    {
-        Open,
-        Insert,
-        Delete,
-        Update,
-        Read,
-        InitiRead,
-        Close,
-    }
-
-    internal class TxRange
-    {
-        /// <summary>
-        /// A tx executor, run by a thread, is assigned to a range (1,000,000) for tx Ids.
-        /// Txs initiated by one executor all fall in the range. 
-        /// When a new tx is created and the tx Id leads to a collusion, 
-        /// if the conflicting tx has long finished, the old tx Id is recycled to the new tx.
-        /// </summary>
-        internal long RangeStart { get; }
-
-        internal static readonly long range = 100000;
-
-        private int localTxIndex = 0;
-
-        public TxRange(int start)
-        {
-            this.RangeStart = start * TxRange.range;
-        }
-
-        internal long NextTxCandidate()
-        {
-            long candidateId = this.RangeStart + this.localTxIndex++;
-            if (this.localTxIndex >= TxRange.range)
-            {
-                this.localTxIndex = 0;
-            }
-
-            return candidateId;
-        }
-
-    }
-
     internal class TransactionExecutor
     {
         private int executorId = 0;
@@ -212,6 +100,9 @@ namespace GraphView.Transaction
         private ManualResetEventSlim startEventSlim;
 
         private CountdownEvent countdownEvent;
+
+        internal long RunBeginTicks { get; set; }
+        internal long RunEndTicks { get; set; }
 
         public TransactionExecutor(
             VersionDb versionDb,
@@ -336,20 +227,14 @@ namespace GraphView.Transaction
         {
             // Only pin cores on server
             // TransactionExecutor.PinThreadOnCores(this.Partition);
-
             if (this.startEventSlim != null)
             {
                 this.startEventSlim.Wait();
             }
 
-            long beginTicks = DateTime.Now.Ticks;
+            this.RunBeginTicks = DateTime.Now.Ticks;
             while (this.workingSet.Count > 0 || this.workload.Count > 0)
             {
-                //if (DateTime.Now.Ticks - beginTicks > 20000000)
-                //{
-                //    Console.WriteLine(123);
-                //}
-
                 // TransactionRequest txReq = this.workload.Peek();
                 // Dequeue incoming tx requests until the working set is full.
                 while (this.activeTxs.Count < this.workingSetSize)
@@ -485,19 +370,21 @@ namespace GraphView.Transaction
                 }
             }
 
+            this.RunEndTicks = DateTime.Now.Ticks;
             this.AllRequestsFinished = true;
-            if (this.countdownEvent != null)
-            {
-                this.countdownEvent.Signal();
-            }
 
-            while (this.Active)
-            {
-                if (this.flushTables != null && this.flushTables.Length > 0)
-                {
-                    this.FlushInstances();
-                }
-            }
+            //if (this.countdownEvent != null)
+            //{
+            //    this.countdownEvent.Signal();
+            //}
+
+            //while (this.Active)
+            //{
+            //    if (this.flushTables != null && this.flushTables.Length > 0)
+            //    {
+            //        this.FlushInstances();
+            //    }
+            //}
         }
 
         public void Execute()

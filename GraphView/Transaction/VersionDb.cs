@@ -16,6 +16,9 @@ namespace GraphView.Transaction
     // basic part with fields and its own methods
     public abstract partial class VersionDb
     {
+        // For experiments test
+        public static int EnqueuedRequests = 0;
+
         /// <summary>
         /// Whether to use user defined queue
         /// </summary>

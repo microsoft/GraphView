@@ -368,12 +368,12 @@ namespace TransactionBenchmarkTest.YCSB
         // args[3]: txCountPerExecutor
         static void YCSBAsyncTestWithSingletonVersionDb(string[] args)
         {
-            int partitionCount = 8;
+            int partitionCount = 1;
             int executorCount = partitionCount;
-            int txCountPerExecutor = 1000000;
-            string dataFile = "ycsb_data_r_.in";
-            string operationFile = "ycsb_ops_r_.in";
-            if (args.Length > 0)
+            int txCountPerExecutor = 200000;
+            string dataFile = "ycsb_data_r.in";
+            string operationFile = "ycsb_ops_r.in";
+            if (args.Length > 1)
             {
                 dataFile = args[0];
                 operationFile = args[1];
@@ -426,8 +426,8 @@ namespace TransactionBenchmarkTest.YCSB
             // RedisBenchmarkTest();
 
             // For the YCSB async test
-            YCSBAsyncTest();
-            // YCSBAsyncTestWithSingletonVersionDb(args);
+            // YCSBAsyncTest();
+            YCSBAsyncTestWithSingletonVersionDb(args);
             // YCSBAsyncTestWithCassandra();
 
             // ExecuteRedisRawTest();

@@ -348,6 +348,7 @@
     <Compile Include="Transaction\StoredProcedureWorkload.cs" />
     <Compile Include="Transaction\TransactionExecution.cs" />
     <Compile Include="Transaction\TransactionExecutor.cs" />
+    <Compile Include="Transaction\TransactionRequest.cs" />
     <Compile Include="Transaction\TxList.cs" />
     <Compile Include="Transaction\TxRequest.cs" />
     <Compile Include="Transaction\TxRequestVisitor.cs" />
