@@ -213,6 +213,7 @@ ModelManifest.xml
 
 #App Config
 [Aa]pp.config
+!TransactionBenchmarkTest/app.config
 TestConfiguration.cs
 *.pk
 *.jky
