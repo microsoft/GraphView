@@ -312,25 +312,6 @@ namespace GraphView.Transaction
             }
         }
 
-        // This is only used for SingletonVersionDb.
-        public void RecycleTxTableEntryAfterFinished()
-        {
-            while (this.txRuntimePool.Count > 0)
-            {
-                Tuple<TransactionExecution, Queue<TransactionRequest>> runtimeTuple =
-                    this.txRuntimePool.Dequeue();
-
-                TransactionExecution exec = runtimeTuple.Item1;
-                while (exec.garbageQueueTxId.Count > 0)
-                {
-                    long txId = exec.garbageQueueTxId.Dequeue();
-                    TxTableEntry txTableEntry = this.versionDb.GetTxTableEntry(exec.txId);
-                    this.ResourceManager.RecycleTxTableEntry(ref txTableEntry);
-                    this.versionDb.RemoveTx(exec.txId);
-                }
-            }
-        }
-
         internal static void PinThreadOnCores(long coreIndex)
         {
             int offset = ((int)coreIndex % 4) * 16 + ((int)coreIndex / 4) * 2;

@@ -6,13 +6,10 @@
     internal class SingletonVersionTableVisitor : VersionTableVisitor
     {
         private readonly ConcurrentDictionary<object, ConcurrentDictionary<long, VersionEntry>> dict;
-        private readonly TxResourceManager txResourceManager;
 
-        public SingletonVersionTableVisitor(ConcurrentDictionary<object, ConcurrentDictionary<long, VersionEntry>> dict,
-            TxResourceManager txResourceManager)
+        public SingletonVersionTableVisitor(ConcurrentDictionary<object, ConcurrentDictionary<long, VersionEntry>> dict)
         {
             this.dict = dict;
-            this.txResourceManager = txResourceManager;
         }
 
         internal override void Visit(DeleteVersionRequest req)
@@ -28,7 +25,6 @@
             VersionEntry versionEntry = null;
             if (versionList.TryRemove(req.VersionKey, out versionEntry))
             {
-                this.txResourceManager.RecycleVersionEntry(ref versionEntry);
                 req.Result = 1L;
                 req.Finished = true;
             }
@@ -82,30 +78,17 @@
 
             if (entry.TxId == req.ReadTxId && entry.EndTimestamp == req.ExpectedEndTs)
             {
-                VersionEntry newEntry = this.txResourceManager.GetVersionEntry();
-                newEntry.RecordKey = req.RecordKey;
-                newEntry.VersionKey = req.VersionKey;
-                newEntry.BeginTimestamp = req.BeginTs;
-                newEntry.EndTimestamp = req.EndTs;
-                newEntry.Record = entry.Record;
-                newEntry.TxId = req.TxId;
-                newEntry.MaxCommitTs = entry.MaxCommitTs;
+                while (Interlocked.CompareExchange(ref entry.latch, 1, 0) != 0) ;
 
-                if (versionList.TryUpdate(req.VersionKey, newEntry, entry))
-                {
-                    // Successfully replaces the version. Returns the new version entry.
-                    this.txResourceManager.RecycleVersionEntry(ref entry);
-                    entry = newEntry;
-                }
-                else
-                {
-                    // The version entry has been updated since the prior retrieval,  
-                    // causing the replacement failed. Re-read to get a new image. 
-                    versionList.TryGetValue(req.VersionKey, out entry);
-                }
+                entry.BeginTimestamp = req.BeginTs;
+                entry.EndTimestamp = req.EndTs;
+                entry.TxId = req.TxId;
+                VersionEntry.CopyValue(entry, req.VersionEntry);
+
+                Interlocked.Exchange(ref entry.latch, 0);
             }
 
-            req.Result = entry;
+            req.Result = req.VersionEntry;
             req.Finished = true;
         }
 
@@ -165,30 +148,14 @@
                 throw new TransactionException("The specified version does not exist.");
             }
 
-            while (verEntry.MaxCommitTs < req.MaxCommitTs)
-            {
-                VersionEntry newEntry = this.txResourceManager.GetVersionEntry();
-                newEntry.RecordKey = req.RecordKey;
-                newEntry.VersionKey = req.VersionKey;
-                newEntry.BeginTimestamp = verEntry.BeginTimestamp;
-                newEntry.EndTimestamp = verEntry.EndTimestamp;
-                newEntry.Record = verEntry.Record;
-                newEntry.TxId = verEntry.TxId;
-                newEntry.MaxCommitTs = req.MaxCommitTs;
+            while (Interlocked.CompareExchange(ref verEntry.latch, 1, 0) != 0) ;
 
-                if (versionList.TryUpdate(req.VersionKey, newEntry, verEntry))
-                {
-                    this.txResourceManager.RecycleVersionEntry(ref verEntry);
-                    verEntry = newEntry;
-                    break;
-                }
-                else
-                {
-                    versionList.TryGetValue(req.VersionKey, out verEntry);
-                }
-            }
+            verEntry.MaxCommitTs = req.MaxCommitTs;
+            VersionEntry.CopyValue(verEntry, req.VersionEntry);
 
-            req.Result = verEntry;
+            Interlocked.Exchange(ref verEntry.latch, 0);
+
+            req.Result = req.VersionEntry;
             req.Finished = true;
         }
 
@@ -210,16 +177,20 @@
 
             TxList<VersionEntry> localList = req.Container;
 
+            int entryCount = 0;
             // Only returns top 2 newest versions. This is enough for serializability. 
             // For other isolation levels, more versions may need to be returned.
             // When old versions may be truncated, it is desirable to maintain a head pointer as well,
             // so as to increase the lower bound of version keys and reduce the number of iterations. 
-            while (lastVersionKey >= 0 && localList.Count <= 2)
+            while (lastVersionKey >= 0 && entryCount <= 2)
             {
                 VersionEntry verEntry = null;
                 if (versionList.TryGetValue(lastVersionKey, out verEntry))
                 {
-                    localList.Add(verEntry);
+                    while (Interlocked.CompareExchange(ref verEntry.latch, 1, 0) != 0) ;
+                    VersionEntry.CopyValue(verEntry, localList[entryCount++]);
+                    Interlocked.Exchange(ref verEntry.latch, 0);
+
                     if (verEntry.TxId == VersionEntry.EMPTY_TXID)
                     {
                         break;
@@ -250,7 +221,11 @@
             }
             else
             {
-                req.Result = versionEntry;
+                while (Interlocked.CompareExchange(ref versionEntry.latch, 1, 0) != 0) ;
+                VersionEntry.CopyValue(versionEntry, req.VersionEntry);
+                Interlocked.Exchange(ref versionEntry.latch, 0);
+
+                req.Result = req.VersionEntry;
                 req.Finished = true;
             }
         }

@@ -193,13 +193,13 @@
         //This method is for SingletonVersionDb only.
         internal void ResetAndFillWorkerQueue(string operationFile, int currentExecutorCount)
         {
-            if (this.versionDb is SingletonVersionDb)
-            {
-                foreach (TransactionExecutor executor in this.executorList)
-                {
-                    executor.RecycleTxTableEntryAfterFinished();
-                }
-            }
+            //if (this.versionDb is SingletonVersionDb)
+            //{
+            //    foreach (TransactionExecutor executor in this.executorList)
+            //    {
+            //        executor.RecycleTxTableEntryAfterFinished();
+            //    }
+            //}
             this.executorList.Clear();
             this.totalTasks = 0;
             this.commandCount = 0;
@@ -361,7 +361,7 @@
                 }
                 Console.WriteLine("Load records successfully, {0} records in total", executor.CommittedTxs);
                 executor.Active = false;
-                executor.RecycleTxTableEntryAfterFinished();
+                // executor.RecycleTxTableEntryAfterFinished();
                 thread.Abort();
             }
         }

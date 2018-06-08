@@ -28,7 +28,7 @@
 
             for (int i = 0; i < partitionCount; i++)
             {
-                this.tableVisitors[i] = new SingletonVersionTableVisitor(this.dict, txResourceManagers[i]);
+                this.tableVisitors[i] = new SingletonVersionTableVisitor(this.dict);
             }
         }
 

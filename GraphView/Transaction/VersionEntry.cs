@@ -41,6 +41,8 @@ namespace GraphView.Transaction
         internal long TxId { get; set; }
         internal long MaxCommitTs { get; set; }
 
+        internal int latch = 0;
+
         public VersionEntry()
         {
 
@@ -86,6 +88,17 @@ namespace GraphView.Transaction
             hash = hash * 23 + this.RecordKey.GetHashCode();
 
             return hash;
+        }
+
+        public static void CopyValue(VersionEntry src, VersionEntry dst)
+        {
+            dst.RecordKey = src.RecordKey;
+            dst.VersionKey = src.VersionKey;
+            dst.BeginTimestamp = src.BeginTimestamp;
+            dst.EndTimestamp = src.EndTimestamp;
+            dst.TxId = src.TxId;
+            dst.Record = src.Record;
+            dst.MaxCommitTs = src.MaxCommitTs;
         }
 
         public override bool Equals(object obj)

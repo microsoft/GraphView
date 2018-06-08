@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Concurrent;
+using System.Threading;
 
 namespace GraphView.Transaction
 {
@@ -23,7 +24,11 @@ namespace GraphView.Transaction
                 throw new TransactionException("The specified tx does not exist.");
             }
 
-            req.Result = txEntry;
+            while (Interlocked.CompareExchange(ref txEntry.latch, 1, 0) != 0) ;
+            TxTableEntry.CopyValue(txEntry, req.TxEntry);
+            Interlocked.Exchange(ref txEntry.latch, 0);
+
+            req.Result = req.TxEntry;
             req.Finished = true;
         }
 
@@ -35,19 +40,22 @@ namespace GraphView.Transaction
                 throw new TransactionException("The specified txId does not exist.");
             }
 
-            TxTableEntry newTxEntry = this.resourceManager.GetTxTableEntry();
-            newTxEntry.TxId = req.TxId;
-            newTxEntry.Status = TxStatus.Ongoing;
-            newTxEntry.CommitTime = TxTableEntry.DEFAULT_COMMIT_TIME;
-            newTxEntry.CommitLowerBound = TxTableEntry.DEFAULT_LOWER_BOUND;
+            while (Interlocked.CompareExchange(ref txEntry.latch, 1, 0) != 0) ;
 
-            this.txTable.TryUpdate(req.TxId, newTxEntry, txEntry);
+            txEntry.TxId = req.TxId;
+            txEntry.Status = TxStatus.Ongoing;
+            txEntry.CommitTime = TxTableEntry.DEFAULT_COMMIT_TIME;
+            txEntry.CommitLowerBound = TxTableEntry.DEFAULT_LOWER_BOUND;
+
+            Interlocked.Exchange(ref txEntry.latch, 0);
+
             req.Finished = true;
         }
 
         internal override void Visit(NewTxIdRequest req)
         {
-            req.Result = this.txTable.TryAdd(req.TxId, null) ? 1L : 0L;
+            TxTableEntry txEntry = new TxTableEntry();
+            req.Result = this.txTable.TryAdd(req.TxId, txEntry) ? 1L : 0L;
             req.Finished = true;
         }
 
@@ -56,7 +64,11 @@ namespace GraphView.Transaction
             TxTableEntry txEntry = null;
             if (this.txTable.TryGetValue(req.TxId, out txEntry))
             {
+                while (Interlocked.CompareExchange(ref txEntry.latch, 1, 0) != 0) ;
+                // Reset includes multiple commands
                 txEntry.Reset();
+                Interlocked.Exchange(ref txEntry.latch, 0);
+
                 req.Result = 1L;
             }
             else
@@ -72,7 +84,6 @@ namespace GraphView.Transaction
             this.txTable.TryRemove(req.TxId, out te);
             if (te != null)
             {
-                this.resourceManager.RecycleTxTableEntry(ref te);
                 req.Result = true;
             }
             else
@@ -90,30 +101,14 @@ namespace GraphView.Transaction
                 throw new TransactionException("The specified tx does not exist.");
             }
 
-            TxTableEntry newTxEntry = null;
-            while (txEntry.CommitTime < 0)
-            {
-                if (newTxEntry == null)
-                {
-                    newTxEntry = this.resourceManager.GetTxTableEntry();
-                }
+            while (Interlocked.CompareExchange(ref txEntry.latch, 1, 0) != 0) ;
+            // read and write
+            long commitTime = Math.Max(req.ProposedCommitTs, txEntry.CommitLowerBound);
+            txEntry.CommitTime = commitTime;
 
-                newTxEntry.Status = txEntry.Status;
-                newTxEntry.CommitTime = Math.Max(req.ProposedCommitTs, txEntry.CommitLowerBound);
-                newTxEntry.CommitLowerBound = txEntry.CommitLowerBound;
+            Interlocked.Exchange(ref txEntry.latch, 0);
 
-                if (this.txTable.TryUpdate(req.TxId, newTxEntry, txEntry))
-                {
-                    this.resourceManager.RecycleTxTableEntry(ref txEntry);
-                    txEntry = newTxEntry;
-                }
-                else
-                {
-                    this.txTable.TryGetValue(req.TxId, out txEntry);
-                }
-            }
-
-            req.Result = txEntry.CommitTime;
+            req.Result = commitTime;
             req.Finished = true;
         }
 
@@ -125,31 +120,16 @@ namespace GraphView.Transaction
                 throw new TransactionException("The specified tx does not exist.");
             }
 
-            TxTableEntry newTxEntry = null;
-            while (txEntry.CommitTime < 0 && txEntry.CommitLowerBound < req.CommitTsLowerBound)
-            {
-                if (newTxEntry == null)
-                {
-                    newTxEntry = this.resourceManager.GetTxTableEntry();
-                }
+            // read and write, the latch is necessnary
+            // TODO: is it required?
+            while (Interlocked.CompareExchange(ref txEntry.latch, 1, 0) != 0) ;
 
-                newTxEntry.Status = txEntry.Status;
-                newTxEntry.CommitTime = txEntry.CommitTime;
-                newTxEntry.CommitLowerBound = req.CommitTsLowerBound;
+            txEntry.CommitLowerBound = req.CommitTsLowerBound;
+            long commitTime = txEntry.CommitTime;
 
-                if (this.txTable.TryUpdate(req.TxId, newTxEntry, txEntry))
-                {
-                    this.resourceManager.RecycleTxTableEntry(ref txEntry);
-                    txEntry = newTxEntry;
-                    break;
-                }
-                else
-                {
-                    this.txTable.TryGetValue(req.TxId, out txEntry);
-                }
-            }
+            Interlocked.Exchange(ref txEntry.latch, 0);
 
-            req.Result = txEntry.CommitTime >= 0 ? txEntry.CommitTime : -1;
+            req.Result = commitTime;
             req.Finished = true;
         }
 
@@ -161,22 +141,7 @@ namespace GraphView.Transaction
                 throw new TransactionException("The specified tx does not exist.");
             }
 
-            TxTableEntry txNewEntry = this.resourceManager.GetTxTableEntry();
-            txNewEntry.TxId = req.TxId;
-            txNewEntry.Status = req.TxStatus;
-            txNewEntry.CommitTime = txEntry.CommitTime;
-            txNewEntry.CommitLowerBound = txEntry.CommitLowerBound;
-
-            if (!this.txTable.TryUpdate(req.TxId, txNewEntry, txEntry))
-            {
-                throw new TransactionException("A tx's status has been updated by another tx concurrently.");
-            }
-
-            this.txTable[req.TxId] = txNewEntry;
-
-            this.resourceManager.RecycleTxTableEntry(ref txEntry);
-
-
+            txEntry.Status = req.TxStatus;
 
             req.Result = null;
             req.Finished = true;

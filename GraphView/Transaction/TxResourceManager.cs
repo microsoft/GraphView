@@ -62,9 +62,6 @@ namespace GraphView.Transaction
         private readonly ResourcePool<WriteSetEntry> writeSetEntries;
         private readonly ResourcePool<VersionKeyEntry> versionKeyEntries;
 
-        private readonly Queue<TxTableEntry> txTableEntries;
-        private readonly Queue<VersionEntry> versionEntries;
-
         private ResourcePool<TransactionRequest> transRequests;
 
         public TxResourceManager()
@@ -73,9 +70,6 @@ namespace GraphView.Transaction
             this.postprocessingEntries = new ResourcePool<PostProcessingEntry>(TxResourceManager.workingsetCapacity);
             this.writeSetEntries = new ResourcePool<WriteSetEntry>(TxResourceManager.workingsetCapacity);
             this.versionKeyEntries = new ResourcePool<VersionKeyEntry>(TxResourceManager.workingsetCapacity);
-
-            this.txTableEntries = new Queue<TxTableEntry>();
-            this.versionEntries = new Queue<VersionEntry>();
 
             this.transRequests = new ResourcePool<TransactionRequest>(TxResourceManager.workingsetCapacity);
 
@@ -86,17 +80,8 @@ namespace GraphView.Transaction
                 this.writeSetEntries.AddNewResource(new WriteSetEntry());
                 this.versionKeyEntries.AddNewResource(new VersionKeyEntry());
 
-                this.txTableEntries.Enqueue(new TxTableEntry());
-                this.versionEntries.Enqueue(new VersionEntry());
                 this.transRequests.AddNewResource(new TransactionRequest());
             }
-        }
-
-        // Free the tx Request
-        internal void RecycleTxRequest(ref TxRequest req)
-        {
-            req.Free();
-            req = null;
         }
 
         internal void RecycleTxSetEntry(ref TxSetEntry entry)
@@ -190,42 +175,6 @@ namespace GraphView.Transaction
             entry.VersionKey = versionKey;
 
             return entry;
-        }
-
-        internal TxTableEntry GetTxTableEntry()
-        {
-            if (this.txTableEntries.Count > 0)
-            {
-                return this.txTableEntries.Dequeue();
-            }
-            else
-            {
-                return new TxTableEntry();
-            }
-        }
-
-        internal void RecycleTxTableEntry(ref TxTableEntry entry)
-        {
-            this.txTableEntries.Enqueue(entry);
-            entry = null;
-        }
-
-        internal VersionEntry GetVersionEntry()
-        {
-            if (this.versionEntries.Count > 0)
-            {
-                return this.versionEntries.Dequeue();
-            }
-            else
-            {
-                return new VersionEntry();
-            }
-        }
-
-        internal void RecycleVersionEntry(ref VersionEntry entry)
-        {
-            this.versionEntries.Enqueue(entry);
-            entry = null;
         }
 
         internal TransactionRequest TransactionRequest(
