@@ -14,7 +14,7 @@ namespace GraphView.Transaction
         Update,
         Delete,
         Open,
-        Initi,
+        Initi, 
         Final,
         Close,
     }
@@ -365,7 +365,7 @@ namespace GraphView.Transaction
                     if (payload != null)
                     {
                         VersionEntry newImageEntry = new VersionEntry(
-                                writeEntry.TableId,
+                                writeEntry.RecordKey,
                                 writeEntry.VersionKey,
                                 payload,
                                 this.txId);
