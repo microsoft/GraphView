@@ -101,6 +101,10 @@ namespace GraphView.Transaction
 
         private CountdownEvent countdownEvent;
 
+        private Action<object, TransactionExecution> workloadAction;
+
+        private TransactionExecution txExecution;
+
         internal long RunBeginTicks { get; set; }
         internal long RunEndTicks { get; set; }
 
@@ -114,7 +118,8 @@ namespace GraphView.Transaction
             TxResourceManager resourceManager = null,
             string[] flushTables = null,
             ManualResetEventSlim startEventSlim = null,
-            CountdownEvent countdownEvent = null)
+            CountdownEvent countdownEvent = null,
+            Action<object, TransactionExecution> action = null)
         {
             this.versionDb = versionDb;
             this.logStore = logStore;
@@ -135,6 +140,10 @@ namespace GraphView.Transaction
 
             this.startEventSlim = startEventSlim;
             this.countdownEvent = countdownEvent;
+
+            this.workloadAction = action;
+            this.txExecution = new TransactionExecution(this.logStore, this.versionDb, null, 
+                this.GarbageQueueTxId,this.GarbageQueueFinishTime, this.txRange, this);
         }
 
         // add executor id
@@ -221,6 +230,18 @@ namespace GraphView.Transaction
             }
 
             Thread.EndThreadAffinity();
+        }
+
+        public void ExecuteInSync()
+        {
+            // PinThreadOnCores(this.Partition);
+
+            this.RunBeginTicks = DateTime.Now.Ticks;
+            foreach (TransactionRequest req in this.workload)
+            {
+                this.workloadAction(req.Workload, this.txExecution);
+            }
+            this.RunEndTicks = DateTime.Now.Ticks;
         }
 
         public void Execute2()

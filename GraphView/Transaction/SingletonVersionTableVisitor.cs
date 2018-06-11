@@ -164,7 +164,7 @@
             ConcurrentDictionary<long, VersionEntry> versionList = null;
             if (!this.dict.TryGetValue(req.RecordKey, out versionList))
             {
-                req.Result = req.Container;
+                req.Result = 0;
                 req.Finished = true;
                 return;
             }
@@ -200,6 +200,7 @@
                 lastVersionKey--;
             }
 
+            req.Result = entryCount;
             req.Finished = true;
         }
 

@@ -16,6 +16,50 @@
 
         public static bool RESHUFFLE = true;
 
+        public static Action<object, TransactionExecution> WORKLOAD_ACTION = (object obj, TransactionExecution txExec) =>
+        {
+            YCSBWorkload workload = obj as YCSBWorkload;
+            object readValue = null;
+            bool received = false;
+
+            txExec.Reset();
+            switch (workload.Type)
+            {
+                case "READ":
+                    txExec.Read(workload.TableId, workload.Key, out received, out readValue);
+                    break;
+
+                case "UPDATE":
+                    txExec.Read(workload.TableId, workload.Key, out received, out readValue);
+                    if (readValue != null)
+                    {
+                        txExec.Update(workload.TableId, workload.Key, workload.Value);
+                    }
+                    break;
+
+                case "DELETE":
+                    txExec.Read(workload.TableId, workload.Key, out received, out readValue);
+                    if (readValue != null)
+                    {
+                        txExec.Delete(workload.TableId, workload.Key, out readValue);
+                    }
+                    break;
+
+                case "INSERT":
+                    txExec.ReadAndInitialize(workload.TableId, workload.Key, out received, out readValue);
+                    if (readValue == null)
+                    {
+                        txExec.Insert(workload.TableId, workload.Key, workload.Value);
+                    }
+                    break;
+
+                default:
+                    break;
+            }
+            txExec.Commit();
+        };
+
+
         public static Func<object, object> ACTION = (object obj) =>
         {
             Tuple<VersionDb, TxWorkload> tuple = (Tuple<VersionDb, TxWorkload>)obj;
@@ -230,7 +274,7 @@
             int tid = 0;
             foreach (TransactionExecutor executor in this.executorList)
             {
-                tasks[tid++] = Task.Factory.StartNew(executor.Execute2);
+                tasks[tid++] = Task.Factory.StartNew(executor.ExecuteInSync);
             }
 
             this.startEventSlim.Set();
@@ -329,7 +373,7 @@
             int tid = 0;
             foreach (TransactionExecutor executor in executors)
             {
-                tasks[tid++] = Task.Factory.StartNew(executor.Execute2);
+                tasks[tid++] = Task.Factory.StartNew(executor.ExecuteInSync);
             }
             Task.WaitAll(tasks);
 
@@ -418,8 +462,10 @@
                     Console.WriteLine("Filled {0} executors", i + 1);
 
                     this.totalTasks += reqQueue.Count;
+                    //executors.Add(new TransactionExecutor(this.versionDb, null, reqQueue, i, i, 0,
+                    //    this.versionDb.GetResourceManagerByPartitionIndex(i), tables));
                     executors.Add(new TransactionExecutor(this.versionDb, null, reqQueue, i, i, 0,
-                        this.versionDb.GetResourceManagerByPartitionIndex(i), tables));
+                       this.versionDb.GetResourceManagerByPartitionIndex(i), tables, null, null, WORKLOAD_ACTION));
                 }
                 return executors;
             }

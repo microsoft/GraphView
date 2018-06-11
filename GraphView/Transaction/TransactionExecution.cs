@@ -111,6 +111,7 @@ namespace GraphView.Transaction
         // Private variables to store temp values
         private string readTableId;
         private object readRecordKey;
+        private int readEntryCount;
         private long readLargestVersionKey = -1;
         private int writeSetIndex = 0;
 
@@ -1238,7 +1239,6 @@ namespace GraphView.Transaction
         private void Read(string tableId, object recordKey, bool initi, out bool received, out object payload)
         {
             this.readLargestVersionKey = -1;
-            this.versionList.Clear();
             this.readTableId = tableId;
             this.readRecordKey = recordKey;
 
@@ -1303,11 +1303,12 @@ namespace GraphView.Transaction
                     return;
                 }
 
+                this.readEntryCount = (int)this.getVListReq.Result;
                 this.getVListReq.Free();
-
+                
                 // The local version list was assigned to the get-version-list request.
-                // By the time the request returns, the list has been filled. 
-                if (this.versionList.Count == 0)
+                // By the time the request returns, the list has been filled.
+                if (this.readEntryCount == 0)
                 {
                     // No versions for the record has been found.
                     this.Progress = TxProgress.Open;
@@ -1317,7 +1318,7 @@ namespace GraphView.Transaction
                 }
 
                 // Sort the version list by the descending order of version keys.
-                this.versionList.Sort();
+                this.versionList.Sort(this.readEntryCount);
                 this.CurrentProc = this.readCheckVersionEntryProc;
                 this.CurrentProc();
             }
@@ -1362,7 +1363,7 @@ namespace GraphView.Transaction
             VersionEntry visibleVersion = null;
             // Keep a committed version to retrieve the largest version key
             VersionEntry committedVersion = null;
-            while (this.versionList.Count > 0)
+            while (this.readEntryCount > 0)
             {
                 // Wait for the GetTxEntry response
                 if (this.getTxReq.IsActive())
@@ -1379,12 +1380,13 @@ namespace GraphView.Transaction
                     {
                         // Failed to retrieve the status of the tx holding the version. 
                         // Moves on to the next version.
-                        this.versionList.PopRight();
+                        this.readEntryCount--;
                         continue;
                     }
 
                     // The last version entry is the one need to check whether visiable
-                    VersionEntry versionEntry = this.versionList.PopRight();
+                    VersionEntry versionEntry = this.versionList[this.readEntryCount];
+                    this.readEntryCount--;
 
                     // If the version entry is a dirty write, skips the entry.
                     if (versionEntry.EndTimestamp == VersionEntry.DEFAULT_END_TIMESTAMP &&
@@ -1426,7 +1428,7 @@ namespace GraphView.Transaction
                 }
                 else
                 {
-                    VersionEntry versionEntry = this.versionList[this.versionList.Count - 1];
+                    VersionEntry versionEntry = this.versionList[this.readEntryCount - 1];
 
                     if (versionEntry.TxId >= 0)
                     {
@@ -1462,7 +1464,7 @@ namespace GraphView.Transaction
                         }
                         else
                         {
-                            this.versionList.PopRight();
+                            this.readEntryCount--;
                         }
                     }
                 }
@@ -1520,7 +1522,6 @@ namespace GraphView.Transaction
             this.commitSet.Clear();
             this.abortSet.Clear();
             this.largestVersionKeySet.Clear();
-            this.versionList.Clear();
         }
 
         private ReadSetEntry dummyReadSetEntry = new ReadSetEntry();

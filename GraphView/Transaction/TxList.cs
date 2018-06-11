@@ -129,9 +129,14 @@
             this.capacity = newCapacity;
         }
 
-        public void Sort()
+        /// <summary>
+        /// Only sort part of those entries in the list
+        /// </summary>
+        /// <param name="limit">The count of elements will be sorted</param>
+        public void Sort(int limit = -1)
         {
-            Array.Sort(this.entries, 0, this.Count);
+            limit = limit == -1 ? this.Count : limit;
+            Array.Sort(this.entries, 0, limit);
         }
     }
 }
