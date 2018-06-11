@@ -243,7 +243,7 @@
 			this.transactions = new List<Transaction>();
 			for (int i = 0; i < this.workerCount; i++)
 			{
-				this.executors.Add(new TransactionExecutor(this.versionDb, null, null, null, i));
+				this.executors.Add(new TransactionExecutor(this.versionDb, null, null, 0, i));
 				this.transactions.Add(new Transaction(null, this.versionDb, 10, this.executors[i].GarbageQueueTxId, this.executors[i].GarbageQueueFinishTime));
 			}
         }
@@ -418,7 +418,7 @@
         {
             this.workerCount = workerCount;
             this.taskCountPerWorker = taskCountPerWorker;
-            
+
             // clear tx_table
             vdbList[0].ClearTxTable();
 
@@ -432,8 +432,28 @@
             this.transactions.Clear();
             for (int i = 0; i < this.workerCount; i++)
             {
-                this.executors.Add(new TransactionExecutor(vdbList[i], null, null, null, i));
+                this.executors.Add(new TransactionExecutor(vdbList[i], null, null, 0, i));
                 this.transactions.Add(new Transaction(null, vdbList[i], 10, this.executors[i].GarbageQueueTxId, this.executors[i].GarbageQueueFinishTime));
+            }
+        }
+
+        internal void Reset(int workerCount, int taskCountPerWorker)
+        {
+            this.workerCount = workerCount;
+            this.taskCountPerWorker = taskCountPerWorker;
+            
+            this.workers.Clear();
+            for (int i = 0; i < this.workerCount; i++)
+            {
+                this.workers.Add(new Worker(i + 1, taskCountPerWorker));
+            }
+
+            this.executors.Clear();
+            this.transactions.Clear();
+            for (int i = 0; i < this.workerCount; i++)
+            {
+                this.executors.Add(new TransactionExecutor(this.versionDb, null, null, 0, i));
+                this.transactions.Add(new Transaction(null, this.versionDb, 10, this.executors[i].GarbageQueueTxId, this.executors[i].GarbageQueueFinishTime));
             }
         }
 

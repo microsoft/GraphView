@@ -2,50 +2,8 @@
 {
     using System;
     using System.Collections.Generic;
+    using System.Collections.Concurrent;
     using System.Threading;
-    using NonBlocking;
-
-    //internal class VersionBlob
-    //{
-    //    internal long BeginTimestamp;
-    //    internal long EndTimestamp;
-    //    internal object Payload;
-    //    internal long TxId;
-    //    internal long MaxCommitTs;
-
-    //    public VersionBlob()
-    //    {
-
-    //    }
-
-    //    public VersionBlob(long beginTs, long endTs, object payload, long txId, long maxCommitTs)
-    //    {
-    //        this.BeginTimestamp = beginTs;
-    //        this.EndTimestamp = endTs;
-    //        this.Payload = payload;
-    //        this.TxId = txId;
-    //        this.MaxCommitTs = maxCommitTs;
-    //    }
-
-    //    public override bool Equals(object obj)
-    //    {
-    //        VersionBlob blob = obj as VersionBlob;
-    //        if (blob == null)
-    //        {
-    //            return false;
-    //        }
-
-    //        return this.BeginTimestamp == blob.BeginTimestamp &&
-    //            this.EndTimestamp == blob.EndTimestamp &&
-    //            this.TxId == blob.TxId &&
-    //            this.MaxCommitTs == blob.MaxCommitTs;
-    //    }
-
-    //    public override int GetHashCode()
-    //    {
-    //        return this.BeginTimestamp.GetHashCode();
-    //    }
-    //}
 
     /// <summary>
     /// A version table implementation in single machine environment.
@@ -53,7 +11,7 @@
     /// </summary>
     internal partial class SingletonDictionaryVersionTable : VersionTable
     {
-        private readonly NonBlocking.ConcurrentDictionary<object, NonBlocking.ConcurrentDictionary<long, VersionEntry>> dict;
+        private readonly ConcurrentDictionary<object, ConcurrentDictionary<long, VersionEntry>> dict;
 
         public static readonly long TAIL_KEY = -1L;
 
@@ -61,21 +19,23 @@
 
         public static readonly int VERSION_CAPACITY = 32;
 
-        public SingletonDictionaryVersionTable(VersionDb versionDb, string tableId, 
+        public SingletonDictionaryVersionTable(VersionDb versionDb, string tableId,
             int partitionCount, List<TxResourceManager> txResourceManagers)
             : base(versionDb, tableId, partitionCount)
         {
+            int maxConcurrency = Math.Max(1, this.VersionDb.PartitionCount / 2);
             this.dict = new ConcurrentDictionary<object, ConcurrentDictionary<long, VersionEntry>>(
-                SingletonDictionaryVersionTable.RECORD_CAPACITY);
+                maxConcurrency, SingletonDictionaryVersionTable.RECORD_CAPACITY);
 
             for (int i = 0; i < partitionCount; i++)
             {
-                this.tableVisitors[i] = new SingletonVersionTableVisitor(this.dict, txResourceManagers[i]);
+                this.tableVisitors[i] = new SingletonVersionTableVisitor(this.dict);
             }
         }
 
         internal override void EnqueueVersionEntryRequest(VersionEntryRequest req, int execPartition = 0)
         {
+            // Interlocked.Increment(ref VersionDb.EnqueuedRequests);
             this.tableVisitors[execPartition].Invoke(req);
         }
 
@@ -113,11 +73,11 @@
             ConcurrentDictionary<long, VersionEntry> versionList = null;
             if (!this.dict.TryGetValue(recordKey, out versionList))
             {
-                ConcurrentDictionary<long, VersionEntry> newVersionList = 
-                    new ConcurrentDictionary<long, VersionEntry>(SingletonDictionaryVersionTable.VERSION_CAPACITY);
+                ConcurrentDictionary<long, VersionEntry> newVersionList =
+                    new ConcurrentDictionary<long, VersionEntry>(1, SingletonDictionaryVersionTable.VERSION_CAPACITY);
                 // Adds a special entry whose key is -1 when the list is initialized.
                 // The entry uses beginTimestamp as a pointer pointing to the newest verion in the list.
-                newVersionList.Add(SingletonDictionaryVersionTable.TAIL_KEY, new VersionEntry(recordKey, -1, -1, -1, null, -1, -1));
+                newVersionList.TryAdd(SingletonDictionaryVersionTable.TAIL_KEY, new VersionEntry(recordKey, -1, -1, -1, null, -1, -1));
 
                 if (this.dict.TryAdd(recordKey, newVersionList))
                 {
@@ -129,7 +89,7 @@
 
             // Retrieves the tail pointer. 
             VersionEntry tailEntry = null;
-            if(!versionList.TryGetValue(SingletonDictionaryVersionTable.TAIL_KEY, out tailEntry))
+            if (!versionList.TryGetValue(SingletonDictionaryVersionTable.TAIL_KEY, out tailEntry))
             {
                 throw new TransactionException("The tail pointer is missing from the version list.");
             }
@@ -144,13 +104,16 @@
             while (lastVersionKey >= 0 && localList.Count <= 2)
             {
                 VersionEntry verEntry = null;
-                if (!versionList.TryGetValue(lastVersionKey, out verEntry))
+                if (versionList.TryGetValue(lastVersionKey, out verEntry))
                 {
-                    lastVersionKey--;
-                    continue;
+                    localList.Add(verEntry);
+                    if (verEntry.TxId == VersionEntry.EMPTY_TXID)
+                    {
+                        break;
+                    }
                 }
 
-                localList.Add(verEntry);
+                lastVersionKey--;
             }
 
             return localList;
@@ -297,6 +260,10 @@
                 if (versionList.TryGetValue(lastVersionKey, out verEntry))
                 {
                     localList.Add(verEntry);
+                    if (verEntry.TxId == VersionEntry.EMPTY_TXID)
+                    {
+                        break;
+                    }
                 }
 
                 lastVersionKey--;

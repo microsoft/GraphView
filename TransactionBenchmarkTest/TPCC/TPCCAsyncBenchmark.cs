@@ -112,13 +112,15 @@ namespace TransactionBenchmarkTest.TPCC
                     };
                     
                     TPCCNewOrderStoredProcedure nosp = new TPCCNewOrderStoredProcedure(lineNum.ToString(), no);
-                    TransactionRequest req = new TransactionRequest(lineNum.ToString(), nosp);
+                    // TODO: should adopt to the lastest storedprocedure rule
+                    //TransactionRequest req = new TransactionRequest(lineNum.ToString(), nosp);
+                    TransactionRequest req = null;
                     reqQueue.Enqueue(req);
                 }
 
                 List<Tuple<string, int>> executorInstances = instanceIndex >= this.partitionedInstances.Count ? null :
                    this.partitionedInstances[instanceIndex++];
-                this.executorList.Add(new TransactionExecutor(this.redisVersionDb, null, i, reqQueue, executorInstances));
+                this.executorList.Add(new TransactionExecutor(this.redisVersionDb, null, reqQueue, i, i));
             }
         }
 
@@ -166,13 +168,15 @@ namespace TransactionBenchmarkTest.TPCC
                     };
 
                     TPCCPaymentStoredProcedure pmsp = new TPCCPaymentStoredProcedure(lineNum.ToString(), pm, redisClient);
-                    TransactionRequest req = new TransactionRequest(lineNum.ToString(), pmsp);
+                    // TODO: should adopt to the lastest storedprocedure rule
+                    // TransactionRequest req = new TransactionRequest(lineNum.ToString(), pmsp);
+                    TransactionRequest req = null;
                     reqQueue.Enqueue(req);
                 }
 
                 List<Tuple<string, int>> executorInstances = instanceIndex >= this.partitionedInstances.Count ? null :
                    this.partitionedInstances[instanceIndex++];
-                this.executorList.Add(new TransactionExecutor(this.redisVersionDb, null, i, reqQueue, executorInstances));
+                this.executorList.Add(new TransactionExecutor(this.redisVersionDb, null, reqQueue, i, i));
             }
         }
 

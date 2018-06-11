@@ -121,6 +121,7 @@ namespace TransactionBenchmarkTest.YCSB
             //Console.ReadLine();
         }
 
+        /*
         public static void test_cassandra()
         {
             Cluster cluster = Cluster.Builder().AddContactPoints(new string[] { "127.0.0.1" }).Build();
@@ -268,6 +269,7 @@ namespace TransactionBenchmarkTest.YCSB
             Console.WriteLine("Done");
             Console.ReadLine();
         }
+        */
 
         public static void YCSBAsyncTestWithCassandra()
         {
@@ -280,28 +282,33 @@ namespace TransactionBenchmarkTest.YCSB
             const string operationFile = "ycsb_ops_r.in";
 
             // an executor is responsiable for all flush
-            List<List<Tuple<string, int>>> instances = new List<List<Tuple<string, int>>>
+            //List<List<Tuple<string, int>>> instances = new List<List<Tuple<string, int>>>
+            //{
+            //    new List<Tuple<string, int>>()
+            //    {
+            //        Tuple.Create(VersionDb.TX_TABLE, 0),
+            //        Tuple.Create(YCSBAsyncBenchmarkTest.TABLE_ID, 0)
+            //    },
+            //    new List<Tuple<string, int>>()
+            //    {
+            //        Tuple.Create(VersionDb.TX_TABLE, 0),
+            //        Tuple.Create(YCSBAsyncBenchmarkTest.TABLE_ID, 0)
+            //    },
+            //    new List<Tuple<string, int>>()
+            //    {
+            //        Tuple.Create(VersionDb.TX_TABLE, 0),
+            //        Tuple.Create(YCSBAsyncBenchmarkTest.TABLE_ID, 0)
+            //    },
+            //    new List<Tuple<string, int>>()
+            //    {
+            //        Tuple.Create(VersionDb.TX_TABLE, 0),
+            //        Tuple.Create(YCSBAsyncBenchmarkTest.TABLE_ID, 0)
+            //    },
+            //};
+            string[] tables = new string[]
             {
-                new List<Tuple<string, int>>()
-                {
-                    Tuple.Create(VersionDb.TX_TABLE, 0),
-                    Tuple.Create(YCSBAsyncBenchmarkTest.TABLE_ID, 0)
-                },
-                new List<Tuple<string, int>>()
-                {
-                    Tuple.Create(VersionDb.TX_TABLE, 0),
-                    Tuple.Create(YCSBAsyncBenchmarkTest.TABLE_ID, 0)
-                },
-                new List<Tuple<string, int>>()
-                {
-                    Tuple.Create(VersionDb.TX_TABLE, 0),
-                    Tuple.Create(YCSBAsyncBenchmarkTest.TABLE_ID, 0)
-                },
-                new List<Tuple<string, int>>()
-                {
-                    Tuple.Create(VersionDb.TX_TABLE, 0),
-                    Tuple.Create(YCSBAsyncBenchmarkTest.TABLE_ID, 0)
-                },
+                VersionDb.TX_TABLE,
+                YCSBAsyncBenchmarkTest.TABLE_ID
             };
 
             //TxResourceManager resourceManager = new TxResourceManager();
@@ -309,7 +316,7 @@ namespace TransactionBenchmarkTest.YCSB
             // The default mode of versionDb is daemonMode
             CassandraVersionDb versionDb = CassandraVersionDb.Instance(partitionCount, 0);
             YCSBAsyncBenchmarkTest test = new YCSBAsyncBenchmarkTest(recordCount,
-                executorCount, txCountPerExecutor, versionDb, instances);
+                executorCount, txCountPerExecutor, versionDb, tables);
 
             test.Setup(dataFile, operationFile);
             test.Run();

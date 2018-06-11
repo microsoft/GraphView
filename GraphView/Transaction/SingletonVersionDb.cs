@@ -3,14 +3,14 @@
     using System;
     using System.Collections.Generic;
     using System.Threading;
-    using NonBlocking;
+    using System.Collections.Concurrent;
 
     internal partial class SingletonVersionDb : VersionDb
     {
         private static volatile SingletonVersionDb instance;
         private static readonly object initlock = new object();
 
-        private readonly NonBlocking.ConcurrentDictionary<long, TxTableEntry> txTable;
+        private readonly ConcurrentDictionary<long, TxTableEntry> txTable;
 
         private readonly List<TxResourceManager> txResourceManagers;
 
@@ -122,6 +122,7 @@
 
         internal override void EnqueueTxEntryRequest(long txId, TxEntryRequest txEntryRequest, int execPartition = 0)
         {
+            // Interlocked.Increment(ref VersionDb.EnqueuedRequests);
             this.dbVisitors[execPartition].Invoke(txEntryRequest);
         }
 
@@ -257,11 +258,6 @@
 				VersionTable versionTable = this.versionTables[tableId];
 				versionTable.Clear();
 			}
-		}
-
-		internal override void ClearTxTable()
-		{
-			this.txTable.Clear();
 		}
     }
 }

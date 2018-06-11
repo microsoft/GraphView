@@ -3,7 +3,7 @@ using System.Runtime.Serialization;
 
 namespace GraphView.Transaction
 {
-    internal class TxTableEntry
+    public class TxTableEntry
     {
         public static readonly string TXID_STRING = "tx_id";
         public static readonly string STATUS_STRING = "status";
@@ -17,6 +17,8 @@ namespace GraphView.Transaction
         internal TxStatus Status { get; set; }
         internal long CommitTime { get; set; }
         internal long CommitLowerBound { get; set; }
+
+        internal int latch = 0;
 
         public TxTableEntry()
         {
@@ -37,6 +39,14 @@ namespace GraphView.Transaction
             this.Status = status;
             this.CommitTime = commitTime;
             this.CommitLowerBound = commitLowerBound;
+        }
+
+        public static void CopyValue(TxTableEntry src, TxTableEntry dst)
+        {
+            dst.TxId = src.TxId;
+            dst.Status = src.Status;
+            dst.CommitTime = src.CommitTime;
+            dst.CommitLowerBound = src.CommitLowerBound;
         }
 
         public override int GetHashCode()

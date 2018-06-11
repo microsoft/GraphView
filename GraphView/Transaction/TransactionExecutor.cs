@@ -3,85 +3,8 @@ namespace GraphView.Transaction
 {
     using System;
     using System.Collections.Generic;
+    using System.Diagnostics;
     using System.Threading;
-
-    public class TransactionRequest
-    {
-        internal string SessionId { get; set; }
-        internal string TableId { get; set; }
-        internal object RecordKey { get; set; }
-        internal object Payload { get; set; }
-        internal OperationType OperationType;
-
-        internal StoredProcedure Procedure { get; set; }
-
-        public TransactionRequest(
-            string sessionId, 
-            string tableId, 
-            string recordKey, 
-            string payload, 
-            OperationType operationType)
-        {
-            this.SessionId = sessionId;
-            this.TableId = tableId;
-            this.RecordKey = recordKey;
-            this.Payload = payload;
-            this.OperationType = operationType;
-        }
-
-        public TransactionRequest(string sessionId, StoredProcedure procedure)
-        {
-            this.SessionId = sessionId;
-            this.Procedure = procedure;
-            this.OperationType = OperationType.Open;
-            //this.OperationType = OperationType.Close;
-        }
-
-        public TransactionRequest() { }
-    }
-
-    public enum OperationType
-    {
-        Open,
-        Insert,
-        Delete,
-        Update,
-        Read,
-        InitiRead,
-        Close,
-    }
-
-    internal class TxRange
-    {
-        /// <summary>
-        /// A tx executor, run by a thread, is assigned to a range (1,000,000) for tx Ids.
-        /// Txs initiated by one executor all fall in the range. 
-        /// When a new tx is created and the tx Id leads to a collusion, 
-        /// if the conflicting tx has long finished, the old tx Id is recycled to the new tx.
-        /// </summary>
-        internal long RangeStart { get; }
-
-        internal static readonly long range = 100000;
-
-        private int localTxIndex = 0;
-
-        public TxRange(int start)
-        {
-            this.RangeStart = start * TxRange.range;
-        }
-
-        internal long NextTxCandidate()
-        {
-            long candidateId = this.RangeStart + this.localTxIndex++;
-            if (this.localTxIndex >= TxRange.range)
-            {
-                this.localTxIndex = 0;
-            }
-
-            return candidateId;
-        }
-
-    }
 
     internal class TransactionExecutor
     {
@@ -152,6 +75,8 @@ namespace GraphView.Transaction
 
         private TxRange txRange;
 
+        private string[] flushTables;
+
         /// <summary>
         /// The partition of current executor flushed
         /// </summary>
@@ -172,20 +97,30 @@ namespace GraphView.Transaction
         //internal static readonly long elapsed = 10000000L;      // 1 sec
         internal static readonly long elapsed = 0L;      // 1 sec
 
+        private ManualResetEventSlim startEventSlim;
+
+        private CountdownEvent countdownEvent;
+
+        internal long RunBeginTicks { get; set; }
+        internal long RunEndTicks { get; set; }
+
         public TransactionExecutor(
             VersionDb versionDb,
             ILogStore logStore,
             Queue<TransactionRequest> workload = null,
-            List<Tuple<string, int>> instances = null,
+            int partition = 0,
             int startRange = -1,
             int txTimeoutSeconds = 0,
-            TxResourceManager resourceManager = null)
+            TxResourceManager resourceManager = null,
+            string[] flushTables = null,
+            ManualResetEventSlim startEventSlim = null,
+            CountdownEvent countdownEvent = null)
         {
             this.versionDb = versionDb;
             this.logStore = logStore;
             this.workload = workload ?? new Queue<TransactionRequest>();
             this.activeTxs = new Dictionary<string, Tuple<TransactionExecution, Queue<TransactionRequest>>>();
-            this.partitionedInstances = instances;
+
             this.txTimeoutSeconds = txTimeoutSeconds;
             this.GarbageQueueTxId = new Queue<long>();
             this.GarbageQueueFinishTime = new Queue<long>();
@@ -194,35 +129,37 @@ namespace GraphView.Transaction
             this.txRuntimePool = new Queue<Tuple<TransactionExecution, Queue<TransactionRequest>>>();
             this.workingSet = new List<string>(this.workingSetSize);
 
-            if (instances != null)
-            {
-                this.Partition = instances[0].Item2;
-            }
+            this.Partition = partition;
+            this.flushTables = flushTables;
+
+
+            this.startEventSlim = startEventSlim;
+            this.countdownEvent = countdownEvent;
         }
 
         // add executor id
-        public TransactionExecutor(
-            VersionDb versionDb,
-            ILogStore logStore,
-            int executorId,
-            Queue<TransactionRequest> workload = null,
-            List<Tuple<string, int>> instances = null,
-            int txTimeoutSeconds = 0)
-        {
-            this.versionDb = versionDb;
-            this.logStore = logStore;
-            this.executorId = executorId;
-            this.workload = workload ?? new Queue<TransactionRequest>();
-            this.activeTxs = new Dictionary<string, Tuple<TransactionExecution, Queue<TransactionRequest>>>();
-            this.partitionedInstances = instances;
-            this.txTimeoutSeconds = txTimeoutSeconds;
-            this.workingSet = new List<string>(this.workingSetSize);
+        //public TransactionExecutor(
+        //    VersionDb versionDb,
+        //    ILogStore logStore,
+        //    int executorId,
+        //    Queue<TransactionRequest> workload = null,
+        //    List<Tuple<string, int>> instances = null,
+        //    int txTimeoutSeconds = 0)
+        //{
+        //    this.versionDb = versionDb;
+        //    this.logStore = logStore;
+        //    this.executorId = executorId;
+        //    this.workload = workload ?? new Queue<TransactionRequest>();
+        //    this.activeTxs = new Dictionary<string, Tuple<TransactionExecution, Queue<TransactionRequest>>>();
+        //    this.partitionedInstances = instances;
+        //    this.txTimeoutSeconds = txTimeoutSeconds;
+        //    this.workingSet = new List<string>(this.workingSetSize);
 
-            if (instances != null)
-            {
-                this.Partition = instances[0].Item2;
-            }
-        }
+        //    if (instances != null)
+        //    {
+        //        this.Partition = instances[0].Item2;
+        //    }
+        //}
 
         public void SetProgressBar()
         {
@@ -266,8 +203,36 @@ namespace GraphView.Transaction
             }
         }
 
+        internal static void PinThreadOnCores(long coreIndex)
+        {
+            int offset = ((int)coreIndex % 4) * 16 + ((int)coreIndex / 4) * 2;
+            long allowMask = (1L << offset);
+            Thread.BeginThreadAffinity();
+            Process Proc = Process.GetCurrentProcess();
+            foreach (ProcessThread pthread in Proc.Threads)
+            {
+                if (pthread.Id == AppDomain.GetCurrentThreadId())
+                {
+                    long AffinityMask = (long)Proc.ProcessorAffinity;
+                    AffinityMask &= allowMask;
+                    // AffinityMask &= 0x007F;
+                    pthread.ProcessorAffinity = (IntPtr)AffinityMask;
+                }
+            }
+
+            Thread.EndThreadAffinity();
+        }
+
         public void Execute2()
         {
+            // Only pin cores on server
+            // TransactionExecutor.PinThreadOnCores(this.Partition);
+            if (this.startEventSlim != null)
+            {
+                this.startEventSlim.Wait();
+            }
+
+            this.RunBeginTicks = DateTime.Now.Ticks;
             while (this.workingSet.Count > 0 || this.workload.Count > 0)
             {
                 // TransactionRequest txReq = this.workload.Peek();
@@ -293,15 +258,23 @@ namespace GraphView.Transaction
                         if (txReq.OperationType == OperationType.Open)
                         {
                             Tuple<TransactionExecution, Queue<TransactionRequest>> newExecTuple =
-                            this.AllocateNewTxExecution();
+                                this.AllocateNewTxExecution();
 
-                            if (txReq.Procedure != null)
+                            TransactionExecution txExec = newExecTuple.Item1;
+                            txExec.Reset();
+                            if (txReq.IsStoredProcedure)
                             {
-                                txReq.Procedure.RequestQueue = newExecTuple.Item2;
+                                // TODO: handle variable procedures?
+                                if (txExec.Procedure == null)
+                                {
+                                    txExec.Procedure = StoredProcedureFactory.CreateStoredProcedure(
+                                           txReq.ProcedureType, this.ResourceManager);
+                                    txExec.Procedure.RequestQueue = newExecTuple.Item2;
+                                }
+                                txExec.Procedure.Reset();
+                                txExec.Procedure.Start(txReq.SessionId, txReq.Workload);
                             }
 
-                            newExecTuple.Item1.Reset(txReq.Procedure);
-                            newExecTuple.Item1.Procedure?.Start();
                             this.activeTxs.Add(txReq.SessionId, newExecTuple);
                             this.workingSet.Add(txReq.SessionId);
                         }
@@ -378,7 +351,7 @@ namespace GraphView.Transaction
                         
                         this.txRuntimePool.Enqueue(runtimeTuple);
                         this.workingSet.RemoveAt(sid);
-                        if (txExec.isCommitted)
+                        if (txExec.TxStatus == TxStatus.Committed)
                         {
                             this.CommittedTxs += 1;
                         }
@@ -391,26 +364,33 @@ namespace GraphView.Transaction
                 }
 
                 // The implementation of the flush logic needs to be refined.
-                if (this.partitionedInstances != null && this.partitionedInstances.Count > 0)
+                if (this.flushTables != null && this.flushTables.Length > 0)
                 {
                     this.FlushInstances();
                 }
             }
 
+            this.RunEndTicks = DateTime.Now.Ticks;
             this.AllRequestsFinished = true;
-            while (this.Active)
-            {
-                if (this.partitionedInstances != null && this.partitionedInstances.Count > 0)
-                {
-                    this.FlushInstances();
-                }
-            }
+
+            //if (this.countdownEvent != null)
+            //{
+            //    this.countdownEvent.Signal();
+            //}
+
+            //while (this.Active)
+            //{
+            //    if (this.flushTables != null && this.flushTables.Length > 0)
+            //    {
+            //        this.FlushInstances();
+            //    }
+            //}
         }
 
         public void Execute()
         {
             HashSet<string> toRemoveSessions = new HashSet<string>();
-
+           
             while (this.activeTxs.Count > 0 || this.workload.Count > 0)
             {
                 foreach (string sessionId in activeTxs.Keys)
@@ -526,7 +506,7 @@ namespace GraphView.Transaction
                     else if (txExec.Progress == TxProgress.Close)
                     {
                         toRemoveSessions.Add(sessionId);
-                        if (txExec.isCommitted)
+                        if (txExec.TxStatus == TxStatus.Committed)
                         {
                             this.CommittedTxs += 1;
                         }
@@ -535,7 +515,7 @@ namespace GraphView.Transaction
                     }
                 }
 
-                if (this.partitionedInstances != null)
+                if (this.flushTables != null)
                 {
                     this.FlushInstances();
                 }
@@ -561,50 +541,32 @@ namespace GraphView.Transaction
                                     continue;
                                 }
 
-                                TransactionExecution exec = null;
-                                if (this.txRuntimePool.Count > 0)
+                                Tuple<TransactionExecution, Queue<TransactionRequest>> newExecTuple = 
+                                    this.AllocateNewTxExecution();
+
+                                TransactionExecution txExec = newExecTuple.Item1;
+                                txExec.Reset();
+                                if (txReq.IsStoredProcedure)
                                 {
-                                    Tuple<TransactionExecution, Queue<TransactionRequest>> runtimeTuple = 
-                                        this.txRuntimePool.Dequeue();
-
-                                    exec = runtimeTuple.Item1;
-                                    Queue<TransactionRequest> reqQueue = runtimeTuple.Item2;
-
-                                    reqQueue.Clear();
-                                    if (txReq.Procedure != null)
+                                    // TODO: handle variable procedures?
+                                    if (txExec.Procedure == null)
                                     {
-                                        txReq.Procedure.RequestQueue = reqQueue;
+                                        txExec.Procedure = StoredProcedureFactory.CreateStoredProcedure(
+                                            txReq.ProcedureType, this.ResourceManager);
+                                        txExec.Procedure.RequestQueue = newExecTuple.Item2;
                                     }
-
-                                    exec.Reset(txReq.Procedure);
-                                    this.activeTxs[txReq.SessionId] = runtimeTuple;
-                                }
-                                else
-                                {
-                                    exec = new TransactionExecution(
-                                        this.logStore, 
-                                        this.versionDb, 
-                                        txReq.Procedure, 
-                                        this.GarbageQueueTxId, 
-                                        this.GarbageQueueFinishTime, 
-                                        this.txRange,
-                                        this);
-
-                                    Queue<TransactionRequest> reqQueue = new Queue<TransactionRequest>();
-                                    if (txReq.Procedure != null)
-                                    {
-                                        txReq.Procedure.RequestQueue = reqQueue;
-                                    }
-
-                                    this.activeTxs[txReq.SessionId] = Tuple.Create(exec, reqQueue);
+                                    txExec.Procedure.Reset();
+                                    txExec.Procedure.Start(txReq.SessionId, txReq.Workload);
                                 }
 
-                                exec.Procedure?.Start();
+                                this.activeTxs.Add(txReq.SessionId, newExecTuple);
+                                this.workingSet.Add(txReq.SessionId);
                                 break;
                             }
+
                         default:
                             {
-                                if (this.activeTxs.ContainsKey(txReq.SessionId))
+                                if (!this.activeTxs.ContainsKey(txReq.SessionId))
                                 {
                                     continue;
                                 }
@@ -619,7 +581,7 @@ namespace GraphView.Transaction
 
             // Set the finish flag as true
             this.AllRequestsFinished = true;
-            if (this.partitionedInstances != null)
+            if (this.flushTables != null)
             {
                 while (this.Active)
                 {
@@ -651,7 +613,7 @@ namespace GraphView.Transaction
                         this.workload.Dequeue();
                         priorSessionId = req.SessionId;
                         exec.Commit();
-                        if (exec.isCommitted)
+                        if (exec.TxStatus == TxStatus.Committed)
                         {
                             this.CommittedTxs++;
                         }
@@ -669,6 +631,7 @@ namespace GraphView.Transaction
             this.AllRequestsFinished = true;
         }
 
+        // TODO: it's supposed to have some issues here, it should be fixed if you want to run it
         public void ExecuteNoFlush()
         {
             TransactionExecution exec = new TransactionExecution(
@@ -695,7 +658,7 @@ namespace GraphView.Transaction
                             {
                                 this.workload.Dequeue();
                                 priorSessionId = req.SessionId;
-                                exec.Reset(null);
+                                exec.Reset();
                                 while (exec.CurrentProc != null)
                                 {
                                     exec.CurrentProc();
@@ -732,11 +695,9 @@ namespace GraphView.Transaction
 
         private void FlushInstances()
         {
-            foreach (Tuple<string, int> tuple in this.partitionedInstances)
+            for (int i = 0; i < this.flushTables.Length; i++)
             {
-                string tableId = tuple.Item1;
-                int partition = tuple.Item2;
-                this.versionDb.Visit(tableId, partition);
+                this.versionDb.Visit(this.flushTables[i], this.Partition);
             }
         }
 

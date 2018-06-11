@@ -6,10 +6,8 @@ using System.Threading.Tasks;
 
 namespace GraphView.Transaction
 {
-    class PostProcessingEntry
+    class PostProcessingEntry : TxSetEntry
     {
-        internal string TableId { get; set; }
-        internal object RecordKey { get; set; }
         internal long VersionKey { get; set; }
         internal long BeginTimestamp { get; set; }
         internal long EndTimestamp { get; set; }
@@ -24,6 +22,46 @@ namespace GraphView.Transaction
             this.VersionKey = versionKey;
             this.BeginTimestamp = beginTimestamp;
             this.EndTimestamp = endTimestamp;
+        }
+
+        public PostProcessingEntry(
+            string tableId, 
+            object recordKey, 
+            long versionKey, 
+            long beginTimestamp, 
+            long endTimestamp) : base(tableId, recordKey)
+        {
+            this.VersionKey = versionKey;
+            this.BeginTimestamp = beginTimestamp;
+            this.EndTimestamp = endTimestamp;
+        }
+
+        public override bool Equals(object obj)
+        {
+            if (!base.Equals(obj))
+            {
+                return false;
+            }
+
+            PostProcessingEntry other = obj as PostProcessingEntry;
+            if (other == null)
+            {
+                return false;
+            }
+
+            return this.VersionKey == other.VersionKey &&
+                this.BeginTimestamp == other.BeginTimestamp &&
+                this.EndTimestamp == other.EndTimestamp;
+        }
+
+        public override int GetHashCode()
+        {
+            int hash = 17;
+            hash = hash * 23 + base.GetHashCode();
+            hash = hash * 23 + this.VersionKey.GetHashCode();
+            hash = hash * 23 + this.BeginTimestamp.GetHashCode();
+            hash = hash * 23 + this.EndTimestamp.GetHashCode();
+            return hash;
         }
     }
 }

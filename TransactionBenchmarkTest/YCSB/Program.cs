@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Threading;
+using TransactionBenchmarkTest.TPCC;
 
 namespace TransactionBenchmarkTest.YCSB
 {
@@ -55,10 +56,10 @@ namespace TransactionBenchmarkTest.YCSB
             const string dataFile = "ycsb_data_lg_r.in";
             const string operationFile = "ycsb_ops_lg_r.in";
 
-			// REDIS VERSION DB
-			// VersionDb versionDb = RedisVersionDb.Instance;
-			// SINGLETON VERSION DB
-			VersionDb versionDb = SingletonVersionDb.Instance();
+            // REDIS VERSION DB
+            // VersionDb versionDb = RedisVersionDb.Instance;
+            // SINGLETON VERSION DB
+            VersionDb versionDb = SingletonVersionDb.Instance();
 
             YCSBBenchmarkTest test = new YCSBBenchmarkTest(workerCount, taskCountPerWorker, versionDb);
 
@@ -69,39 +70,34 @@ namespace TransactionBenchmarkTest.YCSB
 
         static void YCSBAsyncTest()
         {
-            const int partitionCount = 4;
-            const int recordCount = 0;
+            const int partitionCount = 1;
+            const int recordCount = 200000;
             const int executorCount = partitionCount;
-            const int txCountPerExecutor = 1000000;
+            const int txCountPerExecutor = 200000;
             //const bool daemonMode = true;
             const bool daemonMode = false;
-            const string dataFile = "ycsb_data_lg_r.in";
-            const string operationFile = "ycsb_ops_lg_r.in";
+            const string dataFile = "ycsb_data_r.in";
+            const string operationFile = "ycsb_ops_r.in";
+            YCSBAsyncBenchmarkTest.RESHUFFLE = true;
+            VersionDb.UDF_QUEUE = false;
 
             // an executor is responsiable for all flush
-            List<List<Tuple<string, int>>> instances = new List<List<Tuple<string, int>>>();
-            if (!daemonMode)
+            string[] tables =
             {
-                for (int i = 0; i < partitionCount; i++)
-                {
-                    instances.Add(new List<Tuple<string, int>>
-                    {
-                        Tuple.Create(VersionDb.TX_TABLE, i),
-                        Tuple.Create(YCSBAsyncBenchmarkTest.TABLE_ID, i),
-                    });
-                }
-            }
+                YCSBAsyncBenchmarkTest.TABLE_ID,
+                VersionDb.TX_TABLE
+            };
 
             // The default mode of versionDb is daemonMode
-            // SingletonPartitionedVersionDb versionDb = SingletonPartitionedVersionDb.Instance(partitionCount, daemonMode);
-            SingletonVersionDb versionDb = SingletonVersionDb.Instance(executorCount);
-            YCSBAsyncBenchmarkTest test = new YCSBAsyncBenchmarkTest(recordCount, 
-                executorCount, txCountPerExecutor, versionDb, instances);
-
+            SingletonPartitionedVersionDb versionDb = SingletonPartitionedVersionDb.Instance(partitionCount, daemonMode);
+            // SingletonVersionDb versionDb = SingletonVersionDb.Instance(executorCount);
+            YCSBAsyncBenchmarkTest test = new YCSBAsyncBenchmarkTest(recordCount,
+                executorCount, txCountPerExecutor, versionDb, tables);
             test.Setup(dataFile, operationFile);
             test.Run();
             test.Stats();
 
+            Console.WriteLine("Enqueued Requests: {0}", SingletonPartitionedVersionDb.EnqueuedRequests);
             //versionDb.Active = false;
         }
 
@@ -123,17 +119,73 @@ namespace TransactionBenchmarkTest.YCSB
             Thread.EndThreadAffinity();
         }
 
+        // args[0]: dataFile
+        // args[1]: opsFile
+        // args[2]: partitionCount
+        // args[3]: txCountPerExecutor
+        static void YCSBAsyncTestWithSingletonVersionDb(string[] args)
+        {
+            int partitionCount = 1;
+            int executorCount = partitionCount;
+            int txCountPerExecutor = 200000;
+            string dataFile = "ycsb_data_r.in";
+            string operationFile = "ycsb_ops_r.in";
+            if (args.Length > 1)
+            {
+                dataFile = args[0];
+                operationFile = args[1];
+                partitionCount = Int32.Parse(args[2]);
+                executorCount = partitionCount;
+                txCountPerExecutor = args.Length > 3 ? Int32.Parse(args[3]) : txCountPerExecutor;
+            }
+
+            // these three settings are useless in SingletonVersionDb environment.
+            const bool daemonMode = false;
+            YCSBAsyncBenchmarkTest.RESHUFFLE = false;
+            const int recordCount = 200000;
+
+            string[] tables =
+            {
+                YCSBAsyncBenchmarkTest.TABLE_ID,
+                VersionDb.TX_TABLE
+            };
+
+            int currentExecutorCount = 1;
+
+            SingletonVersionDb versionDb = SingletonVersionDb.Instance(executorCount);
+            YCSBAsyncBenchmarkTest test = new YCSBAsyncBenchmarkTest(recordCount,
+                currentExecutorCount, txCountPerExecutor, versionDb, tables);
+
+            for (; currentExecutorCount <= partitionCount; currentExecutorCount++)
+            {
+                if (currentExecutorCount == 1)
+                {
+                    test.Setup(dataFile, operationFile);
+                }
+                else
+                {
+                    test.ResetAndFillWorkerQueue(operationFile, currentExecutorCount);
+                }
+                test.Run();
+                test.Stats();
+            }
+        }
+
         public static void Main(string[] args)
         {
             Program.args = args;
             // For the YCSB sync test
             // YCSBTest();
+            // YCSBSyncTestWithCassandra();
+            // test_cassandra();
 
             // For the redis benchmark Test
             // RedisBenchmarkTest();
 
             // For the YCSB async test
-            YCSBAsyncTest();
+            // YCSBAsyncTest();
+            YCSBAsyncTestWithSingletonVersionDb(args);
+            // YCSBAsyncTestWithCassandra();
 
             // ExecuteRedisRawTest();
         }
