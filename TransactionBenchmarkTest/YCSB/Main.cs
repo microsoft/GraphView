@@ -7,73 +7,118 @@ using GraphView.Transaction;
 using Cassandra;
 using System.IO;
 using System.Threading;
+using ServiceStack.Redis;
 
 namespace TransactionBenchmarkTest.YCSB
 {
     class Example
     {
-        public static void YCSBSyncTestWithCassandra()
+        public static void YCSBSyncTestWithCassandra(string[] args)
         {
-            Console.WriteLine("hello world");
-            return;
-            //const int workerCount = 1;    // 4;
-            //const int taskCountPerWorker = 2000;   // 50000;
+            string[] contactPoints = { "127.0.0.1" };
+            int replicationFactor = 1;
+            int workerCount = 1;
+            int taskCountPerWorker = 1000;
+            string dataFile = "ycsb_data_r.in";
+            string operationFile = "ycsb_ops_r.in";
 
-            const string dataFile = "ycsb_data_r.in";
-            const string operationFile = "ycsb_ops_r.in";
+            int i = 1;
+            while(i < args.Length)
+            {
+                switch(args[i++])
+                {
+                    case "--contacts":
+                        contactPoints = args[i++].Split(',');
+                        break;
+                    case "--repfactor":
+                        replicationFactor = int.Parse(args[i++]);
+                        break;
+                    case "--workers":
+                        workerCount = int.Parse(args[i++]);
+                        break;
+                    case "--tasks":
+                        taskCountPerWorker = int.Parse(args[i++]);
+                        break;
+                    case "--data":
+                        dataFile = args[i++];
+                        break;
+                    case "--ops":
+                        operationFile = args[i++];
+                        break;
+                    default:
+                        break;
+                }
+            }
+
+            //Console.WriteLine("contact points: " + contactPoints.Length);
+            //Console.WriteLine("replica: " + replicationFactor);
+            //Console.WriteLine("worker: " + workerCount);
+            //Console.WriteLine("taskPerWorker: " + taskCountPerWorker);
+            //Console.WriteLine("data: " + dataFile);
+            //Console.WriteLine("ops: " + operationFile);
+            //return;
+
 
             // Cassandra version db
-            VersionDb versionDb = CassandraVersionDb.Instance();
-            YCSBBenchmarkTest test = new YCSBBenchmarkTest(0, 0, versionDb);
-            //test.LoadData(dataFile);
+            int maxVdbCnt = 8192;
+            List<VersionDb> vdbList = new List<VersionDb>();
+            for(int j=0; j<maxVdbCnt; j++)
+            {
+                vdbList.Add(CassandraVersionDb.Instance(1, j));
+            }
+            YCSBBenchmarkTest test = new YCSBBenchmarkTest(0, 0, vdbList[0]);
+            
+            //test.LoadDataWithMultiThreads(dataFile, vdbList, 1);
 
-            Console.WriteLine("++++++++ Before");
-            CassandraSessionManager.CqlCountShow();
 
-            test.rerun(1, 50000, operationFile);
+            // run
+            //test.rerun(1, 5000, operationFile, vdbList);
+            //Console.WriteLine("*****************************************************");
+            
+            //test.rerun(2, 5000, operationFile, vdbList);
+            //Console.WriteLine("*****************************************************");
+
+            //test.rerun(4, 5000, operationFile, vdbList);
+            //Console.WriteLine("*****************************************************");
+
+            //test.rerun(8, 5000, operationFile, vdbList);
+            //Console.WriteLine("*****************************************************");
+
+            //test.rerun(16, 5000, operationFile, vdbList);
+            //Console.WriteLine("*****************************************************");
+
+            //test.rerun(32, 5000, operationFile, vdbList);
+            //Console.WriteLine("*****************************************************");
+
+            //test.rerun(64, 5000, operationFile, vdbList);
+            //Console.WriteLine("*****************************************************");
+
+            //test.rerun(128, 2000, operationFile, vdbList);
+            //Console.WriteLine("*****************************************************");
+
+            //test.rerun(64, 2000, operationFile, vdbList);
+            //Console.WriteLine("*****************************************************");
+
+            //test.rerun(256, 1000, operationFile, vdbList);
+            //Console.WriteLine("*****************************************************");
+
+            //test.rerun(512, 500, operationFile, vdbList);
+            //Console.WriteLine("*****************************************************");
+
+            //test.rerun(1024, 250, operationFile, vdbList);
+            //Console.WriteLine("*****************************************************");
+
+            test.rerun(2048, 125, operationFile, vdbList);
             Console.WriteLine("*****************************************************");
 
-            Console.WriteLine("++++++++ After");
-            CassandraSessionManager.CqlCountShow();
+            test.rerun(4096, 50, operationFile, vdbList);
+            Console.WriteLine("*****************************************************");
 
+            test.rerun(8192, 25, operationFile, vdbList);
+            Console.WriteLine("*****************************************************");
 
-
-            //test.rerun(1, 2000, operationFile);
-            //Console.WriteLine("*****************************************************");
-
-            //test.rerun(1, 10000, operationFile);
-            //Console.WriteLine("*****************************************************");
-
-            //test.rerun(2, 10000, operationFile);
-            //Console.WriteLine("*****************************************************");
-
-            //test.rerun(4, 10000, operationFile);
-            //Console.WriteLine("*****************************************************");
-
-            //test.rerun(6, 10000, operationFile);
-            //Console.WriteLine("*****************************************************");
-
-            //test.rerun(8, 10000, operationFile);
-            //Console.WriteLine("*****************************************************");
-
-            //test.rerun(10, 10000, operationFile);
-            //Console.WriteLine("*****************************************************");
-
-            //test.rerun(20, 10000, operationFile);
-            //Console.WriteLine("*****************************************************");
-
-            //test.rerun(50, 10000, operationFile);
-            //Console.WriteLine("*****************************************************");
-
-            //test.rerun(100, 5000, operationFile);
-            //Console.WriteLine("*****************************************************");
-
-            //test.rerun(200, 2500, operationFile);
-            //Console.WriteLine("*****************************************************");
-
-
-            Console.WriteLine("done");
-            Console.ReadLine();
+            //Console.WriteLine("done");
+            //Console.ReadLine();
         }
 
         public static void test_cassandra()
@@ -262,7 +307,7 @@ namespace TransactionBenchmarkTest.YCSB
             //TxResourceManager resourceManager = new TxResourceManager();
 
             // The default mode of versionDb is daemonMode
-            CassandraVersionDb versionDb = CassandraVersionDb.Instance(partitionCount);
+            CassandraVersionDb versionDb = CassandraVersionDb.Instance(partitionCount, 0);
             YCSBAsyncBenchmarkTest test = new YCSBAsyncBenchmarkTest(recordCount,
                 executorCount, txCountPerExecutor, versionDb, instances);
 
@@ -277,10 +322,19 @@ namespace TransactionBenchmarkTest.YCSB
 
         public static void Main(string[] args)
         {
-            YCSBSyncTestWithCassandra();
+            string destination = args.Length > 0 ? args[0] : "cassandra";
+            switch(destination)
+            {
+                case "cassandra":
+                    YCSBSyncTestWithCassandra(args);
+                    break;
+                default:
+                    YCSBSyncTestWithCassandra(args);
+                    break;
+            }
 
             Console.WriteLine("Done");
-            Console.ReadLine();
+            //Console.ReadLine();
         }   
     }
 }

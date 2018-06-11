@@ -32,10 +32,12 @@
 		/// </summary>
 		private Dictionary<string, ISession> sessionPool;
 
-		/// <summary>
-		/// the lock for sessionPool dictionary
-		/// </summary>
-		private readonly object dictLock = new object();
+        private Dictionary<int, ISession> cacheSessions;
+
+        /// <summary>
+        /// the lock for sessionPool dictionary
+        /// </summary>
+        private readonly object dictLock = new object();
 
 		/// <summary>
 		/// The cassandra connection strings of read and write
@@ -46,6 +48,13 @@
 		/// The number of cluster hosts
 		/// </summary>
 		internal int ClusterNodeCount { get; private set; }
+
+        internal string[] contactPoints;
+        //internal int replicationFactor = 3;
+        internal int replicationFactor = 1;
+
+        internal static string CQL_CREATE_KEYSPACE = "CREATE KEYSPACE IF NOT EXISTS {0} WITH replication = " +
+            "{'class': 'SimpleStrategy', 'replication_factor': {1} };";
 
         /// <summary>
         /// Count how many CQLs are executed
@@ -77,21 +86,53 @@
             }
         }
 
-		private CassandraSessionManager()
+        public static CassandraSessionManager Instance2(string[] contactPoints, int replicationFactor)
+        {
+            if (CassandraSessionManager.sessionManager == null)
+            {
+                lock (CassandraSessionManager.initLock)
+                {
+                    if (CassandraSessionManager.sessionManager == null)
+                    {
+                        CassandraSessionManager.sessionManager = new CassandraSessionManager(contactPoints, replicationFactor);
+                    }
+                }
+            }
+            return CassandraSessionManager.sessionManager;
+        }
+
+        private CassandraSessionManager()
 		{
 			this.ClusterNodeCount = CassandraSessionManager.DEFAULT_CLUSTER_NODE_COUNT;
-			this.ReadWriteHosts = new string[] { "127.0.0.1" };
+            //this.contactPoints = new string[] { "127.0.0.1" };
+            this.contactPoints = new string[] { "10.6.0.4", "10.6.0.5", "10.6.0.6" };
+            //this.contactPoints = new string[] { "10.6.0.4" };
 
             // Ensure strong consistency
             // NOTE: IF there are more than 1 replica, `SetConsistencyLevel(ConsistencyLevel.Quorum)` 
             // to ensure strong consistency; otherwise,  `SetConsistencyLevel(ConsistencyLevel.One)` is enough.
-            QueryOptions queryOptions = new QueryOptions().SetConsistencyLevel(ConsistencyLevel.One)
-                                                          .SetSerialConsistencyLevel(ConsistencyLevel.Serial);
-			this.cluster = Cluster.Builder().AddContactPoints(this.ReadWriteHosts).WithQueryOptions(queryOptions).Build();
+            QueryOptions queryOptions = new QueryOptions().SetConsistencyLevel(ConsistencyLevel.Quorum);//SetConsistencyLevel(ConsistencyLevel.Quorum);
+                                                          //.SetSerialConsistencyLevel(ConsistencyLevel.Serial);
+			this.cluster = Cluster.Builder().AddContactPoints(this.contactPoints).WithQueryOptions(queryOptions).WithQueryTimeout(60000).Build();
 			this.sessionPool = new Dictionary<string, ISession>();
-		}
+            this.cacheSessions = new Dictionary<int, ISession>();
+        }
 
-		internal ISession GetSession(string keyspace, int threadId = -1)
+        private CassandraSessionManager(string[] contactPoints, int replicationFactor)
+        {
+            //this.ClusterNodeCount = CassandraSessionManager.DEFAULT_CLUSTER_NODE_COUNT;
+            //this.replicationFactor = replicationFactor;
+
+            //// Ensure strong consistency
+            //// NOTE: IF there are more than 1 replica, `SetConsistencyLevel(ConsistencyLevel.Quorum)` 
+            //// to ensure strong consistency; otherwise,  `SetConsistencyLevel(ConsistencyLevel.One)` is enough.
+            //QueryOptions queryOptions = new QueryOptions().SetConsistencyLevel(ConsistencyLevel.One)
+            //                                              .SetSerialConsistencyLevel(ConsistencyLevel.Serial);
+            //this.cluster = Cluster.Builder().AddContactPoints(this.contactPoints).WithQueryOptions(queryOptions).Build();
+            //this.sessionPool = new Dictionary<string, ISession>();
+        }
+
+        internal ISession GetSession(string keyspace)
 		{
             //string sessionKey = keyspace + "_" + threadId.ToString();
 			if (!this.sessionPool.ContainsKey(keyspace))
@@ -100,9 +141,9 @@
 				{
 					if (!this.sessionPool.ContainsKey(keyspace))
 					{
-                        ISession session = cluster.Connect();
-                        session.Execute($@"CREATE KEYSPACE IF NOT EXISTS {keyspace} WITH replication = " +
-                                   "{'class':'SimpleStrategy', 'replication_factor':'1'};");    // there is just 1 replica
+                        cluster.Connect().Execute("CREATE KEYSPACE IF NOT EXISTS " + keyspace + " WITH replication = " +
+                                                  "{'class': 'SimpleStrategy', 'replication_factor': 3};");
+                        //cluster.Connect().Execute(string.Format(CassandraSessionManager.CQL_CREATE_KEYSPACE, keyspace, this.replicationFactor.ToString()));
 						this.sessionPool[keyspace] = this.cluster.Connect(keyspace);
 					}
 				}
@@ -110,5 +151,23 @@
 
 			return this.sessionPool[keyspace];
 		}
-	}
+
+        internal ISession GetSession(int threadId, string keyspace)
+        {
+            if (!this.cacheSessions.ContainsKey(threadId))
+            {
+                lock (this.dictLock)
+                {
+                    if (!this.cacheSessions.ContainsKey(threadId))
+                    {
+                        cluster.Connect().Execute("CREATE KEYSPACE IF NOT EXISTS " + keyspace + " WITH replication = " +
+                                                  "{'class': 'SimpleStrategy', 'replication_factor': 3};");
+                        this.cacheSessions[threadId] = this.cluster.Connect(keyspace);
+                    }
+                }
+            }
+
+            return this.cacheSessions[threadId];
+        }
+    }
 }

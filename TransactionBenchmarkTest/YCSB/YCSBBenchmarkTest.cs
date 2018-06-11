@@ -7,6 +7,7 @@
     using System.IO;
     using System.Threading;
     using System.Linq;
+    using System.Collections;
 
     class TxWorkloadWithTx
     {
@@ -273,7 +274,7 @@
                     count++;
 
                     ACTION(Tuple.Create(workload, this.versionDb));
-                    if (count % 100 == 0)
+                    if (count % 1000 == 0)
                     {
                         Console.WriteLine("Loaded {0} records", count);
                     }
@@ -286,15 +287,140 @@
             }
         }
 
-        internal void Reset(int workerCount, int taskCountPerWorker, VersionDb versionDb = null)
+
+
+        internal void LoadDataWithMultiThreads(string dataFile, List<VersionDb> vdbList, int threadCount = 8)
+        {
+            if (vdbList.Count < threadCount)
+            {
+                throw new Exception("version db instance not enough");
+            }
+
+            // step1: clear the database
+            vdbList[0].Clear();
+            Console.WriteLine("Cleared the database");
+
+            // step2: create version table
+            vdbList[0].CreateVersionTable(TABLE_ID, REDIS_DB_INDEX);
+            Console.WriteLine("Created version table {0}", TABLE_ID);
+
+            // step 3: load data with multi threads
+            List<string> lines = new List<string>();
+            using (StreamReader sr = new StreamReader(dataFile))
+            {
+                string line;
+                while ((line = sr.ReadLine()) != null)
+                {
+                    lines.Add(line);
+                }
+            }
+            Console.WriteLine("To Load {0} with {1} threads", lines.Count, threadCount);
+
+            int[] finishedCnt = new int[threadCount];
+            for (int i=0; i<threadCount; i++)
+            {
+                finishedCnt[i] = 0;
+            }
+
+            void batchInsert(int s, int e, VersionDb vdb)
+            {
+                //Console.WriteLine("s={0}, e={1}", s, e);
+                Transaction tx = new Transaction(null, vdb);
+                string readValue;
+                for (int i = s; i < e; i++)
+                {
+                    //Console.WriteLine("i={0}, cnt={1}", i, lines.Count);
+                    string[] fields = this.ParseCommandFormat(lines[i]);
+                    readValue = (string)tx.ReadAndInitialize(TABLE_ID, fields[2]);
+                    if (readValue == null)
+                    {
+                        tx.Insert(TABLE_ID, fields[2], fields[3]);
+                    }
+                }
+                tx.Commit();
+            }
+
+            void loadWithOneThread(int tid, int s, int e)
+            {
+                string line;
+                for (int i = s; i < e; i++)
+                {
+                    line = lines[i];
+                    string[] fields = this.ParseCommandFormat(line);
+                    TxWorkload workload = new TxWorkload(fields[0], TABLE_ID, fields[2], fields[3]);
+                    ACTION(Tuple.Create(workload, vdbList[tid]));
+                    finishedCnt[tid] += 1;
+                }
+            }
+            void loadWithOneThreadBatch(int tid, int s, int e)
+            {
+                int batchSize = 50;
+                string line;
+                for (int i = s; i < e; i+=batchSize)
+                {
+                    int end = i + batchSize;
+                    if (end > e)
+                    {
+                        end = e;
+                    }
+                    batchInsert(i, end, vdbList[tid]);
+
+                    finishedCnt[tid] += (end-i);
+                    if (finishedCnt[tid] % 100 == 0)
+                    {
+                        Console.WriteLine("Load {0}", finishedCnt[tid]);
+                    }
+                }
+            }
+
+            loadWithOneThreadBatch(0, 0, lines.Count);
+
+            //int cntPerThread = lines.Count / threadCount;
+            //List<Thread> threads = new List<Thread>();
+            //for (int i = 0; i < threadCount; i++)
+            //{
+            //    //Console.WriteLine("i=" + i);
+            //    Thread t;
+            //    if (i == threadCount - 1)
+            //    {
+            //        t = new Thread(() => loadWithOneThreadBatch(i, i * cntPerThread, lines.Count));
+            //    }
+            //    else
+            //    {
+            //        t = new Thread(() => loadWithOneThreadBatch(i, i * cntPerThread, (i + 1) * cntPerThread));
+            //    }
+            //    threads.Add(t);
+            //    t.Start();
+            //}
+
+            //while (true)
+            //{
+            //    Thread.Sleep(1000); // 1s
+            //    int doneTotal = 0;
+            //    for (int i=0; i<threadCount; i++)
+            //    {
+            //        doneTotal += finishedCnt[i];
+            //    }
+            //    Console.WriteLine("Load {0}", doneTotal);
+            //    if (doneTotal == lines.Count)
+            //    {
+            //        foreach (Thread t in threads)
+            //        {
+            //            t.Join();
+            //        }
+            //        break;
+            //    }
+            //}
+            Console.WriteLine("Load Finished, total {0}", lines.Count);
+        }
+
+        internal void Reset(int workerCount, int taskCountPerWorker, List<VersionDb> vdbList)
         {
             this.workerCount = workerCount;
             this.taskCountPerWorker = taskCountPerWorker;
-
-            if (versionDb != null)
-            {
-                this.versionDb = versionDb;
-            }
+            
+            // clear tx_table
+            vdbList[0].ClearTxTable();
 
             this.workers.Clear();
             for (int i = 0; i < this.workerCount; i++)
@@ -306,8 +432,8 @@
             this.transactions.Clear();
             for (int i = 0; i < this.workerCount; i++)
             {
-                this.executors.Add(new TransactionExecutor(this.versionDb, null, null, null, i));
-                this.transactions.Add(new Transaction(null, this.versionDb, 10, this.executors[i].GarbageQueueTxId, this.executors[i].GarbageQueueFinishTime));
+                this.executors.Add(new TransactionExecutor(vdbList[i], null, null, null, i));
+                this.transactions.Add(new Transaction(null, vdbList[i], 10, this.executors[i].GarbageQueueTxId, this.executors[i].GarbageQueueFinishTime));
             }
         }
 
@@ -329,6 +455,33 @@
                 }
             }
         }
+
+        internal void LoadWorkloads(string opFile, List<VersionDb> vdbList)
+        {
+            if (vdbList.Count < this.workerCount)
+            {
+                throw new Exception("not enough version db");
+            }
+
+            // step 4: fill workers' queue
+            using (StreamReader reader = new StreamReader(opFile))
+            {
+                string line;
+                for (int worker_index = 0; worker_index < this.workerCount; worker_index++)
+                {
+                    for (int i = 0; i < this.taskCountPerWorker; i++)
+                    {
+                        line = reader.ReadLine();
+                        string[] fields = this.ParseCommandFormat(line);
+                        TxWorkload workload = new TxWorkload(fields[0], TABLE_ID, fields[2], fields[3]);
+                        this.workers[worker_index].EnqueueTxTask(new TxTask(ACTION, Tuple.Create(workload, vdbList[worker_index])));
+                    }
+                }
+            }
+        }
+
+
+
 
         internal void Setup(string dataFile, string operationFile)
         {
@@ -433,10 +586,10 @@
             Console.WriteLine("Finished all tasks");
         }
 
-        internal void rerun(int workerCount, int workloadCountPerWorker, string opFile, VersionDb versionDb = null)
+        internal void rerun(int workerCount, int workloadCountPerWorker, string opFile, List<VersionDb> vdbList)
         {
-            this.Reset(workerCount, workloadCountPerWorker, versionDb);
-            this.LoadWorkloads(opFile);
+            this.Reset(workerCount, workloadCountPerWorker, vdbList);
+            this.LoadWorkloads(opFile, vdbList);
             this.Run();
             this.Stats();
         }
@@ -454,13 +607,14 @@
 			{
                 totalTxs += this.workers[worker_index].FinishedTxs;
                 abortedTxs += this.workers[worker_index].AbortedTxs;
-				Console.WriteLine("Worker Index: {0}", worker_index);
-				//Console.WriteLine("Throughput: {0} tx/second", (this.taskCountPerWorker-1000000)/this.workers[worker_index].RunSeconds);
-				Console.WriteLine("Throughput: {0} tx/second", (this.taskCountPerWorker) / this.workers[worker_index].RunSeconds);
-				Console.WriteLine("RecycleCount: {0}", this.executors[worker_index].RecycleCount);
-                Console.WriteLine("InsertNewTxCount: {0}", this.executors[worker_index].InsertNewTxCount);
-                Console.WriteLine("Run Time: {0} second", this.workers[worker_index].RunSeconds);
+				//Console.WriteLine("Worker Index: {0}", worker_index);
+				////Console.WriteLine("Throughput: {0} tx/second", (this.taskCountPerWorker-1000000)/this.workers[worker_index].RunSeconds);
+				//Console.WriteLine("Throughput: {0} tx/second", (this.taskCountPerWorker) / this.workers[worker_index].RunSeconds);
+				//Console.WriteLine("RecycleCount: {0}", this.executors[worker_index].RecycleCount);
+    //            Console.WriteLine("InsertNewTxCount: {0}", this.executors[worker_index].InsertNewTxCount);
+    //            Console.WriteLine("Run Time: {0} second", this.workers[worker_index].RunSeconds);
 			}
+
 
 			Console.WriteLine("-----------------------------------------------------------------");
 			Console.WriteLine("\nFinshed {0} txs, Aborted {1} txs", totalTxs, abortedTxs);
