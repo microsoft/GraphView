@@ -104,7 +104,7 @@
         {
             //CassandraSessionManager.CqlCnt += 1;
             //Console.WriteLine(cql);
-            return this.SessionManager.GetSession(CassandraVersionDb.DEFAULT_KEYSPACE).Execute(cql);
+            return this.SessionManager.GetSession(((CassandraVersionDb)this.VersionDb).threadId, CassandraVersionDb.DEFAULT_KEYSPACE).Execute(cql);
         }
 
         /// <summary>
@@ -120,7 +120,7 @@
         {
             //CassandraSessionManager.CqlIfCnt += 1;
             //Console.WriteLine(cql);
-            var rs = this.SessionManager.GetSession(CassandraVersionDb.DEFAULT_KEYSPACE).Execute(cql);
+            var rs = this.SessionManager.GetSession(((CassandraVersionDb)this.VersionDb).threadId, CassandraVersionDb.DEFAULT_KEYSPACE).Execute(cql);
             var rse = rs.GetEnumerator();
             rse.MoveNext();
             return rse.Current.GetValue<bool>("[applied]");

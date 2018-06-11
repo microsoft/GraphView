@@ -33,7 +33,7 @@
         /// singleton instance
         /// </summary>
         private static volatile CassandraVersionDb instance;
-
+        
         /// <summary>
         /// lock to init the singleton instance
         /// </summary>
@@ -49,9 +49,14 @@
             }
         }
 
-        private CassandraVersionDb(int partitionCount)
+        //
+        public int threadId = 0;
+
+        private CassandraVersionDb(int partitionCount, int threadId)
             : base(partitionCount)
         {
+            this.threadId = threadId;
+
             this.resourceManagers = new TxResourceManager[partitionCount];
             for (int pid = 0; pid < partitionCount; pid++)
             {
@@ -65,7 +70,7 @@
             this.PhysicalPartitionByKey = key => StaticRandom.Seed() % this.PartitionCount;
         }
 
-        internal static CassandraVersionDb Instance(int partitionCount = 4)
+        internal static CassandraVersionDb Instance(int partitionCount, int threadId)
         {
             if (CassandraVersionDb.instance == null)
             {
@@ -73,7 +78,7 @@
                 {
                     if (CassandraVersionDb.instance == null)
                     {
-                        CassandraVersionDb.instance = new CassandraVersionDb(partitionCount);
+                        CassandraVersionDb.instance = new CassandraVersionDb(partitionCount, threadId);
                     }
                 }
             }
@@ -183,7 +188,7 @@
         {
             //CassandraSessionManager.CqlCnt += 1;
             //Console.WriteLine(cql);
-            return this.SessionManager.GetSession(CassandraVersionDb.DEFAULT_KEYSPACE).Execute(cql);
+            return this.SessionManager.GetSession(this.threadId, CassandraVersionDb.DEFAULT_KEYSPACE).Execute(cql);
         }
 
         /// <summary>
@@ -199,7 +204,7 @@
         {
             //CassandraSessionManager.CqlIfCnt += 1;
             //Console.WriteLine(cql);
-            var rs = this.SessionManager.GetSession(CassandraVersionDb.DEFAULT_KEYSPACE).Execute(cql);
+            var rs = this.SessionManager.GetSession(this.threadId, CassandraVersionDb.DEFAULT_KEYSPACE).Execute(cql);
             var rse = rs.GetEnumerator();
             rse.MoveNext();
             return rse.Current.GetValue<bool>("[applied]");
@@ -291,6 +296,13 @@
                 this.txEntryRequestQueues[pid].Clear();
                 this.flushQueues[pid].Clear();
             }
+        }
+
+        internal override void ClearTxTable()
+        {
+            this.DeleteTable(VersionDb.TX_TABLE);
+            // recreate `tx_table`
+            this.CQLExecute(string.Format(CassandraVersionDb.CQL_CREATE_TX_TABLE, VersionDb.TX_TABLE));
         }
     }
 
