@@ -123,10 +123,12 @@ namespace GraphView.Transaction
             // read and write, the latch is necessnary
             // TODO: is it required?
             while (Interlocked.CompareExchange(ref txEntry.latch, 1, 0) != 0) ;
-
-            txEntry.CommitLowerBound = req.CommitTsLowerBound;
             long commitTime = txEntry.CommitTime;
-
+            if (commitTime == TxTableEntry.DEFAULT_COMMIT_TIME &&
+                txEntry.CommitLowerBound < req.CommitTsLowerBound)
+            {
+                txEntry.CommitLowerBound = req.CommitTsLowerBound;
+            }
             Interlocked.Exchange(ref txEntry.latch, 0);
 
             req.Result = commitTime;

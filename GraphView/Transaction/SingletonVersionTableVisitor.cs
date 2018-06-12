@@ -2,6 +2,7 @@
 {
     using System.Threading;
     using System.Collections.Concurrent;
+    using System;
 
     internal class SingletonVersionTableVisitor : VersionTableVisitor
     {
@@ -150,7 +151,7 @@
 
             while (Interlocked.CompareExchange(ref verEntry.latch, 1, 0) != 0) ;
 
-            verEntry.MaxCommitTs = req.MaxCommitTs;
+            verEntry.MaxCommitTs = Math.Max(req.MaxCommitTs, verEntry.MaxCommitTs);
             VersionEntry.CopyValue(verEntry, req.VersionEntry);
 
             Interlocked.Exchange(ref verEntry.latch, 0);
