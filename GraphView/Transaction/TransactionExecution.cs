@@ -1320,7 +1320,7 @@ namespace GraphView.Transaction
 
             if (initi)
             {
-                this.initiGetVListReq.Set(tableId, recordKey, this.versionList);
+                this.initiGetVListReq.Set(tableId, recordKey);
                 this.initiGetVListReq.Use();
 
                 this.versionDb.EnqueueVersionEntryRequest(tableId, this.initiGetVListReq, this.executor.Partition);

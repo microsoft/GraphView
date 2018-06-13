@@ -1,9 +1,10 @@
-﻿using System;
-using System.Collections.Concurrent;
-using System.Threading;
-
-namespace GraphView.Transaction
+﻿namespace GraphView.Transaction
 {
+    using System;
+    //using System.Collections.Concurrent;
+    using System.Threading;
+    using NonBlocking;
+
     internal class SingletonVersionDbVisitor : VersionDbVisitor
     {
         private readonly ConcurrentDictionary<long, TxTableEntry> txTable;
@@ -18,26 +19,34 @@ namespace GraphView.Transaction
 
         internal override void Visit(GetTxEntryRequest req)
         {
-            TxTableEntry txEntry = null;
-            if (!this.txTable.TryGetValue(req.TxId, out txEntry))
+            TxTableEntry txEntry = req.RemoteTxEntry;
+            if (txEntry == null)
             {
-                throw new TransactionException("The specified tx does not exist.");
+                if (!this.txTable.TryGetValue(req.TxId, out txEntry))
+                {
+                    throw new TransactionException("The specified tx does not exist.");
+                }
+                // return back the txEntry
+                req.RemoteTxEntry = txEntry;
             }
 
             while (Interlocked.CompareExchange(ref txEntry.latch, 1, 0) != 0) ;
-            TxTableEntry.CopyValue(txEntry, req.TxEntry);
+            TxTableEntry.CopyValue(txEntry, req.LocalTxEntry);
             Interlocked.Exchange(ref txEntry.latch, 0);
 
-            req.Result = req.TxEntry;
+            req.Result = req.LocalTxEntry;
             req.Finished = true;
         }
 
         internal override void Visit(InsertTxIdRequest req)
         {
-            TxTableEntry txEntry = null;
-            if (!this.txTable.TryGetValue(req.TxId, out txEntry))
+            TxTableEntry txEntry = req.RemoteTxEntry;
+            if (txEntry == null)
             {
-                throw new TransactionException("The specified txId does not exist.");
+                if (!this.txTable.TryGetValue(req.TxId, out txEntry))
+                {
+                    throw new TransactionException("The specified txId does not exist.");
+                }
             }
 
             while (Interlocked.CompareExchange(ref txEntry.latch, 1, 0) != 0) ;
@@ -56,25 +65,27 @@ namespace GraphView.Transaction
         {
             TxTableEntry txEntry = new TxTableEntry();
             req.Result = this.txTable.TryAdd(req.TxId, txEntry) ? 1L : 0L;
+            req.RemoteTxEntry = txEntry;
             req.Finished = true;
         }
 
         internal override void Visit(RecycleTxRequest req)
         {
+            // RecycleTxRequest will be called at the begining of tx, the remoteEntry is supposed to be null
             TxTableEntry txEntry = null;
-            if (this.txTable.TryGetValue(req.TxId, out txEntry))
-            {
-                while (Interlocked.CompareExchange(ref txEntry.latch, 1, 0) != 0) ;
-                // Reset includes multiple commands
-                txEntry.Reset();
-                Interlocked.Exchange(ref txEntry.latch, 0);
-
-                req.Result = 1L;
-            }
-            else
+            if (!this.txTable.TryGetValue(req.TxId, out txEntry))
             {
                 req.Result = 0L;
+                req.Finished = true;
+                return;
             }
+     
+            while (Interlocked.CompareExchange(ref txEntry.latch, 1, 0) != 0) ;
+            txEntry.Reset();
+            Interlocked.Exchange(ref txEntry.latch, 0);
+
+            req.RemoteTxEntry = txEntry;
+            req.Result = 1L;
             req.Finished = true;
         }
 
@@ -95,10 +106,13 @@ namespace GraphView.Transaction
 
         internal override void Visit(SetCommitTsRequest req)
         {
-            TxTableEntry txEntry = null;
-            if (!this.txTable.TryGetValue(req.TxId, out txEntry))
+            TxTableEntry txEntry = req.RemoteTxEntry;
+            if (txEntry == null)
             {
-                throw new TransactionException("The specified tx does not exist.");
+                if (!this.txTable.TryGetValue(req.TxId, out txEntry))
+                {
+                    throw new TransactionException("The specified tx does not exist.");
+                }
             }
 
             while (Interlocked.CompareExchange(ref txEntry.latch, 1, 0) != 0) ;
@@ -114,14 +128,15 @@ namespace GraphView.Transaction
 
         internal override void Visit(UpdateCommitLowerBoundRequest req)
         {
-            TxTableEntry txEntry = null;
-            if (!this.txTable.TryGetValue(req.TxId, out txEntry))
+            TxTableEntry txEntry = req.RemoteTxEntry;
+            if (txEntry == null)
             {
-                throw new TransactionException("The specified tx does not exist.");
+                if (!this.txTable.TryGetValue(req.TxId, out txEntry))
+                {
+                    throw new TransactionException("The specified tx does not exist.");
+                }
             }
 
-            // read and write, the latch is necessnary
-            // TODO: is it required?
             while (Interlocked.CompareExchange(ref txEntry.latch, 1, 0) != 0) ;
             long commitTime = txEntry.CommitTime;
             if (commitTime == TxTableEntry.DEFAULT_COMMIT_TIME &&
@@ -137,10 +152,15 @@ namespace GraphView.Transaction
 
         internal override void Visit(UpdateTxStatusRequest req)
         {
-            TxTableEntry txEntry = null;
-            if (!this.txTable.TryGetValue(req.TxId, out txEntry))
+            TxTableEntry txEntry = req.RemoteTxEntry;
+            if (txEntry == null)
             {
-                throw new TransactionException("The specified tx does not exist.");
+                if (!this.txTable.TryGetValue(req.TxId, out txEntry))
+                {
+                    throw new TransactionException("The specified tx does not exist.");
+                }
+
+                req.RemoteTxEntry = txEntry;
             }
 
             txEntry.Status = req.TxStatus;
