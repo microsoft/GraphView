@@ -50,6 +50,24 @@
             this.RemoteVerList = RemoteVerList;
         }
 
+        public void Set(
+           string tableId,
+           object recordKey,
+           long versionKey,
+           long beginTimestamp,
+           long endTimestamp,
+           VersionEntry remoteVerEntry,
+           ConcurrentDictionary<long, VersionEntry> remoteVerList)
+        {
+            this.TableId = tableId;
+            this.RecordKey = recordKey;
+            this.VersionKey = versionKey;
+            this.BeginTimestamp = beginTimestamp;
+            this.EndTimestamp = endTimestamp;
+            this.RemoteVerEntry = remoteVerEntry;
+            this.RemoteVerList = RemoteVerList;
+        }
+
         public override bool Equals(object obj)
         {
             if (!base.Equals(obj))

@@ -36,6 +36,14 @@ namespace GraphView.Transaction
             this.VersionKey = versionKey;
         }
 
+        public void Set(string tableId, object recordKey, object payload, long versionKey)
+        {
+            this.TableId = tableId;
+            this.RecordKey = recordKey;
+            this.Payload = payload;
+            this.VersionKey = versionKey;
+        }
+
         public override bool Equals(object obj)
         {
             return base.Equals(obj);

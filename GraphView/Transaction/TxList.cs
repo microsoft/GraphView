@@ -2,9 +2,9 @@
 {
     using System;
 
-    public class TxList<T>
+    public class TxList<T> where T : new()
     {
-        public static readonly int CAPACITY = 20;
+        public static readonly int CAPACITY = 8;
 
         public int Count
         {
@@ -83,9 +83,9 @@
             return this.FindIndex(key) != -1;
         }
 
-        public T Find(T key)
+        public T Find(T key, int limit = -1)
         {
-            int index = this.FindIndex(key);
+            int index = this.FindIndex(key, limit);
             if (index == -1)
             {
                 return default(T);
@@ -106,9 +106,28 @@
             this.localIndex = -1;
         }
 
-        private int FindIndex(T key)
+        /// <summary>
+        /// Resize the list and fill the empty space with new T() until
+        /// it reaches the resizeCount
+        /// </summary>
+        /// <param name="resizedCount"></param>
+        public void ResizeAndFill(int resizedCount)
         {
-            for (int i = 0; i <= this.localIndex; i++)
+            if (resizedCount < 0 || resizedCount < this.Count)
+            {
+                throw new ArgumentException("resizeCount should be larger than the current Count");
+            }
+
+            while (this.Count < resizedCount)
+            {
+                this.Add(new T());
+            }
+        }
+
+        private int FindIndex(T key, int limit = -1)
+        {
+            limit = limit == -1 ? this.localIndex : limit - 1;
+            for (int i = 0; i <= limit; i++)
             {
                 T entry = this.entries[i];
                 if (entry != null && entry.Equals(key))

@@ -179,9 +179,11 @@ namespace GraphView.Transaction
         public RecycleTxRequest(long txId)
             : base(txId) { }
 
-        public void Set(long txId)
+        // If the remote tx entry has been known, it would optimize the process
+        public void Set(long txId, TxTableEntry remoteTxEntry = null)
         {
             this.TxId = txId;
+            this.RemoteTxEntry = remoteTxEntry;
         }
 
         internal override void Accept(TxEntryVisitor visitor)

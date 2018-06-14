@@ -4,6 +4,7 @@ namespace GraphView.Transaction
     using System;
     using System.Collections.Generic;
     using System.Diagnostics;
+    using NonBlocking;
 
     internal delegate void Procedure();
 
@@ -39,6 +40,7 @@ namespace GraphView.Transaction
 
         internal static readonly int TX_REQUEST_GARBAGE_QUEUE_SIZE = 30;
 
+        internal static readonly int DEFAULT_SET_SIZE = 8;
 
         // Private properties part
         private readonly ILogStore logStore;
@@ -65,14 +67,18 @@ namespace GraphView.Transaction
         /// </summary>
         internal readonly Queue<long> garbageQueueTxId;
         private readonly Queue<long> garbageQueueFinishTime;
-        private readonly Queue<TxSetEntry> txSetEntryGCQueue;
 
         // entrySet part
         internal TxList<ReadSetEntry> readSet;
+        private int readSetCount;
         internal TxList<WriteSetEntry> writeSet;
+        private int writeSetCount;
         internal TxList<PostProcessingEntry> abortSet;
+        private int abortSetCount;
         internal TxList<PostProcessingEntry> commitSet;
+        private int commitSetCount;
         internal TxList<VersionKeyEntry> largestVersionKeySet;
+        private int largestVerKeySetCount;
 
         // procedure part
         private readonly Procedure newTxIdProc;
@@ -107,21 +113,33 @@ namespace GraphView.Transaction
 
         // List Resources
         private readonly TxList<VersionEntry> versionList;
-
+        // Those references of remote entries will be stored in the remoteVersionList to 
+        // get the right pointer of remote version entry
+        private readonly TxList<VersionEntry> remoteVersionRefList;
+        private ConcurrentDictionary<long, VersionEntry> remoteVerListRef;
         // Private variables to store temp values
+        // record the tableId and recordKey between funcs in read operation
         private string readTableId;
         private object readRecordKey;
+        // The number of entries in read operation
         private int readEntryCount;
         private long readLargestVersionKey = -1;
+
+        // The writeSet index to tranverse the writeset
         private int writeSetIndex = 0;
 
-        // local version entry and tx entry instance
-        private VersionEntry localVerEntry = new VersionEntry();
-        private TxTableEntry localTxEntry = new TxTableEntry();
+        // The pointer to re-read version entry and replace version entry
         private VersionEntry rereadVerEntry = null;
-
         private VersionEntry replaceVerEntry = null;
+        private VersionEntry replaceRemoteVerRef = null;
         private string replaceTableId;
+
+        // local version entry (remote version entry is stored in readSet)
+        private VersionEntry localVerEntry = new VersionEntry();
+
+        // local and remote txEntry of current tx
+        private TxTableEntry localTxEntry = new TxTableEntry();
+        private TxTableEntry remoteTxEntryRef;
 
         internal long ExecutionSeconds
         {
@@ -157,7 +175,15 @@ namespace GraphView.Transaction
             this.abortSet = new TxList<PostProcessingEntry>();
             this.commitSet = new TxList<PostProcessingEntry>();
             this.largestVersionKeySet = new TxList<VersionKeyEntry>();
+
+            this.readSet.ResizeAndFill(TransactionExecution.DEFAULT_SET_SIZE);
+            this.writeSet.ResizeAndFill(TransactionExecution.DEFAULT_SET_SIZE);
+            this.commitSet.ResizeAndFill(TransactionExecution.DEFAULT_SET_SIZE);
+            this.abortSet.ResizeAndFill(TransactionExecution.DEFAULT_SET_SIZE);
+            this.largestVersionKeySet.ResizeAndFill(TransactionExecution.DEFAULT_SET_SIZE);
+
             this.versionList = new TxList<VersionEntry>();
+            this.remoteVersionRefList = new TxList<VersionEntry>();
 
             // add 2 version entries to the list
             this.versionList.Add(new VersionEntry());
@@ -165,7 +191,6 @@ namespace GraphView.Transaction
 
             this.garbageQueueTxId = garbageQueueTxId;
             this.garbageQueueFinishTime = garbageQueueFinishTime;
-            this.txSetEntryGCQueue = new Queue<TxSetEntry>(TX_REQUEST_GARBAGE_QUEUE_SIZE);
 
             this.validateProc = new Procedure(this.Validate);
             this.uploadProc = new Procedure(this.Upload);
@@ -195,6 +220,13 @@ namespace GraphView.Transaction
             this.deleteReq = new DeleteVersionRequest(null, null, -1);
             this.updateBoundReq = new UpdateCommitLowerBoundRequest(-1, -1);
             this.updateMaxTsReq = new UpdateVersionMaxCommitTsRequest(null, null, -1, -1);
+
+            this.readSetCount = 0;
+            this.writeSetCount = 0;
+            this.commitSetCount = 0;
+            this.abortSetCount = 0;
+            this.largestVerKeySetCount = 0;
+            this.remoteTxEntryRef = null;
         }
 
         internal void Reset()
@@ -228,8 +260,8 @@ namespace GraphView.Transaction
             this.abortSet.Clear();
             this.commitSet.Clear();
             this.largestVersionKeySet.Clear();
+            this.remoteVersionRefList.Clear();
 
-            this.ClearLocalList();
             this.writeSetIndex = 0;
             this.readLargestVersionKey = -1;
             // init and get tx id
@@ -238,6 +270,14 @@ namespace GraphView.Transaction
 
             this.rereadVerEntry = null;
             this.replaceVerEntry = null;
+            // TODO: could optimize it
+            this.remoteTxEntryRef = null;
+
+            this.readSetCount = 0;
+            this.writeSetCount = 0;
+            this.commitSetCount = 0;
+            this.abortSetCount = 0;
+            this.largestVerKeySetCount = 0;
         }
 
         internal void SetAbortMsg(string msg)
@@ -259,7 +299,7 @@ namespace GraphView.Transaction
                     this.garbageQueueTxId.Dequeue();
                     this.garbageQueueFinishTime.Dequeue();
 
-                    this.recycleTxReq.Set(candidate);
+                    this.recycleTxReq.Set(candidate, this.remoteTxEntryRef);
                     this.recycleTxReq.Use();
                     this.versionDb.EnqueueTxEntryRequest(candidate, this.recycleTxReq, this.executor.Partition);
 
@@ -303,9 +343,11 @@ namespace GraphView.Transaction
             }
 
             this.txId = this.newTxIdReq.TxId;
+            // record the remote tx entry
+            this.remoteTxEntryRef = this.newTxIdReq.RemoteTxEntry;
             this.newTxIdReq.Free();
 
-            this.inserTxIdReq.Set(txId);
+            this.inserTxIdReq.Set(txId, this.remoteTxEntryRef);
             this.inserTxIdReq.Use();
             this.versionDb.EnqueueTxEntryRequest(this.txId, this.inserTxIdReq, this.executor.Partition);
 
@@ -341,6 +383,9 @@ namespace GraphView.Transaction
 
             // Recycled successfully
             this.txId = this.recycleTxReq.TxId;
+            // record the remote txEntry
+            this.remoteTxEntryRef = this.recycleTxReq.RemoteTxEntry;
+
             this.recycleTxReq.Free();
             this.CurrentProc = null;
             this.Progress = TxProgress.Open;
@@ -364,8 +409,8 @@ namespace GraphView.Transaction
                     WriteSetEntry writeEntry = this.writeSet[this.writeSetIndex++];
                     string tableId = writeEntry.TableId;
                     object recordKey = writeEntry.RecordKey;
-
                     object payload = writeEntry.Payload;
+
                     // should check the type of writes, insert/update/delete
                     // The write-set record is an insert or update record, try to insert the new version
                     if (payload != null)
@@ -376,6 +421,7 @@ namespace GraphView.Transaction
                                 payload,
                                 this.txId);
 
+                        // TODO: Where we will store the version list ref
                         this.uploadReq.Set(tableId, recordKey, newImageEntry.VersionKey, newImageEntry);
                         this.uploadReq.Use();
                         this.versionDb.EnqueueVersionEntryRequest(tableId, this.uploadReq, this.executor.Partition);
@@ -384,10 +430,20 @@ namespace GraphView.Transaction
                     else
                     {
                         ReadSetEntry readVersion = this.FindReadSetEntry(tableId, recordKey);
-                        this.replaceReq.Set(tableId, recordKey, readVersion.VersionKey, readVersion.BeginTimestamp, long.MaxValue,
-                            this.txId, VersionEntry.EMPTY_TXID, long.MaxValue, this.localVerEntry);
+                        this.replaceReq.Set(
+                            tableId, 
+                            recordKey, 
+                            readVersion.VersionKey, 
+                            readVersion.BeginTimestamp, 
+                            long.MaxValue,
+                            this.txId, 
+                            VersionEntry.EMPTY_TXID, 
+                            long.MaxValue, 
+                            this.localVerEntry,
+                            readVersion.RemoteVerEntry);
                         this.replaceReq.Use();
 
+                        this.replaceRemoteVerRef = readVersion.RemoteVerEntry;
                         this.versionDb.EnqueueVersionEntryRequest(tableId, this.replaceReq, this.executor.Partition);
                     }
                 }
@@ -421,10 +477,12 @@ namespace GraphView.Transaction
 
                     // Add the info to the abortSet
                     this.AddVersionToAbortSet(tableId, recordKey, this.uploadReq.VersionKey,
-                        VersionEntry.DEFAULT_BEGIN_TIMESTAMP, VersionEntry.DEFAULT_END_TIMESTAMP);
+                        VersionEntry.DEFAULT_BEGIN_TIMESTAMP, VersionEntry.DEFAULT_END_TIMESTAMP,
+                        uploadReq.VersionEntry, uploadReq.RemoteVerList);
                     // Add the info to the commitSet
                     this.AddVersionToCommitSet(tableId, recordKey, this.uploadReq.VersionKey,
-                        TransactionExecution.UNSET_TX_COMMIT_TIMESTAMP, long.MaxValue);
+                        TransactionExecution.UNSET_TX_COMMIT_TIMESTAMP, long.MaxValue,
+                        uploadReq.VersionEntry, uploadReq.RemoteVerList);
 
                     this.uploadReq.Free();
 
@@ -441,8 +499,17 @@ namespace GraphView.Transaction
                     // The first case indicates that no concurrent tx is locking the tail.
                     // The second case indicates that one concurrent tx is holding the tail. 
                     // The third case means that a concurrent tx is creating a new tail, which was seen by this tx. 
-                    this.replaceReq.Set(tableId, recordKey, readVersion.VersionKey, readVersion.BeginTimestamp,
-                        long.MaxValue, this.txId, VersionEntry.EMPTY_TXID, long.MaxValue, this.localVerEntry);
+                    this.replaceReq.Set(
+                        tableId, 
+                        recordKey, 
+                        readVersion.VersionKey, 
+                        readVersion.BeginTimestamp,
+                        long.MaxValue, 
+                        this.txId, 
+                        VersionEntry.EMPTY_TXID, 
+                        long.MaxValue, 
+                        this.localVerEntry,
+                        uploadReq.RemoteVerEntry);
                     this.replaceReq.Use();
 
                     this.versionDb.EnqueueVersionEntryRequest(tableId, this.replaceReq, this.executor.Partition);
@@ -483,14 +550,16 @@ namespace GraphView.Transaction
                             this.replaceVerEntry.RecordKey,
                             this.replaceVerEntry.VersionKey,
                             rolledBackBegin,
-                            long.MaxValue);
+                            long.MaxValue,
+                            this.replaceRemoteVerRef);
                         // Add the updated tail to the commit set
                         this.AddVersionToCommitSet(
                             this.replaceTableId,
                             this.replaceVerEntry.RecordKey,
                             this.replaceVerEntry.VersionKey,
                             rolledBackBegin,
-                            TransactionExecution.UNSET_TX_COMMIT_TIMESTAMP);
+                            TransactionExecution.UNSET_TX_COMMIT_TIMESTAMP,
+                            this.replaceRemoteVerRef);
 
                         // Move on to the next write-set record or the next phase
                         continue;
@@ -501,7 +570,7 @@ namespace GraphView.Transaction
                         // If the concurrent tx has finished (committed or aborted), there is a chance for this tx
                         // to re-gain the lock. 
                         // Enqueues a request to check the status of the tx that is holding the tail.
-                        this.getTxReq.Set(this.replaceVerEntry.TxId);
+                        this.getTxReq.Set(this.replaceVerEntry.TxId, this.remoteTxEntryRef);
                         this.getTxReq.Use();
                         this.versionDb.EnqueueTxEntryRequest(this.replaceVerEntry.TxId, this.getTxReq, this.executor.Partition);
 
@@ -554,15 +623,16 @@ namespace GraphView.Transaction
                         Debug.Assert(conflictTxStatus.Status == TxStatus.Committed);
 
                         this.retryReplaceReq.Set(
-                            this.replaceTableId, 
+                            this.replaceTableId,
                             replaceVerEntry.RecordKey,
-                            replaceVerEntry.VersionKey, 
+                            replaceVerEntry.VersionKey,
                             conflictTxStatus.CommitTime,
-                            long.MaxValue, 
-                            this.txId, 
-                            conflictTxStatus.TxId, 
-                            VersionEntry.DEFAULT_END_TIMESTAMP, 
-                            this.localVerEntry);
+                            long.MaxValue,
+                            this.txId,
+                            conflictTxStatus.TxId,
+                            VersionEntry.DEFAULT_END_TIMESTAMP,
+                            this.localVerEntry,
+                            this.replaceRemoteVerRef);
                         this.retryReplaceReq.Use();
 
                         this.versionDb.EnqueueVersionEntryRequest(this.replaceTableId, this.retryReplaceReq, this.executor.Partition);
@@ -593,7 +663,8 @@ namespace GraphView.Transaction
                                 this.txId, 
                                 conflictTxStatus.TxId, 
                                 long.MaxValue, 
-                                this.localVerEntry);
+                                this.localVerEntry,
+                                this.replaceRemoteVerRef);
 
                             this.retryReplaceReq.Use();
                             this.versionDb.EnqueueVersionEntryRequest(this.replaceTableId, this.retryReplaceReq, this.executor.Partition);
@@ -631,7 +702,8 @@ namespace GraphView.Transaction
                         retryEntry.RecordKey,
                         retryEntry.VersionKey,
                         rolledBackBegin,
-                        long.MaxValue);
+                        long.MaxValue,
+                        this.replaceRemoteVerRef);
 
                     // Add the updated tail to the commit set
                     this.AddVersionToCommitSet(
@@ -639,7 +711,8 @@ namespace GraphView.Transaction
                         retryEntry.RecordKey,
                         retryEntry.VersionKey,
                         rolledBackBegin,
-                        TransactionExecution.UNSET_TX_COMMIT_TIMESTAMP);
+                        TransactionExecution.UNSET_TX_COMMIT_TIMESTAMP,
+                        this.replaceRemoteVerRef);
 
                     this.retryReplaceReq.Free();
                 }
@@ -652,20 +725,38 @@ namespace GraphView.Transaction
             this.SetCommitTimestamp();
         }
 
-        private void AddVersionToAbortSet(string tableId, object recordKey, long versionKey, long beginTs, long endTs)
+        private void AddVersionToAbortSet(
+            string tableId, 
+            object recordKey, 
+            long versionKey, 
+            long beginTs, 
+            long endTs,
+            VersionEntry remoteVerEntryRef = null,
+            ConcurrentDictionary<long, VersionEntry> remoteVerList = null)
         {
-            PostProcessingEntry abortEntry = this.executor.ResourceManager.GetPostProcessingEntry(
-                tableId, recordKey, versionKey, beginTs, endTs);
-            this.txSetEntryGCQueue.Enqueue(abortEntry);
-            this.abortSet.Add(abortEntry);
+            if (this.abortSetCount == this.abortSet.Count)
+            {
+                this.abortSet.ResizeAndFill(2 * this.abortSetCount);
+            }
+
+            this.abortSet[this.abortSetCount++].Set(tableId, recordKey, versionKey, beginTs, endTs, remoteVerEntryRef, remoteVerList);
         }
 
-        private void AddVersionToCommitSet(string tableId, object recordKey, long versionKey, long beginTs, long endTs)
+        private void AddVersionToCommitSet(
+            string tableId, 
+            object recordKey, 
+            long versionKey, 
+            long beginTs, 
+            long endTs,
+            VersionEntry remoteVerEntryRef = null,
+            ConcurrentDictionary<long, VersionEntry> remoteVerList = null)
         {
-            PostProcessingEntry commitEntry = this.executor.ResourceManager.GetPostProcessingEntry(
-                tableId, recordKey, versionKey, beginTs, endTs);
-            this.txSetEntryGCQueue.Enqueue(commitEntry);
-            this.commitSet.Add(commitEntry);
+            if (this.commitSetCount == this.commitSet.Count)
+            {
+                this.commitSet.ResizeAndFill(2 * this.commitSetCount);
+            }
+
+            this.commitSet[this.commitSetCount].Set(tableId, recordKey, versionKey, beginTs, endTs, remoteVerEntryRef, remoteVerList);
         }
 
         internal void SetCommitTimestamp()
@@ -689,7 +780,7 @@ namespace GraphView.Transaction
 
             this.commitTs = proposedCommitTs;
 
-            this.commitTsReq.Set(this.txId, this.commitTs);
+            this.commitTsReq.Set(this.txId, this.commitTs, this.remoteTxEntryRef);
             this.commitTsReq.Use();
             this.versionDb.EnqueueTxEntryRequest(this.txId, this.commitTsReq, this.executor.Partition);
 
@@ -751,7 +842,12 @@ namespace GraphView.Transaction
                         continue;
                     }
 
-                    this.readReq.Set(entry.TableId, entry.RecordKey, entry.VersionKey, this.localVerEntry);
+                    this.readReq.Set(
+                        entry.TableId, 
+                        entry.RecordKey, 
+                        entry.VersionKey, 
+                        this.localVerEntry,
+                        entry.RemoteVerEntry);
                     this.readReq.Use();
 
                     this.versionDb.EnqueueVersionEntryRequest(entry.TableId, readReq, this.executor.Partition);
@@ -786,7 +882,7 @@ namespace GraphView.Transaction
                     {
                         // Updates the version's max commit timestamp
                         this.updateMaxTsReq.Set(tableId, this.rereadVerEntry.RecordKey,
-                            this.rereadVerEntry.VersionKey, this.commitTs, this.localVerEntry);
+                            this.rereadVerEntry.VersionKey, this.commitTs, this.localVerEntry, this.readReq.RemoteVerEntry);
                         this.updateMaxTsReq.Use();
 
                         this.versionDb.EnqueueVersionEntryRequest(tableId, updateMaxTsReq, this.executor.Partition);
@@ -824,6 +920,7 @@ namespace GraphView.Transaction
                     }
 
                     TxTableEntry txEntry = this.getTxReq.Result as TxTableEntry;
+                    TxTableEntry remoteTxEntry = this.getTxReq.RemoteTxEntry; 
                     this.getTxReq.Free();
 
                     if (txEntry == null)
@@ -864,7 +961,7 @@ namespace GraphView.Transaction
                     }
                     else
                     {
-                        this.updateBoundReq.Set(txEntry.TxId, this.commitTs+1);
+                        this.updateBoundReq.Set(txEntry.TxId, this.commitTs+1, remoteTxEntry);
                         this.updateBoundReq.Use();
 
                         this.versionDb.EnqueueTxEntryRequest(txEntry.TxId, this.updateBoundReq, this.executor.Partition);
@@ -930,6 +1027,8 @@ namespace GraphView.Transaction
                     {
                         // A concurrent tx is locking the version. Checks the tx's status to decide how to move forward, 
                         // i.e., abort or pass validation.
+
+                        // reread other versions, no remote tx table entry reference
                         this.getTxReq.Set(this.rereadVerEntry.TxId);
                         this.getTxReq.Use();
                         this.versionDb.EnqueueTxEntryRequest(this.rereadVerEntry.TxId, this.getTxReq, this.executor.Partition);
@@ -962,8 +1061,7 @@ namespace GraphView.Transaction
 
         internal void WriteToLog()
         {
-            this.updateTxReq.TxId = this.txId;
-            this.updateTxReq.TxStatus = TxStatus.Committed;
+            this.updateTxReq.Set(this.txId, TxStatus.Committed, this.remoteTxEntryRef);
             this.updateTxReq.Use();
 
             this.versionDb.EnqueueTxEntryRequest(this.txId, this.updateTxReq, this.executor.Partition);
@@ -992,8 +1090,17 @@ namespace GraphView.Transaction
                     PostProcessingEntry entry = this.commitSet.PopRight();
                     if (entry.BeginTimestamp == TransactionExecution.UNSET_TX_COMMIT_TIMESTAMP)
                     {
-                        this.replaceReq.Set(entry.TableId, entry.RecordKey, entry.VersionKey, this.commitTs, entry.EndTimestamp, 
-                            VersionEntry.EMPTY_TXID, this.txId, VersionEntry.DEFAULT_END_TIMESTAMP, this.localVerEntry);
+                        this.replaceReq.Set(
+                            entry.TableId, 
+                            entry.RecordKey, 
+                            entry.VersionKey, 
+                            this.commitTs, 
+                            entry.EndTimestamp, 
+                            VersionEntry.EMPTY_TXID, 
+                            this.txId, 
+                            VersionEntry.DEFAULT_END_TIMESTAMP,
+                            this.localVerEntry,
+                            entry.RemoteVerEntry);
 
                         this.replaceReq.Use();
 
@@ -1001,8 +1108,17 @@ namespace GraphView.Transaction
                     }
                     else
                     {
-                        this.replaceReq.Set(entry.TableId, entry.RecordKey, entry.VersionKey, entry.BeginTimestamp, this.commitTs,
-                            VersionEntry.EMPTY_TXID, this.txId, long.MaxValue, this.localVerEntry);
+                        this.replaceReq.Set(
+                            entry.TableId, 
+                            entry.RecordKey,
+                            entry.VersionKey, 
+                            entry.BeginTimestamp, 
+                            this.commitTs,
+                            VersionEntry.EMPTY_TXID,
+                            this.txId, 
+                            long.MaxValue, 
+                            this.localVerEntry,
+                            entry.RemoteVerEntry);
                         this.replaceReq.Use();
                         this.versionDb.EnqueueVersionEntryRequest(entry.TableId, this.replaceReq, this.executor.Partition);
 
@@ -1041,13 +1157,7 @@ namespace GraphView.Transaction
         }
 
         internal void CommitModifications()
-        {
-            while (this.txSetEntryGCQueue.Count > 0)
-            {
-                TxSetEntry entry = this.txSetEntryGCQueue.Dequeue();
-                this.executor.ResourceManager.RecycleTxSetEntry(ref entry);
-            }
-
+        { 
             // All post-processing records have been uploaded.
             this.Progress = TxProgress.Close;
             this.CurrentProc = null;
@@ -1068,15 +1178,24 @@ namespace GraphView.Transaction
                     PostProcessingEntry entry = this.abortSet.PopRight();
                     if (entry.BeginTimestamp == VersionEntry.DEFAULT_BEGIN_TIMESTAMP)
                     {
-                        this.deleteReq.Set(entry.TableId, entry.RecordKey, entry.VersionKey);
+                        this.deleteReq.Set(entry.TableId, entry.RecordKey, entry.VersionKey, entry.RemoteVerList);
                         this.deleteReq.Use();
 
                         this.versionDb.EnqueueVersionEntryRequest(entry.TableId, this.deleteReq, this.executor.Partition);
                     }
                     else
                     {
-                        this.replaceReq.Set(entry.TableId, entry.RecordKey, entry.VersionKey, entry.BeginTimestamp,
-                            entry.EndTimestamp, VersionEntry.EMPTY_TXID, this.txId, long.MaxValue, this.localVerEntry);
+                        this.replaceReq.Set(
+                            entry.TableId, 
+                            entry.RecordKey, 
+                            entry.VersionKey, 
+                            entry.BeginTimestamp,
+                            entry.EndTimestamp, 
+                            VersionEntry.EMPTY_TXID,
+                            this.txId, 
+                            long.MaxValue, 
+                            this.localVerEntry,
+                            entry.RemoteVerEntry);
 
                         this.replaceReq.Use();
                         this.versionDb.EnqueueVersionEntryRequest(entry.TableId, this.replaceReq, this.executor.Partition);
@@ -1098,12 +1217,6 @@ namespace GraphView.Transaction
                     }
                     this.deleteReq.Free();
                 }
-            }
-
-            while (this.txSetEntryGCQueue.Count > 0)
-            {
-                TxSetEntry entry = this.txSetEntryGCQueue.Dequeue();
-                this.executor.ResourceManager.RecycleTxSetEntry(ref entry);
             }
 
             // All pending records have been reverted.
@@ -1133,7 +1246,7 @@ namespace GraphView.Transaction
 
             if (!this.updateTxReq.IsActive())
             {
-                this.updateTxReq.Set(this.txId, TxStatus.Aborted);
+                this.updateTxReq.Set(this.txId, TxStatus.Aborted, this.remoteTxEntryRef);
                 this.updateTxReq.Use();
 
                 this.versionDb.EnqueueTxEntryRequest(this.txId, updateTxReq, this.executor.Partition);
@@ -1187,10 +1300,12 @@ namespace GraphView.Transaction
             else
             {
                 VersionKeyEntry versionKeyEntry = this.FindVersionKeyEntry(tableId, recordKey);
-                WriteSetEntry entry = this.executor.ResourceManager.GetWriteSetEntry(
-                    tableId, recordKey, record, versionKeyEntry.VersionKey + 1);
-                this.writeSet.Add(entry);
-                this.txSetEntryGCQueue.Enqueue(entry);
+                if (this.writeSet.Count == this.writeSetCount)
+                {
+                    this.writeSet.ResizeAndFill(2 * this.writeSet.Count);
+                }
+
+                this.writeSet[this.writeSetCount++].Set(tableId, recordKey, record, versionKeyEntry.VersionKey + 1);
             }
             this.Procedure?.InsertCallBack(tableId, recordKey, record);
         }
@@ -1221,10 +1336,11 @@ namespace GraphView.Transaction
             }
             else if (readEntry != null)
             {
-                WriteSetEntry entry = this.executor.ResourceManager.GetWriteSetEntry(
-                    tableId, recordKey, payload, readEntry.VersionKey + 1);
-                this.writeSet.Add(entry);
-                this.txSetEntryGCQueue.Enqueue(entry);
+                if (this.writeSetCount != this.writeSet.Count)
+                {
+                    this.writeSet.ResizeAndFill(2 * this.writeSetCount);
+                }
+                this.writeSet[this.writeSetCount++].Set(tableId, recordKey, payload, readEntry.VersionKey + 1);
             }
             else
             {
@@ -1260,10 +1376,12 @@ namespace GraphView.Transaction
             else if (readEntry != null)
             {
                 payload = readEntry.Record;
+                if (this.writeSetCount == this.writeSet.Count)
+                {
+                    this.writeSet.ResizeAndFill(2 * this.writeSet.Count);
+                }
 
-                WriteSetEntry entry = this.executor.ResourceManager.GetWriteSetEntry(tableId, recordKey, null, -1);
-                this.writeSet.Add(entry);
-                this.txSetEntryGCQueue.Enqueue(entry);
+                this.writeSet[this.writeSetCount++].Set(tableId, recordKey, null, -1);
             }
             else
             {
@@ -1327,7 +1445,7 @@ namespace GraphView.Transaction
             }
             else
             {
-                this.getVListReq.Set(tableId, recordKey, this.versionList);
+                this.getVListReq.Set(tableId, recordKey, this.versionList, this.remoteVersionRefList);
                 this.getVListReq.Use();
 
                 this.versionDb.EnqueueVersionEntryRequest(tableId, this.getVListReq, this.executor.Partition);
@@ -1348,6 +1466,8 @@ namespace GraphView.Transaction
                 }
 
                 this.readEntryCount = (int)this.getVListReq.Result;
+                this.remoteVerListRef = this.getVListReq.RemoteVerList;
+
                 this.getVListReq.Free();
                 
                 // The local version list was assigned to the get-version-list request.
@@ -1377,11 +1497,17 @@ namespace GraphView.Transaction
                 // The request successfully initialized a version list for the record. 
                 if ((long)this.initiGetVListReq.Result == 1)
                 {
-                    VersionKeyEntry versionKeyEntry = this.executor.ResourceManager.GetVersionKeyEntry(
-                        this.readTableId, this.readRecordKey, VersionEntry.VERSION_KEY_STRAT_INDEX);
-                    this.largestVersionKeySet.Add(versionKeyEntry);
-                    this.txSetEntryGCQueue.Enqueue(versionKeyEntry);
+                    if (this.largestVerKeySetCount == this.largestVersionKeySet.Count)
+                    {
+                        this.largestVersionKeySet.ResizeAndFill(2 * this.largestVerKeySetCount);
+                    }
 
+                    this.largestVersionKeySet[this.largestVerKeySetCount++].Set(
+                        this.readTableId,
+                        this.readRecordKey,
+                        VersionEntry.VERSION_KEY_STRAT_INDEX);
+
+                    this.remoteVerListRef = this.initiGetVListReq.RemoteVerList;
                     this.initiGetVListReq.Free();
                     // No read call back is invoked. 
                     this.Progress = TxProgress.Open;
@@ -1391,7 +1517,7 @@ namespace GraphView.Transaction
                 }
                 else
                 {
-                    this.getVListReq.Set(this.readTableId, this.readRecordKey, this.versionList);
+                    this.getVListReq.Set(this.readTableId, this.readRecordKey, this.versionList, this.remoteVersionRefList);
                     this.getVListReq.Use();
 
                     this.versionDb.EnqueueVersionEntryRequest(this.readTableId, this.getVListReq, this.executor.Partition);
@@ -1404,6 +1530,7 @@ namespace GraphView.Transaction
 
         internal void ReadCheckVersionEntry()
         {
+            VersionEntry visiableVersionRef = null;
             VersionEntry visibleVersion = null;
             // Keep a committed version to retrieve the largest version key
             VersionEntry committedVersion = null;
@@ -1477,7 +1604,7 @@ namespace GraphView.Transaction
                     if (versionEntry.TxId >= 0)
                     {
                         // Send the GetTxEntry request
-                        this.getTxReq.Set(versionEntry.TxId);
+                        this.getTxReq.Set(versionEntry.TxId, this.localTxEntry, this.remoteTxEntryRef);
                         this.getTxReq.Use();
 
                         this.versionDb.EnqueueTxEntryRequest(versionEntry.TxId, getTxReq, this.executor.Partition);
@@ -1516,6 +1643,8 @@ namespace GraphView.Transaction
                 // Break the loop once find a visiable version
                 if (visibleVersion != null)
                 {
+                    // save the reference of visiable version entry
+                    visiableVersionRef = this.remoteVersionRefList[this.readSetCount - 1];
                     break;
                 }
             }
@@ -1526,21 +1655,27 @@ namespace GraphView.Transaction
             {
                 payload = visibleVersion.Record;
 
-                // Add the record to local readSet
-                ReadSetEntry readEntry = this.executor.ResourceManager.GetReadSetEntry(
-                    this.readTableId,
-                    this.readRecordKey,
-                    visibleVersion.VersionKey,
-                    visibleVersion.BeginTimestamp,
-                    visibleVersion.EndTimestamp,
-                    visibleVersion.TxId,
-                    visibleVersion.Record,
-                    this.readLargestVersionKey);
+                // resize to allocate more spaces
+                if (this.readSetCount == this.readSet.Count)
+                {
+                    this.readSet.ResizeAndFill(2 * this.readSetCount);
+                }
 
-                this.readSet.Add(readEntry);
-                this.txSetEntryGCQueue.Enqueue(readEntry);
+                this.readSet[this.readSetCount++].Set(
+                        this.readTableId,
+                        this.readRecordKey,
+                        visibleVersion.VersionKey,
+                        visibleVersion.BeginTimestamp,
+                        visibleVersion.EndTimestamp,
+                        visibleVersion.TxId,
+                        visibleVersion.Record,
+                        this.readLargestVersionKey,
+                        visiableVersionRef,
+                        this.remoteVerListRef);
             }
 
+            // Clear the remote version list, since those entries are added into the list rather replaceing
+            this.remoteVersionRefList.Clear();
             this.Progress = TxProgress.Open;
             this.CurrentProc = null;
             // Read call back
@@ -1549,23 +1684,9 @@ namespace GraphView.Transaction
 
         public void Commit()
         {
-            if (this.Progress != TxProgress.Open)
-            {
-                int x = 1;
-            }
-
             this.CurrentProc = this.uploadProc;
             this.CurrentProc();
             //this.WriteToLog();
-        }
-
-        private void ClearLocalList()
-        {
-            this.readSet.Clear();
-            this.writeSet.Clear();
-            this.commitSet.Clear();
-            this.abortSet.Clear();
-            this.largestVersionKeySet.Clear();
         }
 
         private ReadSetEntry dummyReadSetEntry = new ReadSetEntry();
@@ -1573,7 +1694,7 @@ namespace GraphView.Transaction
         {
             dummyReadSetEntry.TableId = tableId;
             dummyReadSetEntry.RecordKey = recordKey;
-            return this.readSet.Find(dummyReadSetEntry);
+            return this.readSet.Find(dummyReadSetEntry, this.readSetCount);
         }
 
         private WriteSetEntry dummyWriteSetEntry = new WriteSetEntry();
@@ -1581,7 +1702,7 @@ namespace GraphView.Transaction
         {
             dummyWriteSetEntry.TableId = tableId;
             dummyWriteSetEntry.RecordKey = recordKey;
-            return this.writeSet.Find(dummyWriteSetEntry);
+            return this.writeSet.Find(dummyWriteSetEntry, this.writeSetCount);
         }
 
         private VersionKeyEntry dummyVersionKeyEntry = new VersionKeyEntry();
@@ -1589,7 +1710,7 @@ namespace GraphView.Transaction
         {
             dummyVersionKeyEntry.TableId = tableId;
             dummyVersionKeyEntry.RecordKey = recordKey;
-            return this.largestVersionKeySet.Find(dummyVersionKeyEntry);
+            return this.largestVersionKeySet.Find(dummyVersionKeyEntry, this.largestVerKeySetCount);
         }
     }
 }
