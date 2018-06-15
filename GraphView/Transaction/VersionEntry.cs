@@ -101,6 +101,24 @@ namespace GraphView.Transaction
             dst.MaxCommitTs = src.MaxCommitTs;
         }
 
+        public void UpdateValue(
+            object recordKey,
+            long versionKey,
+            long beginTimestamp,
+            long endTimestamp,
+            object record,
+            long txId,
+            long maxCommitTs)
+        {
+            this.RecordKey = recordKey;
+            this.VersionKey = versionKey;
+            this.BeginTimestamp = beginTimestamp;
+            this.EndTimestamp = endTimestamp;
+            this.Record = record;
+            this.TxId = txId;
+            this.MaxCommitTs = maxCommitTs;
+        }
+
         public override bool Equals(object obj)
         {
             VersionEntry ventry = obj as VersionEntry;
