@@ -1,6 +1,7 @@
 ﻿namespace GraphView.Transaction
 {
     using NonBlocking;
+    using System.Collections.Generic;
 
     internal class ReadSetEntry : TxSetEntry
     {
@@ -11,7 +12,7 @@
         internal object Record { get; set; }
         internal long TailKey { get; set; }
         internal VersionEntry RemoteVerEntry { get; set; }
-        internal ConcurrentDictionary<long, VersionEntry> RemoteVerList { get; set; }
+        internal IDictionary<long, VersionEntry> RemoteVerList { get; set; }
 
         public ReadSetEntry()
         {
@@ -77,7 +78,7 @@
             object record,
             long tailKey,
             VersionEntry remoteVerEntry = null,
-            ConcurrentDictionary<long, VersionEntry> remoteVerList = null)
+            IDictionary<long, VersionEntry> remoteVerList = null)
         {
             this.TableId = tableId;
             this.RecordKey = recordKey;

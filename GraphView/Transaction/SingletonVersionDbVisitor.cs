@@ -50,12 +50,7 @@
             }
 
             while (Interlocked.CompareExchange(ref txEntry.latch, 1, 0) != 0) ;
-
-            txEntry.TxId = req.TxId;
-            txEntry.Status = TxStatus.Ongoing;
-            txEntry.CommitTime = TxTableEntry.DEFAULT_COMMIT_TIME;
-            txEntry.CommitLowerBound = TxTableEntry.DEFAULT_LOWER_BOUND;
-
+            txEntry.Reset(req.TxId);
             Interlocked.Exchange(ref txEntry.latch, 0);
 
             req.Finished = true;
@@ -64,7 +59,7 @@
         internal override void Visit(NewTxIdRequest req)
         {
             TxTableEntry txEntry = new TxTableEntry();
-            req.Result = this.txTable.TryAdd(req.TxId, txEntry) ? 1L : 0L;
+            req.Result = this.txTable.TryAdd(req.TxId, txEntry) ? true : false;
             req.RemoteTxEntry = txEntry;
             req.Finished = true;
         }
@@ -75,7 +70,7 @@
             TxTableEntry txEntry = null;
             if (!this.txTable.TryGetValue(req.TxId, out txEntry))
             {
-                req.Result = 0L;
+                req.Result = false;
                 req.Finished = true;
                 return;
             }
@@ -85,7 +80,7 @@
             Interlocked.Exchange(ref txEntry.latch, 0);
 
             req.RemoteTxEntry = txEntry;
-            req.Result = 1L;
+            req.Result = true;
             req.Finished = true;
         }
 
@@ -159,8 +154,6 @@
                 {
                     throw new TransactionException("The specified tx does not exist.");
                 }
-
-                req.RemoteTxEntry = txEntry;
             }
 
             txEntry.Status = req.TxStatus;

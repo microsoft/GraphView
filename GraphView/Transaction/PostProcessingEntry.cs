@@ -1,6 +1,7 @@
 ﻿namespace GraphView.Transaction
 {
     using NonBlocking;
+    using System.Collections.Generic;
 
     class PostProcessingEntry : TxSetEntry
     {
@@ -41,7 +42,7 @@
            long beginTimestamp,
            long endTimestamp,
            VersionEntry remoteVerEntry,
-           ConcurrentDictionary<long, VersionEntry> remoteVerList) : base(tableId, recordKey)
+           IDictionary<long, VersionEntry> remoteVerList) : base(tableId, recordKey)
         {
             this.VersionKey = versionKey;
             this.BeginTimestamp = beginTimestamp;
@@ -57,7 +58,7 @@
            long beginTimestamp,
            long endTimestamp,
            VersionEntry remoteVerEntry,
-           ConcurrentDictionary<long, VersionEntry> remoteVerList)
+           IDictionary<long, VersionEntry> remoteVerList)
         {
             this.TableId = tableId;
             this.RecordKey = recordKey;

@@ -1,7 +1,8 @@
 ﻿
 namespace GraphView.Transaction
 {
-    using NonBlocking;
+    using System.Collections.Generic;
+
     //using System.Collections.Concurrent;
 
     public abstract class TxRequest : IResource
@@ -98,7 +99,7 @@ namespace GraphView.Transaction
         /// <summary>
         /// The reference to the remote version list address
         /// </summary>
-        public ConcurrentDictionary<long, VersionEntry> RemoteVerList { get; set; }
+        public IDictionary<long, VersionEntry> RemoteVerList { get; set; }
 
         public VersionEntryRequest(string tableId, object recordKey, long versionKey)
         {
@@ -116,7 +117,7 @@ namespace GraphView.Transaction
             long versionKey,
             VersionEntry localVerEntry,
             VersionEntry remoteVerEntry,
-            ConcurrentDictionary<long, VersionEntry> remoteVerList)
+            IDictionary<long, VersionEntry> remoteVerList)
         {
             this.TableId = tableId;
             this.RecordKey = recordKey;
@@ -327,7 +328,7 @@ namespace GraphView.Transaction
             string tableId,
             object recordKey,
             long versionKey,
-            ConcurrentDictionary<long, VersionEntry> remoteVerList = null)
+            IDictionary<long, VersionEntry> remoteVerList = null)
         {
             this.TableId = tableId;
             this.RecordKey = recordKey;
@@ -589,7 +590,7 @@ namespace GraphView.Transaction
             object recordKey, 
             long versionKey, 
             VersionEntry versionEntry,
-            ConcurrentDictionary<long, VersionEntry> remoteVerList = null)
+            IDictionary<long, VersionEntry> remoteVerList = null)
         {
             this.TableId = tableId;
             this.RecordKey = recordKey;

@@ -1,11 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace GraphView.Transaction
+﻿namespace GraphView.Transaction
 {
+    using System;
+    using System.Text;
+    using System.Collections.Generic;
     using ServiceStack.Redis;
     using ServiceStack.Redis.Pipeline;
 
