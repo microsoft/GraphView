@@ -47,7 +47,7 @@ namespace GraphView.Transaction
             int cnt = 0;
             foreach (var row in rs)
             {
-                req.RemoteVerList[cnt].UpdateValue(
+                req.LocalContainer[cnt].UpdateValue(
                     row.GetValue<string>("recordkey"),
                     row.GetValue<long>("versionkey"),
                     row.GetValue<long>("begintimestamp"),

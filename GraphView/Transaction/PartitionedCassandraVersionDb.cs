@@ -4,6 +4,7 @@ namespace GraphView.Transaction
     using Cassandra;
     using System.Threading;
     using System.Collections.Generic;
+    using System;
 
     internal partial class PartitionedCassandraVersionDb : VersionDb
     {
@@ -40,12 +41,17 @@ namespace GraphView.Transaction
         /// </summary>
         PartitionedCassandraVersionDbVisitor cassandraVisitor;
 
+        internal TxResourceManager[] resourceManagers;
+
         private PartitionedCassandraVersionDb(int partitionCount)
+            :base(partitionCount)
         {
             this.partitionedQueues = new RequestQueue<TxEntryRequest>[partitionCount];
+            this.resourceManagers = new TxResourceManager[partitionCount];
             for (int pk = 0; pk < partitionCount; pk++)
             {
                 this.partitionedQueues[pk] = new RequestQueue<TxEntryRequest>(partitionCount);
+                this.resourceManagers[pk] = new TxResourceManager();
             }
             this.cassandraVisitor = new PartitionedCassandraVersionDbVisitor();
 
@@ -80,8 +86,30 @@ namespace GraphView.Transaction
                 if (this.partitionedQueues[partitionKey].TryDequeue(out txReq))
                 {
                     cassandraVisitor.Visit(txReq);
-                } 
+                }
+                // flush VersionTables Queue
+                VersionEntryRequest veReq = null;
+                lock (this.versionTables)
+                {
+
+                    foreach (var item in this.versionTables)
+                    {
+                        if ((item.Value as PartitionedCassandraVersionTable).partitionedQueues[partitionKey].TryDequeue(out veReq))
+                        {
+                            (item.Value as PartitionedCassandraVersionTable).cassandraVisitor.Visit(veReq);
+                        }
+                    }
+                }
             }
+        }
+
+        internal override TxResourceManager GetResourceManagerByPartitionIndex(int partition)
+        {
+            if (partition >= this.PartitionCount)
+            {
+                throw new ArgumentException("partition should be smaller then partitionCount");
+            }
+            return this.resourceManagers[partition];
         }
 
         internal override void EnqueueTxEntryRequest(long txId, TxEntryRequest txEntryRequest, int executorPK = 0)
