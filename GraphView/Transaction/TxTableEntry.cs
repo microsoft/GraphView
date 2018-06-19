@@ -74,8 +74,13 @@ namespace GraphView.Transaction
                 this.CommitTime == entry.CommitTime && this.CommitLowerBound == entry.CommitLowerBound;
         }
 
-        internal void Reset()
+        internal void Reset(long txId = -1)
         {
+            if (txId != -1)
+            {
+                this.TxId = txId;
+            }
+
             this.Status = TxStatus.Ongoing;
             this.CommitTime = TxTableEntry.DEFAULT_COMMIT_TIME;
             this.CommitLowerBound = TxTableEntry.DEFAULT_LOWER_BOUND;

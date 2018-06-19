@@ -4,6 +4,7 @@
     //using System.Collections.Concurrent;
     using System;
     using NonBlocking;
+    using System.Collections.Generic;
 
     internal class SingletonVersionTableVisitor : VersionTableVisitor
     {
@@ -16,13 +17,14 @@
 
         internal override void Visit(DeleteVersionRequest req)
         {
-            ConcurrentDictionary<long, VersionEntry> versionList = req.RemoteVerList;
+            ConcurrentDictionary<long, VersionEntry> versionList = req.RemoteVerList as 
+                ConcurrentDictionary<long, VersionEntry>;
             // Only get the version list location when version list is null
             if (versionList == null)
             {
                 if (!this.dict.TryGetValue(req.RecordKey, out versionList))
                 {
-                    req.Result = 1L;
+                    req.Result = true;
                     req.Finished = true;
                     return;
                 }
@@ -31,14 +33,16 @@
             VersionEntry versionEntry = null;
             if (versionList.TryRemove(req.VersionKey, out versionEntry))
             {
-                req.Result = 1L;
-                req.Finished = true;
+                VersionEntry tailEntry = versionList[VersionEntry.VERSION_KEY_STRAT_INDEX];
+                tailEntry.BeginTimestamp -= 1;
+                req.Result = false;
             }
             else
             {
                 req.Result = 0L;
-                req.Finished = true;
             }
+
+            req.Finished = true;
         }
 
         internal override void Visit(InitiGetVersionListRequest req)
@@ -57,7 +61,7 @@
                     // The version list is newly created by this tx. 
                     // No meaningful versions exist, except for the artificial entry as a tail pointer. 
                     req.RemoteVerList = newVersionList;
-                    req.Result = 1L;
+                    req.Result = true;
                     req.Finished = true;
                     return;
                 }
@@ -65,7 +69,7 @@
             else
             {
                 req.RemoteVerList = null;
-                req.Result = 0L;
+                req.Result = false;
                 req.Finished = true;
             }
         }
@@ -105,7 +109,8 @@
 
         internal override void Visit(UploadVersionRequest req)
         {
-            ConcurrentDictionary<long, VersionEntry> versionList = req.RemoteVerList;
+            ConcurrentDictionary<long, VersionEntry> versionList = req.RemoteVerList as 
+                ConcurrentDictionary<long, VersionEntry>;
             if (versionList == null)
             {
                 if (!this.dict.TryGetValue(req.RecordKey, out versionList))
@@ -135,7 +140,7 @@
                     tailKey = tailEntry.VersionKey;
                 }
 
-                req.Result = 1L;
+                req.Result = true;
                 req.Finished = true;
                 return;
             }
@@ -143,7 +148,7 @@
             {
                 // The same version key has been added before or by a concurrent tx. 
                 // The new version cannot be inserted.
-                req.Result = 0L;
+                req.Result = false;
                 req.Finished = true;
             }
         }

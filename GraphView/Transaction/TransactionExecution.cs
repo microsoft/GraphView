@@ -116,7 +116,7 @@ namespace GraphView.Transaction
         // Those references of remote entries will be stored in the remoteVersionList to 
         // get the right pointer of remote version entry
         private readonly TxList<VersionEntry> remoteVersionRefList;
-        private ConcurrentDictionary<long, VersionEntry> remoteVerListRef;
+        private IDictionary<long, VersionEntry> remoteVerListRef;
         // Private variables to store temp values
         // record the tableId and recordKey between funcs in read operation
         private string readTableId;
@@ -324,7 +324,7 @@ namespace GraphView.Transaction
                 return;
             }
 
-            while ((long)this.newTxIdReq.Result == 0)
+            while (!(bool)this.newTxIdReq.Result)
             {
                 // Retry in loop to get the unique txId
                 long newId = this.txRange.NextTxCandidate();
@@ -375,7 +375,7 @@ namespace GraphView.Transaction
                 return;
             }
 
-            if ((long)this.recycleTxReq.Result == 0)
+            if (!(bool)this.recycleTxReq.Result)
             {
                 this.CurrentProc = this.abortProc;
                 this.CurrentProc();
@@ -732,7 +732,7 @@ namespace GraphView.Transaction
             long beginTs, 
             long endTs,
             VersionEntry remoteVerEntryRef = null,
-            ConcurrentDictionary<long, VersionEntry> remoteVerList = null)
+            IDictionary<long, VersionEntry> remoteVerList = null)
         {
             if (this.abortSetCount == this.abortSet.Count)
             {
@@ -749,7 +749,7 @@ namespace GraphView.Transaction
             long beginTs, 
             long endTs,
             VersionEntry remoteVerEntryRef = null,
-            ConcurrentDictionary<long, VersionEntry> remoteVerList = null)
+            IDictionary<long, VersionEntry> remoteVerList = null)
         {
             if (this.commitSetCount == this.commitSet.Count)
             {
@@ -1495,7 +1495,7 @@ namespace GraphView.Transaction
 
                 // The record did not exist. 
                 // The request successfully initialized a version list for the record. 
-                if ((long)this.initiGetVListReq.Result == 1)
+                if ((bool)this.initiGetVListReq.Result)
                 {
                     if (this.largestVerKeySetCount == this.largestVersionKeySet.Count)
                     {
