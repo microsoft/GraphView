@@ -344,47 +344,6 @@
             Console.WriteLine();
         }
 
-
-        internal void Stats2()
-        {
-            this.totalTasks = this.executorCount * this.txCountPerExecutor;
-            Console.WriteLine("\nWay1 to Compute Throughput");
-            Console.WriteLine("\nFinshed {0} requests in {1} seconds", (this.executorCount * this.txCountPerExecutor), this.RunSeconds);
-            Console.WriteLine("Transaction Throughput: {0} tx/second", this.TxThroughput);
-
-            Console.WriteLine("\nWay2 to Compute Throughput");
-            int executorId = 0;
-            double totalRunSeconds = 0;
-            foreach (TransactionExecutor executor in this.executorList)
-            {
-                double runSeconds = (executor.RunEndTicks - executor.RunBeginTicks) * 1.0 / 10000000;
-                totalRunSeconds += runSeconds;
-                //Console.WriteLine("Executor {0} run time: {1}s", executorId++, runSeconds);
-            }
-            double averageRunSeconds = totalRunSeconds / this.executorCount;
-            double throughput2 = this.totalTasks / averageRunSeconds;
-            // Console.WriteLine("\nFinshed {0} requests in {1} seconds", (this.executorCount * this.txCountPerExecutor), this.RunSeconds);
-            Console.WriteLine("Transaction Throughput: {0} tx/second", (int)throughput2);
-
-            int totalTxs = 0, abortedTxs = 0;
-            foreach (TransactionExecutor executor in this.executorList)
-            {
-                totalTxs += executor.FinishedTxs;
-                abortedTxs += (executor.FinishedTxs - executor.CommittedTxs);
-            }
-            Console.WriteLine("\nFinshed {0} txs, Aborted {1} txs", totalTxs, abortedTxs);
-            Console.WriteLine("Transaction AbortRate: {0}%", (abortedTxs * 1.0 / totalTxs) * 100);
-
-            if (this.versionDb is RedisVersionDb)
-            {
-                Console.WriteLine("\nFinshed {0} commands in {1} seconds", this.commandCount, this.RunSeconds);
-                Console.WriteLine("Redis Throughput: {0} cmds/second", this.RedisThroughput);
-            }
-
-            Console.WriteLine("Enqueued Tx Requests Count: {0}", VersionDb.EnqueuedRequests);
-            Console.WriteLine();
-        }
-
         /// <summary>
         /// Load record by multiple threads
         /// </summary>
@@ -401,10 +360,6 @@
             else if (this.versionDb is SingletonPartitionedVersionDb)
             {
                 partitions = ((SingletonPartitionedVersionDb)this.versionDb).PartitionCount;
-            } 
-            else if (this.versionDb is PartitionedCassandraVersionDb)
-            {
-                partitions = ((PartitionedCassandraVersionDb)this.versionDb).PartitionCount;
             }
 
             List<TransactionExecutor> executors;
