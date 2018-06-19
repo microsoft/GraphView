@@ -20,7 +20,7 @@ namespace GraphView.Transaction
             }
         }
 
-        RequestQueue<VersionEntryRequest>[] partitionedQueues;
+        internal RequestQueue<VersionEntryRequest>[] partitionedQueues;
         /// <summary>
         /// A visitor that translates tx entry requests to CQL queries, 
         /// sends them to Cassandra, and collects results and fill the request's result fields.
@@ -28,7 +28,7 @@ namespace GraphView.Transaction
         /// Since the visitor maintains no states across individual invokations, 
         /// only one instance suffice for all invoking threads. 
         /// </summary>
-        PartitionedCassandraVersionTableVisitor cassandraVisitor;
+        internal PartitionedCassandraVersionTableVisitor cassandraVisitor;
 
         public PartitionedCassandraVersionTable(VersionDb versionDb, string tableId, int partitionCount = 4)
             : base(versionDb, tableId)
@@ -41,25 +41,25 @@ namespace GraphView.Transaction
             }
             this.cassandraVisitor = new PartitionedCassandraVersionTableVisitor();
 
-            for (int pk = 0; pk < partitionCount; pk++)
-            {
-                Thread thread = new Thread(this.Monitor);
-                thread.Start(pk);
-            }
+            //for (int pk = 0; pk < partitionCount; pk++)
+            //{
+            //    Thread thread = new Thread(this.Monitor);
+            //    thread.Start(pk);
+            //}
         }
 
-        private void Monitor(object pk)
-        {
-            int partitionKey = (int)pk;
-            while (true)
-            {
-                VersionEntryRequest veReq = null;
-                if (this.partitionedQueues[partitionKey].TryDequeue(out veReq))
-                {
-                    cassandraVisitor.Visit(veReq);
-                }
-            }
-        }
+        //private void Monitor(object pk)
+        //{
+        //    int partitionKey = (int)pk;
+        //    while (true)
+        //    {
+        //        VersionEntryRequest veReq = null;
+        //        if (this.partitionedQueues[partitionKey].TryDequeue(out veReq))
+        //        {
+        //            cassandraVisitor.Visit(veReq);
+        //        }
+        //    }
+        //}
 
         internal override void EnqueueVersionEntryRequest(VersionEntryRequest req, int execPartition = 0)
         {

@@ -320,6 +320,8 @@
     <Compile Include="Transaction\CassandraVersionDbVisitor.cs" />
     <Compile Include="Transaction\PartitionedCassandraVersionDbVisitor.cs" />
     <Compile Include="Transaction\CassandraVersionTableVisitor.cs" />
+    <Compile Include="Transaction\PartitionedCassandraVersionTable.cs" />
+    <Compile Include="Transaction\PartitionedCassandraVersionTableVisitor.cs" />
     <Compile Include="Transaction\RedisVersionTableVisitor.cs" />
     <Compile Include="Transaction\LogRequest.cs" />
     <Compile Include="Transaction\CassandraVersionDb.cs" />

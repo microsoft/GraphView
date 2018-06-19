@@ -327,21 +327,42 @@ namespace TransactionBenchmarkTest.YCSB
 
         }
 
+
+        public static void YCSBAsyncTestWithPartitionedCassandra()
+        {
+            const int partitionCount = 2;
+            const int recordCount = 20000;
+            const int executorCount = 2;
+            const int txCountPerExecutor = 10000;
+
+            const string dataFile = "ycsb_data_r_1000.in";
+            const string operationFile = "ycsb_ops_r.in";
+                        
+            string[] tables = new string[]
+            {
+                VersionDb.TX_TABLE,
+                YCSBAsyncBenchmarkTest.TABLE_ID
+            };
+            
+            // The default mode of versionDb is daemonMode
+            PartitionedCassandraVersionDb versionDb = PartitionedCassandraVersionDb.Instance(partitionCount);
+            YCSBAsyncBenchmarkTest test = new YCSBAsyncBenchmarkTest(recordCount,
+                executorCount, txCountPerExecutor, versionDb, tables);
+
+            test.Setup(dataFile, operationFile);
+            test.Run();
+            test.Stats2();
+            
+        }
+
+
         public static void Main(string[] args)
         {
-            string destination = args.Length > 0 ? args[0] : "cassandra";
-            switch(destination)
-            {
-                case "cassandra":
-                    YCSBSyncTestWithCassandra(args);
-                    break;
-                default:
-                    YCSBSyncTestWithCassandra(args);
-                    break;
-            }
+            //YCSBSyncTestWithCassandra(args);
+            YCSBAsyncTestWithPartitionedCassandra();
 
             Console.WriteLine("Done");
-            //Console.ReadLine();
+            Console.ReadLine();
         }   
     }
 }
