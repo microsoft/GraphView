@@ -30,7 +30,7 @@ namespace GraphView.Transaction
 
         internal override void Visit(GetVersionListRequest req)
         {
-            TxList<VersionEntry> versionList = req.Container;
+            TxList<VersionEntry> versionList = req.LocalContainer;
 
             byte[][] returnBytes = req.Result as byte[][];
             if (returnBytes != null && returnBytes.Length != 0)

@@ -245,7 +245,7 @@ namespace GraphView.Transaction
             this.RunBeginTicks = DateTime.Now.Ticks;
             foreach (TransactionRequest req in this.workload)
             {
-                this.workloadAction(req.Workload, this.txExecution);
+                // this.workloadAction(req.Workload, this.txExecution);
             }
             this.RunEndTicks = DateTime.Now.Ticks;
         }
