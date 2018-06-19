@@ -430,7 +430,7 @@ namespace GraphView.Transaction
             this.RecordKey = recordKey;
             this.VersionKey = versionKey;
             this.LocalVerEntry = localEntry;
-            this.RemoteVerEntry = localEntry;
+            this.RemoteVerEntry = remoteEntry;
         }
 
         internal override void Accept(VersionEntryVisitor visitor)

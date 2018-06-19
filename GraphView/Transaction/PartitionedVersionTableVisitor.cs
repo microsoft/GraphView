@@ -74,7 +74,7 @@ namespace GraphView.Transaction
                 if (verEntry != null)
                 {
                     VersionEntry.CopyValue(verEntry, localList[entryCount]);
-                    remoteList[entryCount++] = verEntry;
+                    remoteList.Add(verEntry);
                     entryCount++;
 
                     if (verEntry.TxId == VersionEntry.EMPTY_TXID)

@@ -12,6 +12,8 @@ namespace GraphView.Transaction
 
         internal long VersionKey { get; set; }
 
+        internal IDictionary<long, VersionEntry> RemoteVerList { get; set; } 
+
         public WriteSetEntry()
         {
 
@@ -36,12 +38,18 @@ namespace GraphView.Transaction
             this.VersionKey = versionKey;
         }
 
-        public void Set(string tableId, object recordKey, object payload, long versionKey)
+        public void Set(
+            string tableId, 
+            object recordKey, 
+            object payload, 
+            long versionKey,
+            IDictionary<long, VersionEntry> remoteVerList = null)
         {
             this.TableId = tableId;
             this.RecordKey = recordKey;
             this.Payload = payload;
             this.VersionKey = versionKey;
+            this.RemoteVerList = remoteVerList;
         }
 
         public override bool Equals(object obj)
