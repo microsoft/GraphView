@@ -208,6 +208,7 @@
 
             this.startEventSlim = new ManualResetEventSlim();
             this.countdownEvent = new CountdownEvent(this.executorCount);
+            Console.WriteLine("executors: {0}, cnt/executor: {1}", this.executorCount, this.txCountPerExecutor);
         }
 
         internal void Setup(string dataFile, string operationFile)
@@ -452,13 +453,13 @@
                     TransactionRequest req = new TransactionRequest(sessionId, workload, StoredProcedureType.YCSBStordProcedure);
                     reqQueue.Enqueue(req);
                     // ACTION(Tuple.Create(this.versionDb, workload));
-                    if (count % 500000 == 0)
+                    if (count % 100 == 0)
                     {
                         // Console.WriteLine("Loaded {0} records", count);
                         Console.WriteLine("Enqueued {0} tx insert request", count);
                     }
                 }
-                Console.WriteLine("Filled 1 executor to load data");
+                //Console.WriteLine("Filled 1 executor to load data");
                 TransactionExecutor executor = new TransactionExecutor(this.versionDb, null, reqQueue, 0, 0, 0,
                     this.versionDb.GetResourceManagerByPartitionIndex(0), this.tables);
                 // new a thread to run the executor
@@ -467,7 +468,7 @@
                 while (!executor.AllRequestsFinished)
                 {
                     // Console.WriteLine("Loaded {0} records", executor.CommittedTxs);
-                    if (executor.CommittedTxs > 0 && executor.CommittedTxs % 500000 == 0)
+                    if (executor.CommittedTxs > 0 && executor.CommittedTxs % 100 == 0)
                     {
                         // Console.WriteLine("Loaded {0} records", count);
                         Console.WriteLine("Executed {0} tx insert request", executor.CommittedTxs);

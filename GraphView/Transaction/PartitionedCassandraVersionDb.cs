@@ -259,8 +259,8 @@ namespace GraphView.Transaction
                 {
                     if (!this.versionTables.ContainsKey(tableId))
                     {
-                        // PartitionedCassandraVersionTable vtable = new PartitionedCassandraVersionTable(this, tableId, this.PartitionCount);
-                        // this.versionTables.Add(tableId, vtable);
+                        PartitionedCassandraVersionTable vtable = new PartitionedCassandraVersionTable(this, tableId, this.PartitionCount);
+                        this.versionTables.Add(tableId, vtable);
                     }
                 }
             }

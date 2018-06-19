@@ -331,9 +331,9 @@ namespace TransactionBenchmarkTest.YCSB
         public static void YCSBAsyncTestWithPartitionedCassandra()
         {
             const int partitionCount = 2;
-            const int recordCount = 20000;
+            const int recordCount = 2000;
             const int executorCount = 2;
-            const int txCountPerExecutor = 10000;
+            const int txCountPerExecutor = 1000;
 
             const string dataFile = "ycsb_data_r_1000.in";
             const string operationFile = "ycsb_ops_r.in";
@@ -363,6 +363,9 @@ namespace TransactionBenchmarkTest.YCSB
 
             Console.WriteLine("Done");
             Console.ReadLine();
+            //Console.ReadLine();
+            //Console.ReadLine();
+            //Console.ReadLine();
         }   
     }
 }
