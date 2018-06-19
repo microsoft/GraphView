@@ -1,8 +1,10 @@
 ﻿namespace GraphView.Transaction
 {
     using System.Threading;
-    using NonBlocking;
     //using System.Collections.Concurrent;
+    using System;
+    using NonBlocking;
+    using System.Collections.Generic;
 
     internal class SingletonVersionTableVisitor : VersionTableVisitor
     {
@@ -15,25 +17,33 @@
 
         internal override void Visit(DeleteVersionRequest req)
         {
-            ConcurrentDictionary<long, VersionEntry> versionList = null;
-            if (!this.dict.TryGetValue(req.RecordKey, out versionList))
+            ConcurrentDictionary<long, VersionEntry> versionList = req.RemoteVerList as 
+                ConcurrentDictionary<long, VersionEntry>;
+            // Only get the version list location when version list is null
+            if (versionList == null)
             {
-                req.Result = 1L;
-                req.Finished = true;
-                return;
+                if (!this.dict.TryGetValue(req.RecordKey, out versionList))
+                {
+                    req.Result = true;
+                    req.Finished = true;
+                    return;
+                }
             }
 
             VersionEntry versionEntry = null;
             if (versionList.TryRemove(req.VersionKey, out versionEntry))
             {
-                req.Result = 1L;
-                req.Finished = true;
+                VersionEntry tailEntry = versionList[VersionEntry.VERSION_KEY_STRAT_INDEX];
+                long tailKey = tailEntry.BeginTimestamp;
+                Interlocked.CompareExchange(ref tailEntry.BeginTimestamp, tailKey-1, tailKey);
+                req.Result = true;
             }
             else
             {
-                req.Result = 0L;
-                req.Finished = true;
+                req.Result = false;
             }
+
+            req.Finished = true;
         }
 
         internal override void Visit(InitiGetVersionListRequest req)
@@ -51,32 +61,37 @@
                 {
                     // The version list is newly created by this tx. 
                     // No meaningful versions exist, except for the artificial entry as a tail pointer. 
-                    req.Result = 1L;
+                    req.RemoteVerList = newVersionList;
+                    req.Result = true;
                     req.Finished = true;
                     return;
                 }
             }
             else
             {
-                req.Result = 0L;
+                req.RemoteVerList = null;
+                req.Result = false;
                 req.Finished = true;
             }
         }
 
         internal override void Visit(ReplaceVersionRequest req)
         {
-            ConcurrentDictionary<long, VersionEntry> versionList = null;
-            if (!this.dict.TryGetValue(req.RecordKey, out versionList))
+            VersionEntry entry = req.RemoteVerEntry;
+            if (entry == null)
             {
-                throw new TransactionException("The specified record does not exist.");
-            }
+                ConcurrentDictionary<long, VersionEntry> versionList = null;
+                if (!this.dict.TryGetValue(req.RecordKey, out versionList))
+                {
+                    throw new TransactionException("The specified record does not exist.");
+                }
 
-            VersionEntry entry = null;
-            if (!versionList.TryGetValue(req.VersionKey, out entry))
-            {
-                throw new TransactionException("The specified version does not exist.");
+                if (!versionList.TryGetValue(req.VersionKey, out entry))
+                {
+                    throw new TransactionException("The specified version does not exist.");
+                }
             }
-
+            
             if (entry.TxId == req.ReadTxId && entry.EndTimestamp == req.ExpectedEndTs)
             {
                 while (Interlocked.CompareExchange(ref entry.latch, 1, 0) != 0) ;
@@ -84,45 +99,40 @@
                 entry.BeginTimestamp = req.BeginTs;
                 entry.EndTimestamp = req.EndTs;
                 entry.TxId = req.TxId;
-                VersionEntry.CopyValue(entry, req.VersionEntry);
+                VersionEntry.CopyValue(entry, req.LocalVerEntry);
 
                 Interlocked.Exchange(ref entry.latch, 0);
             }
 
-            req.Result = req.VersionEntry;
+            req.Result = req.LocalVerEntry;
             req.Finished = true;
         }
 
         internal override void Visit(UploadVersionRequest req)
         {
-            ConcurrentDictionary<long, VersionEntry> versionList = null;
-            if (!this.dict.TryGetValue(req.RecordKey, out versionList))
+            ConcurrentDictionary<long, VersionEntry> versionList = req.RemoteVerList as 
+                ConcurrentDictionary<long, VersionEntry>;
+            if (versionList == null)
             {
-                throw new TransactionException("The specified record does not exist.");
+                if (!this.dict.TryGetValue(req.RecordKey, out versionList))
+                {
+                    throw new TransactionException("The specified record does not exist.");
+                }
             }
 
             if (versionList.TryAdd(req.VersionKey, req.VersionEntry))
             {
                 // The new version has been inserted successfully. Re-directs the tail pointer to the new version.  
                 VersionEntry tailEntry = null;
-                versionList.TryGetValue(SingletonDictionaryVersionTable.TAIL_KEY, out tailEntry);
+                versionList.TryGetValue(VersionEntry.VERSION_KEY_STRAT_INDEX, out tailEntry);
 
-                if (tailEntry == null)
-                {
-                    throw new TransactionException("Tail pointer is missing from the version list.");
-                }
+                long tailKey = tailEntry.BeginTimestamp;
+                // Here we use Interlocked to atomically update the tail entry, instead of ConcurrentDict.TryUpdate().
+                // This is because once created, the whole tail entry always stays and is never replaced.
+                // All concurrent tx's only access the tail pointer, i.e., the beginTimestamp field.  
+                Interlocked.CompareExchange(ref tailEntry.BeginTimestamp, req.VersionKey, tailKey);
 
-                long tailKey = tailEntry.VersionKey;
-                while (tailKey < req.VersionKey)
-                {
-                    // Here we use Interlocked to atomically update the tail entry, instead of ConcurrentDict.TryUpdate().
-                    // This is because once created, the whole tail entry always stays and is never replaced.
-                    // All concurrent tx's only access the tail pointer, i.e., the beginTimestamp field.  
-                    Interlocked.CompareExchange(ref tailEntry.VersionKey, req.VersionKey, tailKey);
-                    tailKey = tailEntry.VersionKey;
-                }
-
-                req.Result = 1L;
+                req.Result = true;
                 req.Finished = true;
                 return;
             }
@@ -130,33 +140,36 @@
             {
                 // The same version key has been added before or by a concurrent tx. 
                 // The new version cannot be inserted.
-                req.Result = 0L;
+                req.Result = false;
                 req.Finished = true;
             }
         }
 
         internal override void Visit(UpdateVersionMaxCommitTsRequest req)
         {
-            ConcurrentDictionary<long, VersionEntry> versionList = null;
-            if (!this.dict.TryGetValue(req.RecordKey, out versionList))
+            VersionEntry verEntry = req.RemoteVerEntry;
+            if (verEntry == null)
             {
-                throw new TransactionException("The specified record does not exist.");
-            }
+                ConcurrentDictionary<long, VersionEntry> versionList = null;
+                if (!this.dict.TryGetValue(req.RecordKey, out versionList))
+                {
+                    throw new TransactionException("The specified record does not exist.");
+                }
 
-            VersionEntry verEntry = null;
-            if (!versionList.TryGetValue(req.VersionKey, out verEntry))
-            {
-                throw new TransactionException("The specified version does not exist.");
+                if (!versionList.TryGetValue(req.VersionKey, out verEntry))
+                {
+                    throw new TransactionException("The specified version does not exist.");
+                }
             }
 
             while (Interlocked.CompareExchange(ref verEntry.latch, 1, 0) != 0) ;
 
-            verEntry.MaxCommitTs = req.MaxCommitTs;
-            VersionEntry.CopyValue(verEntry, req.VersionEntry);
+            verEntry.MaxCommitTs = Math.Max(req.MaxCommitTs, verEntry.MaxCommitTs);
+            VersionEntry.CopyValue(verEntry, req.LocalVerEntry);
 
             Interlocked.Exchange(ref verEntry.latch, 0);
 
-            req.Result = req.VersionEntry;
+            req.Result = req.LocalVerEntry;
             req.Finished = true;
         }
 
@@ -165,6 +178,7 @@
             ConcurrentDictionary<long, VersionEntry> versionList = null;
             if (!this.dict.TryGetValue(req.RecordKey, out versionList))
             {
+                req.RemoteVerList = null;
                 req.Result = 0;
                 req.Finished = true;
                 return;
@@ -173,11 +187,11 @@
             // The value at -1 in the version list is a special entry, 
             // whose beginTimestamp points to the newest version. 
             VersionEntry tailEntry = null;
-            versionList.TryGetValue(SingletonDictionaryVersionTable.TAIL_KEY, out tailEntry);
-            long lastVersionKey = Interlocked.Read(ref tailEntry.VersionKey);
+            versionList.TryGetValue(VersionEntry.VERSION_KEY_STRAT_INDEX, out tailEntry);
+            long lastVersionKey = Interlocked.Read(ref tailEntry.BeginTimestamp);
 
-            TxList<VersionEntry> localList = req.Container;
-
+            TxList<VersionEntry> localList = req.LocalContainer;
+            TxList<VersionEntry> remoteList = req.RemoteContainer;
             int entryCount = 0;
             // Only returns top 2 newest versions. This is enough for serializability. 
             // For other isolation levels, more versions may need to be returned.
@@ -189,8 +203,12 @@
                 if (versionList.TryGetValue(lastVersionKey, out verEntry))
                 {
                     while (Interlocked.CompareExchange(ref verEntry.latch, 1, 0) != 0) ;
-                    VersionEntry.CopyValue(verEntry, localList[entryCount++]);
+                    VersionEntry.CopyValue(verEntry, localList[entryCount]);
                     Interlocked.Exchange(ref verEntry.latch, 0);
+
+                    // Here only add a reference to the list, no need to take the latch
+                    remoteList.Add(verEntry);
+                    entryCount++;
 
                     if (verEntry.TxId == VersionEntry.EMPTY_TXID)
                     {
@@ -201,35 +219,37 @@
                 lastVersionKey--;
             }
 
+            req.RemoteVerList = versionList;
             req.Result = entryCount;
             req.Finished = true;
         }
 
         internal override void Visit(ReadVersionRequest req)
         {
-            ConcurrentDictionary<long, VersionEntry> versionList = null;
-            if (!this.dict.TryGetValue(req.RecordKey, out versionList))
+            VersionEntry versionEntry = req.RemoteVerEntry;
+            if (versionEntry == null)
             {
-                req.Result = null;
-                req.Finished = true;
-                return;
+                ConcurrentDictionary<long, VersionEntry> versionList = null;
+                if (!this.dict.TryGetValue(req.RecordKey, out versionList))
+                {
+                    req.Result = null;
+                    req.Finished = true;
+                    return;
+                }
+
+                if (!versionList.TryGetValue(req.VersionKey, out versionEntry))
+                {
+                    req.Result = null;
+                    req.Finished = true;
+                }
             }
 
-            VersionEntry versionEntry = null;
-            if (!versionList.TryGetValue(req.VersionKey, out versionEntry))
-            {
-                req.Result = null;
-                req.Finished = true;
-            }
-            else
-            {
-                while (Interlocked.CompareExchange(ref versionEntry.latch, 1, 0) != 0) ;
-                VersionEntry.CopyValue(versionEntry, req.VersionEntry);
-                Interlocked.Exchange(ref versionEntry.latch, 0);
+            while (Interlocked.CompareExchange(ref versionEntry.latch, 1, 0) != 0) ;
+            VersionEntry.CopyValue(versionEntry, req.LocalVerEntry);
+            Interlocked.Exchange(ref versionEntry.latch, 0);
 
-                req.Result = req.VersionEntry;
-                req.Finished = true;
-            }
+            req.Result = req.LocalVerEntry;
+            req.Finished = true;
         }
     }
 }

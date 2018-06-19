@@ -1,14 +1,12 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace GraphView.Transaction
+﻿namespace GraphView.Transaction
 {
+    using System.Collections.Generic;
+
     class VersionKeyEntry : TxSetEntry
     {
         internal long VersionKey;
+
+        internal IDictionary<long, VersionEntry> RemoteVerList { get; set; }
 
         public VersionKeyEntry()
         {
@@ -19,6 +17,18 @@ namespace GraphView.Transaction
             base(tableId, recordKey)
         {
             this.VersionKey = versionKey;
+        }
+
+        public void Set(
+            string tableId, 
+            object recordKey, 
+            long versionKey,
+            IDictionary<long, VersionEntry> remoteVerList = null)
+        {
+            this.TableId = tableId;
+            this.RecordKey = recordKey;
+            this.VersionKey = versionKey;
+            this.RemoteVerList = remoteVerList;
         }
 
         public override bool Equals(object obj)
