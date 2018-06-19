@@ -1152,7 +1152,7 @@ namespace GraphView.Transaction
         }
 
         public void Read(string tableId, object recordKey, out bool received, out object payload)
-        {
+        { 
             this.Read(tableId, recordKey, false, out received, out payload);
         }
 
@@ -1505,11 +1505,6 @@ namespace GraphView.Transaction
 
         public void Commit()
         {
-            if (this.Progress != TxProgress.Open)
-            {
-                int x = 1;
-            }
-
             this.CurrentProc = this.uploadProc;
             this.CurrentProc();
             //this.WriteToLog();

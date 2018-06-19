@@ -24,7 +24,7 @@ namespace GraphView.Transaction
         /// </summary>
         protected readonly Queue<VersionEntryRequest>[] flushQueues;
 
-        protected readonly VersionTableVisitor[] tableVisitors;
+        internal readonly VersionTableVisitor[] tableVisitors;
 
         private readonly int[] queueLatches;
 

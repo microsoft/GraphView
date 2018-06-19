@@ -191,6 +191,9 @@
             }
         }
 
+        private string[] YCSBKeys;
+        private string[] YCSBValues;
+
         public YCSBAsyncBenchmarkTest(
             int recordCount,
             int executorCount,
@@ -208,6 +211,9 @@
 
             this.startEventSlim = new ManualResetEventSlim();
             this.countdownEvent = new CountdownEvent(this.executorCount);
+
+            this.YCSBKeys = new string[this.recordCount];
+            this.YCSBValues = new string[this.recordCount];
         }
 
         internal void Setup(string dataFile, string operationFile)
@@ -220,8 +226,8 @@
             this.versionDb.CreateVersionTable(TABLE_ID, REDIS_DB_INDEX);
 
             // step3: load data
-            this.LoadDataParallely(dataFile);
-            // this.LoadDataSequentially(dataFile);
+            // this.LoadDataParallely(dataFile);
+            this.LoadDataSequentially(dataFile);
 
             // step 4: fill workers' queue
             if (this.versionDb is SingletonPartitionedVersionDb && RESHUFFLE)
@@ -274,7 +280,7 @@
             int tid = 0;
             foreach (TransactionExecutor executor in this.executorList)
             {
-                tasks[tid++] = Task.Factory.StartNew(executor.ExecuteInSync);
+                tasks[tid++] = Task.Factory.StartNew(executor.YCSBExecuteRead);
             }
 
             this.startEventSlim.Set();
@@ -369,7 +375,7 @@
             }
 
             // 3.4 load records
-            Task[] tasks = new Task[this.executorCount];
+            Task[] tasks = new Task[executors.Count];
             int tid = 0;
             foreach (TransactionExecutor executor in executors)
             {
@@ -400,7 +406,8 @@
                 while ((line = reader.ReadLine()) != null)
                 {
                     string[] fields = this.ParseCommandFormat(line);
-                    YCSBWorkload workload = new YCSBWorkload(fields[0], TABLE_ID, fields[2], fields[3]);
+                    this.YCSBKeys[count] = fields[2];
+                    YCSBWorkload workload = new YCSBWorkload(fields[0], TABLE_ID, fields[2], fields[3], count);
                     count++;
 
                     string sessionId = count.ToString();
@@ -447,25 +454,34 @@
                     //line = reader.ReadLine();
                     //string[] fields = this.ParseCommandFormat(line);
                     Queue<TransactionRequest> reqQueue = new Queue<TransactionRequest>();
-                    for (int j = 0; j < this.txCountPerExecutor; j++)
-                    {
-                        line = reader.ReadLine();
-                        string[] fields = this.ParseCommandFormat(line);
+                    //for (int j = 0; j < this.txCountPerExecutor; j++)
+                    //{
+                    //    line = reader.ReadLine();
+                    //    string[] fields = this.ParseCommandFormat(line);
 
-                        YCSBWorkload workload = new YCSBWorkload(fields[0], TABLE_ID, fields[2], fields[3]);
-                        // YCSBWorkload workload = new YCSBWorkload("CLOSE", TABLE_ID, fields[2], fields[3]);
-                        string sessionId = ((i * this.txCountPerExecutor) + j + 1).ToString();
-                        TransactionRequest req = new TransactionRequest(sessionId, workload, StoredProcedureType.YCSBStordProcedure);
-                        reqQueue.Enqueue(req);
-                    }
+                    //    YCSBWorkload workload = null;
+                    //    //if (TransactionExecution.TEST)
+                    //    //{
+                    //    //    workload = new YCSBWorkload("CLOSE", TABLE_ID, fields[2], fields[3]);
+                    //    //}
+                    //    //else
+                    //    {
+                    //        workload = new YCSBWorkload(fields[0], TABLE_ID, fields[2], fields[3]);
+                    //    }
+                    //    // YCSBWorkload workload = new YCSBWorkload("CLOSE", TABLE_ID, fields[2], fields[3]);
+                    //    string sessionId = ((i * this.txCountPerExecutor) + j + 1).ToString();
+                    //    TransactionRequest req = new TransactionRequest(sessionId, workload, StoredProcedureType.YCSBStordProcedure);
+                    //    reqQueue.Enqueue(req);
+                    //}
 
                     Console.WriteLine("Filled {0} executors", i + 1);
 
-                    this.totalTasks += reqQueue.Count;
+                    // this.totalTasks += reqQueue.Count;
+                    this.totalTasks += this.txCountPerExecutor;
                     //executors.Add(new TransactionExecutor(this.versionDb, null, reqQueue, i, i, 0,
                     //    this.versionDb.GetResourceManagerByPartitionIndex(i), tables));
                     executors.Add(new TransactionExecutor(this.versionDb, null, reqQueue, i, i, 0,
-                       this.versionDb.GetResourceManagerByPartitionIndex(i), tables, null, null, WORKLOAD_ACTION));
+                       this.versionDb.GetResourceManagerByPartitionIndex(i), tables, null, null, this.YCSBKeys, this.txCountPerExecutor));
                 }
                 return executors;
             }

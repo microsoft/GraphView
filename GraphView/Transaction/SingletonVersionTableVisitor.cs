@@ -1,7 +1,8 @@
 ﻿namespace GraphView.Transaction
 {
     using System.Threading;
-    using System.Collections.Concurrent;
+    using NonBlocking;
+    //using System.Collections.Concurrent;
 
     internal class SingletonVersionTableVisitor : VersionTableVisitor
     {

@@ -32,7 +32,7 @@ namespace GraphView.Transaction
             }
 
             return this.TableId == other.TableId &&
-                this.RecordKey == other.RecordKey;
+                this.RecordKey.Equals(other.RecordKey);
         }
 
         public void Free()
