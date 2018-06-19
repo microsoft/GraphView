@@ -1306,7 +1306,7 @@ namespace GraphView.Transaction
         }
 
         public void Read(string tableId, object recordKey, out bool received, out object payload)
-        {
+        { 
             this.Read(tableId, recordKey, false, out received, out payload);
         }
 

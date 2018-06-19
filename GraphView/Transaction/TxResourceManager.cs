@@ -182,6 +182,32 @@ namespace GraphView.Transaction
             string tableId,
             object key,
             object value,
+            OperationType operationType,
+            int recordIntKey)
+        {
+            TransactionRequest transReq = this.transRequests.GetResource();
+            if (transReq == null)
+            {
+                transReq = new TransactionRequest();
+                transReq.Use();
+                this.transRequests.AddNewResource(transReq);
+            }
+
+            transReq.SessionId = sessionId;
+            transReq.TableId = tableId;
+            transReq.RecordKey = key;
+            transReq.Payload = value;
+            transReq.OperationType = operationType;
+            transReq.RecordIntKey = recordIntKey;
+
+            return transReq;
+        }
+
+        internal TransactionRequest TransactionRequest(
+            string sessionId,
+            string tableId,
+            object key,
+            object value,
             OperationType operationType)
         {
             TransactionRequest transReq = this.transRequests.GetResource();

@@ -101,9 +101,11 @@ namespace GraphView.Transaction
 
         private CountdownEvent countdownEvent;
 
-        private Action<object, TransactionExecution> workloadAction;
-
         private TransactionExecution txExecution;
+
+        private int taskCount;
+
+        private string[] YCSBKeys;
 
         internal long RunBeginTicks { get; set; }
         internal long RunEndTicks { get; set; }
@@ -119,7 +121,8 @@ namespace GraphView.Transaction
             string[] flushTables = null,
             ManualResetEventSlim startEventSlim = null,
             CountdownEvent countdownEvent = null,
-            Action<object, TransactionExecution> action = null)
+            string[] YCSBKeys = null,
+            int taskCount = 0)
         {
             this.versionDb = versionDb;
             this.logStore = logStore;
@@ -141,9 +144,12 @@ namespace GraphView.Transaction
             this.startEventSlim = startEventSlim;
             this.countdownEvent = countdownEvent;
 
-            this.workloadAction = action;
+              
             this.txExecution = new TransactionExecution(this.logStore, this.versionDb, null, 
                 this.GarbageQueueTxId,this.GarbageQueueFinishTime, this.txRange, this);
+
+            this.YCSBKeys = YCSBKeys;
+            this.taskCount = taskCount;
         }
 
         // add executor id
@@ -239,8 +245,32 @@ namespace GraphView.Transaction
             this.RunBeginTicks = DateTime.Now.Ticks;
             foreach (TransactionRequest req in this.workload)
             {
-                this.workloadAction(req.Workload, this.txExecution);
+                // this.workloadAction(req.Workload, this.txExecution);
             }
+            this.RunEndTicks = DateTime.Now.Ticks;
+        }
+
+        public void YCSBExecuteRead()
+        {
+            PinThreadOnCores(this.Partition);
+            this.RunBeginTicks = DateTime.Now.Ticks;
+
+            Random rand = new Random();
+            bool received = false;
+            object payload = null;
+            int indexBound = this.YCSBKeys.Length;
+
+            for (int i = 0; i < this.taskCount; i++)
+            {
+                //string recordKey = YCSBKeys[rand.Next(0, indexBound)];
+                int recordKey = rand.Next(0, indexBound);
+                this.txExecution.Reset();
+                this.txExecution.Read("ycsb_table", recordKey, out received, out payload);
+                recordKey = rand.Next(0, indexBound);
+                this.txExecution.Read("ycsb_table", recordKey, out received, out payload);
+                this.txExecution.Commit();
+            }
+
             this.RunEndTicks = DateTime.Now.Ticks;
         }
 
@@ -336,12 +366,14 @@ namespace GraphView.Transaction
                                     }
                                 case OperationType.InitiRead:
                                     {
-                                        txExec.ReadAndInitialize(opReq.TableId, opReq.RecordKey, out received, out payload);
+                                        txExec.ReadAndInitialize(opReq.TableId, opReq.RecordIntKey, out received, out payload);
+                                        //txExec.ReadAndInitialize(opReq.TableId, opReq.RecordKey, out received, out payload);
                                         break;
                                     }
                                 case OperationType.Insert:
                                     {
-                                        txExec.Insert(opReq.TableId, opReq.RecordKey, opReq.Payload);
+                                        txExec.Insert(opReq.TableId, opReq.RecordIntKey, opReq.Payload);
+                                        //txExec.Insert(opReq.TableId, opReq.RecordKey, opReq.Payload);
                                         break;
                                     }
                                 case OperationType.Update:

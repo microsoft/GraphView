@@ -125,10 +125,24 @@ namespace TransactionBenchmarkTest.YCSB
         // args[3]: txCountPerExecutor
         static void YCSBAsyncTestWithSingletonVersionDb(string[] args)
         {
-            int partitionCount = 1;
+            int partitionCount = 16;
             int executorCount = partitionCount;
-            int txCountPerExecutor = 200000;
-            string dataFile = "ycsb_data_r.in";
+            int txCountPerExecutor = 4000000;
+
+            // 20w
+            //string dataFile = "ycsb_data_r.in";
+            //const int recordCount = 200000;
+            //100w
+            //string dataFile = "ycsb_data_m_r.in";
+            //const int recordCount = 1000000;
+            // 500w
+            string dataFile = "ycsb_data_lg_r.in";
+            const int recordCount = 5000000;
+            // 1000w
+            //string dataFile = "ycsb_data_hg_r.in";
+            //const int recordCount = 10000000;
+
+
             string operationFile = "ycsb_ops_r.in";
             if (args.Length > 1)
             {
@@ -142,7 +156,6 @@ namespace TransactionBenchmarkTest.YCSB
             // these three settings are useless in SingletonVersionDb environment.
             const bool daemonMode = false;
             YCSBAsyncBenchmarkTest.RESHUFFLE = false;
-            const int recordCount = 200000;
 
             string[] tables =
             {

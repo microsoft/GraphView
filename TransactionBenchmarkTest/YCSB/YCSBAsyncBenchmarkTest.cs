@@ -191,6 +191,9 @@
             }
         }
 
+        private string[] YCSBKeys;
+        private string[] YCSBValues;
+
         public YCSBAsyncBenchmarkTest(
             int recordCount,
             int executorCount,
@@ -208,7 +211,8 @@
 
             this.startEventSlim = new ManualResetEventSlim();
             this.countdownEvent = new CountdownEvent(this.executorCount);
-            Console.WriteLine("executors: {0}, cnt/executor: {1}", this.executorCount, this.txCountPerExecutor);
+            this.YCSBKeys = new string[this.recordCount];
+            this.YCSBValues = new string[this.recordCount];
         }
 
         internal void Setup(string dataFile, string operationFile)
@@ -221,7 +225,7 @@
             this.versionDb.CreateVersionTable(TABLE_ID, REDIS_DB_INDEX);
 
             // step3: load data
-            //this.LoadDataParallely(dataFile);
+            // this.LoadDataParallely(dataFile);
             this.LoadDataSequentially(dataFile);
 
             // step 4: fill workers' queue
@@ -275,7 +279,7 @@
             int tid = 0;
             foreach (TransactionExecutor executor in this.executorList)
             {
-                tasks[tid++] = Task.Factory.StartNew(executor.ExecuteInSync);
+                tasks[tid++] = Task.Factory.StartNew(executor.YCSBExecuteRead);
             }
 
             this.startEventSlim.Set();
@@ -339,47 +343,6 @@
             Console.WriteLine();
         }
 
-
-        internal void Stats2()
-        {
-            this.totalTasks = this.executorCount * this.txCountPerExecutor;
-            Console.WriteLine("\nWay1 to Compute Throughput");
-            Console.WriteLine("\nFinshed {0} requests in {1} seconds", (this.executorCount * this.txCountPerExecutor), this.RunSeconds);
-            Console.WriteLine("Transaction Throughput: {0} tx/second", this.TxThroughput);
-
-            Console.WriteLine("\nWay2 to Compute Throughput");
-            int executorId = 0;
-            double totalRunSeconds = 0;
-            foreach (TransactionExecutor executor in this.executorList)
-            {
-                double runSeconds = (executor.RunEndTicks - executor.RunBeginTicks) * 1.0 / 10000000;
-                totalRunSeconds += runSeconds;
-                //Console.WriteLine("Executor {0} run time: {1}s", executorId++, runSeconds);
-            }
-            double averageRunSeconds = totalRunSeconds / this.executorCount;
-            double throughput2 = this.totalTasks / averageRunSeconds;
-            // Console.WriteLine("\nFinshed {0} requests in {1} seconds", (this.executorCount * this.txCountPerExecutor), this.RunSeconds);
-            Console.WriteLine("Transaction Throughput: {0} tx/second", (int)throughput2);
-
-            int totalTxs = 0, abortedTxs = 0;
-            foreach (TransactionExecutor executor in this.executorList)
-            {
-                totalTxs += executor.FinishedTxs;
-                abortedTxs += (executor.FinishedTxs - executor.CommittedTxs);
-            }
-            Console.WriteLine("\nFinshed {0} txs, Aborted {1} txs", totalTxs, abortedTxs);
-            Console.WriteLine("Transaction AbortRate: {0}%", (abortedTxs * 1.0 / totalTxs) * 100);
-
-            if (this.versionDb is RedisVersionDb)
-            {
-                Console.WriteLine("\nFinshed {0} commands in {1} seconds", this.commandCount, this.RunSeconds);
-                Console.WriteLine("Redis Throughput: {0} cmds/second", this.RedisThroughput);
-            }
-
-            Console.WriteLine("Enqueued Tx Requests Count: {0}", VersionDb.EnqueuedRequests);
-            Console.WriteLine();
-        }
-
         /// <summary>
         /// Load record by multiple threads
         /// </summary>
@@ -396,10 +359,6 @@
             else if (this.versionDb is SingletonPartitionedVersionDb)
             {
                 partitions = ((SingletonPartitionedVersionDb)this.versionDb).PartitionCount;
-            } 
-            else if (this.versionDb is PartitionedCassandraVersionDb)
-            {
-                partitions = ((PartitionedCassandraVersionDb)this.versionDb).PartitionCount;
             }
 
             List<TransactionExecutor> executors;
@@ -415,7 +374,7 @@
             }
 
             // 3.4 load records
-            Task[] tasks = new Task[this.executorCount];
+            Task[] tasks = new Task[executors.Count];
             int tid = 0;
             foreach (TransactionExecutor executor in executors)
             {
@@ -446,7 +405,8 @@
                 while ((line = reader.ReadLine()) != null)
                 {
                     string[] fields = this.ParseCommandFormat(line);
-                    YCSBWorkload workload = new YCSBWorkload(fields[0], TABLE_ID, fields[2], fields[3]);
+                    this.YCSBKeys[count] = fields[2];
+                    YCSBWorkload workload = new YCSBWorkload(fields[0], TABLE_ID, fields[2], fields[3], count);
                     count++;
 
                     string sessionId = count.ToString();
@@ -493,25 +453,34 @@
                     //line = reader.ReadLine();
                     //string[] fields = this.ParseCommandFormat(line);
                     Queue<TransactionRequest> reqQueue = new Queue<TransactionRequest>();
-                    for (int j = 0; j < this.txCountPerExecutor; j++)
-                    {
-                        line = reader.ReadLine();
-                        string[] fields = this.ParseCommandFormat(line);
+                    //for (int j = 0; j < this.txCountPerExecutor; j++)
+                    //{
+                    //    line = reader.ReadLine();
+                    //    string[] fields = this.ParseCommandFormat(line);
 
-                        YCSBWorkload workload = new YCSBWorkload(fields[0], TABLE_ID, fields[2], fields[3]);
-                        // YCSBWorkload workload = new YCSBWorkload("CLOSE", TABLE_ID, fields[2], fields[3]);
-                        string sessionId = ((i * this.txCountPerExecutor) + j + 1).ToString();
-                        TransactionRequest req = new TransactionRequest(sessionId, workload, StoredProcedureType.YCSBStordProcedure);
-                        reqQueue.Enqueue(req);
-                    }
+                    //    YCSBWorkload workload = null;
+                    //    //if (TransactionExecution.TEST)
+                    //    //{
+                    //    //    workload = new YCSBWorkload("CLOSE", TABLE_ID, fields[2], fields[3]);
+                    //    //}
+                    //    //else
+                    //    {
+                    //        workload = new YCSBWorkload(fields[0], TABLE_ID, fields[2], fields[3]);
+                    //    }
+                    //    // YCSBWorkload workload = new YCSBWorkload("CLOSE", TABLE_ID, fields[2], fields[3]);
+                    //    string sessionId = ((i * this.txCountPerExecutor) + j + 1).ToString();
+                    //    TransactionRequest req = new TransactionRequest(sessionId, workload, StoredProcedureType.YCSBStordProcedure);
+                    //    reqQueue.Enqueue(req);
+                    //}
 
                     Console.WriteLine("Filled {0} executors", i + 1);
 
-                    this.totalTasks += reqQueue.Count;
+                    // this.totalTasks += reqQueue.Count;
+                    this.totalTasks += this.txCountPerExecutor;
                     //executors.Add(new TransactionExecutor(this.versionDb, null, reqQueue, i, i, 0,
                     //    this.versionDb.GetResourceManagerByPartitionIndex(i), tables));
                     executors.Add(new TransactionExecutor(this.versionDb, null, reqQueue, i, i, 0,
-                       this.versionDb.GetResourceManagerByPartitionIndex(i), tables, null, null, WORKLOAD_ACTION));
+                       this.versionDb.GetResourceManagerByPartitionIndex(i), tables, null, null, this.YCSBKeys, this.txCountPerExecutor));
                 }
                 return executors;
             }

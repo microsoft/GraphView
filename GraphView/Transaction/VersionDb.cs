@@ -70,7 +70,7 @@ namespace GraphView.Transaction
         /// </summary>
         protected readonly Queue<TxEntryRequest>[] txEntryRequestQueues;
         protected readonly Queue<TxEntryRequest>[] flushQueues;
-        protected readonly VersionDbVisitor[] dbVisitors;
+        internal readonly VersionDbVisitor[] dbVisitors;
 
         protected readonly RequestQueue<TxEntryRequest>[] requestUDFQueues;
             

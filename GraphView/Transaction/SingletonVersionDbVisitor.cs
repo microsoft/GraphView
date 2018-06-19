@@ -1,4 +1,4 @@
-﻿namespace GraphView.Transaction
+namespace GraphView.Transaction
 {
     using System;
     //using System.Collections.Concurrent;

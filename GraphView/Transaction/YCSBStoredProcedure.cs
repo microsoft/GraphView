@@ -9,6 +9,7 @@ namespace TransactionBenchmarkTest.YCSB
         internal string Key;
         internal string Value;
         internal string Type;
+        internal int IntKey;
 
         public YCSBWorkload(
             string type, 
@@ -20,6 +21,20 @@ namespace TransactionBenchmarkTest.YCSB
             this.Key = key;
             this.Value = value;
             this.Type = type;
+        }
+
+        public YCSBWorkload(
+            string type,
+            string tableId,
+            string key,
+            string value,
+            int intKey)
+        {
+            this.TableId = tableId;
+            this.Key = key;
+            this.Value = value;
+            this.Type = type;
+            this.IntKey = intKey;
         }
 
         public override string ToString()
@@ -67,7 +82,8 @@ namespace TransactionBenchmarkTest.YCSB
                         workload.TableId, 
                         workload.Key, 
                         workload.Value, 
-                        OperationType.InitiRead);
+                        OperationType.InitiRead,
+                        workload.IntKey);
                     this.txRequestGCQueue.Enqueue(initiReadReq);
                     this.RequestQueue.Enqueue(initiReadReq);
                 }
@@ -154,7 +170,8 @@ namespace TransactionBenchmarkTest.YCSB
                             workload.TableId,
                             workload.Key,
                             workload.Value,
-                            OperationType.Insert);
+                            OperationType.Insert,
+                            workload.IntKey);
                         this.txRequestGCQueue.Enqueue(insertReq);
                         this.RequestQueue.Enqueue(insertReq);
                     }

@@ -1,7 +1,6 @@
 ﻿namespace GraphView.Transaction
 {
     using System.Threading;
-    //using System.Collections.Concurrent;
     using System;
     using NonBlocking;
     using System.Collections.Generic;

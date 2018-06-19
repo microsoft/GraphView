@@ -2,9 +2,9 @@
 {
     using System;
     using System.Collections.Generic;
-    //using System.Collections.Concurrent;
     using System.Threading;
     using NonBlocking;
+    //using System.Collections.Concurrent;
 
     /// <summary>
     /// A version table implementation in single machine environment.
@@ -18,7 +18,7 @@
 
         private static readonly int RECORD_CAPACITY = 1000000;
 
-        public static readonly int VERSION_CAPACITY = 32;
+        public static readonly int VERSION_CAPACITY = 4;
 
         public SingletonDictionaryVersionTable(VersionDb versionDb, string tableId,
             int partitionCount, List<TxResourceManager> txResourceManagers)
