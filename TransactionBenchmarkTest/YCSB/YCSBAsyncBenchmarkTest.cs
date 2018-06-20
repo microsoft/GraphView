@@ -282,8 +282,26 @@
                 tasks[tid++] = Task.Factory.StartNew(executor.YCSBExecuteRead);
             }
 
+            //List<Thread> threadList = new List<Thread>();
+            //foreach (TransactionExecutor executor in this.executorList)
+            //{
+            //    //executor.YCSBExecuteRead();
+            //    Thread thread = new Thread(executor.YCSBExecuteRead);
+            //    threadList.Add(thread);
+            //}
+
             this.startEventSlim.Set();
             this.testBeginTicks = DateTime.Now.Ticks;
+
+            //// start           
+            //foreach (Thread thread in threadList)
+            //{
+            //    thread.Start();
+            //}
+            //foreach (Thread thread in threadList)
+            //{
+            //    thread.Join();
+            //}
 
             Task.WaitAll(tasks);
             // this.countdownEvent.Wait();
@@ -418,22 +436,27 @@
                         // Console.WriteLine("Loaded {0} records", count);
                         Console.WriteLine("Enqueued {0} tx insert request", count);
                     }
+                    if (count == this.recordCount)
+                    {
+                        break;
+                    }
                 }
-                //Console.WriteLine("Filled 1 executor to load data");
+                
                 TransactionExecutor executor = new TransactionExecutor(this.versionDb, null, reqQueue, 0, 0, 0,
                     this.versionDb.GetResourceManagerByPartitionIndex(0), this.tables);
                 // new a thread to run the executor
                 Thread thread = new Thread(new ThreadStart(executor.Execute2));
                 thread.Start();
-                while (!executor.AllRequestsFinished)
-                {
-                    // Console.WriteLine("Loaded {0} records", executor.CommittedTxs);
-                    if (executor.CommittedTxs > 0 && executor.CommittedTxs % 100 == 0)
-                    {
-                        // Console.WriteLine("Loaded {0} records", count);
-                        Console.WriteLine("Executed {0} tx insert request", executor.CommittedTxs);
-                    }
-                }
+                thread.Join();
+                //while (!executor.AllRequestsFinished)
+                //{
+                //    // Console.WriteLine("Loaded {0} records", executor.CommittedTxs);
+                //    //if (executor.CommittedTxs > 0 && executor.CommittedTxs % 500 == 0)
+                //    //{
+                //    //    // Console.WriteLine("Loaded {0} records", count);
+                //    //    Console.WriteLine("Executed {0} tx insert request", executor.CommittedTxs);
+                //    //}
+                //}
                 Console.WriteLine("Load records successfully, {0} records in total", executor.CommittedTxs);
                 executor.Active = false;
                 // executor.RecycleTxTableEntryAfterFinished();
@@ -447,38 +470,23 @@
             using (StreamReader reader = new StreamReader(operationFile))
             {
                 string line;
-                int instanceIndex = 0;
+                //int instanceIndex = 0;
                 for (int i = 0; i < this.executorCount; i++)
                 {
-                    //line = reader.ReadLine();
-                    //string[] fields = this.ParseCommandFormat(line);
                     Queue<TransactionRequest> reqQueue = new Queue<TransactionRequest>();
-                    //for (int j = 0; j < this.txCountPerExecutor; j++)
-                    //{
-                    //    line = reader.ReadLine();
-                    //    string[] fields = this.ParseCommandFormat(line);
-
-                    //    YCSBWorkload workload = null;
-                    //    //if (TransactionExecution.TEST)
-                    //    //{
-                    //    //    workload = new YCSBWorkload("CLOSE", TABLE_ID, fields[2], fields[3]);
-                    //    //}
-                    //    //else
-                    //    {
-                    //        workload = new YCSBWorkload(fields[0], TABLE_ID, fields[2], fields[3]);
-                    //    }
-                    //    // YCSBWorkload workload = new YCSBWorkload("CLOSE", TABLE_ID, fields[2], fields[3]);
-                    //    string sessionId = ((i * this.txCountPerExecutor) + j + 1).ToString();
-                    //    TransactionRequest req = new TransactionRequest(sessionId, workload, StoredProcedureType.YCSBStordProcedure);
-                    //    reqQueue.Enqueue(req);
-                    //}
+                    for (int j = 0; j < this.txCountPerExecutor; j++)
+                    {
+                        line = reader.ReadLine();
+                        string[] fields = this.ParseCommandFormat(line);
+                        YCSBWorkload workload = new YCSBWorkload(fields[0], TABLE_ID, fields[2], fields[3]);                                                
+                        string sessionId = ((i * this.txCountPerExecutor) + j + 1).ToString();
+                        TransactionRequest req = new TransactionRequest(sessionId, workload, StoredProcedureType.YCSBStordProcedure);
+                        reqQueue.Enqueue(req);
+                    }
 
                     Console.WriteLine("Filled {0} executors", i + 1);
 
-                    // this.totalTasks += reqQueue.Count;
                     this.totalTasks += this.txCountPerExecutor;
-                    //executors.Add(new TransactionExecutor(this.versionDb, null, reqQueue, i, i, 0,
-                    //    this.versionDb.GetResourceManagerByPartitionIndex(i), tables));
                     executors.Add(new TransactionExecutor(this.versionDb, null, reqQueue, i, i, 0,
                        this.versionDb.GetResourceManagerByPartitionIndex(i), tables, null, null, this.YCSBKeys, this.txCountPerExecutor));
                 }

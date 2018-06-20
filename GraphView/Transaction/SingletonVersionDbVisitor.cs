@@ -58,6 +58,7 @@ namespace GraphView.Transaction
 
         internal override void Visit(NewTxIdRequest req)
         {
+            Console.WriteLine("hello");
             TxTableEntry txEntry = new TxTableEntry();
             req.Result = this.txTable.TryAdd(req.TxId, txEntry) ? true : false;
             req.RemoteTxEntry = txEntry;

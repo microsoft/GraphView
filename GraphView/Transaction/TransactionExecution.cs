@@ -1265,6 +1265,8 @@ namespace GraphView.Transaction
 
         public void Insert(string tableId, object recordKey, object record)
         {
+            //Console.WriteLine("INSERT: record key = {0}", recordKey as string);
+
             // Checks whether the record is in the local write set
             WriteSetEntry writeEntry = this.FindWriteSetEntry(tableId, recordKey);
             ReadSetEntry readEntry = this.FindReadSetEntry(tableId, recordKey);
@@ -1641,7 +1643,11 @@ namespace GraphView.Transaction
                 if (visibleVersion != null)
                 {
                     // save the reference of visiable version entry
-                    visiableVersionRef = this.remoteVersionRefList[this.readEntryCount - 1];
+                    // JUST FOR IN-MEMORY VERSION
+                    if (this.remoteVersionRefList.Count >= this.readEntryCount)
+                    {
+                        visiableVersionRef = this.remoteVersionRefList[this.readEntryCount - 1];
+                    }
                     break;
                 }
             }

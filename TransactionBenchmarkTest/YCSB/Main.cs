@@ -121,7 +121,15 @@ namespace TransactionBenchmarkTest.YCSB
             //Console.ReadLine();
         }
 
-        /*
+        public static void test_cassandra2()
+        {
+            Cluster cluster = Cluster.Builder().AddContactPoints(new string[] { "127.0.0.1" }).Build();
+            ISession session = cluster.Connect("msra");
+            RowSet rs3 = session.Execute("update t set v1=3 where k=1 if v1>3");
+            RowSet rs4 = session.Execute("update t set v1=3 where k=4 if v2=3");
+            Console.WriteLine("hh");
+        }
+
         public static void test_cassandra()
         {
             Cluster cluster = Cluster.Builder().AddContactPoints(new string[] { "127.0.0.1" }).Build();
@@ -269,7 +277,7 @@ namespace TransactionBenchmarkTest.YCSB
             Console.WriteLine("Done");
             Console.ReadLine();
         }
-        */
+        
 
         public static void YCSBAsyncTestWithCassandra()
         {
@@ -330,12 +338,12 @@ namespace TransactionBenchmarkTest.YCSB
 
         public static void YCSBAsyncTestWithPartitionedCassandra()
         {
-            const int partitionCount = 2;
-            const int recordCount = 2000;
-            const int executorCount = 2;
-            const int txCountPerExecutor = 1000;
+            const int partitionCount = 4;
+            const int recordCount = 10000;
+            const int executorCount = 4;
+            const int txCountPerExecutor = 10000;
 
-            const string dataFile = "ycsb_data_r_1000.in";
+            const string dataFile = "ycsb_data_r.in";
             const string operationFile = "ycsb_ops_r.in";
                         
             string[] tables = new string[]
@@ -351,21 +359,33 @@ namespace TransactionBenchmarkTest.YCSB
 
             test.Setup(dataFile, operationFile);
             test.Run();
-            test.Stats2();
-            
+            test.Stats();            
         }
 
 
         public static void Main(string[] args)
         {
+            ////long a = 1;
+            //object c = 1L;
+            //bool b = (c as bool);
+            //Convert.ToBoolean()
+
+            //object a = 0L;
+            //string b = a as string;
+            //Console.WriteLine("b=<{0}>", a as string);
+            //Console.WriteLine("b=<{0}>", a.ToString());
+
+
             //YCSBSyncTestWithCassandra(args);
             YCSBAsyncTestWithPartitionedCassandra();
+            //test_cassandra2();
 
             Console.WriteLine("Done");
-            Console.ReadLine();
+            //Console.ReadLine();
             //Console.ReadLine();
             //Console.ReadLine();
             //Console.ReadLine();
         }   
     }
+
 }

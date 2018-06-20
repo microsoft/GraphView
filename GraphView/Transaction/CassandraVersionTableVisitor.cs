@@ -35,7 +35,7 @@ namespace GraphView.Transaction
         internal override void Visit(DeleteVersionRequest req)
         {
             bool applied = this.CQLExecuteWithIfApplied(string.Format(CassandraVersionTable.CQL_DELETE_VERSION_ENTRY,
-                                                       req.TableId, req.RecordKey as string, req.VersionKey));
+                                                       req.TableId, req.RecordKey.ToString(), req.VersionKey));
             req.Result = applied ? 1L : 0L;
             req.Finished = true;
         }
@@ -44,7 +44,7 @@ namespace GraphView.Transaction
         {
             List<VersionEntry> entries = new List<VersionEntry>();
             var rs = this.CQLExecute(string.Format(CassandraVersionTable.CQL_GET_VERSION_TOP_2,
-                                                   req.TableId, req.RecordKey as string));
+                                                   req.TableId, req.RecordKey.ToString()));
             foreach (var row in rs)
             {
                 entries.Add(new VersionEntry(
@@ -82,7 +82,7 @@ namespace GraphView.Transaction
         internal VersionEntry GetVersionEntryByKey(string tableId, object recordKey, long versionKey)
         {
             var rs = this.CQLExecute(string.Format(CassandraVersionTable.CQL_GET_VERSION_ENTRY,
-                                                    tableId, recordKey as string, versionKey));
+                                                    tableId, recordKey.ToString(), versionKey));
             var rse = rs.GetEnumerator();
             rse.MoveNext();
             Row row = rse.Current;
@@ -109,7 +109,7 @@ namespace GraphView.Transaction
         {
             this.CQLExecuteWithIfApplied(string.Format(CassandraVersionTable.CQL_REPLACE_VERSION,
                                                 req.TableId, req.BeginTs, req.EndTs, req.TxId,
-                                                req.RecordKey as string, req.VersionKey,
+                                                req.RecordKey.ToString(), req.VersionKey,
                                                 req.ReadTxId, req.ExpectedEndTs));
 
             req.Result = this.GetVersionEntryByKey(req.TableId, req.RecordKey, req.VersionKey);
@@ -122,7 +122,7 @@ namespace GraphView.Transaction
                                         req.TableId, req.VersionEntry.BeginTimestamp, req.VersionEntry.EndTimestamp,
                                         BytesSerializer.ToHexString(BytesSerializer.Serialize(req.VersionEntry.Record)),
                                         req.VersionEntry.TxId, req.VersionEntry.MaxCommitTs,
-                                        req.VersionEntry.RecordKey as string, req.VersionEntry.VersionKey));
+                                        req.VersionEntry.RecordKey.ToString(), req.VersionEntry.VersionKey));
             req.Result = applied ? 1L : -1L;
             req.Finished = true;
         }
@@ -130,7 +130,7 @@ namespace GraphView.Transaction
         internal override void Visit(UpdateVersionMaxCommitTsRequest req)
         {
             this.CQLExecuteWithIfApplied(string.Format(CassandraVersionTable.CQL_UPDATE_MAX_COMMIT_TIMESTAMP,
-                                            req.TableId, req.MaxCommitTs, req.RecordKey as string, req.VersionKey));
+                                            req.TableId, req.MaxCommitTs, req.RecordKey.ToString(), req.VersionKey));
 
             req.Result = this.GetVersionEntryByKey(req.TableId, req.RecordKey, req.VersionKey);
             req.Finished = true;
@@ -140,7 +140,7 @@ namespace GraphView.Transaction
         {
             bool applied = this.CQLExecuteWithIfApplied(string.Format(CassandraVersionTable.CQL_UPLOAD_VERSION_ENTRY,
                                                       req.TableId,
-                                                      req.VersionEntry.RecordKey as string,
+                                                      req.VersionEntry.RecordKey.ToString(),
                                                       req.VersionEntry.VersionKey,
                                                       req.VersionEntry.BeginTimestamp,
                                                       req.VersionEntry.EndTimestamp,

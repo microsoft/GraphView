@@ -38,8 +38,8 @@ namespace GraphView.Transaction
             for (int pid = 0; pid < this.PartitionCount; pid++)
             {
                 this.partitionedQueues[pid] = new RequestQueue<VersionEntryRequest>(partitionCount);
+                this.tableVisitors[pid] = new PartitionedCassandraVersionTableVisitor();
             }
-            this.cassandraVisitor = new PartitionedCassandraVersionTableVisitor();
 
             //for (int pk = 0; pk < partitionCount; pk++)
             //{
@@ -66,13 +66,18 @@ namespace GraphView.Transaction
             int pk = this.VersionDb.PhysicalTxPartitionByKey(req.RecordKey);
             partitionedQueues[pk].Enqueue(req, execPartition);
 
+            //Console.WriteLine("Enqueue version entry req record key {0}", req.RecordKey.ToString());
+
             while (!req.Finished)
-            {
+            {                
                 lock (req)
                 {
                     if (!req.Finished)
                     {
-                        System.Threading.Monitor.Wait(req);
+                        //System.Threading.Monitor.Wait(req);
+                    } else
+                    {
+                        //Console.WriteLine("finished version entry req");
                     }
                 }
             }
@@ -89,27 +94,25 @@ namespace GraphView.Transaction
             "SELECT * FROM {0} WHERE recordKey = '{1}' ORDER BY versionKey DESC LIMIT 2";
 
         public static readonly string CQL_REPLACE_VERSION =
-            "UPDATE {0} SET beginTimestamp={1}, endTimestamp={2}, txId={3} " +
-            "WHERE recordKey='{4}' AND versionKey={5} AND " +
-            "txId={6} AND endTimestamp={7}";
+            "UPDATE {0} SET beginTimestamp={1}, endTimestamp={2}, txId={3} " +      // todo, ok
+            "WHERE recordKey='{4}' AND versionKey={5}"; // + " AND txId={6} AND endTimestamp={7}";
 
         public static readonly string CQL_GET_VERSION_ENTRY =
             "SELECT * FROM {0} WHERE recordKey='{1}' AND versionKey={2}";
 
-        public static readonly string CQL_REPLACE_WHOLE_VERSION =
+        public static readonly string CQL_REPLACE_WHOLE_VERSION =   // todo, ok
             "UPDATE {0} SET beginTimestamp={1}, endTimestamp={2}, record={3}, txId={4}, maxCommitTs={5} " +
             "WHERE recordKey='{6}' AND versionKey={7} ";
 
-        public static readonly string CQL_UPLOAD_VERSION_ENTRY =
+        public static readonly string CQL_UPLOAD_VERSION_ENTRY =    // todo, ok
             "INSERT INTO {0} (recordKey, versionKey, beginTimestamp, endTimestamp, record, txId, maxCommitTs) " +
             "VALUES ('{1}', {2}, {3}, {4}, {5}, {6}, {7})";
 
-        public static readonly string CQL_UPDATE_MAX_COMMIT_TIMESTAMP =
+        public static readonly string CQL_UPDATE_MAX_COMMIT_TIMESTAMP =     // todo, ok
             "UPDATE {0} SET maxCommitTs = {1} " +
-            "WHERE recordKey='{2}' AND versionKey={3} " +
-            "AND maxCommitTs < {1}";
+            "WHERE recordKey='{2}' AND versionKey={3} ";    // + " AND maxCommitTs < {1}";
 
-        public static readonly string CQL_DELETE_VERSION_ENTRY =
+        public static readonly string CQL_DELETE_VERSION_ENTRY =    // todo, ok
             "DELETE FROM {0} WHERE recordKey = '{1}' AND versionKey = {2}";
 
     }
@@ -152,7 +155,7 @@ namespace GraphView.Transaction
         {
             List<VersionEntry> entries = new List<VersionEntry>();
             var rs = this.CQLExecute(string.Format(PartitionedCassandraVersionTable.CQL_GET_VERSION_TOP_2,
-                                                   this.tableId, recordKey as string));
+                                                   this.tableId, recordKey.ToString()));
             foreach (var row in rs)
             {
                 entries.Add(new VersionEntry(
@@ -173,20 +176,19 @@ namespace GraphView.Transaction
         {
             VersionEntry emptyEntry = VersionEntry.InitEmptyVersionEntry(recordKey);
 
-            bool applied = this.CQLExecuteWithIfApplied(string.Format(PartitionedCassandraVersionTable.CQL_UPLOAD_VERSION_ENTRY,
-                                                                this.tableId,
-                                                                emptyEntry.RecordKey,
-                                                                emptyEntry.VersionKey,
-                                                                emptyEntry.BeginTimestamp,
-                                                                emptyEntry.EndTimestamp,
-                                                                BytesSerializer.ToHexString(BytesSerializer.Serialize(emptyEntry.Record)),
-                                                                emptyEntry.TxId,
-                                                                emptyEntry.MaxCommitTs));
-            if (applied)
+            try
             {
+                this.CQLExecute(string.Format(PartitionedCassandraVersionTable.CQL_UPLOAD_VERSION_ENTRY,
+                                                                    this.tableId,
+                                                                    emptyEntry.RecordKey.ToString(),
+                                                                    emptyEntry.VersionKey,
+                                                                    emptyEntry.BeginTimestamp,
+                                                                    emptyEntry.EndTimestamp,
+                                                                    BytesSerializer.ToHexString(BytesSerializer.Serialize(emptyEntry.Record)),
+                                                                    emptyEntry.TxId,
+                                                                    emptyEntry.MaxCommitTs));
                 return this.GetVersionList(recordKey);
-            }
-            else
+            } catch (Cassandra.DriverException e)
             {
                 return null;
             }
@@ -194,54 +196,79 @@ namespace GraphView.Transaction
 
         internal override VersionEntry ReplaceVersionEntry(object recordKey, long versionKey, long beginTimestamp, long endTimestamp, long txId, long readTxId, long expectedEndTimestamp)
         {
-
-            this.CQLExecuteWithIfApplied(string.Format(PartitionedCassandraVersionTable.CQL_REPLACE_VERSION,
+            // read first
+            VersionEntry ve = this.GetVersionEntryByKey(recordKey, versionKey);
+            if (ve.TxId == readTxId && ve.EndTimestamp == expectedEndTimestamp)
+            {
+                this.CQLExecute(string.Format(PartitionedCassandraVersionTable.CQL_REPLACE_VERSION,
                                                 this.tableId, beginTimestamp, endTimestamp, txId,
-                                                recordKey as string, versionKey,
-                                                readTxId, expectedEndTimestamp));
+                                                recordKey.ToString(), versionKey));
+                ve.BeginTimestamp = beginTimestamp;
+                ve.EndTimestamp = endTimestamp;
+                ve.TxId = txId;
+            }
 
-            return this.GetVersionEntryByKey(recordKey, versionKey);
+            return ve;
         }
 
         internal override bool ReplaceWholeVersionEntry(object recordKey, long versionKey, VersionEntry versionEntry)
         {
-            return this.CQLExecuteWithIfApplied(string.Format(PartitionedCassandraVersionTable.CQL_REPLACE_WHOLE_VERSION,
+            this.CQLExecute(string.Format(PartitionedCassandraVersionTable.CQL_REPLACE_WHOLE_VERSION,
                                                                     this.tableId, versionEntry.BeginTimestamp, versionEntry.EndTimestamp,
                                                                     BytesSerializer.ToHexString(BytesSerializer.Serialize(versionEntry.Record)),
                                                                     versionEntry.TxId, versionEntry.MaxCommitTs,
-                                                                    versionEntry.RecordKey as string, versionEntry.VersionKey));
+                                                                    versionEntry.RecordKey.ToString(), versionEntry.VersionKey));
+            return true;
         }
 
         internal override bool UploadNewVersionEntry(object recordKey, long versionKey, VersionEntry versionEntry)
         {
-            return this.CQLExecuteWithIfApplied(string.Format(PartitionedCassandraVersionTable.CQL_UPLOAD_VERSION_ENTRY,
+            this.CQLExecute(string.Format(PartitionedCassandraVersionTable.CQL_UPLOAD_VERSION_ENTRY,
                                                       this.tableId,
-                                                      versionEntry.RecordKey as string,
+                                                      versionEntry.RecordKey.ToString(),
                                                       versionEntry.VersionKey,
                                                       versionEntry.BeginTimestamp,
                                                       versionEntry.EndTimestamp,
                                                       BytesSerializer.ToHexString(BytesSerializer.Serialize(versionEntry.Record)),
                                                       versionEntry.TxId,
                                                       versionEntry.MaxCommitTs));
+            return true;
         }
 
         internal override VersionEntry UpdateVersionMaxCommitTs(object recordKey, long versionKey, long commitTs)
         {
-            this.CQLExecuteWithIfApplied(string.Format(PartitionedCassandraVersionTable.CQL_UPDATE_MAX_COMMIT_TIMESTAMP,
-                                            this.tableId, commitTs, recordKey as string, versionKey));
-            return this.GetVersionEntryByKey(recordKey, versionKey);
+            VersionEntry ve = this.GetVersionEntryByKey(recordKey, versionKey);
+            if (ve.MaxCommitTs < commitTs)
+            {
+                this.CQLExecute(string.Format(PartitionedCassandraVersionTable.CQL_UPDATE_MAX_COMMIT_TIMESTAMP,
+                                            this.tableId, commitTs, recordKey.ToString(), versionKey));
+                ve.MaxCommitTs = commitTs;
+            }
+
+            return ve;
         }
 
         internal override bool DeleteVersionEntry(object recordKey, long versionKey)
         {
-            return this.CQLExecuteWithIfApplied(string.Format(PartitionedCassandraVersionTable.CQL_DELETE_VERSION_ENTRY,
-                                                       this.tableId, recordKey as string, versionKey));
+            this.CQLExecute(string.Format(PartitionedCassandraVersionTable.CQL_DELETE_VERSION_ENTRY,
+                                                       this.tableId, recordKey.ToString(), versionKey));
+            return true;
+        }
+
+        internal Row GetRawVersionEntryByKey(object recordKey, long versionKey)
+        {
+            var rs = this.CQLExecute(string.Format(PartitionedCassandraVersionTable.CQL_GET_VERSION_ENTRY,
+                                                    this.tableId, recordKey.ToString(), versionKey));
+            var rse = rs.GetEnumerator();
+            rse.MoveNext();
+            Row row = rse.Current;
+            return row;
         }
 
         internal override VersionEntry GetVersionEntryByKey(object recordKey, long versionKey)
         {
             var rs = this.CQLExecute(string.Format(PartitionedCassandraVersionTable.CQL_GET_VERSION_ENTRY,
-                                                    this.tableId, recordKey as string, versionKey));
+                                                    this.tableId, recordKey.ToString(), versionKey));
             var rse = rs.GetEnumerator();
             rse.MoveNext();
             Row row = rse.Current;

@@ -2,6 +2,8 @@
 namespace GraphView.Transaction
 {
     using Cassandra;
+    using System;
+
     internal partial class PartitionedCassandraVersionDbVisitor : VersionDbVisitor
     {
         private CassandraSessionManager SessionManager
@@ -28,7 +30,7 @@ namespace GraphView.Transaction
             return rse.Current.GetValue<bool>("[applied]");
         }
 
-        //----
+        //----        
         internal Row GetTxTableEntryRow(long txId)
         {
             var rs = this.CQLExecute(string.Format(PartitionedCassandraVersionDb.CQL_GET_TX_TABLE_ENTRY,
@@ -95,102 +97,134 @@ namespace GraphView.Transaction
         // return: 0L-conflict, 1L-ok
         internal override void Visit(NewTxIdRequest req)
         {
-            bool applied = this.CQLExecuteWithIfApplied(
+            this.CQLExecute(
                 string.Format(PartitionedCassandraVersionDb.CQL_INSERT_NEW_TX,
                                 VersionDb.TX_TABLE,
                                 req.TxId,
                                 (sbyte)TxStatus.Ongoing,     // default status
                                 TxTableEntry.DEFAULT_COMMIT_TIME,
                                 (sbyte)IsCommitTsOrLB.CommitLowerBound));
-            if (applied)
-            {
-                req.Result = 1L;
-            }
-            else
-            {
-                // txId exists
-                req.Result = 0L;
-            }
+            req.Result = true;
+            //if (applied)
+            //{
+            //    req.Result = true;
+            //}
+            //else
+            //{
+            //    Console.WriteLine("txid {0} exists", req.TxId);
+            //    // txId exists
+            //    req.Result = false;
+            //}
             req.Finished = true;
         }
 
         internal override void Visit(RecycleTxRequest req)
         {
-            bool applied = this.CQLExecuteWithIfApplied(string.Format(PartitionedCassandraVersionDb.CQL_RECYCLE_TX,
-                                                       VersionDb.TX_TABLE,
-                                                       (sbyte)TxStatus.Ongoing,     // default status
-                                                       TxTableEntry.DEFAULT_COMMIT_TIME,
-                                                       (sbyte)IsCommitTsOrLB.CommitLowerBound,
-                                                       req.TxId));
-            req.Result = applied ? 1L : 0L;
+            try
+            {
+                this.CQLExecute(string.Format(PartitionedCassandraVersionDb.CQL_RECYCLE_TX,
+                                                           VersionDb.TX_TABLE,
+                                                           (sbyte)TxStatus.Ongoing,     // default status
+                                                           TxTableEntry.DEFAULT_COMMIT_TIME,
+                                                           (sbyte)IsCommitTsOrLB.CommitLowerBound,
+                                                           req.TxId));
+                req.Result = true;
+            } catch (Cassandra.DriverException e)
+            {
+                req.Result = false;
+            }
+
             req.Finished = true;
         }
 
         internal override void Visit(RemoveTxRequest req)
         {
-            bool applied = this.CQLExecuteWithIfApplied(string.Format(PartitionedCassandraVersionDb.CQL_REMOVE_TX,
-                                                       VersionDb.TX_TABLE, req.TxId));
-            req.Result = applied ? 1L : 0L;
+            try
+            {
+                this.CQLExecute(string.Format(PartitionedCassandraVersionDb.CQL_REMOVE_TX,
+                                                           VersionDb.TX_TABLE, req.TxId));
+                req.Result = 1L;
+            } catch (Cassandra.DriverException e)
+            {
+                req.Result = 0L;
+            }
+
             req.Finished = true;
         }
 
         internal override void Visit(SetCommitTsRequest req)
         {
-            bool applied = this.CQLExecuteWithIfApplied(string.Format(PartitionedCassandraVersionDb.CQL_SET_COMMIT_TIME,
-                                                                    VersionDb.TX_TABLE,
-                                                                    req.ProposedCommitTs,
-                                                                    (sbyte)IsCommitTsOrLB.CommitTs,
-                                                                    req.TxId));
-            if (!applied)
-            {
-                this.CQLExecuteWithIfApplied(string.Format(PartitionedCassandraVersionDb.CQL_SET_COMMIT_TIME_SET_FLAG,
-                                                        VersionDb.TX_TABLE,
-                                                        (sbyte)IsCommitTsOrLB.CommitTs,
-                                                        req.TxId,
-                                                        (sbyte)IsCommitTsOrLB.CommitLowerBound));
-            }
-
             Row row = this.GetTxTableEntryRow(req.TxId);
             if (row == null)
             {
                 req.Result = -1L;
-            }
-            else
+            } else
             {
-                req.Result = this.GetTxTableEntryCommitTs(row);
+                IsCommitTsOrLB isCommitTsOrLB = (IsCommitTsOrLB)row.GetValue<sbyte>("iscommittsorlb");
+                long commitTime = row.GetValue<long>("committime");
+                long realCommitTime = isCommitTsOrLB ==
+                    IsCommitTsOrLB.CommitTs ? commitTime : TxTableEntry.DEFAULT_COMMIT_TIME;
+                if (realCommitTime < req.ProposedCommitTs)
+                {
+                    realCommitTime = req.ProposedCommitTs;
+                    this.CQLExecute(string.Format(PartitionedCassandraVersionDb.CQL_SET_COMMIT_TIME,
+                                                                        VersionDb.TX_TABLE,
+                                                                        req.ProposedCommitTs,
+                                                                        (sbyte)IsCommitTsOrLB.CommitTs,
+                                                                        req.TxId));
+                } else
+                {
+                    if (isCommitTsOrLB == IsCommitTsOrLB.CommitLowerBound)
+                    {
+                        this.CQLExecute(string.Format(PartitionedCassandraVersionDb.CQL_SET_COMMIT_TIME_SET_FLAG,
+                                                            VersionDb.TX_TABLE,
+                                                            (sbyte)IsCommitTsOrLB.CommitTs,
+                                                            req.TxId));
+                    }
+                }
+                req.Result = realCommitTime;
             }
+
             req.Finished = true;
         }
 
         internal override void Visit(UpdateCommitLowerBoundRequest req)
         {
-            this.CQLExecuteWithIfApplied(string.Format(PartitionedCassandraVersionDb.CQL_UPDATE_COMMIT_LB,
-                                                VersionDb.TX_TABLE, req.CommitTsLowerBound, req.TxId, (sbyte)IsCommitTsOrLB.CommitLowerBound));
-                        
+            // step 1: read first
             Row row = this.GetTxTableEntryRow(req.TxId);
             if (row == null)
             {
                 req.Result = -2L;
-            }
-            else
+            } else
             {
-                req.Result = this.GetTxTableEntryCommitTs(row);
+                IsCommitTsOrLB isCommitTsOrLB = (IsCommitTsOrLB)row.GetValue<sbyte>("iscommittsorlb");
+                long commitTime = row.GetValue<long>("committime");
+                long realCommitTime = isCommitTsOrLB ==
+                    IsCommitTsOrLB.CommitTs ? commitTime : TxTableEntry.DEFAULT_COMMIT_TIME;
+
+                if (isCommitTsOrLB == IsCommitTsOrLB.CommitLowerBound && commitTime < req.CommitTsLowerBound)
+                {
+                    this.CQLExecute(string.Format(PartitionedCassandraVersionDb.CQL_UPDATE_COMMIT_LB,
+                                                    VersionDb.TX_TABLE, req.CommitTsLowerBound, req.TxId));
+                }
+                req.Result =realCommitTime;
             }
+
             req.Finished = true;
         }
 
         internal override void Visit(UpdateTxStatusRequest req)
         {
-            bool applied = this.CQLExecuteWithIfApplied(string.Format(PartitionedCassandraVersionDb.CQL_UPDATE_TX_STATUS,
-                                                VersionDb.TX_TABLE, (sbyte)req.TxStatus, req.TxId));
-            if (applied)
+            try
             {
+                this.CQLExecute(string.Format(PartitionedCassandraVersionDb.CQL_UPDATE_TX_STATUS,
+                                                VersionDb.TX_TABLE, (sbyte)req.TxStatus, req.TxId));
                 req.Result = 1L;    // yes
-            }
-            else
+            } catch (Cassandra.DriverException e)
             {
                 req.Result = -1L;   // no
             }
+            
             req.Finished = true;
         }
     }

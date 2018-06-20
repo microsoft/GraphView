@@ -130,7 +130,7 @@
         {
             List<VersionEntry> entries = new List<VersionEntry>();
             var rs = this.CQLExecute(string.Format(CassandraVersionTable.CQL_GET_VERSION_TOP_2,
-                                                   this.tableId, recordKey as string));
+                                                   this.tableId, recordKey.ToString()));
             foreach (var row in rs)
             {
                 entries.Add(new VersionEntry(
@@ -174,7 +174,7 @@
             
             this.CQLExecuteWithIfApplied(string.Format(CassandraVersionTable.CQL_REPLACE_VERSION,
                                                 this.tableId, beginTimestamp, endTimestamp, txId,
-                                                recordKey as string, versionKey,
+                                                recordKey.ToString(), versionKey,
                                                 readTxId, expectedEndTimestamp));
 
             return this.GetVersionEntryByKey(recordKey, versionKey);
@@ -186,14 +186,14 @@
                                                                     this.tableId, versionEntry.BeginTimestamp, versionEntry.EndTimestamp,
                                                                     BytesSerializer.ToHexString(BytesSerializer.Serialize(versionEntry.Record)),
                                                                     versionEntry.TxId, versionEntry.MaxCommitTs,
-                                                                    versionEntry.RecordKey as string, versionEntry.VersionKey));
+                                                                    versionEntry.RecordKey.ToString(), versionEntry.VersionKey));
         }
 
         internal override bool UploadNewVersionEntry(object recordKey, long versionKey, VersionEntry versionEntry)
         {
             return this.CQLExecuteWithIfApplied(string.Format(CassandraVersionTable.CQL_UPLOAD_VERSION_ENTRY,
                                                       this.tableId,
-                                                      versionEntry.RecordKey as string,
+                                                      versionEntry.RecordKey.ToString(),
                                                       versionEntry.VersionKey,
                                                       versionEntry.BeginTimestamp,
                                                       versionEntry.EndTimestamp,
@@ -205,20 +205,20 @@
         internal override VersionEntry UpdateVersionMaxCommitTs(object recordKey, long versionKey, long commitTs)
         {           
             this.CQLExecuteWithIfApplied(string.Format(CassandraVersionTable.CQL_UPDATE_MAX_COMMIT_TIMESTAMP,
-                                            this.tableId, commitTs, recordKey as string, versionKey));
+                                            this.tableId, commitTs, recordKey.ToString(), versionKey));
             return this.GetVersionEntryByKey(recordKey, versionKey);
         }
 
         internal override bool DeleteVersionEntry(object recordKey, long versionKey)
         {
             return this.CQLExecuteWithIfApplied(string.Format(CassandraVersionTable.CQL_DELETE_VERSION_ENTRY,
-                                                       this.tableId, recordKey as string, versionKey));
+                                                       this.tableId, recordKey.ToString(), versionKey));
         }
 
         internal override VersionEntry GetVersionEntryByKey(object recordKey, long versionKey)
         {
             var rs = this.CQLExecute(string.Format(CassandraVersionTable.CQL_GET_VERSION_ENTRY,
-                                                    this.tableId, recordKey as string, versionKey));
+                                                    this.tableId, recordKey.ToString(), versionKey));
             var rse = rs.GetEnumerator();
             rse.MoveNext();
             Row row = rse.Current;

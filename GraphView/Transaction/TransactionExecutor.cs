@@ -252,7 +252,7 @@ namespace GraphView.Transaction
 
         public void YCSBExecuteRead()
         {
-            PinThreadOnCores(this.Partition);
+            //PinThreadOnCores(this.Partition);
             this.RunBeginTicks = DateTime.Now.Ticks;
 
             Random rand = new Random();
@@ -262,6 +262,7 @@ namespace GraphView.Transaction
 
             for (int i = 0; i < this.taskCount; i++)
             {
+                //Console.WriteLine("task i=" + i);
                 //string recordKey = YCSBKeys[rand.Next(0, indexBound)];
                 int recordKey = rand.Next(0, indexBound);
                 this.txExecution.Reset();
@@ -286,6 +287,10 @@ namespace GraphView.Transaction
             this.RunBeginTicks = DateTime.Now.Ticks;
             while (this.workingSet.Count > 0 || this.workload.Count > 0)
             {
+                //if (DateTime.Now.Ticks  - this.RunBeginTicks > 30000000)
+                //{
+                //    Console.WriteLine(123);
+                //}
                 // TransactionRequest txReq = this.workload.Peek();
                 // Dequeue incoming tx requests until the working set is full.
                 while (this.activeTxs.Count < this.workingSetSize)
@@ -331,10 +336,11 @@ namespace GraphView.Transaction
                         }
                         // Requests targeting unopen sessions are disgarded. 
                     }
+                    //Console.WriteLine(this.workingSet.Count);
                 }
 
                 for (int sid = 0; sid < this.workingSet.Count;)
-                {                  
+                {
                     Tuple<TransactionExecution, Queue<TransactionRequest>> execTuple =
                         this.activeTxs[this.workingSet[sid]];
 

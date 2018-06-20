@@ -52,8 +52,8 @@ namespace GraphView.Transaction
             {
                 this.partitionedQueues[pk] = new RequestQueue<TxEntryRequest>(partitionCount);
                 this.resourceManagers[pk] = new TxResourceManager();
+                this.dbVisitors[pk] = new PartitionedCassandraVersionDbVisitor();
             }
-            this.cassandraVisitor = new PartitionedCassandraVersionDbVisitor();
 
             for (int pk = 0; pk < partitionCount; pk++)
             {
@@ -82,21 +82,24 @@ namespace GraphView.Transaction
             int partitionKey = (int)pk;
             while (true)
             {
+                // flush version db queue
                 TxEntryRequest txReq = null;
                 if (this.partitionedQueues[partitionKey].TryDequeue(out txReq))
                 {
-                    cassandraVisitor.Visit(txReq);
+                    this.dbVisitors[partitionKey].Invoke(txReq);
+                    //Console.WriteLine("invoked tx req");
                 }
+
                 // flush VersionTables Queue
                 VersionEntryRequest veReq = null;
                 lock (this.versionTables)
                 {
-
                     foreach (var item in this.versionTables)
                     {
                         if ((item.Value as PartitionedCassandraVersionTable).partitionedQueues[partitionKey].TryDequeue(out veReq))
                         {
-                            (item.Value as PartitionedCassandraVersionTable).cassandraVisitor.Visit(veReq);
+                            (item.Value as PartitionedCassandraVersionTable).tableVisitors[partitionKey].Invoke(veReq);
+                            //Console.WriteLine("invoked version entry request");
                         }
                     }
                 }
@@ -124,7 +127,12 @@ namespace GraphView.Transaction
                 {
                     if (!txEntryRequest.Finished)
                     {
-                        System.Threading.Monitor.Wait(txEntryRequest);
+                        //Console.WriteLine("wait tx entry req finished");
+                        ////System.Threading.Monitor.Wait(txEntryRequest);
+                        //Console.WriteLine("tx entry req finished");
+                    } else
+                    {
+                        //Console.WriteLine("finished tx entry");
                     }
                 }
             }
@@ -166,37 +174,39 @@ namespace GraphView.Transaction
             "SELECT table_name FROM system_schema.tables WHERE keyspace_name='{0}'";
 
         public static readonly string CQL_DROP_TABLE =
-            "DROP TABLE IF EXISTS {0}";
+            "DROP TABLE {0}";
 
         public static readonly string CQL_DROP_KEYSPACE =
-            "DROP KEYSPACE IF EXISTS {0}";
+            "DROP KEYSPACE {0}";
 
-        public static readonly string CQL_INSERT_NEW_TX =
+        public static readonly string CQL_INSERT_NEW_TX =       // todo: check
             "INSERT INTO {0} (txId, status, commitTime, isCommitTsOrLB) " +
-            "VALUES ({1}, {2}, {3}, {4}) ";
+            "VALUES ({1}, {2}, {3}, {4}) "; // " IF NOT EXISTS";
 
         public static readonly string CQL_GET_TX_TABLE_ENTRY =
             "SELECT * FROM {0} WHERE txId = {1}";
 
-        public static readonly string CQL_UPDATE_TX_STATUS =
+        public static readonly string CQL_UPDATE_TX_STATUS =    // todo: check
             "UPDATE {0} SET status={1} WHERE txId={2}";
 
         // set commit timestamp with two steps
-        public static readonly string CQL_SET_COMMIT_TIME =     // LWT(light weight Transaction)
+        // STEP 1: get tx entry
+        // step 2: update according to the value read
+        public static readonly string CQL_SET_COMMIT_TIME =     // todo: check
             "UPDATE {0} SET commitTime={1}, isCommitTsOrLB={2} " +
-            "WHERE txId={3} AND commitTime<{1}";
-        public static readonly string CQL_SET_COMMIT_TIME_SET_FLAG =    // LWT, change flag bit
-            "UPDATE {0} SET isCommitTsOrLB={1} WHERE txId={2} AND isCommitTsOrLB={3}";
+            "WHERE txId={3}";   // IF commitTime<{1}";
+        public static readonly string CQL_SET_COMMIT_TIME_SET_FLAG =
+            "UPDATE {0} SET isCommitTsOrLB={1} WHERE txId={2}"; // IF isCommitTsOrLB={3}";
 
-        public static readonly string CQL_UPDATE_COMMIT_LB =
+        // 2 STEPs
+        public static readonly string CQL_UPDATE_COMMIT_LB =    // todo: check
             "UPDATE {0} SET commitTime = {1} " +
-            "WHERE txId = {2} " +
-            "AND isCommitTsOrLB = {3} AND commitTime < {1}";
+            "WHERE txId = {2} ";    // + " IF isCommitTsOrLB = {3} AND commitTime < {1}";
 
-        public static readonly string CQL_REMOVE_TX =
+        public static readonly string CQL_REMOVE_TX =           // todo: check
             "DELETE FROM {0} WHERE txId={1}";
 
-        public static readonly string CQL_RECYCLE_TX =
+        public static readonly string CQL_RECYCLE_TX =          // todo: check
             "UPDATE {0} SET status={1}, commitTime={2}, isCommitTsOrLB={3} " +
             "WHERE txId={4}";
     }
@@ -350,26 +360,38 @@ namespace GraphView.Transaction
             {
                 // we assume txId conflicts rarely,
                 // otherwise, it is the cause of txId generator
-                bool applied = this.CQLExecuteWithIfApplied(
-                    string.Format(PartitionedCassandraVersionDb.CQL_INSERT_NEW_TX,
+                this.CQLExecute(
+                    string.Format(CassandraVersionDb.CQL_INSERT_NEW_TX,
                                   VersionDb.TX_TABLE,
                                   txId,
                                   (sbyte)TxStatus.Ongoing,     // default status
                                   TxTableEntry.DEFAULT_COMMIT_TIME,
                                   (sbyte)IsCommitTsOrLB.CommitLowerBound));
-                if (applied)
-                {
-                    break;
-                }
-                else
-                {
-                    // txId exists
-                    txId = StaticRandom.RandIdentity();
-                }
+                break;
+                //if (applied)
+                //{
+                //    break;
+                //}
+                //else
+                //{
+                //    // txId exists
+                //    txId = StaticRandom.RandIdentity();
+                //}
             }
 
             return txId;
         }
+
+        internal Row GetRawTxTableEntry(long txId)
+        {
+            var rs = this.CQLExecute(string.Format(PartitionedCassandraVersionDb.CQL_GET_TX_TABLE_ENTRY,
+                                                    VersionDb.TX_TABLE, txId));
+            var rse = rs.GetEnumerator();
+            rse.MoveNext();
+            Row row = rse.Current;
+            return row;
+        }
+
 
         internal override TxTableEntry GetTxTableEntry(long txId)
         {
@@ -397,63 +419,81 @@ namespace GraphView.Transaction
 
         internal override void UpdateTxStatus(long txId, TxStatus status)
         {
-            this.CQLExecuteWithIfApplied(string.Format(PartitionedCassandraVersionDb.CQL_UPDATE_TX_STATUS,
+            this.CQLExecute(string.Format(PartitionedCassandraVersionDb.CQL_UPDATE_TX_STATUS,
                                                 VersionDb.TX_TABLE, (sbyte)status, txId));
         }
 
         internal override long SetAndGetCommitTime(long txId, long proposedCommitTime)
         {
-            bool applied = this.CQLExecuteWithIfApplied(string.Format(PartitionedCassandraVersionDb.CQL_SET_COMMIT_TIME,
+            Row row = this.GetRawTxTableEntry(txId);
+            if (row == null)
+            {
+                return -1L;
+            }
+            IsCommitTsOrLB isCommitTsOrLB = (IsCommitTsOrLB)row.GetValue<sbyte>("iscommittsorlb");
+            long commitTime = row.GetValue<long>("committime");
+            long realCommitTime = isCommitTsOrLB ==
+                IsCommitTsOrLB.CommitTs ? commitTime : TxTableEntry.DEFAULT_COMMIT_TIME;
+            if (realCommitTime < proposedCommitTime)
+            {
+                realCommitTime = proposedCommitTime;
+                this.CQLExecute(string.Format(PartitionedCassandraVersionDb.CQL_SET_COMMIT_TIME,
                                                                     VersionDb.TX_TABLE,
                                                                     proposedCommitTime,
                                                                     (sbyte)IsCommitTsOrLB.CommitTs,
                                                                     txId));
-            if (!applied)
+            } else
             {
-                this.CQLExecuteWithIfApplied(string.Format(PartitionedCassandraVersionDb.CQL_SET_COMMIT_TIME_SET_FLAG,
-                                                            VersionDb.TX_TABLE,
-                                                            (sbyte)IsCommitTsOrLB.CommitTs,
-                                                            txId,
-                                                            (sbyte)IsCommitTsOrLB.CommitLowerBound));
+                if (isCommitTsOrLB == IsCommitTsOrLB.CommitLowerBound)
+                {
+                    this.CQLExecute(string.Format(PartitionedCassandraVersionDb.CQL_SET_COMMIT_TIME_SET_FLAG,
+                                                        VersionDb.TX_TABLE,
+                                                        (sbyte)IsCommitTsOrLB.CommitTs,
+                                                        txId));
+                }
             }
 
-            TxTableEntry entry = this.GetTxTableEntry(txId);
-            if (entry == null)
-            {
-                return -1L;
-            }
-
-            return entry.CommitTime;
+            return realCommitTime;
         }
 
         internal override long UpdateCommitLowerBound(long txId, long lowerBound)
         {
-            this.CQLExecuteWithIfApplied(string.Format(PartitionedCassandraVersionDb.CQL_UPDATE_COMMIT_LB,
-                                                VersionDb.TX_TABLE, lowerBound, txId, (sbyte)IsCommitTsOrLB.CommitLowerBound));
-
-            TxTableEntry entry = this.GetTxTableEntry(txId);
-            if (entry == null)
+            // step 1: read first
+            Row row = this.GetRawTxTableEntry(txId);
+            if (row == null)
             {
                 return -2L;
             }
+            IsCommitTsOrLB isCommitTsOrLB = (IsCommitTsOrLB)row.GetValue<sbyte>("iscommittsorlb");
+            long commitTime = row.GetValue<long>("committime");
+            long realCommitTime = isCommitTsOrLB ==
+                IsCommitTsOrLB.CommitTs ? commitTime : TxTableEntry.DEFAULT_COMMIT_TIME;
 
-            return entry.CommitTime;
+            if (isCommitTsOrLB == IsCommitTsOrLB.CommitLowerBound && commitTime < lowerBound)
+            {
+                this.CQLExecute(string.Format(PartitionedCassandraVersionDb.CQL_UPDATE_COMMIT_LB,
+                                                VersionDb.TX_TABLE, lowerBound, txId));
+            }
+
+            return realCommitTime;
         }
 
         internal override bool RemoveTx(long txId)
         {
-            return this.CQLExecuteWithIfApplied(string.Format(PartitionedCassandraVersionDb.CQL_REMOVE_TX,
+            this.CQLExecute(string.Format(PartitionedCassandraVersionDb.CQL_REMOVE_TX,
                                                        VersionDb.TX_TABLE, txId));
+            return true;
         }
 
         internal override bool RecycleTx(long txId)
         {
-            return this.CQLExecuteWithIfApplied(string.Format(PartitionedCassandraVersionDb.CQL_RECYCLE_TX,
+            this.CQLExecute(string.Format(PartitionedCassandraVersionDb.CQL_RECYCLE_TX,
                                                        VersionDb.TX_TABLE,
                                                        (sbyte)TxStatus.Ongoing,     // default status
                                                        TxTableEntry.DEFAULT_COMMIT_TIME,
                                                        (sbyte)IsCommitTsOrLB.CommitLowerBound,
                                                        txId));
+            return true;
         }
     }
 }

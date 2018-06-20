@@ -130,14 +130,14 @@ namespace TransactionBenchmarkTest.YCSB
             int txCountPerExecutor = 4000000;
 
             // 20w
-            //string dataFile = "ycsb_data_r.in";
-            //const int recordCount = 200000;
+            string dataFile = "ycsb_data_r.in";
+            const int recordCount = 200000;
             //100w
             //string dataFile = "ycsb_data_m_r.in";
             //const int recordCount = 1000000;
             // 500w
-            string dataFile = "ycsb_data_lg_r.in";
-            const int recordCount = 5000000;
+            //string dataFile = "ycsb_data_lg_r.in";
+            //const int recordCount = 5000000;
             // 1000w
             //string dataFile = "ycsb_data_hg_r.in";
             //const int recordCount = 10000000;
