@@ -120,7 +120,7 @@ namespace GraphView.Transaction
 
                 // flush VersionTables Queue
                 VersionEntryRequest veReq = null;
-                if (this.versionTables.Count > 0)   // avoid lock, just for test
+                if (this.versionTables.Count > 0)   // avoid lock mostly, just for test, not safe theoretically
                 {
                     foreach (var item in this.versionTables)
                     {
@@ -151,7 +151,7 @@ namespace GraphView.Transaction
         {
             int pk = this.PhysicalTxPartitionByKey(txId);
 
-            //while (Interlocked.CompareExchange(ref this.latches[pk], 1, 0) != 0);
+            //while (Interlocked.CompareExchange(ref this.latches[pk], 1, 0) != 0) ;
             //partitionedQueues[pk].Enqueue(txEntryRequest, executorPK);
             //Interlocked.Exchange(ref this.latches[pk], 0);
 
@@ -159,9 +159,7 @@ namespace GraphView.Transaction
             //{
             //    partitionedQueues[pk].Enqueue(txEntryRequest, executorPK);
             //}
-            ////partitionedQueues[pk].Enqueue(txEntryRequest);
             this.ccPartitionedQueues[pk].Enqueue(txEntryRequest);
-
 
             while (!txEntryRequest.Finished)
             {

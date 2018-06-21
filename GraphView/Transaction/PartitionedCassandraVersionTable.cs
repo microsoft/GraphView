@@ -66,7 +66,6 @@ namespace GraphView.Transaction
             //{
             //    partitionedQueues[pk].Enqueue(req, execPartition);
             //}
-            ////partitionedQueues[pk].Enqueue(req);
             this.ccPartitionedQueues[pk].Enqueue(req);
 
             while (!req.Finished)

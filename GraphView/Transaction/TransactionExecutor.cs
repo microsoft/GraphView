@@ -298,11 +298,14 @@ namespace GraphView.Transaction
                 {
                     this.CommittedTxs++;
                 }
-                if (this.FinishedTxs++ % 100 == 0)
-                {
-                    Console.WriteLine("Executor {0}:\t Finished Txs: {1}", this.executorId, this.FinishedTxs-1);
-                }
+                this.FinishedTxs++;
+                //if (this.FinishedTxs % 100 == 0)
+                //{
+                //    Console.WriteLine("Executor {0}:\t Finished Txs: {1}", this.executorId, this.FinishedTxs);
+                //}
             }
+
+            this.AllRequestsFinished = true;
 
             this.RunEndTicks = DateTime.Now.Ticks;
         }

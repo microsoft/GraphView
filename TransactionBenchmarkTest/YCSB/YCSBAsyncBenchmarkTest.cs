@@ -310,7 +310,7 @@
                 Thread thread = new Thread(executor.YCSBExecuteRead2);
                 threadList.Add(thread);
             }
-            
+
             this.startEventSlim.Set();
             this.testBeginTicks = DateTime.Now.Ticks;
 
@@ -319,13 +319,47 @@
             {
                 thread.Start();
             }
-            foreach (Thread thread in threadList)
+
+            long lastTimeTotal = 0;
+            while (true)
             {
-                thread.Join();
+                int total = 0;
+                bool allok = true;
+                foreach (TransactionExecutor executor in this.executorList)
+                {
+                    total += executor.FinishedTxs;
+                    allok &= executor.AllRequestsFinished;
+                }
+                Console.WriteLine("Finished {0} TXs, {1} Ops/s", total, total-lastTimeTotal);
+                lastTimeTotal = total;
+                if (allok)
+                {
+                    break;
+                }
+
+                Thread.Sleep(1000);     // sleep 1s
             }
 
-            //Task.WaitAll(tasks);
+            //long minBeginTicks = long.MaxValue;
+            //long maxEndTicks = long.MinValue;
+            //foreach (TransactionExecutor executor in this.executorList)
+            //{
+            //    if (executor.RunBeginTicks < minBeginTicks)
+            //    {
+            //        minBeginTicks = executor.RunBeginTicks;
+            //    }
+            //    if (executor.RunEndTicks > maxEndTicks)
+            //    {
+            //        maxEndTicks = executor.RunEndTicks;
+            //    }
+            //}
 
+            //foreach (Thread thread in threadList)
+            //{
+            //    thread.Join();
+            //}
+
+            //Task.WaitAll(tasks);
 
             // this.countdownEvent.Wait();
 
@@ -334,6 +368,9 @@
             {
                 executor.Active = false;
             }
+
+            //this.testBeginTicks = minBeginTicks;
+            //this.testEndTicks = maxEndTicks;
            
             if (this.versionDb is RedisVersionDb)
             {
@@ -517,13 +554,16 @@
                         reqQueue.Enqueue(req);
                     }
 
-                    Console.WriteLine("Filled {0} executors", i + 1);
+                    //Console.WriteLine("Filled {0} executors", i + 1);
 
                     this.totalTasks += this.txCountPerExecutor;
                     int partition_index = i % this.versionDb.PartitionCount;
                     executors.Add(new TransactionExecutor(this.versionDb, null, reqQueue, partition_index, i, 0,
                        this.versionDb.GetResourceManagerByPartitionIndex(partition_index), tables, null, null, this.YCSBKeys, this.txCountPerExecutor));
                 }
+
+                Console.WriteLine("Filled {0} executors", this.executorCount);
+
                 return executors;
             }
         }

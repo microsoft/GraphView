@@ -445,84 +445,74 @@ namespace TransactionBenchmarkTest.YCSB
             YCSBBenchmarkTest sync_test = new YCSBBenchmarkTest(0, 0, vdbList[0]);
             sync_test.LoadDataWithMultiThreads(filename, vdbList, nThread);
         }
-        public static void YCSBAsyncTestWithPartitionedCassandraHybrid()
+        public static void YCSBAsyncTestWithPartitionedCassandraHybrid(string[] args)
         {
-            int workerCount = 30;
+            string action = "run";
+            int workerCount = 7;
             int taskCountPerWorker = 1000;
             int partitionCount = 7;
 
             string dataFile = "ycsb_data_r.in";
             string operationFile = "ycsb_ops_r.in";
 
-            //LoadDataWithSyncForCassandra(dataFile, 10);
-            
-            string[] tables = new string[]
+            int i = 0;
+            while (i < args.Length)
             {
-                VersionDb.TX_TABLE,
-                YCSBAsyncBenchmarkTest.TABLE_ID
-            };
+                switch (args[i++])
+                {
+                    case "--workers":
+                        workerCount = int.Parse(args[i++]);
+                        break;
+                    case "--taskspw":
+                        taskCountPerWorker = int.Parse(args[i++]);
+                        break;
+                    case "--partitions":
+                        partitionCount = int.Parse(args[i++]);
+                        break;
+                    case "--action":
+                        action = args[i++];
+                        break;
+                    default:
+                        break;
+                }
+            }
 
-            // The default mode of versionDb is daemonMode
-            PartitionedCassandraVersionDb versionDb = PartitionedCassandraVersionDb.Instance(partitionCount);
-            YCSBAsyncBenchmarkTest test = new YCSBAsyncBenchmarkTest(0,
-                workerCount, taskCountPerWorker, versionDb, tables);
+            if (action == "load")
+            {
+                LoadDataWithSyncForCassandra(dataFile, workerCount);
+            } else if (action == "run")
+            {
+                string[] tables = new string[]
+                {
+                    VersionDb.TX_TABLE,
+                    YCSBAsyncBenchmarkTest.TABLE_ID
+                };
 
-            test.SetupOps(operationFile);
-            test.Run();
-            test.Stats();
+                // The default mode of versionDb is daemonMode
+                PartitionedCassandraVersionDb versionDb = PartitionedCassandraVersionDb.Instance(partitionCount);
+                YCSBAsyncBenchmarkTest test = new YCSBAsyncBenchmarkTest(0,
+                    workerCount, taskCountPerWorker, versionDb, tables);
+
+                test.SetupOps(operationFile);
+                test.Run();
+                test.Stats();
+            } else
+            {
+                Console.WriteLine("bad action. Only <load> or <run> allowed");
+            }
         }
 
 
         public static void Main(string[] args)
         {
-            //List<int> a = new List<int>();
-            //a.Add(1);
-            //a.Add(2);
-            
-            //void f1()
-            //{
-            //    Console.WriteLine("F1: enter f1");
-            //    a.Add(3);
-            //    Console.WriteLine("F1: a.count=" + a.Count());
-            //}
-            //void f2()
-            //{
-            //    lock(a)
-            //    {
-            //        Console.WriteLine("F2: lock ok");
-            //       Thread.Sleep(10000);
-            //       Console.WriteLine("F2: a.count=" + a.Count());
-            //    }
-            //}
-            //Thread t1 = new Thread(f1);
-            //Thread t2 = new Thread(f2);
-            //t2.Start();
-            //Thread.Sleep(2000);
-            //t1.Start();
-
-            //t2.Join();
-            //t1.Join();
-
-
-            ////long a = 1;
-            //object c = 1L;
-            //bool b = (c as bool);
-            //Convert.ToBoolean()
-
-            //object a = 0L;
-            //string b = a as string;
-            //Console.WriteLine("b=<{0}>", a as string);
-            //Console.WriteLine("b=<{0}>", a.ToString());
-
-
             //YCSBSyncTestWithCassandra(args);
             //YCSBSyncTestWithPartitionedCassandra(args);
-            YCSBAsyncTestWithPartitionedCassandraHybrid();
+            YCSBAsyncTestWithPartitionedCassandraHybrid(args);
             //YCSBAsyncTestWithPartitionedCassandra();
             //test_cassandra2();
 
             Console.WriteLine("Done");
-            Console.ReadLine();
+            //Console.ReadLine();
             //Console.ReadLine();
             //Console.ReadLine();
             //Console.ReadLine();
