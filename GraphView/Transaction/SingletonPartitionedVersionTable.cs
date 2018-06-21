@@ -43,17 +43,22 @@ namespace GraphView.Transaction
 
         internal override void EnqueueVersionEntryRequest(VersionEntryRequest req, int execPartition = 0)
         {
-            int pk = this.VersionDb.PhysicalPartitionByKey(req.RecordKey);
             // Interlocked.Increment(ref SingletonPartitionedVersionDb.EnqueuedRequests);
 
-            if (pk == execPartition)
-            {
-                this.tableVisitors[pk].Invoke(req);
-            }
-            else
-            {
-                base.EnqueueVersionEntryRequest(req, execPartition);
-            }
+            // SingletonPartitionedVersionDb implementation 1
+            base.EnqueueVersionEntryRequest(req, execPartition);
+            while (!req.Finished) ;
+
+            // SingletonPartitionedVersionDb implementation 2
+            //int pk = this.VersionDb.PhysicalPartitionByKey(req.RecordKey);
+            //if (pk == execPartition)
+            //{
+            //    this.tableVisitors[pk].Invoke(req);
+            //}
+            //else
+            //{
+            //    base.EnqueueVersionEntryRequest(req, execPartition);
+            //}
         }
 
         internal override void Clear()
