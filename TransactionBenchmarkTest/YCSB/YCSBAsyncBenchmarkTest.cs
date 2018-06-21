@@ -292,17 +292,36 @@
                 commandCountBeforeRun = this.GetCurrentCommandCount();
             }
 
-            Task[] tasks = new Task[this.executorCount];
-            int tid = 0;
+            //Task[] tasks = new Task[this.executorCount];
+            //int tid = 0;
+            //foreach (TransactionExecutor executor in this.executorList)
+            //{
+            //    tasks[tid++] = Task.Factory.StartNew(executor.YCSBExecuteRead2);
+            //}
+
+            List<Thread> threadList = new List<Thread>();
             foreach (TransactionExecutor executor in this.executorList)
             {
-                tasks[tid++] = Task.Factory.StartNew(executor.YCSBExecuteRead2);
+                Thread thread = new Thread(executor.YCSBExecuteRead2);
+                threadList.Add(thread);
             }
-
+            
             this.startEventSlim.Set();
             this.testBeginTicks = DateTime.Now.Ticks;
 
-            Task.WaitAll(tasks);
+            // start run
+            foreach (Thread thread in threadList)
+            {
+                thread.Start();
+            }
+            foreach (Thread thread in threadList)
+            {
+                thread.Join();
+            }
+
+            //Task.WaitAll(tasks);
+
+
             // this.countdownEvent.Wait();
 
             this.testEndTicks = DateTime.Now.Ticks;
@@ -496,8 +515,9 @@
                     Console.WriteLine("Filled {0} executors", i + 1);
 
                     this.totalTasks += this.txCountPerExecutor;
-                    executors.Add(new TransactionExecutor(this.versionDb, null, reqQueue, i, i, 0,
-                       this.versionDb.GetResourceManagerByPartitionIndex(i), tables, null, null, this.YCSBKeys, this.txCountPerExecutor));
+                    int partition_index = i % this.versionDb.PartitionCount;
+                    executors.Add(new TransactionExecutor(this.versionDb, null, reqQueue, partition_index, i, 0,
+                       this.versionDb.GetResourceManagerByPartitionIndex(partition_index), tables, null, null, this.YCSBKeys, this.txCountPerExecutor));
                 }
                 return executors;
             }

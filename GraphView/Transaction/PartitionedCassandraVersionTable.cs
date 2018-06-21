@@ -1,6 +1,7 @@
 ﻿using Cassandra;
 using System;
 using System.Collections.Generic;
+using System.Collections.Concurrent;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -19,8 +20,11 @@ namespace GraphView.Transaction
                 return (this.VersionDb as PartitionedCassandraVersionDb).SessionManager;
             }
         }
-
         internal RequestQueue<VersionEntryRequest>[] partitionedQueues;
+        internal Queue<VersionEntryRequest>[] rawPartitionedQueues;
+        internal ConcurrentQueue<VersionEntryRequest>[] ccPartitionedQueues;
+        internal int[] latches;
+
         /// <summary>
         /// A visitor that translates tx entry requests to CQL queries, 
         /// sends them to Cassandra, and collects results and fill the request's result fields.
@@ -31,42 +35,39 @@ namespace GraphView.Transaction
         internal PartitionedCassandraVersionTableVisitor cassandraVisitor;
 
         public PartitionedCassandraVersionTable(VersionDb versionDb, string tableId, int partitionCount = 4)
-            : base(versionDb, tableId)
+            : base(versionDb, tableId, partitionCount)
         {
             this.PartitionCount = partitionCount;
             this.partitionedQueues = new RequestQueue<VersionEntryRequest>[partitionCount];
+            this.rawPartitionedQueues = new Queue<VersionEntryRequest>[partitionCount];
+            this.ccPartitionedQueues = new ConcurrentQueue<VersionEntryRequest>[partitionCount];
+            this.latches = new int[partitionCount];
+
             for (int pid = 0; pid < this.PartitionCount; pid++)
             {
                 this.partitionedQueues[pid] = new RequestQueue<VersionEntryRequest>(partitionCount);
+                this.rawPartitionedQueues[pid] = new Queue<VersionEntryRequest>(partitionCount);
+                this.ccPartitionedQueues[pid] = new ConcurrentQueue<VersionEntryRequest>();
+                this.latches[pid] = 0;
+
                 this.tableVisitors[pid] = new PartitionedCassandraVersionTableVisitor();
             }
-
-            //for (int pk = 0; pk < partitionCount; pk++)
-            //{
-            //    Thread thread = new Thread(this.Monitor);
-            //    thread.Start(pk);
-            //}
         }
-
-        //private void Monitor(object pk)
-        //{
-        //    int partitionKey = (int)pk;
-        //    while (true)
-        //    {
-        //        VersionEntryRequest veReq = null;
-        //        if (this.partitionedQueues[partitionKey].TryDequeue(out veReq))
-        //        {
-        //            cassandraVisitor.Visit(veReq);
-        //        }
-        //    }
-        //}
 
         internal override void EnqueueVersionEntryRequest(VersionEntryRequest req, int execPartition = 0)
         {
             int pk = this.VersionDb.PhysicalTxPartitionByKey(req.RecordKey);
-            partitionedQueues[pk].Enqueue(req, execPartition);
 
-            //Console.WriteLine("Enqueue version entry req record key {0}", req.RecordKey.ToString());
+            //while (Interlocked.CompareExchange(ref this.latches[pk], 1, 0) != 0) ;
+            //partitionedQueues[pk].Enqueue(req, execPartition);
+            //Interlocked.Exchange(ref this.latches[pk], 0);
+
+            //lock (partitionedQueues[pk])
+            //{
+            //    partitionedQueues[pk].Enqueue(req, execPartition);
+            //}
+            ////partitionedQueues[pk].Enqueue(req);
+            this.ccPartitionedQueues[pk].Enqueue(req);
 
             while (!req.Finished)
             {                
@@ -74,10 +75,7 @@ namespace GraphView.Transaction
                 {
                     if (!req.Finished)
                     {
-                        //System.Threading.Monitor.Wait(req);
-                    } else
-                    {
-                        //Console.WriteLine("finished version entry req");
+                        System.Threading.Monitor.Wait(req);
                     }
                 }
             }

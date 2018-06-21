@@ -294,6 +294,14 @@ namespace GraphView.Transaction
                 //recordKey = rand.Next(0, indexBound);
                 //this.txExecution.Read("ycsb_table", recordKey, out received, out payload);
                 this.txExecution.Commit();
+                if (this.txExecution.TxStatus == TxStatus.Committed)
+                {
+                    this.CommittedTxs++;
+                }
+                if (this.FinishedTxs++ % 100 == 0)
+                {
+                    Console.WriteLine("Executor {0}:\t Finished Txs: {1}", this.executorId, this.FinishedTxs-1);
+                }
             }
 
             this.RunEndTicks = DateTime.Now.Ticks;

@@ -447,16 +447,15 @@ namespace TransactionBenchmarkTest.YCSB
         }
         public static void YCSBAsyncTestWithPartitionedCassandraHybrid()
         {
-            int workerCount = 2;
-            int taskCountPerWorker = 5000;
-            int partitionCount = 2;
+            int workerCount = 30;
+            int taskCountPerWorker = 1000;
+            int partitionCount = 7;
 
             string dataFile = "ycsb_data_r.in";
             string operationFile = "ycsb_ops_r.in";
 
             //LoadDataWithSyncForCassandra(dataFile, 10);
-
-
+            
             string[] tables = new string[]
             {
                 VersionDb.TX_TABLE,
@@ -476,6 +475,35 @@ namespace TransactionBenchmarkTest.YCSB
 
         public static void Main(string[] args)
         {
+            //List<int> a = new List<int>();
+            //a.Add(1);
+            //a.Add(2);
+            
+            //void f1()
+            //{
+            //    Console.WriteLine("F1: enter f1");
+            //    a.Add(3);
+            //    Console.WriteLine("F1: a.count=" + a.Count());
+            //}
+            //void f2()
+            //{
+            //    lock(a)
+            //    {
+            //        Console.WriteLine("F2: lock ok");
+            //       Thread.Sleep(10000);
+            //       Console.WriteLine("F2: a.count=" + a.Count());
+            //    }
+            //}
+            //Thread t1 = new Thread(f1);
+            //Thread t2 = new Thread(f2);
+            //t2.Start();
+            //Thread.Sleep(2000);
+            //t1.Start();
+
+            //t2.Join();
+            //t1.Join();
+
+
             ////long a = 1;
             //object c = 1L;
             //bool b = (c as bool);

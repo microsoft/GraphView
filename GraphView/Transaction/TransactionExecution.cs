@@ -1235,6 +1235,7 @@ namespace GraphView.Transaction
 
         internal void Abort()
         {
+            this.TxStatus = TxStatus.Aborted;
             this.Progress = TxProgress.Final;
             this.replaceReq.Free();
 
