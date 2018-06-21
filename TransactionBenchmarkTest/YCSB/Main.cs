@@ -13,6 +13,76 @@ namespace TransactionBenchmarkTest.YCSB
 {
     class Example
     {
+        public static void YCSBSyncTestWithPartitionedCassandra(string[] args)
+        {
+            int workerCount = 1;
+            int taskCountPerWorker = 1000;
+            string dataFile = "ycsb_data_r.in";
+            string operationFile = "ycsb_ops_r.in";
+            
+            // Cassandra version db
+            int maxVdbCnt = 8192;
+            List<VersionDb> vdbList = new List<VersionDb>();
+            for (int j = 0; j < maxVdbCnt; j++)
+            {
+                vdbList.Add(PartitionedCassandraVersionDb.Instance());
+            }
+            YCSBBenchmarkTest test = new YCSBBenchmarkTest(0, 0, vdbList[0]);
+
+            test.LoadDataWithMultiThreads(dataFile, vdbList, 10);
+
+
+            // run
+            //test.rerun(1, 5000, operationFile, vdbList);
+            //Console.WriteLine("*****************************************************");
+
+            //test.rerun(2, 5000, operationFile, vdbList);
+            //Console.WriteLine("*****************************************************");
+
+            //test.rerun(4, 5000, operationFile, vdbList);
+            //Console.WriteLine("*****************************************************");
+
+            //test.rerun(8, 5000, operationFile, vdbList);
+            //Console.WriteLine("*****************************************************");
+
+            //test.rerun(16, 5000, operationFile, vdbList);
+            //Console.WriteLine("*****************************************************");
+
+            //test.rerun(32, 5000, operationFile, vdbList);
+            //Console.WriteLine("*****************************************************");
+
+            //test.rerun(64, 5000, operationFile, vdbList);
+            //Console.WriteLine("*****************************************************");
+
+            //test.rerun(128, 2000, operationFile, vdbList);
+            //Console.WriteLine("*****************************************************");
+
+            //test.rerun(64, 2000, operationFile, vdbList);
+            //Console.WriteLine("*****************************************************");
+
+            //test.rerun(256, 1000, operationFile, vdbList);
+            //Console.WriteLine("*****************************************************");
+
+            //test.rerun(512, 500, operationFile, vdbList);
+            //Console.WriteLine("*****************************************************");
+
+            //test.rerun(1024, 250, operationFile, vdbList);
+            //Console.WriteLine("*****************************************************");
+
+            //test.rerun(2048, 125, operationFile, vdbList);
+            //Console.WriteLine("*****************************************************");
+
+            //test.rerun(4096, 50, operationFile, vdbList);
+            //Console.WriteLine("*****************************************************");
+
+            //test.rerun(8192, 25, operationFile, vdbList);
+            //Console.WriteLine("*****************************************************");
+
+            //Console.WriteLine("done");
+            //Console.ReadLine();
+        }
+
+
         public static void YCSBSyncTestWithCassandra(string[] args)
         {
             string[] contactPoints = { "127.0.0.1" };
@@ -68,7 +138,7 @@ namespace TransactionBenchmarkTest.YCSB
             }
             YCSBBenchmarkTest test = new YCSBBenchmarkTest(0, 0, vdbList[0]);
             
-            //test.LoadDataWithMultiThreads(dataFile, vdbList, 1);
+            test.LoadDataWithMultiThreads(dataFile, vdbList, 1);
 
 
             // run
@@ -279,6 +349,7 @@ namespace TransactionBenchmarkTest.YCSB
         }
         
 
+        
         public static void YCSBAsyncTestWithCassandra()
         {
             const int partitionCount = 20;
@@ -339,9 +410,9 @@ namespace TransactionBenchmarkTest.YCSB
         public static void YCSBAsyncTestWithPartitionedCassandra()
         {
             const int partitionCount = 4;
-            const int recordCount = 10000;
+            const int recordCount = 100;
             const int executorCount = 4;
-            const int txCountPerExecutor = 10000;
+            const int txCountPerExecutor = 250;
 
             const string dataFile = "ycsb_data_r.in";
             const string operationFile = "ycsb_ops_r.in";
@@ -362,6 +433,46 @@ namespace TransactionBenchmarkTest.YCSB
             test.Stats();            
         }
 
+        static void LoadDataWithSyncForCassandra(string filename, int nThread)
+        {
+            // PartitionedCassandraVersionDb
+            int maxVdbCnt = 8192;
+            List<VersionDb> vdbList = new List<VersionDb>();
+            for (int j = 0; j < maxVdbCnt; j++)
+            {
+                vdbList.Add(PartitionedCassandraVersionDb.Instance());
+            }
+            YCSBBenchmarkTest sync_test = new YCSBBenchmarkTest(0, 0, vdbList[0]);
+            sync_test.LoadDataWithMultiThreads(filename, vdbList, nThread);
+        }
+        public static void YCSBAsyncTestWithPartitionedCassandraHybrid()
+        {
+            int workerCount = 2;
+            int taskCountPerWorker = 5000;
+            int partitionCount = 2;
+
+            string dataFile = "ycsb_data_r.in";
+            string operationFile = "ycsb_ops_r.in";
+
+            //LoadDataWithSyncForCassandra(dataFile, 10);
+
+
+            string[] tables = new string[]
+            {
+                VersionDb.TX_TABLE,
+                YCSBAsyncBenchmarkTest.TABLE_ID
+            };
+
+            // The default mode of versionDb is daemonMode
+            PartitionedCassandraVersionDb versionDb = PartitionedCassandraVersionDb.Instance(partitionCount);
+            YCSBAsyncBenchmarkTest test = new YCSBAsyncBenchmarkTest(0,
+                workerCount, taskCountPerWorker, versionDb, tables);
+
+            test.SetupOps(operationFile);
+            test.Run();
+            test.Stats();
+        }
+
 
         public static void Main(string[] args)
         {
@@ -377,11 +488,13 @@ namespace TransactionBenchmarkTest.YCSB
 
 
             //YCSBSyncTestWithCassandra(args);
-            YCSBAsyncTestWithPartitionedCassandra();
+            //YCSBSyncTestWithPartitionedCassandra(args);
+            YCSBAsyncTestWithPartitionedCassandraHybrid();
+            //YCSBAsyncTestWithPartitionedCassandra();
             //test_cassandra2();
 
             Console.WriteLine("Done");
-            //Console.ReadLine();
+            Console.ReadLine();
             //Console.ReadLine();
             //Console.ReadLine();
             //Console.ReadLine();

@@ -225,8 +225,25 @@
             this.versionDb.CreateVersionTable(TABLE_ID, REDIS_DB_INDEX);
 
             // step3: load data
-            // this.LoadDataParallely(dataFile);
+            //this.LoadDataParallely(dataFile);
             this.LoadDataSequentially(dataFile);
+
+            // step 4: fill workers' queue
+            if (this.versionDb is SingletonPartitionedVersionDb && RESHUFFLE)
+            {
+                this.executorList = this.ReshuffleFillWorkerQueue(operationFile, this.executorCount, this.executorCount * this.txCountPerExecutor);
+            }
+            else
+            {
+                this.executorList = this.FillWorkerQueue(operationFile);
+            }
+        }
+
+        internal void SetupOps(string operationFile)
+        {
+            // step1: flush the database
+            this.versionDb.ClearTxTable();
+            Console.WriteLine("Flushed the tx database");
 
             // step 4: fill workers' queue
             if (this.versionDb is SingletonPartitionedVersionDb && RESHUFFLE)
@@ -279,29 +296,11 @@
             int tid = 0;
             foreach (TransactionExecutor executor in this.executorList)
             {
-                tasks[tid++] = Task.Factory.StartNew(executor.YCSBExecuteRead);
+                tasks[tid++] = Task.Factory.StartNew(executor.YCSBExecuteRead2);
             }
-
-            //List<Thread> threadList = new List<Thread>();
-            //foreach (TransactionExecutor executor in this.executorList)
-            //{
-            //    //executor.YCSBExecuteRead();
-            //    Thread thread = new Thread(executor.YCSBExecuteRead);
-            //    threadList.Add(thread);
-            //}
 
             this.startEventSlim.Set();
             this.testBeginTicks = DateTime.Now.Ticks;
-
-            //// start           
-            //foreach (Thread thread in threadList)
-            //{
-            //    thread.Start();
-            //}
-            //foreach (Thread thread in threadList)
-            //{
-            //    thread.Join();
-            //}
 
             Task.WaitAll(tasks);
             // this.countdownEvent.Wait();
@@ -377,7 +376,11 @@
             else if (this.versionDb is SingletonPartitionedVersionDb)
             {
                 partitions = ((SingletonPartitionedVersionDb)this.versionDb).PartitionCount;
+            } else if (this.versionDb is PartitionedCassandraVersionDb)
+            {
+                partitions = ((PartitionedCassandraVersionDb)this.versionDb).PartitionCount;
             }
+            Console.WriteLine("Partitions Count: {0}", partitions);
 
             List<TransactionExecutor> executors;
             // 3.2 Load in multiple workers
@@ -396,7 +399,8 @@
             int tid = 0;
             foreach (TransactionExecutor executor in executors)
             {
-                tasks[tid++] = Task.Factory.StartNew(executor.ExecuteInSync);
+                //tasks[tid++] = Task.Factory.StartNew(executor.ExecuteInSync);
+                tasks[tid++] = Task.Factory.StartNew(executor.Execute2);
             }
             Task.WaitAll(tasks);
 
@@ -413,6 +417,8 @@
 
         private void LoadDataSequentially(string dataFile)
         {
+            long beginTicks = DateTime.Now.Ticks;
+
             using (StreamReader reader = new StreamReader(dataFile))
             {
                 string line;
@@ -462,6 +468,9 @@
                 // executor.RecycleTxTableEntryAfterFinished();
                 thread.Abort();
             }
+
+            long endTicks = DateTime.Now.Ticks;
+            Console.WriteLine("Elapsed time {0} seconds", ((endTicks - beginTicks) * 1.0 / 10000000));
         }
 
         private List<TransactionExecutor> FillWorkerQueue(string operationFile)

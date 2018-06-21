@@ -291,6 +291,8 @@
 
         internal void LoadDataWithMultiThreads(string dataFile, List<VersionDb> vdbList, int threadCount = 8)
         {
+            long beginTicks = DateTime.Now.Ticks;
+
             if (vdbList.Count < threadCount)
             {
                 throw new Exception("version db instance not enough");
@@ -354,6 +356,7 @@
             }
             void loadWithOneThreadBatch(int tid, int s, int e)
             {
+                //Console.WriteLine("tid={0}, s={1}, e={2}", tid, s, e);
                 int batchSize = 50;
                 string line;
                 for (int i = s; i < e; i+=batchSize)
@@ -368,50 +371,52 @@
                     finishedCnt[tid] += (end-i);
                     if (finishedCnt[tid] % 100 == 0)
                     {
-                        Console.WriteLine("Load {0}", finishedCnt[tid]);
+                        //Console.WriteLine("Load {0}", finishedCnt[tid]);
                     }
                 }
             }
 
-            loadWithOneThreadBatch(0, 0, lines.Count);
+            //loadWithOneThreadBatch(0, 0, lines.Count);
 
-            //int cntPerThread = lines.Count / threadCount;
-            //List<Thread> threads = new List<Thread>();
-            //for (int i = 0; i < threadCount; i++)
-            //{
-            //    //Console.WriteLine("i=" + i);
-            //    Thread t;
-            //    if (i == threadCount - 1)
-            //    {
-            //        t = new Thread(() => loadWithOneThreadBatch(i, i * cntPerThread, lines.Count));
-            //    }
-            //    else
-            //    {
-            //        t = new Thread(() => loadWithOneThreadBatch(i, i * cntPerThread, (i + 1) * cntPerThread));
-            //    }
-            //    threads.Add(t);
-            //    t.Start();
-            //}
+            int cntPerThread = lines.Count / threadCount;
+            List<Thread> threads = new List<Thread>();
+            for (int i = 0; i < threadCount; i++)
+            {
+                //Console.WriteLine("i=" + i);
+                Thread t;
+                if (i == threadCount - 1)
+                {
+                    t = new Thread(() => loadWithOneThreadBatch(i, i * cntPerThread, lines.Count));
+                }
+                else
+                {
+                    t = new Thread(() => loadWithOneThreadBatch(i, i * cntPerThread, (i + 1) * cntPerThread));
+                }
+                threads.Add(t);
+                t.Start();
+                Thread.Sleep(1000);
+            }
 
-            //while (true)
-            //{
-            //    Thread.Sleep(1000); // 1s
-            //    int doneTotal = 0;
-            //    for (int i=0; i<threadCount; i++)
-            //    {
-            //        doneTotal += finishedCnt[i];
-            //    }
-            //    Console.WriteLine("Load {0}", doneTotal);
-            //    if (doneTotal == lines.Count)
-            //    {
-            //        foreach (Thread t in threads)
-            //        {
-            //            t.Join();
-            //        }
-            //        break;
-            //    }
-            //}
-            Console.WriteLine("Load Finished, total {0}", lines.Count);
+            while (true)
+            {
+                Thread.Sleep(1000); // 1s
+                int doneTotal = 0;
+                for (int i = 0; i < threadCount; i++)
+                {
+                    doneTotal += finishedCnt[i];
+                }
+                Console.WriteLine("Load {0}", doneTotal);
+                if (doneTotal == lines.Count)
+                {
+                    foreach (Thread t in threads)
+                    {
+                        t.Join();
+                    }
+                    break;
+                }
+            }
+            long endTicks = DateTime.Now.Ticks;
+            Console.WriteLine("Load Finished, total {0}, Elapsed {1} seconds", lines.Count, (endTicks-beginTicks)*1.0/10000000);
         }
 
         internal void Reset(int workerCount, int taskCountPerWorker, List<VersionDb> vdbList)
