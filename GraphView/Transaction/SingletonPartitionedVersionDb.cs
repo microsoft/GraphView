@@ -58,14 +58,20 @@ namespace GraphView.Transaction
             this.PhysicalTxPartitionByKey = key => (int)((long)key / TxRange.range);
 
             this.DaemonMode = daemonMode;
-            if (this.DaemonMode)
+        }
+
+        public void StartDaemonThreads()
+        {
+            if (!this.DaemonMode)
             {
-                this.Active = true;
-                for (int pk = 0; pk < this.PartitionCount; pk++)
-                {
-                    Thread thread = new Thread(this.Monitor);
-                    thread.Start(pk);
-                }
+                return;
+            }
+
+            this.Active = true;
+            for (int pk = 0; pk < this.PartitionCount; pk++)
+            {
+                Thread thread = new Thread(this.Monitor);
+                thread.Start(pk);
             }
         }
 
@@ -170,14 +176,10 @@ namespace GraphView.Transaction
         internal void Monitor(object obj)
         {
             int pk = (int)obj;
-            long lastFlushTicks = DateTime.Now.Ticks;
-
             while (this.Active)
             {
-                while (DateTime.Now.Ticks - lastFlushTicks < this.FlushWaitTicks) { }
-                lastFlushTicks = DateTime.Now.Ticks;
                 this.Visit(VersionDb.TX_TABLE, pk);
-                foreach (string tableId in this.versionTables.Keys.ToArray())
+                foreach (string tableId in this.versionTables.Keys)
                 {
                     this.Visit(tableId, pk);
                 }
@@ -186,16 +188,23 @@ namespace GraphView.Transaction
 
         internal override void EnqueueTxEntryRequest(long txId, TxEntryRequest txEntryRequest, int execPartition = 0)
         {
-            int pk = this.PhysicalTxPartitionByKey(txId);
             // Interlocked.Increment(ref SingletonPartitionedVersionDb.EnqueuedRequests);
-            if (pk == execPartition)
-            {
-                this.dbVisitors[pk].Invoke(txEntryRequest);
-            }
-            else
-            {
-                base.EnqueueTxEntryRequest(txId, txEntryRequest, execPartition);
-            }
+
+            // SingletonPartitionVersionDb implementation 1
+            base.EnqueueTxEntryRequest(txId, txEntryRequest, execPartition);
+            while (!txEntryRequest.Finished) ;
+
+            // SingletonPartitionedVersionDb implementation 2
+
+            //int pk = this.PhysicalTxPartitionByKey(txId);
+            //if (pk == execPartition)
+            //{
+            //    this.dbVisitors[pk].Invoke(txEntryRequest);
+            //}
+            //else
+            //{
+            //    base.EnqueueTxEntryRequest(txId, txEntryRequest, execPartition);
+            //}
         }
     }
 }

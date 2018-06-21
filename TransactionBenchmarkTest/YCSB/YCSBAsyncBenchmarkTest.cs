@@ -224,6 +224,11 @@
             // step2: create version table
             this.versionDb.CreateVersionTable(TABLE_ID, REDIS_DB_INDEX);
 
+            if (this.versionDb is SingletonPartitionedVersionDb)
+            {
+                ((SingletonPartitionedVersionDb)this.versionDb).StartDaemonThreads();
+            }
+
             // step3: load data
             //this.LoadDataParallely(dataFile);
             this.LoadDataSequentially(dataFile);
@@ -456,7 +461,7 @@
                     TransactionRequest req = new TransactionRequest(sessionId, workload, StoredProcedureType.YCSBStordProcedure);
                     reqQueue.Enqueue(req);
                     // ACTION(Tuple.Create(this.versionDb, workload));
-                    if (count % 100 == 0)
+                    if (count % 10000 == 0)
                     {
                         // Console.WriteLine("Loaded {0} records", count);
                         Console.WriteLine("Enqueued {0} tx insert request", count);

@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Threading;
+using System.Threading.Tasks;
 using TransactionBenchmarkTest.TPCC;
 
 namespace TransactionBenchmarkTest.YCSB
@@ -184,6 +185,111 @@ namespace TransactionBenchmarkTest.YCSB
             }
         }
 
+        static void YCSBAsyncTestWithPartitionedVersionDb(string[] args)
+        {
+            int partitionCount = 1;
+            int executorCount = partitionCount;
+            int txCountPerExecutor = 2;
+
+            // 20w
+            string dataFile = "ycsb_data_r.in";
+            const int recordCount = 200000;
+            //100w
+            //string dataFile = "ycsb_data_m_r.in";
+            //const int recordCount = 1000000;
+            // 500w
+            //string dataFile = "ycsb_data_lg_r.in";
+            //const int recordCount = 5000000;
+            // 1000w
+            //string dataFile = "ycsb_data_hg_r.in";
+            //const int recordCount = 10000000;
+
+
+            string operationFile = "ycsb_ops_r.in";
+            if (args.Length > 1)
+            {
+                dataFile = args[0];
+                operationFile = args[1];
+                partitionCount = Int32.Parse(args[2]);
+                executorCount = partitionCount;
+                txCountPerExecutor = args.Length > 3 ? Int32.Parse(args[3]) : txCountPerExecutor;
+            }
+
+            // these three settings are useless in SingletonVersionDb environment.
+            const bool daemonMode = true;
+            YCSBAsyncBenchmarkTest.RESHUFFLE = false;
+
+            string[] tables =
+            {
+                YCSBAsyncBenchmarkTest.TABLE_ID,
+                VersionDb.TX_TABLE
+            };
+
+            int currentExecutorCount = 1;
+
+            SingletonPartitionedVersionDb versionDb = SingletonPartitionedVersionDb.Instance(executorCount, true);
+            YCSBAsyncBenchmarkTest test = new YCSBAsyncBenchmarkTest(recordCount,
+                currentExecutorCount, txCountPerExecutor, versionDb, tables);
+
+            for (; currentExecutorCount <= partitionCount; currentExecutorCount++)
+            {
+                if (currentExecutorCount == 1)
+                {
+                    test.Setup(dataFile, operationFile);
+                }
+                else
+                {
+                    test.ResetAndFillWorkerQueue(operationFile, currentExecutorCount);
+                }
+                test.Run();
+                test.Stats();
+            }
+        }
+
+        //private static bool TEST_ACTIVE = true;
+       
+        //private static void TestRequestQueue()
+        //{
+        //    RequestQueue<string> strQueue = new RequestQueue<string>(8);
+        //    long beginTicks = DateTime.Now.Ticks;
+        //    TEST_ACTIVE = true;
+
+        //    for (int i = 0; i < 8; i++)
+        //    {
+        //        Task.Factory.StartNew(TestEnqueue, strQueue);
+        //    }
+        //    Task.Factory.StartNew(TestDequeue, strQueue);
+
+        //    while (DateTime.Now.Ticks - beginTicks < 1 * 10000000) ;
+        //    TEST_ACTIVE = false;
+        //}
+
+        //private static Action<object> TestEnqueue = (object obj) =>
+        //{
+        //    RequestQueue<string> strQueue = obj as RequestQueue<string>;
+        //    Random rand = new Random();
+        //    while (TEST_ACTIVE)
+        //    {
+        //        int pk = rand.Next(0, 8);
+        //        strQueue.Enqueue("123", pk);
+        //    }
+        //};
+
+        //private static Action<object> TestDequeue = (object obj) =>
+        //{
+        //    RequestQueue<string> strQueue = obj as RequestQueue<string>;
+        //    Random rand = new Random();
+        //    string value = null;
+        //    while (TEST_ACTIVE)
+        //    {
+        //        int pk = rand.Next(0, 8);
+        //        if (strQueue.TryDequeue(out value))
+        //        {
+        //            Debug.Assert(value != null);
+        //        }
+        //    }
+        //};
+
         public static void Main(string[] args)
         {
             Program.args = args;
@@ -197,7 +303,8 @@ namespace TransactionBenchmarkTest.YCSB
 
             // For the YCSB async test
             // YCSBAsyncTest();
-            YCSBAsyncTestWithSingletonVersionDb(args);
+            //YCSBAsyncTestWithSingletonVersionDb(args);
+            YCSBAsyncTestWithPartitionedVersionDb(args);
             // YCSBAsyncTestWithCassandra();
 
             // ExecuteRedisRawTest();
