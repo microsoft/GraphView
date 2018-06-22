@@ -448,9 +448,9 @@ namespace TransactionBenchmarkTest.YCSB
         public static void YCSBAsyncTestWithPartitionedCassandraHybrid(string[] args)
         {
             string action = "run";
-            int workerCount = 7;
-            int taskCountPerWorker = 1000;
-            int partitionCount = 7;
+            int workerCount = 1;
+            int taskCountPerWorker = 3;
+            int partitionCount = 1;
 
             string dataFile = "ycsb_data_r.in";
             string operationFile = "ycsb_ops_r.in";
@@ -494,7 +494,10 @@ namespace TransactionBenchmarkTest.YCSB
                     workerCount, taskCountPerWorker, versionDb, tables);
 
                 test.SetupOps(operationFile);
+                //Console.WriteLine("monitor running and Main sleep");
+                //Thread.Sleep(10000);
                 test.Run();
+                //test.Init();
                 test.Stats();
             } else
             {
@@ -505,6 +508,22 @@ namespace TransactionBenchmarkTest.YCSB
 
         public static void Main(string[] args)
         {
+            //int a = 0;
+
+            //void r()
+            //{
+            //    //Interlocked.Add(ref a, 1);
+            //    Interlocked.Increment(ref a);
+            //}
+            //for (int i=0; i<1000; i++)
+            //{
+            //    Thread t = new Thread(r);
+            //    t.Start();
+            //}
+            //Console.WriteLine("a=" + a);
+
+
+            //Interlocked.
             //YCSBSyncTestWithCassandra(args);
             //YCSBSyncTestWithPartitionedCassandra(args);
             YCSBAsyncTestWithPartitionedCassandraHybrid(args);
@@ -512,7 +531,7 @@ namespace TransactionBenchmarkTest.YCSB
             //test_cassandra2();
 
             Console.WriteLine("Done");
-            //Console.ReadLine();
+            Console.ReadLine();
             //Console.ReadLine();
             //Console.ReadLine();
             //Console.ReadLine();

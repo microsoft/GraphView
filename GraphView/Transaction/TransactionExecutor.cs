@@ -303,6 +303,7 @@ namespace GraphView.Transaction
                 //{
                 //    Console.WriteLine("Executor {0}:\t Finished Txs: {1}", this.executorId, this.FinishedTxs);
                 //}
+                Console.WriteLine("\n");
             }
 
             this.AllRequestsFinished = true;

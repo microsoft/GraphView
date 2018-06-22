@@ -19,11 +19,15 @@ namespace GraphView.Transaction
     {
         internal RowSet CQLExecute(string cql)
         {
+            Console.WriteLine(cql);
+
             return this.SessionManager.GetSession(PartitionedCassandraVersionDb.DEFAULT_KEYSPACE).Execute(cql);
         }
 
         internal bool CQLExecuteWithIfApplied(string cql)
         {
+            Console.WriteLine(cql);
+
             var rs = this.SessionManager.GetSession(PartitionedCassandraVersionDb.DEFAULT_KEYSPACE).Execute(cql);
             var rse = rs.GetEnumerator();
             rse.MoveNext();

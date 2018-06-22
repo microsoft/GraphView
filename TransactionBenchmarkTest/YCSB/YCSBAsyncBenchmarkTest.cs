@@ -244,6 +244,16 @@
             }
         }
 
+        // do some init work
+        internal void Init()
+        {
+            if (this.versionDb is PartitionedCassandraVersionDb)
+            {
+                this.versionDb.CreateVersionTable(TABLE_ID);
+                (this.versionDb as PartitionedCassandraVersionDb).StartMonitors();
+            }
+        }
+
         internal void SetupOps(string operationFile)
         {
             // step1: flush the database
@@ -320,6 +330,9 @@
                 thread.Start();
             }
 
+            // temp add
+            this.Init();
+
             long lastTimeTotal = 0;
             while (true)
             {
@@ -364,6 +377,13 @@
             // this.countdownEvent.Wait();
 
             this.testEndTicks = DateTime.Now.Ticks;
+
+            // stop monitors
+            if (this.versionDb is PartitionedCassandraVersionDb)
+            {
+                (this.versionDb as PartitionedCassandraVersionDb).StopMonitors();
+            }
+
             foreach (TransactionExecutor executor in this.executorList)
             {
                 executor.Active = false;

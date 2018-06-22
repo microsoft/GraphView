@@ -19,6 +19,9 @@ namespace GraphView.Transaction
         /// </summary>
         private static volatile PartitionedCassandraVersionDb instance;
 
+        // monitor run or not
+        internal bool Active { get; set; } = false;
+
         /// <summary>
         /// lock to init the singleton instance
         /// </summary>
@@ -73,17 +76,24 @@ namespace GraphView.Transaction
             //    Thread thread = new Thread(this.Monitor);
             //    thread.Start(pk);
             //}
-            this.StartMonitors();
+            //this.StartMonitors();
         }
 
-        private void StartMonitors()
+        // start threads running monitors
+        public void StartMonitors()
         {
-            Console.WriteLine("monitor starts");
+            this.Active = true;
             for (int pk = 0; pk < this.PartitionCount; pk++)
             {
                 Thread thread = new Thread(this.Monitor);
                 thread.Start(pk);
             }
+            Console.WriteLine("monitor running");
+        }
+
+        public void StopMonitors()
+        {
+            this.Active = false;
         }
 
         internal static PartitionedCassandraVersionDb Instance(int partitionCount = 4)
@@ -103,14 +113,26 @@ namespace GraphView.Transaction
 
         private void Monitor(object pk)
         {
+            //long totalTicks = 0;
+            //long idleTicks = 0;
+
+            //long round = 0;
+            //long idleRound = 0;
+
             int partitionKey = (int)pk;
-            while (true)
+            while (this.Active)
             {
+                //long start = DateTime.Now.Ticks;
+                //round++;
+                //bool idle = true;
+
                 // flush version db queue
                 TxEntryRequest txReq = null;
                 //if (this.partitionedQueues[partitionKey].TryDequeue(out txReq))
                 if (this.ccPartitionedQueues[partitionKey].TryDequeue(out txReq))
                 {
+                    //this.ccPartitionedQueues[partitionKey].IsEmpty;
+                    //idle = false;
                     this.dbVisitors[partitionKey].Invoke(txReq);
                     lock (txReq)
                     {
@@ -127,6 +149,7 @@ namespace GraphView.Transaction
                         //if ((item.Value as PartitionedCassandraVersionTable).partitionedQueues[partitionKey].TryDequeue(out veReq))
                         if ((item.Value as PartitionedCassandraVersionTable).ccPartitionedQueues[partitionKey].TryDequeue(out veReq))
                         {
+                            //idle = false;
                             (item.Value as PartitionedCassandraVersionTable).tableVisitors[partitionKey].Invoke(veReq);
                             lock (veReq)
                             {
@@ -135,8 +158,73 @@ namespace GraphView.Transaction
                         }
                     }
                 }
+
+                //long end = DateTime.Now.Ticks;
+
+                //long delta = end - start;
+                //totalTicks += delta;
+
+                //if (idle)
+                //{
+                //    idleRound++;
+                //    idleTicks += delta;
+                //}
             }
+
+            //Console.WriteLine("Monitor: {0}, total round {1}, idle round {2}, idle rate {3} \n" +
+            //                  "              total ticks {4}, idle ticks {5}, idle rate {6}", 
+            //                  partitionKey, round, idleRound, idleRound * 1.0 / round,
+            //                  totalTicks, idleTicks, idleTicks * 1.0 / totalTicks);
         }
+
+        //private void MonitorVdbQueue(object pk)
+        //{
+        //    int partitionKey = (int)pk;
+        //    while (true)
+        //    {
+        //        // flush version db queue
+        //        TxEntryRequest txReq = null;
+        //        //if (this.partitionedQueues[partitionKey].TryDequeue(out txReq))
+        //        if (this.ccPartitionedQueues[partitionKey].TryDequeue(out txReq))
+        //        {
+        //            this.dbVisitors[partitionKey].Invoke(txReq);
+        //            lock (txReq)
+        //            {
+        //                System.Threading.Monitor.Pulse(txReq);
+        //            }
+        //        }
+        //        else
+        //        {
+        //            lock (this.ccPartitionedQueues[partitionKey])
+        //            {
+        //                System.Threading.Monitor.Wait(this.ccPartitionedQueues[partitionKey]);
+        //            }
+        //        }
+        //    }
+        //}
+
+        //private void MonitorVtableQueue(object pk) {
+        //    int partitionKey = (int)pk;
+        //    while (true) { 
+        //        // flush VersionTables Queue
+        //        VersionEntryRequest veReq = null;
+        //        if (this.versionTables.Count > 0)   // avoid lock mostly, just for test, not safe theoretically
+        //        {
+        //            foreach (var item in this.versionTables)
+        //            {
+        //                //if ((item.Value as PartitionedCassandraVersionTable).partitionedQueues[partitionKey].TryDequeue(out veReq))
+        //                if ((item.Value as PartitionedCassandraVersionTable).ccPartitionedQueues[partitionKey].TryDequeue(out veReq))
+        //                {
+        //                    (item.Value as PartitionedCassandraVersionTable).tableVisitors[partitionKey].Invoke(veReq);
+        //                    lock (veReq)
+        //                    {
+        //                        System.Threading.Monitor.Pulse(veReq);
+        //                    }
+        //                }
+        //            }
+        //        }
+        //    }
+        //}
 
         internal override TxResourceManager GetResourceManagerByPartitionIndex(int partition)
         {
