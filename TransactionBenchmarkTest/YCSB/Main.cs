@@ -448,9 +448,13 @@ namespace TransactionBenchmarkTest.YCSB
         public static void YCSBAsyncTestWithPartitionedCassandraHybrid(string[] args)
         {
             string action = "run";
-            int workerCount = 1;
-            int taskCountPerWorker = 3;
-            int partitionCount = 1;
+            int workerCount = 20;
+            int taskCountPerWorker = 10000;
+            int partitionCount = 20;
+
+            int runall = 1;
+            int stableRoundStart = 5;
+            int stableRoundEnd = 15;
 
             string dataFile = "ycsb_data_r.in";
             string operationFile = "ycsb_ops_r.in";
@@ -460,6 +464,12 @@ namespace TransactionBenchmarkTest.YCSB
             {
                 switch (args[i++])
                 {
+                    case "--datafile":
+                        dataFile = args[i++];
+                        break;
+                    case "--opsfile":
+                        operationFile = args[i++];
+                        break;
                     case "--workers":
                         workerCount = int.Parse(args[i++]);
                         break;
@@ -469,12 +479,26 @@ namespace TransactionBenchmarkTest.YCSB
                     case "--partitions":
                         partitionCount = int.Parse(args[i++]);
                         break;
+                    case "--startround":
+                        stableRoundStart = int.Parse(args[i++]);
+                        break;
+                    case "--endround":
+                        stableRoundEnd = int.Parse(args[i++]);
+                        break;
+                    case "--runall":
+                        runall = int.Parse(args[i++]);
+                        break;
                     case "--action":
                         action = args[i++];
                         break;
                     default:
                         break;
                 }
+            }
+            if (runall == 0 && stableRoundEnd <= stableRoundStart)
+            {
+                Console.WriteLine("Bad stable round setting");
+                return;
             }
 
             if (action == "load")
@@ -492,14 +516,20 @@ namespace TransactionBenchmarkTest.YCSB
                 PartitionedCassandraVersionDb versionDb = PartitionedCassandraVersionDb.Instance(partitionCount);
                 YCSBAsyncBenchmarkTest test = new YCSBAsyncBenchmarkTest(0,
                     workerCount, taskCountPerWorker, versionDb, tables);
+                if (runall == 0)
+                {
+                    test.SetStableRound(stableRoundStart, stableRoundEnd);
+                }
 
-                test.SetupOps(operationFile);
-                //Console.WriteLine("monitor running and Main sleep");
-                //Thread.Sleep(10000);
-                test.Run();
-                //test.Init();
-                test.Stats();
-            } else
+                //test.SetupOps(operationFile);
+                test.SetupOpsNull();
+
+                //test.StartMonitors();
+
+                test.Run2();
+                test.Stats2();
+            }
+            else
             {
                 Console.WriteLine("bad action. Only <load> or <run> allowed");
             }
@@ -508,25 +538,16 @@ namespace TransactionBenchmarkTest.YCSB
 
         public static void Main(string[] args)
         {
-            //int a = 0;
-
-            //void r()
-            //{
-            //    //Interlocked.Add(ref a, 1);
-            //    Interlocked.Increment(ref a);
-            //}
-            //for (int i=0; i<1000; i++)
-            //{
-            //    Thread t = new Thread(r);
-            //    t.Start();
-            //}
-            //Console.WriteLine("a=" + a);
-
+            //long a = 10000;
+            //Console.WriteLine(a.GetHashCode());
+            //Console.WriteLine(a.ToString().GetHashCode());
 
             //Interlocked.
             //YCSBSyncTestWithCassandra(args);
             //YCSBSyncTestWithPartitionedCassandra(args);
+
             YCSBAsyncTestWithPartitionedCassandraHybrid(args);
+
             //YCSBAsyncTestWithPartitionedCassandra();
             //test_cassandra2();
 

@@ -25,10 +25,7 @@ namespace GraphView.Transaction
 
     public abstract class TxEntryVisitor
     {
-        internal virtual void Visit(TxEntryRequest req) {
-            Console.WriteLine("hhhhhh");
-
-        }
+        internal virtual void Visit(TxEntryRequest req) { }
         internal virtual void Visit(GetTxEntryRequest req) { }
         internal virtual void Visit(InsertTxIdRequest req) { }
         internal virtual void Visit(NewTxIdRequest req) { }

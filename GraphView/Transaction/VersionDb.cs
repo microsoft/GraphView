@@ -70,13 +70,15 @@ namespace GraphView.Transaction
         /// </summary>
         protected readonly Queue<TxEntryRequest>[] txEntryRequestQueues;
         protected readonly Queue<TxEntryRequest>[] flushQueues;
-        internal readonly VersionDbVisitor[] dbVisitors;
+        //internal readonly VersionDbVisitor[] dbVisitors;
+        internal VersionDbVisitor[] dbVisitors;     // to avoid memory overflow used by cassandra
 
         protected readonly RequestQueue<TxEntryRequest>[] requestUDFQueues;
             
         private readonly int[] queueLatches;
 
-        internal int PartitionCount { get; private set; }
+        //internal int PartitionCount { get; private set; }
+        internal int PartitionCount { get; set; }   // to avoid memory overflow used by cassandra
 
         protected static class StaticRandom
         {
@@ -121,6 +123,7 @@ namespace GraphView.Transaction
 
             this.PhysicalPartitionByKey = key => Math.Abs(key.GetHashCode()) % this.PartitionCount;
             this.PhysicalTxPartitionByKey = key => Math.Abs(key.GetHashCode()) % this.PartitionCount;
+            //this.PhysicalTxPartitionByKey = key => Math.Abs(key.ToString().GetHashCode()) % this.PartitionCount;
         }
 
         internal virtual TxResourceManager GetResourceManagerByPartitionIndex(int partition)
