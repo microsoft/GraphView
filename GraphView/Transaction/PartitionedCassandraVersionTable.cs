@@ -1,6 +1,7 @@
 ﻿using Cassandra;
 using System;
 using System.Collections.Generic;
+using System.Collections.Concurrent;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -19,8 +20,12 @@ namespace GraphView.Transaction
                 return (this.VersionDb as PartitionedCassandraVersionDb).SessionManager;
             }
         }
+        //internal RequestQueue<VersionEntryRequest>[] partitionedQueues;
+        internal Queue<VersionEntryRequest>[] rawPartitionedQueues;
+        //internal ConcurrentQueue<VersionEntryRequest>[] ccPartitionedQueues;
+        //internal int[] latches;
+        public ConcurrentQueue<int> ccTasksCnt;
 
-        internal RequestQueue<VersionEntryRequest>[] partitionedQueues;
         /// <summary>
         /// A visitor that translates tx entry requests to CQL queries, 
         /// sends them to Cassandra, and collects results and fill the request's result fields.
@@ -31,42 +36,57 @@ namespace GraphView.Transaction
         internal PartitionedCassandraVersionTableVisitor cassandraVisitor;
 
         public PartitionedCassandraVersionTable(VersionDb versionDb, string tableId, int partitionCount = 4)
-            : base(versionDb, tableId)
+            : base(versionDb, tableId, 1)   // fake partitionCount to avoid memory overflow
         {
             this.PartitionCount = partitionCount;
-            this.partitionedQueues = new RequestQueue<VersionEntryRequest>[partitionCount];
+            //this.partitionedQueues = new RequestQueue<VersionEntryRequest>[partitionCount];
+            this.rawPartitionedQueues = new Queue<VersionEntryRequest>[partitionCount];
+            //this.ccPartitionedQueues = new ConcurrentQueue<VersionEntryRequest>[partitionCount];
+            //this.latches = new int[partitionCount];
+            this.ccTasksCnt = new ConcurrentQueue<int>();
+
+            this.tableVisitors = new VersionTableVisitor[partitionCount];
+
             for (int pid = 0; pid < this.PartitionCount; pid++)
             {
-                this.partitionedQueues[pid] = new RequestQueue<VersionEntryRequest>(partitionCount);
-                this.tableVisitors[pid] = new PartitionedCassandraVersionTableVisitor();
+                //this.partitionedQueues[pid] = new RequestQueue<VersionEntryRequest>(partitionCount);
+                this.rawPartitionedQueues[pid] = new Queue<VersionEntryRequest>(partitionCount);
+                //this.rawPartitionedQueues[pid] = new Queue<VersionEntryRequest>();
+                //this.ccPartitionedQueues[pid] = new ConcurrentQueue<VersionEntryRequest>();
+                //this.latches[pid] = 0;
+
+                this.tableVisitors[pid] = new PartitionedCassandraVersionTableVisitor(pid);
             }
-
-            //for (int pk = 0; pk < partitionCount; pk++)
-            //{
-            //    Thread thread = new Thread(this.Monitor);
-            //    thread.Start(pk);
-            //}
         }
-
-        //private void Monitor(object pk)
-        //{
-        //    int partitionKey = (int)pk;
-        //    while (true)
-        //    {
-        //        VersionEntryRequest veReq = null;
-        //        if (this.partitionedQueues[partitionKey].TryDequeue(out veReq))
-        //        {
-        //            cassandraVisitor.Visit(veReq);
-        //        }
-        //    }
-        //}
 
         internal override void EnqueueVersionEntryRequest(VersionEntryRequest req, int execPartition = 0)
         {
-            int pk = this.VersionDb.PhysicalTxPartitionByKey(req.RecordKey);
-            partitionedQueues[pk].Enqueue(req, execPartition);
+            this.tableVisitors[execPartition].Invoke(req);
+            return;
 
-            //Console.WriteLine("Enqueue version entry req record key {0}", req.RecordKey.ToString());
+            //////////////////////////////////////////////////
+
+            int pid = this.VersionDb.PhysicalTxPartitionByKey(req.RecordKey);
+
+            //while (Interlocked.CompareExchange(ref this.latches[pid], 1, 0) != 0) ;
+            //partitionedQueues[pid].Enqueue(req, execPartition);
+            //Interlocked.Exchange(ref this.latches[pid], 0);
+
+            // 
+            //this.ccTasksCnt.Enqueue(pid);
+
+            lock (this.rawPartitionedQueues[pid])
+            {
+                this.rawPartitionedQueues[pid].Enqueue(req);
+                System.Threading.Monitor.Pulse(this.rawPartitionedQueues[pid]);
+            }
+
+            //lock (partitionedQueues[pid])
+            //{
+            //    partitionedQueues[pid].Enqueue(req, execPartition);
+            //}
+
+            //this.ccPartitionedQueues[pid].Enqueue(req);
 
             while (!req.Finished)
             {                
@@ -74,14 +94,56 @@ namespace GraphView.Transaction
                 {
                     if (!req.Finished)
                     {
-                        //System.Threading.Monitor.Wait(req);
-                    } else
-                    {
-                        //Console.WriteLine("finished version entry req");
+                        System.Threading.Monitor.Wait(req);
                     }
                 }
             }
         }
+
+        public void StartMonitors()
+        {
+            for (int i=0; i<this.PartitionCount; i++)
+            {
+                int pid = i;
+
+                Thread t = new Thread(this.Monitor);
+                t.Start(pid);
+
+                //Task.Factory.StartNew(() => this.Monitor(pid));
+            }
+            Console.WriteLine("VersionTable <{0}> Monitors Running", this.tableId);
+        }
+
+        internal void Monitor(object partitionKey)
+        {
+            int pk = (int)partitionKey;
+
+            // flush VersionTables Queue
+            VersionEntryRequest veReq = null;
+            while ((this.VersionDb as PartitionedCassandraVersionDb).Active)
+            {
+                lock (this.rawPartitionedQueues[pk])
+                {
+                    if (this.rawPartitionedQueues[pk].Count > 0)
+                    {
+                        veReq = this.rawPartitionedQueues[pk].Dequeue();
+                    } else
+                    {
+                        System.Threading.Monitor.Wait(this.rawPartitionedQueues[pk]);
+                    }
+                }
+
+                if (veReq != null)
+                {
+                    this.tableVisitors[pk].Invoke(veReq);
+                    lock (veReq)
+                    {
+                        System.Threading.Monitor.Pulse(veReq);
+                    }
+                }
+            }
+        }
+
     }
 
 

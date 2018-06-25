@@ -2,6 +2,7 @@
 
 namespace GraphView.Transaction
 {
+    using Cassandra;
     using System;
     using System.Collections.Generic;
     using System.Diagnostics;
@@ -284,7 +285,6 @@ namespace GraphView.Transaction
         // read string key
         public void YCSBExecuteRead2()
         {
-            //PinThreadOnCores(this.Partition);
             this.RunBeginTicks = DateTime.Now.Ticks;
 
             Random rand = new Random();
@@ -294,15 +294,207 @@ namespace GraphView.Transaction
 
             for (int i = 0; i < this.taskCount; i++)
             {
-                string recordKey = (this.workload.Dequeue().Workload as YCSBWorkload).Key;
+                if (!this.Active)
+                {
+                    break;
+                }
                 this.txExecution.Reset();
+
+                string recordKey = (this.workload.Dequeue().Workload as YCSBWorkload).Key;                
                 this.txExecution.Read("ycsb_table", recordKey, out received, out payload);
+
                 //recordKey = rand.Next(0, indexBound);
                 //this.txExecution.Read("ycsb_table", recordKey, out received, out payload);
+
+                //string recordKey2 = (this.workload.Dequeue().Workload as YCSBWorkload).Key;
+                //this.txExecution.Read("ycsb_table", recordKey2, out received, out payload);
+
                 this.txExecution.Commit();
+                if (this.txExecution.TxStatus == TxStatus.Committed)
+                {
+                    this.CommittedTxs++;
+                }
+                this.FinishedTxs++;
+            }
+
+            this.AllRequestsFinished = true;
+
+            this.RunEndTicks = DateTime.Now.Ticks;
+        }
+
+        // key is int, not real key
+        public void YCSBExecuteRead3()
+        {
+            Random rand = new Random();
+            bool received = false;
+            object payload = null;
+            int indexBound = 200000;    // setting
+
+            int[] intKeys = new int[this.taskCount];
+            //for (int i=0; i<this.taskCount; i++)
+            //{
+            //    intKeys[i] = rand.Next(0, indexBound);
+            //}
+            intKeys[0] = this.Partition;
+            for (int i = 1; i < this.taskCount; i++)
+            {
+                if (intKeys[i-1] + this.versionDb.PartitionCount >= indexBound)
+                {
+                    intKeys[i] = this.Partition;
+                } else
+                {
+                    intKeys[i] = intKeys[i - 1] + this.versionDb.PartitionCount;
+                }
+            }
+
+            this.RunBeginTicks = DateTime.Now.Ticks;
+
+            for (int i = 0; i < this.taskCount; i++)
+            {
+                if (!this.Active)
+                {
+                    break;
+                }
+                this.txExecution.Reset();
+
+                int recordKey = intKeys[i];
+                this.txExecution.Read("ycsb_table", recordKey, out received, out payload);
+
+                this.txExecution.Commit();
+                if (this.txExecution.TxStatus == TxStatus.Committed)
+                {
+                    this.CommittedTxs++;
+                }
+                this.FinishedTxs++;
             }
 
             this.RunEndTicks = DateTime.Now.Ticks;
+
+            this.AllRequestsFinished = true;
+
+        }
+
+        private CassandraSessionManager SessionManager
+        {
+            get
+            {
+                return CassandraSessionManager.Instance;
+            }
+        }
+
+        public void CassandraReadOnly()
+        {
+            int indexBound = 200000;    // setting
+
+            ISession session = this.SessionManager.GetSession(PartitionedCassandraVersionDb.DEFAULT_KEYSPACE);
+
+            string read_only_cql_raw = "SELECT * FROM ycsb_table WHERE recordKey='{0}' AND versionKey=1";
+
+            string read_only_cql = "SELECT * FROM ycsb_table WHERE recordKey=? AND versionKey=1";
+            var readonlyStmt = session.Prepare(read_only_cql);
+
+            BoundStatement[] cqls = new BoundStatement[this.taskCount];
+            string[] raw_cqls = new string[this.taskCount];
+            int[] intKeys = new int[this.taskCount];
+            intKeys[0] = this.Partition;
+            for (int i = 1; i < this.taskCount; i++)
+            {
+                if (intKeys[i - 1] + this.versionDb.PartitionCount >= indexBound)
+                {
+                    intKeys[i] = this.Partition;
+                }
+                else
+                {
+                    intKeys[i] = intKeys[i - 1] + this.versionDb.PartitionCount;
+                }
+            }
+            for (int i=0; i<this.taskCount; i++)
+            {
+                raw_cqls[i] = string.Format(read_only_cql_raw, intKeys[i]);
+                cqls[i] = readonlyStmt.Bind(intKeys[i].ToString());
+            }
+
+
+            this.RunBeginTicks = DateTime.Now.Ticks;
+
+            for (int i = 0; i < this.taskCount; i++)
+            {
+                if (!this.Active)
+                {
+                    break;
+                }
+
+                session.Execute(cqls[i]);
+                //session.Execute(raw_cqls[i]);
+
+                this.CommittedTxs++;
+                this.FinishedTxs++;
+            }
+
+            this.RunEndTicks = DateTime.Now.Ticks;
+
+            this.AllRequestsFinished = true;
+
+        }
+
+        public void CassandraUpdateOnly()
+        {
+            int indexBound = 200000;    // setting
+            int batchSize = 100;
+
+            ISession session = this.SessionManager.GetSession(PartitionedCassandraVersionDb.DEFAULT_KEYSPACE);
+
+            string update_only_cql = "UPDATE tx_table SET status=0, commitTime=-1, isCommitTsOrLB=0 WHERE txId=?";            
+            var updateonlyStmt = session.Prepare(update_only_cql);
+            
+            BoundStatement[] cqls = new BoundStatement[this.taskCount];
+            int[] intKeys = new int[this.taskCount];
+            intKeys[0] = this.Partition;
+            for (int i = 1; i < this.taskCount; i++)
+            {
+                if (intKeys[i - 1] + this.versionDb.PartitionCount >= indexBound)
+                {
+                    intKeys[i] = this.Partition;
+                }
+                else
+                {
+                    intKeys[i] = intKeys[i - 1] + this.versionDb.PartitionCount;
+                }
+            }
+            for (int i = 0; i < this.taskCount; i++)
+            {
+                cqls[i] = updateonlyStmt.Bind((long)intKeys[i]);
+            }
+            int batchTotal = this.taskCount / batchSize;
+            BatchStatement[] bss = new BatchStatement[batchTotal];
+            for (int i=0; i<batchTotal; i++)
+            {
+                bss[i] = new BatchStatement();
+                for (int j=batchSize*i; j<batchSize*(i+1); j++)
+                {
+                    bss[i].Add(cqls[j]);
+                }
+            }
+
+            this.RunBeginTicks = DateTime.Now.Ticks;
+
+            for (int i = 0; i < batchTotal; i++)
+            {
+                if (!this.Active)
+                {
+                    break;
+                }
+
+                session.Execute(bss[i]);
+
+                this.CommittedTxs += batchSize;
+                this.FinishedTxs += batchSize;
+            }
+
+            this.RunEndTicks = DateTime.Now.Ticks;
+
+            this.AllRequestsFinished = true;
+
         }
 
         public void Execute2()

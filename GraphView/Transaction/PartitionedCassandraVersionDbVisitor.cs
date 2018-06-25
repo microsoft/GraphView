@@ -13,17 +13,28 @@ namespace GraphView.Transaction
                 return CassandraSessionManager.Instance;
             }
         }
+
+        public int PartitionId = 0;
+
+        public PartitionedCassandraVersionDbVisitor(int pid = 0) : base()
+        {
+            this.PartitionId = pid;
+        }
     }
 
     internal partial class PartitionedCassandraVersionDbVisitor
     {
         internal RowSet CQLExecute(string cql)
         {
+            //Console.WriteLine(this.PartitionId + ";" + cql);
+
             return this.SessionManager.GetSession(PartitionedCassandraVersionDb.DEFAULT_KEYSPACE).Execute(cql);
         }
 
         internal bool CQLExecuteWithIfApplied(string cql)
         {
+            //Console.WriteLine(this.PartitionId + ";" + cql);
+
             var rs = this.SessionManager.GetSession(PartitionedCassandraVersionDb.DEFAULT_KEYSPACE).Execute(cql);
             var rse = rs.GetEnumerator();
             rse.MoveNext();

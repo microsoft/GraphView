@@ -24,7 +24,8 @@ namespace GraphView.Transaction
         /// </summary>
         protected readonly Queue<VersionEntryRequest>[] flushQueues;
 
-        internal readonly VersionTableVisitor[] tableVisitors;
+        //internal readonly VersionTableVisitor[] tableVisitors;
+        internal VersionTableVisitor[] tableVisitors;   // to avoid memory overflow used by cassandra
 
         private readonly int[] queueLatches;
 

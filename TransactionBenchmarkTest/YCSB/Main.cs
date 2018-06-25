@@ -445,51 +445,109 @@ namespace TransactionBenchmarkTest.YCSB
             YCSBBenchmarkTest sync_test = new YCSBBenchmarkTest(0, 0, vdbList[0]);
             sync_test.LoadDataWithMultiThreads(filename, vdbList, nThread);
         }
-        public static void YCSBAsyncTestWithPartitionedCassandraHybrid()
+        public static void YCSBAsyncTestWithPartitionedCassandraHybrid(string[] args)
         {
-            int workerCount = 2;
-            int taskCountPerWorker = 5000;
-            int partitionCount = 2;
+            string action = "run";
+            int workerCount = 20;
+            int taskCountPerWorker = 10000;
+            int partitionCount = 20;
+
+            int runall = 1;
+            int stableRoundStart = 5;
+            int stableRoundEnd = 15;
 
             string dataFile = "ycsb_data_r.in";
             string operationFile = "ycsb_ops_r.in";
 
-            //LoadDataWithSyncForCassandra(dataFile, 10);
-
-
-            string[] tables = new string[]
+            int i = 0;
+            while (i < args.Length)
             {
-                VersionDb.TX_TABLE,
-                YCSBAsyncBenchmarkTest.TABLE_ID
-            };
+                switch (args[i++])
+                {
+                    case "--datafile":
+                        dataFile = args[i++];
+                        break;
+                    case "--opsfile":
+                        operationFile = args[i++];
+                        break;
+                    case "--workers":
+                        workerCount = int.Parse(args[i++]);
+                        break;
+                    case "--taskspw":
+                        taskCountPerWorker = int.Parse(args[i++]);
+                        break;
+                    case "--partitions":
+                        partitionCount = int.Parse(args[i++]);
+                        break;
+                    case "--startround":
+                        stableRoundStart = int.Parse(args[i++]);
+                        break;
+                    case "--endround":
+                        stableRoundEnd = int.Parse(args[i++]);
+                        break;
+                    case "--runall":
+                        runall = int.Parse(args[i++]);
+                        break;
+                    case "--action":
+                        action = args[i++];
+                        break;
+                    default:
+                        break;
+                }
+            }
+            if (runall == 0 && stableRoundEnd <= stableRoundStart)
+            {
+                Console.WriteLine("Bad stable round setting");
+                return;
+            }
 
-            // The default mode of versionDb is daemonMode
-            PartitionedCassandraVersionDb versionDb = PartitionedCassandraVersionDb.Instance(partitionCount);
-            YCSBAsyncBenchmarkTest test = new YCSBAsyncBenchmarkTest(0,
-                workerCount, taskCountPerWorker, versionDb, tables);
+            if (action == "load")
+            {
+                LoadDataWithSyncForCassandra(dataFile, workerCount);
+            } else if (action == "run")
+            {
+                string[] tables = new string[]
+                {
+                    VersionDb.TX_TABLE,
+                    YCSBAsyncBenchmarkTest.TABLE_ID
+                };
 
-            test.SetupOps(operationFile);
-            test.Run();
-            test.Stats();
+                // The default mode of versionDb is daemonMode
+                PartitionedCassandraVersionDb versionDb = PartitionedCassandraVersionDb.Instance(partitionCount);
+                YCSBAsyncBenchmarkTest test = new YCSBAsyncBenchmarkTest(0,
+                    workerCount, taskCountPerWorker, versionDb, tables);
+                if (runall == 0)
+                {
+                    test.SetStableRound(stableRoundStart, stableRoundEnd);
+                }
+
+                //test.SetupOps(operationFile);
+                test.SetupOpsNull();
+
+                //test.StartMonitors();
+
+                test.Run2();
+                test.Stats2();
+            }
+            else
+            {
+                Console.WriteLine("bad action. Only <load> or <run> allowed");
+            }
         }
 
 
         public static void Main(string[] args)
         {
-            ////long a = 1;
-            //object c = 1L;
-            //bool b = (c as bool);
-            //Convert.ToBoolean()
+            //long a = 10000;
+            //Console.WriteLine(a.GetHashCode());
+            //Console.WriteLine(a.ToString().GetHashCode());
 
-            //object a = 0L;
-            //string b = a as string;
-            //Console.WriteLine("b=<{0}>", a as string);
-            //Console.WriteLine("b=<{0}>", a.ToString());
-
-
+            //Interlocked.
             //YCSBSyncTestWithCassandra(args);
             //YCSBSyncTestWithPartitionedCassandra(args);
-            YCSBAsyncTestWithPartitionedCassandraHybrid();
+
+            YCSBAsyncTestWithPartitionedCassandraHybrid(args);
+
             //YCSBAsyncTestWithPartitionedCassandra();
             //test_cassandra2();
 

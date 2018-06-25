@@ -157,6 +157,19 @@
         /// </summary>
         private string[] tables;
 
+        //// stable round setting
+        private long stableStartTicks = -1;
+        private long stableEndTicks = -1;
+        private int stableRoundStart = -1;
+        private int stableRoundEnd = -1;
+        private int stableStartFinished = 0;
+        private int stableEndFinished = 0;
+
+        public void SetStableRound(int s, int e)
+        {
+            this.stableRoundStart = s;
+            this.stableRoundEnd = e;
+        }
 
         /// <summary>
         /// Events to control task start end end
@@ -243,24 +256,7 @@
                 this.executorList = this.MockFillWorkerQueue(operationFile);
             }
         }
-
-        internal void SetupOps(string operationFile)
-        {
-            // step1: flush the database
-            this.versionDb.ClearTxTable();
-            Console.WriteLine("Flushed the tx database");
-
-            // step 4: fill workers' queue
-            if (this.versionDb is SingletonPartitionedVersionDb && RESHUFFLE)
-            {
-                this.executorList = this.ReshuffleFillWorkerQueue(operationFile, this.executorCount, this.executorCount * this.txCountPerExecutor);
-            }
-            else
-            {
-                this.executorList = this.FillWorkerQueue(operationFile);
-            }
-        }
-
+        
         //This method is for SingletonVersionDb only.
         internal void ResetAndFillWorkerQueue(string operationFile, int currentExecutorCount)
         {
@@ -308,9 +304,17 @@
             this.testBeginTicks = DateTime.Now.Ticks;
 
             Task.WaitAll(tasks);
+
             // this.countdownEvent.Wait();
 
             this.testEndTicks = DateTime.Now.Ticks;
+
+            // stop monitors
+            if (this.versionDb is PartitionedCassandraVersionDb)
+            {
+                (this.versionDb as PartitionedCassandraVersionDb).StopMonitors();
+            }
+
             foreach (TransactionExecutor executor in this.executorList)
             {
                 executor.Active = false;
@@ -321,7 +325,7 @@
                 long commandCountAfterRun = this.GetCurrentCommandCount();
                 this.commandCount = commandCountAfterRun - commandCountBeforeRun;
             }
-
+            
             Console.WriteLine("Finished all tasks");
         }
 
@@ -335,14 +339,17 @@
             Console.WriteLine("\nWay2 to Compute Throughput");
             int executorId = 0;
             double totalRunSeconds = 0;
+            int realFinishedTasks = 0;
             foreach (TransactionExecutor executor in this.executorList)
             {
+                realFinishedTasks += executor.FinishedTxs;
                 double runSeconds = (executor.RunEndTicks - executor.RunBeginTicks) * 1.0 / 10000000;
                 totalRunSeconds += runSeconds;
                 Console.WriteLine("Executor {0} run time: {1}s", executorId++, runSeconds);
             }
             double averageRunSeconds = totalRunSeconds / this.executorCount;
-            double throughput2 = this.totalTasks / averageRunSeconds;
+            //double throughput2 = this.totalTasks / averageRunSeconds;
+            double throughput2 = realFinishedTasks / averageRunSeconds;
             // Console.WriteLine("\nFinshed {0} requests in {1} seconds", (this.executorCount * this.txCountPerExecutor), this.RunSeconds);
             Console.WriteLine("Transaction Throughput: {0} tx/second", (int)throughput2);
 
@@ -362,6 +369,189 @@
             }
 
             Console.WriteLine("Enqueued Tx Requests Count: {0}", VersionDb.EnqueuedRequests);
+            Console.WriteLine();
+        }
+
+        // do some init work
+        internal void StartMonitors()
+        {
+            if (this.versionDb is PartitionedCassandraVersionDb)
+            {
+                this.versionDb.CreateVersionTable(TABLE_ID);
+                (this.versionDb as PartitionedCassandraVersionDb).StartMonitors();
+            }
+        }
+
+        internal void SetupOps(string operationFile)
+        {
+            // step1: flush the database
+            this.versionDb.ClearTxTable();
+            Console.WriteLine("Flushed the tx database");
+
+            this.executorList = this.FillWorkerQueue(operationFile);
+        }
+
+        internal void SetupOpsNull(int indexBound = 200000)
+        {
+            // step1: flush the database
+            this.versionDb.ClearTxTable();
+            Console.WriteLine("Flushed the tx database");
+
+            this.totalTasks = this.executorCount * this.txCountPerExecutor;
+
+            List<TransactionExecutor> executors = new List<TransactionExecutor>();
+            for (int i = 0; i < this.executorCount; i++)
+            {
+                int partition_index = i % this.versionDb.PartitionCount;
+                executors.Add(new TransactionExecutor(this.versionDb, null, null, partition_index, i, 0,
+                    this.versionDb.GetResourceManagerByPartitionIndex(partition_index), tables, null, null, this.YCSBKeys, this.txCountPerExecutor));
+            }
+            this.executorList = executors;
+        }
+
+        // for PartitionedCassandra
+        internal void Run2()
+        {
+            Console.WriteLine("Try to run {0} tasks in {1} workers", (this.executorCount * this.txCountPerExecutor), this.executorCount);
+
+            //  create multi threads
+            List<Thread> threadList = new List<Thread>(this.executorCount);
+            foreach (TransactionExecutor executor in this.executorList)
+            {
+                //Thread thread = new Thread(executor.YCSBExecuteRead2);
+                //Thread thread = new Thread(executor.YCSBExecuteRead3);
+                //Thread thread = new Thread(executor.Execute2);
+                //Thread thread = new Thread(executor.CassandraReadOnly);
+                Thread thread = new Thread(executor.CassandraUpdateOnly);
+
+                threadList.Add(thread);
+            }
+
+            // start
+            Console.WriteLine("Ready to start threads");
+            
+            this.testBeginTicks = DateTime.Now.Ticks;
+
+            foreach(Thread t in threadList)
+            {
+                t.Start();
+            }
+
+            Console.WriteLine("Running......");
+
+            int delta_t = 1;
+            int round = 0;
+            long lastTimeTotal = 0;
+            while (true)
+            {
+                Thread.Sleep(delta_t*1000);     // sleep 1s
+                round++;
+
+                int total = 0;
+                bool allok = true;
+
+                foreach (TransactionExecutor executor in this.executorList)
+                {
+                    total += executor.FinishedTxs;
+                    allok &= executor.AllRequestsFinished;
+                }
+                if (round == this.stableRoundStart)
+                {
+                    this.stableStartTicks = DateTime.Now.Ticks;
+                    this.stableStartFinished = total;
+                }
+                if (round == this.stableRoundEnd)
+                {
+                    this.stableEndTicks = DateTime.Now.Ticks;
+                    this.stableEndFinished = total;
+                    foreach (TransactionExecutor executor in this.executorList)
+                    {
+                        executor.Active = false;
+                    }
+                    break;
+                }
+
+                Console.WriteLine("Elapsed ~{0}s, Finished {1} TXs, {2} Ops/s", round*delta_t, total, total - lastTimeTotal);
+                lastTimeTotal = total;
+                if (allok)
+                {
+                    break;
+                }
+            }
+
+            this.testEndTicks = DateTime.Now.Ticks;
+
+            // stop monitors
+            if (this.versionDb is PartitionedCassandraVersionDb)
+            {
+                (this.versionDb as PartitionedCassandraVersionDb).StopMonitors();
+            }
+
+            foreach (TransactionExecutor executor in this.executorList)
+            {
+                executor.Active = false;
+            }
+            
+            Console.WriteLine("Finished !");
+        }
+
+        internal void Stats2()
+        {
+            int realFinishedTasks = 0;
+            double totalRunSeconds = 0;
+            int abortedTxs = 0;
+
+            long minStartTicks = long.MaxValue;
+            long maxEndTicks = long.MinValue;
+            double thSum = 0;
+
+            foreach (TransactionExecutor executor in this.executorList)
+            {
+                realFinishedTasks += executor.FinishedTxs;
+                abortedTxs += (executor.FinishedTxs - executor.CommittedTxs);
+                double runSeconds = (executor.RunEndTicks - executor.RunBeginTicks) * 1.0 / 10000000;
+                totalRunSeconds += runSeconds;
+                minStartTicks = Math.Min(minStartTicks, executor.RunBeginTicks);
+                maxEndTicks = Math.Max(maxEndTicks, executor.RunEndTicks);
+                thSum += executor.FinishedTxs*1.0 / runSeconds;
+            }
+
+            double minMaxSeconds = (maxEndTicks - minStartTicks) * 1.0 / 10000000;
+            double thMinMax = realFinishedTasks * 1.0 / minMaxSeconds;
+
+            if (this.stableRoundStart < 0 || this.stableRoundEnd < 0)
+            {
+                double deltaSeconds = (this.testEndTicks - this.testBeginTicks)*1.0 / 10000000;
+                double th = this.totalTasks / deltaSeconds;
+                Console.WriteLine("==== Rough Throughput ====");
+                Console.WriteLine("Transaction Throughput: {0} tx/s\n", th);
+            }
+
+            Console.WriteLine("==== Throughput delta = [min, max]");
+            Console.WriteLine("Transaction Throughput: {0} tx/s\n", thMinMax);            
+
+            double averageRunSeconds = totalRunSeconds / this.executorCount;
+            double throughput2 = realFinishedTasks / averageRunSeconds;
+            Console.WriteLine("==== Average Throughput ====");
+            Console.WriteLine("Transaction Throughput: {0} tx/second\n", (int)throughput2);
+
+            Console.WriteLine("Finshed {0} txs, Aborted {1} txs", realFinishedTasks, abortedTxs);
+            Console.WriteLine("Transaction AbortRate: {0}%\n", (abortedTxs * 1.0 / realFinishedTasks) * 100);
+
+            if (this.stableRoundStart > 0 && this.stableRoundEnd > 0)
+            {
+                int delta1 = this.stableRoundEnd - this.stableRoundStart;
+                int delta2 = this.stableEndFinished - this.stableStartFinished;
+                double delta1Seconds = (this.stableEndTicks - this.stableStartTicks) * 1.0 / 10000000;
+                Console.WriteLine("STABLE ROUND {0} seconds: throughput {1}/s", delta1, delta2 * 1.0 / delta1);
+                Console.WriteLine("STABLE ROUND {0} seconds: throughput {1}/s", delta1, delta2 * 1.0 / delta1Seconds);
+            }
+
+            Console.WriteLine("==== Throughput SUM of each worker ====");
+            Console.WriteLine("Transaction Throughput: {0} tx/s\n", thSum);
+
+            //(this.versionDb as PartitionedCassandraVersionDb).ShowLoadBalance();
+
             Console.WriteLine();
         }
 
@@ -543,12 +733,18 @@
                         reqQueue.Enqueue(req);
                     }
 
-                    Console.WriteLine("Filled {0} executors", i + 1);
+                    //Console.WriteLine("Filled {0} executors", i + 1);
 
                     this.totalTasks += this.txCountPerExecutor;
-                    executors.Add(new TransactionExecutor(this.versionDb, null, reqQueue, i, i, 0,
-                       this.versionDb.GetResourceManagerByPartitionIndex(i), tables, null, null, this.YCSBKeys, this.txCountPerExecutor));
+                    int partition_index = i % this.versionDb.PartitionCount;
+                    //executors.Add(new TransactionExecutor(this.versionDb, null, reqQueue, partition_index, i, 0,
+                    //   null, tables, null, null, this.YCSBKeys, this.txCountPerExecutor));
+                    executors.Add(new TransactionExecutor(this.versionDb, null, reqQueue, partition_index, i, 0,
+                      this.versionDb.GetResourceManagerByPartitionIndex(partition_index), tables, null, null, this.YCSBKeys, this.txCountPerExecutor));
                 }
+
+                Console.WriteLine("Filled {0} executors", this.executorCount);
+
                 return executors;
             }
         }

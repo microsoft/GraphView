@@ -328,15 +328,17 @@
             {
                 //Console.WriteLine("s={0}, e={1}", s, e);
                 Transaction tx = new Transaction(null, vdb);
-                string readValue;
+                string readValue = null;
                 for (int i = s; i < e; i++)
                 {
                     //Console.WriteLine("i={0}, cnt={1}", i, lines.Count);
                     string[] fields = this.ParseCommandFormat(lines[i]);
-                    readValue = (string)tx.ReadAndInitialize(TABLE_ID, fields[2]);
+                    //readValue = (string)tx.ReadAndInitialize(TABLE_ID, fields[2]);
+                    readValue = (string)tx.ReadAndInitialize(TABLE_ID, i);
                     if (readValue == null)
                     {
-                        tx.Insert(TABLE_ID, fields[2], fields[3]);
+                        //tx.Insert(TABLE_ID, fields[2], fields[3]);
+                        tx.Insert(TABLE_ID, i, fields[3]);
                     }
                 }
                 tx.Commit();

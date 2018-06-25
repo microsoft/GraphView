@@ -17,16 +17,27 @@ namespace GraphView.Transaction
             }
         }
 
+        public int PartitionId = 0;
+
+        public PartitionedCassandraVersionTableVisitor(int pid = 0) : base()
+        {
+            this.PartitionId = pid;
+        }
+
         // these two `CQLExecute` and `CQLExecuteWithIfApplied` are the same 
         // as those in `CassandraVersionTable`
         internal RowSet CQLExecute(string cql)
         {
-            return this.SessionManager.GetSession(CassandraVersionDb.DEFAULT_KEYSPACE).Execute(cql);
+            Console.WriteLine(this.PartitionId + ";" + cql);
+
+            return this.SessionManager.GetSession(PartitionedCassandraVersionDb.DEFAULT_KEYSPACE).Execute(cql);
         }
 
         internal bool CQLExecuteWithIfApplied(string cql)
         {
-            var rs = this.SessionManager.GetSession(CassandraVersionDb.DEFAULT_KEYSPACE).Execute(cql);
+            //Console.WriteLine(this.PartitionId + ";" + cql);
+
+            var rs = this.SessionManager.GetSession(PartitionedCassandraVersionDb.DEFAULT_KEYSPACE).Execute(cql);
             var rse = rs.GetEnumerator();
             rse.MoveNext();
             return rse.Current.GetValue<bool>("[applied]");
