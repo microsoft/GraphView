@@ -82,7 +82,7 @@ namespace GraphView.Transaction
         /// <summary>
         /// The partition of current executor flushed
         /// </summary>
-        internal int Partition { get; private set; } 
+        internal int Partition { get; private set; }
 
         /// <summary>
         /// A queue of finished txs (committed or aborted) with their wall-clock time to be cleaned.
@@ -146,8 +146,8 @@ namespace GraphView.Transaction
             this.startEventSlim = startEventSlim;
             this.countdownEvent = countdownEvent;
 
-              
-            this.txExecution = new TransactionExecution(this.logStore, this.versionDb, null, 
+
+            this.txExecution = new TransactionExecution(this.logStore, this.versionDb, null,
                 this.GarbageQueueTxId,this.GarbageQueueFinishTime, this.txRange, this);
 
             this.YCSBKeys = YCSBKeys;
@@ -252,9 +252,20 @@ namespace GraphView.Transaction
             this.RunEndTicks = DateTime.Now.Ticks;
         }
 
+        private int GenerateYCSBKey(int randomX, int indexBound)
+        {
+            int k = this.versionDb.PhysicalPartitionByKey(randomX);
+            randomX -= (k - this.Partition);
+            if (randomX >= indexBound)
+            {
+                randomX -= this.versionDb.PartitionCount;
+            }
+            return randomX;
+        }
+
         public void YCSBExecuteRead()
         {
-            PinThreadOnCores(this.Partition);
+            // PinThreadOnCores(this.Partition);
             this.RunBeginTicks = DateTime.Now.Ticks;
 
             Random rand = new Random();
@@ -265,7 +276,8 @@ namespace GraphView.Transaction
             for (int i = 0; i < this.taskCount; i++)
             {
                 //string recordKey = YCSBKeys[rand.Next(0, indexBound)];
-                int recordKey = rand.Next(0, indexBound);
+                // int recordKey = rand.Next(0, indexBound);
+                int recordKey = this.GenerateYCSBKey(rand.Next(0, indexBound), indexBound);
                 this.txExecution.Reset();
                 this.txExecution.Read("ycsb_table", recordKey, out received, out payload);
                 //recordKey = rand.Next(0, indexBound);

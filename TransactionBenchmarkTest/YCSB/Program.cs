@@ -187,9 +187,9 @@ namespace TransactionBenchmarkTest.YCSB
 
         static void YCSBAsyncTestWithPartitionedVersionDb(string[] args)
         {
-            int partitionCount = 1;
+            int partitionCount = 2;
             int executorCount = partitionCount;
-            int txCountPerExecutor = 2;
+            int txCountPerExecutor = 2000000;
 
             // 20w
             string dataFile = "ycsb_data_r.in";
