@@ -267,9 +267,15 @@ namespace GraphView.Transaction
                 int recordKey = rand.Next(0, indexBound);
                 this.txExecution.Reset();
                 this.txExecution.Read("ycsb_table", recordKey, out received, out payload);
-                recordKey = rand.Next(0, indexBound);
-                this.txExecution.Read("ycsb_table", recordKey, out received, out payload);
+                //recordKey = rand.Next(0, indexBound);
+                //this.txExecution.Read("ycsb_table", recordKey, out received, out payload);
                 this.txExecution.Commit();
+
+                this.FinishedTxs += 1;
+                if (this.txExecution.TxStatus == TxStatus.Committed)
+                {
+                    this.CommittedTxs += 1;
+                }
             }
 
             this.RunEndTicks = DateTime.Now.Ticks;
@@ -311,7 +317,7 @@ namespace GraphView.Transaction
             this.RunBeginTicks = DateTime.Now.Ticks;
             while (this.workingSet.Count > 0 || this.workload.Count > 0)
             {
-                //if (DateTime.Now.Ticks  - this.RunBeginTicks > 30000000)
+                //if (DateTime.Now.Ticks - this.RunBeginTicks > 50000000)
                 //{
                 //    Console.WriteLine(123);
                 //}
@@ -379,7 +385,7 @@ namespace GraphView.Transaction
                         {
                             txExec.CurrentProc();
                         }
-
+                        
                         if (txExec.CurrentProc == null && queue.Count > 0)
                         {
                             TransactionRequest opReq = queue.Dequeue();

@@ -22,7 +22,7 @@ namespace GraphView.Transaction
         /// <summary>
         /// Whether to use user defined queue
         /// </summary>
-        public static bool UDF_QUEUE = false;
+        public static bool UDF_QUEUE = true;
 
         public static readonly long RETURN_ERROR_CODE = -2L;
 
@@ -179,6 +179,7 @@ namespace GraphView.Transaction
                     VersionDbVisitor visitor = this.dbVisitors[partitionKey];
                     while (this.requestUDFQueues[partitionKey].TryDequeue(out req))
                     {
+                        // Console.WriteLine("Dequeued Elements");
                         visitor.Invoke(req);
                     }
                 }

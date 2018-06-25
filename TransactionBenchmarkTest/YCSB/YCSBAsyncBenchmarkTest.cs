@@ -240,7 +240,7 @@
             }
             else
             {
-                this.executorList = this.FillWorkerQueue(operationFile);
+                this.executorList = this.MockFillWorkerQueue(operationFile);
             }
         }
 
@@ -276,7 +276,7 @@
             this.commandCount = 0;
             this.executorCount = currentExecutorCount;
             // fill workers' queue
-            this.executorList = this.FillWorkerQueue(operationFile);
+            this.executorList = this.MockFillWorkerQueue(operationFile);
         }
 
         internal void Run()
@@ -301,7 +301,7 @@
             int tid = 0;
             foreach (TransactionExecutor executor in this.executorList)
             {
-                tasks[tid++] = Task.Factory.StartNew(executor.YCSBExecuteRead2);
+                tasks[tid++] = Task.Factory.StartNew(executor.YCSBExecuteRead);
             }
 
             this.startEventSlim.Set();
@@ -476,6 +476,51 @@
 
             long endTicks = DateTime.Now.Ticks;
             Console.WriteLine("Elapsed time {0} seconds", ((endTicks - beginTicks) * 1.0 / 10000000));
+        }
+
+        private List<TransactionExecutor> MockFillWorkerQueue(string operationFile)
+        {
+            List<TransactionExecutor> executors = new List<TransactionExecutor>();
+            using (StreamReader reader = new StreamReader(operationFile))
+            {
+                string line;
+                int instanceIndex = 0;
+                for (int i = 0; i < this.executorCount; i++)
+                {
+                    //line = reader.ReadLine();
+                    //string[] fields = this.ParseCommandFormat(line);
+                    Queue<TransactionRequest> reqQueue = new Queue<TransactionRequest>();
+                    //for (int j = 0; j < this.txCountPerExecutor; j++)
+                    //{
+                    //    line = reader.ReadLine();
+                    //    string[] fields = this.ParseCommandFormat(line);
+
+                    //    YCSBWorkload workload = null;
+                    //    //if (TransactionExecution.TEST)
+                    //    //{
+                    //    //    workload = new YCSBWorkload("CLOSE", TABLE_ID, fields[2], fields[3]);
+                    //    //}
+                    //    //else
+                    //    {
+                    //        workload = new YCSBWorkload(fields[0], TABLE_ID, fields[2], fields[3]);
+                    //    }
+                    //    // YCSBWorkload workload = new YCSBWorkload("CLOSE", TABLE_ID, fields[2], fields[3]);
+                    //    string sessionId = ((i * this.txCountPerExecutor) + j + 1).ToString();
+                    //    TransactionRequest req = new TransactionRequest(sessionId, workload, StoredProcedureType.YCSBStordProcedure);
+                    //    reqQueue.Enqueue(req);
+                    //}
+
+                    Console.WriteLine("Filled {0} executors", i + 1);
+
+                    // this.totalTasks += reqQueue.Count;
+                    this.totalTasks += this.txCountPerExecutor;
+                    //executors.Add(new TransactionExecutor(this.versionDb, null, reqQueue, i, i, 0,
+                    //    this.versionDb.GetResourceManagerByPartitionIndex(i), tables));
+                    executors.Add(new TransactionExecutor(this.versionDb, null, reqQueue, i, i, 0,
+                       this.versionDb.GetResourceManagerByPartitionIndex(i), tables, null, null, this.YCSBKeys, this.txCountPerExecutor));
+                }
+                return executors;
+            }
         }
 
         private List<TransactionExecutor> FillWorkerQueue(string operationFile)

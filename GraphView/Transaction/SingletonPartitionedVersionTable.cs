@@ -43,7 +43,7 @@ namespace GraphView.Transaction
 
         internal override void EnqueueVersionEntryRequest(VersionEntryRequest req, int execPartition = 0)
         {
-            // Interlocked.Increment(ref SingletonPartitionedVersionDb.EnqueuedRequests);
+            // Interlocked.Increment(ref VersionDb.EnqueuedRequests);
 
             // SingletonPartitionedVersionDb implementation 1
             base.EnqueueVersionEntryRequest(req, execPartition);

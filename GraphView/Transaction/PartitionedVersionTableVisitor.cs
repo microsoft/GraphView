@@ -87,8 +87,8 @@ namespace GraphView.Transaction
             }
 
             req.RemoteVerList = versionList;
-            req.Finished = true;
             req.Result = entryCount;
+            req.Finished = true;
         }
 
         internal override void Visit(InitiGetVersionListRequest req)

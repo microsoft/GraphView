@@ -14,8 +14,6 @@ namespace GraphView.Transaction
 
         private static readonly object initlock = new object();
 
-        internal static int EnqueuedRequests = 0;
-
         /// <summary>
         /// Whether the version db is in deamon mode
         /// In deamon mode, for every partition, it will have a thread to flush
@@ -188,7 +186,7 @@ namespace GraphView.Transaction
 
         internal override void EnqueueTxEntryRequest(long txId, TxEntryRequest txEntryRequest, int execPartition = 0)
         {
-            // Interlocked.Increment(ref SingletonPartitionedVersionDb.EnqueuedRequests);
+            // Interlocked.Increment(ref VersionDb.EnqueuedRequests);
 
             // SingletonPartitionVersionDb implementation 1
             base.EnqueueTxEntryRequest(txId, txEntryRequest, execPartition);
