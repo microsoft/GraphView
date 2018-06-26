@@ -326,8 +326,8 @@
     <Compile Include="Transaction\LogRequest.cs" />
     <Compile Include="Transaction\CassandraVersionDb.cs" />
     <Compile Include="Transaction\CassandraVersionTable.cs" />
-    <Compile Include="Transaction\PartitionedTxEntryRequestVisitor.cs" />
-    <Compile Include="Transaction\PartitionedVersionTableVisitor.cs" />
+    <Compile Include="Transaction\SingletonPartitionedVersionDbVisitor.cs" />
+    <Compile Include="Transaction\SingletonPartitionedVersionTableVisitor.cs" />
     <Compile Include="Transaction\PostProcessingEntry.cs" />
     <Compile Include="Transaction\ReadSetEntry.cs" />
     <Compile Include="Transaction\RedisClientManager.cs" />

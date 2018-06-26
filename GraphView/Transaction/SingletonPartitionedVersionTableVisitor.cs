@@ -5,12 +5,12 @@ namespace GraphView.Transaction
     using System.Collections.Generic;
     using System.Collections.Concurrent;
 
-    internal class PartitionedVersionTableVisitor : VersionTableVisitor
+    internal class SingletonPartitionedVersionTableVisitor : VersionTableVisitor
     {
         // A reference to the dict in version table
         private readonly Dictionary<object, Dictionary<long, VersionEntry>> dict;
 
-        public PartitionedVersionTableVisitor(Dictionary<object, Dictionary<long, VersionEntry>> dict)
+        public SingletonPartitionedVersionTableVisitor(Dictionary<object, Dictionary<long, VersionEntry>> dict)
         {
             this.dict = dict;
         }

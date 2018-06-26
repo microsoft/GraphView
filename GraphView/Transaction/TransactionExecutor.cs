@@ -254,6 +254,11 @@ namespace GraphView.Transaction
 
         private int GenerateYCSBKey(int randomX, int indexBound)
         {
+            if (!(this.versionDb is SingletonPartitionedVersionDb))
+            {
+                return randomX;
+            }
+
             int k = this.versionDb.PhysicalPartitionByKey(randomX);
             randomX -= (k - this.Partition);
             if (randomX >= indexBound)
@@ -280,7 +285,7 @@ namespace GraphView.Transaction
                 int recordKey = this.GenerateYCSBKey(rand.Next(0, indexBound), indexBound);
                 this.txExecution.Reset();
                 this.txExecution.Read("ycsb_table", recordKey, out received, out payload);
-                //recordKey = rand.Next(0, indexBound);
+                //recordKey = this.GenerateYCSBKey(rand.Next(0, indexBound), indexBound);
                 //this.txExecution.Read("ycsb_table", recordKey, out received, out payload);
                 this.txExecution.Commit();
 

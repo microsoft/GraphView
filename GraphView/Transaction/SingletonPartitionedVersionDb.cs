@@ -3,10 +3,7 @@ namespace GraphView.Transaction
 {
     using System;
     using System.Collections.Generic;
-    using System.Linq;
-    using System.Text;
     using System.Threading;
-    using System.Threading.Tasks;
 
     internal class SingletonPartitionedVersionDb : VersionDb
     {
@@ -25,15 +22,10 @@ namespace GraphView.Transaction
 
         internal long FlushWaitTicks { get; set; } = 0L;
 
-        internal TxResourceManager[] resourceManagers;
-        /// <summary>
-        /// The version table maps
-        /// </summary>
-
         /// <summary>
         /// The transaction table map, txId => txTableEntry
         /// </summary>
-        private readonly Dictionary<long, TxTableEntry>[] txTable;
+        private Dictionary<long, TxTableEntry>[] txTable;
 
         private SingletonPartitionedVersionDb(int partitionCount, bool daemonMode)
             : base(partitionCount)
@@ -42,14 +34,8 @@ namespace GraphView.Transaction
 
             for (int pid = 0; pid < partitionCount; pid++)
             {
-                this.txTable[pid] = new Dictionary<long, TxTableEntry>(100000);
-                this.dbVisitors[pid] = new PartitionedVersionDbVisitor(this.txTable[pid]);
-            }
-
-            this.resourceManagers = new TxResourceManager[partitionCount];
-            for (int i = 0; i < partitionCount; i++)
-            {
-                this.resourceManagers[i] = new TxResourceManager();
+                this.txTable[pid] = new Dictionary<long, TxTableEntry>(100);
+                this.dbVisitors[pid] = new SingletonPartitionedVersionDbVisitor(this.txTable[pid]);
             }
 
             this.PhysicalPartitionByKey = key => Math.Abs(key.GetHashCode()) % this.PartitionCount;
@@ -71,6 +57,37 @@ namespace GraphView.Transaction
                 Thread thread = new Thread(this.Monitor);
                 thread.Start(pk);
             }
+        }
+
+        /// <summary>
+        /// Only for benchmark test
+        /// 
+        /// Keep the number of records as the same and add new partitions to the given expectedPartitionCount
+        /// That means add new visitors and dicts, finally reshuffle all data into the right partitions
+        /// </summary>
+        /// <param name="part"></param>
+        public void ExtendPartition(int expectedPartitionCount)
+        {
+            int prePartitionCount = this.PartitionCount;
+            this.PartitionCount = expectedPartitionCount;
+
+            // Resize Visitors and Dicts
+            Array.Resize(ref this.txTable, expectedPartitionCount);
+            for (int pk = prePartitionCount; pk < expectedPartitionCount; pk++)
+            {
+                this.txTable[pk] = new Dictionary<long, TxTableEntry>(100);
+            }
+
+            Array.Resize(ref this.dbVisitors, expectedPartitionCount);
+            for (int pk = prePartitionCount; pk < expectedPartitionCount; pk++)
+            {
+                this.dbVisitors[pk] = new SingletonPartitionedVersionDbVisitor(this.txTable[pk]);
+            }
+
+            Array.Resize(ref this.visitTicks, expectedPartitionCount);
+
+            // expend partitions for version table
+            ((SingletonPartitionedVersionTable)this.versionTables["ycsb_table"]).ExtendPartition(expectedPartitionCount);
         }
 
         /// <summary>
@@ -160,16 +177,7 @@ namespace GraphView.Transaction
                 return null;
             }
             return this.versionTables[tableId];
-        }
-
-        internal override TxResourceManager GetResourceManagerByPartitionIndex(int partition)
-        {
-            if (partition >= this.PartitionCount)
-            {
-                throw new ArgumentException("partition should be smaller then partitionCount");
-            }
-            return this.resourceManagers[partition];
-        }
+        } 
 
         internal void Monitor(object obj)
         {
@@ -189,11 +197,16 @@ namespace GraphView.Transaction
             // Interlocked.Increment(ref VersionDb.EnqueuedRequests);
 
             // SingletonPartitionVersionDb implementation 1
-            base.EnqueueTxEntryRequest(txId, txEntryRequest, execPartition);
-            while (!txEntryRequest.Finished) ;
+            //base.EnqueueTxEntryRequest(txId, txEntryRequest, execPartition);
+            //while (!txEntryRequest.Finished) ;
 
             // SingletonPartitionedVersionDb implementation 2
-
+            
+            int pk = this.PhysicalTxPartitionByKey(txId);
+            long beginTicks = DateTime.Now.Ticks;
+            this.dbVisitors[pk].Invoke(txEntryRequest);
+            this.visitTicks[pk] += DateTime.Now.Ticks - beginTicks;
+            // SingletonPartitionedVersionDb implementation 3
             //int pk = this.PhysicalTxPartitionByKey(txId);
             //if (pk == execPartition)
             //{

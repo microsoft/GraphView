@@ -124,7 +124,9 @@
         internal override void EnqueueTxEntryRequest(long txId, TxEntryRequest txEntryRequest, int execPartition = 0)
         {
             // Interlocked.Increment(ref VersionDb.EnqueuedRequests);
+            long beginTicks = DateTime.Now.Ticks;
             this.dbVisitors[execPartition].Invoke(txEntryRequest);
+            this.visitTicks[execPartition] += DateTime.Now.Ticks - beginTicks;
         }
 
         internal override long SetAndGetCommitTime(long txId, long proposedCommitTs)

@@ -124,6 +124,7 @@ namespace GraphView.Transaction
         // The number of entries in read operation
         private int readEntryCount;
         private long readLargestVersionKey = -1;
+        internal object ReadPayload { get; private set; }
 
         // The writeSet index to tranverse the writeset
         private int writeSetIndex = 0;
@@ -1309,7 +1310,8 @@ namespace GraphView.Transaction
         }
 
         public void Read(string tableId, object recordKey, out bool received, out object payload)
-        { 
+        {
+            this.ReadPayload = null;
             this.Read(tableId, recordKey, false, out received, out payload);
         }
 
@@ -1658,7 +1660,7 @@ namespace GraphView.Transaction
             if (visibleVersion != null)
             {
                 payload = visibleVersion.Record;
-
+                this.ReadPayload = payload;
                 // resize to allocate more spaces
                 if (this.readSetCount == this.readSet.Count)
                 {

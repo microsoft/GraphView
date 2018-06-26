@@ -37,7 +37,9 @@
         internal override void EnqueueVersionEntryRequest(VersionEntryRequest req, int execPartition = 0)
         {
             // Interlocked.Increment(ref VersionDb.EnqueuedRequests);
+            long beginTicks = DateTime.Now.Ticks;
             this.tableVisitors[execPartition].Invoke(req);
+            this.visitTicks[execPartition] += DateTime.Now.Ticks - beginTicks;
         }
 
         internal override bool DeleteVersionEntry(object recordKey, long versionKey)

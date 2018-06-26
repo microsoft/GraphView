@@ -80,6 +80,8 @@ namespace GraphView.Transaction
         //internal int PartitionCount { get; private set; }
         internal int PartitionCount { get; set; }   // to avoid memory overflow used by cassandra
 
+        internal long[] visitTicks;
+
         protected static class StaticRandom
         {
             static int seed = Environment.TickCount;
@@ -124,6 +126,8 @@ namespace GraphView.Transaction
             this.PhysicalPartitionByKey = key => Math.Abs(key.GetHashCode()) % this.PartitionCount;
             this.PhysicalTxPartitionByKey = key => Math.Abs(key.GetHashCode()) % this.PartitionCount;
             //this.PhysicalTxPartitionByKey = key => Math.Abs(key.ToString().GetHashCode()) % this.PartitionCount;
+
+            this.visitTicks = new long[this.PartitionCount];
         }
 
         internal virtual TxResourceManager GetResourceManagerByPartitionIndex(int partition)

@@ -237,10 +237,10 @@
             // step2: create version table
             this.versionDb.CreateVersionTable(TABLE_ID, REDIS_DB_INDEX);
 
-            if (this.versionDb is SingletonPartitionedVersionDb)
-            {
-                ((SingletonPartitionedVersionDb)this.versionDb).StartDaemonThreads();
-            }
+            //if (this.versionDb is SingletonPartitionedVersionDb)
+            //{
+            //    ((SingletonPartitionedVersionDb)this.versionDb).StartDaemonThreads();
+            //}
 
             // step3: load data
             //this.LoadDataParallely(dataFile);
@@ -277,6 +277,12 @@
 
         internal void Run()
         {
+            for (int pk = 0; pk < this.executorCount; pk++)
+            {
+                this.versionDb.visitTicks[pk] = 0;
+                this.versionDb.GetVersionTable("ycsb_table").visitTicks[pk] = 0;
+            }
+
             VersionDb.EnqueuedRequests = 0;
             this.startEventSlim.Reset();
             // this.countdownEvent.Reset();
@@ -347,6 +353,13 @@
                 totalRunSeconds += runSeconds;
                 Console.WriteLine("Executor {0} run time: {1}s", executorId++, runSeconds);
             }
+
+            for (int pk = 0; pk < this.executorCount; pk++)
+            {
+                long ticks = this.versionDb.visitTicks[pk] + this.versionDb.GetVersionTable("ycsb_table").visitTicks[pk];
+                Console.WriteLine("Partition {0} Visit Time: {1}s", pk, ticks * 1.0 / 10000000);
+            }
+
             double averageRunSeconds = totalRunSeconds / this.executorCount;
             //double throughput2 = this.totalTasks / averageRunSeconds;
             double throughput2 = realFinishedTasks / averageRunSeconds;
@@ -644,7 +657,7 @@
                 }
                 
                 TransactionExecutor executor = new TransactionExecutor(this.versionDb, null, reqQueue, 0, 0, 0,
-                    this.versionDb.GetResourceManagerByPartitionIndex(0), this.tables);
+                    null, this.tables);
                 // new a thread to run the executor
                 Thread thread = new Thread(new ThreadStart(executor.Execute2));
                 thread.Start();
@@ -707,7 +720,7 @@
                     //executors.Add(new TransactionExecutor(this.versionDb, null, reqQueue, i, i, 0,
                     //    this.versionDb.GetResourceManagerByPartitionIndex(i), tables));
                     executors.Add(new TransactionExecutor(this.versionDb, null, reqQueue, i, i, 0,
-                       this.versionDb.GetResourceManagerByPartitionIndex(i), tables, null, null, this.YCSBKeys, this.txCountPerExecutor));
+                       null, tables, null, null, this.YCSBKeys, this.txCountPerExecutor));
                 }
                 return executors;
             }
@@ -740,7 +753,7 @@
                     //executors.Add(new TransactionExecutor(this.versionDb, null, reqQueue, partition_index, i, 0,
                     //   null, tables, null, null, this.YCSBKeys, this.txCountPerExecutor));
                     executors.Add(new TransactionExecutor(this.versionDb, null, reqQueue, partition_index, i, 0,
-                      this.versionDb.GetResourceManagerByPartitionIndex(partition_index), tables, null, null, this.YCSBKeys, this.txCountPerExecutor));
+                      null, tables, null, null, this.YCSBKeys, this.txCountPerExecutor));
                 }
 
                 Console.WriteLine("Filled {0} executors", this.executorCount);

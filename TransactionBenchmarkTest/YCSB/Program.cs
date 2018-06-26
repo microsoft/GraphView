@@ -225,12 +225,11 @@ namespace TransactionBenchmarkTest.YCSB
                 VersionDb.TX_TABLE
             };
 
-            int currentExecutorCount = 1;
-
-            SingletonPartitionedVersionDb versionDb = SingletonPartitionedVersionDb.Instance(executorCount, true);
+            SingletonPartitionedVersionDb versionDb = SingletonPartitionedVersionDb.Instance(1, true);
             YCSBAsyncBenchmarkTest test = new YCSBAsyncBenchmarkTest(recordCount,
-                currentExecutorCount, txCountPerExecutor, versionDb, tables);
+                1, txCountPerExecutor, versionDb, tables);
 
+            int currentExecutorCount = 1;
             for (; currentExecutorCount <= partitionCount; currentExecutorCount++)
             {
                 if (currentExecutorCount == 1)
@@ -239,6 +238,8 @@ namespace TransactionBenchmarkTest.YCSB
                 }
                 else
                 {
+                    versionDb.ExtendPartition(currentExecutorCount);
+                    Console.WriteLine("Extend Partition Finished");
                     test.ResetAndFillWorkerQueue(operationFile, currentExecutorCount);
                 }
                 test.Run();
