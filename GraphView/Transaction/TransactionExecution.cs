@@ -88,11 +88,12 @@ namespace GraphView.Transaction
         private readonly Procedure validateProc;
         private readonly Procedure abortPostproProc;
         private readonly Procedure uploadProc;
-        private readonly Procedure updateTxProc;
+        private readonly Procedure updateTxCommitProc;
         private readonly Procedure abortProc;
         private readonly Procedure commitVersionProc;
         private readonly Procedure readVersionListProc;
         private readonly Procedure readCheckVersionEntryProc;
+        private readonly Procedure updateTxAbortProc;
 
         // request part
         private UploadVersionRequest uploadReq;
@@ -201,7 +202,8 @@ namespace GraphView.Transaction
             this.newTxIdProc = new Procedure(this.NewTxId);
             this.recycleTxProc = new Procedure(this.RecycleTx);
             this.commitTsProc = new Procedure(this.FinalizeCommitTs);
-            this.updateTxProc = new Procedure(this.UpdateTxStatus);
+            this.updateTxCommitProc = new Procedure(this.UpdateTxStatusToCommited);
+            this.updateTxAbortProc = new Procedure(this.UpdateTxStatusToAborted);
             this.commitVersionProc = new Procedure(this.CommitModifications);
             this.readVersionListProc = new Procedure(this.ReadVersionList);
             this.readCheckVersionEntryProc = new Procedure(this.ReadCheckVersionEntry);
@@ -284,16 +286,16 @@ namespace GraphView.Transaction
         internal void InitTx()
         {
             this.Progress = TxProgress.Initi;
-
             if (this.garbageQueueTxId != null && this.garbageQueueTxId.Count > 0)
             {
                 long candidate = this.garbageQueueTxId.Peek();
-                long finishTime = this.garbageQueueFinishTime.Peek();
+                // long finishTime = this.garbageQueueFinishTime.Peek();
 
-                if (DateTime.Now.Ticks - finishTime >= TransactionExecutor.elapsed)
+                if (true)
+                // if (DateTime.Now.Ticks - finishTime >= TransactionExecutor.elapsed)
                 {
                     this.garbageQueueTxId.Dequeue();
-                    this.garbageQueueFinishTime.Dequeue();
+                    // this.garbageQueueFinishTime.Dequeue();
 
                     this.recycleTxReq.Set(candidate, this.remoteTxEntryRef);
                     this.recycleTxReq.Use();
@@ -832,7 +834,7 @@ namespace GraphView.Transaction
                     && this.rereadVerEntry == null)
                 {
                     ReadSetEntry entry = this.readSet[--this.readSetCount];
-                    if (this.FindWriteSetEntry(entry.TableId, entry.Record) != null)
+                    if (this.FindWriteSetEntry(entry.TableId, entry.RecordKey) != null)
                     {
                         continue;
                     }
@@ -1060,11 +1062,11 @@ namespace GraphView.Transaction
             this.updateTxReq.Use();
 
             this.versionDb.EnqueueTxEntryRequest(this.txId, this.updateTxReq, this.executor.Partition);
-            this.CurrentProc = this.updateTxProc;
-            this.UpdateTxStatus();
+            this.CurrentProc = this.updateTxCommitProc;
+            this.UpdateTxStatusToCommited();
         }
 
-        internal void UpdateTxStatus()
+        internal void UpdateTxStatusToCommited()
         {
             if (!this.updateTxReq.Finished)
             {
@@ -1159,7 +1161,7 @@ namespace GraphView.Transaction
             if (this.garbageQueueTxId != null)
             {
                 this.garbageQueueTxId.Enqueue(this.txId);
-                this.garbageQueueFinishTime.Enqueue(DateTime.Now.Ticks);
+                // this.garbageQueueFinishTime.Enqueue(DateTime.Now.Ticks);
             }
             return;
         }
@@ -1220,7 +1222,7 @@ namespace GraphView.Transaction
             if (this.garbageQueueTxId != null)
             {
                 this.garbageQueueTxId.Enqueue(this.txId);
-                this.garbageQueueFinishTime.Enqueue(DateTime.Now.Ticks);
+                // this.garbageQueueFinishTime.Enqueue(DateTime.Now.Ticks);
             }
             return;
         }
@@ -1239,36 +1241,34 @@ namespace GraphView.Transaction
             this.TxStatus = TxStatus.Aborted;
             this.Progress = TxProgress.Final;
             this.replaceReq.Free();
+            this.updateTxReq.Set(this.txId, TxStatus.Aborted, this.remoteTxEntryRef);
+            this.updateTxReq.Use();
+            this.versionDb.EnqueueTxEntryRequest(this.txId, updateTxReq, this.executor.Partition);
 
-            if (!this.updateTxReq.IsActive())
+            this.CurrentProc = this.updateTxAbortProc;
+            if (!this.DEBUG_MODE)
             {
-                this.updateTxReq.Set(this.txId, TxStatus.Aborted, this.remoteTxEntryRef);
-                this.updateTxReq.Use();
+                this.CurrentProc();
+            }
+        }
 
-                this.versionDb.EnqueueTxEntryRequest(this.txId, updateTxReq, this.executor.Partition);
+        internal void UpdateTxStatusToAborted()
+        {
+            if (!this.updateTxReq.Finished)
+            {
                 return;
             }
-            else if (this.updateTxReq.IsActive())
-            {
-                if (!this.updateTxReq.Finished)
-                {
-                    return;
-                }
-                this.updateTxReq.Free();
 
-                this.CurrentProc = this.abortPostproProc;
-                if (!this.DEBUG_MODE)
-                {
-                    this.CurrentProc();
-                }
-                return;
+            this.CurrentProc = this.abortPostproProc;
+            if (!this.DEBUG_MODE)
+            {
+                this.CurrentProc();
             }
+            return;
         }
 
         public void Insert(string tableId, object recordKey, object record)
         {
-            //Console.WriteLine("INSERT: record key = {0}", recordKey as string);
-
             // Checks whether the record is in the local write set
             WriteSetEntry writeEntry = this.FindWriteSetEntry(tableId, recordKey);
             ReadSetEntry readEntry = this.FindReadSetEntry(tableId, recordKey);
@@ -1336,7 +1336,7 @@ namespace GraphView.Transaction
             }
             else if (readEntry != null)
             {
-                if (this.writeSetCount != this.writeSet.Count)
+                if (this.writeSetCount == this.writeSet.Count)
                 {
                     this.writeSet.ResizeAndFill(2 * this.writeSetCount);
                 }

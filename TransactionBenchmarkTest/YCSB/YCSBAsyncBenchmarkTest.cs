@@ -277,12 +277,6 @@
 
         internal void Run()
         {
-            for (int pk = 0; pk < this.executorCount; pk++)
-            {
-                this.versionDb.visitTicks[pk] = 0;
-                this.versionDb.GetVersionTable("ycsb_table").visitTicks[pk] = 0;
-            }
-
             VersionDb.EnqueuedRequests = 0;
             this.startEventSlim.Reset();
             // this.countdownEvent.Reset();
@@ -352,12 +346,6 @@
                 double runSeconds = (executor.RunEndTicks - executor.RunBeginTicks) * 1.0 / 10000000;
                 totalRunSeconds += runSeconds;
                 Console.WriteLine("Executor {0} run time: {1}s", executorId++, runSeconds);
-            }
-
-            for (int pk = 0; pk < this.executorCount; pk++)
-            {
-                long ticks = this.versionDb.visitTicks[pk] + this.versionDb.GetVersionTable("ycsb_table").visitTicks[pk];
-                Console.WriteLine("Partition {0} Visit Time: {1}s", pk, ticks * 1.0 / 10000000);
             }
 
             double averageRunSeconds = totalRunSeconds / this.executorCount;

@@ -84,8 +84,6 @@ namespace GraphView.Transaction
                 this.dbVisitors[pk] = new SingletonPartitionedVersionDbVisitor(this.txTable[pk]);
             }
 
-            Array.Resize(ref this.visitTicks, expectedPartitionCount);
-
             // expend partitions for version table
             ((SingletonPartitionedVersionTable)this.versionTables["ycsb_table"]).ExtendPartition(expectedPartitionCount);
         }
@@ -203,9 +201,7 @@ namespace GraphView.Transaction
             // SingletonPartitionedVersionDb implementation 2
             
             int pk = this.PhysicalTxPartitionByKey(txId);
-            long beginTicks = DateTime.Now.Ticks;
             this.dbVisitors[pk].Invoke(txEntryRequest);
-            this.visitTicks[pk] += DateTime.Now.Ticks - beginTicks;
             // SingletonPartitionedVersionDb implementation 3
             //int pk = this.PhysicalTxPartitionByKey(txId);
             //if (pk == execPartition)

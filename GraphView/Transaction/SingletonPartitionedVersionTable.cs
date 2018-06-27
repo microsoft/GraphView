@@ -63,8 +63,6 @@ namespace GraphView.Transaction
                 this.tableVisitors[pk] = new SingletonPartitionedVersionTableVisitor(this.dicts[pk]);
             }
 
-            Array.Resize(ref this.visitTicks, expectedPartitionCount);
-
             // Reshuffle Records
             HashSet<object> reshuffledKeys = new HashSet<object>();
             for (int pk = 0; pk < prePartitionCount; pk++)
@@ -103,16 +101,13 @@ namespace GraphView.Transaction
         internal override void EnqueueVersionEntryRequest(VersionEntryRequest req, int execPartition = 0)
         {
             // Interlocked.Increment(ref VersionDb.EnqueuedRequests);
-
             // SingletonPartitionedVersionDb implementation 1
             //base.EnqueueVersionEntryRequest(req, execPartition);
             //while (!req.Finished) ;
 
             // SingletonPartitionedVersionDb implementation 2
             int pk = this.VersionDb.PhysicalPartitionByKey(req.RecordKey);
-            long beginTicks = DateTime.Now.Ticks;
             this.tableVisitors[pk].Invoke(req);
-            this.visitTicks[pk] += DateTime.Now.Ticks - beginTicks;
 
             // SingletonPartitionedVersionDb implementation 3
             //int pk = this.VersionDb.PhysicalPartitionByKey(req.RecordKey);

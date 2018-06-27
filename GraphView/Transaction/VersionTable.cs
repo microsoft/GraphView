@@ -35,8 +35,6 @@ namespace GraphView.Transaction
         /// </summary>
         internal VersionDb VersionDb { get; set; }
 
-        internal long[] visitTicks;
-
         public VersionTable(VersionDb versionDb, string tableId, int partitionCount = 4)
         {
             this.VersionDb = versionDb;
@@ -55,8 +53,6 @@ namespace GraphView.Transaction
                 this.flushQueues[pid] = new Queue<VersionEntryRequest>(1024);
                 this.queueLatches[pid] = 0;
             }
-
-            this.visitTicks = new long[this.VersionDb.PartitionCount];
         }
 
         internal virtual void EnqueueVersionEntryRequest(VersionEntryRequest req, int execPartition = 0)
