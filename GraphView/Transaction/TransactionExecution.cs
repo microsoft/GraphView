@@ -413,6 +413,11 @@ namespace GraphView.Transaction
                     // The write-set record is an insert or update record, try to insert the new version
                     if (payload != null)
                     {
+                        //VersionEntry newImageEntry = TransactionExecutor.versionEntryArray[(int)writeEntry.RecordKey];
+                        //newImageEntry.RecordKey = writeEntry.RecordKey;
+                        //newImageEntry.VersionKey = writeEntry.VersionKey;
+                        //newImageEntry.Record = payload;
+                        //newImageEntry.TxId = this.txId;
                         VersionEntry newImageEntry = new VersionEntry(
                                 writeEntry.RecordKey,
                                 writeEntry.VersionKey,
@@ -1538,6 +1543,7 @@ namespace GraphView.Transaction
             VersionEntry committedVersion = null;
             while (this.readEntryCount > 0)
             {
+                VersionEntry versionEntry = this.versionList[this.readEntryCount - 1];
                 // Wait for the GetTxEntry response
                 if (this.getTxReq.IsActive())
                 {
@@ -1558,7 +1564,6 @@ namespace GraphView.Transaction
                     }
 
                     // The last version entry is the one need to check whether visiable
-                    VersionEntry versionEntry = this.versionList[this.readEntryCount];
                     this.readEntryCount--;
 
                     // If the version entry is a dirty write, skips the entry.
@@ -1601,8 +1606,6 @@ namespace GraphView.Transaction
                 }
                 else
                 {
-                    VersionEntry versionEntry = this.versionList[this.readEntryCount - 1];
-
                     if (versionEntry.TxId >= 0)
                     {
                         // Send the GetTxEntry request
@@ -1635,10 +1638,7 @@ namespace GraphView.Transaction
                         {
                             visibleVersion = versionEntry;
                         }
-                        else
-                        {
-                            this.readEntryCount--;
-                        }
+                        this.readEntryCount--;
                     }
                 }
 
@@ -1649,7 +1649,7 @@ namespace GraphView.Transaction
                     // JUST FOR IN-MEMORY VERSION
                     if (this.remoteVersionRefList.Count >= this.readEntryCount)
                     {
-                        visiableVersionRef = this.remoteVersionRefList[this.readEntryCount - 1];
+                        visiableVersionRef = this.remoteVersionRefList[this.readEntryCount];
                     }
                     break;
                 }

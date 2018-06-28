@@ -126,8 +126,8 @@ namespace GraphView.Transaction
             for (int pid = 0; pid < this.PartitionCount; pid++)
             {
                 this.dicts[pid].Clear();
-                this.requestQueues[pid].Clear();
-                this.flushQueues[pid].Clear();
+                //this.requestQueues[pid].Clear();
+                //this.flushQueues[pid].Clear();
             }
         }
     }

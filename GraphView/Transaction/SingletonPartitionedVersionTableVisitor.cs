@@ -65,7 +65,7 @@ namespace GraphView.Transaction
             // For other isolation levels, more versions may need to be returned.
             // When old versions may be truncated, it is desirable to maintain a head pointer as well,
             // so as to increase the lower bound of version keys and reduce the number of iterations. 
-            while (lastVersionKey >= 0 && entryCount <= 2)
+            while (lastVersionKey >= 0 && entryCount < 2)
             {
                 // To make it run under .Net 4.5
                 VersionEntry verEntry = null;

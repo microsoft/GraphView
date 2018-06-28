@@ -196,7 +196,7 @@
             // For other isolation levels, more versions may need to be returned.
             // When old versions may be truncated, it is desirable to maintain a head pointer as well,
             // so as to increase the lower bound of version keys and reduce the number of iterations. 
-            while (lastVersionKey >= 0 && entryCount <= 2)
+            while (lastVersionKey >= 0 && entryCount < 2)
             {
                 VersionEntry verEntry = null;
                 if (versionList.TryGetValue(lastVersionKey, out verEntry))

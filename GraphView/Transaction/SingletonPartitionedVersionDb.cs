@@ -115,7 +115,6 @@ namespace GraphView.Transaction
             {
                 this.versionTables[key].Clear();
             }
-            this.versionTables.Clear();
 
             for (int pid = 0; pid < this.PartitionCount; pid++)
             {

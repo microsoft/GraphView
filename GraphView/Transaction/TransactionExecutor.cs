@@ -10,6 +10,10 @@ namespace GraphView.Transaction
 
     internal class TransactionExecutor
     {
+        internal static VersionEntry[] versionEntryArray;
+
+        internal static VersionEntry[] dummyVersionEntryArray;
+
         private int executorId = 0;
 
         /// <summary>
@@ -309,12 +313,16 @@ namespace GraphView.Transaction
             object payload = null;
             int indexBound = this.YCSBKeys.Length;
             string updatePayload = new String('a', 100);
+
+            int preRecordKey = this.Partition - this.versionDb.PartitionCount;
             for (int i = 0; i < this.taskCount; i++)
             {
                 //string recordKey = YCSBKeys[rand.Next(0, indexBound)];
-                // int recordKey = rand.Next(0, indexBound);
-                int recordKey = this.GenerateYCSBKey(rand.Next(0, indexBound), indexBound);
-                Console.WriteLine("RecordKey is {0}", recordKey);
+                int recordKey = rand.Next(0, indexBound);
+                // int recordKey = this.GenerateYCSBKey(rand.Next(0, indexBound), indexBound);
+                // int recordKey = this.versionDb.PartitionCount + preRecordKey;
+                // preRecordKey = recordKey;
+
                 this.txExecution.Reset();
                 this.txExecution.Read("ycsb_table", recordKey, out received, out payload);
                 payload = this.txExecution.ReadPayload;
@@ -338,7 +346,8 @@ namespace GraphView.Transaction
 
         public void YCSBExecuteInsert()
         {
-            // PinThreadOnCores(this.Partition);
+            PinThreadOnCores(this.Partition);
+
             this.RunBeginTicks = DateTime.Now.Ticks;
 
             Random rand = new Random();
@@ -346,13 +355,17 @@ namespace GraphView.Transaction
             object payload = null;
             // int indexBound = this.YCSBKeys.Length;
             int indexBound = this.taskCount;
-            string updatePayload = new String('a', 100);
+            //string updatePayload = new String('a', 100);
+            object updatePayload = 0;
+            int preRecordKey = this.Partition - this.versionDb.PartitionCount;
             for (int i = 0; i < this.taskCount; i++)
             {
                 //string recordKey = YCSBKeys[rand.Next(0, indexBound)];
                 // int recordKey = rand.Next(0, indexBound);
                 // int recordKey = this.GenerateYCSBKey(rand.Next(0, indexBound), indexBound);
-                int recordKey = i;
+                int recordKey = this.versionDb.PartitionCount + preRecordKey;
+                preRecordKey = recordKey;
+
                 this.txExecution.Reset();
                 this.txExecution.ReadAndInitialize("ycsb_table", recordKey, out received, out payload);
                 payload = this.txExecution.ReadPayload;

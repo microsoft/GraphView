@@ -297,7 +297,8 @@
             int tid = 0;
             foreach (TransactionExecutor executor in this.executorList)
             {
-                tasks[tid++] = Task.Factory.StartNew(executor.YCSBExecuteRead);
+                tasks[tid] = Task.Factory.StartNew(executor.YCSBExecuteUpdate);
+                tid++;
             }
 
             this.startEventSlim.Set();

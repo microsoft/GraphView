@@ -126,68 +126,7 @@ namespace TransactionBenchmarkTest.YCSB
         // args[3]: txCountPerExecutor
         static void YCSBAsyncTestWithSingletonVersionDb(string[] args)
         {
-            int partitionCount = 16;
-            int executorCount = partitionCount;
-            int txCountPerExecutor = 4000000;
-
-            // 20w
-            string dataFile = "ycsb_data_r.in";
-            const int recordCount = 200000;
-            //100w
-            //string dataFile = "ycsb_data_m_r.in";
-            //const int recordCount = 1000000;
-            // 500w
-            //string dataFile = "ycsb_data_lg_r.in";
-            //const int recordCount = 5000000;
-            // 1000w
-            //string dataFile = "ycsb_data_hg_r.in";
-            //const int recordCount = 10000000;
-
-
-            string operationFile = "ycsb_ops_r.in";
-            if (args.Length > 1)
-            {
-                dataFile = args[0];
-                operationFile = args[1];
-                partitionCount = Int32.Parse(args[2]);
-                executorCount = partitionCount;
-                txCountPerExecutor = args.Length > 3 ? Int32.Parse(args[3]) : txCountPerExecutor;
-            }
-
-            // these three settings are useless in SingletonVersionDb environment.
-            const bool daemonMode = false;
-            YCSBAsyncBenchmarkTest.RESHUFFLE = false;
-
-            string[] tables =
-            {
-                YCSBAsyncBenchmarkTest.TABLE_ID,
-                VersionDb.TX_TABLE
-            };
-
-            int currentExecutorCount = 1;
-
-            SingletonVersionDb versionDb = SingletonVersionDb.Instance(executorCount);
-            YCSBAsyncBenchmarkTest test = new YCSBAsyncBenchmarkTest(recordCount,
-                currentExecutorCount, txCountPerExecutor, versionDb, tables);
-
-            for (; currentExecutorCount <= partitionCount; currentExecutorCount++)
-            {
-                if (currentExecutorCount == 1)
-                {
-                    test.Setup(dataFile, operationFile);
-                }
-                else
-                {
-                    test.ResetAndFillWorkerQueue(operationFile, currentExecutorCount);
-                }
-                test.Run();
-                test.Stats();
-            }
-        }
-
-        static void YCSBAsyncTestWithPartitionedVersionDb(string[] args)
-        {
-            int partitionCount = 2;
+            int partitionCount = 12;
             int executorCount = partitionCount;
             int txCountPerExecutor = 2000000;
 
@@ -216,8 +155,107 @@ namespace TransactionBenchmarkTest.YCSB
             }
 
             // these three settings are useless in SingletonVersionDb environment.
+            const bool daemonMode = false;
+            const bool insert = false;
+            YCSBAsyncBenchmarkTest.RESHUFFLE = false;
+
+            // create all version entries
+            if (insert)
+            {
+                Console.WriteLine("create all version entries");
+                int total = partitionCount * txCountPerExecutor;
+                TransactionExecutor.versionEntryArray = new VersionEntry[total];
+                TransactionExecutor.dummyVersionEntryArray = new VersionEntry[total];
+                for (int i = 0; i < total; i++)
+                {
+                    TransactionExecutor.versionEntryArray[i] = new VersionEntry(null, -1, new String('a', 100), -1);
+                    TransactionExecutor.dummyVersionEntryArray[i] = new VersionEntry(-1, VersionEntry.VERSION_KEY_STRAT_INDEX,
+                VersionEntry.EMPTY_RECORD, VersionEntry.EMPTY_TXID);
+
+                }
+                Console.WriteLine("create version entries finished");
+            }
+
+            string[] tables =
+            {
+                YCSBAsyncBenchmarkTest.TABLE_ID,
+                VersionDb.TX_TABLE
+            };
+
+            int currentExecutorCount = 1;
+
+            SingletonVersionDb versionDb = SingletonVersionDb.Instance(executorCount);
+            YCSBAsyncBenchmarkTest test = new YCSBAsyncBenchmarkTest(recordCount,
+                currentExecutorCount, txCountPerExecutor, versionDb, tables);
+
+            for (; currentExecutorCount <= partitionCount; currentExecutorCount++)
+            {
+                if (currentExecutorCount == 1)
+                {
+                    test.Setup(dataFile, operationFile);
+                }
+                else
+                {
+                    if (insert)
+                    {
+                        versionDb.Clear();
+                    }
+                    test.ResetAndFillWorkerQueue(operationFile, currentExecutorCount);
+                }
+                test.Run();
+                test.Stats();
+            }
+        }
+
+        static void YCSBAsyncTestWithPartitionedVersionDb(string[] args)
+        {
+            int partitionCount = 2;
+            int executorCount = partitionCount;
+            int txCountPerExecutor = 1000000;
+
+            // 20w
+            string dataFile = "ycsb_data_r.in";
+            const int recordCount = 200000;
+            //100w
+            //string dataFile = "ycsb_data_m_r.in";
+            //const int recordCount = 1000000;
+            // 500w
+            //string dataFile = "ycsb_data_lg_r.in";
+            //const int recordCount = 5000000;
+            // 1000w
+            //string dataFile = "ycsb_data_hg_r.in";
+            //const int recordCount = 10000000;
+
+
+            string operationFile = "ycsb_ops_r.in";
+            if (args.Length > 1)
+            {
+                dataFile = args[0];
+                operationFile = args[1];
+                partitionCount = Int32.Parse(args[2]);
+                executorCount = partitionCount;
+                txCountPerExecutor = args.Length > 3 ? Int32.Parse(args[3]) : txCountPerExecutor;
+            }
+
+            // these three settings are useless in SingletonVersionDb environment.
+            const bool insert = false;
             const bool daemonMode = true;
             YCSBAsyncBenchmarkTest.RESHUFFLE = false;
+
+            if (insert)
+            {
+                Console.WriteLine("create all version entries");
+                int total = partitionCount * txCountPerExecutor;
+                TransactionExecutor.versionEntryArray = new VersionEntry[total];
+                TransactionExecutor.dummyVersionEntryArray = new VersionEntry[total];
+                for (int i = 0; i < total; i++)
+                {
+                    TransactionExecutor.versionEntryArray[i] = new VersionEntry(null, -1, new String('a', 100), -1);
+                    TransactionExecutor.dummyVersionEntryArray[i] = new VersionEntry(-1, VersionEntry.VERSION_KEY_STRAT_INDEX,
+               VersionEntry.EMPTY_RECORD, VersionEntry.EMPTY_TXID);
+                }
+                Console.WriteLine("create version entries finished");
+            }
 
             string[] tables =
             {
@@ -238,6 +276,10 @@ namespace TransactionBenchmarkTest.YCSB
                 }
                 else
                 {
+                    if (insert)
+                    {
+                        versionDb.Clear();
+                    }
                     versionDb.ExtendPartition(currentExecutorCount);
                     Console.WriteLine("Extend Partition Finished");
                     test.ResetAndFillWorkerQueue(operationFile, currentExecutorCount);
@@ -304,8 +346,8 @@ namespace TransactionBenchmarkTest.YCSB
 
             // For the YCSB async test
             // YCSBAsyncTest();
-            //YCSBAsyncTestWithSingletonVersionDb(args);
-            YCSBAsyncTestWithPartitionedVersionDb(args);
+            YCSBAsyncTestWithSingletonVersionDb(args);
+            // YCSBAsyncTestWithPartitionedVersionDb(args);
             // YCSBAsyncTestWithCassandra();
 
             // ExecuteRedisRawTest();
