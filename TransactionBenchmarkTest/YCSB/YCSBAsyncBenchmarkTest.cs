@@ -244,7 +244,7 @@
 
             // step3: load data
             //this.LoadDataParallely(dataFile);
-            this.LoadDataSequentially(dataFile);
+            //this.LoadDataSequentially(dataFile);
 
             // step 4: fill workers' queue
             if (this.versionDb is SingletonPartitionedVersionDb && RESHUFFLE)

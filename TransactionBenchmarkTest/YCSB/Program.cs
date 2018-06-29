@@ -10,6 +10,13 @@ using TransactionBenchmarkTest.TPCC;
 
 namespace TransactionBenchmarkTest.YCSB
 {
+    internal enum TestType
+    {
+        Read,
+        Update,
+        Insert,
+    };
+
     class Program
     {
         private static string[] args;
@@ -126,13 +133,13 @@ namespace TransactionBenchmarkTest.YCSB
         // args[3]: txCountPerExecutor
         static void YCSBAsyncTestWithSingletonVersionDb(string[] args)
         {
-            int partitionCount = 12;
+            int partitionCount = 2;
             int executorCount = partitionCount;
-            int txCountPerExecutor = 2000000;
+            int txCountPerExecutor = 20000;
 
             // 20w
             string dataFile = "ycsb_data_r.in";
-            const int recordCount = 200000;
+            const int recordCount = 10000;
             //100w
             //string dataFile = "ycsb_data_m_r.in";
             //const int recordCount = 1000000;
@@ -156,11 +163,11 @@ namespace TransactionBenchmarkTest.YCSB
 
             // these three settings are useless in SingletonVersionDb environment.
             const bool daemonMode = false;
-            const bool insert = false;
+            const TestType testType = TestType.Update;
             YCSBAsyncBenchmarkTest.RESHUFFLE = false;
 
             // create all version entries
-            if (insert)
+            if (testType == TestType.Insert)
             {
                 Console.WriteLine("create all version entries");
                 int total = partitionCount * txCountPerExecutor;
@@ -196,12 +203,34 @@ namespace TransactionBenchmarkTest.YCSB
                 }
                 else
                 {
-                    if (insert)
-                    {
-                        versionDb.Clear();
-                    }
                     test.ResetAndFillWorkerQueue(operationFile, currentExecutorCount);
                 }
+
+                if (testType == TestType.Update)
+                {
+                    Console.WriteLine("Start to mock load data");
+                    int txPerPartition = recordCount / currentExecutorCount;
+                    int remained = recordCount - txPerPartition * currentExecutorCount;
+
+                    Tuple<int, int>[] ranges = new Tuple<int, int>[currentExecutorCount];
+                    int rangeBegin = 0;
+                    for (int i = 0; i < currentExecutorCount; i++)
+                    {
+                        int rangeEnd = rangeBegin + txPerPartition;
+                        if (i < remained)
+                        {
+                            rangeEnd += 1;
+                        }
+
+                        ranges[i] = Tuple.Create(rangeBegin, rangeEnd);
+                        rangeBegin = rangeEnd;
+                    }
+                    versionDb.MockLoadData(ranges);
+                }
+
+                Console.WriteLine("Sleep for {0} seconds to wait GC", 5);
+                Thread.Sleep(5000);
+
                 test.Run();
                 test.Stats();
             }

@@ -8,6 +8,19 @@ namespace GraphView.Transaction
     using System.Diagnostics;
     using System.Threading;
 
+    public static class StaticRandom
+    {
+        static int seed = Environment.TickCount;
+
+        static readonly ThreadLocal<Random> random =
+            new ThreadLocal<Random>(() => new Random(Interlocked.Increment(ref seed)));
+
+        public static int Rand()
+        {
+            return random.Value.Next();
+        }
+    }
+
     internal class TransactionExecutor
     {
         internal static VersionEntry[] versionEntryArray;
@@ -307,19 +320,17 @@ namespace GraphView.Transaction
         {
             // PinThreadOnCores(this.Partition);
             this.RunBeginTicks = DateTime.Now.Ticks;
-
             Random rand = new Random();
             bool received = false;
             object payload = null;
             int indexBound = this.YCSBKeys.Length;
             string updatePayload = new String('a', 100);
-
             int preRecordKey = this.Partition - this.versionDb.PartitionCount;
             for (int i = 0; i < this.taskCount; i++)
             {
                 //string recordKey = YCSBKeys[rand.Next(0, indexBound)];
-                int recordKey = rand.Next(0, indexBound);
-                // int recordKey = this.GenerateYCSBKey(rand.Next(0, indexBound), indexBound);
+                // int recordKey = rand.Next(0, indexBound);
+                int recordKey = this.GenerateYCSBKey(StaticRandom.Rand() % indexBound, indexBound);
                 // int recordKey = this.versionDb.PartitionCount + preRecordKey;
                 // preRecordKey = recordKey;
 
@@ -340,7 +351,6 @@ namespace GraphView.Transaction
                     this.CommittedTxs += 1;
                 }
             }
-
             this.RunEndTicks = DateTime.Now.Ticks;
         }
 

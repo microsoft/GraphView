@@ -260,5 +260,10 @@
 				versionTable.Clear();
 			}
 		}
+
+        internal override void MockLoadData(Tuple<int, int>[] partitionRange)
+        {
+            this.versionTables["ycsb_table"].MockLoadData(partitionRange);
+        }
     }
 }

@@ -288,6 +288,35 @@
             //    this.dict.TryAdd(i, TransactionExecutor.dummyVersionEntryArray[i]);
             //}
         }
+
+        internal override void MockLoadData(Tuple<int, int>[] partitionRange)
+        {
+            // Clear Table
+            this.dict.Clear();
+
+            int pk = 0;
+            // Load Data
+            foreach (Tuple<int, int> range in partitionRange)
+            {
+                Console.WriteLine("Loading Partition {0}", pk++);
+                int startKey = range.Item1;
+                int endKey = range.Item2;
+
+                for (int i = startKey; i < endKey; i++)
+                {
+                    object recordKey = i;
+                    ConcurrentDictionary<long, VersionEntry> versionList = new ConcurrentDictionary<long, VersionEntry>();
+
+                    VersionEntry emptyEntry = VersionEntry.InitEmptyVersionEntry(-1);
+                    emptyEntry.BeginTimestamp = 0L;
+
+                    versionList.TryAdd(-1L, emptyEntry);
+                    versionList.TryAdd(0L, VersionEntry.InitFirstVersionEntry(recordKey, new String('a', 100)));
+
+                    this.dict.TryAdd(recordKey, versionList);
+                }
+            }
+        }
     }
 }
 

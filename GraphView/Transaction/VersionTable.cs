@@ -227,5 +227,16 @@ namespace GraphView.Transaction
         {
             throw new NotImplementedException();
         }
+
+        /// <summary>
+        /// ONLY FOR BENCHMARK TEST
+        /// A mock method to load data without the tx, which will load data directly
+        /// rather than by transaction
+        /// </summary>
+        /// <param name="partitionRange">The record key range for every partition</param>
+        internal virtual void MockLoadData(Tuple<int, int>[] partitionRange)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

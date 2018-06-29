@@ -181,6 +181,11 @@ namespace GraphView.Transaction
                 VersionEntry.EMPTY_RECORD, VersionEntry.EMPTY_TXID);
         }
 
+        public static VersionEntry InitFirstVersionEntry(object recordKey, object payload)
+        {
+            return new VersionEntry(recordKey, 0L, 0L, long.MaxValue, payload, -1L, 0L);
+        }
+
         public int CompareTo(VersionEntry other)
         {
             // Two version entries are only comparable if they belong to the same record

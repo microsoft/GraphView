@@ -1346,7 +1346,7 @@ namespace GraphView.Transaction
                     this.writeSet.ResizeAndFill(2 * this.writeSetCount);
                 }
                 this.writeSet[this.writeSetCount++].Set(tableId, recordKey, payload, 
-                    readEntry.VersionKey + 1, readEntry.RemoteVerList);
+                    readEntry.TailKey + 1, readEntry.RemoteVerList);
             }
             else
             {
