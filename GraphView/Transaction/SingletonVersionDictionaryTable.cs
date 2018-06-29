@@ -291,9 +291,6 @@
 
         internal override void MockLoadData(Tuple<int, int>[] partitionRange)
         {
-            // Clear Table
-            this.dict.Clear();
-
             int pk = 0;
             // Load Data
             foreach (Tuple<int, int> range in partitionRange)
@@ -305,15 +302,25 @@
                 for (int i = startKey; i < endKey; i++)
                 {
                     object recordKey = i;
-                    ConcurrentDictionary<long, VersionEntry> versionList = new ConcurrentDictionary<long, VersionEntry>();
+                    ConcurrentDictionary<long, VersionEntry> versionList = null;
+                    if (!this.dict.TryGetValue(recordKey, out versionList))
+                    {
+                        versionList = new ConcurrentDictionary<long, VersionEntry>();
+                        this.dict.TryAdd(recordKey, versionList);
+                    }
 
-                    VersionEntry emptyEntry = VersionEntry.InitEmptyVersionEntry(-1);
+                    // Clear the list and insert version entries
+                    versionList.Clear();
+
+                    VersionEntry emptyEntry = TransactionExecutor.dummyVersionEntryArray[i];
                     emptyEntry.BeginTimestamp = 0L;
 
                     versionList.TryAdd(-1L, emptyEntry);
-                    versionList.TryAdd(0L, VersionEntry.InitFirstVersionEntry(recordKey, new String('a', 100)));
-
-                    this.dict.TryAdd(recordKey, versionList);
+                    VersionEntry versionEntry = TransactionExecutor.firstVersionEntryArray[i];
+                    versionEntry.BeginTimestamp = 0L;
+                    versionEntry.EndTimestamp = long.MaxValue;
+                    versionEntry.TxId = -1L;
+                    versionList.TryAdd(0L, versionEntry);
                 }
             }
         }

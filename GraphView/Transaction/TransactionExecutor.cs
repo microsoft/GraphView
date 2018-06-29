@@ -23,9 +23,11 @@ namespace GraphView.Transaction
 
     internal class TransactionExecutor
     {
-        internal static VersionEntry[] versionEntryArray;
+        internal static VersionEntry[] firstVersionEntryArray;
 
         internal static VersionEntry[] dummyVersionEntryArray;
+
+        internal static VersionEntry[] versionEntryArray;
 
         private int executorId = 0;
 
@@ -318,7 +320,8 @@ namespace GraphView.Transaction
 
         public void YCSBExecuteUpdate()
         {
-            // PinThreadOnCores(this.Partition);
+            PinThreadOnCores(this.Partition);
+
             this.RunBeginTicks = DateTime.Now.Ticks;
             Random rand = new Random();
             bool received = false;
@@ -334,7 +337,7 @@ namespace GraphView.Transaction
                 // int recordKey = this.versionDb.PartitionCount + preRecordKey;
                 // preRecordKey = recordKey;
 
-                this.txExecution.Reset();
+                this.txExecution.Reset(this.Partition * this.taskCount + i);
                 this.txExecution.Read("ycsb_table", recordKey, out received, out payload);
                 payload = this.txExecution.ReadPayload;
                 if (payload != null)

@@ -143,6 +143,8 @@ namespace GraphView.Transaction
         private TxTableEntry localTxEntry = new TxTableEntry();
         private TxTableEntry remoteTxEntryRef;
 
+        private int versionEntryIndex;
+
         internal long ExecutionSeconds
         {
             get
@@ -232,7 +234,7 @@ namespace GraphView.Transaction
             this.remoteTxEntryRef = null;
         }
 
-        internal void Reset()
+        internal void Reset(int versionEntryIndex = -1)
         {
             this.commitTs = TxTableEntry.DEFAULT_COMMIT_TIME;
             this.maxCommitTsOfWrites = -1L;
@@ -273,6 +275,8 @@ namespace GraphView.Transaction
             this.commitSetCount = 0;
             this.abortSetCount = 0;
             this.largestVerKeySetCount = 0;
+
+            this.versionEntryIndex = versionEntryIndex;
 
             // init and get tx id
             this.InitTx();
@@ -413,16 +417,20 @@ namespace GraphView.Transaction
                     // The write-set record is an insert or update record, try to insert the new version
                     if (payload != null)
                     {
-                        //VersionEntry newImageEntry = TransactionExecutor.versionEntryArray[(int)writeEntry.RecordKey];
-                        //newImageEntry.RecordKey = writeEntry.RecordKey;
-                        //newImageEntry.VersionKey = writeEntry.VersionKey;
-                        //newImageEntry.Record = payload;
-                        //newImageEntry.TxId = this.txId;
-                        VersionEntry newImageEntry = new VersionEntry(
-                                writeEntry.RecordKey,
-                                writeEntry.VersionKey,
-                                payload,
-                                this.txId);
+                        VersionEntry newImageEntry = TransactionExecutor.versionEntryArray[versionEntryIndex];
+                        newImageEntry.RecordKey = writeEntry.RecordKey;
+                        newImageEntry.VersionKey = writeEntry.VersionKey;
+                        newImageEntry.Record = payload;
+                        newImageEntry.TxId = this.txId;
+                        newImageEntry.BeginTimestamp = VersionEntry.DEFAULT_BEGIN_TIMESTAMP;
+                        newImageEntry.EndTimestamp = VersionEntry.DEFAULT_END_TIMESTAMP;
+                        newImageEntry.MaxCommitTs = 0L;
+
+                        //VersionEntry newImageEntry = new VersionEntry(
+                        //        writeEntry.RecordKey,
+                        //        writeEntry.VersionKey,
+                        //        payload,
+                        //        this.txId);
 
                         this.uploadReq.Set(tableId, recordKey, newImageEntry.VersionKey, newImageEntry, writeEntry.RemoteVerList);
                         this.uploadReq.Use();

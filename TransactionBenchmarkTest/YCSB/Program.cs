@@ -133,13 +133,13 @@ namespace TransactionBenchmarkTest.YCSB
         // args[3]: txCountPerExecutor
         static void YCSBAsyncTestWithSingletonVersionDb(string[] args)
         {
-            int partitionCount = 2;
+            int partitionCount = 32;
             int executorCount = partitionCount;
-            int txCountPerExecutor = 20000;
+            int txCountPerExecutor = 2000000;
 
             // 20w
             string dataFile = "ycsb_data_r.in";
-            const int recordCount = 10000;
+            const int recordCount = 2000000;
             //100w
             //string dataFile = "ycsb_data_m_r.in";
             //const int recordCount = 1000000;
@@ -167,18 +167,23 @@ namespace TransactionBenchmarkTest.YCSB
             YCSBAsyncBenchmarkTest.RESHUFFLE = false;
 
             // create all version entries
-            if (testType == TestType.Insert)
+            if (testType == TestType.Insert || testType == TestType.Update)
             {
                 Console.WriteLine("create all version entries");
                 int total = partitionCount * txCountPerExecutor;
+                TransactionExecutor.firstVersionEntryArray = new VersionEntry[recordCount];
+                TransactionExecutor.dummyVersionEntryArray = new VersionEntry[recordCount];
                 TransactionExecutor.versionEntryArray = new VersionEntry[total];
-                TransactionExecutor.dummyVersionEntryArray = new VersionEntry[total];
+
                 for (int i = 0; i < total; i++)
                 {
-                    TransactionExecutor.versionEntryArray[i] = new VersionEntry(null, -1, new String('a', 100), -1);
-                    TransactionExecutor.dummyVersionEntryArray[i] = new VersionEntry(-1, VersionEntry.VERSION_KEY_STRAT_INDEX,
-                VersionEntry.EMPTY_RECORD, VersionEntry.EMPTY_TXID);
+                    TransactionExecutor.versionEntryArray[i] = new VersionEntry(null, 01L, null, -1L);
+                }
 
+                for (int i = 0; i < recordCount; i++)
+                {
+                    TransactionExecutor.firstVersionEntryArray[i] = VersionEntry.InitFirstVersionEntry(i, new String('a', 100));
+                    TransactionExecutor.dummyVersionEntryArray[i] = VersionEntry.InitEmptyVersionEntry(i);
                 }
                 Console.WriteLine("create version entries finished");
             }
@@ -228,8 +233,8 @@ namespace TransactionBenchmarkTest.YCSB
                     versionDb.MockLoadData(ranges);
                 }
 
-                Console.WriteLine("Sleep for {0} seconds to wait GC", 5);
-                Thread.Sleep(5000);
+                Console.WriteLine("Sleep for {0} seconds to wait GC", 2);
+                Thread.Sleep(2000);
 
                 test.Run();
                 test.Stats();
@@ -275,11 +280,11 @@ namespace TransactionBenchmarkTest.YCSB
             {
                 Console.WriteLine("create all version entries");
                 int total = partitionCount * txCountPerExecutor;
-                TransactionExecutor.versionEntryArray = new VersionEntry[total];
+                TransactionExecutor.firstVersionEntryArray = new VersionEntry[total];
                 TransactionExecutor.dummyVersionEntryArray = new VersionEntry[total];
                 for (int i = 0; i < total; i++)
                 {
-                    TransactionExecutor.versionEntryArray[i] = new VersionEntry(null, -1, new String('a', 100), -1);
+                    TransactionExecutor.firstVersionEntryArray[i] = new VersionEntry(null, -1, new String('a', 100), -1);
                     TransactionExecutor.dummyVersionEntryArray[i] = new VersionEntry(-1, VersionEntry.VERSION_KEY_STRAT_INDEX,
                VersionEntry.EMPTY_RECORD, VersionEntry.EMPTY_TXID);
                 }
