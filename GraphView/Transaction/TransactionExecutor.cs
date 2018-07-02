@@ -167,7 +167,7 @@ namespace GraphView.Transaction
 
 
             this.txExecution = new TransactionExecution(this.logStore, this.versionDb, null,
-                this.GarbageQueueTxId,this.GarbageQueueFinishTime, this.txRange, this);
+                this.GarbageQueueTxId,this.GarbageQueueFinishTime, this.txRange, this, this.ResourceManager);
 
             this.YCSBKeys = YCSBKeys;
             this.taskCount = taskCount;
@@ -320,7 +320,7 @@ namespace GraphView.Transaction
 
         public void YCSBExecuteUpdate()
         {
-            PinThreadOnCores(this.Partition);
+            // PinThreadOnCores(this.Partition);
 
             this.RunBeginTicks = DateTime.Now.Ticks;
             Random rand = new Random();
@@ -337,7 +337,7 @@ namespace GraphView.Transaction
                 // int recordKey = this.versionDb.PartitionCount + preRecordKey;
                 // preRecordKey = recordKey;
 
-                this.txExecution.Reset(this.Partition * this.taskCount + i);
+                this.txExecution.Reset();
                 this.txExecution.Read("ycsb_table", recordKey, out received, out payload);
                 payload = this.txExecution.ReadPayload;
                 if (payload != null)

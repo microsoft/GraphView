@@ -55,6 +55,15 @@ namespace GraphView.Transaction
             }
         }
 
+        /// <summary>
+        /// Add new partitions
+        /// </summary>
+        /// <param name="partitionCount">The number of partitions after add new partitions</param>
+        internal virtual void AddPartition(int partitionCount)
+        {
+            // TODO: extend containers
+        }
+
         internal virtual void EnqueueVersionEntryRequest(VersionEntryRequest req, int execPartition = 0)
         {
             int pk = this.VersionDb.PhysicalPartitionByKey(req.RecordKey);

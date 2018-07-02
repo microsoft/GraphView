@@ -85,7 +85,7 @@
             return CassandraVersionDb.instance;
         }
 
-        internal override TxResourceManager GetResourceManagerByPartitionIndex(int partition)
+        internal override TxResourceManager GetResourceManager(int partition)
         {
             if (partition >= this.PartitionCount)
             {

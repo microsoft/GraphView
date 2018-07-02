@@ -58,7 +58,7 @@ namespace GraphView.Transaction
             int cnt = 0;
             foreach (var row in rs)
             {
-                req.LocalContainer[cnt].UpdateValue(
+                req.LocalContainer[cnt].Set(
                     row.GetValue<string>("recordkey"),
                     row.GetValue<long>("versionkey"),
                     row.GetValue<long>("begintimestamp"),
@@ -103,7 +103,7 @@ namespace GraphView.Transaction
                 return null;
             }
 
-            ve.UpdateValue(
+            ve.Set(
                 recordKey, versionKey, row.GetValue<long>("begintimestamp"),
                 row.GetValue<long>("endtimestamp"),
                 BytesSerializer.Deserialize(row.GetValue<byte[]>("record")),

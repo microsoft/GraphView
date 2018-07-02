@@ -45,7 +45,7 @@ namespace GraphView.Transaction
 
         public VersionEntry()
         {
-
+            this.Reset();
         }
 
         public VersionEntry(
@@ -101,7 +101,7 @@ namespace GraphView.Transaction
             dst.MaxCommitTs = src.MaxCommitTs;
         }
 
-        public void UpdateValue(
+        public void Set(
             object recordKey,
             long versionKey,
             long beginTimestamp,
@@ -117,6 +117,17 @@ namespace GraphView.Transaction
             this.Record = record;
             this.TxId = txId;
             this.MaxCommitTs = maxCommitTs;
+        }
+
+        public void Reset()
+        {
+            this.RecordKey = null;
+            this.VersionKey = VersionEntry.VERSION_KEY_STRAT_INDEX;
+            this.BeginTimestamp = VersionEntry.DEFAULT_BEGIN_TIMESTAMP;
+            this.EndTimestamp = VersionEntry.DEFAULT_END_TIMESTAMP;
+            this.Record = null;
+            this.TxId = VersionEntry.EMPTY_TXID;
+            this.MaxCommitTs = VersionEntry.DEFAULT_MAX_COMMIT_TS;
         }
 
         public override bool Equals(object obj)
@@ -175,15 +186,34 @@ namespace GraphView.Transaction
                 record, txId, maxCommitTs);
         }
 
-        public static VersionEntry InitEmptyVersionEntry(object recordKey)
+        public static VersionEntry InitEmptyVersionEntry(object recordKey, VersionEntry version = null)
         {
-            return new VersionEntry(recordKey, VersionEntry.VERSION_KEY_STRAT_INDEX,
-                VersionEntry.EMPTY_RECORD, VersionEntry.EMPTY_TXID);
+            if (version == null)
+            {
+                return new VersionEntry(recordKey, VersionEntry.VERSION_KEY_STRAT_INDEX,
+                    VersionEntry.EMPTY_RECORD, VersionEntry.EMPTY_TXID);
+            }
+            else
+            {
+                version.Reset();
+                version.RecordKey = recordKey;
+                return version;
+            }
         }
+            
 
-        public static VersionEntry InitFirstVersionEntry(object recordKey, object payload)
+        public static VersionEntry InitFirstVersionEntry(object recordKey, object payload, VersionEntry version = null)
         {
-            return new VersionEntry(recordKey, 0L, 0L, long.MaxValue, payload, -1L, 0L);
+            version = version == null ? new VersionEntry() : version;
+            version.Reset();
+
+            version.RecordKey = recordKey;
+            version.VersionKey = 0L;
+            version.BeginTimestamp = 0L;
+            version.EndTimestamp = long.MaxValue;
+            version.Record = payload;
+
+            return version;
         }
 
         public int CompareTo(VersionEntry other)

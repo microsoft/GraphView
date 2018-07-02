@@ -55,126 +55,25 @@ namespace GraphView.Transaction
     internal class TxResourceManager
     {
         internal static readonly int workingsetCapacity = 100;
-
-        // Entry Resource
-        private readonly ResourcePool<ReadSetEntry> readSetEntries;
-        private readonly ResourcePool<PostProcessingEntry> postprocessingEntries;
-        private readonly ResourcePool<WriteSetEntry> writeSetEntries;
-        private readonly ResourcePool<VersionKeyEntry> versionKeyEntries;
-
+        // It's for the tx version entries during execution
+        private Queue<VersionEntry> versionEntries;
         private ResourcePool<TransactionRequest> transRequests;
 
         public TxResourceManager()
         {
-            this.readSetEntries = new ResourcePool<ReadSetEntry>(TxResourceManager.workingsetCapacity);
-            this.postprocessingEntries = new ResourcePool<PostProcessingEntry>(TxResourceManager.workingsetCapacity);
-            this.writeSetEntries = new ResourcePool<WriteSetEntry>(TxResourceManager.workingsetCapacity);
-            this.versionKeyEntries = new ResourcePool<VersionKeyEntry>(TxResourceManager.workingsetCapacity);
-
             this.transRequests = new ResourcePool<TransactionRequest>(TxResourceManager.workingsetCapacity);
+            this.versionEntries = new Queue<VersionEntry>();
 
             for (int i = 0; i < TxResourceManager.workingsetCapacity; i++)
             {
-                this.readSetEntries.AddNewResource(new ReadSetEntry());
-                this.postprocessingEntries.AddNewResource(new PostProcessingEntry());
-                this.writeSetEntries.AddNewResource(new WriteSetEntry());
-                this.versionKeyEntries.AddNewResource(new VersionKeyEntry());
-
                 this.transRequests.AddNewResource(new TransactionRequest());
             }
-        }
 
-        internal void RecycleTxSetEntry(ref TxSetEntry entry)
-        {
-            entry.Free();
-            entry = null;
-        }
-
-        internal ReadSetEntry GetReadSetEntry(
-            string tableId,
-            object recordKey,
-            long versionKey,
-            long beginTimestamp,
-            long endTimestamp,
-            long txId,
-            object record,
-            long tailKey)
-        {
-            ReadSetEntry entry = this.readSetEntries.GetResource();
-            if (entry == null)
+            // Fill enough entries for transaction execution
+            for (int i = 0; i < 2000000; i++)
             {
-                entry = new ReadSetEntry();
-                entry.Use();
-                this.readSetEntries.AddNewResource(entry);
+                this.versionEntries.Enqueue(new VersionEntry());
             }
-
-            entry.TableId = tableId;
-            entry.RecordKey = recordKey;
-            entry.VersionKey = versionKey;
-            entry.BeginTimestamp = beginTimestamp;
-            entry.EndTimestamp = endTimestamp;
-            entry.TxId = txId;
-            entry.Record = record;
-            entry.TailKey = tailKey;
-
-            return entry;
-        }
-
-        internal PostProcessingEntry GetPostProcessingEntry(
-            string tableId,
-            object recordKey,
-            long versionKey,
-            long beginTimestamp,
-            long endTimestamp)
-        {
-            PostProcessingEntry entry = this.postprocessingEntries.GetResource();
-            if (entry == null)
-            {
-                entry = new PostProcessingEntry();
-                entry.Use();
-                this.postprocessingEntries.AddNewResource(entry);
-            }
-
-            entry.TableId = tableId;
-            entry.RecordKey = recordKey;
-            entry.VersionKey = versionKey;
-            entry.BeginTimestamp = beginTimestamp;
-            entry.EndTimestamp = endTimestamp;
-
-            return entry;
-        }
-
-        internal WriteSetEntry GetWriteSetEntry(string tableId, object recordKey, object payload, long versionKey)
-        {
-            WriteSetEntry entry = this.writeSetEntries.GetResource();
-            if (entry == null)
-            {
-                entry = new WriteSetEntry();
-                entry.Use();
-                this.writeSetEntries.AddNewResource(entry);
-            }
-
-            entry.TableId = tableId;
-            entry.RecordKey = recordKey;
-            entry.Payload = payload;
-            entry.VersionKey = versionKey;
-            return entry;
-        }
-
-        internal VersionKeyEntry GetVersionKeyEntry(string tableId, object recordKey, long versionKey)
-        {
-            VersionKeyEntry entry = this.versionKeyEntries.GetResource();
-            if (entry == null)
-            {
-                entry = new VersionKeyEntry();
-                entry.Use();
-                this.versionKeyEntries.AddNewResource(entry);
-            }
-            entry.TableId = tableId;
-            entry.RecordKey = recordKey;
-            entry.VersionKey = versionKey;
-
-            return entry;
         }
 
         internal TransactionRequest TransactionRequest(
@@ -231,6 +130,21 @@ namespace GraphView.Transaction
         {
             transReq.Free();
             transReq = null;
+        }
+
+        internal VersionEntry VersionEntry()
+        {
+            if (this.versionEntries.Count == 0)
+            {
+                return new VersionEntry();
+            }
+            return this.versionEntries.Dequeue();
+        }
+
+        internal void RecycleVersionEntry(ref VersionEntry version)
+        {
+            this.versionEntries.Enqueue(version);
+            version = null;
         }
     }
 }

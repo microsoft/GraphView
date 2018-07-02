@@ -77,6 +77,9 @@ namespace GraphView.Transaction
             
         private readonly int[] queueLatches;
 
+        // Resoure managers to manage the runtime resource to avoid gc slowing the throughput
+        internal readonly List<TxResourceManager> txResourceManagers;
+
         //internal int PartitionCount { get; private set; }
         internal int PartitionCount { get; set; }   // to avoid memory overflow used by cassandra
 
@@ -112,6 +115,7 @@ namespace GraphView.Transaction
             this.dbVisitors = new VersionDbVisitor[partitionCount];
             this.queueLatches = new int[partitionCount];
             this.requestUDFQueues = new RequestQueue<TxEntryRequest>[partitionCount];
+            this.txResourceManagers = new List<TxResourceManager>();
 
             for (int pid = 0; pid < partitionCount; pid++)
             {
@@ -119,6 +123,7 @@ namespace GraphView.Transaction
                 this.flushQueues[pid] = new Queue<TxEntryRequest>(1024);
                 this.queueLatches[pid] = 0;
                 this.requestUDFQueues[pid] = new RequestQueue<TxEntryRequest>(partitionCount);
+                this.txResourceManagers.Add(new TxResourceManager());
             }
 
             this.PhysicalPartitionByKey = key => Math.Abs(key.GetHashCode()) % this.PartitionCount;
@@ -126,9 +131,35 @@ namespace GraphView.Transaction
             //this.PhysicalTxPartitionByKey = key => Math.Abs(key.ToString().GetHashCode()) % this.PartitionCount;
         }
 
-        internal virtual TxResourceManager GetResourceManagerByPartitionIndex(int partition)
+        /// <summary>
+        /// Add new partitions based on the current running version db to avoid creating a new version db.
+        /// which includes creating new visitors, create new partition containers and reshuffle records.
+        /// </summary>
+        /// <param name="partitionCount">The number of partitions after add new partitions</param>
+        internal virtual void AddPartition(int partitionCount)
         {
-            throw new NotImplementedException();
+            if (partitionCount <= this.PartitionCount)
+            {
+                throw new ArgumentException("partition count must be larger than the current partition count");
+            }
+            int currentPartitionCount = this.PartitionCount;
+
+            // TODO: need to add other resources, like queue, latches
+            for (int pk = currentPartitionCount; pk < partitionCount; pk++)
+            {
+                this.txResourceManagers.Add(new TxResourceManager());
+            }
+
+            this.PartitionCount = partitionCount;
+        }
+
+        internal virtual TxResourceManager GetResourceManager(int partition)
+        {
+            if (partition >= this.PartitionCount)
+            {
+                throw new TransactionException("The partition index exceeds the number of patition!");
+            }
+            return this.txResourceManagers[partition];
         }
 
         /// <summary>

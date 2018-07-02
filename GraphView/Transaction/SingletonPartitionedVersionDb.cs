@@ -59,33 +59,38 @@ namespace GraphView.Transaction
             }
         }
 
-        /// <summary>
-        /// Only for benchmark test
-        /// 
-        /// Keep the number of records as the same and add new partitions to the given expectedPartitionCount
-        /// That means add new visitors and dicts, finally reshuffle all data into the right partitions
-        /// </summary>
-        /// <param name="part"></param>
-        public void ExtendPartition(int expectedPartitionCount)
+        internal override void AddPartition(int partitionCount)
         {
             int prePartitionCount = this.PartitionCount;
-            this.PartitionCount = expectedPartitionCount;
+            base.AddPartition(partitionCount);
+            this.PartitionCount = partitionCount;
 
             // Resize Visitors and Dicts
-            Array.Resize(ref this.txTable, expectedPartitionCount);
-            for (int pk = prePartitionCount; pk < expectedPartitionCount; pk++)
+            Array.Resize(ref this.txTable, partitionCount);
+            for (int pk = prePartitionCount; pk < partitionCount; pk++)
             {
                 this.txTable[pk] = new Dictionary<long, TxTableEntry>(100);
             }
 
-            Array.Resize(ref this.dbVisitors, expectedPartitionCount);
-            for (int pk = prePartitionCount; pk < expectedPartitionCount; pk++)
+            Array.Resize(ref this.dbVisitors, partitionCount);
+            for (int pk = prePartitionCount; pk < partitionCount; pk++)
             {
                 this.dbVisitors[pk] = new SingletonPartitionedVersionDbVisitor(this.txTable[pk]);
             }
 
-            // expend partitions for version table
-            ((SingletonPartitionedVersionTable)this.versionTables["ycsb_table"]).ExtendPartition(expectedPartitionCount);
+            foreach (VersionTable table in this.versionTables.Values)
+            {
+                table.AddPartition(partitionCount);
+            }
+            this.PartitionCount = partitionCount;
+        }
+
+        internal override void MockLoadData(Tuple<int, int>[] partitionRange)
+        {
+            foreach (VersionTable table in this.versionTables.Values)
+            {
+                table.MockLoadData(partitionRange);
+            }
         }
 
         /// <summary>

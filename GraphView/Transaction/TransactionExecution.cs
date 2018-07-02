@@ -58,6 +58,8 @@ namespace GraphView.Transaction
         internal TxProgress Progress { get; private set; }
         internal StoredProcedure Procedure { get; set; }
 
+        private TxResourceManager resourceManager;
+
         //Garbage Queue Part
 
         /// <summary>
@@ -143,8 +145,6 @@ namespace GraphView.Transaction
         private TxTableEntry localTxEntry = new TxTableEntry();
         private TxTableEntry remoteTxEntryRef;
 
-        private int versionEntryIndex;
-
         internal long ExecutionSeconds
         {
             get
@@ -161,7 +161,8 @@ namespace GraphView.Transaction
             Queue<long> garbageQueueTxId = null,
             Queue<long> garbageQueueFinishTime = null,
             TxRange txRange = null,
-            TransactionExecutor executor = null)
+            TransactionExecutor executor = null,
+            TxResourceManager txResourceManager = null)
         {
             this.logStore = logStore;
             this.versionDb = versionDb;
@@ -232,9 +233,11 @@ namespace GraphView.Transaction
             this.abortSetCount = 0;
             this.largestVerKeySetCount = 0;
             this.remoteTxEntryRef = null;
+
+            this.resourceManager = txResourceManager;
         }
 
-        internal void Reset(int versionEntryIndex = -1)
+        internal void Reset()
         {
             this.commitTs = TxTableEntry.DEFAULT_COMMIT_TIME;
             this.maxCommitTsOfWrites = -1L;
@@ -275,8 +278,6 @@ namespace GraphView.Transaction
             this.commitSetCount = 0;
             this.abortSetCount = 0;
             this.largestVerKeySetCount = 0;
-
-            this.versionEntryIndex = versionEntryIndex;
 
             // init and get tx id
             this.InitTx();
@@ -417,7 +418,8 @@ namespace GraphView.Transaction
                     // The write-set record is an insert or update record, try to insert the new version
                     if (payload != null)
                     {
-                        VersionEntry newImageEntry = TransactionExecutor.versionEntryArray[versionEntryIndex];
+                        // VersionEntry newImageEntry = TransactionExecutor.versionEntryArray[versionEntryIndex];
+                        VersionEntry newImageEntry = this.resourceManager.VersionEntry();
                         newImageEntry.RecordKey = writeEntry.RecordKey;
                         newImageEntry.VersionKey = writeEntry.VersionKey;
                         newImageEntry.Record = payload;

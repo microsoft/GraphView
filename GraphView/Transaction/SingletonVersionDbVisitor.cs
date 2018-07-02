@@ -8,13 +8,10 @@ namespace GraphView.Transaction
     internal class SingletonVersionDbVisitor : VersionDbVisitor
     {
         private readonly ConcurrentDictionary<long, TxTableEntry> txTable;
-        private readonly TxResourceManager resourceManager;
 
-        public SingletonVersionDbVisitor(ConcurrentDictionary<long, TxTableEntry> txTable,
-            TxResourceManager resourceManager)
+        public SingletonVersionDbVisitor(ConcurrentDictionary<long, TxTableEntry> txTable)
         {
             this.txTable = txTable;
-            this.resourceManager = resourceManager;
         }
 
         internal override void Visit(GetTxEntryRequest req)

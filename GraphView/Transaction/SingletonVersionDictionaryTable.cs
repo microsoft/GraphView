@@ -20,6 +20,8 @@
 
         public static readonly int VERSION_CAPACITY = 4;
 
+        internal int PartitionCount { get; set; }
+
         public SingletonDictionaryVersionTable(VersionDb versionDb, string tableId,
             int partitionCount, List<TxResourceManager> txResourceManagers)
             : base(versionDb, tableId, partitionCount)
@@ -27,6 +29,8 @@
             int maxConcurrency = Math.Max(1, this.VersionDb.PartitionCount / 2);
             this.dict = new ConcurrentDictionary<object, ConcurrentDictionary<long, VersionEntry>>(
                 maxConcurrency, SingletonDictionaryVersionTable.RECORD_CAPACITY);
+
+            this.PartitionCount = partitionCount;
 
             for (int i = 0; i < partitionCount; i++)
             {
@@ -67,6 +71,20 @@
             }
 
             return versionEntry;
+        }
+
+        internal override void AddPartition(int partitionCount)
+        {
+            int prePartitionCount = this.PartitionCount;
+            base.AddPartition(partitionCount);
+
+            Array.Resize(ref this.tableVisitors, partitionCount);
+            for (int pk = prePartitionCount; pk < partitionCount; pk++)
+            {
+                this.tableVisitors[pk] = new SingletonVersionTableVisitor(this.dict);
+            }
+
+            this.PartitionCount = partitionCount;
         }
 
         internal override IEnumerable<VersionEntry> InitializeAndGetVersionList(object recordKey)
@@ -291,15 +309,19 @@
 
         internal override void MockLoadData(Tuple<int, int>[] partitionRange)
         {
+            int prePartitionCount = this.VersionDb.PartitionCount - 1;
+            PartitionByKeyDelegate prePartitionByKey = key => Math.Abs(key.GetHashCode()) % prePartitionCount;
+
+            int recycleVersionEntry = 0;
             int pk = 0;
             // Load Data
             foreach (Tuple<int, int> range in partitionRange)
             {
-                Console.WriteLine("Loading Partition {0}", pk++);
+                Console.WriteLine("Loading Partition {0}", pk);
                 int startKey = range.Item1;
                 int endKey = range.Item2;
 
-                for (int i = startKey; i < endKey; i++)
+                for (int i = startKey; i < endKey; i += this.VersionDb.PartitionCount)
                 {
                     object recordKey = i;
                     ConcurrentDictionary<long, VersionEntry> versionList = null;
@@ -309,20 +331,41 @@
                         this.dict.TryAdd(recordKey, versionList);
                     }
 
-                    // Clear the list and insert version entries
+                    VersionEntry emptyEntry = versionList.ContainsKey(-1L) ? versionList[-1L] : new VersionEntry();
+                    VersionEntry versionEntry = versionList.ContainsKey(0L) ? versionList[0L] : new VersionEntry();
+
+                    // only recycle version entries when 
+                    if (this.VersionDb.PartitionCount > 1)
+                    {
+                        int ppk = prePartitionByKey(recordKey);
+                        // Clear the list and insert version entries
+                        foreach (KeyValuePair<long, VersionEntry> kv in versionList)
+                        {
+                            if (kv.Key == -1L || kv.Key == 0L)
+                            {
+                                continue;
+                            }
+
+                            VersionEntry usedVersion = kv.Value;
+                            recycleVersionEntry++;
+                            this.VersionDb.txResourceManagers[ppk].RecycleVersionEntry(ref usedVersion);
+                        }
+                    }
+
                     versionList.Clear();
 
-                    VersionEntry emptyEntry = TransactionExecutor.dummyVersionEntryArray[i];
+                    VersionEntry.InitEmptyVersionEntry(-1, emptyEntry);
                     emptyEntry.BeginTimestamp = 0L;
-
                     versionList.TryAdd(-1L, emptyEntry);
-                    VersionEntry versionEntry = TransactionExecutor.firstVersionEntryArray[i];
-                    versionEntry.BeginTimestamp = 0L;
-                    versionEntry.EndTimestamp = long.MaxValue;
-                    versionEntry.TxId = -1L;
+
+                    VersionEntry.InitFirstVersionEntry(0, versionEntry.Record == null ? new String('a', 100) : versionEntry.Record, versionEntry);
                     versionList.TryAdd(0L, versionEntry);
                 }
+
+                pk++;
             }
+
+            Console.WriteLine("Recycle {0} Version Entries");
         }
     }
 }

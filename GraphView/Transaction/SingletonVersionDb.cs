@@ -13,28 +13,14 @@
 
         private readonly ConcurrentDictionary<long, TxTableEntry> txTable;
 
-        private readonly List<TxResourceManager> txResourceManagers;
-
         private SingletonVersionDb(int partitionCount)
             :base(partitionCount)
         {
             this.txTable = new ConcurrentDictionary<long, TxTableEntry>();
-            this.txResourceManagers = new List<TxResourceManager>();
-
             for (int i = 0; i < partitionCount; i++)
             {
-                this.txResourceManagers.Add(new TxResourceManager());
-                this.dbVisitors[i] = new SingletonVersionDbVisitor(this.txTable, this.txResourceManagers[i]);
+                this.dbVisitors[i] = new SingletonVersionDbVisitor(this.txTable);
             }
-        }
-
-        internal override TxResourceManager GetResourceManagerByPartitionIndex(int partition)
-        {
-            if (partition >= this.PartitionCount)
-            {
-                throw new TransactionException("The partition index exceeds the number of patition!");
-            }
-            return this.txResourceManagers[partition];
         }
 
         internal static SingletonVersionDb Instance(int partitionCount = 1)
@@ -50,6 +36,23 @@
                 }
             }
             return SingletonVersionDb.instance;
+        }
+
+        internal override void AddPartition(int partitionCount)
+        {
+            int prePartitionCount = this.PartitionCount;
+            base.AddPartition(partitionCount);
+
+            Array.Resize(ref this.dbVisitors, partitionCount);
+            for (int pk = prePartitionCount; pk < partitionCount; pk++)
+            {
+                this.dbVisitors[pk] = new SingletonVersionDbVisitor(this.txTable);
+            }
+
+            foreach (VersionTable table in this.versionTables.Values)
+            {
+                table.AddPartition(partitionCount);
+            }
         }
     }
 
@@ -263,7 +266,10 @@
 
         internal override void MockLoadData(Tuple<int, int>[] partitionRange)
         {
-            this.versionTables["ycsb_table"].MockLoadData(partitionRange);
+            foreach (VersionTable table in this.versionTables.Values)
+            {
+                table.MockLoadData(partitionRange);
+            }
         }
     }
 }

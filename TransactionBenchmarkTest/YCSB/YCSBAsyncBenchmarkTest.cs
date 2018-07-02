@@ -32,7 +32,7 @@
                 case "UPDATE":
                     txExec.Read(workload.TableId, workload.Key, out received, out readValue);
                     if (readValue != null)
-                    {
+                    { 
                         txExec.Update(workload.TableId, workload.Key, workload.Value);
                     }
                     break;
@@ -406,7 +406,7 @@
             {
                 int partition_index = i % this.versionDb.PartitionCount;
                 executors.Add(new TransactionExecutor(this.versionDb, null, null, partition_index, i, 0,
-                    this.versionDb.GetResourceManagerByPartitionIndex(partition_index), tables, null, null, this.YCSBKeys, this.txCountPerExecutor));
+                    this.versionDb.GetResourceManager(partition_index), tables, null, null, this.YCSBKeys, this.txCountPerExecutor));
             }
             this.executorList = executors;
         }
@@ -709,7 +709,7 @@
                     //executors.Add(new TransactionExecutor(this.versionDb, null, reqQueue, i, i, 0,
                     //    this.versionDb.GetResourceManagerByPartitionIndex(i), tables));
                     executors.Add(new TransactionExecutor(this.versionDb, null, reqQueue, i, i, 0,
-                       null, tables, null, null, this.YCSBKeys, this.txCountPerExecutor));
+                       this.versionDb.GetResourceManager(i), tables, null, null, this.YCSBKeys, this.txCountPerExecutor));
                 }
                 return executors;
             }
@@ -784,7 +784,7 @@
             for (int pk = 0; pk < executorCount; pk++)
             {
                 Queue<TransactionRequest> txQueue = queueArray[pk];
-                TxResourceManager manager = this.versionDb.GetResourceManagerByPartitionIndex(pk);
+                TxResourceManager manager = this.versionDb.GetResourceManager(pk);
 
                 executors.Add(
                     new TransactionExecutor(this.versionDb, null, txQueue, pk, pk, 0, manager, tables));
