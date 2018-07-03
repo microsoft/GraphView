@@ -141,6 +141,8 @@ namespace GraphView.Transaction
         // local version entry (remote version entry is stored in readSet)
         private VersionEntry localVerEntry = new VersionEntry();
 
+        private VersionEntry localUploadVerEntry = new VersionEntry();
+
         // local and remote txEntry of current tx
         private TxTableEntry localTxEntry = new TxTableEntry();
         private TxTableEntry remoteTxEntryRef;
@@ -291,33 +293,12 @@ namespace GraphView.Transaction
         internal void InitTx()
         {
             this.Progress = TxProgress.Initi;
-            if (this.garbageQueueTxId != null && this.garbageQueueTxId.Count > 0)
-            {
-                long candidate = this.garbageQueueTxId.Peek();
-                // long finishTime = this.garbageQueueFinishTime.Peek();
-
-                if (true)
-                // if (DateTime.Now.Ticks - finishTime >= TransactionExecutor.elapsed)
-                {
-                    this.garbageQueueTxId.Dequeue();
-                    // this.garbageQueueFinishTime.Dequeue();
-
-                    this.recycleTxReq.Set(candidate, this.remoteTxEntryRef);
-                    this.recycleTxReq.Use();
-                    this.versionDb.EnqueueTxEntryRequest(candidate, this.recycleTxReq, this.executor.Partition);
-
-                    this.CurrentProc = this.recycleTxProc;
-                    this.RecycleTx();
-                    return;
-                }
-            }
-
-            long id = this.txRange.NextTxCandidate();
-            this.newTxIdReq.Set(id);
-            this.newTxIdReq.Use();
-            this.versionDb.EnqueueTxEntryRequest(id, this.newTxIdReq, this.executor.Partition);
-            this.CurrentProc = this.newTxIdProc;
-            this.NewTxId();
+            long txId = this.txRange.NextTxCandidate();
+            this.recycleTxReq.Set(txId, this.remoteTxEntryRef);
+            this.recycleTxReq.Use();
+            this.versionDb.EnqueueTxEntryRequest(txId, this.recycleTxReq, this.executor.Partition);
+            this.CurrentProc = this.recycleTxProc;
+            this.RecycleTx();
         }
 
         internal void NewTxId()
@@ -419,7 +400,7 @@ namespace GraphView.Transaction
                     if (payload != null)
                     {
                         // VersionEntry newImageEntry = TransactionExecutor.versionEntryArray[versionEntryIndex];
-                        VersionEntry newImageEntry = this.resourceManager.VersionEntry();
+                        VersionEntry newImageEntry = this.localUploadVerEntry;
                         newImageEntry.RecordKey = writeEntry.RecordKey;
                         newImageEntry.VersionKey = writeEntry.VersionKey;
                         newImageEntry.Record = payload;
@@ -496,6 +477,17 @@ namespace GraphView.Transaction
                         TransactionExecution.UNSET_TX_COMMIT_TIMESTAMP, long.MaxValue,
                         uploadReq.VersionEntry, uploadReq.RemoteVerList);
 
+                    // If the given version entry has been put into the version list and no version entry is replaced,
+                    // we need generate a new version entry
+                    if (this.uploadReq.RemoteVerEntry == null)
+                    {
+                        this.localUploadVerEntry = new VersionEntry();
+                    }
+                    else
+                    {
+                        this.localUploadVerEntry = this.uploadReq.RemoteVerEntry;
+                    }
+
                     this.uploadReq.Free();
 
                     ReadSetEntry readVersion = this.FindReadSetEntry(tableId, recordKey);
@@ -505,6 +497,8 @@ namespace GraphView.Transaction
                         // Moves to the next write-set record or the next phase.
                         continue;
                     }
+
+                    this.replaceRemoteVerRef = readVersion.RemoteVerEntry;
 
                     // Initiates a new request to append the new image to the tail of the version list.
                     // The tail entry could be [Ts, inf, -1], [Ts, inf, txId1] or [-1, -1, txId1].
@@ -521,9 +515,8 @@ namespace GraphView.Transaction
                         VersionEntry.EMPTY_TXID, 
                         long.MaxValue, 
                         this.localVerEntry,
-                        uploadReq.RemoteVerEntry);
+                        readVersion.RemoteVerEntry);
                     this.replaceReq.Use();
-
                     this.versionDb.EnqueueVersionEntryRequest(tableId, this.replaceReq, this.executor.Partition);
                 }
                 else if (this.replaceReq.IsActive() && !this.uploadReq.IsActive() &&
@@ -1173,11 +1166,6 @@ namespace GraphView.Transaction
             // All post-processing records have been uploaded.
             this.Progress = TxProgress.Close;
             this.CurrentProc = null;
-            if (this.garbageQueueTxId != null)
-            {
-                this.garbageQueueTxId.Enqueue(this.txId);
-                // this.garbageQueueFinishTime.Enqueue(DateTime.Now.Ticks);
-            }
             return;
         }
 
@@ -1234,11 +1222,6 @@ namespace GraphView.Transaction
             // All pending records have been reverted.
             this.Progress = TxProgress.Close;
             this.CurrentProc = null;
-            if (this.garbageQueueTxId != null)
-            {
-                this.garbageQueueTxId.Enqueue(this.txId);
-                // this.garbageQueueFinishTime.Enqueue(DateTime.Now.Ticks);
-            }
             return;
         }
 
@@ -1618,7 +1601,7 @@ namespace GraphView.Transaction
                 {
                     if (versionEntry.TxId >= 0)
                     {
-                        // Send the GetTxEntry request
+                         // Send the GetTxEntry request
                         this.getTxReq.Set(versionEntry.TxId, this.localTxEntry, this.remoteTxEntryRef);
                         this.getTxReq.Use();
 

@@ -67,9 +67,13 @@ namespace GraphView.Transaction
             TxTableEntry txEntry = null;
             if (!this.txTable.TryGetValue(req.TxId, out txEntry))
             {
-                req.Result = false;
-                req.Finished = true;
-                return;
+                txEntry = new TxTableEntry(req.TxId);
+                if (!this.txTable.TryAdd(req.TxId, txEntry))
+                {
+                    req.Result = false;
+                    req.Finished = true;
+                    return;
+                }
             }
      
             while (Interlocked.CompareExchange(ref txEntry.latch, 1, 0) != 0) ;

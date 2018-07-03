@@ -37,7 +37,7 @@ namespace GraphView.Transaction
         // The following properties may be changed during the lifetime
         // of a tx, after a version entry is created
         internal long BeginTimestamp;
-        internal long EndTimestamp { get; set; }
+        internal long EndTimestamp;
         internal long TxId { get; set; }
         internal long MaxCommitTs { get; set; }
 

@@ -315,6 +315,11 @@
             int recycleVersionEntry = 0;
             int pk = 0;
             // Load Data
+            if (this.VersionDb.PartitionCount > 1)
+            {
+                return;
+            }
+
             foreach (Tuple<int, int> range in partitionRange)
             {
                 Console.WriteLine("Loading Partition {0}", pk);
@@ -333,32 +338,32 @@
 
                     VersionEntry emptyEntry = versionList.ContainsKey(-1L) ? versionList[-1L] : new VersionEntry();
                     VersionEntry versionEntry = versionList.ContainsKey(0L) ? versionList[0L] : new VersionEntry();
-
                     // only recycle version entries when 
-                    if (this.VersionDb.PartitionCount > 1)
-                    {
-                        int ppk = prePartitionByKey(recordKey);
-                        // Clear the list and insert version entries
-                        foreach (KeyValuePair<long, VersionEntry> kv in versionList)
-                        {
-                            if (kv.Key == -1L || kv.Key == 0L)
-                            {
-                                continue;
-                            }
+                    //if (this.VersionDb.PartitionCount > 1)
+                    //{
+                    //    int ppk = prePartitionByKey(recordKey);
+                    //    // Clear the list and insert version entries
+                    //    foreach (KeyValuePair<long, VersionEntry> kv in versionList)
+                    //    {
+                    //        if (kv.Key == -1L || kv.Key == 0L)
+                    //        {
+                    //            continue;
+                    //        }
 
-                            VersionEntry usedVersion = kv.Value;
-                            recycleVersionEntry++;
-                            this.VersionDb.txResourceManagers[ppk].RecycleVersionEntry(ref usedVersion);
-                        }
-                    }
+                    //        VersionEntry usedVersion = kv.Value;
+                    //        recycleVersionEntry++;
+                    //        this.VersionDb.txResourceManagers[ppk].RecycleVersionEntry(ref usedVersion);
+                    //    }
+                    //}
 
                     versionList.Clear();
 
                     VersionEntry.InitEmptyVersionEntry(-1, emptyEntry);
                     emptyEntry.BeginTimestamp = 0L;
+                    emptyEntry.EndTimestamp = 0L;
                     versionList.TryAdd(-1L, emptyEntry);
 
-                    VersionEntry.InitFirstVersionEntry(0, versionEntry.Record == null ? new String('a', 100) : versionEntry.Record, versionEntry);
+                    VersionEntry.InitFirstVersionEntry(i, versionEntry.Record == null ? new String('a', 100) : versionEntry.Record, versionEntry);
                     versionList.TryAdd(0L, versionEntry);
                 }
 

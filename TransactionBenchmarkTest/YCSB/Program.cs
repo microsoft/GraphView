@@ -173,8 +173,8 @@ namespace TransactionBenchmarkTest.YCSB
 
             int currentExecutorCount = 1;
 
-            // SingletonVersionDb versionDb = SingletonVersionDb.Instance(1);
-            SingletonPartitionedVersionDb versionDb = SingletonPartitionedVersionDb.Instance(1, true);
+            SingletonVersionDb versionDb = SingletonVersionDb.Instance(1);
+            // SingletonPartitionedVersionDb versionDb = SingletonPartitionedVersionDb.Instance(1, true);
             YCSBAsyncBenchmarkTest test = new YCSBAsyncBenchmarkTest(recordCount,
                 currentExecutorCount, txCountPerExecutor, versionDb, tables);
 

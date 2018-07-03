@@ -127,7 +127,7 @@ namespace GraphView.Transaction
             }
 
             this.PhysicalPartitionByKey = key => Math.Abs(key.GetHashCode()) % this.PartitionCount;
-            this.PhysicalTxPartitionByKey = key => Math.Abs(key.GetHashCode()) % this.PartitionCount;
+            this.PhysicalTxPartitionByKey = key => (int)((long)key / TxRange.range);
             //this.PhysicalTxPartitionByKey = key => Math.Abs(key.ToString().GetHashCode()) % this.PartitionCount;
         }
 
