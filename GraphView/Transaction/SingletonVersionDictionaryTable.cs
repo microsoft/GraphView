@@ -307,26 +307,14 @@
             //}
         }
 
-        internal override void MockLoadData(Tuple<int, int>[] partitionRange)
+        internal override void MockLoadData(int recordCount)
         {
-            int prePartitionCount = this.VersionDb.PartitionCount - 1;
-            PartitionByKeyDelegate prePartitionByKey = key => Math.Abs(key.GetHashCode()) % prePartitionCount;
-
-            int recycleVersionEntry = 0;
             int pk = 0;
-            // Load Data
-            if (this.VersionDb.PartitionCount > 1)
-            {
-                return;
-            }
-
-            foreach (Tuple<int, int> range in partitionRange)
+            while (pk < this.VersionDb.PartitionCount)
             {
                 Console.WriteLine("Loading Partition {0}", pk);
-                int startKey = range.Item1;
-                int endKey = range.Item2;
 
-                for (int i = startKey; i < endKey; i += this.VersionDb.PartitionCount)
+                for (int i = pk; i < recordCount; i += this.VersionDb.PartitionCount)
                 {
                     object recordKey = i;
                     ConcurrentDictionary<long, VersionEntry> versionList = null;
@@ -336,41 +324,18 @@
                         this.dict.TryAdd(recordKey, versionList);
                     }
 
-                    VersionEntry emptyEntry = versionList.ContainsKey(-1L) ? versionList[-1L] : new VersionEntry();
-                    VersionEntry versionEntry = versionList.ContainsKey(0L) ? versionList[0L] : new VersionEntry();
-                    // only recycle version entries when 
-                    //if (this.VersionDb.PartitionCount > 1)
-                    //{
-                    //    int ppk = prePartitionByKey(recordKey);
-                    //    // Clear the list and insert version entries
-                    //    foreach (KeyValuePair<long, VersionEntry> kv in versionList)
-                    //    {
-                    //        if (kv.Key == -1L || kv.Key == 0L)
-                    //        {
-                    //            continue;
-                    //        }
-
-                    //        VersionEntry usedVersion = kv.Value;
-                    //        recycleVersionEntry++;
-                    //        this.VersionDb.txResourceManagers[ppk].RecycleVersionEntry(ref usedVersion);
-                    //    }
-                    //}
-
-                    versionList.Clear();
-
+                    VersionEntry emptyEntry = new VersionEntry();
                     VersionEntry.InitEmptyVersionEntry(-1, emptyEntry);
                     emptyEntry.BeginTimestamp = 0L;
                     emptyEntry.EndTimestamp = 0L;
                     versionList.TryAdd(-1L, emptyEntry);
 
+                    VersionEntry versionEntry = new VersionEntry();
                     VersionEntry.InitFirstVersionEntry(i, versionEntry.Record == null ? new String('a', 100) : versionEntry.Record, versionEntry);
                     versionList.TryAdd(0L, versionEntry);
                 }
-
                 pk++;
             }
-
-            Console.WriteLine("Recycle {0} Version Entries");
         }
     }
 }

@@ -204,9 +204,6 @@
             }
         }
 
-        private string[] YCSBKeys;
-        private string[] YCSBValues;
-
         public YCSBAsyncBenchmarkTest(
             int recordCount,
             int executorCount,
@@ -224,8 +221,6 @@
 
             this.startEventSlim = new ManualResetEventSlim();
             this.countdownEvent = new CountdownEvent(this.executorCount);
-            this.YCSBKeys = new string[this.recordCount];
-            this.YCSBValues = new string[this.recordCount];
         }
 
         internal void Setup(string dataFile, string operationFile)
@@ -267,16 +262,29 @@
             //        executor.RecycleTxTableEntryAfterFinished();
             //    }
             //}
-            this.executorList.Clear();
-            this.totalTasks = 0;
-            this.commandCount = 0;
-            this.executorCount = currentExecutorCount;
+            
             // fill workers' queue
-            this.executorList = this.MockFillWorkerQueue(operationFile);
+            foreach (TransactionExecutor executor in this.executorList)
+            {
+                executor.Reset();
+            }
+
+            List<TransactionExecutor> appendedExecutors = 
+                this.MockFillWorkerQueue(operationFile, this.executorCount, currentExecutorCount - this.executorCount);
+            this.executorCount = currentExecutorCount;
+            this.executorList.AddRange(appendedExecutors);
         }
 
         internal void Run()
         {
+            Console.WriteLine("Memory used before collection:       {0:N0} MB",
+                              GC.GetTotalMemory(false) / (1024 * 1024.0));
+
+            Console.WriteLine("Waiting GC");
+            GC.Collect();
+            Console.WriteLine("Memory used after full collection:   {0:N0} MB",
+                              GC.GetTotalMemory(false) / (1024 * 1024.0));
+
             VersionDb.EnqueuedRequests = 0;
             this.startEventSlim.Reset();
             // this.countdownEvent.Reset();
@@ -406,7 +414,7 @@
             {
                 int partition_index = i % this.versionDb.PartitionCount;
                 executors.Add(new TransactionExecutor(this.versionDb, null, null, partition_index, i, 0,
-                    this.versionDb.GetResourceManager(partition_index), tables, null, null, this.YCSBKeys, this.txCountPerExecutor));
+                    this.versionDb.GetResourceManager(partition_index), tables, null, null, this.recordCount, this.txCountPerExecutor));
             }
             this.executorList = executors;
         }
@@ -626,7 +634,6 @@
                 while ((line = reader.ReadLine()) != null)
                 {
                     string[] fields = this.ParseCommandFormat(line);
-                    this.YCSBKeys[count] = fields[2];
                     YCSBWorkload workload = new YCSBWorkload(fields[0], TABLE_ID, fields[2], fields[3], count);
                     count++;
 
@@ -670,14 +677,15 @@
             Console.WriteLine("Elapsed time {0} seconds", ((endTicks - beginTicks) * 1.0 / 10000000));
         }
 
-        private List<TransactionExecutor> MockFillWorkerQueue(string operationFile)
+        private List<TransactionExecutor> MockFillWorkerQueue(string operationFile, int offset = 0, int limit = -1)
         {
+            int appendCount = limit == -1 ? this.executorCount : limit;
             List<TransactionExecutor> executors = new List<TransactionExecutor>();
             using (StreamReader reader = new StreamReader(operationFile))
             {
                 string line;
                 int instanceIndex = 0;
-                for (int i = 0; i < this.executorCount; i++)
+                for (int i = offset; i < offset + appendCount; i++)
                 {
                     //line = reader.ReadLine();
                     //string[] fields = this.ParseCommandFormat(line);
@@ -709,7 +717,7 @@
                     //executors.Add(new TransactionExecutor(this.versionDb, null, reqQueue, i, i, 0,
                     //    this.versionDb.GetResourceManagerByPartitionIndex(i), tables));
                     executors.Add(new TransactionExecutor(this.versionDb, null, reqQueue, i, i, 0,
-                       this.versionDb.GetResourceManager(i), tables, null, null, this.YCSBKeys, this.txCountPerExecutor));
+                       this.versionDb.GetResourceManager(i), tables, null, null, this.recordCount, this.txCountPerExecutor));
                 }
                 return executors;
             }
@@ -742,7 +750,7 @@
                     //executors.Add(new TransactionExecutor(this.versionDb, null, reqQueue, partition_index, i, 0,
                     //   null, tables, null, null, this.YCSBKeys, this.txCountPerExecutor));
                     executors.Add(new TransactionExecutor(this.versionDb, null, reqQueue, partition_index, i, 0,
-                      null, tables, null, null, this.YCSBKeys, this.txCountPerExecutor));
+                      null, tables, null, null, this.recordCount, this.txCountPerExecutor));
                 }
 
                 Console.WriteLine("Filled {0} executors", this.executorCount);

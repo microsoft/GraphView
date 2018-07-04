@@ -28,19 +28,29 @@ namespace GraphView.Transaction
                 }
             }
 
+            VersionEntry verEntry = versionList[req.VersionKey];
+            VersionEntry tailEntry = versionList[VersionEntry.VERSION_KEY_STRAT_INDEX];
+
+            long tailKey = tailEntry.BeginTimestamp;
+            long headKey = tailEntry.EndTimestamp;
+
+            tailEntry.BeginTimestamp = tailKey - 1;
+            if (headKey > 0)
+            {
+                versionList.Add(headKey - 1, verEntry);
+                tailEntry.EndTimestamp = headKey - 1;
+            }
+
             if (versionList.Remove(req.VersionKey))
             {
                 // should reset the lastVersionKey, set the lastVersionKey as the current - 1
-                VersionEntry tailEntry = versionList[VersionEntry.VERSION_KEY_STRAT_INDEX];
-                tailEntry.BeginTimestamp -= 1;
-
                 req.Result = true;
             }
             else
             {
                 req.Result = false;
             }
-            
+
             req.Finished = true;
         }
 
@@ -217,15 +227,28 @@ namespace GraphView.Transaction
 
             if (versionList.ContainsKey(req.VersionKey))
             {
+                req.RemoteVerEntry = req.VersionEntry;
                 req.Result = false;  
             }
             else
-            {
+            { 
                 versionList.Add(req.VersionKey, req.VersionEntry);
+
                 // Take the dirty version entry to store the current largest version key
                 VersionEntry tailEntry = versionList[VersionEntry.VERSION_KEY_STRAT_INDEX];
                 tailEntry.BeginTimestamp = req.VersionKey;
 
+                VersionEntry oldVersion = null;
+                if (versionList.Count > VersionTable.VERSION_LIST_MAX_SIZE)
+                {
+                    long headKey = tailEntry.EndTimestamp;
+                    tailEntry.EndTimestamp = headKey + 1;
+
+                    versionList.TryGetValue(headKey, out oldVersion);
+                    versionList.Remove(headKey);
+                }
+
+                req.RemoteVerEntry = oldVersion == null ? new VersionEntry() : oldVersion;
                 req.Result = true;
             }
             req.Finished = true;
