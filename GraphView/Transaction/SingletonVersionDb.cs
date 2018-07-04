@@ -264,11 +264,11 @@
 			}
 		}
 
-        internal override void MockLoadData(Tuple<int, int>[] partitionRange)
+        internal override void MockLoadData(int recordCount)
         {
             foreach (VersionTable table in this.versionTables.Values)
             {
-                table.MockLoadData(partitionRange);
+                table.MockLoadData(recordCount);
             }
         }
     }

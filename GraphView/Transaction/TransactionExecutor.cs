@@ -98,6 +98,7 @@ namespace GraphView.Transaction
 
         private string[] flushTables;
 
+
         /// <summary>
         /// The partition of current executor flushed
         /// </summary>
@@ -126,6 +127,8 @@ namespace GraphView.Transaction
 
         private int taskCount;
 
+        private int recordCount;
+
         private string[] YCSBKeys;
 
         internal long RunBeginTicks { get; set; }
@@ -142,7 +145,7 @@ namespace GraphView.Transaction
             string[] flushTables = null,
             ManualResetEventSlim startEventSlim = null,
             CountdownEvent countdownEvent = null,
-            string[] YCSBKeys = null,
+            int recordCount = 0,
             int taskCount = 0)
         {
             this.versionDb = versionDb;
@@ -169,7 +172,7 @@ namespace GraphView.Transaction
             this.txExecution = new TransactionExecution(this.logStore, this.versionDb, null,
                 this.GarbageQueueTxId,this.GarbageQueueFinishTime, this.txRange, this, this.ResourceManager);
 
-            this.YCSBKeys = YCSBKeys;
+            this.recordCount = recordCount;
             this.taskCount = taskCount;
         }
 
@@ -196,6 +199,18 @@ namespace GraphView.Transaction
         //        this.Partition = instances[0].Item2;
         //    }
         //}
+
+        public void Reset()
+        {
+            // TODO: do nothing
+            this.CommittedTxs = 0;
+            this.FinishedTxs = 0;
+            this.RunBeginTicks = -1L;
+            this.RunEndTicks = -1L;
+
+            this.txRuntimePool.Clear();
+            this.workingSet.Clear();
+        }
 
         public void SetProgressBar()
         {
@@ -295,8 +310,7 @@ namespace GraphView.Transaction
             Random rand = new Random();
             bool received = false;
             object payload = null;
-            int indexBound = this.YCSBKeys.Length;
-
+            int indexBound = this.recordCount;
             for (int i = 0; i < this.taskCount; i++)
             {
                 //string recordKey = YCSBKeys[rand.Next(0, indexBound)];
@@ -320,13 +334,13 @@ namespace GraphView.Transaction
 
         public void YCSBExecuteUpdate()
         {
-            // PinThreadOnCores(this.Partition);
+            PinThreadOnCores(this.Partition);
 
             this.RunBeginTicks = DateTime.Now.Ticks;
             Random rand = new Random();
             bool received = false;
             object payload = null;
-            int indexBound = this.YCSBKeys.Length;
+            int indexBound = this.recordCount;
             string updatePayload = new String('a', 100);
             int preRecordKey = this.Partition - this.versionDb.PartitionCount;
             for (int i = 0; i < this.taskCount; i++)

@@ -69,11 +69,21 @@ namespace GraphView.Transaction
         internal override void Visit(RecycleTxRequest req)
         {
             // RecycleTxRequest is supposed to has no remoteTxEntry reference
-            TxTableEntry txEntry = this.txTable[req.TxId];
-            txEntry.Reset();
-            req.RemoteTxEntry = txEntry;
-            req.Result = true;
-            req.Finished = true;
+            TxTableEntry txEntry = null;
+            this.txTable.TryGetValue(req.TxId, out txEntry);
+            
+            if (txEntry == null)
+            {
+                txEntry = new TxTableEntry(req.TxId);
+                this.txTable.Add(req.TxId, txEntry);
+            }
+            else
+            {
+                txEntry.Reset();
+                req.RemoteTxEntry = txEntry;
+                req.Result = true;
+                req.Finished = true;
+            }
         }
 
         internal override void Visit(SetCommitTsRequest req)

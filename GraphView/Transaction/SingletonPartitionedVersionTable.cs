@@ -126,22 +126,15 @@ namespace GraphView.Transaction
             }
         }
 
-        internal override void MockLoadData(Tuple<int, int>[] partitionRange)
+        internal override void MockLoadData(int recordCount)
         {
-            int prePartitionCount = this.VersionDb.PartitionCount - 1;
-            PartitionByKeyDelegate prePartitionByKey = key => Math.Abs(key.GetHashCode()) % prePartitionCount;
-
-            int totalVersionEntries = 0;
-
             int pk = 0;
-            foreach (Tuple<int,int> range in partitionRange)
+            while (pk < this.VersionDb.PartitionCount)
             {
                 Console.WriteLine("Loading Partition {0}", pk);
-                int startKey = range.Item1;
-                int endKey = range.Item2;
 
                 int partitions = this.VersionDb.PartitionCount;
-                for (int i = startKey; i < endKey; i += partitions)
+                for (int i = pk; i < recordCount; i += partitions)
                 {
                     object recordKey = i;
                     if (!this.dicts[pk].ContainsKey(recordKey))
@@ -150,36 +143,17 @@ namespace GraphView.Transaction
                     }
                     Dictionary<long, VersionEntry> versionList = this.dicts[pk][recordKey];
 
-                    VersionEntry emptyEntry = versionList.ContainsKey(-1L) ? versionList[-1L] : new VersionEntry();
-                    VersionEntry versionEntry = versionList.ContainsKey(0L) ? versionList[0L] : new VersionEntry();
-
-                    if (this.VersionDb.PartitionCount > 1)
-                    {
-                        int ppk = prePartitionByKey(recordKey);
-                        foreach (KeyValuePair<long, VersionEntry> kv in versionList)
-                        {
-                            if (kv.Key == -1L || kv.Key == 0L)
-                            {
-                                continue;
-                            }
-
-                            totalVersionEntries++;
-                            VersionEntry usedVersion = kv.Value;
-                            this.VersionDb.txResourceManagers[ppk].RecycleVersionEntry(ref usedVersion);
-                        }
-                    }
-                    versionList.Clear();
-
-                    VersionEntry.InitEmptyVersionEntry(-1, emptyEntry);
+                    VersionEntry emptyEntry = new VersionEntry();
+                    VersionEntry.InitEmptyVersionEntry(i, emptyEntry);
                     emptyEntry.BeginTimestamp = 0L;
+                    emptyEntry.EndTimestamp = 0L;
                     versionList.Add(-1L, emptyEntry);
 
-                    VersionEntry.InitFirstVersionEntry(0, versionEntry.Record == null ? new String('a', 100) : versionEntry.Record, versionEntry);
+                    VersionEntry versionEntry = new VersionEntry();
+                    VersionEntry.InitFirstVersionEntry(i, versionEntry.Record == null ? new String('a', 100) : versionEntry.Record, versionEntry);
                     versionList.Add(0L, versionEntry);
                 }
                 pk++;
-
-                Console.WriteLine("Recycle {0} Version Entries", totalVersionEntries);
             }
         }
     }

@@ -179,34 +179,10 @@ namespace TransactionBenchmarkTest.YCSB
                 currentExecutorCount, txCountPerExecutor, versionDb, tables);
 
             test.Setup(dataFile, operationFile);
+            versionDb.MockLoadData(recordCount);
             for (; currentExecutorCount <= partitionCount; currentExecutorCount++)
             {
-                if (testType == TestType.Update)
-                {
-                    Console.WriteLine("Start to mock load data");
-                    int txPerPartition = recordCount / currentExecutorCount;
-                    int remained = recordCount - txPerPartition * currentExecutorCount;
-
-                    Tuple<int, int>[] ranges = new Tuple<int, int>[currentExecutorCount];
-                    int rangeBegin = 0;
-                    for (int i = 0; i < currentExecutorCount; i++)
-                    {
-                        ranges[i] = Tuple.Create(rangeBegin, recordCount);
-                        rangeBegin++;
-                    }
-
-                    if (currentExecutorCount > 1)
-                    {
-                        versionDb.AddPartition(currentExecutorCount);
-                    }
-                    versionDb.MockLoadData(ranges);
-                    Console.WriteLine("Finish mock load data");
-                }
                 test.ResetAndFillWorkerQueue(operationFile, currentExecutorCount);
-
-                Console.WriteLine("Sleep for {0} seconds to wait GC", 2);
-                Thread.Sleep(2000);
-
                 test.Run();
                 test.Stats();
             }

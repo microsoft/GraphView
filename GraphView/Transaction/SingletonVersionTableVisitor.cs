@@ -29,12 +29,26 @@
                 }
             }
 
+            VersionEntry tailEntry = null;
+            versionList.TryGetValue(VersionEntry.VERSION_KEY_STRAT_INDEX, out tailEntry);
+
+            // As only if a tx uploads a version entry, it will change the value tailEntry
+            // Here the dirty version entry hasn't been deleted, so there will no other txs update the tailEntry
+            // We don't need to take Interlocked to update its value
+
+            long tailKey = tailEntry.BeginTimestamp;
+            tailEntry.BeginTimestamp = tailKey - 1;
+
             VersionEntry versionEntry = null;
+            long headKey = tailEntry.EndTimestamp;
+            if (headKey > 0)
+            {
+                versionList.TryAdd(headKey - 1, versionEntry);
+                tailEntry.EndTimestamp = headKey - 1;
+            }
+
             if (versionList.TryRemove(req.VersionKey, out versionEntry))
             {
-                VersionEntry tailEntry = versionList[VersionEntry.VERSION_KEY_STRAT_INDEX];
-                long tailKey = tailEntry.BeginTimestamp;
-                Interlocked.CompareExchange(ref tailEntry.BeginTimestamp, tailKey-1, tailKey);
                 req.Result = true;
             }
             else
@@ -50,7 +64,7 @@
             ConcurrentDictionary<long, VersionEntry> versionList = null;
             if (!this.dict.TryGetValue(req.RecordKey, out versionList))
             {
-                ConcurrentDictionary<long, VersionEntry> newVersionList = new ConcurrentDictionary<long, VersionEntry>();
+                ConcurrentDictionary<long, VersionEntry> newVersionList = new ConcurrentDictionary<long, VersionEntry>(32);
                 // Adds a special entry whose key is -1 when the list is initialized.
                 // The entry uses beginTimestamp as a pointer pointing to the newest verion in the list.
                 VersionEntry entry = VersionEntry.InitEmptyVersionEntry(req.RecordKey);
@@ -130,16 +144,16 @@
                 // Here we use Interlocked to atomically update the tail entry, instead of ConcurrentDict.TryUpdate().
                 // This is because once created, the whole tail entry always stays and is never replaced.
                 // All concurrent tx's only access the tail pointer, i.e., the beginTimestamp field.  
-                Interlocked.CompareExchange(ref tailEntry.BeginTimestamp, req.VersionKey, tailKey);
+                tailEntry.BeginTimestamp = req.VersionKey;
 
                 VersionEntry oldVerEntry = null;
                 if (versionList.Count > VersionTable.VERSION_LIST_MAX_SIZE)
                 {
-                    Interlocked.CompareExchange(ref tailEntry.EndTimestamp, headKey + 1, headKey);
+                    tailEntry.EndTimestamp = headKey + 1;
                     versionList.TryRemove(headKey, out oldVerEntry);
                 }
 
-                req.RemoteVerEntry = oldVerEntry;
+                req.RemoteVerEntry = oldVerEntry == null ? new VersionEntry() : oldVerEntry;
                 req.Result = true;
                 req.Finished = true;
                 return;
@@ -148,7 +162,7 @@
             {
                 // The same version key has been added before or by a concurrent tx. 
                 // The new version cannot be inserted.
-                req.RemoteVerEntry = null;
+                req.RemoteVerEntry = req.VersionEntry;
                 req.Result = false;
                 req.Finished = true;
             }

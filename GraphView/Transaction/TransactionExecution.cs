@@ -477,16 +477,7 @@ namespace GraphView.Transaction
                         TransactionExecution.UNSET_TX_COMMIT_TIMESTAMP, long.MaxValue,
                         uploadReq.VersionEntry, uploadReq.RemoteVerList);
 
-                    // If the given version entry has been put into the version list and no version entry is replaced,
-                    // we need generate a new version entry
-                    if (this.uploadReq.RemoteVerEntry == null)
-                    {
-                        this.localUploadVerEntry = new VersionEntry();
-                    }
-                    else
-                    {
-                        this.localUploadVerEntry = this.uploadReq.RemoteVerEntry;
-                    }
+                    this.localUploadVerEntry = this.uploadReq.RemoteVerEntry;
 
                     this.uploadReq.Free();
 
