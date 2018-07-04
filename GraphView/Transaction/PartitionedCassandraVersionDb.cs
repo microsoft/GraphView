@@ -74,7 +74,7 @@ namespace GraphView.Transaction
                 this.rawPartitionedQueues[pk] = new Queue<TxEntryRequest>(partitionCount);
                 //this.rawPartitionedQueues[pk] = new Queue<TxEntryRequest>();
                 //this.latches[pk] = 0;
-                this.resourceManagers[pk] = new TxResourceManager();
+                //this.resourceManagers[pk] = new TxResourceManager();
                 this.dbVisitors[pk] = new PartitionedCassandraVersionDbVisitor(pk);
             }
         }

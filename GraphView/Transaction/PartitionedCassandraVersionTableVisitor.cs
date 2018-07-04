@@ -35,7 +35,7 @@ namespace GraphView.Transaction
 
         internal bool CQLExecuteWithIfApplied(string cql)
         {
-            //Console.WriteLine(this.PartitionId + ";" + cql);
+            Console.WriteLine(this.PartitionId + ";" + cql);
 
             var rs = this.SessionManager.GetSession(PartitionedCassandraVersionDb.DEFAULT_KEYSPACE).Execute(cql);
             var rse = rs.GetEnumerator();
@@ -163,7 +163,10 @@ namespace GraphView.Transaction
 
         internal override void Visit(UploadVersionRequest req)
         {
-            this.CQLExecute(string.Format(PartitionedCassandraVersionTable.CQL_UPLOAD_VERSION_ENTRY,
+            VersionEntry ve = this.GetVersionEntryByKey(req.TableId, req.RecordKey, req.VersionKey, req.LocalVerEntry);
+            if (ve == null)
+            {
+                this.CQLExecute(string.Format(PartitionedCassandraVersionTable.CQL_UPLOAD_VERSION_ENTRY,
                                                       req.TableId,
                                                       req.VersionEntry.RecordKey.ToString(),
                                                       req.VersionEntry.VersionKey,
@@ -172,7 +175,14 @@ namespace GraphView.Transaction
                                                       BytesSerializer.ToHexString(BytesSerializer.Serialize(req.VersionEntry.Record)),
                                                       req.VersionEntry.TxId,
                                                       req.VersionEntry.MaxCommitTs));
-            req.Result = 1L;
+                req.RemoteVerEntry = req.VersionEntry;
+                req.Result = true;
+            } else      // write-write conflict
+            {
+                req.RemoteVerEntry = req.VersionEntry;
+                req.Result = false;
+            }
+
             req.Finished = true;
         }
     }

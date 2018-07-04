@@ -104,14 +104,14 @@
         private CassandraSessionManager()
 		{
 			this.ClusterNodeCount = CassandraSessionManager.DEFAULT_CLUSTER_NODE_COUNT;
-            //this.contactPoints = new string[] { "127.0.0.1" };
-            this.contactPoints = new string[] { "10.6.0.4", "10.6.0.5", "10.6.0.6", "10.6.0.12", "10.6.0.13", "10.6.0.14", "10.6.0.15", "10.6.0.16", "10.6.0.17", "10.6.0.18" };
+            this.contactPoints = new string[] { "127.0.0.1" };
+            //this.contactPoints = new string[] { "10.6.0.4", "10.6.0.5", "10.6.0.6", "10.6.0.12", "10.6.0.13", "10.6.0.14", "10.6.0.15", "10.6.0.16", "10.6.0.17", "10.6.0.18" };
             //this.contactPoints = new string[] { "10.6.0.4" };
 
             // Ensure strong consistency
             // NOTE: IF there are more than 1 replica, `SetConsistencyLevel(ConsistencyLevel.Quorum)` 
             // to ensure strong consistency; otherwise,  `SetConsistencyLevel(ConsistencyLevel.One)` is enough.
-            QueryOptions queryOptions = new QueryOptions().SetConsistencyLevel(ConsistencyLevel.Quorum);//SetConsistencyLevel(ConsistencyLevel.Quorum);
+            QueryOptions queryOptions = new QueryOptions().SetConsistencyLevel(ConsistencyLevel.One);//SetConsistencyLevel(ConsistencyLevel.Quorum);
                                                           //.SetSerialConsistencyLevel(ConsistencyLevel.Serial);
 			this.cluster = Cluster.Builder().AddContactPoints(this.contactPoints).WithQueryOptions(queryOptions).WithQueryTimeout(60000).Build();
 			this.sessionPool = new Dictionary<string, ISession>();

@@ -477,6 +477,65 @@ namespace GraphView.Transaction
 
                 int recordKey = intKeys[i];
                 this.txExecution.Read("ycsb_table", recordKey, out received, out payload);
+                
+                this.txExecution.Commit();
+                if (this.txExecution.TxStatus == TxStatus.Committed)
+                {
+                    this.CommittedTxs++;
+                }
+                this.FinishedTxs++;
+            }
+
+            this.RunEndTicks = DateTime.Now.Ticks;
+
+            this.AllRequestsFinished = true;
+
+        }
+
+        // key is int
+        public void YCSBExecuteUpdate3()
+        {
+            Random rand = new Random();
+            bool received = false;
+            object payload = null;
+            int indexBound = 200000;    // setting
+            string updatePayload = new String('a', 100);
+
+            int[] intKeys = new int[this.taskCount];
+            //for (int i=0; i<this.taskCount; i++)
+            //{
+            //    intKeys[i] = rand.Next(0, indexBound);
+            //}
+            intKeys[0] = this.Partition;
+            for (int i = 1; i < this.taskCount; i++)
+            {
+                if (intKeys[i - 1] + this.versionDb.PartitionCount >= indexBound)
+                {
+                    intKeys[i] = this.Partition;
+                }
+                else
+                {
+                    intKeys[i] = intKeys[i - 1] + this.versionDb.PartitionCount;
+                }
+            }
+
+            this.RunBeginTicks = DateTime.Now.Ticks;
+
+            for (int i = 0; i < this.taskCount; i++)
+            {
+                if (!this.Active)
+                {
+                    break;
+                }
+                this.txExecution.Reset();
+
+                int recordKey = intKeys[i];
+                this.txExecution.Read("ycsb_table", recordKey, out received, out payload);
+                payload = this.txExecution.ReadPayload;
+                if (payload != null)
+                {
+                    this.txExecution.Update("ycsb_table", recordKey, updatePayload);
+                }
 
                 this.txExecution.Commit();
                 if (this.txExecution.TxStatus == TxStatus.Committed)
@@ -542,8 +601,8 @@ namespace GraphView.Transaction
                     break;
                 }
 
-                session.Execute(cqls[i]);
-                //session.Execute(raw_cqls[i]);
+                //session.Execute(cqls[i]);
+                session.Execute(raw_cqls[i]);
 
                 this.CommittedTxs++;
                 this.FinishedTxs++;
@@ -558,13 +617,15 @@ namespace GraphView.Transaction
         public void CassandraUpdateOnly()
         {
             int indexBound = 200000;    // setting
-            int batchSize = 100;
+            int batchSize = 1;
 
             ISession session = this.SessionManager.GetSession(PartitionedCassandraVersionDb.DEFAULT_KEYSPACE);
 
+            string update_only_cql_raw = "UPDATE tx_table SET status=0, commitTime=-1, isCommitTsOrLB=0 WHERE txId={0}";
             string update_only_cql = "UPDATE tx_table SET status=0, commitTime=-1, isCommitTsOrLB=0 WHERE txId=?";            
             var updateonlyStmt = session.Prepare(update_only_cql);
-            
+
+            string[] raw_cqls = new string[this.taskCount];
             BoundStatement[] cqls = new BoundStatement[this.taskCount];
             int[] intKeys = new int[this.taskCount];
             intKeys[0] = this.Partition;
@@ -581,38 +642,53 @@ namespace GraphView.Transaction
             }
             for (int i = 0; i < this.taskCount; i++)
             {
+                raw_cqls[i] = string.Format(update_only_cql_raw, intKeys[i]);
                 cqls[i] = updateonlyStmt.Bind((long)intKeys[i]);
             }
-            int batchTotal = this.taskCount / batchSize;
-            BatchStatement[] bss = new BatchStatement[batchTotal];
-            for (int i=0; i<batchTotal; i++)
-            {
-                bss[i] = new BatchStatement();
-                for (int j=batchSize*i; j<batchSize*(i+1); j++)
-                {
-                    bss[i].Add(cqls[j]);
-                }
-            }
+
+            //int batchTotal = this.taskCount / batchSize;
+            //BatchStatement[] bss = new BatchStatement[batchTotal];
+            //for (int i=0; i<batchTotal; i++)
+            //{
+            //    bss[i] = new BatchStatement();
+            //    for (int j=batchSize*i; j<batchSize*(i+1); j++)
+            //    {
+            //        bss[i].Add(cqls[j]);
+            //    }
+            //}
 
             this.RunBeginTicks = DateTime.Now.Ticks;
 
-            for (int i = 0; i < batchTotal; i++)
+            //for (int i = 0; i < batchTotal; i++)
+            //{
+            //    if (!this.Active)
+            //    {
+            //        break;
+            //    }
+
+            //    session.Execute(bss[i]);
+
+            //    this.CommittedTxs += batchSize;
+            //    this.FinishedTxs += batchSize;
+            //}
+
+            for (int i = 0; i < this.taskCount; i++)
             {
                 if (!this.Active)
                 {
                     break;
                 }
 
-                session.Execute(bss[i]);
+                //session.Execute(cqls[i]);
+                session.Execute(raw_cqls[i]);
 
-                this.CommittedTxs += batchSize;
-                this.FinishedTxs += batchSize;
+                this.CommittedTxs += 1;
+                this.FinishedTxs += 1;
             }
 
             this.RunEndTicks = DateTime.Now.Ticks;
 
             this.AllRequestsFinished = true;
-
         }
 
         public void Execute2()

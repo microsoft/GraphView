@@ -424,7 +424,8 @@
                 //Thread thread = new Thread(executor.YCSBExecuteRead3);
                 //Thread thread = new Thread(executor.Execute2);
                 //Thread thread = new Thread(executor.CassandraReadOnly);
-                Thread thread = new Thread(executor.CassandraUpdateOnly);
+                //Thread thread = new Thread(executor.CassandraUpdateOnly);
+                Thread thread = new Thread(executor.YCSBExecuteUpdate3);
 
                 threadList.Add(thread);
             }
@@ -504,6 +505,8 @@
             int abortedTxs = 0;
 
             long minStartTicks = long.MaxValue;
+            long maxStartTicks = long.MinValue;
+            long minEndTicks = long.MaxValue;
             long maxEndTicks = long.MinValue;
             double thSum = 0;
 
@@ -514,6 +517,8 @@
                 double runSeconds = (executor.RunEndTicks - executor.RunBeginTicks) * 1.0 / 10000000;
                 totalRunSeconds += runSeconds;
                 minStartTicks = Math.Min(minStartTicks, executor.RunBeginTicks);
+                maxStartTicks = Math.Max(maxStartTicks, executor.RunBeginTicks);
+                minEndTicks = Math.Min(minEndTicks, executor.RunEndTicks);
                 maxEndTicks = Math.Max(maxEndTicks, executor.RunEndTicks);
                 thSum += executor.FinishedTxs*1.0 / runSeconds;
             }
@@ -530,7 +535,7 @@
             }
 
             Console.WriteLine("==== Throughput delta = [min, max]");
-            Console.WriteLine("Transaction Throughput: {0} tx/s\n", thMinMax);            
+            Console.WriteLine("Transaction Throughput: {0} tx/s\n", thMinMax);
 
             double averageRunSeconds = totalRunSeconds / this.executorCount;
             double throughput2 = realFinishedTasks / averageRunSeconds;
@@ -550,6 +555,7 @@
             }
 
             Console.WriteLine("==== Throughput SUM of each worker ====");
+            Console.WriteLine("MinEnd - MaxStart = {0}s", (minEndTicks - maxStartTicks) * 1.0 / 10000000);
             Console.WriteLine("Transaction Throughput: {0} tx/s\n", thSum);
 
             //(this.versionDb as PartitionedCassandraVersionDb).ShowLoadBalance();
@@ -729,7 +735,8 @@
                     {
                         line = reader.ReadLine();
                         string[] fields = this.ParseCommandFormat(line);
-                        YCSBWorkload workload = new YCSBWorkload(fields[0], TABLE_ID, fields[2], fields[3]);                                                
+                        YCSBWorkload workload = new YCSBWorkload(fields[0], TABLE_ID, fields[2], fields[3]);
+                        Console.WriteLine("recordkey = {0}", fields[2]);
                         string sessionId = ((i * this.txCountPerExecutor) + j + 1).ToString();
                         TransactionRequest req = new TransactionRequest(sessionId, workload, StoredProcedureType.YCSBStordProcedure);
                         reqQueue.Enqueue(req);

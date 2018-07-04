@@ -1399,7 +1399,7 @@ namespace GraphView.Transaction
 
         private void Read(string tableId, object recordKey, bool initi, out bool received, out object payload)
         {
-            this.readLargestVersionKey = -1;
+            this.readLargestVersionKey = -1L;
             this.readTableId = tableId;
             this.readRecordKey = recordKey;
 
@@ -1569,12 +1569,7 @@ namespace GraphView.Transaction
                     // The current version is commited and should be extracted the largest version key
                     committedVersion = versionEntry;
 
-                    // The version list is traversed in the descending order of version keys.
-                    // The first committed version sets readLargestVersionKey.
-                    if (this.readLargestVersionKey < 0)
-                    {
-                        this.readLargestVersionKey = versionEntry.VersionKey;
-                    }
+                    this.readLargestVersionKey = Math.Max(versionEntry.VersionKey, this.readLargestVersionKey);
 
                     // A dirty write has been appended after this version entry. 
                     // This version is visible if the writing tx has not been committed 
@@ -1610,12 +1605,7 @@ namespace GraphView.Transaction
                     else
                     {
                         committedVersion = versionEntry;
-                        // The version list is traversed in the descending order of version keys.
-                        // The first committed version sets readLargestVersionKey.
-                        if (this.readLargestVersionKey < 0)
-                        {
-                            this.readLargestVersionKey = versionEntry.VersionKey;
-                        }
+                        this.readLargestVersionKey = Math.Max(versionEntry.VersionKey, this.readLargestVersionKey);
 
                         // When a tx has a begin timestamp after intialization
                         if (this.beginTimestamp >= 0 &&
@@ -1640,7 +1630,7 @@ namespace GraphView.Transaction
                 {
                     // save the reference of visiable version entry
                     // JUST FOR IN-MEMORY VERSION
-                    if (this.remoteVersionRefList.Count >= this.readEntryCount)
+                    if (this.remoteVersionRefList.Count > this.readEntryCount)
                     {
                         visiableVersionRef = this.remoteVersionRefList[this.readEntryCount];
                     }

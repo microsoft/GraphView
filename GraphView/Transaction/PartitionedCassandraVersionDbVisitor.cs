@@ -26,14 +26,14 @@ namespace GraphView.Transaction
     {
         internal RowSet CQLExecute(string cql)
         {
-            //Console.WriteLine(this.PartitionId + ";" + cql);
+            Console.WriteLine(this.PartitionId + ";" + cql);
 
             return this.SessionManager.GetSession(PartitionedCassandraVersionDb.DEFAULT_KEYSPACE).Execute(cql);
         }
 
         internal bool CQLExecuteWithIfApplied(string cql)
         {
-            //Console.WriteLine(this.PartitionId + ";" + cql);
+            Console.WriteLine(this.PartitionId + ";" + cql);
 
             var rs = this.SessionManager.GetSession(PartitionedCassandraVersionDb.DEFAULT_KEYSPACE).Execute(cql);
             var rse = rs.GetEnumerator();
@@ -139,12 +139,18 @@ namespace GraphView.Transaction
                                                            TxTableEntry.DEFAULT_COMMIT_TIME,
                                                            (sbyte)IsCommitTsOrLB.CommitLowerBound,
                                                            req.TxId));
-                req.Result = true;
             } catch (Cassandra.DriverException e)
             {
-                req.Result = false;
+                this.CQLExecute(
+                string.Format(PartitionedCassandraVersionDb.CQL_INSERT_NEW_TX,
+                                VersionDb.TX_TABLE,
+                                req.TxId,
+                                (sbyte)TxStatus.Ongoing,     // default status
+                                TxTableEntry.DEFAULT_COMMIT_TIME,
+                                (sbyte)IsCommitTsOrLB.CommitLowerBound));
             }
 
+            req.Result = true;
             req.Finished = true;
         }
 
