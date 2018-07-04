@@ -75,7 +75,7 @@
         }
 
         internal override void Visit(ReplaceVersionRequest req)
-        {
+        { 
             VersionEntry entry = req.RemoteVerEntry;
             if (entry == null)
             {
@@ -90,7 +90,7 @@
                     throw new TransactionException("The specified version does not exist.");
                 }
             }
-            
+
             if (entry.TxId == req.ReadTxId && entry.EndTimestamp == req.ExpectedEndTs)
             {
                 while (Interlocked.CompareExchange(ref entry.latch, 1, 0) != 0) ;
@@ -125,12 +125,21 @@
                 VersionEntry tailEntry = null;
                 versionList.TryGetValue(VersionEntry.VERSION_KEY_STRAT_INDEX, out tailEntry);
 
+                long headKey = tailEntry.EndTimestamp;
                 long tailKey = tailEntry.BeginTimestamp;
                 // Here we use Interlocked to atomically update the tail entry, instead of ConcurrentDict.TryUpdate().
                 // This is because once created, the whole tail entry always stays and is never replaced.
                 // All concurrent tx's only access the tail pointer, i.e., the beginTimestamp field.  
                 Interlocked.CompareExchange(ref tailEntry.BeginTimestamp, req.VersionKey, tailKey);
 
+                VersionEntry oldVerEntry = null;
+                if (versionList.Count > VersionTable.VERSION_LIST_MAX_SIZE)
+                {
+                    Interlocked.CompareExchange(ref tailEntry.EndTimestamp, headKey + 1, headKey);
+                    versionList.TryRemove(headKey, out oldVerEntry);
+                }
+
+                req.RemoteVerEntry = oldVerEntry;
                 req.Result = true;
                 req.Finished = true;
                 return;
@@ -139,6 +148,7 @@
             {
                 // The same version key has been added before or by a concurrent tx. 
                 // The new version cannot be inserted.
+                req.RemoteVerEntry = null;
                 req.Result = false;
                 req.Finished = true;
             }

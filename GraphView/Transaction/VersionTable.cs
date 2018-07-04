@@ -12,6 +12,8 @@ namespace GraphView.Transaction
     {
         public readonly string tableId;
 
+        internal static readonly int VERSION_LIST_MAX_SIZE = 4;
+
         protected readonly RequestQueue<VersionEntryRequest>[] requestUDFQueues;
 
         /// <summary>
