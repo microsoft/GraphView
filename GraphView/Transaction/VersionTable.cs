@@ -55,6 +55,15 @@ namespace GraphView.Transaction
             }
         }
 
+        /// <summary>
+        /// Add new partitions
+        /// </summary>
+        /// <param name="partitionCount">The number of partitions after add new partitions</param>
+        internal virtual void AddPartition(int partitionCount)
+        {
+            // TODO: extend containers
+        }
+
         internal virtual void EnqueueVersionEntryRequest(VersionEntryRequest req, int execPartition = 0)
         {
             int pk = this.VersionDb.PhysicalPartitionByKey(req.RecordKey);
@@ -224,6 +233,17 @@ namespace GraphView.Transaction
         /// </summary>
         /// <returns></returns>
         internal virtual bool DeleteVersionEntry(object recordKey, long versionKey)
+        {
+            throw new NotImplementedException();
+        }
+
+        /// <summary>
+        /// ONLY FOR BENCHMARK TEST
+        /// A mock method to load data without the tx, which will load data directly
+        /// rather than by transaction
+        /// </summary>
+        /// <param name="partitionRange">The record key range for every partition</param>
+        internal virtual void MockLoadData(Tuple<int, int>[] partitionRange)
         {
             throw new NotImplementedException();
         }

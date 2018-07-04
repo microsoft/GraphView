@@ -253,7 +253,7 @@ namespace GraphView.Transaction
             //                  totalTicks, idleTicks, idleTicks * 1.0 / totalTicks);
         }
 
-        internal override TxResourceManager GetResourceManagerByPartitionIndex(int partition)
+        internal override TxResourceManager GetResourceManager(int partition)
         {
             if (partition >= this.PartitionCount)
             {

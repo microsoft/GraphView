@@ -7,7 +7,7 @@ namespace GraphView.Transaction
 
     public abstract class TxRequest : IResource
     {
-        internal bool Finished { get; set; } = false;
+        internal volatile bool Finished = false;
         internal object Result { get; set; }
         internal bool InUse { get; set; }
         
@@ -23,8 +23,8 @@ namespace GraphView.Transaction
 
         public void Free()
         {
-            this.InUse = false;
             this.Finished = false;
+            this.InUse = false;
             this.Result = null;
         }
 

@@ -237,26 +237,26 @@ namespace TransactionBenchmarkTest.YCSB
                 sess_arr[i] = cluster.Connect("versiondb");
             }
 
-            void runCQL(int s, int e) // [s, e)
-            {
-                for (int ii = s; ii < e; ii += cycle)
-                {
-                    var rs = session.Execute(cmd_arr[ii]);
-                }
-            }
+            //void runCQL(int s, int e) // [s, e)
+            //{
+            //    for (int ii = s; ii < e; ii += cycle)
+            //    {
+            //        var rs = session.Execute(cmd_arr[ii]);
+            //    }
+            //}
 
-            void runCycle(int tid, int s, int e) // [s, e)
-            {
-                for (int ii = s; ii < e; ii++)
-                {
-                    //var rs = session.Execute(cql_statements[ii]);
-                    //var rs = sess_arr[tid].Execute(cql_statements[ii]);
-                    var rs = session.ExecuteAsync(cql_statements[ii]);
-                    //var statement = new SimpleStatement(cmd_arr[ii]);                    
-                    //var rs = sess_arr[tid].Execute(statement);
-                    //var rs = sess_arr[tid].ExecuteAsync(cmd_arr[ii]);
-                }
-            }
+            //void runCycle(int tid, int s, int e) // [s, e)
+            //{
+            //    for (int ii = s; ii < e; ii++)
+            //    {
+            //        //var rs = session.Execute(cql_statements[ii]);
+            //        //var rs = sess_arr[tid].Execute(cql_statements[ii]);
+            //        var rs = session.ExecuteAsync(cql_statements[ii]);
+            //        //var statement = new SimpleStatement(cmd_arr[ii]);                    
+            //        //var rs = sess_arr[tid].Execute(statement);
+            //        //var rs = sess_arr[tid].ExecuteAsync(cmd_arr[ii]);
+            //    }
+            //}
 
 
 
@@ -321,8 +321,8 @@ namespace TransactionBenchmarkTest.YCSB
                 {
                     int s = j * num_per_t;
                     int e = (j + 1) * num_per_t;
-                    Thread thread = new Thread(() => runCycle(j, s, e));
-                    threadList.Add(thread);
+                    //Thread thread = new Thread(() => runCycle(j, s, e));
+                    //threadList.Add(thread);
                 }
 
                 // start

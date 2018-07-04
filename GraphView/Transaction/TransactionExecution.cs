@@ -58,6 +58,8 @@ namespace GraphView.Transaction
         internal TxProgress Progress { get; private set; }
         internal StoredProcedure Procedure { get; set; }
 
+        private TxResourceManager resourceManager;
+
         //Garbage Queue Part
 
         /// <summary>
@@ -88,11 +90,12 @@ namespace GraphView.Transaction
         private readonly Procedure validateProc;
         private readonly Procedure abortPostproProc;
         private readonly Procedure uploadProc;
-        private readonly Procedure updateTxProc;
+        private readonly Procedure updateTxCommitProc;
         private readonly Procedure abortProc;
         private readonly Procedure commitVersionProc;
         private readonly Procedure readVersionListProc;
         private readonly Procedure readCheckVersionEntryProc;
+        private readonly Procedure updateTxAbortProc;
 
         // request part
         private UploadVersionRequest uploadReq;
@@ -124,6 +127,7 @@ namespace GraphView.Transaction
         // The number of entries in read operation
         private int readEntryCount;
         private long readLargestVersionKey = -1;
+        internal object ReadPayload { get; private set; }
 
         // The writeSet index to tranverse the writeset
         private int writeSetIndex = 0;
@@ -157,7 +161,8 @@ namespace GraphView.Transaction
             Queue<long> garbageQueueTxId = null,
             Queue<long> garbageQueueFinishTime = null,
             TxRange txRange = null,
-            TransactionExecutor executor = null)
+            TransactionExecutor executor = null,
+            TxResourceManager txResourceManager = null)
         {
             this.logStore = logStore;
             this.versionDb = versionDb;
@@ -200,7 +205,8 @@ namespace GraphView.Transaction
             this.newTxIdProc = new Procedure(this.NewTxId);
             this.recycleTxProc = new Procedure(this.RecycleTx);
             this.commitTsProc = new Procedure(this.FinalizeCommitTs);
-            this.updateTxProc = new Procedure(this.UpdateTxStatus);
+            this.updateTxCommitProc = new Procedure(this.UpdateTxStatusToCommited);
+            this.updateTxAbortProc = new Procedure(this.UpdateTxStatusToAborted);
             this.commitVersionProc = new Procedure(this.CommitModifications);
             this.readVersionListProc = new Procedure(this.ReadVersionList);
             this.readCheckVersionEntryProc = new Procedure(this.ReadCheckVersionEntry);
@@ -227,6 +233,8 @@ namespace GraphView.Transaction
             this.abortSetCount = 0;
             this.largestVerKeySetCount = 0;
             this.remoteTxEntryRef = null;
+
+            this.resourceManager = txResourceManager;
         }
 
         internal void Reset()
@@ -283,16 +291,16 @@ namespace GraphView.Transaction
         internal void InitTx()
         {
             this.Progress = TxProgress.Initi;
-
             if (this.garbageQueueTxId != null && this.garbageQueueTxId.Count > 0)
             {
                 long candidate = this.garbageQueueTxId.Peek();
-                long finishTime = this.garbageQueueFinishTime.Peek();
+                // long finishTime = this.garbageQueueFinishTime.Peek();
 
-                if (DateTime.Now.Ticks - finishTime >= TransactionExecutor.elapsed)
+                if (true)
+                // if (DateTime.Now.Ticks - finishTime >= TransactionExecutor.elapsed)
                 {
                     this.garbageQueueTxId.Dequeue();
-                    this.garbageQueueFinishTime.Dequeue();
+                    // this.garbageQueueFinishTime.Dequeue();
 
                     this.recycleTxReq.Set(candidate, this.remoteTxEntryRef);
                     this.recycleTxReq.Use();
@@ -410,11 +418,21 @@ namespace GraphView.Transaction
                     // The write-set record is an insert or update record, try to insert the new version
                     if (payload != null)
                     {
-                        VersionEntry newImageEntry = new VersionEntry(
-                                writeEntry.RecordKey,
-                                writeEntry.VersionKey,
-                                payload,
-                                this.txId);
+                        // VersionEntry newImageEntry = TransactionExecutor.versionEntryArray[versionEntryIndex];
+                        VersionEntry newImageEntry = this.resourceManager.VersionEntry();
+                        newImageEntry.RecordKey = writeEntry.RecordKey;
+                        newImageEntry.VersionKey = writeEntry.VersionKey;
+                        newImageEntry.Record = payload;
+                        newImageEntry.TxId = this.txId;
+                        newImageEntry.BeginTimestamp = VersionEntry.DEFAULT_BEGIN_TIMESTAMP;
+                        newImageEntry.EndTimestamp = VersionEntry.DEFAULT_END_TIMESTAMP;
+                        newImageEntry.MaxCommitTs = 0L;
+
+                        //VersionEntry newImageEntry = new VersionEntry(
+                        //        writeEntry.RecordKey,
+                        //        writeEntry.VersionKey,
+                        //        payload,
+                        //        this.txId);
 
                         this.uploadReq.Set(tableId, recordKey, newImageEntry.VersionKey, newImageEntry, writeEntry.RemoteVerList);
                         this.uploadReq.Use();
@@ -831,7 +849,7 @@ namespace GraphView.Transaction
                     && this.rereadVerEntry == null)
                 {
                     ReadSetEntry entry = this.readSet[--this.readSetCount];
-                    if (this.FindWriteSetEntry(entry.TableId, entry.Record) != null)
+                    if (this.FindWriteSetEntry(entry.TableId, entry.RecordKey) != null)
                     {
                         continue;
                     }
@@ -1059,11 +1077,11 @@ namespace GraphView.Transaction
             this.updateTxReq.Use();
 
             this.versionDb.EnqueueTxEntryRequest(this.txId, this.updateTxReq, this.executor.Partition);
-            this.CurrentProc = this.updateTxProc;
-            this.UpdateTxStatus();
+            this.CurrentProc = this.updateTxCommitProc;
+            this.UpdateTxStatusToCommited();
         }
 
-        internal void UpdateTxStatus()
+        internal void UpdateTxStatusToCommited()
         {
             if (!this.updateTxReq.Finished)
             {
@@ -1158,7 +1176,7 @@ namespace GraphView.Transaction
             if (this.garbageQueueTxId != null)
             {
                 this.garbageQueueTxId.Enqueue(this.txId);
-                this.garbageQueueFinishTime.Enqueue(DateTime.Now.Ticks);
+                // this.garbageQueueFinishTime.Enqueue(DateTime.Now.Ticks);
             }
             return;
         }
@@ -1219,7 +1237,7 @@ namespace GraphView.Transaction
             if (this.garbageQueueTxId != null)
             {
                 this.garbageQueueTxId.Enqueue(this.txId);
-                this.garbageQueueFinishTime.Enqueue(DateTime.Now.Ticks);
+                // this.garbageQueueFinishTime.Enqueue(DateTime.Now.Ticks);
             }
             return;
         }
@@ -1238,36 +1256,34 @@ namespace GraphView.Transaction
             this.TxStatus = TxStatus.Aborted;
             this.Progress = TxProgress.Final;
             this.replaceReq.Free();
+            this.updateTxReq.Set(this.txId, TxStatus.Aborted, this.remoteTxEntryRef);
+            this.updateTxReq.Use();
+            this.versionDb.EnqueueTxEntryRequest(this.txId, updateTxReq, this.executor.Partition);
 
-            if (!this.updateTxReq.IsActive())
+            this.CurrentProc = this.updateTxAbortProc;
+            if (!this.DEBUG_MODE)
             {
-                this.updateTxReq.Set(this.txId, TxStatus.Aborted, this.remoteTxEntryRef);
-                this.updateTxReq.Use();
+                this.CurrentProc();
+            }
+        }
 
-                this.versionDb.EnqueueTxEntryRequest(this.txId, updateTxReq, this.executor.Partition);
+        internal void UpdateTxStatusToAborted()
+        {
+            if (!this.updateTxReq.Finished)
+            {
                 return;
             }
-            else if (this.updateTxReq.IsActive())
-            {
-                if (!this.updateTxReq.Finished)
-                {
-                    return;
-                }
-                this.updateTxReq.Free();
 
-                this.CurrentProc = this.abortPostproProc;
-                if (!this.DEBUG_MODE)
-                {
-                    this.CurrentProc();
-                }
-                return;
+            this.CurrentProc = this.abortPostproProc;
+            if (!this.DEBUG_MODE)
+            {
+                this.CurrentProc();
             }
+            return;
         }
 
         public void Insert(string tableId, object recordKey, object record)
         {
-            //Console.WriteLine("INSERT: record key = {0}", recordKey as string);
-
             // Checks whether the record is in the local write set
             WriteSetEntry writeEntry = this.FindWriteSetEntry(tableId, recordKey);
             ReadSetEntry readEntry = this.FindReadSetEntry(tableId, recordKey);
@@ -1309,7 +1325,8 @@ namespace GraphView.Transaction
         }
 
         public void Read(string tableId, object recordKey, out bool received, out object payload)
-        { 
+        {
+            this.ReadPayload = null;
             this.Read(tableId, recordKey, false, out received, out payload);
         }
 
@@ -1334,12 +1351,12 @@ namespace GraphView.Transaction
             }
             else if (readEntry != null)
             {
-                if (this.writeSetCount != this.writeSet.Count)
+                if (this.writeSetCount == this.writeSet.Count)
                 {
                     this.writeSet.ResizeAndFill(2 * this.writeSetCount);
                 }
                 this.writeSet[this.writeSetCount++].Set(tableId, recordKey, payload, 
-                    readEntry.VersionKey + 1, readEntry.RemoteVerList);
+                    readEntry.TailKey + 1, readEntry.RemoteVerList);
             }
             else
             {
@@ -1536,6 +1553,7 @@ namespace GraphView.Transaction
             VersionEntry committedVersion = null;
             while (this.readEntryCount > 0)
             {
+                VersionEntry versionEntry = this.versionList[this.readEntryCount - 1];
                 // Wait for the GetTxEntry response
                 if (this.getTxReq.IsActive())
                 {
@@ -1556,7 +1574,6 @@ namespace GraphView.Transaction
                     }
 
                     // The last version entry is the one need to check whether visiable
-                    VersionEntry versionEntry = this.versionList[this.readEntryCount];
                     this.readEntryCount--;
 
                     // If the version entry is a dirty write, skips the entry.
@@ -1599,8 +1616,6 @@ namespace GraphView.Transaction
                 }
                 else
                 {
-                    VersionEntry versionEntry = this.versionList[this.readEntryCount - 1];
-
                     if (versionEntry.TxId >= 0)
                     {
                         // Send the GetTxEntry request
@@ -1633,10 +1648,7 @@ namespace GraphView.Transaction
                         {
                             visibleVersion = versionEntry;
                         }
-                        else
-                        {
-                            this.readEntryCount--;
-                        }
+                        this.readEntryCount--;
                     }
                 }
 
@@ -1647,7 +1659,7 @@ namespace GraphView.Transaction
                     // JUST FOR IN-MEMORY VERSION
                     if (this.remoteVersionRefList.Count >= this.readEntryCount)
                     {
-                        visiableVersionRef = this.remoteVersionRefList[this.readEntryCount - 1];
+                        visiableVersionRef = this.remoteVersionRefList[this.readEntryCount];
                     }
                     break;
                 }
@@ -1658,7 +1670,7 @@ namespace GraphView.Transaction
             if (visibleVersion != null)
             {
                 payload = visibleVersion.Record;
-
+                this.ReadPayload = payload;
                 // resize to allocate more spaces
                 if (this.readSetCount == this.readSet.Count)
                 {

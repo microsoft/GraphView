@@ -3,18 +3,13 @@ namespace GraphView.Transaction
 {
     using System;
     using System.Collections.Generic;
-    using System.Linq;
-    using System.Text;
     using System.Threading;
-    using System.Threading.Tasks;
 
     internal class SingletonPartitionedVersionDb : VersionDb
     {
         private static volatile SingletonPartitionedVersionDb instance;
 
         private static readonly object initlock = new object();
-
-        internal static int EnqueuedRequests = 0;
 
         /// <summary>
         /// Whether the version db is in deamon mode
@@ -27,15 +22,10 @@ namespace GraphView.Transaction
 
         internal long FlushWaitTicks { get; set; } = 0L;
 
-        internal TxResourceManager[] resourceManagers;
-        /// <summary>
-        /// The version table maps
-        /// </summary>
-
         /// <summary>
         /// The transaction table map, txId => txTableEntry
         /// </summary>
-        private readonly Dictionary<long, TxTableEntry>[] txTable;
+        private Dictionary<long, TxTableEntry>[] txTable;
 
         private SingletonPartitionedVersionDb(int partitionCount, bool daemonMode)
             : base(partitionCount)
@@ -44,14 +34,8 @@ namespace GraphView.Transaction
 
             for (int pid = 0; pid < partitionCount; pid++)
             {
-                this.txTable[pid] = new Dictionary<long, TxTableEntry>(100000);
-                this.dbVisitors[pid] = new PartitionedVersionDbVisitor(this.txTable[pid]);
-            }
-
-            this.resourceManagers = new TxResourceManager[partitionCount];
-            for (int i = 0; i < partitionCount; i++)
-            {
-                this.resourceManagers[i] = new TxResourceManager();
+                this.txTable[pid] = new Dictionary<long, TxTableEntry>(100);
+                this.dbVisitors[pid] = new SingletonPartitionedVersionDbVisitor(this.txTable[pid]);
             }
 
             this.PhysicalPartitionByKey = key => Math.Abs(key.GetHashCode()) % this.PartitionCount;
@@ -72,6 +56,40 @@ namespace GraphView.Transaction
             {
                 Thread thread = new Thread(this.Monitor);
                 thread.Start(pk);
+            }
+        }
+
+        internal override void AddPartition(int partitionCount)
+        {
+            int prePartitionCount = this.PartitionCount;
+            base.AddPartition(partitionCount);
+            this.PartitionCount = partitionCount;
+
+            // Resize Visitors and Dicts
+            Array.Resize(ref this.txTable, partitionCount);
+            for (int pk = prePartitionCount; pk < partitionCount; pk++)
+            {
+                this.txTable[pk] = new Dictionary<long, TxTableEntry>(100);
+            }
+
+            Array.Resize(ref this.dbVisitors, partitionCount);
+            for (int pk = prePartitionCount; pk < partitionCount; pk++)
+            {
+                this.dbVisitors[pk] = new SingletonPartitionedVersionDbVisitor(this.txTable[pk]);
+            }
+
+            foreach (VersionTable table in this.versionTables.Values)
+            {
+                table.AddPartition(partitionCount);
+            }
+            this.PartitionCount = partitionCount;
+        }
+
+        internal override void MockLoadData(Tuple<int, int>[] partitionRange)
+        {
+            foreach (VersionTable table in this.versionTables.Values)
+            {
+                table.MockLoadData(partitionRange);
             }
         }
 
@@ -102,7 +120,6 @@ namespace GraphView.Transaction
             {
                 this.versionTables[key].Clear();
             }
-            this.versionTables.Clear();
 
             for (int pid = 0; pid < this.PartitionCount; pid++)
             {
@@ -162,16 +179,7 @@ namespace GraphView.Transaction
                 return null;
             }
             return this.versionTables[tableId];
-        }
-
-        internal override TxResourceManager GetResourceManagerByPartitionIndex(int partition)
-        {
-            if (partition >= this.PartitionCount)
-            {
-                throw new ArgumentException("partition should be smaller then partitionCount");
-            }
-            return this.resourceManagers[partition];
-        }
+        } 
 
         internal void Monitor(object obj)
         {
@@ -188,14 +196,17 @@ namespace GraphView.Transaction
 
         internal override void EnqueueTxEntryRequest(long txId, TxEntryRequest txEntryRequest, int execPartition = 0)
         {
-            // Interlocked.Increment(ref SingletonPartitionedVersionDb.EnqueuedRequests);
+            // Interlocked.Increment(ref VersionDb.EnqueuedRequests);
 
             // SingletonPartitionVersionDb implementation 1
-            base.EnqueueTxEntryRequest(txId, txEntryRequest, execPartition);
-            while (!txEntryRequest.Finished) ;
+            //base.EnqueueTxEntryRequest(txId, txEntryRequest, execPartition);
+            //while (!txEntryRequest.Finished) ;
 
             // SingletonPartitionedVersionDb implementation 2
-
+            
+            int pk = this.PhysicalTxPartitionByKey(txId);
+            this.dbVisitors[pk].Invoke(txEntryRequest);
+            // SingletonPartitionedVersionDb implementation 3
             //int pk = this.PhysicalTxPartitionByKey(txId);
             //if (pk == execPartition)
             //{

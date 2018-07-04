@@ -5,12 +5,12 @@ namespace GraphView.Transaction
     using System.Collections.Generic;
     using System.Collections.Concurrent;
 
-    internal class PartitionedVersionTableVisitor : VersionTableVisitor
+    internal class SingletonPartitionedVersionTableVisitor : VersionTableVisitor
     {
         // A reference to the dict in version table
         private readonly Dictionary<object, Dictionary<long, VersionEntry>> dict;
 
-        public PartitionedVersionTableVisitor(Dictionary<object, Dictionary<long, VersionEntry>> dict)
+        public SingletonPartitionedVersionTableVisitor(Dictionary<object, Dictionary<long, VersionEntry>> dict)
         {
             this.dict = dict;
         }
@@ -65,7 +65,7 @@ namespace GraphView.Transaction
             // For other isolation levels, more versions may need to be returned.
             // When old versions may be truncated, it is desirable to maintain a head pointer as well,
             // so as to increase the lower bound of version keys and reduce the number of iterations. 
-            while (lastVersionKey >= 0 && entryCount <= 2)
+            while (lastVersionKey >= 0 && entryCount < 2)
             {
                 // To make it run under .Net 4.5
                 VersionEntry verEntry = null;
@@ -87,8 +87,8 @@ namespace GraphView.Transaction
             }
 
             req.RemoteVerList = versionList;
-            req.Finished = true;
             req.Result = entryCount;
+            req.Finished = true;
         }
 
         internal override void Visit(InitiGetVersionListRequest req)

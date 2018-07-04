@@ -8,8 +8,27 @@ namespace GraphView.Transaction
     using System.Diagnostics;
     using System.Threading;
 
+    public static class StaticRandom
+    {
+        static int seed = Environment.TickCount;
+
+        static readonly ThreadLocal<Random> random =
+            new ThreadLocal<Random>(() => new Random(Interlocked.Increment(ref seed)));
+
+        public static int Rand()
+        {
+            return random.Value.Next();
+        }
+    }
+
     internal class TransactionExecutor
     {
+        internal static VersionEntry[] firstVersionEntryArray;
+
+        internal static VersionEntry[] dummyVersionEntryArray;
+
+        internal static VersionEntry[] versionEntryArray;
+
         private int executorId = 0;
 
         /// <summary>
@@ -82,7 +101,7 @@ namespace GraphView.Transaction
         /// <summary>
         /// The partition of current executor flushed
         /// </summary>
-        internal int Partition { get; private set; } 
+        internal int Partition { get; private set; }
 
         /// <summary>
         /// A queue of finished txs (committed or aborted) with their wall-clock time to be cleaned.
@@ -146,9 +165,9 @@ namespace GraphView.Transaction
             this.startEventSlim = startEventSlim;
             this.countdownEvent = countdownEvent;
 
-              
-            this.txExecution = new TransactionExecution(this.logStore, this.versionDb, null, 
-                this.GarbageQueueTxId,this.GarbageQueueFinishTime, this.txRange, this);
+
+            this.txExecution = new TransactionExecution(this.logStore, this.versionDb, null,
+                this.GarbageQueueTxId,this.GarbageQueueFinishTime, this.txRange, this, this.ResourceManager);
 
             this.YCSBKeys = YCSBKeys;
             this.taskCount = taskCount;
@@ -252,9 +271,25 @@ namespace GraphView.Transaction
             this.RunEndTicks = DateTime.Now.Ticks;
         }
 
+        private int GenerateYCSBKey(int randomX, int indexBound)
+        {
+            if (!(this.versionDb is SingletonPartitionedVersionDb))
+            {
+                return randomX;
+            }
+
+            int k = this.versionDb.PhysicalPartitionByKey(randomX);
+            randomX -= (k - this.Partition);
+            if (randomX >= indexBound)
+            {
+                randomX -= this.versionDb.PartitionCount;
+            }
+            return randomX;
+        }
+
         public void YCSBExecuteRead()
         {
-            PinThreadOnCores(this.Partition);
+            // PinThreadOnCores(this.Partition);
             this.RunBeginTicks = DateTime.Now.Ticks;
 
             Random rand = new Random();
@@ -265,12 +300,101 @@ namespace GraphView.Transaction
             for (int i = 0; i < this.taskCount; i++)
             {
                 //string recordKey = YCSBKeys[rand.Next(0, indexBound)];
-                int recordKey = rand.Next(0, indexBound);
+                // int recordKey = rand.Next(0, indexBound);
+                int recordKey = this.GenerateYCSBKey(rand.Next(0, indexBound), indexBound);
                 this.txExecution.Reset();
                 this.txExecution.Read("ycsb_table", recordKey, out received, out payload);
-                recordKey = rand.Next(0, indexBound);
-                this.txExecution.Read("ycsb_table", recordKey, out received, out payload);
+                //recordKey = this.GenerateYCSBKey(rand.Next(0, indexBound), indexBound);
+                //this.txExecution.Read("ycsb_table", recordKey, out received, out payload);
                 this.txExecution.Commit();
+
+                this.FinishedTxs += 1;
+                if (this.txExecution.TxStatus == TxStatus.Committed)
+                {
+                    this.CommittedTxs += 1;
+                }
+            }
+
+            this.RunEndTicks = DateTime.Now.Ticks;
+        }
+
+        public void YCSBExecuteUpdate()
+        {
+            // PinThreadOnCores(this.Partition);
+
+            this.RunBeginTicks = DateTime.Now.Ticks;
+            Random rand = new Random();
+            bool received = false;
+            object payload = null;
+            int indexBound = this.YCSBKeys.Length;
+            string updatePayload = new String('a', 100);
+            int preRecordKey = this.Partition - this.versionDb.PartitionCount;
+            for (int i = 0; i < this.taskCount; i++)
+            {
+                //string recordKey = YCSBKeys[rand.Next(0, indexBound)];
+                // int recordKey = rand.Next(0, indexBound);
+                int recordKey = this.GenerateYCSBKey(StaticRandom.Rand() % indexBound, indexBound);
+                // int recordKey = this.versionDb.PartitionCount + preRecordKey;
+                // preRecordKey = recordKey;
+
+                this.txExecution.Reset();
+                this.txExecution.Read("ycsb_table", recordKey, out received, out payload);
+                payload = this.txExecution.ReadPayload;
+                if (payload != null)
+                {
+                    this.txExecution.Update("ycsb_table", recordKey, updatePayload);
+                }
+                //recordKey = this.GenerateYCSBKey(rand.Next(0, indexBound), indexBound);
+                //this.txExecution.Read("ycsb_table", recordKey, out received, out payload);
+                this.txExecution.Commit();
+
+                this.FinishedTxs += 1;
+                if (this.txExecution.TxStatus == TxStatus.Committed)
+                {
+                    this.CommittedTxs += 1;
+                }
+            }
+            this.RunEndTicks = DateTime.Now.Ticks;
+        }
+
+        public void YCSBExecuteInsert()
+        {
+            PinThreadOnCores(this.Partition);
+
+            this.RunBeginTicks = DateTime.Now.Ticks;
+
+            Random rand = new Random();
+            bool received = false;
+            object payload = null;
+            // int indexBound = this.YCSBKeys.Length;
+            int indexBound = this.taskCount;
+            //string updatePayload = new String('a', 100);
+            object updatePayload = 0;
+            int preRecordKey = this.Partition - this.versionDb.PartitionCount;
+            for (int i = 0; i < this.taskCount; i++)
+            {
+                //string recordKey = YCSBKeys[rand.Next(0, indexBound)];
+                // int recordKey = rand.Next(0, indexBound);
+                // int recordKey = this.GenerateYCSBKey(rand.Next(0, indexBound), indexBound);
+                int recordKey = this.versionDb.PartitionCount + preRecordKey;
+                preRecordKey = recordKey;
+
+                this.txExecution.Reset();
+                this.txExecution.ReadAndInitialize("ycsb_table", recordKey, out received, out payload);
+                payload = this.txExecution.ReadPayload;
+                if (payload == null)
+                {
+                    this.txExecution.Insert("ycsb_table", recordKey, updatePayload);
+                }
+                //recordKey = this.GenerateYCSBKey(rand.Next(0, indexBound), indexBound);
+                //this.txExecution.Read("ycsb_table", recordKey, out received, out payload);
+                this.txExecution.Commit();
+
+                this.FinishedTxs += 1;
+                if (this.txExecution.TxStatus == TxStatus.Committed)
+                {
+                    this.CommittedTxs += 1;
+                }
             }
 
             this.RunEndTicks = DateTime.Now.Ticks;
@@ -503,7 +627,7 @@ namespace GraphView.Transaction
             this.RunBeginTicks = DateTime.Now.Ticks;
             while (this.workingSet.Count > 0 || this.workload.Count > 0)
             {
-                //if (DateTime.Now.Ticks  - this.RunBeginTicks > 30000000)
+                //if (DateTime.Now.Ticks - this.RunBeginTicks > 50000000)
                 //{
                 //    Console.WriteLine(123);
                 //}
@@ -571,7 +695,7 @@ namespace GraphView.Transaction
                         {
                             txExec.CurrentProc();
                         }
-
+                        
                         if (txExec.CurrentProc == null && queue.Count > 0)
                         {
                             TransactionRequest opReq = queue.Dequeue();
