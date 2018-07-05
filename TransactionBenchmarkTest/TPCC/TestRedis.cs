@@ -34,7 +34,7 @@ namespace TransactionBenchmarkTest.TPCC
                 return value;
             };
 
-            RedisVersionDb redisVersionDb = RedisVersionDb.Instance;
+            RedisVersionDb redisVersionDb = RedisVersionDb.Instance();
 
             // Non-Pipeline Mode
             using (RedisClient client = redisVersionDb.RedisManager.GetClient(3, 0))

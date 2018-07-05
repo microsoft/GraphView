@@ -239,7 +239,7 @@ namespace GraphView.Transaction
                 tailEntry.BeginTimestamp = req.VersionKey;
 
                 VersionEntry oldVersion = null;
-                if (versionList.Count > VersionTable.VERSION_LIST_MAX_SIZE)
+                if (versionList.Count > VersionTable.VERSION_CAPACITY)
                 {
                     long headKey = tailEntry.EndTimestamp;
                     tailEntry.EndTimestamp = headKey + 1;

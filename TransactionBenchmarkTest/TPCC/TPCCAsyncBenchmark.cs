@@ -61,7 +61,7 @@ namespace TransactionBenchmarkTest.TPCC
         {
             this.workerCount = workerCount;
             this.workloadCountPerWorker = workloadCountPerWorker;
-            this.redisVersionDb = RedisVersionDb.Instance;
+            this.redisVersionDb = RedisVersionDb.Instance();
 
             this.executorList = new List<TransactionExecutor>();
 

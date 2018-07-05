@@ -16,7 +16,9 @@ namespace GraphView.Transaction
     // basic part with fields and its own methods
     public abstract partial class VersionDb
     {
-        // For experiments test
+        /// <summary>
+        /// Only For Benchmark Test
+        /// </summary>
         public static int EnqueuedRequests = 0;
 
         /// <summary>
@@ -24,6 +26,12 @@ namespace GraphView.Transaction
         /// </summary>
         public static bool UDF_QUEUE = false;
 
+
+        public static readonly int RECORD_CAPACITY = 1000000;
+
+        /// <summary>
+        /// The number returned when there are some erros happended during execution
+        /// </summary>
         public static readonly long RETURN_ERROR_CODE = -2L;
 
         /// <summary>
@@ -50,8 +58,9 @@ namespace GraphView.Transaction
         /// </summary>
         public static readonly string TX_TABLE = "tx_table";
 
-        public static bool Print = true;
-
+        /// <summary>
+        /// The active version table instances
+        /// </summary>
         protected readonly Dictionary<string, VersionTable> versionTables;
 
         /// <summary>
@@ -68,19 +77,21 @@ namespace GraphView.Transaction
         /// As a result, the designated thread of a logical partition exclusively flushes requests toward
         /// one k-v partition, creating potential of batch processing and reducing fan-out. 
         /// </summary>
-        protected readonly Queue<TxEntryRequest>[] txEntryRequestQueues;
-        protected readonly Queue<TxEntryRequest>[] flushQueues;
-        //internal readonly VersionDbVisitor[] dbVisitors;
-        internal VersionDbVisitor[] dbVisitors;     // to avoid memory overflow used by cassandra
+        protected Queue<TxEntryRequest>[] txEntryRequestQueues;
+        protected Queue<TxEntryRequest>[] flushQueues;
 
-        protected readonly RequestQueue<TxEntryRequest>[] requestUDFQueues;
-            
-        private readonly int[] queueLatches;
+        protected RequestQueue<TxEntryRequest>[] requestUDFQueues;
 
-        // Resoure managers to manage the runtime resource to avoid gc slowing the throughput
+        private int[] queueLatches;
+
+        /// <summary>
+        /// txEntry visitors for txEntry requests
+        /// </summary>
+        internal VersionDbVisitor[] dbVisitors;
+
+        // Resource managers to manage the runtime resource to avoid gc slowing the throughput
         internal readonly List<TxResourceManager> txResourceManagers;
 
-        //internal int PartitionCount { get; private set; }
         internal int PartitionCount { get; set; }   // to avoid memory overflow used by cassandra
 
         protected static class StaticRandom
@@ -128,7 +139,6 @@ namespace GraphView.Transaction
 
             this.PhysicalPartitionByKey = key => Math.Abs(key.GetHashCode()) % this.PartitionCount;
             this.PhysicalTxPartitionByKey = key => (int)((long)key / TxRange.range);
-            //this.PhysicalTxPartitionByKey = key => Math.Abs(key.ToString().GetHashCode()) % this.PartitionCount;
         }
 
         /// <summary>
@@ -144,11 +154,23 @@ namespace GraphView.Transaction
             }
             int currentPartitionCount = this.PartitionCount;
 
-            // TODO: need to add other resources, like queue, latches
             for (int pk = currentPartitionCount; pk < partitionCount; pk++)
             {
                 this.txResourceManagers.Add(new TxResourceManager());
             }
+
+            // TODO: Comment to avoid memory overflow
+            //Array.Resize(ref this.txEntryRequestQueues, partitionCount);
+            //Array.Resize(ref this.flushQueues, partitionCount);
+            //Array.Resize(ref this.requestUDFQueues, partitionCount);
+            //Array.Resize(ref this.queueLatches, partitionCount);
+            //for (int pid = currentPartitionCount; pid < partitionCount; pid++)
+            //{
+            //    this.txEntryRequestQueues[pid] = new Queue<TxEntryRequest>(1024);
+            //    this.flushQueues[pid] = new Queue<TxEntryRequest>(1024);
+            //    this.queueLatches[pid] = 0;
+            //    this.requestUDFQueues[pid] = new RequestQueue<TxEntryRequest>(partitionCount);
+            //}
 
             this.PartitionCount = partitionCount;
         }

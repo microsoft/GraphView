@@ -95,7 +95,7 @@
 
         internal void RunTxOnly()
         {
-            VersionDb vdb = RedisVersionDb.Instance;
+            VersionDb vdb = RedisVersionDb.Instance();
 
             for (int i = 0; i < this.txTaskQueue.Length; i++)
             {

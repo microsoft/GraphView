@@ -16,21 +16,13 @@
 
         public static readonly long TAIL_KEY = -1L;
 
-        private static readonly int RECORD_CAPACITY = 1000000;
-
-        public static readonly int VERSION_CAPACITY = 4;
-
-        internal int PartitionCount { get; set; }
-
         public SingletonDictionaryVersionTable(VersionDb versionDb, string tableId,
             int partitionCount, List<TxResourceManager> txResourceManagers)
             : base(versionDb, tableId, partitionCount)
         {
             int maxConcurrency = Math.Max(1, this.VersionDb.PartitionCount / 2);
             this.dict = new ConcurrentDictionary<object, ConcurrentDictionary<long, VersionEntry>>(
-                maxConcurrency, SingletonDictionaryVersionTable.RECORD_CAPACITY);
-
-            this.PartitionCount = partitionCount;
+                maxConcurrency, VersionDb.RECORD_CAPACITY);
 
             for (int i = 0; i < partitionCount; i++)
             {
@@ -83,8 +75,6 @@
             {
                 this.tableVisitors[pk] = new SingletonVersionTableVisitor(this.dict);
             }
-
-            this.PartitionCount = partitionCount;
         }
 
         internal override IEnumerable<VersionEntry> InitializeAndGetVersionList(object recordKey)
@@ -93,7 +83,7 @@
             if (!this.dict.TryGetValue(recordKey, out versionList))
             {
                 ConcurrentDictionary<long, VersionEntry> newVersionList =
-                    new ConcurrentDictionary<long, VersionEntry>(1, SingletonDictionaryVersionTable.VERSION_CAPACITY);
+                    new ConcurrentDictionary<long, VersionEntry>(1, VersionTable.VERSION_CAPACITY);
                 // Adds a special entry whose key is -1 when the list is initialized.
                 // The entry uses beginTimestamp as a pointer pointing to the newest verion in the list.
                 newVersionList.TryAdd(SingletonDictionaryVersionTable.TAIL_KEY, new VersionEntry(recordKey, -1, -1, -1, null, -1, -1));

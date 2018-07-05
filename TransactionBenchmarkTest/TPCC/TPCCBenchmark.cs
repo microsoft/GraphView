@@ -25,7 +25,7 @@ namespace TransactionBenchmarkTest.TPCC
         {
             this.commitCount = this.abortCount = 0;
 
-            this.vdb = RedisVersionDb.Instance;
+            this.vdb = RedisVersionDb.Instance();
             this.vdb.CreateVersionTable(Constants.DefaultTbl, Constants.RedisDbN);
 
             this.redisClient = new RedisClient(Constants.RedisHost, Constants.RedisPort);   // for payment to access `c_last` index
