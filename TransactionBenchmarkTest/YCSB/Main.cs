@@ -25,7 +25,7 @@ namespace TransactionBenchmarkTest.YCSB
             List<VersionDb> vdbList = new List<VersionDb>();
             for (int j = 0; j < maxVdbCnt; j++)
             {
-                vdbList.Add(PartitionedCassandraVersionDb.Instance());
+                vdbList.Add(PartitionedCassandraVersionDb.Instance(1, "127.0.0.1", 1, ConsistencyLevel.One));
             }
             YCSBBenchmarkTest test = new YCSBBenchmarkTest(0, 0, vdbList[0]);
 
@@ -424,7 +424,7 @@ namespace TransactionBenchmarkTest.YCSB
             };
             
             // The default mode of versionDb is daemonMode
-            PartitionedCassandraVersionDb versionDb = PartitionedCassandraVersionDb.Instance(partitionCount);
+            PartitionedCassandraVersionDb versionDb = PartitionedCassandraVersionDb.Instance(partitionCount, "127.0.0.1", 1, ConsistencyLevel.One);
             YCSBAsyncBenchmarkTest test = new YCSBAsyncBenchmarkTest(recordCount,
                 executorCount, txCountPerExecutor, versionDb, tables);
 
@@ -433,31 +433,43 @@ namespace TransactionBenchmarkTest.YCSB
             test.Stats();            
         }
 
-        static void LoadDataWithSyncForCassandra(string filename, int nThread)
+        static void LoadDataWithSyncForCassandra(string filename, int nThread, VersionDb vdb)
         {
-            // PartitionedCassandraVersionDb
-            int maxVdbCnt = 8192;
             List<VersionDb> vdbList = new List<VersionDb>();
-            for (int j = 0; j < maxVdbCnt; j++)
+            for (int i=0; i<nThread; i++)
             {
-                vdbList.Add(PartitionedCassandraVersionDb.Instance());
+                vdbList.Add(vdb);
             }
-            YCSBBenchmarkTest sync_test = new YCSBBenchmarkTest(0, 0, vdbList[0]);
+
+            YCSBBenchmarkTest sync_test = new YCSBBenchmarkTest(0, 0, vdb);
             sync_test.LoadDataWithMultiThreads(filename, vdbList, nThread);
         }
         public static void YCSBAsyncTestWithPartitionedCassandraHybrid(string[] args)
         {
-            string action = "run";
-            int workerCount = 2;
-            int taskCountPerWorker = 2;
-            int partitionCount = 2;
+            string action = "load";
+            int workerCount = 10;
+            int taskCountPerWorker = 1000;
+            int partitionCount = 10;    // equal to workerCount
 
             int runall = 1;
             int stableRoundStart = 5;
             int stableRoundEnd = 15;
 
             string dataFile = "ycsb_data_r.in";
-            string operationFile = "ycsb_ops_u_100.in";
+            string operationFile = "ycsb_ops_u_10000.in";
+
+            // CassandraVersionDb's parameters
+            string contactPoints = "127.0.0.1";
+            int replicationFactor = 1;
+            ConsistencyLevel consistencyLevel = ConsistencyLevel.One;
+
+            // CassandraVersionDb's parameters
+            //string contactPoints = "10.6.0.4,10.6.0.5,10.6.0.6,10.6.0.12,10.6.0.13,10.6.0.14,10.6.0.15,10.6.0.16,10.6.0.17,10.6.0.18";
+            //int replicationFactor = 3;
+            //ConsistencyLevel consistencyLevel = ConsistencyLevel.Quorum;
+
+            // see YCSBAsyncBenchmarkTest.run2 to know all types
+            string exeType = "ycsb_sync_ro_intk";
 
             int i = 0;
             while (i < args.Length)
@@ -467,7 +479,7 @@ namespace TransactionBenchmarkTest.YCSB
                     case "--datafile":
                         dataFile = args[i++];
                         break;
-                    case "--opsfile":
+                    case "--opsfile":   // unused 
                         operationFile = args[i++];
                         break;
                     case "--workers":
@@ -476,34 +488,55 @@ namespace TransactionBenchmarkTest.YCSB
                     case "--taskspw":
                         taskCountPerWorker = int.Parse(args[i++]);
                         break;
-                    case "--partitions":
+                    case "--partitions":    // equal to workers
                         partitionCount = int.Parse(args[i++]);
                         break;
-                    case "--startround":
+                    case "--nodes":
+                        contactPoints = args[i++];
+                        break;
+                    case "--replica":       // default 3
+                        replicationFactor = int.Parse(args[i++]);
+                        break;
+                    case "--consislevel":   // local: one, cluster: quorum
+                        if (args[i++] == "one")
+                        {
+                            consistencyLevel = ConsistencyLevel.One;
+                        } else
+                        {
+                            consistencyLevel = ConsistencyLevel.Quorum;
+                        }
+                        break;
+                    case "--exetype":       // 
+                        exeType = args[i++];
+                        break;
+                    case "--startround":    // unused
                         stableRoundStart = int.Parse(args[i++]);
                         break;
-                    case "--endround":
+                    case "--endround":      // unused
                         stableRoundEnd = int.Parse(args[i++]);
                         break;
-                    case "--runall":
+                    case "--runall":        // unused
                         runall = int.Parse(args[i++]);
                         break;
-                    case "--action":
+                    case "--action":        // load/run
                         action = args[i++];
                         break;
                     default:
                         break;
                 }
             }
+
+            Console.WriteLine("contact points " + contactPoints);
             if (runall == 0 && stableRoundEnd <= stableRoundStart)
             {
                 Console.WriteLine("Bad stable round setting");
                 return;
-            }
+            } 
 
             if (action == "load")
             {
-                LoadDataWithSyncForCassandra(dataFile, workerCount);
+                PartitionedCassandraVersionDb versionDb = PartitionedCassandraVersionDb.Instance(partitionCount, contactPoints, replicationFactor, consistencyLevel);
+                LoadDataWithSyncForCassandra(dataFile, workerCount, versionDb);
             } else if (action == "run")
             {
                 string[] tables = new string[]
@@ -513,7 +546,7 @@ namespace TransactionBenchmarkTest.YCSB
                 };
 
                 // The default mode of versionDb is daemonMode
-                PartitionedCassandraVersionDb versionDb = PartitionedCassandraVersionDb.Instance(partitionCount);
+                PartitionedCassandraVersionDb versionDb = PartitionedCassandraVersionDb.Instance(partitionCount, contactPoints, replicationFactor, consistencyLevel);
                 YCSBAsyncBenchmarkTest test = new YCSBAsyncBenchmarkTest(0,
                     workerCount, taskCountPerWorker, versionDb, tables);
                 if (runall == 0)
@@ -521,12 +554,14 @@ namespace TransactionBenchmarkTest.YCSB
                     test.SetStableRound(stableRoundStart, stableRoundEnd);
                 }
 
-                //test.SetupOpsNull();
+                // sync test
+                test.SetupOpsNull();
 
-                test.SetupOps(operationFile);
-                test.StartMonitors();
+                // async test
+                //test.SetupOps(operationFile);
+                //test.StartMonitors();
 
-                test.Run2();
+                test.Run2(exeType);
                 test.Stats2();
             }
             else

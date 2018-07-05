@@ -10,8 +10,6 @@
 	/// </summary>
 	class CassandraSessionManager
     {
-		private static readonly int DEFAULT_CLUSTER_NODE_COUNT = 1;
-
 		/// <summary>
 		/// The lock for singleton instance
 		/// </summary>
@@ -22,6 +20,11 @@
 		/// </summary>
 		private static CassandraSessionManager sessionManager = null;
 
+        // parameters
+        internal int replication_factor = 1;
+        internal ConsistencyLevel consistency_level = ConsistencyLevel.One;
+        internal string[] contact_points = { "127.0.0.1" };
+
 		/// <summary>
 		/// the cluster instance of cassandra
 		/// </summary>
@@ -31,31 +34,12 @@
 		/// A map from keyspace to session.
 		/// </summary>
 		private Dictionary<string, ISession> sessionPool;
-
-        private Dictionary<int, ISession> cacheSessions;
-
+        
         /// <summary>
         /// the lock for sessionPool dictionary
         /// </summary>
         private readonly object dictLock = new object();
-
-		/// <summary>
-		/// The cassandra connection strings of read and write
-		/// </summary>
-		internal string[] ReadWriteHosts { get; private set; }
-
-		/// <summary>
-		/// The number of cluster hosts
-		/// </summary>
-		internal int ClusterNodeCount { get; private set; }
-
-        internal string[] contactPoints;
-        //internal int replicationFactor = 3;
-        internal int replicationFactor = 1;
-
-        internal static string CQL_CREATE_KEYSPACE = "CREATE KEYSPACE IF NOT EXISTS {0} WITH replication = " +
-            "{'class': 'SimpleStrategy', 'replication_factor': {1} };";
-
+                        
         /// <summary>
         /// Count how many CQLs are executed
         /// </summary>
@@ -86,7 +70,7 @@
             }
         }
 
-        public static CassandraSessionManager Instance2(string[] contactPoints, int replicationFactor)
+        public static CassandraSessionManager Instance2(string contactPoints, int replicationFactor, ConsistencyLevel consistencyLevel)
         {
             if (CassandraSessionManager.sessionManager == null)
             {
@@ -94,7 +78,7 @@
                 {
                     if (CassandraSessionManager.sessionManager == null)
                     {
-                        CassandraSessionManager.sessionManager = new CassandraSessionManager(contactPoints, replicationFactor);
+                        CassandraSessionManager.sessionManager = new CassandraSessionManager(contactPoints, replicationFactor, consistencyLevel);
                     }
                 }
             }
@@ -103,33 +87,24 @@
 
         private CassandraSessionManager()
 		{
-			this.ClusterNodeCount = CassandraSessionManager.DEFAULT_CLUSTER_NODE_COUNT;
-            this.contactPoints = new string[] { "127.0.0.1" };
-            //this.contactPoints = new string[] { "10.6.0.4", "10.6.0.5", "10.6.0.6", "10.6.0.12", "10.6.0.13", "10.6.0.14", "10.6.0.15", "10.6.0.16", "10.6.0.17", "10.6.0.18" };
-            //this.contactPoints = new string[] { "10.6.0.4" };
-
             // Ensure strong consistency
             // NOTE: IF there are more than 1 replica, `SetConsistencyLevel(ConsistencyLevel.Quorum)` 
             // to ensure strong consistency; otherwise,  `SetConsistencyLevel(ConsistencyLevel.One)` is enough.
-            QueryOptions queryOptions = new QueryOptions().SetConsistencyLevel(ConsistencyLevel.One);//SetConsistencyLevel(ConsistencyLevel.Quorum);
+            QueryOptions queryOptions = new QueryOptions().SetConsistencyLevel(this.consistency_level);//SetConsistencyLevel(ConsistencyLevel.Quorum);
                                                           //.SetSerialConsistencyLevel(ConsistencyLevel.Serial);
-			this.cluster = Cluster.Builder().AddContactPoints(this.contactPoints).WithQueryOptions(queryOptions).WithQueryTimeout(60000).Build();
+			this.cluster = Cluster.Builder().AddContactPoints(this.contact_points).WithQueryOptions(queryOptions).WithQueryTimeout(60000).Build();
 			this.sessionPool = new Dictionary<string, ISession>();
-            this.cacheSessions = new Dictionary<int, ISession>();
         }
 
-        private CassandraSessionManager(string[] contactPoints, int replicationFactor)
+        private CassandraSessionManager(string contactPoints, int replicationFactor, ConsistencyLevel consistencyLevel)
         {
-            //this.ClusterNodeCount = CassandraSessionManager.DEFAULT_CLUSTER_NODE_COUNT;
-            //this.replicationFactor = replicationFactor;
+            this.contact_points = contactPoints.Split(',');
+            this.replication_factor = replicationFactor;
+            this.consistency_level = consistencyLevel;
 
-            //// Ensure strong consistency
-            //// NOTE: IF there are more than 1 replica, `SetConsistencyLevel(ConsistencyLevel.Quorum)` 
-            //// to ensure strong consistency; otherwise,  `SetConsistencyLevel(ConsistencyLevel.One)` is enough.
-            //QueryOptions queryOptions = new QueryOptions().SetConsistencyLevel(ConsistencyLevel.One)
-            //                                              .SetSerialConsistencyLevel(ConsistencyLevel.Serial);
-            //this.cluster = Cluster.Builder().AddContactPoints(this.contactPoints).WithQueryOptions(queryOptions).Build();
-            //this.sessionPool = new Dictionary<string, ISession>();
+            QueryOptions queryOptions = new QueryOptions().SetConsistencyLevel(this.consistency_level);
+            this.cluster = Cluster.Builder().AddContactPoints(this.contact_points).WithQueryOptions(queryOptions).WithQueryTimeout(60000).Build();
+            this.sessionPool = new Dictionary<string, ISession>();
         }
 
         internal ISession GetSession(string keyspace)
@@ -141,7 +116,7 @@
 					if (!this.sessionPool.ContainsKey(keyspace))
 					{
                         cluster.Connect().Execute("CREATE KEYSPACE IF NOT EXISTS " + keyspace + " WITH replication = " +
-                                                  "{'class': 'SimpleStrategy', 'replication_factor': 3};");
+                                                  "{'class': 'SimpleStrategy', 'replication_factor': " + this.replication_factor + " };");
 						this.sessionPool[keyspace] = this.cluster.Connect(keyspace);
 					}
 				}
@@ -149,23 +124,5 @@
 
 			return this.sessionPool[keyspace];
 		}
-
-        internal ISession GetSession(int threadId, string keyspace)
-        {
-            if (!this.cacheSessions.ContainsKey(threadId))
-            {
-                lock (this.dictLock)
-                {
-                    if (!this.cacheSessions.ContainsKey(threadId))
-                    {
-                        cluster.Connect().Execute("CREATE KEYSPACE IF NOT EXISTS " + keyspace + " WITH replication = " +
-                                                  "{'class': 'SimpleStrategy', 'replication_factor': 3};");
-                        this.cacheSessions[threadId] = this.cluster.Connect(keyspace);
-                    }
-                }
-            }
-
-            return this.cacheSessions[threadId];
-        }
     }
 }

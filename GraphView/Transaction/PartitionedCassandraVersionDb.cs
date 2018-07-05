@@ -13,7 +13,7 @@ namespace GraphView.Transaction
         /// <summary>
         /// default keyspace
         /// </summary>
-        public static readonly string DEFAULT_KEYSPACE = "versiondb";
+        public static readonly string DEFAULT_KEYSPACE = "versiondb_intk_3";
 
         /// <summary>
         /// singleton instance
@@ -28,11 +28,32 @@ namespace GraphView.Transaction
         /// </summary>
         private static readonly object initlock = new object();
 
+        // parameters
+        internal int replication_factor = 1;
+        internal ConsistencyLevel consistency_level = ConsistencyLevel.One;
+        internal string contact_points = "127.0.0.1";
+
+        private readonly object objLock = new object();
+
+        internal CassandraSessionManager sessionManager = null;
+
         internal CassandraSessionManager SessionManager
         {
             get
             {
-                return CassandraSessionManager.Instance;
+                if (this.sessionManager == null)
+                {
+                    lock(objLock)
+                    {
+                        if (this.sessionManager == null)
+                        {
+                            Console.WriteLine("session manager in Cassandra Session Manager");
+                            this.sessionManager = CassandraSessionManager.Instance2(this.contact_points, this.replication_factor, this.consistency_level);
+                        }
+                    }
+                }
+
+                return this.sessionManager;
             }
         }
 
@@ -53,9 +74,15 @@ namespace GraphView.Transaction
 
         internal TxResourceManager[] resourceManagers;
 
-        private PartitionedCassandraVersionDb(int partitionCount)
+        private PartitionedCassandraVersionDb(int partitionCount, string contactPoints, int replicationFactor, ConsistencyLevel consistencyLevel)
             :base(1)    // fake partitionCount to avoid memory overflow
         {
+            Console.WriteLine("PartitionedCassandraVersionDb build");
+
+            this.contact_points = contactPoints;
+            this.replication_factor = replicationFactor;
+            this.consistency_level = consistencyLevel;
+
             //this.partitionedQueues = new RequestQueue<TxEntryRequest>[partitionCount];
             //this.ccPartitionedQueues = new ConcurrentQueue<TxEntryRequest>[partitionCount];
             this.rawPartitionedQueues = new Queue<TxEntryRequest>[partitionCount];
@@ -79,7 +106,7 @@ namespace GraphView.Transaction
             }
         }
 
-        internal static PartitionedCassandraVersionDb Instance(int partitionCount = 4)
+        internal static PartitionedCassandraVersionDb Instance(int partitionCount, string contactPoints, int replicationFactor, ConsistencyLevel consistencyLevel)
         {
             if (PartitionedCassandraVersionDb.instance == null)
             {
@@ -87,7 +114,7 @@ namespace GraphView.Transaction
                 {
                     if (PartitionedCassandraVersionDb.instance == null)
                     {
-                        PartitionedCassandraVersionDb.instance = new PartitionedCassandraVersionDb(partitionCount);
+                        PartitionedCassandraVersionDb.instance = new PartitionedCassandraVersionDb(partitionCount, contactPoints, replicationFactor, consistencyLevel);
                     }
                 }
             }

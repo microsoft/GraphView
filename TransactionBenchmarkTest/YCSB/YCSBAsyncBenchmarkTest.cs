@@ -423,20 +423,44 @@
         }
 
         // for PartitionedCassandra
-        internal void Run2()
+        internal void Run2(string exeType = "ycsb_sync_ro_intk")
         {
+            Console.WriteLine("**** Execute Type: " + exeType + " ****");
             Console.WriteLine("Try to run {0} tasks in {1} workers", (this.executorCount * this.txCountPerExecutor), this.executorCount);
 
             //  create multi threads
             List<Thread> threadList = new List<Thread>(this.executorCount);
             foreach (TransactionExecutor executor in this.executorList)
             {
-                //Thread thread = new Thread(executor.YCSBExecuteRead2);
-                //Thread thread = new Thread(executor.YCSBExecuteRead3);
-                Thread thread = new Thread(executor.Execute2);
-                //Thread thread = new Thread(executor.CassandraReadOnly);
-                //Thread thread = new Thread(executor.CassandraUpdateOnly);
-                //Thread thread = new Thread(executor.YCSBExecuteUpdate3);
+                Thread thread = null;
+
+                switch(exeType)
+                {
+                    case "ycsb_sync_ro_strk":
+                        thread = new Thread(executor.YCSBExecuteRead2);
+                        break;
+                    ///
+                    case "ycsb_sync_ro_intk":
+                        thread = new Thread(executor.YCSBExecuteRead3);
+                        break;
+                    case "ycsb_sync_wo_intk":
+                        thread = new Thread(executor.YCSBExecuteUpdate3);
+                        break;
+                    case "ycsb_sync_rw_intk":
+                        thread = new Thread(executor.YCSBExecuteReadUpdateHybrid);
+                        break;
+                    ///
+                    case "async":
+                        thread = new Thread(executor.Execute2);
+                        break;
+                    // test cassandra throughput only
+                    case "cassandra_ro_intk":
+                        thread = new Thread(executor.CassandraReadOnly);
+                        break;
+                    case "cassandra_wo_intk":
+                        thread = new Thread(executor.CassandraUpdateOnly);
+                        break;
+                }
 
                 threadList.Add(thread);
             }
@@ -565,6 +589,7 @@
                 Console.WriteLine("STABLE ROUND {0} seconds: throughput {1}/s", delta1, delta2 * 1.0 / delta1Seconds);
             }
 
+            // NOTE: this method may be incorrect if there is no sharing time among threads
             Console.WriteLine("==== Throughput SUM of each worker ====");
             Console.WriteLine("MinEnd - MaxStart = {0}s", (minEndTicks - maxStartTicks) * 1.0 / 10000000);
             Console.WriteLine("Transaction Throughput: {0} tx/s\n", thSum);
@@ -747,7 +772,7 @@
                         line = reader.ReadLine();
                         string[] fields = this.ParseCommandFormat(line);
                         YCSBWorkload workload = new YCSBWorkload(fields[0], TABLE_ID, fields[2], fields[3]);
-                        Console.WriteLine("recordkey = {0}", fields[2]);
+                        //Console.WriteLine("recordkey = {0}", fields[2]);
                         string sessionId = ((i * this.txCountPerExecutor) + j + 1).ToString();
                         TransactionRequest req = new TransactionRequest(sessionId, workload, StoredProcedureType.YCSBStordProcedure);
                         reqQueue.Enqueue(req);
