@@ -448,9 +448,9 @@ namespace TransactionBenchmarkTest.YCSB
         public static void YCSBAsyncTestWithPartitionedCassandraHybrid(string[] args)
         {
             string action = "run";
-            int workerCount = 1;
+            int workerCount = 2;
             int taskCountPerWorker = 2;
-            int partitionCount = 1;
+            int partitionCount = 2;
 
             int runall = 1;
             int stableRoundStart = 5;
@@ -514,19 +514,17 @@ namespace TransactionBenchmarkTest.YCSB
 
                 // The default mode of versionDb is daemonMode
                 PartitionedCassandraVersionDb versionDb = PartitionedCassandraVersionDb.Instance(partitionCount);
-                Console.WriteLine("before async benchmark");
                 YCSBAsyncBenchmarkTest test = new YCSBAsyncBenchmarkTest(0,
                     workerCount, taskCountPerWorker, versionDb, tables);
-                Console.WriteLine("after async benchmark");
                 if (runall == 0)
                 {
                     test.SetStableRound(stableRoundStart, stableRoundEnd);
                 }
-                
-                test.SetupOpsNull();
 
-                //test.SetupOps(operationFile);
-                //test.StartMonitors();
+                //test.SetupOpsNull();
+
+                test.SetupOps(operationFile);
+                test.StartMonitors();
 
                 test.Run2();
                 test.Stats2();

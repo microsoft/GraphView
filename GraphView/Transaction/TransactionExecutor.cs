@@ -157,7 +157,7 @@ namespace GraphView.Transaction
             this.GarbageQueueTxId = new Queue<long>();
             this.GarbageQueueFinishTime = new Queue<long>();
             this.txRange = startRange < 0 ? null : new TxRange(startRange);
-            this.ResourceManager = resourceManager == null ? new TxResourceManager() : resourceManager;
+            this.ResourceManager = resourceManager; // == null ? new TxResourceManager() : resourceManager;
             this.txRuntimePool = new Queue<Tuple<TransactionExecution, Queue<TransactionRequest>>>();
             this.workingSet = new List<string>(this.workingSetSize);
 

@@ -123,7 +123,7 @@ namespace GraphView.Transaction
                 this.flushQueues[pid] = new Queue<TxEntryRequest>(1024);
                 this.queueLatches[pid] = 0;
                 this.requestUDFQueues[pid] = new RequestQueue<TxEntryRequest>(partitionCount);
-                this.txResourceManagers.Add(new TxResourceManager());
+                //this.txResourceManagers.Add(new TxResourceManager());
             }
 
             this.PhysicalPartitionByKey = key => Math.Abs(key.GetHashCode()) % this.PartitionCount;

@@ -413,8 +413,11 @@
             for (int i = 0; i < this.executorCount; i++)
             {
                 int partition_index = i % this.versionDb.PartitionCount;
+                //executors.Add(new TransactionExecutor(this.versionDb, null, null, partition_index, i, 0,
+                //    this.versionDb.GetResourceManager(partition_index), tables, null, null, this.recordCount, this.txCountPerExecutor));
                 executors.Add(new TransactionExecutor(this.versionDb, null, null, partition_index, i, 0,
-                    this.versionDb.GetResourceManager(partition_index), tables, null, null, this.recordCount, this.txCountPerExecutor));
+                    null, tables, null, null, this.recordCount, this.txCountPerExecutor));
+                //Console.WriteLine("i={0}", i);
             }
             this.executorList = executors;
         }
@@ -430,10 +433,10 @@
             {
                 //Thread thread = new Thread(executor.YCSBExecuteRead2);
                 //Thread thread = new Thread(executor.YCSBExecuteRead3);
-                //Thread thread = new Thread(executor.Execute2);
+                Thread thread = new Thread(executor.Execute2);
                 //Thread thread = new Thread(executor.CassandraReadOnly);
                 //Thread thread = new Thread(executor.CassandraUpdateOnly);
-                Thread thread = new Thread(executor.YCSBExecuteUpdate3);
+                //Thread thread = new Thread(executor.YCSBExecuteUpdate3);
 
                 threadList.Add(thread);
             }

@@ -28,14 +28,14 @@ namespace GraphView.Transaction
         // as those in `CassandraVersionTable`
         internal RowSet CQLExecute(string cql)
         {
-            Console.WriteLine(this.PartitionId + ";" + cql);
+            //Console.WriteLine(this.PartitionId + ";" + cql);
 
             return this.SessionManager.GetSession(PartitionedCassandraVersionDb.DEFAULT_KEYSPACE).Execute(cql);
         }
 
         internal bool CQLExecuteWithIfApplied(string cql)
         {
-            Console.WriteLine(this.PartitionId + ";" + cql);
+            //Console.WriteLine(this.PartitionId + ";" + cql);
 
             var rs = this.SessionManager.GetSession(PartitionedCassandraVersionDb.DEFAULT_KEYSPACE).Execute(cql);
             var rse = rs.GetEnumerator();
@@ -103,13 +103,25 @@ namespace GraphView.Transaction
                 return null;
             }
 
-            ve.Set(
-                recordKey, versionKey, row.GetValue<long>("begintimestamp"),
-                row.GetValue<long>("endtimestamp"),
-                BytesSerializer.Deserialize(row.GetValue<byte[]>("record")),
-                row.GetValue<long>("txid"),
-                row.GetValue<long>("maxcommitts"));
-            return ve;
+            if (ve == null)
+            {
+                return new VersionEntry(recordKey, versionKey, row.GetValue<long>("begintimestamp"),
+                    row.GetValue<long>("endtimestamp"),
+                    BytesSerializer.Deserialize(row.GetValue<byte[]>("record")),
+                    row.GetValue<long>("txid"),
+                    row.GetValue<long>("maxcommitts"));
+            }
+            else
+            {
+                ve.Set(
+                    recordKey, versionKey, row.GetValue<long>("begintimestamp"),
+                    row.GetValue<long>("endtimestamp"),
+                    BytesSerializer.Deserialize(row.GetValue<byte[]>("record")),
+                    row.GetValue<long>("txid"),
+                    row.GetValue<long>("maxcommitts"));
+
+                return ve;
+            }
         }
 
         internal override void Visit(ReadVersionRequest req)
