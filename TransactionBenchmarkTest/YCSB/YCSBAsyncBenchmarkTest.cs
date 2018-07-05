@@ -240,6 +240,11 @@
             // step3: load data
             //this.LoadDataParallely(dataFile);
             //this.LoadDataSequentially(dataFile);
+            if (this.versionDb is SingletonVersionDb ||
+                this.versionDb is RedisVersionDb)
+            {
+                this.versionDb.MockLoadData(this.recordCount);
+            }
 
             // step 4: fill workers' queue
             if (this.versionDb is SingletonPartitionedVersionDb && RESHUFFLE)

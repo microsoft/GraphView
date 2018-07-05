@@ -23,12 +23,6 @@ namespace GraphView.Transaction
 
     internal class TransactionExecutor
     {
-        internal static VersionEntry[] firstVersionEntryArray;
-
-        internal static VersionEntry[] dummyVersionEntryArray;
-
-        internal static VersionEntry[] versionEntryArray;
-
         private int executorId = 0;
 
         /// <summary>
@@ -164,10 +158,8 @@ namespace GraphView.Transaction
             this.Partition = partition;
             this.flushTables = flushTables;
 
-
             this.startEventSlim = startEventSlim;
             this.countdownEvent = countdownEvent;
-
 
             this.txExecution = new TransactionExecution(this.logStore, this.versionDb, null,
                 this.GarbageQueueTxId,this.GarbageQueueFinishTime, this.txRange, this, this.ResourceManager);
@@ -334,7 +326,7 @@ namespace GraphView.Transaction
 
         public void YCSBExecuteUpdate()
         {
-            PinThreadOnCores(this.Partition);
+            // PinThreadOnCores(this.Partition);
 
             this.RunBeginTicks = DateTime.Now.Ticks;
             Random rand = new Random();

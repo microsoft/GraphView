@@ -262,6 +262,8 @@
 				VersionTable versionTable = this.versionTables[tableId];
 				versionTable.Clear();
 			}
+
+            this.versionTables.Clear();
 		}
 
         internal override void MockLoadData(int recordCount)
