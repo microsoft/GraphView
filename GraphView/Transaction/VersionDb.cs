@@ -24,7 +24,7 @@ namespace GraphView.Transaction
         /// <summary>
         /// Whether to use user defined queue
         /// </summary>
-        public static bool UDF_QUEUE = true;
+        public static bool UDF_QUEUE = false;
 
 
         public static readonly int RECORD_CAPACITY = 1000000;

@@ -66,7 +66,7 @@ namespace GraphView.Transaction
 
             //////////////////////////////////////////////////
 
-            int pid = this.VersionDb.PhysicalTxPartitionByKey(req.RecordKey);
+            int pid = this.VersionDb.PhysicalPartitionByKey(req.RecordKey);
 
             //while (Interlocked.CompareExchange(ref this.latches[pid], 1, 0) != 0) ;
             //partitionedQueues[pid].Enqueue(req, execPartition);

@@ -66,6 +66,12 @@ namespace GraphView.Transaction
             {
                 this.transRequests.AddNewResource(new TransactionRequest());
             }
+
+            // Fill enough entries for transaction execution
+            //for (int i = 0; i < 2000000; i++)
+            //{
+            //    this.versionEntries.Enqueue(new VersionEntry());
+            //}
         }
 
         internal TransactionRequest TransactionRequest(

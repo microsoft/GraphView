@@ -557,6 +557,86 @@ namespace GraphView.Transaction
 
         }
 
+        // key is int
+        public void YCSBExecuteReadUpdateHybrid()
+        {
+            Random rand = new Random();
+            int readRate = 50;      // 50%
+            int updateRate = 50;    // 50%
+
+            bool received = false;
+            object payload = null;
+            int indexBound = 200000;    // setting
+            string updatePayload = new String('a', 100);
+
+            int[] intKeys = new int[this.taskCount];
+            int[] opTypes = new int[this.taskCount];        // 0-read, 1-update
+
+            //for (int i=0; i<this.taskCount; i++)
+            //{
+            //    intKeys[i] = rand.Next(0, indexBound);
+            //}
+            intKeys[0] = this.Partition;
+            opTypes[0] = rand.Next(0, 100) < readRate ? 0 : 1;
+
+            for (int i = 1; i < this.taskCount; i++)
+            {
+                if (intKeys[i - 1] + this.versionDb.PartitionCount >= indexBound)
+                {
+                    intKeys[i] = this.Partition;
+                }
+                else
+                {
+                    intKeys[i] = intKeys[i - 1] + this.versionDb.PartitionCount;
+                }
+
+                opTypes[i] = rand.Next(0, 100) < readRate ? 0 : 1;
+            }
+
+            //int ucnt = 0;
+            //for (int i = 0; i < this.taskCount; i++)
+            //{
+            //    ucnt += opTypes[i];
+            //}
+            //Console.WriteLine("update count={0}/{1}", ucnt, this.taskCount);
+
+            this.RunBeginTicks = DateTime.Now.Ticks;
+
+            for (int i = 0; i < this.taskCount; i++)
+            {
+                if (!this.Active)
+                {
+                    break;
+                }
+                this.txExecution.Reset();
+
+                int recordKey = intKeys[i];
+                this.txExecution.Read("ycsb_table", recordKey, out received, out payload);
+
+                // execute update
+                if (opTypes[i] == 1)
+                {
+                    payload = this.txExecution.ReadPayload;
+                    if (payload != null)
+                    {
+                        this.txExecution.Update("ycsb_table", recordKey, updatePayload);
+                    }
+                }
+
+                this.txExecution.Commit();
+                if (this.txExecution.TxStatus == TxStatus.Committed)
+                {
+                    this.CommittedTxs++;
+                }
+                this.FinishedTxs++;
+            }
+
+            this.RunEndTicks = DateTime.Now.Ticks;
+
+            this.AllRequestsFinished = true;
+
+        }
+
         private CassandraSessionManager SessionManager
         {
             get
@@ -847,7 +927,7 @@ namespace GraphView.Transaction
                 // The implementation of the flush logic needs to be refined.
                 if (this.flushTables != null && this.flushTables.Length > 0)
                 {
-                    this.FlushInstances();
+                    //this.FlushInstances();
                 }
             }
 
