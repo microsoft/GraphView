@@ -13,6 +13,11 @@
     public partial class RedisVersionDb : VersionDb, IDisposable
     {
         /// <summary>
+        /// The default redis config read-write host
+        /// </summary>
+        public static readonly string DEFAULT_REDIS_HOST = "127.0.0.1:6379";
+
+        /// <summary>
         /// The defalut hashset key for the meta table
         /// meta table is a map of tableId to redisDbIndex
         /// </summary>          
@@ -95,42 +100,35 @@
         /// </summary>
         internal RedisLuaScriptManager RedisLuaManager { get; private set; }
 
-        // Init the redis client manager
-        // TODO: get readWriteHosts from config file
-        static string[] readWriteHosts = new string[]
-        {
-            "127.0.0.1:6379",
-            //"127.0.0.1:6381",
-            //"127.0.0.1:6382",
-            //"127.0.0.1:6383",
-            //"127.0.0.1:6384",
-            //"127.0.0.1:6385",
-            //"127.0.0.1:6386",
-            //"127.0.0.1:6387",
-            //"127.0.0.1:6388",
-            //"127.0.0.1:6389",
-            //"127.0.0.1:6390",
-            //"127.0.0.1:6390",
-            //"127.0.0.1:6391",
-            //"127.0.0.1:6392",
-            //"127.0.0.1:6393",
-            //"127.0.0.1:6394",
-            //"127.0.0.1:6395",
-        };
+
+        /// <summary>
+        /// Redis Partition Host Config
+        /// Host Sample:  "127.0.0.1:6379",
+        /// </summary>
+        private string[] readWriteHosts;
 
         /// <summary>
         /// Provide an option to set version db in pipelineMode or not
         /// </summary>
         public bool PipelineMode { get; set; } = false;
 
-        private RedisVersionDb()
-            : base(RedisVersionDb.readWriteHosts.Length)
+        private RedisVersionDb(int partitionCount, string[] readWriteHosts)
+            : base(partitionCount)
         {
+            this.PartitionCount = partitionCount;
+
+            if (readWriteHosts == null || readWriteHosts.Length < partitionCount)
+            {
+                throw new ArgumentException("The size of readWriteHosts should be equal to or larger than partitionCount");
+            }
+            this.readWriteHosts = readWriteHosts;
+
             this.tableLock = new object();
             this.responseVisitor = new RedisResponseVisitor();
+
             this.Setup();
 
-            for (int pid = 0; pid < RedisVersionDb.readWriteHosts.Length; pid++)
+            for (int pid = 0; pid < this.PartitionCount; pid++)
             {
                 RedisConnectionPool clientPool = this.RedisManager.GetClientPool(
                     RedisVersionDb.TX_DB_INDEX, pid);
@@ -138,24 +136,28 @@
             }
         }
 
-        public static RedisVersionDb Instance
+        public static RedisVersionDb Instance(int partitionCount = 1, string[] readWriteHosts = null)
         {
-            get
+            if (RedisVersionDb.instance == null)
             {
-                if (RedisVersionDb.instance == null)
+                lock (RedisVersionDb.initLock)
                 {
-                    lock (RedisVersionDb.initLock)
+                    if (RedisVersionDb.instance == null)
                     {
-                        if (RedisVersionDb.instance == null)
+                        if (readWriteHosts == null || readWriteHosts.Length == 0)
                         {
-                            RedisVersionDb.instance = new RedisVersionDb();
+                            RedisVersionDb.instance = new RedisVersionDb(
+                                1, new string[] { RedisVersionDb.DEFAULT_REDIS_HOST });
+                        }
+                        else
+                        {
+                            RedisVersionDb.instance = new RedisVersionDb(partitionCount, readWriteHosts);
                         }
                     }
                 }
-                return RedisVersionDb.instance;
-            } 
+            }
+            return RedisVersionDb.instance;
         }
-
     }
 
     /// <summary>
@@ -299,18 +301,50 @@
             }
         }
 
-        // Clear the database with FLUSHALL command
         internal override void Clear()
         {
-            int redisInstanceCount = this.RedisManager.RedisInstanceCount;
-            // The default redis db index
-            int redisDbIndex = 0;
-            for (int partition = 0; partition < redisInstanceCount; partition++)
+            for (int pk = 0; pk < this.PartitionCount; pk++)
             {
-                using (RedisClient redisClient = this.RedisManager.GetClient(redisDbIndex, partition))
+                using (RedisClient redisClient = this.RedisManager.GetClient(RedisVersionDb.TX_DB_INDEX, pk))
                 {
-                    redisClient.FlushAll();
+                    redisClient.FlushDb();
                 }
+            }
+
+            foreach (VersionTable versionTable in this.versionTables.Values)
+            {
+                versionTable.Clear();
+            }
+
+            this.versionTables.Clear();
+        }
+
+        internal override void AddPartition(int partitionCount)
+        {
+            int prePartitionCount = this.PartitionCount;
+            base.AddPartition(partitionCount);
+
+            Array.Resize(ref this.dbVisitors, partitionCount);
+            for (int pid = prePartitionCount; pid < partitionCount; pid++)
+            {
+                RedisConnectionPool clientPool = this.RedisManager.GetClientPool(
+                    RedisVersionDb.TX_DB_INDEX, pid);
+                this.dbVisitors[pid] = new RedisVersionDbVisitor(clientPool);
+            }
+
+            foreach (VersionTable versionTable in this.versionTables.Values)
+            {
+                versionTable.AddPartition(partitionCount);
+            }
+
+            this.PartitionCount = partitionCount;
+        }
+
+        internal override void MockLoadData(int recordCount)
+        {
+            foreach (VersionTable versionTable in this.versionTables.Values)
+            {
+                versionTable.MockLoadData(recordCount);
             }
         }
     }
@@ -352,6 +386,12 @@
         //        }
         //    }
         //}
+
+        internal override void EnqueueTxEntryRequest(long txId, TxEntryRequest txEntryRequest, int executorPK = 0)
+        {
+            base.EnqueueTxEntryRequest(txId, txEntryRequest, executorPK);
+        }
+
 
         /// <summary>
         /// Get a unique transaction Id and store the txTableEntry into the redis

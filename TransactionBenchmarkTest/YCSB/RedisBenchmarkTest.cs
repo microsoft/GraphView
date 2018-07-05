@@ -30,7 +30,7 @@
     {
         public static readonly long REDIS_DB_INDEX = 3L;
 
-        public static RedisVersionDb REDIS_VERSION_DB = RedisVersionDb.Instance;
+        public static RedisVersionDb REDIS_VERSION_DB = RedisVersionDb.Instance();
 
         public static Func<object, object> ACTION = (object obj) =>
         {

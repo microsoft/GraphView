@@ -12,24 +12,37 @@ namespace GraphView.Transaction
     {
         public readonly string tableId;
 
-        internal static readonly int VERSION_LIST_MAX_SIZE = 4;
+        /// <summary>
+        /// The maximal version entry count for version list
+        /// </summary>
+        internal static readonly int VERSION_CAPACITY = 4;
 
-        protected readonly RequestQueue<VersionEntryRequest>[] requestUDFQueues;
+        /// <summary>
+        /// The maximal size of requests queue
+        /// </summary>
+        internal static readonly int REQUEST_QUEUE_CAPACITY = 1024;
+
+        protected RequestQueue<VersionEntryRequest>[] requestUDFQueues;
 
         /// <summary>
         /// Request queues for logical partitions of a version table
         /// </summary>
-        protected readonly Queue<VersionEntryRequest>[] requestQueues;
+        protected Queue<VersionEntryRequest>[] requestQueues;
 
         /// <summary>
         /// A queue of version entry requests for each partition to be flushed to the k-v store
         /// </summary>
-        protected readonly Queue<VersionEntryRequest>[] flushQueues;
+        protected Queue<VersionEntryRequest>[] flushQueues;
 
-        //internal readonly VersionTableVisitor[] tableVisitors;
+        /// <summary>
+        /// table visitors for version entry requests
+        /// </summary>
         internal VersionTableVisitor[] tableVisitors;   // to avoid memory overflow used by cassandra
 
-        private readonly int[] queueLatches;
+        /// <summary>
+        /// The latches to sync flush queues and request Queues
+        /// </summary>
+        private int[] queueLatches;
 
         /// <summary>
         /// The version db instance of the current version table
@@ -37,22 +50,33 @@ namespace GraphView.Transaction
         /// </summary>
         internal VersionDb VersionDb { get; set; }
 
+        /// <summary>
+        /// The number of partitions for the current version table
+        /// </summary>
+        internal int PartitionCount { get; set; }
+
         public VersionTable(VersionDb versionDb, string tableId, int partitionCount = 4)
         {
+            // private properties
             this.VersionDb = versionDb;
             this.tableId = tableId;
+            this.PartitionCount = partitionCount;
 
+            // the table visitors
+            this.tableVisitors = new VersionTableVisitor[partitionCount];
+
+            // the request queues
             this.requestUDFQueues = new RequestQueue<VersionEntryRequest>[partitionCount];
             this.requestQueues = new Queue<VersionEntryRequest>[partitionCount];
             this.flushQueues = new Queue<VersionEntryRequest>[partitionCount];
-            this.tableVisitors = new VersionTableVisitor[partitionCount];
             this.queueLatches = new int[partitionCount];
 
             for (int pid = 0; pid < partitionCount; pid++)
             {
+                // TODO: How to limit the request queue size
                 this.requestUDFQueues[pid] = new RequestQueue<VersionEntryRequest>(partitionCount);
-                this.requestQueues[pid] = new Queue<VersionEntryRequest>(1024);
-                this.flushQueues[pid] = new Queue<VersionEntryRequest>(1024);
+                this.requestQueues[pid] = new Queue<VersionEntryRequest>(VersionTable.REQUEST_QUEUE_CAPACITY);
+                this.flushQueues[pid] = new Queue<VersionEntryRequest>(VersionTable.REQUEST_QUEUE_CAPACITY);
                 this.queueLatches[pid] = 0;
             }
         }
@@ -63,7 +87,19 @@ namespace GraphView.Transaction
         /// <param name="partitionCount">The number of partitions after add new partitions</param>
         internal virtual void AddPartition(int partitionCount)
         {
-            // TODO: extend containers
+            // TODO: Comment to aviod memory overflow
+            //Array.Resize(ref this.requestUDFQueues, partitionCount);
+            //Array.Resize(ref this.requestQueues, partitionCount);
+            //Array.Resize(ref this.flushQueues, partitionCount);
+            //Array.Resize(ref this.queueLatches, partitionCount);
+
+            //for (int pid = this.PartitionCount; pid < partitionCount; pid++)
+            //{
+            //    this.requestUDFQueues[pid] = new RequestQueue<VersionEntryRequest>(partitionCount);
+            //    this.requestQueues[pid] = new Queue<VersionEntryRequest>(1024);
+            //    this.flushQueues[pid] = new Queue<VersionEntryRequest>(1024);
+            //    this.queueLatches[pid] = 0;
+            //}
         }
 
         internal virtual void EnqueueVersionEntryRequest(VersionEntryRequest req, int execPartition = 0)

@@ -21,7 +21,7 @@ namespace TransactionBenchmarkTest.TPCC
             redisClient.ChangeDb(Constants.RedisIndexDbN);
             redisClient.FlushAll(); // flush all first
 
-            VersionDb redisVersionDb = RedisVersionDb.Instance;
+            VersionDb redisVersionDb = RedisVersionDb.Instance();
             redisVersionDb.CreateVersionTable(Constants.DefaultTbl, Constants.RedisDbN);
 
             //string baseDir = Constants.BaseDirOfDatasets;

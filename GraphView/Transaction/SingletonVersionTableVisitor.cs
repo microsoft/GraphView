@@ -147,7 +147,7 @@
                 tailEntry.BeginTimestamp = req.VersionKey;
 
                 VersionEntry oldVerEntry = null;
-                if (versionList.Count > VersionTable.VERSION_LIST_MAX_SIZE)
+                if (versionList.Count > VersionTable.VERSION_CAPACITY)
                 {
                     tailEntry.EndTimestamp = headKey + 1;
                     versionList.TryRemove(headKey, out oldVerEntry);
