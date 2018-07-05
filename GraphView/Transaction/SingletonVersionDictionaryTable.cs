@@ -293,18 +293,7 @@
 
         internal override void Clear()
         {
-            //int recordCount = this.dict.Count;
-            //int prePartitionCount = this.VersionDb.PartitionCount;
-            //int recordsPerPartition = recordCount / prePartitionCount;
-
-            this.dict.Clear();
-
-            // fill the dict to avoid resizing
-            //int comingRecordCount = recordsPerPartition * (prePartitionCount + 1);
-            //for (int i = 0; i < comingRecordCount; i++)
-            //{
-            //    this.dict.TryAdd(i, TransactionExecutor.dummyVersionEntryArray[i]);
-            //}
+            this.dict.Clear(); 
         }
 
         internal override void MockLoadData(int recordCount)

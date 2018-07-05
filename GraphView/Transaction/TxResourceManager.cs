@@ -56,23 +56,15 @@ namespace GraphView.Transaction
     {
         internal static readonly int workingsetCapacity = 100;
         // It's for the tx version entries during execution
-        private Queue<VersionEntry> versionEntries;
         private ResourcePool<TransactionRequest> transRequests;
 
         public TxResourceManager()
         {
             this.transRequests = new ResourcePool<TransactionRequest>(TxResourceManager.workingsetCapacity);
-            this.versionEntries = new Queue<VersionEntry>();
 
             for (int i = 0; i < TxResourceManager.workingsetCapacity; i++)
             {
                 this.transRequests.AddNewResource(new TransactionRequest());
-            }
-
-            // Fill enough entries for transaction execution
-            for (int i = 0; i < 2000000; i++)
-            {
-                this.versionEntries.Enqueue(new VersionEntry());
             }
         }
 
@@ -130,21 +122,6 @@ namespace GraphView.Transaction
         {
             transReq.Free();
             transReq = null;
-        }
-
-        internal VersionEntry VersionEntry()
-        {
-            if (this.versionEntries.Count == 0)
-            {
-                return new VersionEntry();
-            }
-            return this.versionEntries.Dequeue();
-        }
-
-        internal void RecycleVersionEntry(ref VersionEntry version)
-        {
-            this.versionEntries.Enqueue(version);
-            version = null;
         }
     }
 }

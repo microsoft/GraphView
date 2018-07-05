@@ -162,8 +162,6 @@ namespace TransactionBenchmarkTest.YCSB
 
             // these three settings are useless in SingletonVersionDb environment.
             const bool daemonMode = false;
-            const TestType testType = TestType.Update;
-            YCSBAsyncBenchmarkTest.RESHUFFLE = false;
 
             string[] tables =
             {
@@ -179,9 +177,12 @@ namespace TransactionBenchmarkTest.YCSB
                 currentExecutorCount, txCountPerExecutor, versionDb, tables);
 
             test.Setup(dataFile, operationFile);
-            versionDb.MockLoadData(recordCount);
             for (; currentExecutorCount <= partitionCount; currentExecutorCount++)
             {
+                if (currentExecutorCount > 1)
+                {
+                    versionDb.AddPartition(currentExecutorCount);
+                }
                 test.ResetAndFillWorkerQueue(operationFile, currentExecutorCount);
                 test.Run();
                 test.Stats();
