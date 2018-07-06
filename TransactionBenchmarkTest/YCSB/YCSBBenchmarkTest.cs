@@ -288,6 +288,61 @@
         }
 
 
+        void batchInsert(int s, int e, VersionDb vdb, List<string> lines)
+        {
+            //Console.WriteLine("s={0}, e={1}", s, e);
+            Transaction tx = new Transaction(null, vdb);
+            string readValue = null;
+            for (int i = s; i < e; i++)
+            {
+                //Console.WriteLine("i={0}, cnt={1}", i, lines.Count);
+                string[] fields = this.ParseCommandFormat(lines[i]);
+                //readValue = (string)tx.ReadAndInitialize(TABLE_ID, fields[2]);
+                readValue = (string)tx.ReadAndInitialize(TABLE_ID, i);
+                if (readValue == null)
+                {
+                    //tx.Insert(TABLE_ID, fields[2], fields[3]);
+                    tx.Insert(TABLE_ID, i, fields[3]);
+                }
+            }
+            tx.Commit();
+        }
+        
+        void loadWithOneThread(int tid, int s, int e, List<string> lines, List<VersionDb> vdbList, int[] finishedCnt)
+        {
+            string line;
+            for (int i = s; i < e; i++)
+            {
+                line = lines[i];
+                string[] fields = this.ParseCommandFormat(line);
+                TxWorkload workload = new TxWorkload(fields[0], TABLE_ID, fields[2], fields[3]);
+                ACTION(Tuple.Create(workload, vdbList[tid]));
+                finishedCnt[tid] += 1;
+            }
+        }
+
+        void loadWithOneThreadBatch(int tid, int s, int e, List<VersionDb> vdbList, int[] finishedCnt, List<string> lines)
+        {
+            //Console.WriteLine("tid={0}, s={1}, e={2}", tid, s, e);
+            int batchSize = 50;
+            string line;
+            for (int i = s; i < e; i += batchSize)
+            {
+                int end = i + batchSize;
+                if (end > e)
+                {
+                    end = e;
+                }
+                batchInsert(i, end, vdbList[tid], lines);
+
+                finishedCnt[tid] += (end - i);
+                if (finishedCnt[tid] % 100 == 0)
+                {
+                    //Console.WriteLine("Load {0}", finishedCnt[tid]);
+                }
+            }
+        }
+
 
         internal void LoadDataWithMultiThreads(string dataFile, List<VersionDb> vdbList, int threadCount = 8)
         {
@@ -324,59 +379,59 @@
                 finishedCnt[i] = 0;
             }
 
-            void batchInsert(int s, int e, VersionDb vdb)
-            {
-                //Console.WriteLine("s={0}, e={1}", s, e);
-                Transaction tx = new Transaction(null, vdb);
-                string readValue = null;
-                for (int i = s; i < e; i++)
-                {
-                    //Console.WriteLine("i={0}, cnt={1}", i, lines.Count);
-                    string[] fields = this.ParseCommandFormat(lines[i]);
-                    //readValue = (string)tx.ReadAndInitialize(TABLE_ID, fields[2]);
-                    readValue = (string)tx.ReadAndInitialize(TABLE_ID, i);
-                    if (readValue == null)
-                    {
-                        //tx.Insert(TABLE_ID, fields[2], fields[3]);
-                        tx.Insert(TABLE_ID, i, fields[3]);
-                    }
-                }
-                tx.Commit();
-            }
+            //void batchInsert(int s, int e, VersionDb vdb)
+            //{
+            //    //Console.WriteLine("s={0}, e={1}", s, e);
+            //    Transaction tx = new Transaction(null, vdb);
+            //    string readValue = null;
+            //    for (int i = s; i < e; i++)
+            //    {
+            //        //Console.WriteLine("i={0}, cnt={1}", i, lines.Count);
+            //        string[] fields = this.ParseCommandFormat(lines[i]);
+            //        //readValue = (string)tx.ReadAndInitialize(TABLE_ID, fields[2]);
+            //        readValue = (string)tx.ReadAndInitialize(TABLE_ID, i);
+            //        if (readValue == null)
+            //        {
+            //            //tx.Insert(TABLE_ID, fields[2], fields[3]);
+            //            tx.Insert(TABLE_ID, i, fields[3]);
+            //        }
+            //    }
+            //    tx.Commit();
+            //}
 
-            void loadWithOneThread(int tid, int s, int e)
-            {
-                string line;
-                for (int i = s; i < e; i++)
-                {
-                    line = lines[i];
-                    string[] fields = this.ParseCommandFormat(line);
-                    TxWorkload workload = new TxWorkload(fields[0], TABLE_ID, fields[2], fields[3]);
-                    ACTION(Tuple.Create(workload, vdbList[tid]));
-                    finishedCnt[tid] += 1;
-                }
-            }
-            void loadWithOneThreadBatch(int tid, int s, int e)
-            {
-                //Console.WriteLine("tid={0}, s={1}, e={2}", tid, s, e);
-                int batchSize = 50;
-                string line;
-                for (int i = s; i < e; i += batchSize)
-                {
-                    int end = i + batchSize;
-                    if (end > e)
-                    {
-                        end = e;
-                    }
-                    batchInsert(i, end, vdbList[tid]);
+            //void loadWithOneThread(int tid, int s, int e)
+            //{
+            //    string line;
+            //    for (int i = s; i < e; i++)
+            //    {
+            //        line = lines[i];
+            //        string[] fields = this.ParseCommandFormat(line);
+            //        TxWorkload workload = new TxWorkload(fields[0], TABLE_ID, fields[2], fields[3]);
+            //        ACTION(Tuple.Create(workload, vdbList[tid]));
+            //        finishedCnt[tid] += 1;
+            //    }
+            //}
+            //void loadWithOneThreadBatch(int tid, int s, int e)
+            //{
+            //    //Console.WriteLine("tid={0}, s={1}, e={2}", tid, s, e);
+            //    int batchSize = 50;
+            //    string line;
+            //    for (int i = s; i < e; i += batchSize)
+            //    {
+            //        int end = i + batchSize;
+            //        if (end > e)
+            //        {
+            //            end = e;
+            //        }
+            //        batchInsert(i, end, vdbList[tid]);
 
-                    finishedCnt[tid] += (end - i);
-                    if (finishedCnt[tid] % 100 == 0)
-                    {
-                        //Console.WriteLine("Load {0}", finishedCnt[tid]);
-                    }
-                }
-            }
+            //        finishedCnt[tid] += (end - i);
+            //        if (finishedCnt[tid] % 100 == 0)
+            //        {
+            //            //Console.WriteLine("Load {0}", finishedCnt[tid]);
+            //        }
+            //    }
+            //}
 
             //loadWithOneThreadBatch(0, 0, lines.Count);
 
@@ -388,11 +443,11 @@
                 Thread t;
                 if (i == threadCount - 1)
                 {
-                    t = new Thread(() => loadWithOneThreadBatch(i, i * cntPerThread, lines.Count));
+                    t = new Thread(() => loadWithOneThreadBatch(i, i * cntPerThread, lines.Count, vdbList, finishedCnt, lines));
                 }
                 else
                 {
-                    t = new Thread(() => loadWithOneThreadBatch(i, i * cntPerThread, (i + 1) * cntPerThread));
+                    t = new Thread(() => loadWithOneThreadBatch(i, i * cntPerThread, (i + 1) * cntPerThread, vdbList, finishedCnt, lines));
                 }
                 threads.Add(t);
                 t.Start();
