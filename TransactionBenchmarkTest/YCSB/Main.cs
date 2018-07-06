@@ -446,7 +446,7 @@ namespace TransactionBenchmarkTest.YCSB
         }
         public static void YCSBAsyncTestWithPartitionedCassandraHybrid(string[] args)
         {
-            string action = "load";
+            string action = "run";
             int workerCount = 10;
             int taskCountPerWorker = 1000;
             int partitionCount = 10;    // equal to workerCount
@@ -469,8 +469,8 @@ namespace TransactionBenchmarkTest.YCSB
             //ConsistencyLevel consistencyLevel = ConsistencyLevel.Quorum;
 
             // see YCSBAsyncBenchmarkTest.run2 to know all types
-            //string exeType = "ycsb_sync_ro_intk";
-            string exeType = "async";
+            string exeType = "ycsb_sync_ro_intk";
+            //string exeType = "async";
 
             int i = 0;
             while (i < args.Length)
@@ -556,11 +556,11 @@ namespace TransactionBenchmarkTest.YCSB
                 }
 
                 // sync test
-                //test.SetupOpsNull();
+                test.SetupOpsNull();
 
                 // async test
-                test.SetupOps(operationFile);
-                test.StartMonitors();
+                //test.SetupOps(operationFile);
+                //test.StartMonitors();
 
                 test.Run2(exeType);
                 test.Stats2();
