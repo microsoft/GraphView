@@ -343,7 +343,6 @@
             }
         }
 
-
         internal void LoadDataWithMultiThreads(string dataFile, List<VersionDb> vdbList, int threadCount = 8)
         {
             long beginTicks = DateTime.Now.Ticks;
