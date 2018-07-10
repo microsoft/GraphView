@@ -470,6 +470,7 @@ namespace TransactionBenchmarkTest.YCSB
 
             // see YCSBAsyncBenchmarkTest.run2 to know all types
             string exeType = "ycsb_sync_ro_intk";
+            //string exeType = "async";
 
             int i = 0;
             while (i < args.Length)
@@ -531,7 +532,7 @@ namespace TransactionBenchmarkTest.YCSB
             {
                 Console.WriteLine("Bad stable round setting");
                 return;
-            } 
+            }
 
             if (action == "load")
             {
