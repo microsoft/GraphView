@@ -49,7 +49,7 @@ namespace GraphView.Transaction
             dst.CommitLowerBound = src.CommitLowerBound;
         }
 
-        public void UpdateValue(long txId, TxStatus status, long commitTime, long commitLowerBound)
+        public void Set(long txId, TxStatus status, long commitTime, long commitLowerBound)
         {
             this.TxId = txId;
             this.Status = status;

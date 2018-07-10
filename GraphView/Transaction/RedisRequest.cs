@@ -18,7 +18,6 @@ namespace GraphView.Transaction
     internal class RedisRequest : IResource
     {
         internal object Result { get; private set; }
-
         internal string HashId { get; private set; }
         internal byte[] Key { get; private set; }
         internal byte[] Value { get; private set; }

@@ -171,7 +171,7 @@ namespace GraphView.Transaction
         /// <param name="versionKey"></param>
         /// <param name="bytes"></param>
         /// <returns></returns>
-        public static VersionEntry Deserialize(object recordKey, long versionKey, byte[] bytes)
+        public static VersionEntry Deserialize(object recordKey, long versionKey, byte[] bytes, VersionEntry versionEntry = null)
         {
             long beginTimestamp = BitConverter.ToInt64(bytes, VersionEntry.BEGIN_TIMESTAMP_OFFSET);
             long endTimestamp = BitConverter.ToInt64(bytes, VersionEntry.END_TIMESTAMP_OFFSET);
@@ -182,8 +182,17 @@ namespace GraphView.Transaction
             Buffer.BlockCopy(bytes, VersionEntry.RECORD_OFFSET, recordBytes, 0, recordBytes.Length);
             object record = BytesSerializer.Deserialize(recordBytes);
 
-            return new VersionEntry(recordKey, versionKey, beginTimestamp, endTimestamp,
-                record, txId, maxCommitTs);
+            if (versionEntry == null)
+            {
+                return new VersionEntry(recordKey, versionKey, beginTimestamp, endTimestamp,
+                    record, txId, maxCommitTs);
+            }
+            else
+            {
+                versionEntry.Set(recordKey, versionKey, beginTimestamp, endTimestamp,
+                    record, txId, maxCommitTs);
+                return versionEntry;
+            }
         }
 
         public static VersionEntry InitEmptyVersionEntry(object recordKey, VersionEntry version = null)

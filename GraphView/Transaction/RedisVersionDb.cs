@@ -132,7 +132,7 @@
             {
                 RedisConnectionPool clientPool = this.RedisManager.GetClientPool(
                     RedisVersionDb.TX_DB_INDEX, pid);
-                this.dbVisitors[pid] = new RedisVersionDbVisitor(clientPool);
+                this.dbVisitors[pid] = new RedisVersionDbVisitor(clientPool, this.RedisLuaManager);
             }
         }
 
@@ -329,7 +329,7 @@
             {
                 RedisConnectionPool clientPool = this.RedisManager.GetClientPool(
                     RedisVersionDb.TX_DB_INDEX, pid);
-                this.dbVisitors[pid] = new RedisVersionDbVisitor(clientPool);
+                this.dbVisitors[pid] = new RedisVersionDbVisitor(clientPool, this.RedisLuaManager);
             }
 
             foreach (VersionTable versionTable in this.versionTables.Values)

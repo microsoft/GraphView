@@ -77,7 +77,7 @@ namespace GraphView.Transaction
 
             if (txEntry != null)
             {
-                txEntry.UpdateValue(
+                txEntry.Set(
                     txId,
                     (TxStatus)row.GetValue<sbyte>("status"),
                     realCommitTime,

@@ -50,7 +50,7 @@
             {
                 RedisConnectionPool clientPool = this.RedisManager.GetClientPool(
                     this.redisDbIndex, pid);
-                this.tableVisitors[pid] = new RedisVersionTableVisitor(clientPool);
+                this.tableVisitors[pid] = new RedisVersionTableVisitor(clientPool, this.LuaManager);
             }
         }
 
@@ -114,7 +114,7 @@
             {
                 RedisConnectionPool clientPool = this.RedisManager.GetClientPool(
                     this.redisDbIndex, pk);
-                this.tableVisitors[pk] = new RedisVersionTableVisitor(clientPool);
+                this.tableVisitors[pk] = new RedisVersionTableVisitor(clientPool, this.LuaManager);
             }
 
             // Reshuffle Data
