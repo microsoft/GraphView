@@ -456,21 +456,21 @@ namespace TransactionBenchmarkTest.YCSB
             int stableRoundEnd = 15;
 
             string dataFile = "ycsb_data_r.in";
-            string operationFile = "ycsb_ops_u_10000.in";
+            string operationFile = "ycsb_ops_r.in";
 
             // CassandraVersionDb's parameters
-            string contactPoints = "127.0.0.1";
-            int replicationFactor = 1;
-            ConsistencyLevel consistencyLevel = ConsistencyLevel.One;
+            //string contactPoints = "127.0.0.1";
+            //int replicationFactor = 1;
+            //ConsistencyLevel consistencyLevel = ConsistencyLevel.One;
 
             // CassandraVersionDb's parameters
-            //string contactPoints = "10.6.0.4,10.6.0.5,10.6.0.6,10.6.0.12,10.6.0.13,10.6.0.14,10.6.0.15,10.6.0.16,10.6.0.17,10.6.0.18";
-            //int replicationFactor = 3;
-            //ConsistencyLevel consistencyLevel = ConsistencyLevel.Quorum;
+            string contactPoints = "10.6.0.4,10.6.0.5,10.6.0.6,10.6.0.12,10.6.0.13,10.6.0.14,10.6.0.15,10.6.0.16,10.6.0.17,10.6.0.18";
+            int replicationFactor = 3;
+            ConsistencyLevel consistencyLevel = ConsistencyLevel.Quorum;
 
             // see YCSBAsyncBenchmarkTest.run2 to know all types
-            string exeType = "ycsb_sync_ro_intk";
-            //string exeType = "async";
+            //string exeType = "ycsb_sync_ro_intk";
+            string exeType = "async";
 
             int i = 0;
             while (i < args.Length)
@@ -556,11 +556,11 @@ namespace TransactionBenchmarkTest.YCSB
                 }
 
                 // sync test
-                test.SetupOpsNull();
+                //test.SetupOpsNull();
 
                 // async test
-                //test.SetupOps(operationFile);
-                //test.StartMonitors();
+                test.SetupOps(operationFile);
+                test.StartMonitors();
 
                 test.Run2(exeType);
                 test.Stats2();
@@ -570,8 +570,7 @@ namespace TransactionBenchmarkTest.YCSB
                 Console.WriteLine("bad action. Only <load> or <run> allowed");
             }
         }
-
-
+     
         public static void Main(string[] args)
         {
             //long a = 10000;
