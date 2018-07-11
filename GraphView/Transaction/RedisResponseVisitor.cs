@@ -36,10 +36,11 @@ namespace GraphView.Transaction
             if (returnBytes == null || returnBytes.Length == 0)
             {
                 req.Result = 0;
+                return;
             }
 
             // First scan to find the largest version key
-            long largestVersionKey = 1L;
+            long largestVersionKey = -1L;
             for (int i = 0; i < returnBytes.Length; i += 2)
             {
                 long versionKey = BitConverter.ToInt64(returnBytes[i], 0);

@@ -191,6 +191,9 @@ namespace GraphView.Transaction
         /// <param name="txEntryRequest">The given request</param>
         internal virtual void EnqueueTxEntryRequest(long txId, TxEntryRequest txEntryRequest, int executorPK = 0)
         {
+            // Interlocked.Increment(ref VersionDb.EnqueuedRequests);
+            // Console.WriteLine(txEntryRequest.GetType().Name);
+
             int pk = this.PhysicalPartitionByKey(txId);
             if (VersionDb.UDF_QUEUE)
             {

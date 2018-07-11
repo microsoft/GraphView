@@ -1,12 +1,7 @@
-﻿using Cassandra;
-using GraphView.Transaction;
+﻿using GraphView.Transaction;
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.IO;
 using System.Threading;
-using System.Threading.Tasks;
-using TransactionBenchmarkTest.TPCC;
 
 namespace TransactionBenchmarkTest.YCSB
 {
@@ -171,7 +166,8 @@ namespace TransactionBenchmarkTest.YCSB
 
             int currentExecutorCount = 1;
 
-            SingletonVersionDb versionDb = SingletonVersionDb.Instance(1);
+            RedisVersionDb versionDb = RedisVersionDb.Instance();
+            // SingletonVersionDb versionDb = SingletonVersionDb.Instance(1);
             // SingletonPartitionedVersionDb versionDb = SingletonPartitionedVersionDb.Instance(1, true);
             YCSBAsyncBenchmarkTest test = new YCSBAsyncBenchmarkTest(recordCount,
                 currentExecutorCount, txCountPerExecutor, versionDb, tables);

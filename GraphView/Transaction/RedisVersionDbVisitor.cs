@@ -6,7 +6,7 @@
     using System.Collections.Generic;
     using System.Text;
 
-    public class RedisVersionDbVisitor : VersionDbVisitor
+    internal class RedisVersionDbVisitor : VersionDbVisitor
     {
         /// <summary>
         /// The client pool to flush requests
@@ -18,7 +18,10 @@
         /// </summary>
         private readonly RedisLuaScriptManager redisLuaScriptManager;
 
-        private readonly IRedisPipeline pipe;
+        /// <summary>
+        /// The response visitor to pass to RedisReqeust
+        /// </summary>
+        internal RedisResponseVisitor RedisResponseVisitor { get; set; }
 
         private int reqIndex;
 
@@ -26,22 +29,37 @@
 
         public RedisVersionDbVisitor(
             RedisConnectionPool clientPool, 
-            RedisLuaScriptManager redisLuaScriptManager)
+            RedisLuaScriptManager redisLuaScriptManager,
+            RedisResponseVisitor redisResponseVisitor)
         {
             this.clientPool = clientPool;
             this.redisLuaScriptManager = redisLuaScriptManager;
-
+            this.RedisResponseVisitor = redisResponseVisitor;
+        
             this.redisRequests = new List<RedisRequest>();
             this.reqIndex = 0;
         }
 
         public override void Invoke(IEnumerable<TxEntryRequest> reqs)
         {
+            //foreach (TxEntryRequest req in reqs)
+            //{
+            //    clientPool.EnqueueTxEntryRequest(req);
+            //}
+            //clientPool.Visit();
+
+            int reqCount = 0;
             foreach (TxEntryRequest req in reqs)
             {
-                clientPool.EnqueueTxEntryRequest(req);
+                req.Accept(this);
+                reqCount++;
             }
-            clientPool.Visit();
+
+            if (reqCount > 0)
+            {
+                this.clientPool.Flush(this.redisRequests, reqCount);
+            }
+            this.reqIndex = 0;
         }
 
         private RedisRequest NextRedisRequest()
@@ -50,7 +68,7 @@
 
             while (reqIndex >= this.redisRequests.Count)
             {
-                nextReq = new RedisRequest();
+                nextReq = new RedisRequest(this.RedisResponseVisitor);
                 this.redisRequests.Add(nextReq);
             }
 
@@ -71,10 +89,8 @@
             };
 
             RedisRequest redisReq = this.NextRedisRequest();
+            redisReq.Set(hashId, keyBytes, RedisRequestType.HMGet);
             redisReq.ParentRequest = req;
-
-            pipe.QueueCommand(r => ((RedisNativeClient)r).HMGet(hashId, keyBytes),
-                redisReq.SetValues, redisReq.SetError);
         }
 
         internal override void Visit(RecycleTxRequest req)
@@ -96,10 +112,8 @@
             };
 
             RedisRequest redisReq = this.NextRedisRequest();
+            redisReq.Set(hashId, keysBytes, valuesBytes, RedisRequestType.HMSet);
             redisReq.ParentRequest = req;
-
-            pipe.QueueCommand(r => ((RedisNativeClient)r).HMSet(hashId, keysBytes, valuesBytes),
-                redisReq.SetVoid, redisReq.SetError);
         }
 
         internal override void Visit(NewTxIdRequest req)
@@ -109,10 +123,8 @@
             byte[] valueBytes = BitConverter.GetBytes(req.TxId);
 
             RedisRequest redisReq = this.NextRedisRequest();
+            redisReq.Set(hashId, keyBytes, valueBytes, RedisRequestType.HSetNX);
             redisReq.ParentRequest = req;
-
-            pipe.QueueCommand(r => ((RedisNativeClient)r).HSetNX(hashId, keyBytes, valueBytes),
-                redisReq.SetLong, redisReq.SetError);
         }
 
         internal override void Visit(InsertTxIdRequest req)
@@ -132,10 +144,8 @@
             };
 
             RedisRequest redisReq = this.NextRedisRequest();
+            redisReq.Set(hashId, keysBytes, valuesBytes, RedisRequestType.HMSet);
             redisReq.ParentRequest = req;
-
-            pipe.QueueCommand(r => ((RedisNativeClient)r).HMSet(hashId, keysBytes, valuesBytes),
-                redisReq.SetVoid, redisReq.SetError);
         }
 
         internal override void Visit(SetCommitTsRequest req)
@@ -150,10 +160,8 @@
             };
 
             RedisRequest redisReq = this.NextRedisRequest();
+            redisReq.Set(keys, sha1, 1, RedisRequestType.EvalSha);
             redisReq.ParentRequest = req;
-
-            pipe.QueueCommand(r => ((RedisNativeClient)r).EvalSha(hashId, 1, keys),
-               redisReq.SetValues, redisReq.SetError);
         }
 
         internal override void Visit(UpdateTxStatusRequest req)
@@ -163,10 +171,8 @@
             byte[] valueBytes = BitConverter.GetBytes((int)req.TxStatus);
 
             RedisRequest redisReq = this.NextRedisRequest();
+            redisReq.Set(hashId, keyBytes, valueBytes, RedisRequestType.HSet);
             redisReq.ParentRequest = req;
-
-            pipe.QueueCommand(r => ((RedisNativeClient)r).HSet(hashId, keyBytes, valueBytes),
-                redisReq.SetLong, redisReq.SetError);
         }
 
         internal override void Visit(UpdateCommitLowerBoundRequest req)
@@ -182,10 +188,8 @@
             };
 
             RedisRequest redisReq = this.NextRedisRequest();
+            redisReq.Set(keys, sha1, 1, RedisRequestType.EvalSha);
             redisReq.ParentRequest = req;
-
-            pipe.QueueCommand(r => ((RedisNativeClient)r).EvalSha(sha1, 1, keys),
-                redisReq.SetValues, redisReq.SetError);
         }
 
         internal override void Visit(RemoveTxRequest req)
@@ -200,10 +204,8 @@
             };
 
             RedisRequest redisReq = this.NextRedisRequest();
+            redisReq.Set(hashId, keysBytes, RedisRequestType.HDel);
             redisReq.ParentRequest = req;
-
-            pipe.QueueCommand(r => ((RedisNativeClient)r).HDel(hashId, keysBytes),
-                redisReq.SetLong, redisReq.SetError);
         }
     }
 }

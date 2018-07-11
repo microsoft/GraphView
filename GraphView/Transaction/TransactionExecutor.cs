@@ -789,7 +789,7 @@ namespace GraphView.Transaction
             this.RunBeginTicks = DateTime.Now.Ticks;
             while (this.workingSet.Count > 0 || this.workload.Count > 0)
             {
-                //if (DateTime.Now.Ticks - this.RunBeginTicks > 50000000)
+                //if (DateTime.Now.Ticks - this.RunBeginTicks > 20000000)
                 //{
                 //    Console.WriteLine(123);
                 //}
@@ -917,6 +917,7 @@ namespace GraphView.Transaction
                             this.CommittedTxs += 1;
                         }
                         this.FinishedTxs += 1;
+                        // Console.WriteLine("Finished: {0}", this.FinishedTxs);
                     }
                     else
                     {
@@ -927,7 +928,10 @@ namespace GraphView.Transaction
                 // The implementation of the flush logic needs to be refined.
                 if (this.flushTables != null && this.flushTables.Length > 0)
                 {
-                    //this.FlushInstances();
+                    if (this.versionDb is RedisVersionDb)
+                    {
+                        this.FlushInstances();
+                    } 
                 }
             }
 

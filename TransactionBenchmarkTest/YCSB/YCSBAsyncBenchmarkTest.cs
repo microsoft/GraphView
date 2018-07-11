@@ -59,7 +59,6 @@
             txExec.Commit();
         };
 
-
         public static Func<object, object> ACTION = (object obj) =>
         {
             Tuple<VersionDb, TxWorkload> tuple = (Tuple<VersionDb, TxWorkload>)obj;
@@ -253,7 +252,15 @@
             }
             else
             {
-                this.executorList = this.MockFillWorkerQueue(operationFile);
+                // For SingletonVersionDB
+                if (this.versionDb is SingletonVersionDb || this.versionDb is SingletonPartitionedVersionDb)
+                {
+                    this.executorList = this.MockFillWorkerQueue(operationFile);
+                }
+                else if (this.versionDb is RedisVersionDb)
+                {
+                    // this.executorList = this.FillWorkerQueue(operationFile);
+                }
             }
         }
         
@@ -274,8 +281,16 @@
                 executor.Reset();
             }
 
-            List<TransactionExecutor> appendedExecutors = 
-                this.MockFillWorkerQueue(operationFile, this.executorCount, currentExecutorCount - this.executorCount);
+            List<TransactionExecutor> appendedExecutors = null;
+            if (this.versionDb is SingletonVersionDb || this.versionDb is SingletonPartitionedVersionDb)
+            {
+                appendedExecutors = this.MockFillWorkerQueue(operationFile, this.executorCount, currentExecutorCount - this.executorCount);
+            }
+            else if (this.versionDb is RedisVersionDb)
+            {
+                appendedExecutors = this.FillYCSBWorkerQueue(operationFile);
+            }
+
             this.executorCount = currentExecutorCount;
             this.executorList.AddRange(appendedExecutors);
         }
@@ -310,7 +325,15 @@
             int tid = 0;
             foreach (TransactionExecutor executor in this.executorList)
             {
-                tasks[tid] = Task.Factory.StartNew(executor.YCSBExecuteUpdate);
+                if (this.versionDb is SingletonVersionDb || this.versionDb is SingletonPartitionedVersionDb)
+                {
+                    tasks[tid] = Task.Factory.StartNew(executor.YCSBExecuteUpdate);
+                }
+                else if (this.versionDb is RedisVersionDb)
+                {
+                    tasks[tid] = Task.Factory.StartNew(executor.Execute2);
+                }
+                
                 tid++;
             }
 
@@ -761,6 +784,40 @@
                 return executors;
             }
         }
+
+        private List<TransactionExecutor> FillYCSBWorkerQueue(string operationFile)
+        {
+            List<TransactionExecutor> executors = new List<TransactionExecutor>();
+            Random rand = new Random();
+            using (StreamReader reader = new StreamReader(operationFile))
+            {
+                string line;
+                //int instanceIndex = 0;
+                for (int i = 0; i < this.executorCount; i++)
+                {
+                    Queue<TransactionRequest> reqQueue = new Queue<TransactionRequest>();
+                    for (int j = 0; j < this.txCountPerExecutor; j++)
+                    {
+                        int recordKey = rand.Next() % this.recordCount;
+                        YCSBWorkload workload = new YCSBWorkload("INSERT", TABLE_ID, recordKey.ToString(), new String('a', 100));
+                        string sessionId = ((i * this.txCountPerExecutor) + j + 1).ToString();
+                        TransactionRequest req = new TransactionRequest(sessionId, workload, StoredProcedureType.YCSBStordProcedure);
+                        reqQueue.Enqueue(req);
+                    }
+
+                    this.totalTasks += this.txCountPerExecutor;
+                    int partition_index = i % this.versionDb.PartitionCount;
+                    //executors.Add(new TransactionExecutor(this.versionDb, null, reqQueue, partition_index, i, 0,
+                    //   null, tables, null, null, this.YCSBKeys, this.txCountPerExecutor));
+                    executors.Add(new TransactionExecutor(this.versionDb, null, reqQueue, partition_index, i, 0,
+                      null, tables, null, null, this.recordCount, this.txCountPerExecutor));
+                }
+
+                Console.WriteLine("Filled {0} executors", this.executorCount);
+                return executors;
+            }
+        }
+
 
         private List<TransactionExecutor> FillWorkerQueue(string operationFile)
         {

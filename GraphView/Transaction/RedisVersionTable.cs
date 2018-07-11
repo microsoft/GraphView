@@ -50,12 +50,13 @@
             {
                 RedisConnectionPool clientPool = this.RedisManager.GetClientPool(
                     this.redisDbIndex, pid);
-                this.tableVisitors[pid] = new RedisVersionTableVisitor(clientPool, this.LuaManager);
+                this.tableVisitors[pid] = new RedisVersionTableVisitor(clientPool, this.LuaManager, this.responseVisitor);
             }
         }
 
         internal override void EnqueueVersionEntryRequest(VersionEntryRequest req, int execPartition = 0)
         {
+            // Console.WriteLine(req.GetType().Name);
             base.EnqueueVersionEntryRequest(req, execPartition);
         }
 
@@ -86,6 +87,8 @@
 
                         VersionEntry emptyEntry = new VersionEntry();
                         VersionEntry.InitEmptyVersionEntry(i, emptyEntry);
+                        emptyEntry.Record = "";
+
                         byte[] key = BitConverter.GetBytes(-1L);
                         byte[] value = VersionEntry.Serialize(emptyEntry);
 
@@ -95,7 +98,7 @@
                         VersionEntry.InitFirstVersionEntry(i, versionEntry.Record == null ? new String('a', 100) : versionEntry.Record, versionEntry);
 
                         key = BitConverter.GetBytes(0L);
-                        value = VersionEntry.Serialize(emptyEntry);
+                        value = VersionEntry.Serialize(versionEntry);
                         redisClient.HSet(hashId, key, value);
                     }
                 }
@@ -114,7 +117,7 @@
             {
                 RedisConnectionPool clientPool = this.RedisManager.GetClientPool(
                     this.redisDbIndex, pk);
-                this.tableVisitors[pk] = new RedisVersionTableVisitor(clientPool, this.LuaManager);
+                this.tableVisitors[pk] = new RedisVersionTableVisitor(clientPool, this.LuaManager, this.responseVisitor);
             }
 
             // Reshuffle Data

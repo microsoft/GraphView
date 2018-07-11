@@ -2,9 +2,7 @@
 {
     using System;
     using System.Collections.Generic;
-    using System.Linq;
     using System.Text;
-    using System.Threading;
     using ServiceStack.Redis;
 
     /// <summary>
@@ -132,7 +130,7 @@
             {
                 RedisConnectionPool clientPool = this.RedisManager.GetClientPool(
                     RedisVersionDb.TX_DB_INDEX, pid);
-                this.dbVisitors[pid] = new RedisVersionDbVisitor(clientPool, this.RedisLuaManager);
+                this.dbVisitors[pid] = new RedisVersionDbVisitor(clientPool, this.RedisLuaManager, this.responseVisitor);
             }
         }
 
@@ -221,12 +219,13 @@
                 byte[] keyBytes = Encoding.ASCII.GetBytes(tableId);
                 byte[] valueBytes = BitConverter.GetBytes(redisDbIndex);
 
-                long result = redisClient.HSetNX(RedisVersionDb.META_TABLE_KEY, keyBytes, valueBytes);
+                long result = redisClient.HSet(RedisVersionDb.META_TABLE_KEY, keyBytes, valueBytes);
                 // if the tableId exists in the redis, return null
-                if (result == 0)
-                {
-                    return null;
-                }
+                // TODO: Only for Benchmark Test
+                //if (result == 0)
+                //{
+                //    return null;
+                //}
                 return this.GetVersionTable(tableId);
             }
         }
@@ -329,7 +328,7 @@
             {
                 RedisConnectionPool clientPool = this.RedisManager.GetClientPool(
                     RedisVersionDb.TX_DB_INDEX, pid);
-                this.dbVisitors[pid] = new RedisVersionDbVisitor(clientPool, this.RedisLuaManager);
+                this.dbVisitors[pid] = new RedisVersionDbVisitor(clientPool, this.RedisLuaManager, this.responseVisitor);
             }
 
             foreach (VersionTable versionTable in this.versionTables.Values)
@@ -389,6 +388,7 @@
 
         internal override void EnqueueTxEntryRequest(long txId, TxEntryRequest txEntryRequest, int executorPK = 0)
         {
+            // Console.WriteLine(txEntryRequest.GetType().Name);
             base.EnqueueTxEntryRequest(txId, txEntryRequest, executorPK);
         }
 
