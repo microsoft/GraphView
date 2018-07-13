@@ -4,7 +4,6 @@ namespace GraphView.Transaction
     using System;
     using System.Collections.Generic;
     using System.Diagnostics;
-    using NonBlocking;
 
     internal delegate void Procedure();
 
