@@ -28,7 +28,7 @@ namespace GraphView.Transaction
         /// <summary>
         /// The size of current working transaction set
         /// </summary>
-        private readonly int workingSetSize = 1;      // in terms of # of tx's
+        private readonly int workingSetSize = 500;      // in terms of # of tx's
 
         /// <summary>
         /// A queue of workloads accepted from clients
@@ -163,7 +163,7 @@ namespace GraphView.Transaction
 
             this.txExecution = new TransactionExecution(this.logStore, this.versionDb, null,
                 this.GarbageQueueTxId,this.GarbageQueueFinishTime, this.txRange, this, this.ResourceManager);
-
+            
             this.recordCount = recordCount;
             this.taskCount = taskCount;
         }
@@ -202,6 +202,7 @@ namespace GraphView.Transaction
 
             this.txRuntimePool.Clear();
             this.workingSet.Clear();
+            this.versionDb.PartitionMounted[this.Partition] = true;
         }
 
         public void SetProgressBar()
@@ -789,9 +790,9 @@ namespace GraphView.Transaction
             this.RunBeginTicks = DateTime.Now.Ticks;
             while (this.workingSet.Count > 0 || this.workload.Count > 0)
             {
-                //if (DateTime.Now.Ticks - this.RunBeginTicks > 20000000)
+                //if (DateTime.Now.Ticks - this.RunBeginTicks > 100000000)
                 //{
-                //    Console.WriteLine(123);
+                //    Console.WriteLine("Dead Loop");
                 //}
                 // TransactionRequest txReq = this.workload.Peek();
                 // Dequeue incoming tx requests until the working set is full.
@@ -938,11 +939,25 @@ namespace GraphView.Transaction
             this.RunEndTicks = DateTime.Now.Ticks;
             this.AllRequestsFinished = true;
 
+            // unmount the current partition
+            this.versionDb.PartitionMounted[this.Partition] = false;
             //if (this.countdownEvent != null)
             //{
             //    this.countdownEvent.Signal();
             //}
 
+            if (this.flushTables != null && this.flushTables.Length > 0)
+            {
+                while (true)
+                {
+                    bool stop = this.versionDb.HasAllPartitionsUnmounted();
+                    if (stop)
+                    {
+                        break;
+                    }
+                    this.FlushInstances();
+                }
+            }
             //while (this.Active)
             //{
             //    if (this.flushTables != null && this.flushTables.Length > 0)

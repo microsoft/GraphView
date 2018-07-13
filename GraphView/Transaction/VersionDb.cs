@@ -16,6 +16,7 @@ namespace GraphView.Transaction
     // basic part with fields and its own methods
     public abstract partial class VersionDb
     {
+        public static readonly int REQUEST_QUEUE_CAPACITY = 100;
         /// <summary>
         /// Only For Benchmark Test
         /// </summary>
@@ -94,6 +95,11 @@ namespace GraphView.Transaction
 
         internal int PartitionCount { get; set; }   // to avoid memory overflow used by cassandra
 
+        /// <summary>
+        /// A flag to determine whether the partition is mounted
+        /// </summary>
+        internal bool[] PartitionMounted;
+
         protected static class StaticRandom
         {
             static int seed = Environment.TickCount;
@@ -127,14 +133,16 @@ namespace GraphView.Transaction
             this.queueLatches = new int[partitionCount];
             this.requestUDFQueues = new RequestQueue<TxEntryRequest>[partitionCount];
             this.txResourceManagers = new List<TxResourceManager>();
+            this.PartitionMounted = new bool[partitionCount];
 
             for (int pid = 0; pid < partitionCount; pid++)
             {
-                this.txEntryRequestQueues[pid] = new Queue<TxEntryRequest>(1024);
-                this.flushQueues[pid] = new Queue<TxEntryRequest>(1024);
+                this.txEntryRequestQueues[pid] = new Queue<TxEntryRequest>(VersionDb.REQUEST_QUEUE_CAPACITY);
+                this.flushQueues[pid] = new Queue<TxEntryRequest>(VersionDb.REQUEST_QUEUE_CAPACITY);
                 this.queueLatches[pid] = 0;
                 this.requestUDFQueues[pid] = new RequestQueue<TxEntryRequest>(partitionCount);
                 this.txResourceManagers.Add(new TxResourceManager());
+                this.PartitionMounted[pid] = true;
             }
 
             this.PhysicalPartitionByKey = key => Math.Abs(key.GetHashCode()) % this.PartitionCount;
@@ -160,19 +168,38 @@ namespace GraphView.Transaction
             }
 
             // TODO: Comment to avoid memory overflow
-            //Array.Resize(ref this.txEntryRequestQueues, partitionCount);
-            //Array.Resize(ref this.flushQueues, partitionCount);
-            //Array.Resize(ref this.requestUDFQueues, partitionCount);
-            //Array.Resize(ref this.queueLatches, partitionCount);
-            //for (int pid = currentPartitionCount; pid < partitionCount; pid++)
-            //{
-            //    this.txEntryRequestQueues[pid] = new Queue<TxEntryRequest>(1024);
-            //    this.flushQueues[pid] = new Queue<TxEntryRequest>(1024);
-            //    this.queueLatches[pid] = 0;
-            //    this.requestUDFQueues[pid] = new RequestQueue<TxEntryRequest>(partitionCount);
-            //}
+            Array.Resize(ref this.txEntryRequestQueues, partitionCount);
+            Array.Resize(ref this.flushQueues, partitionCount);
+            Array.Resize(ref this.requestUDFQueues, partitionCount);
+            Array.Resize(ref this.queueLatches, partitionCount);
+            Array.Resize(ref this.PartitionMounted, partitionCount);
+            for (int pid = currentPartitionCount; pid < partitionCount; pid++)
+            {
+                this.txEntryRequestQueues[pid] = new Queue<TxEntryRequest>(VersionDb.REQUEST_QUEUE_CAPACITY);
+                this.flushQueues[pid] = new Queue<TxEntryRequest>(VersionDb.REQUEST_QUEUE_CAPACITY);
+                this.queueLatches[pid] = 0;
+                this.requestUDFQueues[pid] = new RequestQueue<TxEntryRequest>(partitionCount);
+                this.PartitionMounted[pid] = true;
+            }
 
+            // mount all partitions
+            for (int pk = 0; pk < partitionCount; pk++)
+            {
+                this.PartitionMounted[pk] = true;
+            }
             this.PartitionCount = partitionCount;
+        }
+
+        internal bool HasAllPartitionsUnmounted()
+        {
+            for (int pk = 0; pk < this.PartitionCount; pk++)
+            {
+                if (this.PartitionMounted[pk])
+                {
+                    return false;
+                }
+            }
+            return true;
         }
 
         internal virtual TxResourceManager GetResourceManager(int partition)
@@ -192,9 +219,8 @@ namespace GraphView.Transaction
         internal virtual void EnqueueTxEntryRequest(long txId, TxEntryRequest txEntryRequest, int executorPK = 0)
         {
             // Interlocked.Increment(ref VersionDb.EnqueuedRequests);
-            // Console.WriteLine(txEntryRequest.GetType().Name);
 
-            int pk = this.PhysicalPartitionByKey(txId);
+            int pk = this.PhysicalTxPartitionByKey(txId);
             if (VersionDb.UDF_QUEUE)
             {
                 // Here we have checked that pk != execPartition in override methods
@@ -219,9 +245,9 @@ namespace GraphView.Transaction
             {
                 while (Interlocked.CompareExchange(ref queueLatches[partitionKey], 1, 0) != 0) ;
 
-                Queue<TxEntryRequest> freeQueue = this.flushQueues[partitionKey];
-                this.flushQueues[partitionKey] = this.txEntryRequestQueues[partitionKey];
-                this.txEntryRequestQueues[partitionKey] = freeQueue;
+                Queue<TxEntryRequest> freeQueue = Volatile.Read(ref this.flushQueues[partitionKey]);
+                Volatile.Write(ref this.flushQueues[partitionKey], Volatile.Read(ref this.txEntryRequestQueues[partitionKey]));
+                Volatile.Write(ref this.txEntryRequestQueues[partitionKey], freeQueue);
 
                 Interlocked.Exchange(ref queueLatches[partitionKey], 0);
             }
