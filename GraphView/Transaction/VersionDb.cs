@@ -16,11 +16,13 @@ namespace GraphView.Transaction
     // basic part with fields and its own methods
     public abstract partial class VersionDb
     {
+        public static readonly int REQUEST_QUEUE_CAPACITY = 100;
         /// <summary>
         /// Only For Benchmark Test
         /// </summary>
         public static int EnqueuedRequests = 0;
 
+        public static int DequeuedRequests = 0;
         /// <summary>
         /// Whether to use user defined queue
         /// </summary>
@@ -130,8 +132,8 @@ namespace GraphView.Transaction
 
             for (int pid = 0; pid < partitionCount; pid++)
             {
-                this.txEntryRequestQueues[pid] = new Queue<TxEntryRequest>(1024);
-                this.flushQueues[pid] = new Queue<TxEntryRequest>(1024);
+                this.txEntryRequestQueues[pid] = new Queue<TxEntryRequest>(VersionDb.REQUEST_QUEUE_CAPACITY);
+                this.flushQueues[pid] = new Queue<TxEntryRequest>(VersionDb.REQUEST_QUEUE_CAPACITY);
                 this.queueLatches[pid] = 0;
                 this.requestUDFQueues[pid] = new RequestQueue<TxEntryRequest>(partitionCount);
                 this.txResourceManagers.Add(new TxResourceManager());
@@ -160,17 +162,17 @@ namespace GraphView.Transaction
             }
 
             // TODO: Comment to avoid memory overflow
-            //Array.Resize(ref this.txEntryRequestQueues, partitionCount);
-            //Array.Resize(ref this.flushQueues, partitionCount);
-            //Array.Resize(ref this.requestUDFQueues, partitionCount);
-            //Array.Resize(ref this.queueLatches, partitionCount);
-            //for (int pid = currentPartitionCount; pid < partitionCount; pid++)
-            //{
-            //    this.txEntryRequestQueues[pid] = new Queue<TxEntryRequest>(1024);
-            //    this.flushQueues[pid] = new Queue<TxEntryRequest>(1024);
-            //    this.queueLatches[pid] = 0;
-            //    this.requestUDFQueues[pid] = new RequestQueue<TxEntryRequest>(partitionCount);
-            //}
+            Array.Resize(ref this.txEntryRequestQueues, partitionCount);
+            Array.Resize(ref this.flushQueues, partitionCount);
+            Array.Resize(ref this.requestUDFQueues, partitionCount);
+            Array.Resize(ref this.queueLatches, partitionCount);
+            for (int pid = currentPartitionCount; pid < partitionCount; pid++)
+            {
+                this.txEntryRequestQueues[pid] = new Queue<TxEntryRequest>(VersionDb.REQUEST_QUEUE_CAPACITY);
+                this.flushQueues[pid] = new Queue<TxEntryRequest>(VersionDb.REQUEST_QUEUE_CAPACITY);
+                this.queueLatches[pid] = 0;
+                this.requestUDFQueues[pid] = new RequestQueue<TxEntryRequest>(partitionCount);
+            }
 
             this.PartitionCount = partitionCount;
         }
@@ -191,10 +193,11 @@ namespace GraphView.Transaction
         /// <param name="txEntryRequest">The given request</param>
         internal virtual void EnqueueTxEntryRequest(long txId, TxEntryRequest txEntryRequest, int executorPK = 0)
         {
-            // Interlocked.Increment(ref VersionDb.EnqueuedRequests);
-            // Console.WriteLine(txEntryRequest.GetType().Name);
+            Interlocked.Increment(ref VersionDb.EnqueuedRequests);
 
             int pk = this.PhysicalPartitionByKey(txId);
+
+            Console.WriteLine("Enqueue: {0}, txId = {1}, sourceId = {2}, targetId = {3}", txEntryRequest.GetType().Name, txEntryRequest.TxId, executorPK, pk);
             if (VersionDb.UDF_QUEUE)
             {
                 // Here we have checked that pk != execPartition in override methods
@@ -204,7 +207,12 @@ namespace GraphView.Transaction
             {
                 while (Interlocked.CompareExchange(ref queueLatches[pk], 1, 0) != 0) ;
                 Queue<TxEntryRequest> reqQueue = Volatile.Read(ref this.txEntryRequestQueues[pk]);
+                int queueCount = reqQueue.Count;
                 reqQueue.Enqueue(txEntryRequest);
+                if (reqQueue.Count == queueCount + 1)
+                {
+                    Console.WriteLine("Enqueue Successfully");
+                }
                 Interlocked.Exchange(ref queueLatches[pk], 0);
             }
         }
@@ -219,9 +227,9 @@ namespace GraphView.Transaction
             {
                 while (Interlocked.CompareExchange(ref queueLatches[partitionKey], 1, 0) != 0) ;
 
-                Queue<TxEntryRequest> freeQueue = this.flushQueues[partitionKey];
-                this.flushQueues[partitionKey] = this.txEntryRequestQueues[partitionKey];
-                this.txEntryRequestQueues[partitionKey] = freeQueue;
+                Queue<TxEntryRequest> freeQueue = Volatile.Read(ref this.flushQueues[partitionKey]);
+                Volatile.Write(ref this.flushQueues[partitionKey], Volatile.Read(ref this.txEntryRequestQueues[partitionKey]));
+                Volatile.Write(ref this.txEntryRequestQueues[partitionKey], freeQueue);
 
                 Interlocked.Exchange(ref queueLatches[partitionKey], 0);
             }
@@ -229,6 +237,7 @@ namespace GraphView.Transaction
 
         internal void Visit(string tableId, int partitionKey)
         {
+            // Console.WriteLine("Try to Visit {0}", partitionKey);
             // Here try to flush the tx requests
             if (tableId == VersionDb.TX_TABLE)
             {
@@ -251,6 +260,11 @@ namespace GraphView.Transaction
                         return;
                     }
 
+                    foreach (TxEntryRequest req in flushQueue)
+                    {
+                        Console.WriteLine("Dequeue: {0}, TxId = {1}", req.GetType().Name, req.TxId);
+                    }
+                    Interlocked.Add(ref VersionDb.DequeuedRequests, flushQueue.Count);
                     this.dbVisitors[partitionKey].Invoke(flushQueue);
                     flushQueue.Clear();
                 }

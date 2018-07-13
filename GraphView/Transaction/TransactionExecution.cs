@@ -148,6 +148,8 @@ namespace GraphView.Transaction
         private TxTableEntry localTxEntry = new TxTableEntry();
         private TxTableEntry remoteTxEntryRef;
 
+        internal bool Active { get; set; } = true;
+
         internal long ExecutionSeconds
         {
             get

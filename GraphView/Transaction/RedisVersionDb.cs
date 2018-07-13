@@ -10,6 +10,8 @@
     /// </summary>
     public partial class RedisVersionDb : VersionDb, IDisposable
     {
+        public static readonly int PARTITIONS_PER_INSTANCE = 4;
+
         /// <summary>
         /// The default redis config read-write host
         /// </summary>
@@ -129,7 +131,7 @@
             for (int pid = 0; pid < this.PartitionCount; pid++)
             {
                 RedisConnectionPool clientPool = this.RedisManager.GetClientPool(
-                    RedisVersionDb.TX_DB_INDEX, pid);
+                    RedisVersionDb.TX_DB_INDEX, pid/PARTITIONS_PER_INSTANCE);
                 this.dbVisitors[pid] = new RedisVersionDbVisitor(clientPool, this.RedisLuaManager, this.responseVisitor);
             }
         }
@@ -192,7 +194,7 @@
         private void Setup()
         {
             // Default partition implementation
-            this.PhysicalPartitionByKey = recordKey => recordKey.GetHashCode() % this.RedisManager.RedisInstanceCount;
+            this.PhysicalPartitionByKey = recordKey => Math.Abs(recordKey.GetHashCode()) % this.PartitionCount;
 
             // Init lua script manager, it will access the meta database
             // The first redis instance always be the meta database
@@ -327,7 +329,7 @@
             for (int pid = prePartitionCount; pid < partitionCount; pid++)
             {
                 RedisConnectionPool clientPool = this.RedisManager.GetClientPool(
-                    RedisVersionDb.TX_DB_INDEX, pid);
+                    RedisVersionDb.TX_DB_INDEX, pid/PARTITIONS_PER_INSTANCE);
                 this.dbVisitors[pid] = new RedisVersionDbVisitor(clientPool, this.RedisLuaManager, this.responseVisitor);
             }
 

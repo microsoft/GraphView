@@ -5,6 +5,7 @@
     using ServiceStack.Redis;
     using System.Text;
     using ServiceStack.Redis.Pipeline;
+    using System.Diagnostics;
 
     internal partial class RedisVersionTable : VersionTable
     {
@@ -49,7 +50,7 @@
             for (int pid = 0; pid < this.PartitionCount; pid++)
             {
                 RedisConnectionPool clientPool = this.RedisManager.GetClientPool(
-                    this.redisDbIndex, pid);
+                    this.redisDbIndex, pid/RedisVersionDb.PARTITIONS_PER_INSTANCE);
                 this.tableVisitors[pid] = new RedisVersionTableVisitor(clientPool, this.LuaManager, this.responseVisitor);
             }
         }
@@ -100,6 +101,11 @@
                         key = BitConverter.GetBytes(0L);
                         value = VersionEntry.Serialize(versionEntry);
                         redisClient.HSet(hashId, key, value);
+
+                        if (i % 10000 == 0)
+                        {
+                            Console.WriteLine("Loaded {0} records", i+1);
+                        }
                     }
                 }
                 pk++;
@@ -116,23 +122,28 @@
             for (int pk = 0; pk < this.PartitionCount; pk++)
             {
                 RedisConnectionPool clientPool = this.RedisManager.GetClientPool(
-                    this.redisDbIndex, pk);
+                    this.redisDbIndex, pk/RedisVersionDb.PARTITIONS_PER_INSTANCE);
                 this.tableVisitors[pk] = new RedisVersionTableVisitor(clientPool, this.LuaManager, this.responseVisitor);
             }
 
             // Reshuffle Data
             List<Tuple<byte[], byte[][]>>[] reshuffledRecords = new List<Tuple<byte[], byte[][]>>[partitionCount];
+            for (int npk = 0; npk < partitionCount; npk++)
+            {
+                reshuffledRecords[npk] = new List<Tuple<byte[], byte[][]>>();
+            }
+
             for (int pk = 0; pk < prePartitionCount; pk++)
             {
-                using (RedisClient redisClient = this.RedisManager.GetClient(this.redisDbIndex, pk))
+                using (RedisClient redisClient = this.RedisManager.GetClient(this.redisDbIndex, pk/RedisVersionDb.PARTITIONS_PER_INSTANCE))
                 {
                     byte[][] keys = redisClient.Keys("*");
                     foreach (byte[] key in keys)
                     {
                         byte[][] values = redisClient.HGetAll(Encoding.ASCII.GetString(key));
-                        object recordKey = BytesSerializer.Deserialize(key);
+                        object recordKey = Encoding.ASCII.GetString(key);
+                        // object recordKey = BytesSerializer.Deserialize(key);
                         int npk = this.VersionDb.PhysicalPartitionByKey(recordKey);
-
                         reshuffledRecords[npk].Add(Tuple.Create(key, values));
                     }
 
@@ -140,21 +151,24 @@
                 }
             }
 
+            Console.WriteLine("Reshuffled Records into Memory");
+
             for (int pk = 0; pk < partitionCount; pk++)
             {
+                Console.WriteLine("Reshuffled Partition {0}", pk);
                 List<Tuple<byte[], byte[][]>> records = reshuffledRecords[pk];
-                using (RedisClient redisClient = this.RedisManager.GetClient(this.redisDbIndex, pk))
+                using (RedisClient redisClient = this.RedisManager.GetClient(this.redisDbIndex, pk/RedisVersionDb.PARTITIONS_PER_INSTANCE))
                 {
                     foreach (Tuple<byte[], byte[][]> versions in records)
                     {
-                        string hashId = BytesSerializer.Deserialize(versions.Item1).ToString();
+                        string hashId = Encoding.ASCII.GetString(versions.Item1);
                         byte[][] keys = new byte[versions.Item2.Length/2][];
-                        byte[][] values = new byte[versions.Item2.Length / 2][];
+                        byte[][] values = new byte[versions.Item2.Length/2][];
 
                         for (int i = 0; 2 * i < versions.Item2.Length; i++)
                         {
-                            keys[i/2] = versions.Item2[i];
-                            values[i/2] = versions.Item2[i+1];
+                            keys[i] = versions.Item2[2*i];
+                            values[i] = versions.Item2[2*i+1];
                         }
                         
                         redisClient.HMSet(hashId, keys, values);
