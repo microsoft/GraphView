@@ -259,11 +259,11 @@
                 }
                 else if (this.versionDb is RedisVersionDb)
                 {
-                   // this.executorList = this.FillWorkerQueue(operationFile);
+                    // this.executorList = this.FillWorkerQueue(operationFile);
                 }
             }
         }
-
+        
         //This method is for SingletonVersionDb only.
         internal void ResetAndFillWorkerQueue(string operationFile, int currentExecutorCount)
         {
@@ -281,18 +281,18 @@
                 executor.Reset();
             }
 
+            List<TransactionExecutor> appendedExecutors = null;
             if (this.versionDb is SingletonVersionDb || this.versionDb is SingletonPartitionedVersionDb)
             {
-                List<TransactionExecutor> appendedExecutors = null;
                 appendedExecutors = this.MockFillWorkerQueue(operationFile, this.executorCount, currentExecutorCount - this.executorCount);
-                this.executorCount = currentExecutorCount;
-                this.executorList.AddRange(appendedExecutors);
             }
             else if (this.versionDb is RedisVersionDb)
             {
-                this.executorCount = currentExecutorCount;
-                this.executorList = this.FillYCSBWorkerQueue(operationFile);
-            }            
+                appendedExecutors = this.FillYCSBWorkerQueue(operationFile);
+            }
+
+            this.executorCount = currentExecutorCount;
+            this.executorList.AddRange(appendedExecutors);
         }
 
         internal void Run()
@@ -407,7 +407,6 @@
             }
 
             Console.WriteLine("Enqueued Tx Requests Count: {0}", VersionDb.EnqueuedRequests);
-            Console.WriteLine("Dequeued Tx Requests Count: {0}", VersionDb.DequeuedRequests);
             Console.WriteLine();
         }
 
@@ -800,7 +799,7 @@
                     for (int j = 0; j < this.txCountPerExecutor; j++)
                     {
                         int recordKey = rand.Next() % this.recordCount;
-                        YCSBWorkload workload = new YCSBWorkload("READ", TABLE_ID, recordKey.ToString(), new String('a', 100));
+                        YCSBWorkload workload = new YCSBWorkload("INSERT", TABLE_ID, recordKey.ToString(), new String('a', 100));
                         string sessionId = ((i * this.txCountPerExecutor) + j + 1).ToString();
                         TransactionRequest req = new TransactionRequest(sessionId, workload, StoredProcedureType.YCSBStordProcedure);
                         reqQueue.Enqueue(req);

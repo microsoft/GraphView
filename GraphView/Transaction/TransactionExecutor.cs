@@ -28,7 +28,7 @@ namespace GraphView.Transaction
         /// <summary>
         /// The size of current working transaction set
         /// </summary>
-        private readonly int workingSetSize = 500;      // in terms of # of tx's
+        private readonly int workingSetSize = 1;      // in terms of # of tx's
 
         /// <summary>
         /// A queue of workloads accepted from clients
@@ -119,8 +119,6 @@ namespace GraphView.Transaction
 
         private TransactionExecution txExecution;
 
-        private List<TransactionExecution> activeTxExecutions;
-
         private int taskCount;
 
         private int recordCount;
@@ -166,16 +164,6 @@ namespace GraphView.Transaction
             this.txExecution = new TransactionExecution(this.logStore, this.versionDb, null,
                 this.GarbageQueueTxId,this.GarbageQueueFinishTime, this.txRange, this, this.ResourceManager);
 
-            //this.activeTxExecutions = new List<TransactionExecution>();
-            //if (this.versionDb is RedisVersionDb)
-            //{
-            //    for (int i = 0; i < workingSetSize; i++)
-            //    {
-            //        this.activeTxExecutions.Add(new TransactionExecution(this.logStore, this.versionDb, null,
-            //            this.GarbageQueueTxId, this.GarbageQueueFinishTime, this.txRange, this, null));
-            //    }
-            //}
-            
             this.recordCount = recordCount;
             this.taskCount = taskCount;
         }
@@ -214,11 +202,6 @@ namespace GraphView.Transaction
 
             this.txRuntimePool.Clear();
             this.workingSet.Clear();
-
-            //foreach(TransactionExecution txExec in this.activeTxExecutions)
-            //{
-            //    txExec.Active = true;
-            //}
         }
 
         public void SetProgressBar()
@@ -806,10 +789,10 @@ namespace GraphView.Transaction
             this.RunBeginTicks = DateTime.Now.Ticks;
             while (this.workingSet.Count > 0 || this.workload.Count > 0)
             {
-                if (DateTime.Now.Ticks - this.RunBeginTicks > 100000000)
-                {
-                    Console.WriteLine("Dead Loop");
-                }
+                //if (DateTime.Now.Ticks - this.RunBeginTicks > 20000000)
+                //{
+                //    Console.WriteLine(123);
+                //}
                 // TransactionRequest txReq = this.workload.Peek();
                 // Dequeue incoming tx requests until the working set is full.
                 while (this.activeTxs.Count < this.workingSetSize)
@@ -968,40 +951,6 @@ namespace GraphView.Transaction
             //    }
             //}
         }
-
-        //public void AsyncExecuteYSCB()
-        //{
-        //    this.RunBeginTicks = DateTime.Now.Ticks;
-
-        //    int finishedTasks = 0;
-        //    int runningTasks = 0;
-        //    while (finishedTasks < this.taskCount)
-        //    {
-        //        foreach (TransactionExecution txExec in this.activeTxExecutions)
-        //        {
-        //            if (!txExec.Active)
-        //            {
-        //                continue;
-        //            }
-
-        //            if (txExec.CurrentProc != null)
-        //            {
-        //                txExec.CurrentProc();
-        //            }
-
-        //            if (txExec.Progress == TxProgress.Close)
-        //            {
-        //                if (runningTasks < this.taskCount)
-        //                {
-        //                    txExec.Reset();
-
-        //                }
-        //            }
-        //        }
-        //    }
-
-        //    this.RunEndTicks = DateTime.Now.Ticks;
-        //}
 
         public void Execute()
         {

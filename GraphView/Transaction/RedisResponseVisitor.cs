@@ -200,7 +200,7 @@ namespace GraphView.Transaction
             try
             {
                 long ret = (long)req.Result;
-                req.Result = ret == 0L;
+                req.Result = ret == 1L;
             }
             catch (Exception)
             {

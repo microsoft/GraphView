@@ -128,13 +128,13 @@ namespace TransactionBenchmarkTest.YCSB
         // args[3]: txCountPerExecutor
         static void YCSBAsyncTestWithMemoryVersionDb(string[] args)
         {
-            int partitionCount = 2;
+            int partitionCount = 32;
             int executorCount = partitionCount;
-            int txCountPerExecutor = 2;
+            int txCountPerExecutor = 2000000;
 
             // 20w
             string dataFile = "ycsb_data_r.in";
-            const int recordCount = 2;
+            const int recordCount = 2000000;
             //100w
             //string dataFile = "ycsb_data_m_r.in";
             //const int recordCount = 1000000;
