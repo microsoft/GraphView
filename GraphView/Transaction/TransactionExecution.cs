@@ -4,7 +4,6 @@ namespace GraphView.Transaction
     using System;
     using System.Collections.Generic;
     using System.Diagnostics;
-    using NonBlocking;
 
     internal delegate void Procedure();
 
@@ -96,6 +95,7 @@ namespace GraphView.Transaction
         private readonly Procedure readVersionListProc;
         private readonly Procedure readCheckVersionEntryProc;
         private readonly Procedure updateTxAbortProc;
+        private readonly Procedure commitPostproProc;
 
         // request part
         private UploadVersionRequest uploadReq;
@@ -212,6 +212,7 @@ namespace GraphView.Transaction
             this.commitVersionProc = new Procedure(this.CommitModifications);
             this.readVersionListProc = new Procedure(this.ReadVersionList);
             this.readCheckVersionEntryProc = new Procedure(this.ReadCheckVersionEntry);
+            this.commitPostproProc = new Procedure(this.PostProcessingAfterCommit);
 
             this.readReq = new ReadVersionRequest(null, null, -1);
             this.uploadReq = new UploadVersionRequest(null, null, -1, null);
@@ -1062,7 +1063,7 @@ namespace GraphView.Transaction
 
             this.versionDb.EnqueueTxEntryRequest(this.txId, this.updateTxReq, this.executor.Partition);
             this.CurrentProc = this.updateTxCommitProc;
-            this.UpdateTxStatusToCommited();
+            this.CurrentProc();
         }
 
         internal void UpdateTxStatusToCommited()
@@ -1074,7 +1075,8 @@ namespace GraphView.Transaction
 
             this.updateTxReq.Free();
             this.TxStatus = TxStatus.Committed;
-            this.PostProcessingAfterCommit();
+            this.CurrentProc = this.commitPostproProc;
+            this.CurrentProc();
         }
 
         internal void PostProcessingAfterCommit()

@@ -1,12 +1,7 @@
-﻿using Cassandra;
-using GraphView.Transaction;
+﻿using GraphView.Transaction;
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.IO;
 using System.Threading;
-using System.Threading.Tasks;
-using TransactionBenchmarkTest.TPCC;
 
 namespace TransactionBenchmarkTest.YCSB
 {
@@ -127,6 +122,50 @@ namespace TransactionBenchmarkTest.YCSB
             Thread.EndThreadAffinity();
         }
 
+
+        static void YCSBAsyncTestWithRedisVersionDb(string[] args)
+        {
+            int partitionCount = 4;
+            int executorCount = partitionCount;
+            int txCountPerExecutor = 200000;
+            const int recordCount = 200000;
+
+            string operationFile = "ycsb_ops_r.in";
+            if (args.Length > 1)
+            {
+                operationFile = args[1];
+                partitionCount = Int32.Parse(args[2]);
+                executorCount = partitionCount;
+                txCountPerExecutor = args.Length > 3 ? Int32.Parse(args[3]) : txCountPerExecutor;
+            }
+
+            string[] tables =
+            {
+                YCSBAsyncBenchmarkTest.TABLE_ID,
+                VersionDb.TX_TABLE
+            };
+
+            int currentExecutorCount = 1;
+
+            RedisVersionDb versionDb = RedisVersionDb.Instance();
+            // SingletonVersionDb versionDb = SingletonVersionDb.Instance(1);
+            // SingletonPartitionedVersionDb versionDb = SingletonPartitionedVersionDb.Instance(1, true);
+            YCSBAsyncBenchmarkTest test = new YCSBAsyncBenchmarkTest(recordCount,
+                currentExecutorCount, txCountPerExecutor, versionDb, tables);
+
+            test.Setup(operationFile, operationFile);
+            for (; currentExecutorCount <= partitionCount; currentExecutorCount++)
+            {
+                if (currentExecutorCount > 1)
+                {
+                    versionDb.AddPartition(currentExecutorCount);
+                }
+                test.ResetAndFillWorkerQueue(operationFile, currentExecutorCount);
+                test.Run();
+                test.Stats();
+            }
+        }
+
         // args[0]: dataFile
         // args[1]: opsFile
         // args[2]: partitionCount
@@ -171,7 +210,8 @@ namespace TransactionBenchmarkTest.YCSB
 
             int currentExecutorCount = 1;
 
-            SingletonVersionDb versionDb = SingletonVersionDb.Instance(1);
+            RedisVersionDb versionDb = RedisVersionDb.Instance();
+            // SingletonVersionDb versionDb = SingletonVersionDb.Instance(1);
             // SingletonPartitionedVersionDb versionDb = SingletonPartitionedVersionDb.Instance(1, true);
             YCSBAsyncBenchmarkTest test = new YCSBAsyncBenchmarkTest(recordCount,
                 currentExecutorCount, txCountPerExecutor, versionDb, tables);

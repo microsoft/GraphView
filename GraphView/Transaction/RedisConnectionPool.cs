@@ -172,14 +172,16 @@
             }
         }
 
-        private void Flush(IEnumerable<RedisRequest> requests)
+        internal void Flush(IEnumerable<RedisRequest> requests, int maxRequests = -1)
         {
+            int reqCount = 0;
             using (RedisClient redisClient = this.GetRedisClient())
             {
                 using (IRedisPipeline pipe = redisClient.CreatePipeline())
                 {
                     foreach (RedisRequest req in requests)
                     {
+                        reqCount++;
                         if (req == null)
                         {
                             continue;
@@ -240,6 +242,11 @@
                                 break;
                             default:
                                 break;
+                        }
+
+                        if (maxRequests != -1 && reqCount >= maxRequests)
+                        {
+                            break;
                         }
                     }
                     pipe.Flush();

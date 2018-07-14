@@ -2,9 +2,7 @@
 {
     using System;
     using System.Collections.Generic;
-    using System.Linq;
     using System.Text;
-    using System.Threading;
     using ServiceStack.Redis;
 
     /// <summary>
@@ -12,6 +10,8 @@
     /// </summary>
     public partial class RedisVersionDb : VersionDb, IDisposable
     {
+        public static readonly int PARTITIONS_PER_INSTANCE = 8;
+
         /// <summary>
         /// The default redis config read-write host
         /// </summary>
@@ -131,8 +131,8 @@
             for (int pid = 0; pid < this.PartitionCount; pid++)
             {
                 RedisConnectionPool clientPool = this.RedisManager.GetClientPool(
-                    RedisVersionDb.TX_DB_INDEX, pid);
-                this.dbVisitors[pid] = new RedisVersionDbVisitor(clientPool, this.RedisLuaManager);
+                    RedisVersionDb.TX_DB_INDEX, pid/PARTITIONS_PER_INSTANCE);
+                this.dbVisitors[pid] = new RedisVersionDbVisitor(clientPool, this.RedisLuaManager, this.responseVisitor);
             }
         }
 
@@ -194,7 +194,7 @@
         private void Setup()
         {
             // Default partition implementation
-            this.PhysicalPartitionByKey = recordKey => recordKey.GetHashCode() % this.RedisManager.RedisInstanceCount;
+            this.PhysicalPartitionByKey = recordKey => Math.Abs(recordKey.GetHashCode()) % this.PartitionCount;
 
             // Init lua script manager, it will access the meta database
             // The first redis instance always be the meta database
@@ -221,12 +221,13 @@
                 byte[] keyBytes = Encoding.ASCII.GetBytes(tableId);
                 byte[] valueBytes = BitConverter.GetBytes(redisDbIndex);
 
-                long result = redisClient.HSetNX(RedisVersionDb.META_TABLE_KEY, keyBytes, valueBytes);
+                long result = redisClient.HSet(RedisVersionDb.META_TABLE_KEY, keyBytes, valueBytes);
                 // if the tableId exists in the redis, return null
-                if (result == 0)
-                {
-                    return null;
-                }
+                // TODO: Only for Benchmark Test
+                //if (result == 0)
+                //{
+                //    return null;
+                //}
                 return this.GetVersionTable(tableId);
             }
         }
@@ -328,8 +329,8 @@
             for (int pid = prePartitionCount; pid < partitionCount; pid++)
             {
                 RedisConnectionPool clientPool = this.RedisManager.GetClientPool(
-                    RedisVersionDb.TX_DB_INDEX, pid);
-                this.dbVisitors[pid] = new RedisVersionDbVisitor(clientPool, this.RedisLuaManager);
+                    RedisVersionDb.TX_DB_INDEX, pid/PARTITIONS_PER_INSTANCE);
+                this.dbVisitors[pid] = new RedisVersionDbVisitor(clientPool, this.RedisLuaManager, this.responseVisitor);
             }
 
             foreach (VersionTable versionTable in this.versionTables.Values)
@@ -389,6 +390,7 @@
 
         internal override void EnqueueTxEntryRequest(long txId, TxEntryRequest txEntryRequest, int executorPK = 0)
         {
+            // Console.WriteLine(txEntryRequest.GetType().Name);
             base.EnqueueTxEntryRequest(txId, txEntryRequest, executorPK);
         }
 

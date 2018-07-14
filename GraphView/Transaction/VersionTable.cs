@@ -17,11 +17,6 @@ namespace GraphView.Transaction
         /// </summary>
         internal static readonly int VERSION_CAPACITY = 4;
 
-        /// <summary>
-        /// The maximal size of requests queue
-        /// </summary>
-        internal static readonly int REQUEST_QUEUE_CAPACITY = 1024;
-
         protected RequestQueue<VersionEntryRequest>[] requestUDFQueues;
 
         /// <summary>
@@ -75,8 +70,8 @@ namespace GraphView.Transaction
             {
                 // TODO: How to limit the request queue size
                 this.requestUDFQueues[pid] = new RequestQueue<VersionEntryRequest>(partitionCount);
-                this.requestQueues[pid] = new Queue<VersionEntryRequest>(VersionTable.REQUEST_QUEUE_CAPACITY);
-                this.flushQueues[pid] = new Queue<VersionEntryRequest>(VersionTable.REQUEST_QUEUE_CAPACITY);
+                this.requestQueues[pid] = new Queue<VersionEntryRequest>(VersionDb.REQUEST_QUEUE_CAPACITY);
+                this.flushQueues[pid] = new Queue<VersionEntryRequest>(VersionDb.REQUEST_QUEUE_CAPACITY);
                 this.queueLatches[pid] = 0;
             }
         }
@@ -88,22 +83,25 @@ namespace GraphView.Transaction
         internal virtual void AddPartition(int partitionCount)
         {
             // TODO: Comment to aviod memory overflow
-            //Array.Resize(ref this.requestUDFQueues, partitionCount);
-            //Array.Resize(ref this.requestQueues, partitionCount);
-            //Array.Resize(ref this.flushQueues, partitionCount);
-            //Array.Resize(ref this.queueLatches, partitionCount);
+            Array.Resize(ref this.requestUDFQueues, partitionCount);
+            Array.Resize(ref this.requestQueues, partitionCount);
+            Array.Resize(ref this.flushQueues, partitionCount);
+            Array.Resize(ref this.queueLatches, partitionCount);
 
-            //for (int pid = this.PartitionCount; pid < partitionCount; pid++)
-            //{
-            //    this.requestUDFQueues[pid] = new RequestQueue<VersionEntryRequest>(partitionCount);
-            //    this.requestQueues[pid] = new Queue<VersionEntryRequest>(1024);
-            //    this.flushQueues[pid] = new Queue<VersionEntryRequest>(1024);
-            //    this.queueLatches[pid] = 0;
-            //}
+            for (int pid = this.PartitionCount; pid < partitionCount; pid++)
+            {
+                this.requestUDFQueues[pid] = new RequestQueue<VersionEntryRequest>(partitionCount);
+                this.requestQueues[pid] = new Queue<VersionEntryRequest>(VersionDb.REQUEST_QUEUE_CAPACITY);
+                this.flushQueues[pid] = new Queue<VersionEntryRequest>(VersionDb.REQUEST_QUEUE_CAPACITY);
+                this.queueLatches[pid] = 0;
+            }
         }
 
         internal virtual void EnqueueVersionEntryRequest(VersionEntryRequest req, int execPartition = 0)
         {
+            //Interlocked.Increment(ref VersionDb.EnqueuedRequests);
+            //Console.WriteLine(req.GetType().Name);
+
             int pk = this.VersionDb.PhysicalPartitionByKey(req.RecordKey);
             if (VersionDb.UDF_QUEUE)
             {
