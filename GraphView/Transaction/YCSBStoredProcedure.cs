@@ -38,6 +38,35 @@ namespace TransactionBenchmarkTest.YCSB
             this.IntKey = intKey;
         }
 
+        public void Set(int intKey)
+        {
+            this.IntKey = intKey;
+        }
+
+        public void Set(string key)
+        {
+            this.Key = key;
+        }
+
+        public void Set(int intKey, string value)
+        {
+            this.IntKey = intKey;
+            this.Value = value;
+        }
+
+        public void Set(string key, string value)
+        {
+            this.Key = key;
+            this.Value = value;
+        }
+
+        public void Set(string type, string key, string value)
+        {
+            this.Type = type;
+            this.Key = key;
+            this.Value = value;
+        }
+
         public override string ToString()
         {
             return string.Format("key={0},value={1},type={2},tableId={3}",

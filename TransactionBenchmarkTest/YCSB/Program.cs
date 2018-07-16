@@ -81,7 +81,6 @@ namespace TransactionBenchmarkTest.YCSB
             const bool daemonMode = false;
             const string dataFile = "ycsb_data_r.in";
             const string operationFile = "ycsb_ops_r.in";
-            YCSBAsyncBenchmarkTest.RESHUFFLE = true;
             VersionDb.UDF_QUEUE = false;
 
             // an executor is responsiable for all flush
@@ -172,13 +171,13 @@ namespace TransactionBenchmarkTest.YCSB
         // args[3]: txCountPerExecutor
         static void YCSBAsyncTestWithMemoryVersionDb(string[] args)
         {
-            int partitionCount = 32;
+            int partitionCount = 4;
             int executorCount = partitionCount;
-            int txCountPerExecutor = 2000000;
+            int txCountPerExecutor = 200000;
 
             // 20w
             string dataFile = "ycsb_data_r.in";
-            const int recordCount = 2000000;
+            const int recordCount = 1;
             //100w
             //string dataFile = "ycsb_data_m_r.in";
             //const int recordCount = 1000000;

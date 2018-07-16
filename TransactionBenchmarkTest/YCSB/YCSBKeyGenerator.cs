@@ -30,6 +30,7 @@ namespace TransactionBenchmarkTest.YCSB
         {
             this.recordCount = recordCount;
             this.dist = dist;
+            this.random = new Random();
         }
 
         internal int Next()
