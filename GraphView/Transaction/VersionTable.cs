@@ -99,7 +99,7 @@ namespace GraphView.Transaction
 
         internal virtual void EnqueueVersionEntryRequest(VersionEntryRequest req, int execPartition = 0)
         {
-            //Interlocked.Increment(ref VersionDb.EnqueuedRequests);
+            // Interlocked.Increment(ref VersionDb.EnqueuedRequests);
             //Console.WriteLine(req.GetType().Name);
 
             int pk = this.VersionDb.PhysicalPartitionByKey(req.RecordKey);

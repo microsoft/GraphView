@@ -30,7 +30,7 @@ namespace GraphView.Transaction
         /// <summary>
         /// The size of current working transaction set
         /// </summary>
-        private readonly int workingSetSize = 500;      // in terms of # of tx's
+        private readonly int workingSetSize = 100;      // in terms of # of tx's
 
         /// <summary>
         /// A queue of workloads accepted from clients
@@ -158,6 +158,7 @@ namespace GraphView.Transaction
             this.RunBeginTicks = -1L;
             this.RunEndTicks = -1L;
 
+            this.txRange.Reset();
             this.txRuntimePool.Clear();
             this.workingSet.Clear();
             this.versionDb.PartitionMounted[this.Partition] = true;
@@ -373,7 +374,7 @@ namespace GraphView.Transaction
                 }
                 this.txExecution.Reset();
 
-                string recordKey = (this.workload.Dequeue().Workload as YCSBWorkload).Key;                
+                object recordKey = (this.workload.Dequeue().Workload as YCSBWorkload).Key;                
                 this.txExecution.Read("ycsb_table", recordKey, out received, out payload);
 
                 //recordKey = rand.Next(0, indexBound);
@@ -819,13 +820,13 @@ namespace GraphView.Transaction
                                     }
                                 case OperationType.InitiRead:
                                     {
-                                        txExec.ReadAndInitialize(opReq.TableId, opReq.RecordIntKey, out received, out payload);
+                                        txExec.ReadAndInitialize(opReq.TableId, opReq.RecordKey, out received, out payload);
                                         //txExec.ReadAndInitialize(opReq.TableId, opReq.RecordKey, out received, out payload);
                                         break;
                                     }
                                 case OperationType.Insert:
                                     {
-                                        txExec.Insert(opReq.TableId, opReq.RecordIntKey, opReq.Payload);
+                                        txExec.Insert(opReq.TableId, opReq.RecordKey, opReq.Payload);
                                         //txExec.Insert(opReq.TableId, opReq.RecordKey, opReq.Payload);
                                         break;
                                     }
@@ -977,29 +978,29 @@ namespace GraphView.Transaction
                             {
                                 case OperationType.Read:
                                     {
-                                        txExec.Read(opReq.TableId, opReq.RecordIntKey, out received, out payload);
+                                        txExec.Read(opReq.TableId, opReq.RecordKey, out received, out payload);
                                         break;
                                     }
                                 case OperationType.InitiRead:
                                     {
-                                        txExec.ReadAndInitialize(opReq.TableId, opReq.RecordIntKey, out received, out payload);
+                                        txExec.ReadAndInitialize(opReq.TableId, opReq.RecordKey, out received, out payload);
                                         //txExec.ReadAndInitialize(opReq.TableId, opReq.RecordKey, out received, out payload);
                                         break;
                                     }
                                 case OperationType.Insert:
                                     {
-                                        txExec.Insert(opReq.TableId, opReq.RecordIntKey, opReq.Payload);
+                                        txExec.Insert(opReq.TableId, opReq.RecordKey, opReq.Payload);
                                         //txExec.Insert(opReq.TableId, opReq.RecordKey, opReq.Payload);
                                         break;
                                     }
                                 case OperationType.Update:
                                     {
-                                        txExec.Update(opReq.TableId, opReq.RecordIntKey, opReq.Payload);
+                                        txExec.Update(opReq.TableId, opReq.RecordKey, opReq.Payload);
                                         break;
                                     }
                                 case OperationType.Delete:
                                     {
-                                        txExec.Delete(opReq.TableId, opReq.RecordIntKey, out payload);
+                                        txExec.Delete(opReq.TableId, opReq.RecordKey, out payload);
                                         break;
                                     }
                                 case OperationType.Close:
@@ -1363,6 +1364,10 @@ namespace GraphView.Transaction
                 }
             }
         }
+
+        private int round = 0;
+
+        bool empty = true;
 
         private void FlushInstances()
         {

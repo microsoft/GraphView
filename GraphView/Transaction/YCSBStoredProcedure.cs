@@ -7,60 +7,34 @@ namespace TransactionBenchmarkTest.YCSB
     class YCSBWorkload : StoredProcedureWorkload
     {
         internal string TableId;
-        internal string Key;
-        internal string Value;
+        internal object Key;
+        internal object Value;
         internal string Type;
-        internal int IntKey;
 
         public YCSBWorkload(
             string type, 
-            string tableId, 
-            string key, 
-            string value)
-        {
-            this.TableId = tableId;
-            this.Key = key;
-            this.Value = value;
-            this.Type = type;
-        }
-
-        public YCSBWorkload(
-            string type,
             string tableId,
-            string key,
-            string value,
-            int intKey)
+            object key,
+            object value)
         {
             this.TableId = tableId;
             this.Key = key;
             this.Value = value;
             this.Type = type;
-            this.IntKey = intKey;
         }
 
-        public void Set(int intKey)
-        {
-            this.IntKey = intKey;
-        }
-
-        public void Set(string key)
+        public void Set(object key)
         {
             this.Key = key;
         }
 
-        public void Set(int intKey, string value)
-        {
-            this.IntKey = intKey;
-            this.Value = value;
-        }
-
-        public void Set(string key, string value)
+        public void Set(object key, object value)
         {
             this.Key = key;
             this.Value = value;
         }
 
-        public void Set(string type, string key, string value)
+        public void Set(string type, object key, object value)
         {
             this.Type = type;
             this.Key = key;
@@ -112,8 +86,7 @@ namespace TransactionBenchmarkTest.YCSB
                         workload.TableId, 
                         workload.Key, 
                         workload.Value, 
-                        OperationType.InitiRead,
-                        workload.IntKey);
+                        OperationType.InitiRead);
                     this.txRequestGCQueue.Enqueue(initiReadReq);
                     this.RequestQueue.Enqueue(initiReadReq);
                 }
@@ -200,8 +173,7 @@ namespace TransactionBenchmarkTest.YCSB
                             workload.TableId,
                             workload.Key,
                             workload.Value,
-                            OperationType.Insert,
-                            workload.IntKey);
+                            OperationType.Insert);
                         this.txRequestGCQueue.Enqueue(insertReq);
                         this.RequestQueue.Enqueue(insertReq);
                     }

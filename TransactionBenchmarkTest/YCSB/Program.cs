@@ -124,7 +124,8 @@ namespace TransactionBenchmarkTest.YCSB
 
         static void YCSBAsyncTestWithRedisVersionDb(string[] args)
         {
-            int partitionCount = 4;
+            int redisInstances = 8;
+            int partitionCount = RedisVersionDb.PARTITIONS_PER_INSTANCE * redisInstances;
             int executorCount = partitionCount;
             int txCountPerExecutor = 200000;
             const int recordCount = 200000;
@@ -144,7 +145,7 @@ namespace TransactionBenchmarkTest.YCSB
                 VersionDb.TX_TABLE
             };
 
-            int currentExecutorCount = 1;
+            int currentExecutorCount = RedisVersionDb.PARTITIONS_PER_INSTANCE;
 
             RedisVersionDb versionDb = RedisVersionDb.Instance();
             // SingletonVersionDb versionDb = SingletonVersionDb.Instance(1);
@@ -153,7 +154,7 @@ namespace TransactionBenchmarkTest.YCSB
                 currentExecutorCount, txCountPerExecutor, versionDb, tables);
 
             test.Setup(operationFile, operationFile);
-            for (; currentExecutorCount <= partitionCount; currentExecutorCount++)
+            for (; currentExecutorCount <= partitionCount; currentExecutorCount += RedisVersionDb.PARTITIONS_PER_INSTANCE)
             {
                 if (currentExecutorCount > 1)
                 {
@@ -285,7 +286,8 @@ namespace TransactionBenchmarkTest.YCSB
 
             // For the YCSB async test
             // YCSBAsyncTest();
-            YCSBAsyncTestWithMemoryVersionDb(args);
+            YCSBAsyncTestWithRedisVersionDb(args);
+            // YCSBAsyncTestWithMemoryVersionDb(args);
             // YCSBAsyncTestWithPartitionedVersionDb(args);
             // YCSBAsyncTestWithCassandra();
 
