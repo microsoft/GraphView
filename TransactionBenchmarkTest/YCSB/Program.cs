@@ -147,7 +147,20 @@ namespace TransactionBenchmarkTest.YCSB
 
             int currentExecutorCount = RedisVersionDb.PARTITIONS_PER_INSTANCE;
 
-            RedisVersionDb versionDb = RedisVersionDb.Instance();
+            string[] readWriteHosts = new string[]
+            {
+                //"127.0.0.1:6379",
+                "127.0.0.1:6380",
+                "127.0.0.1:6381",
+                "127.0.0.1:6382",
+                "127.0.0.1:6383",
+                "127.0.0.1:6384",
+                "127.0.0.1:6385",
+                "127.0.0.1:6386",
+                "127.0.0.1:6387",
+            };
+
+            RedisVersionDb versionDb = RedisVersionDb.Instance(currentExecutorCount, readWriteHosts);
             // SingletonVersionDb versionDb = SingletonVersionDb.Instance(1);
             // SingletonPartitionedVersionDb versionDb = SingletonPartitionedVersionDb.Instance(1, true);
             YCSBAsyncBenchmarkTest test = new YCSBAsyncBenchmarkTest(recordCount,
@@ -156,7 +169,7 @@ namespace TransactionBenchmarkTest.YCSB
             test.Setup(operationFile, operationFile);
             for (; currentExecutorCount <= partitionCount; currentExecutorCount += RedisVersionDb.PARTITIONS_PER_INSTANCE)
             {
-                if (currentExecutorCount > 1)
+                if (currentExecutorCount > RedisVersionDb.PARTITIONS_PER_INSTANCE)
                 {
                     versionDb.AddPartition(currentExecutorCount);
                 }

@@ -719,9 +719,10 @@
             RedisClientManager manager = redisVersionDb.RedisManager;
 
             long commandCount = 0;
-            for (int i = 0; i < manager.RedisInstanceCount; i++)
+            int testedInstances = redisVersionDb.PartitionCount / RedisVersionDb.PARTITIONS_PER_INSTANCE;
+            for (int i = 0; i < testedInstances; i++)
             {
-                using (RedisClient redisClient = manager.GetLastestClient(0, 0))
+                using (RedisClient redisClient = manager.GetLastestClient(0, i))
                 {
                     string countStr = redisClient.Info["total_commands_processed"];
                     long count = Convert.ToInt64(countStr);

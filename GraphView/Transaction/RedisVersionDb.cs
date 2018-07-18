@@ -10,7 +10,10 @@
     /// </summary>
     public partial class RedisVersionDb : VersionDb, IDisposable
     {
-        public static readonly int PARTITIONS_PER_INSTANCE = 8;
+        /// <summary>
+        /// Then number of logical partitions maps to a single instance
+        /// </summary>
+        public static readonly int PARTITIONS_PER_INSTANCE = 4;
 
         /// <summary>
         /// The default redis config read-write host
@@ -117,9 +120,9 @@
         {
             this.PartitionCount = partitionCount;
 
-            if (readWriteHosts == null || readWriteHosts.Length < partitionCount)
+            if (readWriteHosts == null)
             {
-                throw new ArgumentException("The size of readWriteHosts should be equal to or larger than partitionCount");
+                throw new ArgumentException("readWriteHosts must be a null array");
             }
             this.readWriteHosts = readWriteHosts;
 
@@ -131,7 +134,7 @@
             for (int pid = 0; pid < this.PartitionCount; pid++)
             {
                 RedisConnectionPool clientPool = this.RedisManager.GetClientPool(
-                    RedisVersionDb.TX_DB_INDEX, pid/PARTITIONS_PER_INSTANCE);
+                    RedisVersionDb.TX_DB_INDEX, RedisVersionDb.GetRedisInstanceIndex(pid));
                 this.dbVisitors[pid] = new RedisVersionDbVisitor(clientPool, this.RedisLuaManager, this.responseVisitor);
             }
         }
@@ -157,6 +160,11 @@
                 }
             }
             return RedisVersionDb.instance;
+        }
+
+        public static int GetRedisInstanceIndex(int pk)
+        {
+            return pk / RedisVersionDb.PARTITIONS_PER_INSTANCE;
         }
     }
 
@@ -198,7 +206,7 @@
 
             // Init lua script manager, it will access the meta database
             // The first redis instance always be the meta database
-            this.RedisLuaManager = new RedisLuaScriptManager(readWriteHosts[0], RedisVersionDb.META_DB_INDEX);
+            this.RedisLuaManager = new RedisLuaScriptManager(readWriteHosts, RedisVersionDb.META_DB_INDEX);
             this.RedisManager = new RedisClientManager(readWriteHosts, this.RedisLuaManager);
         }
 
@@ -306,7 +314,8 @@
         {
             for (int pk = 0; pk < this.PartitionCount; pk++)
             {
-                using (RedisClient redisClient = this.RedisManager.GetClient(RedisVersionDb.TX_DB_INDEX, pk))
+                using (RedisClient redisClient = this.RedisManager.GetClient(
+                    RedisVersionDb.TX_DB_INDEX, RedisVersionDb.GetRedisInstanceIndex(pk)))
                 {
                     redisClient.FlushDb();
                 }
@@ -329,7 +338,7 @@
             for (int pid = prePartitionCount; pid < partitionCount; pid++)
             {
                 RedisConnectionPool clientPool = this.RedisManager.GetClientPool(
-                    RedisVersionDb.TX_DB_INDEX, pid/PARTITIONS_PER_INSTANCE);
+                    RedisVersionDb.TX_DB_INDEX, GetRedisInstanceIndex(pid));
                 this.dbVisitors[pid] = new RedisVersionDbVisitor(clientPool, this.RedisLuaManager, this.responseVisitor);
             }
 

@@ -49,7 +49,7 @@
             for (int pid = 0; pid < this.PartitionCount; pid++)
             {
                 RedisConnectionPool clientPool = this.RedisManager.GetClientPool(
-                    this.redisDbIndex, pid/RedisVersionDb.PARTITIONS_PER_INSTANCE);
+                    this.redisDbIndex, RedisVersionDb.GetRedisInstanceIndex(pid));
                 this.tableVisitors[pid] = new RedisVersionTableVisitor(clientPool, this.LuaManager, this.responseVisitor);
             }
         }
@@ -64,7 +64,8 @@
         {
             for (int pid = 0; pid < this.PartitionCount; pid++)
             {
-                using (RedisClient redisClient = this.RedisManager.GetClient(this.redisDbIndex, pid))
+                using (RedisClient redisClient = this.RedisManager.GetClient(
+                    this.redisDbIndex, RedisVersionDb.GetRedisInstanceIndex(pid)))
                 {
                     redisClient.FlushDb();
                 }
@@ -77,7 +78,8 @@
             while (pk < this.PartitionCount)
             {
                 Console.WriteLine("Loading Partition {0}", pk);
-                using (RedisClient redisClient = this.RedisManager.GetClient(this.redisDbIndex, pk))
+                using (RedisClient redisClient = this.RedisManager.GetClient(
+                    this.redisDbIndex, RedisVersionDb.GetRedisInstanceIndex(pk)))
                 {
                     int partitions = this.PartitionCount;
                     for (int i = pk; i < recordCount; i += partitions)
@@ -121,7 +123,7 @@
             for (int pk = 0; pk < this.PartitionCount; pk++)
             {
                 RedisConnectionPool clientPool = this.RedisManager.GetClientPool(
-                    this.redisDbIndex, pk/RedisVersionDb.PARTITIONS_PER_INSTANCE);
+                    this.redisDbIndex, RedisVersionDb.GetRedisInstanceIndex(pk));
                 this.tableVisitors[pk] = new RedisVersionTableVisitor(clientPool, this.LuaManager, this.responseVisitor);
             }
 
@@ -134,7 +136,8 @@
 
             for (int pk = 0; pk < prePartitionCount; pk++)
             {
-                using (RedisClient redisClient = this.RedisManager.GetClient(this.redisDbIndex, pk/RedisVersionDb.PARTITIONS_PER_INSTANCE))
+                using (RedisClient redisClient = this.RedisManager.GetClient(
+                    this.redisDbIndex, RedisVersionDb.GetRedisInstanceIndex(pk)))
                 {
                     byte[][] keys = redisClient.Keys("*");
                     foreach (byte[] key in keys)
@@ -156,7 +159,8 @@
             {
                 Console.WriteLine("Reshuffled Partition {0}", pk);
                 List<Tuple<byte[], byte[][]>> records = reshuffledRecords[pk];
-                using (RedisClient redisClient = this.RedisManager.GetClient(this.redisDbIndex, pk/RedisVersionDb.PARTITIONS_PER_INSTANCE))
+                using (RedisClient redisClient = this.RedisManager.GetClient(
+                    this.redisDbIndex, RedisVersionDb.GetRedisInstanceIndex(pk)))
                 {
                     foreach (Tuple<byte[], byte[][]> versions in records)
                     {

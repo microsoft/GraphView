@@ -946,7 +946,7 @@ namespace GraphView.Transaction
                     txExec.Procedure.Reset();
 
                     int recordKey = this.NextKey();
-                    this.ycsbWorkload.Set(recordKey, null);
+                    this.ycsbWorkload.Set(recordKey.ToString(), null);
                     txExec.Procedure.Start(sessionId, this.ycsbWorkload);
 
                     this.activeTxs.Add(sessionId, newExecTuple);
