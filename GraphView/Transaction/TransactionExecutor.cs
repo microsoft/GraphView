@@ -916,6 +916,9 @@ namespace GraphView.Transaction
         {
             // Only pin cores on server
             // TransactionExecutor.PinThreadOnCores(this.Partition);
+
+            // PinThreadOnCores(this.Partition);
+
             this.RunBeginTicks = DateTime.Now.Ticks;
             int remainedWorkloads = this.taskCount;
             while (this.workingSet.Count > 0 || remainedWorkloads > 0)
@@ -946,7 +949,7 @@ namespace GraphView.Transaction
                     txExec.Procedure.Reset();
 
                     int recordKey = this.NextKey();
-                    this.ycsbWorkload.Set(recordKey.ToString(), null);
+                    this.ycsbWorkload.Set(recordKey, null);
                     txExec.Procedure.Start(sessionId, this.ycsbWorkload);
 
                     this.activeTxs.Add(sessionId, newExecTuple);

@@ -143,9 +143,12 @@
                     foreach (byte[] key in keys)
                     {
                         byte[][] values = redisClient.HGetAll(Encoding.ASCII.GetString(key));
-                        object recordKey = Encoding.ASCII.GetString(key);
-                        // object recordKey = BytesSerializer.Deserialize(key);
-                        int npk = this.VersionDb.PhysicalPartitionByKey(recordKey);
+
+                        string recordKey = Encoding.ASCII.GetString(key);
+                        // TODO: Only For Benchmark Test as the recordKey is an integer
+                        int intRecordKey = int.Parse(recordKey);
+
+                        int npk = this.VersionDb.PhysicalPartitionByKey(intRecordKey);
                         reshuffledRecords[npk].Add(Tuple.Create(key, values));
                     }
 
@@ -153,6 +156,15 @@
                 }
             }
 
+            // flush the redis db
+            for (int pk = 0; pk < partitionCount; pk++)
+            {
+                using (RedisClient redisClient = this.RedisManager.GetClient(
+                   this.redisDbIndex, RedisVersionDb.GetRedisInstanceIndex(pk)))
+                {
+                    redisClient.FlushDb();
+                }
+            }
             Console.WriteLine("Reshuffled Records into Memory");
 
             for (int pk = 0; pk < partitionCount; pk++)

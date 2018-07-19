@@ -129,7 +129,7 @@ namespace TransactionBenchmarkTest.YCSB
             int executorCount = partitionCount;
             int txCountPerExecutor = 200000;
             const int recordCount = 200000;
-
+             
             string operationFile = "ycsb_ops_r.in";
             if (args.Length > 1)
             {
@@ -158,6 +158,10 @@ namespace TransactionBenchmarkTest.YCSB
                 "127.0.0.1:6385",
                 "127.0.0.1:6386",
                 "127.0.0.1:6387",
+                "127.0.0.1:6388",
+                "127.0.0.1:6389",
+                "127.0.0.1:6390",
+                "127.0.0.1:6391",
             };
 
             RedisVersionDb versionDb = RedisVersionDb.Instance(currentExecutorCount, readWriteHosts);
@@ -243,7 +247,7 @@ namespace TransactionBenchmarkTest.YCSB
         }
 
         //private static bool TEST_ACTIVE = true;
-       
+
         //private static void TestRequestQueue()
         //{
         //    RequestQueue<string> strQueue = new RequestQueue<string>(8);

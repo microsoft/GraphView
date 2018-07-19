@@ -257,6 +257,8 @@
             }
 
             Console.WriteLine("Enqueued Tx Requests Count: {0}", VersionDb.EnqueuedRequests);
+            Console.WriteLine("LargestIndex = {0}, LargestIndex = {1}", RedisVersionTableVisitor.LargestReqIndex, RedisVersionDbVisitor.LargestReqIndex);
+
             Console.WriteLine();
         }
 
@@ -473,7 +475,6 @@
             Console.WriteLine("Transaction Throughput: {0} tx/s\n", thSum);
 
             //(this.versionDb as PartitionedCassandraVersionDb).ShowLoadBalance();
-
             Console.WriteLine();
         }
 

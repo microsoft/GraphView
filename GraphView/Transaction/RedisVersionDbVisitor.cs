@@ -8,6 +8,8 @@
 
     internal class RedisVersionDbVisitor : VersionDbVisitor
     {
+        internal static int LargestReqIndex = 0;
+
         /// <summary>
         /// The client pool to flush requests
         /// </summary>
@@ -27,12 +29,15 @@
 
         private List<RedisRequest> redisRequests;
 
+        private RedisClient redisClient;
+
         public RedisVersionDbVisitor(
             RedisConnectionPool clientPool, 
             RedisLuaScriptManager redisLuaScriptManager,
             RedisResponseVisitor redisResponseVisitor)
         {
             this.clientPool = clientPool;
+            this.redisClient = clientPool.GetRedisClient();
             this.redisLuaScriptManager = redisLuaScriptManager;
             this.RedisResponseVisitor = redisResponseVisitor;
         
@@ -57,8 +62,9 @@
 
             if (reqCount > 0)
             {
-                this.clientPool.Flush(this.redisRequests, reqCount);
+                this.clientPool.Flush(this.redisRequests, redisClient, reqCount);
             }
+            LargestReqIndex = Math.Max(LargestReqIndex, this.reqIndex);
             this.reqIndex = 0;
         }
 
