@@ -5,6 +5,7 @@
     using ServiceStack.Redis;
     using System.Text;
     using ServiceStack.Redis.Pipeline;
+    using System.Threading;
 
     internal partial class RedisVersionTable : VersionTable
     {
@@ -21,43 +22,67 @@
         /// <summary>
         /// Get redisClient from the client pool
         /// </summary>
-        private RedisClientManager RedisManager
-        {
-            get
-            {
-                return ((RedisVersionDb)this.VersionDb).RedisManager;
-            }
-        }
+        private RedisClientManager RedisManager { get; set; }
 
         /// <summary>
         /// The manager for lua scripts
         /// </summary>
-        private RedisLuaScriptManager LuaManager
-        {
-            get
-            {
-                return ((RedisVersionDb)this.VersionDb).RedisLuaManager;
-            }
-        }
+        private RedisLuaScriptManager LuaManager { get; set; }
+
+        /// <summary>
+        /// The singleton connection pool from redisVerionDb.
+        /// </summary>
+        private RedisConnectionPool singletonConnPool;
+
+        /// <summary>
+        /// The redisVersionDb Instance
+        /// </summary>
+        private RedisVersionDb redisVersionDb;
+
+        /// <summary>
+        /// The mode of redisVersionDb
+        /// </summary>
+        private RedisVersionDbMode redisVersionDbMode;
 
         public RedisVersionTable(VersionDb versionDb, string tableId, long redisDbIndex)
             : base(versionDb, tableId, versionDb.PartitionCount)
         {
             this.redisDbIndex = redisDbIndex;
             this.responseVisitor = new RedisResponseVisitor();
+            this.redisVersionDb = ((RedisVersionDb)this.VersionDb);
+            this.RedisManager = redisVersionDb.RedisManager;
+            this.LuaManager = redisVersionDb.RedisLuaManager;
+            this.singletonConnPool = redisVersionDb.SingletonConnPool;
+            this.redisVersionDbMode = redisVersionDb.Mode;
+
+            RedisConnectionPool clientPool = null;
+            if (this.redisVersionDbMode == RedisVersionDbMode.Cluster)
+            {
+                clientPool = this.singletonConnPool;
+            }
 
             for (int pid = 0; pid < this.PartitionCount; pid++)
             {
-                RedisConnectionPool clientPool = this.RedisManager.GetClientPool(
-                    this.redisDbIndex, RedisVersionDb.GetRedisInstanceIndex(pid));
-                this.tableVisitors[pid] = new RedisVersionTableVisitor(clientPool, this.LuaManager, this.responseVisitor);
+                if (clientPool == null)
+                {
+                    clientPool = this.RedisManager.GetClientPool(
+                        this.redisDbIndex, RedisVersionDb.GetRedisInstanceIndex(pid));
+                }
+                this.tableVisitors[pid] = new RedisVersionTableVisitor(
+                    clientPool, this.LuaManager, this.responseVisitor, this.redisVersionDbMode);
             }
         }
 
-        internal override void EnqueueVersionEntryRequest(VersionEntryRequest req, int execPartition = 0)
+        internal override void EnqueueVersionEntryRequest(VersionEntryRequest req, int srcPartition = 0)
         {
             // Console.WriteLine(req.GetType().Name);
-            base.EnqueueVersionEntryRequest(req, execPartition);
+            // base.EnqueueVersionEntryRequest(req, execPartition);
+            int pk = srcPartition;
+
+            while (Interlocked.CompareExchange(ref queueLatches[pk], 1, 0) != 0) ;
+            Queue<VersionEntryRequest> reqQueue = Volatile.Read(ref this.requestQueues[pk]);
+            reqQueue.Enqueue(req);
+            Interlocked.Exchange(ref queueLatches[pk], 0);
         }
 
         internal override void Clear()
@@ -75,11 +100,21 @@
         internal override void MockLoadData(int recordCount)
         {
             int pk = 0;
+            RedisConnectionPool connPool = null;
+            if (this.redisVersionDbMode == RedisVersionDbMode.Cluster)
+            {
+                connPool = this.singletonConnPool;
+            }
+
             while (pk < this.PartitionCount)
             {
                 Console.WriteLine("Loading Partition {0}", pk);
-                using (RedisClient redisClient = this.RedisManager.GetClient(
-                    this.redisDbIndex, RedisVersionDb.GetRedisInstanceIndex(pk)))
+                if (connPool == null)
+                {
+                    connPool = this.RedisManager.GetClientPool(this.redisDbIndex, RedisVersionDb.GetRedisInstanceIndex(pk));
+                }
+
+                using (RedisClient redisClient = connPool.GetRedisClient())
                 {
                     int partitions = this.PartitionCount;
                     for (int i = pk; i < recordCount; i += partitions)
@@ -113,31 +148,61 @@
             }
         }
 
+
         internal override void AddPartition(int partitionCount)
         {
             int prePartitionCount = this.PartitionCount;
             base.AddPartition(partitionCount);
             this.PartitionCount = partitionCount;
 
+            RedisConnectionPool clientPool = null;
+            if (this.redisVersionDbMode == RedisVersionDbMode.Cluster)
+            {
+                clientPool = this.singletonConnPool;
+            }
+
             Array.Resize(ref this.tableVisitors, partitionCount);
             for (int pk = 0; pk < this.PartitionCount; pk++)
             {
-                RedisConnectionPool clientPool = this.RedisManager.GetClientPool(
-                    this.redisDbIndex, RedisVersionDb.GetRedisInstanceIndex(pk));
-                this.tableVisitors[pk] = new RedisVersionTableVisitor(clientPool, this.LuaManager, this.responseVisitor);
+                if (clientPool == null)
+                {
+                    clientPool = this.RedisManager.GetClientPool(
+                        this.redisDbIndex, RedisVersionDb.GetRedisInstanceIndex(pk));
+                }
+                this.tableVisitors[pk] = new RedisVersionTableVisitor(
+                    clientPool, this.LuaManager, this.responseVisitor, this.redisVersionDbMode);
             }
-
             // Reshuffle Data
+            // this.ReshuffleRecords();
+        }
+
+        /// <summary>
+        /// Reshuffle records in the version db, which will recalculate the partition of record keys,
+        /// and put them to right partitions under the new number of partition
+        /// </summary>
+        /// <param name="perPartitionCount">The number of partitions before adding partitions</param>
+        /// <param name="partitionCount">The current number of partitions</param>
+        private void ReshuffleRecords(int prePartitionCount, int partitionCount)
+        {
             List<Tuple<byte[], byte[][]>>[] reshuffledRecords = new List<Tuple<byte[], byte[][]>>[partitionCount];
             for (int npk = 0; npk < partitionCount; npk++)
             {
                 reshuffledRecords[npk] = new List<Tuple<byte[], byte[][]>>();
             }
 
+            RedisConnectionPool connPool = null;
+            if (this.redisVersionDbMode == RedisVersionDbMode.Cluster)
+            {
+                connPool = this.singletonConnPool;
+            }
+
             for (int pk = 0; pk < prePartitionCount; pk++)
             {
-                using (RedisClient redisClient = this.RedisManager.GetClient(
-                    this.redisDbIndex, RedisVersionDb.GetRedisInstanceIndex(pk)))
+                if (connPool == null)
+                {
+                    connPool = this.RedisManager.GetClientPool(this.redisDbIndex, RedisVersionDb.GetRedisInstanceIndex(pk));
+                }
+                using (RedisClient redisClient = connPool.GetRedisClient())
                 {
                     byte[][] keys = redisClient.Keys("*");
                     foreach (byte[] key in keys)
@@ -177,15 +242,15 @@
                     foreach (Tuple<byte[], byte[][]> versions in records)
                     {
                         string hashId = Encoding.ASCII.GetString(versions.Item1);
-                        byte[][] keys = new byte[versions.Item2.Length/2][];
-                        byte[][] values = new byte[versions.Item2.Length/2][];
+                        byte[][] keys = new byte[versions.Item2.Length / 2][];
+                        byte[][] values = new byte[versions.Item2.Length / 2][];
 
                         for (int i = 0; 2 * i < versions.Item2.Length; i++)
                         {
-                            keys[i] = versions.Item2[2*i];
-                            values[i] = versions.Item2[2*i+1];
+                            keys[i] = versions.Item2[2 * i];
+                            values[i] = versions.Item2[2 * i + 1];
                         }
-                        
+
                         redisClient.HMSet(hashId, keys, values);
                     }
                 }

@@ -140,6 +140,11 @@
             lastFlushTime = DateTime.Now.Ticks / 10;
         }
 
+        public RedisConnectionPool(string redisConnectionString, long database) :
+            this(redisConnectionString, database, null)
+        {
+        }
+
         /// <summary>
         /// Get the client for the specify redis database, the redisDbIndex has been
         /// initilizated in the constructor

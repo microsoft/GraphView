@@ -37,7 +37,7 @@ namespace GraphView.Transaction
         /// <summary>
         /// The latches to sync flush queues and request Queues
         /// </summary>
-        private int[] queueLatches;
+        protected int[] queueLatches;
 
         /// <summary>
         /// The version db instance of the current version table

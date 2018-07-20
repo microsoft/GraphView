@@ -63,12 +63,12 @@
                 throw new ArgumentException("readWriteHosts at least have a host");
             }
             this.readWriteHosts = readWriteHosts;
-
-            if (luaScriptManager == null)
-            {
-                throw new ArgumentException("luaScriptManager must be not null");
-            }
             this.redisLuaScriptManager = luaScriptManager;
+        }
+
+        internal RedisClientManager(string[] readWriteHosts) : this(readWriteHosts, null)
+        {
+
         }
         
         internal RedisClient GetClient(long redisDbIndex, int partition)

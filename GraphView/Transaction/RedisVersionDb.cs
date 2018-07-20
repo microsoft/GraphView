@@ -3,7 +3,29 @@
     using System;
     using System.Collections.Generic;
     using System.Text;
+    using System.Threading;
     using ServiceStack.Redis;
+
+    public enum RedisVersionDbMode
+    {
+        /// <summary>
+        /// In this mode, there will be only a connection point in the redisVersionDb.
+        /// The key partition process is behind the redis and it's transparent for the redisVersionDb.
+        /// In this case, all data will be stored in database zero based on redis documents.
+        /// </summary>
+        Cluster,
+
+        /// <summary>
+        /// In this mode, there will be multiple connection points in the redisVersionDb.
+        /// The key partition process is holden by the redisVersionDb by calling PhysicalPartitionByKey.
+        /// Which could be controlled by the redisVersionDb, which also can be override.
+        /// 
+        /// Under this case, data in a single redis instance is stored in different databases.
+        /// metadata will be stored in database META_DB_INDEX, tx data will be stored in database TX_DB_INDEX
+        /// and the database to store version entries is specified in redisVersionTable.
+        /// </summary>
+        Partition,
+    }
 
     /// <summary>
     /// The basic fields defined here
@@ -63,12 +85,41 @@
         /// <summary>
         /// The default meta database index
         /// </summary>
-        public static readonly long META_DB_INDEX = 0;
+        public static readonly long META_DB_INDEX = 0L;
         
         /// <summary>
         /// The default transaction database index
         /// </summary>
-        public static readonly long TX_DB_INDEX = 1;
+        public static readonly long TX_DB_INDEX = 1L;
+
+        /// <summary>
+        /// The default tx table entry key prefix, which will be used under the cluster mode
+        /// </summary>
+        public static readonly string TX_KEY_PREFIX = "tx:";
+
+        /// <summary>
+        /// The default version entry key prefix, which will be used under the cluster mode
+        /// </summary>
+        public static readonly string VER_KEY_PREFIX = "ver:";
+
+        /// <summary>
+        /// The default db index for all data.
+        /// When the redis is in cluster mode, the SELECT command cann't be used and it only supports
+        /// database zero. In this case, the redisVersionDb will store all data into database zero.
+        /// </summary>
+        public static readonly long DEFAULT_DB_INDEX = 0L;
+
+        /// <summary>
+        /// A method to catenate prefix and key
+        /// </summary>
+        public static readonly Func<string, string, string> PACK_KEY = 
+            (string prefix, string key) => { return prefix + key; };
+
+        /// <summary>
+        /// A method to unpack the key from catenatedKey
+        /// </summary>
+        public static readonly Func<string, int, string> UNPACK_KEY =
+            (string catenatedKey, int prefixLen) => { return catenatedKey.Substring(prefixLen); };
 
         /// <summary>
         /// the singleton instance of RedisVersionDb
@@ -91,18 +142,24 @@
 		private readonly RedisResponseVisitor responseVisitor;
 
         /// <summary>
-        /// A flag to declare if the async monitor is active, which will be set as false
-        /// when the version db is closed
+        /// The mode of redis version db.
         /// </summary>
-        private bool AsyncMonitorActive = true;
+        internal RedisVersionDbMode Mode { get; private set; } = RedisVersionDbMode.Cluster;
 
+        /// <summary>
+        /// The redisClientManager to manage clients
+        /// </summary>
         internal RedisClientManager RedisManager { get; private set; }
+
+        /// <summary>
+        /// The centralized connection pool under the cluster mode
+        /// </summary>
+        internal RedisConnectionPool SingletonConnPool { get; private set; } = null;
 
         /// <summary>
         /// A lua script manager to register lua scripts and get its sha1 by script name
         /// </summary>
         internal RedisLuaScriptManager RedisLuaManager { get; private set; }
-
 
         /// <summary>
         /// Redis Partition Host Config
@@ -115,7 +172,7 @@
         /// </summary>
         public bool PipelineMode { get; set; } = false;
 
-        private RedisVersionDb(int partitionCount, string[] readWriteHosts)
+        private RedisVersionDb(int partitionCount, string[] readWriteHosts, RedisVersionDbMode mode = RedisVersionDbMode.Cluster)
             : base(partitionCount)
         {
             this.PartitionCount = partitionCount;
@@ -125,6 +182,7 @@
                 throw new ArgumentException("readWriteHosts must be a null array");
             }
             this.readWriteHosts = readWriteHosts;
+            this.Mode = mode;
 
             this.tableLock = new object();
             this.responseVisitor = new RedisResponseVisitor();
@@ -133,13 +191,25 @@
 
             for (int pid = 0; pid < this.PartitionCount; pid++)
             {
-                RedisConnectionPool clientPool = this.RedisManager.GetClientPool(
-                    RedisVersionDb.TX_DB_INDEX, RedisVersionDb.GetRedisInstanceIndex(pid));
-                this.dbVisitors[pid] = new RedisVersionDbVisitor(clientPool, this.RedisLuaManager, this.responseVisitor);
+                RedisConnectionPool clientPool = null;
+                if (this.Mode == RedisVersionDbMode.Cluster)
+                {
+                    clientPool = SingletonConnPool;
+                }
+                else
+                {
+                    clientPool = this.RedisManager.GetClientPool(
+                        RedisVersionDb.TX_DB_INDEX, RedisVersionDb.GetRedisInstanceIndex(pid));
+                }
+                this.dbVisitors[pid] = new RedisVersionDbVisitor(
+                    clientPool, this.RedisLuaManager, this.responseVisitor, this.Mode);
             }
         }
 
-        public static RedisVersionDb Instance(int partitionCount = 1, string[] readWriteHosts = null)
+        public static RedisVersionDb Instance(
+            int partitionCount = 1, 
+            string[] readWriteHosts = null, 
+            RedisVersionDbMode mode = RedisVersionDbMode.Cluster)
         {
             if (RedisVersionDb.instance == null)
             {
@@ -206,8 +276,14 @@
 
             // Init lua script manager, it will access the meta database
             // The first redis instance always be the meta database
-            this.RedisLuaManager = new RedisLuaScriptManager(readWriteHosts, RedisVersionDb.META_DB_INDEX);
-            this.RedisManager = new RedisClientManager(readWriteHosts, this.RedisLuaManager);
+            long metaDbIndex = this.Mode == RedisVersionDbMode.Cluster ? DEFAULT_DB_INDEX : META_DB_INDEX;
+            this.RedisLuaManager = new RedisLuaScriptManager(readWriteHosts, metaDbIndex);
+
+            if (this.Mode == RedisVersionDbMode.Cluster)
+            {
+                this.SingletonConnPool = new RedisConnectionPool(readWriteHosts[0], DEFAULT_DB_INDEX);
+            }
+            this.RedisManager = new RedisClientManager(readWriteHosts);
         }
 
         public void Dispose()
@@ -337,9 +413,18 @@
             Array.Resize(ref this.dbVisitors, partitionCount);
             for (int pid = prePartitionCount; pid < partitionCount; pid++)
             {
-                RedisConnectionPool clientPool = this.RedisManager.GetClientPool(
+                RedisConnectionPool clientPool = null;
+                if (this.Mode == RedisVersionDbMode.Cluster)
+                {
+                    clientPool = this.SingletonConnPool;
+                }
+                else
+                {
+                    clientPool = this.RedisManager.GetClientPool(
                     RedisVersionDb.TX_DB_INDEX, GetRedisInstanceIndex(pid));
-                this.dbVisitors[pid] = new RedisVersionDbVisitor(clientPool, this.RedisLuaManager, this.responseVisitor);
+                }
+                this.dbVisitors[pid] = new RedisVersionDbVisitor(
+                    clientPool, this.RedisLuaManager, this.responseVisitor, this.Mode);
             }
 
             foreach (VersionTable versionTable in this.versionTables.Values)
@@ -397,12 +482,18 @@
         //    }
         //}
 
-        internal override void EnqueueTxEntryRequest(long txId, TxEntryRequest txEntryRequest, int executorPK = 0)
+        internal override void EnqueueTxEntryRequest(long txId, TxEntryRequest txEntryRequest, int srcPartition = 0)
         {
             // Console.WriteLine(txEntryRequest.GetType().Name);
-            base.EnqueueTxEntryRequest(txId, txEntryRequest, executorPK);
-        }
+            // base.EnqueueTxEntryRequest(txId, txEntryRequest, executorPK);
 
+            int pk = srcPartition;
+
+            while (Interlocked.CompareExchange(ref queueLatches[pk], 1, 0) != 0) ;
+            Queue<TxEntryRequest> reqQueue = Volatile.Read(ref this.txEntryRequestQueues[pk]);
+            reqQueue.Enqueue(txEntryRequest);
+            Interlocked.Exchange(ref queueLatches[pk], 0);
+        }
 
         /// <summary>
         /// Get a unique transaction Id and store the txTableEntry into the redis
