@@ -51,23 +51,12 @@
             this.reqIndex = 0;
         }
 
-        public override void Invoke(IEnumerable<VersionEntryRequest> reqs)
+        public override void Invoke(Queue<VersionEntryRequest> reqQueue)
         {
-            //this.reqIndex = 0;
-
-            //foreach (VersionEntryRequest req in reqs)
-            //{
-            //    clientPool.EnqueueVersionEntryRequest(req);
-            //}
-            //clientPool.Visit();
-
             int reqCount = 0;
-            foreach (VersionEntryRequest req in reqs)
+            while (reqQueue.Count > 0)
             {
-                if (req is ReplaceVersionRequest)
-                {
-                    int x = 1;
-                }
+                VersionEntryRequest req = reqQueue.Dequeue();
                 req.Accept(this);
                 reqCount++;
             }

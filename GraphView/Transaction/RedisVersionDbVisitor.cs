@@ -45,7 +45,7 @@
             this.reqIndex = 0;
         }
 
-        public override void Invoke(IEnumerable<TxEntryRequest> reqs)
+        public override void Invoke(Queue<TxEntryRequest> reqQueue)
         {
             //foreach (TxEntryRequest req in reqs)
             //{
@@ -54,8 +54,9 @@
             //clientPool.Visit();
 
             int reqCount = 0;
-            foreach (TxEntryRequest req in reqs)
+            while (reqQueue.Count > 0)
             {
+                TxEntryRequest req = reqQueue.Dequeue();
                 req.Accept(this);
                 reqCount++;
             }

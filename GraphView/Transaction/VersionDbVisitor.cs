@@ -5,10 +5,11 @@ namespace GraphView.Transaction
 
     public abstract class VersionDbVisitor : TxEntryVisitor
     {
-        public virtual void Invoke(IEnumerable<TxEntryRequest> reqs)
+        public virtual void Invoke(Queue<TxEntryRequest> reqQueue)
         {
-            foreach (TxEntryRequest req in reqs)
+            while (reqQueue.Count > 0)
             {
+                TxEntryRequest req = reqQueue.Dequeue();
                 req.Accept(this);
             }
         }
