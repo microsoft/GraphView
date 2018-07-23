@@ -89,6 +89,11 @@
         internal override void Visit(GetTxEntryRequest req)
         {
             string hashId = req.TxId.ToString();
+            if (this.redisVersionDbMode == RedisVersionDbMode.Cluster)
+            {
+                hashId = RedisVersionDb.PACK_KEY(RedisVersionDb.TX_KEY_PREFIX, hashId);
+            }
+
             byte[][] keyBytes =
             {
                 Encoding.ASCII.GetBytes(TxTableEntry.STATUS_STRING),
@@ -104,6 +109,11 @@
         internal override void Visit(RecycleTxRequest req)
         {
             string hashId = req.TxId.ToString();
+            if (this.redisVersionDbMode == RedisVersionDbMode.Cluster)
+            {
+                hashId = RedisVersionDb.PACK_KEY(RedisVersionDb.TX_KEY_PREFIX, hashId);
+            }
+
             byte[][] keysBytes =
             {
                 Encoding.ASCII.GetBytes(TxTableEntry.TXID_STRING),
@@ -127,6 +137,11 @@
         internal override void Visit(NewTxIdRequest req)
         {
             string hashId = req.TxId.ToString();
+            if (this.redisVersionDbMode == RedisVersionDbMode.Cluster)
+            {
+                hashId = RedisVersionDb.PACK_KEY(RedisVersionDb.TX_KEY_PREFIX, hashId);
+            }
+
             byte[] keyBytes = Encoding.ASCII.GetBytes(TxTableEntry.TXID_STRING);
             byte[] valueBytes = BitConverter.GetBytes(req.TxId);
 
@@ -138,6 +153,11 @@
         internal override void Visit(InsertTxIdRequest req)
         {
             string hashId = req.TxId.ToString();
+            if (this.redisVersionDbMode == RedisVersionDbMode.Cluster)
+            {
+                hashId = RedisVersionDb.PACK_KEY(RedisVersionDb.TX_KEY_PREFIX, hashId);
+            }
+
             byte[][] keysBytes =
             {
                 Encoding.ASCII.GetBytes(TxTableEntry.STATUS_STRING),
@@ -159,7 +179,12 @@
         internal override void Visit(SetCommitTsRequest req)
         {
             string hashId = req.TxId.ToString();
-            string sha1 = this.redisLuaScriptManager.GetLuaScriptSha1("SET_AND_GET_COMMIT_TIME");
+            if (this.redisVersionDbMode == RedisVersionDbMode.Cluster)
+            {
+                hashId = RedisVersionDb.PACK_KEY(RedisVersionDb.TX_KEY_PREFIX, hashId);
+            }
+
+            string sha1 = this.redisLuaScriptManager.GetLuaScriptSha1(LuaScriptName.SET_AND_GET_COMMIT_TIME);
             byte[][] keys =
             {
                 Encoding.ASCII.GetBytes(hashId),
@@ -175,6 +200,11 @@
         internal override void Visit(UpdateTxStatusRequest req)
         {
             string hashId = req.TxId.ToString();
+            if (this.redisVersionDbMode == RedisVersionDbMode.Cluster)
+            {
+                hashId = RedisVersionDb.PACK_KEY(RedisVersionDb.TX_KEY_PREFIX, hashId);
+            }
+
             byte[] keyBytes = Encoding.ASCII.GetBytes(TxTableEntry.STATUS_STRING);
             byte[] valueBytes = BitConverter.GetBytes((int)req.TxStatus);
 
@@ -186,7 +216,12 @@
         internal override void Visit(UpdateCommitLowerBoundRequest req)
         {
             string hashId = req.TxId.ToString();
-            string sha1 = this.redisLuaScriptManager.GetLuaScriptSha1("UPDATE_COMMIT_LOWER_BOUND");
+            if (this.redisVersionDbMode == RedisVersionDbMode.Cluster)
+            {
+                hashId = RedisVersionDb.PACK_KEY(RedisVersionDb.TX_KEY_PREFIX, hashId);
+            }
+
+            string sha1 = this.redisLuaScriptManager.GetLuaScriptSha1(LuaScriptName.UPDATE_COMMIT_LOWER_BOUND);
             byte[][] keys =
             {
                 Encoding.ASCII.GetBytes(hashId),
@@ -203,6 +238,11 @@
         internal override void Visit(RemoveTxRequest req)
         {
             string hashId = req.TxId.ToString();
+            if (this.redisVersionDbMode == RedisVersionDbMode.Cluster)
+            {
+                hashId = RedisVersionDb.PACK_KEY(RedisVersionDb.TX_KEY_PREFIX, hashId);
+            }
+
             byte[][] keysBytes =
             {
                 Encoding.ASCII.GetBytes(TxTableEntry.TXID_STRING),

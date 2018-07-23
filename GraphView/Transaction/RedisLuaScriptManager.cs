@@ -87,10 +87,11 @@
         {
             string[] luaScriptNames =
             {
-                "SET_AND_GET_COMMIT_TIME",
-                "REPLACE_VERSION_ENTRY",
-                "UPDATE_COMMIT_LOWER_BOUND",
-                "UPDATE_VERSION_MAX_COMMIT_TS"
+                LuaScriptName.REMOVE_KEYS_WITH_PREFIX,
+                LuaScriptName.SET_AND_GET_COMMIT_TIME,
+                LuaScriptName.REPLACE_VERSION_ENTRY,
+                LuaScriptName.UPDATE_COMMIT_LOWER_BOUND,
+                LuaScriptName.UPDATE_VERSION_MAX_COMMIT_TS
             };
 
             string[] luaBodies = new string[luaScriptNames.Length];
@@ -168,10 +169,19 @@
             int port = int.Parse(hostPort[1]);
 
             // create and change to the meta data db
-            RedisClient redisClient = new RedisClientFactory().CreateRedisClient(host, port);
-            redisClient.ChangeDb(metaDataDbIndex);
+            BasicRedisClientManager clientManager = new BasicRedisClientManager((int)metaDataDbIndex, new string[] { metaDataConnStr });
+            RedisClient redisClient = (RedisClient) clientManager.GetClient();
 
             return redisClient;
         }
+    }
+
+    internal sealed class LuaScriptName
+    {
+        internal static string REMOVE_KEYS_WITH_PREFIX = "REMOVE_KEYS_WITH_PREFIX";
+        internal static string SET_AND_GET_COMMIT_TIME = "SET_AND_GET_COMMIT_TIME";
+        internal static string REPLACE_VERSION_ENTRY = "REPLACE_VERSION_ENTRY";
+        internal static string UPDATE_COMMIT_LOWER_BOUND = "UPDATE_COMMIT_LOWER_BOUND";
+        internal static string UPDATE_VERSION_MAX_COMMIT_TS = "UPDATE_VERSION_MAX_COMMIT_TS";
     }
 }

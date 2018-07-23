@@ -420,6 +420,7 @@
     <EmbeddedResource Include="Resources\RedisLua\UPDATE_VERSION_MAX_COMMIT_TS.lua" />
     <EmbeddedResource Include="Resources\RedisLua\UPDATE_COMMIT_LOWER_BOUND.lua" />
     <EmbeddedResource Include="Resources\RedisLua\REPLACE_VERSION_ENTRY.lua" />
+    <EmbeddedResource Include="Resources\RedisLua\REMOVE_KEYS_WITH_PREFIX.lua" />
   </ItemGroup>
   <ItemGroup />
   <ItemGroup>

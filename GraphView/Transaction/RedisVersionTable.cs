@@ -87,12 +87,27 @@
 
         internal override void Clear()
         {
-            for (int pid = 0; pid < this.PartitionCount; pid++)
+            if (this.redisVersionDbMode == RedisVersionDbMode.Cluster)
             {
-                using (RedisClient redisClient = this.RedisManager.GetClient(
-                    this.redisDbIndex, RedisVersionDb.GetRedisInstanceIndex(pid)))
+                using (RedisClient redisClient = this.singletonConnPool.GetRedisClient())
                 {
-                    redisClient.FlushDb();
+                    byte[][] keysAndArgs =
+                    {
+                        Encoding.ASCII.GetBytes(RedisVersionDb.VER_KEY_PREFIX),
+                    };
+                    string sha1 = this.LuaManager.GetLuaScriptSha1(LuaScriptName.REMOVE_KEYS_WITH_PREFIX);
+                    redisClient.EvalSha(sha1, 0, keysAndArgs);
+                }
+            }
+            else
+            {
+                for (int pid = 0; pid < this.PartitionCount; pid++)
+                {
+                    using (RedisClient redisClient = this.RedisManager.GetClient(
+                        this.redisDbIndex, RedisVersionDb.GetRedisInstanceIndex(pid)))
+                    {
+                        redisClient.FlushDb();
+                    }
                 }
             }
         }
@@ -121,6 +136,10 @@
                     {
                         object recordKey = i;
                         string hashId = recordKey.ToString();
+                        if (this.redisVersionDbMode == RedisVersionDbMode.Cluster)
+                        {
+                            hashId = RedisVersionDb.PACK_KEY(RedisVersionDb.VER_KEY_PREFIX, hashId);
+                        }
 
                         VersionEntry emptyEntry = new VersionEntry();
                         VersionEntry.InitEmptyVersionEntry(i, emptyEntry);
@@ -352,7 +371,7 @@
         internal override VersionEntry ReplaceVersionEntry(object recordKey, long versionKey, 
             long beginTimestamp, long endTimestamp, long txId, long readTxId, long expectedEndTimestamp)
         {
-            string sha1 = this.LuaManager.GetLuaScriptSha1("REPLACE_VERSION_ENTRY");
+            string sha1 = this.LuaManager.GetLuaScriptSha1(LuaScriptName.REPLACE_VERSION_ENTRY);
             string hashId = recordKey as string;
 
             byte[][] keysAndArgs =
@@ -473,7 +492,7 @@
         /// </returns>
         internal override VersionEntry UpdateVersionMaxCommitTs(object recordKey, long versionKey, long commitTime)
         {
-            string sha1 = this.LuaManager.GetLuaScriptSha1("UPDATE_VERSION_MAX_COMMIT_TS");
+            string sha1 = this.LuaManager.GetLuaScriptSha1(LuaScriptName.UPDATE_VERSION_MAX_COMMIT_TS);
             string hashId = recordKey as string;
 
             byte[][] keysAndArgs =

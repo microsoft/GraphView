@@ -124,7 +124,7 @@ namespace TransactionBenchmarkTest.YCSB
 
         static void YCSBAsyncTestWithRedisVersionDb(string[] args)
         {
-            int redisInstances = 8;
+            int redisInstances = 1;
             int partitionCount = RedisVersionDb.PARTITIONS_PER_INSTANCE * redisInstances;
             int executorCount = partitionCount;
             int txCountPerExecutor = 200000;
@@ -149,19 +149,19 @@ namespace TransactionBenchmarkTest.YCSB
 
             string[] readWriteHosts = new string[]
             {
-                //"127.0.0.1:6379",
-                "127.0.0.1:6380",
-                "127.0.0.1:6381",
-                "127.0.0.1:6382",
-                "127.0.0.1:6383",
-                "127.0.0.1:6384",
-                "127.0.0.1:6385",
-                "127.0.0.1:6386",
-                "127.0.0.1:6387",
-                "127.0.0.1:6388",
-                "127.0.0.1:6389",
-                "127.0.0.1:6390",
-                "127.0.0.1:6391",
+                "127.0.0.1:6379",
+                //"127.0.0.1:6380",
+                //"127.0.0.1:6381",
+                //"127.0.0.1:6382",
+                //"127.0.0.1:6383",
+                //"127.0.0.1:6384",
+                //"127.0.0.1:6385",
+                //"127.0.0.1:6386",
+                //"127.0.0.1:6387",
+                //"127.0.0.1:6388",
+                //"127.0.0.1:6389",
+                //"127.0.0.1:6390",
+                //"127.0.0.1:6391",
             };
 
             RedisVersionDb versionDb = RedisVersionDb.Instance(currentExecutorCount, readWriteHosts);

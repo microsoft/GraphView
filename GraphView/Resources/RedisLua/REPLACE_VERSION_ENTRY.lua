@@ -1,9 +1,14 @@
-﻿-- eval lua 1 record_key version_key begin_timestamp, end_timestamp, txId, read_txId read_end_timestamp -1
+﻿-- A CAS operations to update fields in a version entry
+-- replace 3 fields: begin_timestamp, end_timestamp, txId in a version entry if
+-- the end_timestamp and txId in the version entry are satisified with the given parameters
+-- usage: eval lua 1 record_key version_key begin_timestamp, end_timestamp, txId, read_txId read_end_timestamp -1
+
 local begin_timestamp = ARGV[2]
 local end_timestamp = ARGV[3]
 local tx_id = ARGV[4]
 local read_tx_id = ARGV[5]
 local read_end_timestamp = ARGV[6]
+-- the uploaded negative_one bytes as the return value
 local negative_one = ARGV[7]
 
 local entry = redis.call('HGET', KEYS[1], ARGV[1])

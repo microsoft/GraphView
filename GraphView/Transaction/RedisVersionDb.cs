@@ -284,6 +284,9 @@
                 this.SingletonConnPool = new RedisConnectionPool(readWriteHosts[0], DEFAULT_DB_INDEX);
             }
             this.RedisManager = new RedisClientManager(readWriteHosts);
+
+            // load meta table from redis instance
+            this.LoadTables();
         }
 
         public void Dispose()
@@ -388,12 +391,27 @@
 
         internal override void Clear()
         {
-            for (int pk = 0; pk < this.PartitionCount; pk++)
+            if (this.Mode == RedisVersionDbMode.Cluster)
             {
-                using (RedisClient redisClient = this.RedisManager.GetClient(
-                    RedisVersionDb.TX_DB_INDEX, RedisVersionDb.GetRedisInstanceIndex(pk)))
+                using (RedisClient redisClient = this.SingletonConnPool.GetRedisClient())
                 {
-                    redisClient.FlushDb();
+                    byte[][] keysAndArgs =
+                    {
+                        Encoding.ASCII.GetBytes(RedisVersionDb.TX_KEY_PREFIX),
+                    };
+                    string sha1 = this.RedisLuaManager.GetLuaScriptSha1(LuaScriptName.REMOVE_KEYS_WITH_PREFIX);
+                    redisClient.EvalSha(sha1, 0, keysAndArgs);
+                }
+            }
+            else
+            {
+                for (int pk = 0; pk < this.PartitionCount; pk++)
+                {
+                    using (RedisClient redisClient = this.RedisManager.GetClient(
+                        RedisVersionDb.TX_DB_INDEX, RedisVersionDb.GetRedisInstanceIndex(pk)))
+                    {
+                        redisClient.FlushDb();
+                    }
                 }
             }
 
@@ -440,6 +458,39 @@
             foreach (VersionTable versionTable in this.versionTables.Values)
             {
                 versionTable.MockLoadData(recordCount);
+            }
+        }
+        
+        private void LoadTables()
+        {
+            RedisConnectionPool connPool = null;
+            if (this.Mode == RedisVersionDbMode.Cluster)
+            {
+                connPool = this.SingletonConnPool;
+            }
+            else
+            {
+                connPool = this.RedisManager.
+                    GetClientPool(RedisVersionDb.META_DB_INDEX, RedisVersionDb.META_DATA_PARTITION);
+            }
+
+            using (RedisClient redisClient = connPool.GetRedisClient())
+            {
+                byte[][] returnBytes = redisClient.HGetAll(RedisVersionDb.META_TABLE_KEY);
+
+                if (returnBytes == null || returnBytes.Length == 0)
+                {
+                    return;
+                }
+
+                for (int i = 0; i < returnBytes.Length; i += 2)
+                {
+                    string tableName = Encoding.ASCII.GetString(returnBytes[i]);
+                    long dbIndex = BitConverter.ToInt64(returnBytes[i+1], 0);
+
+                    RedisVersionTable versionTable = new RedisVersionTable(this, tableName, dbIndex);
+                    this.versionTables.Add(tableName, versionTable);
+                }
             }
         }
     }
@@ -675,7 +726,7 @@
         internal override long SetAndGetCommitTime(long txId, long proposedCommitTime)
         {
             string hashId = txId.ToString();
-            string sha1 = this.RedisLuaManager.GetLuaScriptSha1("SET_AND_GET_COMMIT_TIME");
+            string sha1 = this.RedisLuaManager.GetLuaScriptSha1(LuaScriptName.SET_AND_GET_COMMIT_TIME);
             byte[][] keys =
             {
                 Encoding.ASCII.GetBytes(hashId),
@@ -713,7 +764,7 @@
         internal override long UpdateCommitLowerBound(long txId, long lowerBound)
         {
             string hashId = txId.ToString();
-            string sha1 = this.RedisLuaManager.GetLuaScriptSha1("UPDATE_COMMIT_LOWER_BOUND");
+            string sha1 = this.RedisLuaManager.GetLuaScriptSha1(LuaScriptName.UPDATE_COMMIT_LOWER_BOUND);
             byte[][] keys =
             {
                 Encoding.ASCII.GetBytes(hashId),
