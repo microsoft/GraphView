@@ -10,6 +10,10 @@
 
     class YCSBAsyncBenchmarkTest
     {
+        public static bool LOAD_DATA = false;
+
+        public static readonly bool CLEAR_VERSION_DB = false;
+
         public static readonly String TABLE_ID = "ycsb_table";
 
         public static readonly long REDIS_DB_INDEX = 7L;
@@ -120,8 +124,12 @@
         internal void Setup(string dataFile, string operationFile)
         {
             // step1: flush the database
-            this.versionDb.Clear();
-            Console.WriteLine("Flushed the database");
+            if (YCSBAsyncBenchmarkTest.CLEAR_VERSION_DB)
+            {
+                this.versionDb.Clear();
+            }
+
+            Console.WriteLine("cleared the database");
 
             // step2: create version table
             this.versionDb.CreateVersionTable(TABLE_ID, REDIS_DB_INDEX);
@@ -135,7 +143,10 @@
             if (this.versionDb is SingletonVersionDb ||
                 this.versionDb is RedisVersionDb)
             {
-                this.versionDb.MockLoadData(this.recordCount);
+                if (YCSBAsyncBenchmarkTest.LOAD_DATA)
+                {
+                    this.versionDb.MockLoadData(this.recordCount);
+                }
             }
 
             // step 3: fill workers' queue

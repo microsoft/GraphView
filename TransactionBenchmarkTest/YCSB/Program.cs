@@ -124,6 +124,22 @@ namespace TransactionBenchmarkTest.YCSB
 
         static void YCSBAsyncTestWithRedisVersionDb(string[] args)
         {
+            int partitionCountPer = RedisVersionDb.PARTITIONS_PER_INSTANCE;
+            bool loadData = YCSBAsyncBenchmarkTest.LOAD_DATA;
+
+            Console.WriteLine("args length: {0}", args.Length);
+            if (Program.args.Length > 1)
+            {
+                partitionCountPer = int.Parse(args[0]);
+                if (args.Length > 1)
+                {
+                    loadData = args[1] == "load";
+                }
+            }
+
+            RedisVersionDb.PARTITIONS_PER_INSTANCE = partitionCountPer;
+            YCSBAsyncBenchmarkTest.LOAD_DATA = loadData;
+
             int redisInstances = 1;
             int partitionCount = RedisVersionDb.PARTITIONS_PER_INSTANCE * redisInstances;
             int executorCount = partitionCount;
@@ -131,13 +147,13 @@ namespace TransactionBenchmarkTest.YCSB
             const int recordCount = 200000;
              
             string operationFile = "ycsb_ops_r.in";
-            if (args.Length > 1)
-            {
-                operationFile = args[1];
-                partitionCount = Int32.Parse(args[2]);
-                executorCount = partitionCount;
-                txCountPerExecutor = args.Length > 3 ? Int32.Parse(args[3]) : txCountPerExecutor;
-            }
+            //if (args.Length > 1)
+            //{
+            //    operationFile = args[1];
+            //    partitionCount = Int32.Parse(args[2]);
+            //    executorCount = partitionCount;
+            //    txCountPerExecutor = args.Length > 3 ? Int32.Parse(args[3]) : txCountPerExecutor;
+            //}
 
             string[] tables =
             {
@@ -148,7 +164,8 @@ namespace TransactionBenchmarkTest.YCSB
             int currentExecutorCount = RedisVersionDb.PARTITIONS_PER_INSTANCE;
 
             string[] readWriteHosts = new string[]
-            {
+            {    
+                // "8r285aybUZ7+rQ3QgpoorfFodT6+NMDQsxkdfOHAL9w=@txservice.redis.cache.windows.net:6379",
                 "127.0.0.1:6379",
                 //"127.0.0.1:6380",
                 //"127.0.0.1:6381",

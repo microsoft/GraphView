@@ -5,6 +5,7 @@
     using System.Text;
     using System.Threading;
     using ServiceStack.Redis;
+    using ServiceStack.Redis.Pipeline;
 
     public enum RedisVersionDbMode
     {
@@ -35,7 +36,7 @@
         /// <summary>
         /// Then number of logical partitions maps to a single instance
         /// </summary>
-        public static readonly int PARTITIONS_PER_INSTANCE = 4;
+        public static int PARTITIONS_PER_INSTANCE = 4;
 
         /// <summary>
         /// The default redis config read-write host
@@ -391,16 +392,41 @@
 
         internal override void Clear()
         {
+            Console.WriteLine("Clearing the Database");
             if (this.Mode == RedisVersionDbMode.Cluster)
             {
+                // IMPORTMENT: Since the Redis Cluster doesn't allow multi-key commands across multiple hash slots
+                // So we couldn't clear keys in batch
+                //using (RedisClient redisClient = this.SingletonConnPool.GetRedisClient())
+                //{
+                //    byte[][] keysAndArgs =
+                //    {
+                //        Encoding.ASCII.GetBytes(RedisVersionDb.TX_KEY_PREFIX),
+                //    };
+                //    string sha1 = this.RedisLuaManager.GetLuaScriptSha1(LuaScriptName.REMOVE_KEYS_WITH_PREFIX);
+                //    redisClient.EvalSha(sha1, 0, keysAndArgs);
+                //}
+
+                int batchSize = 100;
                 using (RedisClient redisClient = this.SingletonConnPool.GetRedisClient())
                 {
-                    byte[][] keysAndArgs =
+                    byte[][] keys = redisClient.Keys(RedisVersionDb.TX_KEY_PREFIX + "*");
+                    if (keys != null)
                     {
-                        Encoding.ASCII.GetBytes(RedisVersionDb.TX_KEY_PREFIX),
-                    };
-                    string sha1 = this.RedisLuaManager.GetLuaScriptSha1(LuaScriptName.REMOVE_KEYS_WITH_PREFIX);
-                    redisClient.EvalSha(sha1, 0, keysAndArgs);
+                        for (int i = 0; i < keys.Length; i += batchSize)
+                        {
+                            int upperBound = Math.Min(keys.Length, i + batchSize);
+                            using (IRedisPipeline pipe = redisClient.CreatePipeline())
+                            {
+                                for (int j = i; j < upperBound; j++)
+                                {
+                                    string keyStr = Encoding.ASCII.GetString(keys[j]);
+                                    pipe.QueueCommand(r => ((RedisNativeClient)r).Del(keyStr));
+                                }
+                                pipe.Flush();
+                            }
+                        }
+                    }
                 }
             }
             else
@@ -537,7 +563,7 @@
         {
             // Console.WriteLine(txEntryRequest.GetType().Name);
             // base.EnqueueTxEntryRequest(txId, txEntryRequest, executorPK);
-
+            // Interlocked.Increment(ref VersionDb.EnqueuedRequests);
             int pk = srcPartition;
 
             while (Interlocked.CompareExchange(ref queueLatches[pk], 1, 0) != 0) ;

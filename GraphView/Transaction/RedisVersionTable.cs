@@ -77,6 +77,7 @@
         {
             // Console.WriteLine(req.GetType().Name);
             // base.EnqueueVersionEntryRequest(req, execPartition);
+            // Interlocked.Increment(ref VersionDb.EnqueuedRequests);
             int pk = srcPartition;
 
             while (Interlocked.CompareExchange(ref queueLatches[pk], 1, 0) != 0) ;
@@ -89,14 +90,38 @@
         {
             if (this.redisVersionDbMode == RedisVersionDbMode.Cluster)
             {
+                // IMPORTMENT: Since the Redis Cluster doesn't allow multi-key commands across multiple hash slots
+                // So we couldn't clear keys in batch
+                //using (RedisClient redisClient = this.singletonConnPool.GetRedisClient())
+                //{
+                //    byte[][] keysAndArgs =
+                //    {
+                //        Encoding.ASCII.GetBytes(RedisVersionDb.VER_KEY_PREFIX),
+                //    };
+                //    string sha1 = this.LuaManager.GetLuaScriptSha1(LuaScriptName.REMOVE_KEYS_WITH_PREFIX);
+                //    redisClient.EvalSha(sha1, 0, keysAndArgs);
+                //}
+
+                int batchSize = 100;
                 using (RedisClient redisClient = this.singletonConnPool.GetRedisClient())
                 {
-                    byte[][] keysAndArgs =
+                    byte[][] keys = redisClient.Keys(RedisVersionDb.VER_KEY_PREFIX+"*");
+                    if (keys != null)
                     {
-                        Encoding.ASCII.GetBytes(RedisVersionDb.VER_KEY_PREFIX),
-                    };
-                    string sha1 = this.LuaManager.GetLuaScriptSha1(LuaScriptName.REMOVE_KEYS_WITH_PREFIX);
-                    redisClient.EvalSha(sha1, 0, keysAndArgs);
+                        for (int i = 0; i < keys.Length; i += batchSize)
+                        {
+                            int upperBound = Math.Min(keys.Length, i + batchSize);
+                            using (IRedisPipeline pipe = redisClient.CreatePipeline())
+                            {
+                                for (int j = i; j < upperBound; j++)
+                                {
+                                    string keyStr = Encoding.ASCII.GetString(keys[j]);
+                                    pipe.QueueCommand(r => ((RedisNativeClient)r).Del(keyStr));
+                                }
+                                pipe.Flush();
+                            }    
+                        }
+                    }
                 }
             }
             else
@@ -121,6 +146,7 @@
                 connPool = this.singletonConnPool;
             }
 
+            int loaded = 0;
             while (pk < this.PartitionCount)
             {
                 Console.WriteLine("Loading Partition {0}", pk);
@@ -131,6 +157,10 @@
 
                 using (RedisClient redisClient = connPool.GetRedisClient())
                 {
+                    IRedisPipeline pipe = redisClient.CreatePipeline();
+                    int pipeCount = 0;
+                    int batchSize = 100;
+
                     int partitions = this.PartitionCount;
                     for (int i = pk; i < recordCount; i += partitions)
                     {
@@ -148,25 +178,44 @@
                         byte[] key = BitConverter.GetBytes(-1L);
                         byte[] value = VersionEntry.Serialize(emptyEntry);
 
-                        redisClient.HSet(hashId, key, value);
+                        // redisClient.HSet(hashId, key, value);
+                        pipe.QueueCommand(r => ((RedisNativeClient)r).HSet(hashId, key, value));
+                        pipeCount++;
 
                         VersionEntry versionEntry = new VersionEntry();
                         VersionEntry.InitFirstVersionEntry(i, versionEntry.Record == null ? new String('a', 100) : versionEntry.Record, versionEntry);
 
                         key = BitConverter.GetBytes(0L);
                         value = VersionEntry.Serialize(versionEntry);
-                        redisClient.HSet(hashId, key, value);
+                        // redisClient.HSet(hashId, key, value);
 
-                        if (i % 10000 == 0)
+                        pipe.QueueCommand(r => ((RedisNativeClient)r).HSet(hashId, key, value));
+                        pipeCount++;
+
+                        loaded++;
+                        if (pipeCount >= batchSize || (i + partitions >= recordCount))
                         {
-                            Console.WriteLine("Loaded {0} records", i+1);
+                            pipe.Flush();
+                            pipe.Dispose();
+                            pipeCount = 0;
+
+                            if (i + partitions < recordCount)
+                            {
+                                pipe = redisClient.CreatePipeline();
+                            }
+                        }
+
+                        if (loaded % 2000 == 0)
+                        {
+                            Console.WriteLine("Loaded {0} records", loaded);
                         }
                     }
                 }
                 pk++;
             }
-        }
 
+            Console.WriteLine("Loaded Successfully");
+        }
 
         internal override void AddPartition(int partitionCount)
         {
