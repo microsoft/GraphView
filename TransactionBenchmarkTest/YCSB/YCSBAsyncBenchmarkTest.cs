@@ -544,7 +544,7 @@
                     break;
                 }
             }
-
+           
             this.testEndTicks = DateTime.Now.Ticks;
 
             // stop monitors
