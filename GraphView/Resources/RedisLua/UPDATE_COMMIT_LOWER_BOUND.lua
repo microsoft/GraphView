@@ -1,4 +1,7 @@
-﻿-- eval lua_script 1 txId commit_time -1 -2
+﻿-- A CAS operation to update tx entry's commit_lower_bound if the commit_time
+-- hasn't been set and local_commit_time is smaller than commit_lower_bound
+-- usage: eval lua_script 1 txId commit_time -1 -2
+
 local commit_time = ARGV[1]
 local negative_one = ARGV[2]
 local negative_two = ARGV[3]

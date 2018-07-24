@@ -5,10 +5,11 @@ namespace GraphView.Transaction
 
     public class VersionTableVisitor : VersionEntryVisitor
     {
-        public virtual void Invoke(IEnumerable<VersionEntryRequest> reqs)
+        public virtual void Invoke(Queue<VersionEntryRequest> reqQueue)
         {
-            foreach (VersionEntryRequest req in reqs)
+            while (reqQueue.Count > 0)
             {
+                VersionEntryRequest req = reqQueue.Dequeue();
                 req.Accept(this);
             }
         }

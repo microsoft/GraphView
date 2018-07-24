@@ -1,5 +1,10 @@
-﻿-- eval lua_script 1 txId try_commit_time -1
+﻿-- A CAS operation to set the tx entry's commit time with the local commit time
+-- if the commit_time in the tx entry has not been set, take the max(try_commit_time, commit_lower_bound)
+-- as the commit time and set it.
+-- usage: eval lua_script 1 txId try_commit_time -1
+
 local try_commit_time = ARGV[1]
+-- the uploaded negative_one to be a return value in some cases
 local negative_one = ARGV[2]
 
 local tx_entry = redis.call('HMGET', KEYS[1], 'commit_time', 'commit_lower_bound')

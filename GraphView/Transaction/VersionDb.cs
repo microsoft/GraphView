@@ -83,7 +83,7 @@ namespace GraphView.Transaction
 
         protected RequestQueue<TxEntryRequest>[] requestUDFQueues;
 
-        private int[] queueLatches;
+        protected int[] queueLatches;
 
         /// <summary>
         /// txEntry visitors for txEntry requests

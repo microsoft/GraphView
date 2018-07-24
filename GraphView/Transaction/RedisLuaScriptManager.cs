@@ -23,21 +23,23 @@
         /// </summary>
         private readonly Dictionary<string, string> luaScriptSha1Map = new Dictionary<string, string>();
 
-        /// <summary>
-        /// The redis client manager to call
-        /// </summary>
-        private RedisClient redisClient;
+        private string[] readWriteHosts;
 
-        internal RedisLuaScriptManager(string metaDataConnStr, long metaDataDbIndex)
+        private long metaDataDbIndex;
+
+        internal RedisLuaScriptManager(string[] readWriteHosts, long metaDataDbIndex)
         {
-            this.redisClient = this.CreateRedisClient(metaDataConnStr, metaDataDbIndex);
+            if (readWriteHosts == null || readWriteHosts.Length == 0)
+            {
+                Console.WriteLine("readWriteHosts mustn't be null");
+            }
+
+            this.readWriteHosts = readWriteHosts;
+            this.metaDataDbIndex = metaDataDbIndex;
 
             // check and register 
             this.CheckAndLoadLuaScripts();
             this.LoadLuaScriptMapFromRedis();
-
-            // Dispose the redis client
-            this.redisClient.Dispose();
         }
 
         /// <summary>
@@ -59,19 +61,22 @@
         /// </summary>
         private void LoadLuaScriptMapFromRedis()
         {
-            string hashId = RedisVersionDb.META_SCRIPT_KEY;
-            byte[][] valueBytes = this.redisClient.HGetAll(hashId);
-
-            if (valueBytes == null || valueBytes.Length == 0)
+            using (RedisClient redisClient = CreateRedisClient(readWriteHosts[0], metaDataDbIndex))
             {
-                return;
-            }
+                string hashId = RedisVersionDb.META_SCRIPT_KEY;
+                byte[][] valueBytes = redisClient.HGetAll(hashId);
 
-            for (int i = 0; i < valueBytes.Length; i += 2)
-            {
-                string scriptName = Encoding.ASCII.GetString(valueBytes[i]);
-                string sha1 = Encoding.ASCII.GetString(valueBytes[i + 1]);
-                this.luaScriptSha1Map[scriptName] = sha1;
+                if (valueBytes == null || valueBytes.Length == 0)
+                {
+                    return;
+                }
+
+                for (int i = 0; i < valueBytes.Length; i += 2)
+                {
+                    string scriptName = Encoding.ASCII.GetString(valueBytes[i]);
+                    string sha1 = Encoding.ASCII.GetString(valueBytes[i + 1]);
+                    this.luaScriptSha1Map[scriptName] = sha1;
+                }
             }
         }
 
@@ -82,21 +87,32 @@
         {
             string[] luaScriptNames =
             {
-                "SET_AND_GET_COMMIT_TIME",
-                "REPLACE_VERSION_ENTRY",
-                "UPDATE_COMMIT_LOWER_BOUND",
-                "UPDATE_VERSION_MAX_COMMIT_TS"
+                LuaScriptName.REMOVE_KEYS_WITH_PREFIX,
+                LuaScriptName.SET_AND_GET_COMMIT_TIME,
+                LuaScriptName.REPLACE_VERSION_ENTRY,
+                LuaScriptName.UPDATE_COMMIT_LOWER_BOUND,
+                LuaScriptName.UPDATE_VERSION_MAX_COMMIT_TS
             };
 
-            foreach(string scriptName in luaScriptNames)
-            {
+            string[] luaBodies = new string[luaScriptNames.Length];
+            for (int i = 0; i < luaScriptNames.Length; i++)
+            { 
+                string scriptName = luaScriptNames[i];
                 string resourceName = $"GraphView.Resources.RedisLua.{scriptName}.lua";
                 Stream stream = Assembly.GetExecutingAssembly().GetManifestResourceStream(resourceName);
 
                 using (StreamReader reader = new StreamReader(stream))
                 {
                     string luaBody = reader.ReadToEnd();
-                    this.RegisterLuaScripts(scriptName, luaBody);
+                    luaBodies[i] = luaBody;
+                }
+            }
+
+            foreach (string host in this.readWriteHosts)
+            {
+                for (int i = 0; i < luaScriptNames.Length; i++)
+                {
+                    this.RegisterLuaScripts(host, luaScriptNames[i], luaBodies[i]);
                 }
             }
         }
@@ -108,39 +124,42 @@
         /// <param name="scriptKey">The human readable script name</param>
         /// <param name="luaBody">the lua script body</param>
         /// <returns></returns>
-        private bool RegisterLuaScripts(string scriptKey, string luaBody)
+        private bool RegisterLuaScripts(string host, string scriptKey, string luaBody)
         {
-           // Extract the command sha1
-            byte[] scriptKeyBytes = Encoding.UTF8.GetBytes(scriptKey);
-            byte[] sha1Bytes = this.redisClient.HGet(RedisVersionDb.META_SCRIPT_KEY, scriptKeyBytes);
-
-            // We will register the lua script only if the sha1 isn't in script table or sha1 is not in the redis cache 
-            bool hasRegistered = false;
-            if (sha1Bytes != null)
+            using (RedisClient redisClient = this.CreateRedisClient(host, this.metaDataDbIndex))
             {
-                byte[][] returnBytes = this.redisClient.ScriptExists(new byte[][] { sha1Bytes });
-                if (returnBytes != null && returnBytes.Length != 0)
-                {
-                    // The return value == "1" means scripts have been registered
-                    // SCRIPT EXISTS will return an array of string
-                    hasRegistered = Encoding.ASCII.GetString(returnBytes[0]) == "1";
-                }
-            }
+                // Extract the command sha1
+                byte[] scriptKeyBytes = Encoding.UTF8.GetBytes(scriptKey);
+                byte[] sha1Bytes = redisClient.HGet(RedisVersionDb.META_SCRIPT_KEY, scriptKeyBytes);
 
-            // Register the lua scripts when it has not been registered
-            if (!hasRegistered)
-            {
-                // register and load the script
-                byte[] scriptSha1Bytes = this.redisClient.ScriptLoad(luaBody);
-                if (scriptSha1Bytes == null)
+                // We will register the lua script only if the sha1 isn't in script table or sha1 is not in the redis cache 
+                bool hasRegistered = false;
+                if (sha1Bytes != null)
                 {
-                    return false;
+                    byte[][] returnBytes = redisClient.ScriptExists(new byte[][] { sha1Bytes });
+                    if (returnBytes != null && returnBytes.Length != 0)
+                    {
+                        // The return value == "1" means scripts have been registered
+                        // SCRIPT EXISTS will return an array of string
+                        hasRegistered = Encoding.ASCII.GetString(returnBytes[0]) == "1";
+                    }
                 }
-                // insert into the script hashset
-                long result = this.redisClient.HSet(RedisVersionDb.META_SCRIPT_KEY, scriptKeyBytes, scriptSha1Bytes);
+
+                // Register the lua scripts when it has not been registered
+                if (!hasRegistered)
+                {
+                    // register and load the script
+                    byte[] scriptSha1Bytes = redisClient.ScriptLoad(luaBody);
+                    if (scriptSha1Bytes == null)
+                    {
+                        return false;
+                    }
+                    // insert into the script hashset
+                    long result = redisClient.HSet(RedisVersionDb.META_SCRIPT_KEY, scriptKeyBytes, scriptSha1Bytes);
+                    return true;
+                }
                 return true;
             }
-            return true;
         }
 
         private RedisClient CreateRedisClient(string metaDataConnStr, long metaDataDbIndex)
@@ -150,10 +169,19 @@
             int port = int.Parse(hostPort[1]);
 
             // create and change to the meta data db
-            RedisClient redisClient = new RedisClientFactory().CreateRedisClient(host, port);
-            redisClient.ChangeDb(metaDataDbIndex);
+            BasicRedisClientManager clientManager = new BasicRedisClientManager((int)metaDataDbIndex, new string[] { metaDataConnStr });
+            RedisClient redisClient = (RedisClient) clientManager.GetClient();
 
             return redisClient;
         }
+    }
+
+    internal sealed class LuaScriptName
+    {
+        internal static string REMOVE_KEYS_WITH_PREFIX = "REMOVE_KEYS_WITH_PREFIX";
+        internal static string SET_AND_GET_COMMIT_TIME = "SET_AND_GET_COMMIT_TIME";
+        internal static string REPLACE_VERSION_ENTRY = "REPLACE_VERSION_ENTRY";
+        internal static string UPDATE_COMMIT_LOWER_BOUND = "UPDATE_COMMIT_LOWER_BOUND";
+        internal static string UPDATE_VERSION_MAX_COMMIT_TS = "UPDATE_VERSION_MAX_COMMIT_TS";
     }
 }

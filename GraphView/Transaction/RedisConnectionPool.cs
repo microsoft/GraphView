@@ -136,7 +136,13 @@
             this.versionEntryVisitor = new RedisVersionEntryRequestVisitor(luaScriptManager);
 
             this.spinLock = new SpinLock();
+
             lastFlushTime = DateTime.Now.Ticks / 10;
+        }
+
+        public RedisConnectionPool(string redisConnectionString, long database) :
+            this(redisConnectionString, database, null)
+        {
         }
 
         /// <summary>
@@ -172,85 +178,82 @@
             }
         }
 
-        internal void Flush(IEnumerable<RedisRequest> requests, int maxRequests = -1)
+        internal void Flush(IEnumerable<RedisRequest> requests, RedisClient redisClient = null, int maxRequests = -1)
         {
             int reqCount = 0;
-            using (RedisClient redisClient = this.GetRedisClient())
+            using (IRedisPipeline pipe = redisClient.CreatePipeline())
             {
-                using (IRedisPipeline pipe = redisClient.CreatePipeline())
+                foreach (RedisRequest req in requests)
                 {
-                    foreach (RedisRequest req in requests)
+                    reqCount++;
+                    if (req == null)
                     {
-                        reqCount++;
-                        if (req == null)
-                        {
-                            continue;
-                        }
-
-                        switch (req.Type)
-                        {
-                            case RedisRequestType.HGet:
-                                pipe.QueueCommand(
-                                    r => ((RedisNativeClient)r).HGet(req.HashId, req.Key),
-                                    req.SetValue, req.SetError);
-                                break;
-                            case RedisRequestType.HMGet:
-                                pipe.QueueCommand(
-                                    r => ((RedisNativeClient)r).HMGet(req.HashId, req.Keys),
-                                    req.SetValues, req.SetError);
-                                break;
-                            case RedisRequestType.HGetAll:
-                                pipe.QueueCommand(
-                                    r => ((RedisNativeClient)r).HGetAll(req.HashId),
-                                    req.SetValues, req.SetError);
-                                break;
-                            case RedisRequestType.HSetNX:
-                                pipe.QueueCommand(
-                                    r => ((RedisNativeClient)r).HSetNX(req.HashId, req.Key, req.Value),
-                                    req.SetLong, req.SetError);
-                                break;
-                            case RedisRequestType.HSet:
-                                pipe.QueueCommand(
-                                    r => ((RedisNativeClient)r).HSet(req.HashId, req.Key, req.Value),
-                                    req.SetLong, req.SetError);
-                                break;
-                            case RedisRequestType.HMSet:
-                                pipe.QueueCommand(
-                                    r => ((RedisNativeClient)r).HMSet(req.HashId, req.Keys, req.Values),
-                                    req.SetVoid, req.SetError);
-                                break;
-                            case RedisRequestType.HDel:
-                                // delete a single field
-                                if (req.Key != null)
-                                {
-                                    pipe.QueueCommand(
-                                        r => ((RedisNativeClient)r).HDel(req.HashId, req.Key),
-                                            req.SetLong, req.SetError);
-                                }
-                                // delete multiple fields
-                                else
-                                {
-                                    pipe.QueueCommand(
-                                        r => ((RedisNativeClient)r).HDel(req.HashId, req.Keys),
-                                            req.SetLong, req.SetError);
-                                }
-                                break;
-                            case RedisRequestType.EvalSha:
-                                pipe.QueueCommand(
-                                    r => ((RedisNativeClient)r).EvalSha(req.Sha1, req.NumberKeysInArgs, req.Keys),
-                                        req.SetValues, req.SetError);
-                                break;
-                            default:
-                                break;
-                        }
-
-                        if (maxRequests != -1 && reqCount >= maxRequests)
-                        {
-                            break;
-                        }
+                        continue;
                     }
-                    pipe.Flush();
+
+                    switch (req.Type)
+                    {
+                        case RedisRequestType.HGet:
+                            pipe.QueueCommand(
+                                r => ((RedisNativeClient)r).HGet(req.HashId, req.Key),
+                                req.SetValue, req.SetError);
+                            break;
+                        case RedisRequestType.HMGet:
+                            pipe.QueueCommand(
+                                r => ((RedisNativeClient)r).HMGet(req.HashId, req.Keys),
+                                req.SetValues, req.SetError);
+                            break;
+                        case RedisRequestType.HGetAll:
+                            pipe.QueueCommand(
+                                r => ((RedisNativeClient)r).HGetAll(req.HashId),
+                                req.SetValues, req.SetError);
+                            break;
+                        case RedisRequestType.HSetNX:
+                            pipe.QueueCommand(
+                                r => ((RedisNativeClient)r).HSetNX(req.HashId, req.Key, req.Value),
+                                req.SetLong, req.SetError);
+                            break;
+                        case RedisRequestType.HSet:
+                            pipe.QueueCommand(
+                                r => ((RedisNativeClient)r).HSet(req.HashId, req.Key, req.Value),
+                                req.SetLong, req.SetError);
+                            break;
+                        case RedisRequestType.HMSet:
+                            pipe.QueueCommand(
+                                r => ((RedisNativeClient)r).HMSet(req.HashId, req.Keys, req.Values),
+                                req.SetVoid, req.SetError);
+                            break;
+                        case RedisRequestType.HDel:
+                            // delete a single field
+                            if (req.Key != null)
+                            {
+                                pipe.QueueCommand(
+                                    r => ((RedisNativeClient)r).HDel(req.HashId, req.Key),
+                                        req.SetLong, req.SetError);
+                            }
+                            // delete multiple fields
+                            else
+                            {
+                                pipe.QueueCommand(
+                                    r => ((RedisNativeClient)r).HDel(req.HashId, req.Keys),
+                                        req.SetLong, req.SetError);
+                            }
+                            break;
+                        case RedisRequestType.EvalSha:
+                            pipe.QueueCommand(
+                                r => ((RedisNativeClient)r).EvalSha(req.Sha1, req.NumberKeysInArgs, req.Keys),
+                                    req.SetValues, req.SetError);
+                            break;
+                        default:
+                            break;
+                    }
+
+                    if (maxRequests != -1 && reqCount >= maxRequests)
+                    {
+                        break;
+                    }
                 }
+                pipe.Flush();
             }
         }
 

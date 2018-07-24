@@ -7,16 +7,15 @@ namespace TransactionBenchmarkTest.YCSB
     class YCSBWorkload : StoredProcedureWorkload
     {
         internal string TableId;
-        internal string Key;
-        internal string Value;
+        internal object Key;
+        internal object Value;
         internal string Type;
-        internal int IntKey;
 
         public YCSBWorkload(
             string type, 
-            string tableId, 
-            string key, 
-            string value)
+            string tableId,
+            object key,
+            object value)
         {
             this.TableId = tableId;
             this.Key = key;
@@ -24,18 +23,22 @@ namespace TransactionBenchmarkTest.YCSB
             this.Type = type;
         }
 
-        public YCSBWorkload(
-            string type,
-            string tableId,
-            string key,
-            string value,
-            int intKey)
+        public void Set(object key)
         {
-            this.TableId = tableId;
+            this.Key = key;
+        }
+
+        public void Set(object key, object value)
+        {
             this.Key = key;
             this.Value = value;
+        }
+
+        public void Set(string type, object key, object value)
+        {
             this.Type = type;
-            this.IntKey = intKey;
+            this.Key = key;
+            this.Value = value;
         }
 
         public override string ToString()
@@ -83,8 +86,7 @@ namespace TransactionBenchmarkTest.YCSB
                         workload.TableId, 
                         workload.Key, 
                         workload.Value, 
-                        OperationType.InitiRead,
-                        workload.IntKey);
+                        OperationType.InitiRead);
                     this.txRequestGCQueue.Enqueue(initiReadReq);
                     this.RequestQueue.Enqueue(initiReadReq);
                 }
@@ -171,8 +173,7 @@ namespace TransactionBenchmarkTest.YCSB
                             workload.TableId,
                             workload.Key,
                             workload.Value,
-                            OperationType.Insert,
-                            workload.IntKey);
+                            OperationType.Insert);
                         this.txRequestGCQueue.Enqueue(insertReq);
                         this.RequestQueue.Enqueue(insertReq);
                     }

@@ -100,7 +100,6 @@
 			TxWorkload workload = tuple.Item1;
 			TransactionExecutor executor = tuple.Item2;
 			Transaction tx = tuple.Item3;
-			tx.Clear(executor.CreateTransaction());
 			//Transaction tx = executor.CreateTransaction();
 
 			//string readValue = null;
@@ -244,7 +243,7 @@
 			for (int i = 0; i < this.workerCount; i++)
 			{
 				this.executors.Add(new TransactionExecutor(this.versionDb, null, null, 0, i));
-				this.transactions.Add(new Transaction(null, this.versionDb, 10, this.executors[i].GarbageQueueTxId, this.executors[i].GarbageQueueFinishTime));
+				this.transactions.Add(new Transaction(null, this.versionDb, 10));
 			}
         }
 
@@ -494,7 +493,7 @@
             for (int i = 0; i < this.workerCount; i++)
             {
                 this.executors.Add(new TransactionExecutor(vdbList[i], null, null, 0, i));
-                this.transactions.Add(new Transaction(null, vdbList[i], 10, this.executors[i].GarbageQueueTxId, this.executors[i].GarbageQueueFinishTime));
+                this.transactions.Add(new Transaction(null, vdbList[i], 10));
             }
         }
 
@@ -514,7 +513,7 @@
             for (int i = 0; i < this.workerCount; i++)
             {
                 this.executors.Add(new TransactionExecutor(this.versionDb, null, null, 0, i));
-                this.transactions.Add(new Transaction(null, this.versionDb, 10, this.executors[i].GarbageQueueTxId, this.executors[i].GarbageQueueFinishTime));
+                this.transactions.Add(new Transaction(null, this.versionDb, 10));
             }
         }
 

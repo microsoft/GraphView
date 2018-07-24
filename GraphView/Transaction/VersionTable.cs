@@ -37,7 +37,7 @@ namespace GraphView.Transaction
         /// <summary>
         /// The latches to sync flush queues and request Queues
         /// </summary>
-        private int[] queueLatches;
+        protected int[] queueLatches;
 
         /// <summary>
         /// The version db instance of the current version table
@@ -99,7 +99,7 @@ namespace GraphView.Transaction
 
         internal virtual void EnqueueVersionEntryRequest(VersionEntryRequest req, int execPartition = 0)
         {
-            //Interlocked.Increment(ref VersionDb.EnqueuedRequests);
+            // Interlocked.Increment(ref VersionDb.EnqueuedRequests);
             //Console.WriteLine(req.GetType().Name);
 
             int pk = this.VersionDb.PhysicalPartitionByKey(req.RecordKey);

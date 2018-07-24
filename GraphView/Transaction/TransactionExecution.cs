@@ -59,16 +59,6 @@ namespace GraphView.Transaction
 
         private TxResourceManager resourceManager;
 
-        //Garbage Queue Part
-
-        /// <summary>
-        /// A garbage queue for tx requests
-        /// all tx requests will be enqueued in the current execution and will be 
-        /// recycled at the end of postprocessing phase
-        /// </summary>
-        internal readonly Queue<long> garbageQueueTxId;
-        private readonly Queue<long> garbageQueueFinishTime;
-
         // entrySet part
         internal TxList<ReadSetEntry> readSet;
         private int readSetCount;
@@ -160,8 +150,6 @@ namespace GraphView.Transaction
             ILogStore logStore,
             VersionDb versionDb,
             StoredProcedure procedure = null,
-            Queue<long> garbageQueueTxId = null,
-            Queue<long> garbageQueueFinishTime = null,
             TxRange txRange = null,
             TransactionExecutor executor = null,
             TxResourceManager txResourceManager = null)
@@ -195,9 +183,6 @@ namespace GraphView.Transaction
             // add 2 version entries to the list
             this.versionList.Add(new VersionEntry());
             this.versionList.Add(new VersionEntry());
-
-            this.garbageQueueTxId = garbageQueueTxId;
-            this.garbageQueueFinishTime = garbageQueueFinishTime;
 
             this.validateProc = new Procedure(this.Validate);
             this.uploadProc = new Procedure(this.Upload);

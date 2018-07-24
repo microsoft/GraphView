@@ -1,4 +1,7 @@
-﻿-- eval lua 1 record_key, version_key commit_time -1
+﻿-- A CAS operation to update version entry' max_commit_ts if local commit_time
+-- is smaller than max_commit_ts
+-- usage: eval lua 1 record_key, version_key commit_time -1
+
 local commit_time = ARGV[2]
 local negative_one = ARGV[3]
 

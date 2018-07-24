@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace GraphView.Transaction
+﻿namespace GraphView.Transaction
 {
 
     /// <summary>
@@ -19,7 +13,6 @@ namespace GraphView.Transaction
 
         internal string TableId { get; set; }
         internal object RecordKey { get; set; }
-        internal int RecordIntKey { get; set; }
         internal object Payload { get; set; }
         internal OperationType OperationType;
 
@@ -45,23 +38,6 @@ namespace GraphView.Transaction
             this.Payload = payload;
             this.OperationType = operationType;
             this.IsStoredProcedure = false;
-        }
-
-        public TransactionRequest(
-            string sessionId,
-            string tableId,
-            string recordKey,
-            string payload,
-            OperationType operationType,
-            int recordIntKey)
-        {
-            this.SessionId = sessionId;
-            this.TableId = tableId;
-            this.RecordKey = recordKey;
-            this.Payload = payload;
-            this.OperationType = operationType;
-            this.IsStoredProcedure = false;
-            this.RecordIntKey = recordIntKey;
         }
 
         public TransactionRequest(
@@ -122,6 +98,11 @@ namespace GraphView.Transaction
         public TxRange(int start)
         {
             this.RangeStart = start * TxRange.range;
+        }
+
+        public void Reset()
+        {
+            this.localTxIndex = 0;
         }
 
         internal long NextTxCandidate()
