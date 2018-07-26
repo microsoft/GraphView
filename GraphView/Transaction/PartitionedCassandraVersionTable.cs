@@ -189,8 +189,8 @@ namespace GraphView.Transaction
         /// </summary>
         internal RowSet CQLExecute(string cql)
         {
-            //CassandraSessionManager.CqlCnt += 1;
-            //Console.WriteLine(cql);
+            CassandraSessionManager.CqlCnt += 1;
+            Console.WriteLine(cql);
             return this.SessionManager.GetSession(PartitionedCassandraVersionDb.DEFAULT_KEYSPACE).Execute(cql);
         }
 

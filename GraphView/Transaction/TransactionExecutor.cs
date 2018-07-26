@@ -885,7 +885,7 @@ namespace GraphView.Transaction
             this.AllRequestsFinished = true;
 
             // unmount the current partition
-            this.versionDb.PartitionMounted[this.Partition] = false;
+            //this.versionDb.PartitionMounted[this.Partition] = false;
             //if (this.countdownEvent != null)
             //{
             //    this.countdownEvent.Signal();
@@ -893,14 +893,17 @@ namespace GraphView.Transaction
 
             if (this.flushTables != null && this.flushTables.Length > 0)
             {
-                while (true)
+                if (this.versionDb is RedisVersionDb)
                 {
-                    bool stop = this.versionDb.HasAllPartitionsUnmounted();
-                    if (stop)
+                    while (true)
                     {
-                        break;
+                        bool stop = this.versionDb.HasAllPartitionsUnmounted();
+                        if (stop)
+                        {
+                            break;
+                        }
+                        this.FlushInstances();
                     }
-                    this.FlushInstances();
                 }
             }
             //while (this.Active)

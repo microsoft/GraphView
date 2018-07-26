@@ -448,7 +448,7 @@ namespace TransactionBenchmarkTest.YCSB
         {
             string action = "run";
             int workerCount = 10;
-            int taskCountPerWorker = 1000;
+            int taskCountPerWorker = 10;
             int partitionCount = 10;    // equal to workerCount
 
             int runall = 1;
@@ -464,24 +464,24 @@ namespace TransactionBenchmarkTest.YCSB
             /// <summary>
             /// CassandraVersionDb Single Node parameters
             /// </summary>
-            //string contactPoints = "127.0.0.1";
-            //int replicationFactor = 1;
-            //ConsistencyLevel consistencyLevel = ConsistencyLevel.One;
+            string contactPoints = "127.0.0.1";
+            int replicationFactor = 1;
+            ConsistencyLevel consistencyLevel = ConsistencyLevel.One;
 
             /// <summary>
             /// CassandraVersionDb Cluster parameters - 10 nodes
             /// </summary>
-            string contactPoints = "10.6.0.4,10.6.0.5,10.6.0.6,10.6.0.12,10.6.0.13,10.6.0.14,10.6.0.15,10.6.0.16,10.6.0.17,10.6.0.18";
-            int replicationFactor = 3;
-            ConsistencyLevel consistencyLevel = ConsistencyLevel.Quorum;
+            //string contactPoints = "10.6.0.4,10.6.0.5,10.6.0.6,10.6.0.12,10.6.0.13,10.6.0.14,10.6.0.15,10.6.0.16,10.6.0.17,10.6.0.18";
+            //int replicationFactor = 3;
+            //ConsistencyLevel consistencyLevel = ConsistencyLevel.Quorum;
 
             // see YCSBAsyncBenchmarkTest.run2 to know all types
             //string exeType = "ycsb_sync_ro_strk";
             //string exeType = "ycsb_sync_ro_intk"
             //string exeType = "ycsb_sync_wo_intk";
             //string exeType = "ycsb_sync_rw_intk";
-            //string exeType = "async";
-            string exeType = "cassandra_ro_intk";
+            string exeType = "async";
+            //string exeType = "cassandra_ro_intk";
             //string exeType = "cassandra_wo_intk";
 
             int i = 0;
