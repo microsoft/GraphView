@@ -91,7 +91,7 @@
         /// </summary>
         internal long RangeStart { get; }
 
-        internal static readonly long range = 100000;
+        internal static readonly long range = 10000;
 
         private int localTxIndex = 0;
 

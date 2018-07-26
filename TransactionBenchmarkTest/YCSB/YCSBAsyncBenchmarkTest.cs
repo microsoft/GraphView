@@ -10,10 +10,9 @@
 
     class YCSBAsyncBenchmarkTest
     {
-        public static bool LOAD_DATA = false;
-
-        public static readonly bool CLEAR_VERSION_DB = false;
-
+        /// <summary>
+        /// Only for benchmark test
+        /// </summary>
         public static readonly String TABLE_ID = "ycsb_table";
 
         public static readonly long REDIS_DB_INDEX = 7L;
@@ -65,6 +64,8 @@
         /// </summary>
         private string[] tables;
 
+        private BenchmarkTestConfig config;
+
         //// stable round setting
         private long stableStartTicks = -1;
         private long stableEndTicks = -1;
@@ -110,7 +111,8 @@
             int executorCount,
             int txCountPerExecutor,
             VersionDb versionDb,
-            string[] flushTables = null)
+            string[] flushTables = null,
+            BenchmarkTestConfig config = null)
         {
             this.versionDb = versionDb;
             this.recordCount = recordCount;
@@ -119,12 +121,20 @@
             this.executorList = new List<TransactionExecutor>();
             this.totalTasks = 0;
             this.tables = flushTables;
+            
+            if (config == null)
+            {
+                config = new BenchmarkTestConfig();
+            }
+            this.config = config;
+
+            Console.WriteLine("Current Benchmark Test Config: {0}", this.config.ToString());
         }
 
         internal void Setup(string dataFile, string operationFile)
         {
             // step1: flush the database
-            if (YCSBAsyncBenchmarkTest.CLEAR_VERSION_DB)
+            if (config.ClearVersionDb)
             {
                 this.versionDb.Clear();
             }
@@ -143,7 +153,7 @@
             if (this.versionDb is SingletonVersionDb ||
                 this.versionDb is RedisVersionDb)
             {
-                if (YCSBAsyncBenchmarkTest.LOAD_DATA)
+                if (config.LoadRecords)
                 {
                     this.versionDb.MockLoadData(this.recordCount);
                 }
@@ -170,6 +180,12 @@
 
         internal void Run()
         {
+            if (!config.RunTest)
+            {
+                Console.WriteLine("No running commands");
+                return;
+            }
+
             /// Start GC to collect memory before running
             Console.WriteLine("Memory used before collection:       {0:N0} MB",
                               GC.GetTotalMemory(false) / (1024 * 1024.0));
@@ -596,8 +612,16 @@
             int appendCount = limit == -1 ? this.executorCount : limit;
 
             List<TransactionExecutor> executors = new List<TransactionExecutor>();
-            YCSBKeyGenerator keyGenerator = new YCSBKeyGenerator(this.recordCount);
-            KeyGenerator nextKey = new KeyGenerator(keyGenerator.Next);
+
+            IDataGenerator generator = null;
+            if (config.Dist == Distribution.Uniform)
+            {
+                generator = new YCSBDataGenerator(this.recordCount);
+            }
+            else
+            {
+                generator = new YCSBDataGenerator(this.recordCount, config.ReadPercentage, Distribution.Zipf, config.Scale);
+            }
 
             for (int i = offset; i < offset + appendCount; i++)
             {
@@ -605,10 +629,10 @@
 
                 this.totalTasks += this.txCountPerExecutor;
                 int partition_index = i % this.versionDb.PartitionCount;
-                YCSBWorkload workload = new YCSBWorkload("READ", "ycsb_table", null, new String('a', 100));
+                YCSBWorkload workload = new YCSBWorkload(config.Type, "ycsb_table", null, new String('a', 100));
 
                 executors.Add(new TransactionExecutor(this.versionDb, null, reqQueue, partition_index, i, 0,
-                    null, tables, null, null, this.recordCount, this.txCountPerExecutor, nextKey, workload));
+                    null, tables, null, null, this.recordCount, this.txCountPerExecutor, null, workload));
 
                 Console.WriteLine("Filled {0}-th executors", i+1);
             }
@@ -730,6 +754,11 @@
 
             long commandCount = 0;
             int testedInstances = redisVersionDb.PartitionCount / RedisVersionDb.PARTITIONS_PER_INSTANCE;
+            if (redisVersionDb.Mode == RedisVersionDbMode.Cluster)
+            {
+                testedInstances = 1;
+            }
+
             for (int i = 0; i < testedInstances; i++)
             {
                 using (RedisClient redisClient = manager.GetLastestClient(0, i))

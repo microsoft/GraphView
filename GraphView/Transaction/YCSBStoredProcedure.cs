@@ -41,6 +41,22 @@ namespace TransactionBenchmarkTest.YCSB
             this.Value = value;
         }
 
+        public void Set(string type, string tableId, object key, object value)
+        {
+            this.Type = type;
+            this.TableId = tableId;
+            this.Key = key;
+            this.Value = value;
+        }
+
+        public void CopyFrom(YCSBWorkload other)
+        {
+            this.Type = other.Type;
+            this.Key = other.Key;
+            this.Value = other.Value;
+            this.TableId = other.TableId;
+        }
+
         public override string ToString()
         {
             return string.Format("key={0},value={1},type={2},tableId={3}",
@@ -71,7 +87,13 @@ namespace TransactionBenchmarkTest.YCSB
             StoredProcedureWorkload workload)
         {
             this.sessionId = sessionId;
-            this.workload = workload as YCSBWorkload;
+            if (this.workload == null)
+            {
+                this.workload = new YCSBWorkload(null, null, null, null);
+            }
+            YCSBWorkload ycsbWorkload = workload as YCSBWorkload;
+            this.workload.CopyFrom(ycsbWorkload);
+
             this.Start();
         }
 

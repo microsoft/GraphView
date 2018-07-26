@@ -1,4 +1,5 @@
-﻿using System;
+﻿using MathNet.Numerics.Distributions;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -12,8 +13,10 @@ namespace TransactionBenchmarkTest.YCSB
         Zipf
     }
 
-    internal class YCSBKeyGenerator
+    internal class YCSBDataGenerator : IDataGenerator
     {
+        private static int RAND_UPPER_BOUND = 10;
+
         /// <summary>
         /// The number of records in test
         /// </summary>
@@ -24,16 +27,42 @@ namespace TransactionBenchmarkTest.YCSB
         /// </summary>
         private Distribution dist;
 
+        /// <summary>
+        /// random number generator for uniform distribution
+        /// </summary>
         private Random random;
 
-        public YCSBKeyGenerator(int recordCount, Distribution dist = Distribution.Uniform)
+        /// <summary>
+        /// zipf generator for zipf distribution
+        /// </summary>
+        private Zipf zipf;
+
+        /// <summary>
+        /// The read and write percentage
+        /// </summary>
+        private double readWritePerc;
+
+        private int readWriteRandBound;
+
+        public YCSBDataGenerator(
+            int recordCount, 
+            double readWritePerc = 0.5, 
+            Distribution dist = Distribution.Uniform, 
+            double alpha = 0.5)
         {
             this.recordCount = recordCount;
             this.dist = dist;
+            this.readWritePerc = readWritePerc;
+            this.readWriteRandBound = (int)(this.readWritePerc * RAND_UPPER_BOUND);
+
             this.random = new Random();
+            if (this.dist == Distribution.Zipf)
+            {
+                this.zipf = new Zipf(alpha, recordCount);
+            }
         }
 
-        internal int Next()
+        public int NextIntKey()
         {
             switch (this.dist)
             {
@@ -48,14 +77,25 @@ namespace TransactionBenchmarkTest.YCSB
             }
         }
 
+        public string NextStringKey()
+        {
+            throw new NotImplementedException();
+        }
+
+        public string NextOperation()
+        {
+            int randInt = random.Next(0, RAND_UPPER_BOUND);
+            return (randInt < this.readWriteRandBound ? "READ" : "UPDATE");
+        }
+
         private int NextKeyInUniform()
         {
-            return random.Next() % this.recordCount;
+            return random.Next(0, this.recordCount);
         }
 
         private int NextKeyInZipf()
         {
-            throw new NotImplementedException();
+            return this.zipf.Sample();
         }
     }
 }

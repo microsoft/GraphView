@@ -1,5 +1,6 @@
 ﻿using GraphView.Transaction;
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading;
 
@@ -121,39 +122,14 @@ namespace TransactionBenchmarkTest.YCSB
             Thread.EndThreadAffinity();
         }
 
-
         static void YCSBAsyncTestWithRedisVersionDb(string[] args)
         {
-            int partitionCountPer = RedisVersionDb.PARTITIONS_PER_INSTANCE;
-            bool loadData = YCSBAsyncBenchmarkTest.LOAD_DATA;
+            BenchmarkTestConfig config = args.Length > 1 ? new BenchmarkTestConfig(args) : new BenchmarkTestConfig();
 
-            Console.WriteLine("args length: {0}", args.Length);
-            if (Program.args.Length > 1)
-            {
-                partitionCountPer = int.Parse(args[0]);
-                if (args.Length > 1)
-                {
-                    loadData = args[1] == "load";
-                }
-            }
-
-            RedisVersionDb.PARTITIONS_PER_INSTANCE = partitionCountPer;
-            YCSBAsyncBenchmarkTest.LOAD_DATA = loadData;
-
-            int redisInstances = 1;
-            int partitionCount = RedisVersionDb.PARTITIONS_PER_INSTANCE * redisInstances;
+            int partitionCount = config.WorkerCount;
             int executorCount = partitionCount;
-            int txCountPerExecutor = 200000;
-            const int recordCount = 200000;
-             
-            string operationFile = "ycsb_ops_r.in";
-            //if (args.Length > 1)
-            //{
-            //    operationFile = args[1];
-            //    partitionCount = Int32.Parse(args[2]);
-            //    executorCount = partitionCount;
-            //    txCountPerExecutor = args.Length > 3 ? Int32.Parse(args[3]) : txCountPerExecutor;
-            //}
+            int txCountPerExecutor = config.OperationCount;
+            int recordCount = config.RecordCount;
 
             string[] tables =
             {
@@ -161,12 +137,12 @@ namespace TransactionBenchmarkTest.YCSB
                 VersionDb.TX_TABLE
             };
 
-            int currentExecutorCount = RedisVersionDb.PARTITIONS_PER_INSTANCE;
-
             string[] readWriteHosts = new string[]
-            {    
+            {
+                config.RedisHost,
                 // "8r285aybUZ7+rQ3QgpoorfFodT6+NMDQsxkdfOHAL9w=@txservice.redis.cache.windows.net:6379",
-                "127.0.0.1:6379",
+                // "xnke5SdHz5xcsBF+OlZPL7PdzI7Vz3De7ntGI2fIye0=@elastas.redis.cache.windows.net:6379",
+                //"127.0.0.1:6379",
                 //"127.0.0.1:6380",
                 //"127.0.0.1:6381",
                 //"127.0.0.1:6382",
@@ -181,23 +157,13 @@ namespace TransactionBenchmarkTest.YCSB
                 //"127.0.0.1:6391",
             };
 
-            RedisVersionDb versionDb = RedisVersionDb.Instance(currentExecutorCount, readWriteHosts);
-            // SingletonVersionDb versionDb = SingletonVersionDb.Instance(1);
-            // SingletonPartitionedVersionDb versionDb = SingletonPartitionedVersionDb.Instance(1, true);
+            RedisVersionDb versionDb = RedisVersionDb.Instance(partitionCount, readWriteHosts);
             YCSBAsyncBenchmarkTest test = new YCSBAsyncBenchmarkTest(recordCount,
-                currentExecutorCount, txCountPerExecutor, versionDb, tables);
+                executorCount, txCountPerExecutor, versionDb, tables, config);
 
-            test.Setup(operationFile, operationFile);
-            for (; currentExecutorCount <= partitionCount; currentExecutorCount += RedisVersionDb.PARTITIONS_PER_INSTANCE)
-            {
-                if (currentExecutorCount > RedisVersionDb.PARTITIONS_PER_INSTANCE)
-                {
-                    versionDb.AddPartition(currentExecutorCount);
-                }
-                test.ResetAndFillWorkerQueue(operationFile, currentExecutorCount);
-                test.Run();
-                test.Stats();
-            }
+            test.Setup(null, null);
+            test.Run();
+            test.Stats();
         }
 
         // args[0]: dataFile

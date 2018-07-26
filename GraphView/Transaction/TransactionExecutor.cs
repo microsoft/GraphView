@@ -918,7 +918,7 @@ namespace GraphView.Transaction
             // TransactionExecutor.PinThreadOnCores(this.Partition);
 
             // PinThreadOnCores(this.Partition);
-
+            string payloadStr = new String('b', 100);
             this.RunBeginTicks = DateTime.Now.Ticks;
             int remainedWorkloads = this.taskCount;
             while (this.workingSet.Count > 0 || remainedWorkloads > 0)
@@ -934,7 +934,6 @@ namespace GraphView.Transaction
                     string sessionId = remainedWorkloads.ToString();
                     remainedWorkloads--;
 
-
                     Tuple<TransactionExecution, Queue<TransactionRequest>> newExecTuple =
                             this.AllocateNewTxExecution();
 
@@ -949,7 +948,7 @@ namespace GraphView.Transaction
                     txExec.Procedure.Reset();
 
                     int recordKey = this.NextKey();
-                    this.ycsbWorkload.Set(recordKey, null);
+                    this.ycsbWorkload.Set(recordKey, payloadStr);
                     txExec.Procedure.Start(sessionId, this.ycsbWorkload);
 
                     this.activeTxs.Add(sessionId, newExecTuple);
