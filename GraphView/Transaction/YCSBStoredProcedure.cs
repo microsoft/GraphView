@@ -49,12 +49,13 @@ namespace TransactionBenchmarkTest.YCSB
             this.Value = value;
         }
 
-        public void CopyFrom(YCSBWorkload other)
+        public override void Set(StoredProcedureWorkload baseWorkload)
         {
-            this.Type = other.Type;
-            this.Key = other.Key;
-            this.Value = other.Value;
-            this.TableId = other.TableId;
+            YCSBWorkload workload = baseWorkload as YCSBWorkload;
+            this.Type = workload.Type;
+            this.Key = workload.Key;
+            this.Value = workload.Value;
+            this.TableId = workload.TableId;
         }
 
         public override string ToString()
@@ -92,7 +93,7 @@ namespace TransactionBenchmarkTest.YCSB
                 this.workload = new YCSBWorkload(null, null, null, null);
             }
             YCSBWorkload ycsbWorkload = workload as YCSBWorkload;
-            this.workload.CopyFrom(ycsbWorkload);
+            this.workload.Set(ycsbWorkload);
 
             this.Start();
         }

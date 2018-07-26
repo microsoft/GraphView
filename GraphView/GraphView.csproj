@@ -316,6 +316,7 @@
     <Compile Include="Transaction\CassandraClusterManager.cs" />
     <Compile Include="Transaction\CassandraLogConnectionPool.cs" />
     <Compile Include="Transaction\CassandraLogStore.cs" />
+    <Compile Include="Transaction\HybridYCSBStoredProcedure.cs" />
     <Compile Include="Transaction\PartitionedCassandraVersionDb.cs" />
     <Compile Include="Transaction\CassandraVersionDbVisitor.cs" />
     <Compile Include="Transaction\PartitionedCassandraVersionDbVisitor.cs" />

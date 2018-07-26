@@ -610,18 +610,11 @@
         private List<TransactionExecutor> MockFillYCSBWorkload(int offset = 0, int limit = -1)
         {
             int appendCount = limit == -1 ? this.executorCount : limit;
-
             List<TransactionExecutor> executors = new List<TransactionExecutor>();
 
-            IDataGenerator generator = null;
-            if (config.Dist == Distribution.Uniform)
-            {
-                generator = new YCSBDataGenerator(this.recordCount);
-            }
-            else
-            {
-                generator = new YCSBDataGenerator(this.recordCount, config.ReadPercentage, Distribution.Zipf, config.Scale);
-            }
+            IDataGenerator generator = this.BuildDataGenerator();
+            var workloadAction = this.BuildWorkloadAction(generator);
+            StoredProcedureWorkload.Reload = workloadAction;
 
             for (int i = offset; i < offset + appendCount; i++)
             {
@@ -769,6 +762,50 @@
                 }
             }
             return commandCount;
+        }
+
+        private Action<StoredProcedureWorkload> BuildWorkloadAction(IDataGenerator generator)
+        {
+            Action<StoredProcedureWorkload> workloadReloadAction = null;
+            object payload = new String('a', 100);
+            if (config.Type.Equals("HYBRID"))
+            {
+                int queryCount = config.QueryCount;
+                workloadReloadAction = workload =>
+                {
+                    HybridYCSBWorkload hybridWorkload = workload as HybridYCSBWorkload;
+                    for (int i = 0; i < queryCount; i++)
+                    {
+                        hybridWorkload.Keys[i] = generator.NextIntKey();
+                        hybridWorkload.Values[i] = payload;
+                        hybridWorkload.Queries[i] = generator.NextOperation();
+                    }
+                };
+            }
+            else
+            {
+                workloadReloadAction = workload =>
+                {
+                    YCSBWorkload ycsbWorkload = workload as YCSBWorkload;
+                    ycsbWorkload.Key = generator.NextIntKey();
+                    ycsbWorkload.Value = payload;
+                };
+            }
+            return workloadReloadAction;
+        }
+
+        private IDataGenerator BuildDataGenerator()
+        {
+            IDataGenerator generator = null;
+            if (config.Dist == Distribution.Uniform)
+            {
+                generator = new YCSBDataGenerator(this.recordCount);
+            }
+            else
+            {
+                generator = new YCSBDataGenerator(this.recordCount, config.ReadPercentage, Distribution.Zipf, config.Scale);
+            }
+            return generator;
         }
     }
 }

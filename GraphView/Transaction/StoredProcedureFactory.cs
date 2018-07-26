@@ -5,6 +5,7 @@ namespace GraphView.Transaction
     public enum StoredProcedureType
     {
         YCSBStordProcedure,
+        HybridYCSBStordProcedure,
         TPCCStordProcedure,
     }
 
@@ -19,6 +20,8 @@ namespace GraphView.Transaction
                 case StoredProcedureType.YCSBStordProcedure:
                     return new YCSBStoredProcedure(txResourceManager);
                     break;
+                case StoredProcedureType.HybridYCSBStordProcedure:
+                    return new HybridYCSBStoredProcedure(txResourceManager);
             }
             return null;
         }

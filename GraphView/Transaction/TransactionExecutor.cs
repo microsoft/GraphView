@@ -35,7 +35,7 @@ namespace GraphView.Transaction
         /// <summary>
         /// A queue of workloads accepted from clients
         /// </summary>
-        internal Queue<TransactionRequest> workload;
+        internal Queue<TransactionRequest> workloadQueue;
 
         /// <summary>
         /// The version database instance
@@ -106,14 +106,14 @@ namespace GraphView.Transaction
         internal long RunBeginTicks { get; set; }
         internal long RunEndTicks { get; set; }
 
-        private KeyGenerator NextKey;
+        private StoredProcedureWorkload workload;
 
-        private YCSBWorkload ycsbWorkload;
+        private StoredProcedureType storedProcedureType;
 
         public TransactionExecutor(
             VersionDb versionDb,
             ILogStore logStore,
-            Queue<TransactionRequest> workload = null,
+            Queue<TransactionRequest> workloadQueue = null,
             int partition = 0,
             int startRange = -1,
             int txTimeoutSeconds = 0,
@@ -124,11 +124,12 @@ namespace GraphView.Transaction
             int recordCount = 0,
             int taskCount = 0,
             KeyGenerator nextKey = null,
-            YCSBWorkload ycsbWorkload = null)
+            StoredProcedureWorkload workload = null,
+            StoredProcedureType storedProcedureType = StoredProcedureType.YCSBStordProcedure)
         {
             this.versionDb = versionDb;
             this.logStore = logStore;
-            this.workload = workload ?? new Queue<TransactionRequest>();
+            this.workloadQueue = workloadQueue ?? new Queue<TransactionRequest>();
             this.activeTxs = new Dictionary<string, Tuple<TransactionExecution, Queue<TransactionRequest>>>();
 
             this.txTimeoutSeconds = txTimeoutSeconds;
@@ -146,8 +147,8 @@ namespace GraphView.Transaction
             this.recordCount = recordCount;
             this.taskCount = taskCount;
 
-            this.NextKey = nextKey;
-            this.ycsbWorkload = ycsbWorkload;
+            this.workload = workload;
+            this.storedProcedureType = storedProcedureType;
         }
 
         public void Reset()
@@ -221,7 +222,7 @@ namespace GraphView.Transaction
             // PinThreadOnCores(this.Partition);
 
             this.RunBeginTicks = DateTime.Now.Ticks;
-            foreach (TransactionRequest req in this.workload)
+            foreach (TransactionRequest req in this.workloadQueue)
             {
                 //this.workloadAction(req.Workload, this.txExecution);
             }
@@ -374,7 +375,7 @@ namespace GraphView.Transaction
                 }
                 this.txExecution.Reset();
 
-                object recordKey = (this.workload.Dequeue().Workload as YCSBWorkload).Key;                
+                object recordKey = (this.workloadQueue.Dequeue().Workload as YCSBWorkload).Key;                
                 this.txExecution.Read("ycsb_table", recordKey, out received, out payload);
 
                 //recordKey = rand.Next(0, indexBound);
@@ -733,7 +734,7 @@ namespace GraphView.Transaction
             // TransactionExecutor.PinThreadOnCores(this.Partition);
 
             this.RunBeginTicks = DateTime.Now.Ticks;
-            while (this.workingSet.Count > 0 || this.workload.Count > 0)
+            while (this.workingSet.Count > 0 || this.workloadQueue.Count > 0)
             {
                 //if (DateTime.Now.Ticks - this.RunBeginTicks > 100000000)
                 //{
@@ -743,11 +744,11 @@ namespace GraphView.Transaction
                 // Dequeue incoming tx requests until the working set is full.
                 while (this.activeTxs.Count < this.workingSetSize)
                 {
-                    if (this.workload.Count == 0)
+                    if (this.workloadQueue.Count == 0)
                     {
                         break;  
                     }
-                    TransactionRequest txReq = this.workload.Dequeue();
+                    TransactionRequest txReq = this.workloadQueue.Dequeue();
 
                     if (this.activeTxs.ContainsKey(txReq.SessionId))
                     {
@@ -921,7 +922,6 @@ namespace GraphView.Transaction
             // TransactionExecutor.PinThreadOnCores(this.Partition);
 
             // PinThreadOnCores(this.Partition);
-            string payloadStr = new String('b', 100);
             this.RunBeginTicks = DateTime.Now.Ticks;
             int remainedWorkloads = this.taskCount;
             while (this.workingSet.Count > 0 || remainedWorkloads > 0)
@@ -945,14 +945,13 @@ namespace GraphView.Transaction
                     if (txExec.Procedure == null)
                     {
                         txExec.Procedure = StoredProcedureFactory.CreateStoredProcedure(
-                               StoredProcedureType.YCSBStordProcedure, this.ResourceManager);
+                               this.storedProcedureType, this.ResourceManager);
                         txExec.Procedure.RequestQueue = newExecTuple.Item2;
                     }
                     txExec.Procedure.Reset();
 
-                    int recordKey = this.NextKey();
-                    this.ycsbWorkload.Set(recordKey, payloadStr);
-                    txExec.Procedure.Start(sessionId, this.ycsbWorkload);
+                    StoredProcedureWorkload.Reload(this.workload);
+                    txExec.Procedure.Start(sessionId, this.workload);
 
                     this.activeTxs.Add(sessionId, newExecTuple);
                     this.workingSet.Add(sessionId);
@@ -1059,7 +1058,7 @@ namespace GraphView.Transaction
         {
             HashSet<string> toRemoveSessions = new HashSet<string>();
            
-            while (this.activeTxs.Count > 0 || this.workload.Count > 0)
+            while (this.activeTxs.Count > 0 || this.workloadQueue.Count > 0)
             {
                 foreach (string sessionId in activeTxs.Keys)
                 {
@@ -1196,9 +1195,9 @@ namespace GraphView.Transaction
                 }
                 toRemoveSessions.Clear();
 
-                while (this.workload.Count > 0 && this.activeTxs.Count < this.workingSetSize)
+                while (this.workloadQueue.Count > 0 && this.activeTxs.Count < this.workingSetSize)
                 {
-                    TransactionRequest txReq = workload.Dequeue();
+                    TransactionRequest txReq = workloadQueue.Dequeue();
 
                     switch (txReq.OperationType)
                     {
@@ -1269,14 +1268,14 @@ namespace GraphView.Transaction
 
             string priorSessionId = "";
 
-            while (this.workload.Count > 0)
+            while (this.workloadQueue.Count > 0)
             {
-                TransactionRequest req = this.workload.Peek();
+                TransactionRequest req = this.workloadQueue.Peek();
 
                 switch (req.OperationType)
                 {
                     case OperationType.Close:
-                        this.workload.Dequeue();
+                        this.workloadQueue.Dequeue();
                         priorSessionId = req.SessionId;
                         exec.Commit();
                         if (exec.TxStatus == TxStatus.Committed)
@@ -1284,7 +1283,7 @@ namespace GraphView.Transaction
                             this.CommittedTxs++;
                         }
                         this.FinishedTxs++;
-                        if (this.workload.Count > 0)
+                        if (this.workloadQueue.Count > 0)
                         {
                             exec.Reset();
                         }
@@ -1309,9 +1308,9 @@ namespace GraphView.Transaction
 
             string priorSessionId = "";
 
-            while (this.workload.Count > 0)
+            while (this.workloadQueue.Count > 0)
             {
-                TransactionRequest req = this.workload.Peek();
+                TransactionRequest req = this.workloadQueue.Peek();
 
                 switch (req.OperationType)
                 {
@@ -1320,7 +1319,7 @@ namespace GraphView.Transaction
                         {
                             if (priorSessionId == "" || exec.Progress == TxProgress.Close)
                             {
-                                this.workload.Dequeue();
+                                this.workloadQueue.Dequeue();
                                 priorSessionId = req.SessionId;
                                 exec.Reset();
                                 while (exec.CurrentProc != null)
@@ -1338,12 +1337,12 @@ namespace GraphView.Transaction
                         }
                         else
                         {
-                            this.workload.Dequeue();
+                            this.workloadQueue.Dequeue();
                             priorSessionId = req.SessionId;
                         }
                         break;
                     case OperationType.Close:
-                        this.workload.Dequeue();
+                        this.workloadQueue.Dequeue();
                         priorSessionId = req.SessionId;
                         exec.Commit();
                         while (exec.CurrentProc != null)

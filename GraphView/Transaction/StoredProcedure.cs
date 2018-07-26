@@ -1,7 +1,6 @@
 ﻿
 namespace GraphView.Transaction
 {
-    using System;
     using System.Collections.Generic;
 
     /// <summary>
@@ -30,7 +29,7 @@ namespace GraphView.Transaction
             string sessionId, 
             StoredProcedureWorkload workload)
         {
-            throw new NotImplementedException();
+            
         }
 
         public virtual void ReadCallback(

@@ -37,7 +37,7 @@ namespace TransactionBenchmarkTest.YCSB
         /// <summary>
         /// The number of operations per worker
         /// </summary>
-        internal int OperationCount { get; private set; } = 100000;
+        internal int WorkloadCount { get; private set; } = 100000;
 
         /// <summary>
         /// The pipeline size for redis batch commands
@@ -70,6 +70,11 @@ namespace TransactionBenchmarkTest.YCSB
         /// </summary>
         internal double ReadPercentage { get; private set; } = 0.5;
 
+        /// <summary>
+        /// The number operations in a transaction
+        /// </summary>
+        internal int QueryCount { get; private set; } = 2;
+
         public BenchmarkTestConfig(string[] givenParams = null)
         {
             if (givenParams == null)
@@ -88,7 +93,7 @@ namespace TransactionBenchmarkTest.YCSB
                     "r|record=", "the number of records", v => this.RecordCount = int.Parse(v)
                 },
                 {
-                    "o|operation=", "the number of operations per worker", v => this.OperationCount = int.Parse(v)
+                    "o|operation=", "the number of operations per worker", v => this.WorkloadCount = int.Parse(v)
                 },
                 {
                     "w|worker=", "the number of workers", v => this.WorkerCount = int.Parse(v)
@@ -148,7 +153,10 @@ namespace TransactionBenchmarkTest.YCSB
                     }
                 },
                 {
-                    "rp|readperc=", "the percentage of read", v => double.Parse(v)
+                    "rp|readperc=", "the percentage of read", v => this.ReadPercentage = double.Parse(v)
+                },
+                {
+                    "q|query=", "the number of queries in a tx", v => this.QueryCount = int.Parse(v)
                 }
             };
 
@@ -172,11 +180,12 @@ namespace TransactionBenchmarkTest.YCSB
                 "\nScale: {8}" +
                 "\nHost: {9}" +
                 "\nDistribution: {10}" +
-                "\nRead Percentage: {11}" + 
+                "\nRead Percentage: {11}" +
+                "\nQuery Count Per Tx: {12}" +
                 "\n----------------------------------",
                 this.WorkerCount,
                 this.RecordCount,
-                this.OperationCount,
+                this.WorkloadCount,
                 this.Type,
                 this.LoadRecords,
                 this.ClearVersionDb,
@@ -185,7 +194,8 @@ namespace TransactionBenchmarkTest.YCSB
                 this.Scale,
                 this.RedisHost,
                 this.Dist,
-                this.ReadPercentage);
+                this.ReadPercentage,
+                this.QueryCount);
         }
     }
 }

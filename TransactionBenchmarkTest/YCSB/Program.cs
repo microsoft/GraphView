@@ -128,7 +128,7 @@ namespace TransactionBenchmarkTest.YCSB
 
             int partitionCount = config.WorkerCount;
             int executorCount = partitionCount;
-            int txCountPerExecutor = config.OperationCount;
+            int txCountPerExecutor = config.WorkloadCount;
             int recordCount = config.RecordCount;
 
             string[] tables =
