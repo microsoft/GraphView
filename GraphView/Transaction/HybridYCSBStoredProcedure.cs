@@ -34,7 +34,7 @@ namespace GraphView.Transaction
             this.Values = values;
             this.Queries = queries;
 
-            this.QueryCount = this.Keys.Length;
+            this.QueryCount = keys == null ? 0 : keys.Length;
         }
 
         public override void Set(StoredProcedureWorkload baseWorkload)
@@ -143,8 +143,8 @@ namespace GraphView.Transaction
             TransactionRequest closeReq = this.resourceManager.TransactionRequest(
                             this.sessionId,
                             workload.TableId,
-                            workload.Keys[this.localIndex],
-                            workload.Values[this.localIndex],
+                            null,
+                            null,
                             OperationType.Close);
             this.txRequestGCQueue.Enqueue(closeReq);
             this.RequestQueue.Enqueue(closeReq);

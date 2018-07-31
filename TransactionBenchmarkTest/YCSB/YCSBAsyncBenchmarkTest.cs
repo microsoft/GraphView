@@ -129,6 +129,8 @@
             this.config = config;
 
             Console.WriteLine("Current Benchmark Test Config: {0}", this.config.ToString());
+            Console.WriteLine("Wait for 5 seconds to confirm");
+            Thread.Sleep(5000);
         }
 
         internal void Setup(string dataFile, string operationFile)
@@ -159,7 +161,7 @@
                 }
             }
 
-            // step 3: fill workers' queue
+            // step 4: fill workers' queue
             this.executorList = this.MockFillYCSBWorkload();
         }
 
@@ -615,6 +617,8 @@
             IDataGenerator generator = this.BuildDataGenerator();
             var workloadAction = this.BuildWorkloadAction(generator);
             StoredProcedureWorkload.Reload = workloadAction;
+            StoredProcedureType spType = this.GetStoredProcedureType(config.Type);
+            StoredProcedureWorkload workload = GetStoredProcedureWorkload(config.Type, config.QueryCount);
 
             for (int i = offset; i < offset + appendCount; i++)
             {
@@ -622,10 +626,8 @@
 
                 this.totalTasks += this.txCountPerExecutor;
                 int partition_index = i % this.versionDb.PartitionCount;
-                YCSBWorkload workload = new YCSBWorkload(config.Type, "ycsb_table", null, new String('a', 100));
-
                 executors.Add(new TransactionExecutor(this.versionDb, null, reqQueue, partition_index, i, 0,
-                    null, tables, null, null, this.recordCount, this.txCountPerExecutor, null, workload));
+                    null, tables, null, null, this.recordCount, this.txCountPerExecutor, null, workload, spType, config.PipelineSize));
 
                 Console.WriteLine("Filled {0}-th executors", i+1);
             }
@@ -799,13 +801,40 @@
             IDataGenerator generator = null;
             if (config.Dist == Distribution.Uniform)
             {
-                generator = new YCSBDataGenerator(this.recordCount);
+                generator = new YCSBDataGenerator(this.recordCount, config.ReadPercentage);
             }
             else
             {
                 generator = new YCSBDataGenerator(this.recordCount, config.ReadPercentage, Distribution.Zipf, config.Scale);
             }
             return generator;
+        }
+
+        private StoredProcedureType GetStoredProcedureType(string name)
+        {
+            if ("HYBRID".Equals(name))
+            {
+                return StoredProcedureType.HybridYCSBStordProcedure;
+            }
+            else
+            {
+                return StoredProcedureType.YCSBStordProcedure;
+            }
+        }
+
+        private StoredProcedureWorkload GetStoredProcedureWorkload(string name, int queryCount = 0)
+        {
+            if ("HYBRID".Equals(name))
+            {
+                object[] keys = new object[queryCount];
+                object[] values = new object[queryCount];
+                string[] queries = new string[queryCount];
+                return new HybridYCSBWorkload("ycsb_table", keys, values, queries);
+            }
+            else
+            {
+                return new YCSBWorkload(name, "ycsb_table", null, new String('a', 100));
+            }
         }
     }
 }

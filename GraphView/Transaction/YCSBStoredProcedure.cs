@@ -23,32 +23,6 @@ namespace TransactionBenchmarkTest.YCSB
             this.Type = type;
         }
 
-        public void Set(object key)
-        {
-            this.Key = key;
-        }
-
-        public void Set(object key, object value)
-        {
-            this.Key = key;
-            this.Value = value;
-        }
-
-        public void Set(string type, object key, object value)
-        {
-            this.Type = type;
-            this.Key = key;
-            this.Value = value;
-        }
-
-        public void Set(string type, string tableId, object key, object value)
-        {
-            this.Type = type;
-            this.TableId = tableId;
-            this.Key = key;
-            this.Value = value;
-        }
-
         public override void Set(StoredProcedureWorkload baseWorkload)
         {
             YCSBWorkload workload = baseWorkload as YCSBWorkload;
@@ -100,45 +74,38 @@ namespace TransactionBenchmarkTest.YCSB
 
         public override void Start()
         {
-            if (!YCSBStoredProcedure.ONLY_CLOSE)
+            if (workload.Type == "INSERT")
             {
-                if (workload.Type == "INSERT")
-                {
-                    TransactionRequest initiReadReq = this.resourceManager.TransactionRequest(
-                        this.sessionId,
-                        workload.TableId, 
-                        workload.Key, 
-                        workload.Value, 
-                        OperationType.InitiRead);
-                    this.txRequestGCQueue.Enqueue(initiReadReq);
-                    this.RequestQueue.Enqueue(initiReadReq);
-                }
-                else if (workload.Type == "READ")
-                {
-                    TransactionRequest readReq = this.resourceManager.TransactionRequest(
-                        this.sessionId,
-                        workload.TableId,
-                        workload.Key,
-                        workload.Value,
-                        OperationType.Read);
-                    this.txRequestGCQueue.Enqueue(readReq);
-                    this.RequestQueue.Enqueue(readReq);
-                }
-                else if (workload.Type == "UPDATE" || workload.Type == "DELETE")
-                {
-                    TransactionRequest updateReq = this.resourceManager.TransactionRequest(
-                        this.sessionId,
-                        workload.TableId,
-                        workload.Key,
-                        workload.Value,
-                        OperationType.Read);
-                    this.txRequestGCQueue.Enqueue(updateReq);
-                    this.RequestQueue.Enqueue(updateReq);
-                }
-                else
-                {
-                    this.Close();
-                }
+                TransactionRequest initiReadReq = this.resourceManager.TransactionRequest(
+                    this.sessionId,
+                    workload.TableId,
+                    workload.Key,
+                    workload.Value,
+                    OperationType.InitiRead);
+                this.txRequestGCQueue.Enqueue(initiReadReq);
+                this.RequestQueue.Enqueue(initiReadReq);
+            }
+            else if (workload.Type == "READ")
+            {
+                TransactionRequest readReq = this.resourceManager.TransactionRequest(
+                    this.sessionId,
+                    workload.TableId,
+                    workload.Key,
+                    workload.Value,
+                    OperationType.Read);
+                this.txRequestGCQueue.Enqueue(readReq);
+                this.RequestQueue.Enqueue(readReq);
+            }
+            else if (workload.Type == "UPDATE" || workload.Type == "DELETE")
+            {
+                TransactionRequest updateReq = this.resourceManager.TransactionRequest(
+                    this.sessionId,
+                    workload.TableId,
+                    workload.Key,
+                    workload.Value,
+                    OperationType.Read);
+                this.txRequestGCQueue.Enqueue(updateReq);
+                this.RequestQueue.Enqueue(updateReq);
             }
             else
             {

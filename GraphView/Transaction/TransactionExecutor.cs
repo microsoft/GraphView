@@ -30,7 +30,7 @@ namespace GraphView.Transaction
         /// <summary>
         /// The size of current working transaction set
         /// </summary>
-        private readonly int workingSetSize = 100;      // in terms of # of tx's
+        private int workingSetSize = 100;      // in terms of # of tx's
 
         /// <summary>
         /// A queue of workloads accepted from clients
@@ -125,7 +125,8 @@ namespace GraphView.Transaction
             int taskCount = 0,
             KeyGenerator nextKey = null,
             StoredProcedureWorkload workload = null,
-            StoredProcedureType storedProcedureType = StoredProcedureType.YCSBStordProcedure)
+            StoredProcedureType storedProcedureType = StoredProcedureType.YCSBStordProcedure,
+            int workingSetSize = 100)
         {
             this.versionDb = versionDb;
             this.logStore = logStore;
@@ -149,6 +150,7 @@ namespace GraphView.Transaction
 
             this.workload = workload;
             this.storedProcedureType = storedProcedureType;
+            this.workingSetSize = workingSetSize;
         }
 
         public void Reset()

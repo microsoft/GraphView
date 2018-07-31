@@ -57,8 +57,10 @@ namespace TransactionBenchmarkTest.YCSB
         /// <summary>
         /// The redis instance host
         /// </summary>
-        internal string RedisHost { get; private set; } = 
+        internal string RedisHost { get; private set; } =
             "xnke5SdHz5xcsBF+OlZPL7PdzI7Vz3De7ntGI2fIye0=@elastas.redis.cache.windows.net:6379";
+        //internal string RedisHost { get; private set; } =
+        //    "127.0.0.1:6379";
 
         /// <summary>
         /// The distribution of keys
@@ -93,10 +95,10 @@ namespace TransactionBenchmarkTest.YCSB
                     "r|record=", "the number of records", v => this.RecordCount = int.Parse(v)
                 },
                 {
-                    "o|operation=", "the number of operations per worker", v => this.WorkloadCount = int.Parse(v)
+                    "w|workload=", "the number of operations per worker", v => this.WorkloadCount = int.Parse(v)
                 },
                 {
-                    "w|worker=", "the number of workers", v => this.WorkerCount = int.Parse(v)
+                    "W|worker=", "the number of workers", v => this.WorkerCount = int.Parse(v)
                 },
                 {
                     "p|pipeline=", "the batch size under pipeline mode", v => this.PipelineSize = int.Parse(v)
@@ -131,7 +133,7 @@ namespace TransactionBenchmarkTest.YCSB
                     "c|clear=", "whether clear the versionDb", v => this.ClearVersionDb = ("true".Equals(v) ? true : false)
                 },
                 {
-                    "r|run=", "whether to run the test", v => this.RunTest = ("true".Equals(v) ? true : false)
+                    "rn|run=", "whether to run the test", v => this.RunTest = ("true".Equals(v) ? true : false)
                 },
                 {
                     "h|host=", "the redis connection string", v => this.RedisHost = v
@@ -169,7 +171,7 @@ namespace TransactionBenchmarkTest.YCSB
                 "\n----------------------------------" + 
                 "\nWorkerCount: {0}" +
                 "\nRecordCount: {1}" +
-                "\nTxCount: {2}" +
+                "\nWorkloadCount: {2}" +
                 "\nTxType: {3}" +
                 "\n" + 
                 "\nLoadRecords: {4}" +

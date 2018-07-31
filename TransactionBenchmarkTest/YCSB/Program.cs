@@ -292,6 +292,9 @@ namespace TransactionBenchmarkTest.YCSB
             // YCSBAsyncTestWithCassandra();
 
             // ExecuteRedisRawTest();
+
+            Console.WriteLine("Put Any Key to Quit: ");
+            Console.Read();
         }
     }
 }
