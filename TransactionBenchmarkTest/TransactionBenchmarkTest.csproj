@@ -177,6 +177,7 @@
     <Compile Include="YCSB\TxWorkload.cs" />
     <Compile Include="YCSB\YCSBAsyncBenchmarkTest.cs" />
     <Compile Include="YCSB\YCSBBenchmarkTest.cs" />
+    <Compile Include="Distribution.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="app.config" />

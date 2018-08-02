@@ -1,12 +1,9 @@
-﻿using MathNet.Numerics.Distributions;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace TransactionBenchmarkTest.YCSB
+﻿namespace TransactionBenchmarkTest.YCSB
 {
+    using System;
+    using System.Collections.Generic;
+    using System.Threading;
+
     internal enum Distribution
     {
         Uniform,
@@ -28,9 +25,14 @@ namespace TransactionBenchmarkTest.YCSB
         private Distribution dist;
 
         /// <summary>
-        /// random number generator for uniform distribution
+        /// The uniform generator for operations
         /// </summary>
-        private Random random;
+        private Uniform operationDist;
+
+        /// <summary>
+        /// Uniform generator for uniform distribution
+        /// </summary>
+        private Uniform uniform;
 
         /// <summary>
         /// zipf generator for zipf distribution
@@ -48,17 +50,22 @@ namespace TransactionBenchmarkTest.YCSB
             int recordCount, 
             double readWritePerc = 0.5, 
             Distribution dist = Distribution.Uniform, 
-            double alpha = 0.5)
+            double theta = 0.5)
         {
             this.recordCount = recordCount;
             this.dist = dist;
             this.readWritePerc = readWritePerc;
             this.readWriteRandBound = (int)(this.readWritePerc * RAND_UPPER_BOUND);
 
-            this.random = new Random();
             if (this.dist == Distribution.Zipf)
             {
-                this.zipf = new Zipf(alpha, recordCount);
+                Console.WriteLine("alpha = {0}", theta);
+                this.zipf = new Zipf(recordCount, theta);
+                this.operationDist = new Uniform(RAND_UPPER_BOUND);
+            }
+            else
+            {
+                this.uniform = new Uniform(recordCount);
             }
         }
 
@@ -67,10 +74,10 @@ namespace TransactionBenchmarkTest.YCSB
             switch (this.dist)
             {
                 case Distribution.Uniform:
-                    return this.NextKeyInUniform();
+                    return this.uniform.Next();
 
                 case Distribution.Zipf:
-                    return this.NextKeyInZipf();
+                    return this.zipf.Next();
 
                 default:
                     return -1;
@@ -84,18 +91,8 @@ namespace TransactionBenchmarkTest.YCSB
 
         public string NextOperation()
         {
-            int randInt = random.Next(0, RAND_UPPER_BOUND);
+            int randInt = operationDist.Next();
             return (randInt < this.readWriteRandBound ? "READ" : "UPDATE");
-        }
-
-        private int NextKeyInUniform()
-        {
-            return random.Next(0, this.recordCount);
-        }
-
-        private int NextKeyInZipf()
-        {
-            return this.zipf.Sample();
         }
     }
 }
