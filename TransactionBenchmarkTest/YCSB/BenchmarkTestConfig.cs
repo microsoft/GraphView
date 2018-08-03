@@ -77,6 +77,11 @@ namespace TransactionBenchmarkTest.YCSB
         /// </summary>
         internal int QueryCount { get; private set; } = 2;
 
+        /// <summary>
+        /// The number of workers per redis instance
+        /// </summary>
+        internal int WorkerPerRedisInstance { get; private set; } = 4;
+
         public BenchmarkTestConfig(string[] givenParams = null)
         {
             if (givenParams == null)
@@ -159,6 +164,9 @@ namespace TransactionBenchmarkTest.YCSB
                 },
                 {
                     "q|query=", "the number of queries in a tx", v => this.QueryCount = int.Parse(v)
+                },
+                {
+                    "wpr|worker_per_redis=", "the number of worker per redis instance", v => this.WorkerPerRedisInstance = int.Parse(v)
                 }
             };
 
@@ -170,6 +178,7 @@ namespace TransactionBenchmarkTest.YCSB
             return String.Format(
                 "\n----------------------------------" + 
                 "\nWorkerCount: {0}" +
+                "\nWorkerPerRedisInstance: {1}" + 
                 "\nRecordCount: {1}" +
                 "\nWorkloadCount: {2}" +
                 "\nTxType: {3}" +
@@ -186,6 +195,7 @@ namespace TransactionBenchmarkTest.YCSB
                 "\nQuery Count Per Tx: {12}" +
                 "\n----------------------------------",
                 this.WorkerCount,
+                this.WorkerPerRedisInstance,
                 this.RecordCount,
                 this.WorkloadCount,
                 this.Type,

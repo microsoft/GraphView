@@ -76,14 +76,14 @@
         internal override void EnqueueVersionEntryRequest(VersionEntryRequest req, int srcPartition = 0)
         {
             // Console.WriteLine(req.GetType().Name);
-            // base.EnqueueVersionEntryRequest(req, execPartition);
+            base.EnqueueVersionEntryRequest(req, srcPartition);
             // Interlocked.Increment(ref VersionDb.EnqueuedRequests);
-            int pk = srcPartition;
+            //int pk = srcPartition;
 
-            while (Interlocked.CompareExchange(ref queueLatches[pk], 1, 0) != 0) ;
-            Queue<VersionEntryRequest> reqQueue = Volatile.Read(ref this.requestQueues[pk]);
-            reqQueue.Enqueue(req);
-            Interlocked.Exchange(ref queueLatches[pk], 0);
+            //while (Interlocked.CompareExchange(ref queueLatches[pk], 1, 0) != 0) ;
+            //Queue<VersionEntryRequest> reqQueue = Volatile.Read(ref this.requestQueues[pk]);
+            //reqQueue.Enqueue(req);
+            //Interlocked.Exchange(ref queueLatches[pk], 0);
         }
 
         internal override void Clear()
@@ -204,6 +204,11 @@
                     }
                 }
                 pk++;
+
+                if (this.redisVersionDbMode != RedisVersionDbMode.Cluster)
+                {
+                    connPool = null;
+                }
             }
 
             Console.WriteLine("Loaded {0} records Successfully", loaded);

@@ -1054,6 +1054,19 @@ namespace GraphView.Transaction
 
             // unmount the current partition
             this.versionDb.PartitionMounted[this.Partition] = false;
+
+            if (this.flushTables != null && this.flushTables.Length > 0)
+            {
+                while (true)
+                {
+                    bool stop = this.versionDb.HasAllPartitionsUnmounted();
+                    if (stop)
+                    {
+                        break;
+                    }
+                    this.FlushInstances();
+                }
+            }
         }
 
         public void Execute()

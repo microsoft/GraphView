@@ -139,10 +139,10 @@ namespace TransactionBenchmarkTest.YCSB
 
             string[] readWriteHosts = new string[]
             {
-                config.RedisHost,
+                // config.RedisHost,
                 // "8r285aybUZ7+rQ3QgpoorfFodT6+NMDQsxkdfOHAL9w=@txservice.redis.cache.windows.net:6379",
                 // "xnke5SdHz5xcsBF+OlZPL7PdzI7Vz3De7ntGI2fIye0=@elastas.redis.cache.windows.net:6379",
-                //"127.0.0.1:6379",
+                "127.0.0.1:6379",
                 //"127.0.0.1:6380",
                 //"127.0.0.1:6381",
                 //"127.0.0.1:6382",
@@ -155,9 +155,19 @@ namespace TransactionBenchmarkTest.YCSB
                 //"127.0.0.1:6389",
                 //"127.0.0.1:6390",
                 //"127.0.0.1:6391",
+
+                //"10.9.0.6:6380",
+                //"10.9.0.6:6381",
+                //"10.9.0.6:6382",
+                //"10.9.0.6:6383",
+                //"10.9.0.6:6384",
+                //"10.9.0.6:6385",
+                //"10.9.0.6:6386",
+                //"10.9.0.6:6387",
             };
 
-            RedisVersionDb versionDb = RedisVersionDb.Instance(partitionCount, readWriteHosts);
+            RedisVersionDb.PARTITIONS_PER_INSTANCE = config.WorkerPerRedisInstance;
+            RedisVersionDb versionDb = RedisVersionDb.Instance(partitionCount, readWriteHosts, RedisVersionDbMode.Partition);
             YCSBAsyncBenchmarkTest test = new YCSBAsyncBenchmarkTest(recordCount,
                 executorCount, txCountPerExecutor, versionDb, tables, config);
 

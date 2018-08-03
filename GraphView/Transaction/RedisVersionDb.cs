@@ -225,7 +225,7 @@
                         }
                         else
                         {
-                            RedisVersionDb.instance = new RedisVersionDb(partitionCount, readWriteHosts);
+                            RedisVersionDb.instance = new RedisVersionDb(partitionCount, readWriteHosts, mode);
                         }
                     }
                 }
@@ -562,14 +562,14 @@
         internal override void EnqueueTxEntryRequest(long txId, TxEntryRequest txEntryRequest, int srcPartition = 0)
         {
             // Console.WriteLine(txEntryRequest.GetType().Name);
-            // base.EnqueueTxEntryRequest(txId, txEntryRequest, executorPK);
+            base.EnqueueTxEntryRequest(txId, txEntryRequest, srcPartition);
             // Interlocked.Increment(ref VersionDb.EnqueuedRequests);
-            int pk = srcPartition;
+            //int pk = srcPartition;
 
-            while (Interlocked.CompareExchange(ref queueLatches[pk], 1, 0) != 0) ;
-            Queue<TxEntryRequest> reqQueue = Volatile.Read(ref this.txEntryRequestQueues[pk]);
-            reqQueue.Enqueue(txEntryRequest);
-            Interlocked.Exchange(ref queueLatches[pk], 0);
+            //while (Interlocked.CompareExchange(ref queueLatches[pk], 1, 0) != 0) ;
+            //Queue<TxEntryRequest> reqQueue = Volatile.Read(ref this.txEntryRequestQueues[pk]);
+            //reqQueue.Enqueue(txEntryRequest);
+            //Interlocked.Exchange(ref queueLatches[pk], 0);
         }
 
         /// <summary>
