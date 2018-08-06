@@ -59,14 +59,14 @@
 
             if (this.dist == Distribution.Zipf)
             {
-                Console.WriteLine("alpha = {0}", theta);
+                Console.WriteLine("theta = {0}", theta);
                 this.zipf = new Zipf(recordCount, theta);
-                this.operationDist = new Uniform(RAND_UPPER_BOUND);
             }
             else
             {
                 this.uniform = new Uniform(recordCount);
             }
+            this.operationDist = new Uniform(RAND_UPPER_BOUND);
         }
 
         public int NextIntKey()

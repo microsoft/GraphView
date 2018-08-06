@@ -619,11 +619,11 @@
             var workloadAction = this.BuildWorkloadAction(generator);
             StoredProcedureWorkload.Reload = workloadAction;
             StoredProcedureType spType = this.GetStoredProcedureType(config.Type);
-            StoredProcedureWorkload workload = GetStoredProcedureWorkload(config.Type, config.QueryCount);
 
             for (int i = offset; i < offset + appendCount; i++)
             {
                 Queue<TransactionRequest> reqQueue = new Queue<TransactionRequest>();
+                StoredProcedureWorkload workload = GetStoredProcedureWorkload(config.Type, config.QueryCount);
 
                 this.totalTasks += this.txCountPerExecutor;
                 int partition_index = i % this.versionDb.PartitionCount;

@@ -38,7 +38,7 @@ namespace TransactionBenchmarkTest.YCSB
         /// The number of operations per worker
         /// </summary>
         internal int WorkloadCount { get; private set; } = 100000;
-
+        
         /// <summary>
         /// The pipeline size for redis batch commands
         /// </summary>
@@ -179,20 +179,20 @@ namespace TransactionBenchmarkTest.YCSB
                 "\n----------------------------------" + 
                 "\nWorkerCount: {0}" +
                 "\nWorkerPerRedisInstance: {1}" + 
-                "\nRecordCount: {1}" +
-                "\nWorkloadCount: {2}" +
-                "\nTxType: {3}" +
+                "\nRecordCount: {2}" +
+                "\nWorkloadCount: {3}" +
+                "\nTxType: {4}" +
                 "\n" + 
-                "\nLoadRecords: {4}" +
-                "\nClearVersionDb: {5}" +
-                "\nRunTest: {6}" +
+                "\nLoadRecords: {5}" +
+                "\nClearVersionDb: {6}" +
+                "\nRunTest: {7}" +
                 "\n" + 
-                "\nPipeline: {7}" +
-                "\nScale: {8}" +
-                "\nHost: {9}" +
-                "\nDistribution: {10}" +
-                "\nRead Percentage: {11}" +
-                "\nQuery Count Per Tx: {12}" +
+                "\nPipeline: {8}" +
+                "\nScale: {9}" +
+                "\nHost: {10}" +
+                "\nDistribution: {11}" +
+                "\nRead Percentage: {12}" +
+                "\nQuery Count Per Tx: {13}" +
                 "\n----------------------------------",
                 this.WorkerCount,
                 this.WorkerPerRedisInstance,

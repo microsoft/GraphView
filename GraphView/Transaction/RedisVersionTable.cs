@@ -56,14 +56,13 @@
             this.redisVersionDbMode = redisVersionDb.Mode;
 
             RedisConnectionPool clientPool = null;
-            if (this.redisVersionDbMode == RedisVersionDbMode.Cluster)
-            {
-                clientPool = this.singletonConnPool;
-            }
-
             for (int pid = 0; pid < this.PartitionCount; pid++)
             {
-                if (clientPool == null)
+                if (this.redisVersionDbMode == RedisVersionDbMode.Cluster)
+                {
+                    clientPool = this.singletonConnPool;
+                }
+                else
                 {
                     clientPool = this.RedisManager.GetClientPool(
                         this.redisDbIndex, RedisVersionDb.GetRedisInstanceIndex(pid));
@@ -75,7 +74,7 @@
 
         internal override void EnqueueVersionEntryRequest(VersionEntryRequest req, int srcPartition = 0)
         {
-            // Console.WriteLine(req.GetType().Name);
+            // Console.WriteLine("Src = {0}, Request = {1}", srcPartition, req.GetType().Name);
             base.EnqueueVersionEntryRequest(req, srcPartition);
             // Interlocked.Increment(ref VersionDb.EnqueuedRequests);
             //int pk = srcPartition;
@@ -185,7 +184,7 @@
                                 pipe.QueueCommand(r => ((RedisNativeClient)r).HSet(hashId, key, value));
 
                                 VersionEntry versionEntry = new VersionEntry();
-                                VersionEntry.InitFirstVersionEntry(i, versionEntry.Record == null ? new String('a', 100) : versionEntry.Record, versionEntry);
+                                VersionEntry.InitFirstVersionEntry(i, new String('a', 100), versionEntry);
 
                                 key = BitConverter.GetBytes(0L);
                                 value = VersionEntry.Serialize(versionEntry);

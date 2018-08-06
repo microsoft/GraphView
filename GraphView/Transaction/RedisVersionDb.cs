@@ -465,7 +465,7 @@
                 else
                 {
                     clientPool = this.RedisManager.GetClientPool(
-                    RedisVersionDb.TX_DB_INDEX, GetRedisInstanceIndex(pid));
+                        RedisVersionDb.TX_DB_INDEX, GetRedisInstanceIndex(pid));
                 }
                 this.dbVisitors[pid] = new RedisVersionDbVisitor(
                     clientPool, this.RedisLuaManager, this.responseVisitor, this.Mode);
@@ -561,7 +561,7 @@
 
         internal override void EnqueueTxEntryRequest(long txId, TxEntryRequest txEntryRequest, int srcPartition = 0)
         {
-            // Console.WriteLine(txEntryRequest.GetType().Name);
+            // Console.WriteLine("Src = {0}, Request = {1}", srcPartition, txEntryRequest.GetType().Name);
             base.EnqueueTxEntryRequest(txId, txEntryRequest, srcPartition);
             // Interlocked.Increment(ref VersionDb.EnqueuedRequests);
             //int pk = srcPartition;
