@@ -447,9 +447,9 @@ namespace TransactionBenchmarkTest.YCSB
         public static void YCSBAsyncTestWithPartitionedCassandraHybrid(string[] args)
         {
             string action = "run";
-            int workerCount = 10;
-            int taskCountPerWorker = 10;
-            int partitionCount = 10;    // equal to workerCount
+            int workerCount = 500;
+            int taskCountPerWorker = 1000;
+            int partitionCount = 500;    // equal to workerCount
 
             int runall = 1;
             int stableRoundStart = 5;

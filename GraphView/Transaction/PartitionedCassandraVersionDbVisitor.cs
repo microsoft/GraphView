@@ -26,7 +26,7 @@ namespace GraphView.Transaction
     {
         internal RowSet CQLExecute(string cql)
         {
-            Console.WriteLine(this.PartitionId + ";" + cql);
+            //Console.WriteLine(this.PartitionId + ";" + cql);
 
             return this.SessionManager.GetSession(PartitionedCassandraVersionDb.DEFAULT_KEYSPACE).Execute(cql);
         }
