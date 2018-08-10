@@ -8,6 +8,8 @@ namespace GraphView.Transaction
 {
     class HybridYCSBWorkload : StoredProcedureWorkload
     {
+        internal string TableId;
+
         internal object[] Keys;
 
         internal object[] Values;
