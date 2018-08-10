@@ -1,0 +1,2 @@
+:: sample command to run test with user defined parameters
+TransactionBenchmarkTest.exe -record=10 -workload=20 -worker=1 -pipeline=50 -type=update -scale=0.2 -load=true -clear=true -run=true -host=127.0.0.1:6379 -dist=zipf -readperc=0.1 -query=3

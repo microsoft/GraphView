@@ -93,11 +93,27 @@
 
         internal static readonly long range = 10000;
 
+        /// <summary>
+        /// The RangeOffset unit in different processes
+        /// Like Process 0, offset = 0; Process 1, offset = RangeOffsetUnit; Process 2, offset = RangeOffsetUnit * 2
+        /// </summary>
+        internal static int RangeOffsetUnit = 8;
+
+        internal static int RangeOffsetIndex = 0;
+
         private int localTxIndex = 0;
+
+        internal static int GetRange(object txId)
+        {
+            int rangeWithOffset = (int)((long)txId / range);
+            return rangeWithOffset - (rangeWithOffset / RangeOffsetUnit) * RangeOffsetUnit;
+        }
 
         public TxRange(int start)
         {
-            this.RangeStart = start * TxRange.range;
+            int startWithOffset = start + RangeOffsetUnit * RangeOffsetIndex;
+            this.RangeStart = startWithOffset * TxRange.range;
+            //this.RangeStart = start * TxRange.range;
         }
 
         public void Reset()

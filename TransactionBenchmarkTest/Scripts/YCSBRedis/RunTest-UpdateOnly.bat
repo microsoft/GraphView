@@ -1,0 +1,1 @@
+TransactionBenchmarkTest.exe -record=2000000 -workload=200000 -worker_per_redis=6 -worker=12 -pipeline=400 -type=hybrid -scale=0 -load=true -clear=true -run=true -dist=uniform -readperc=0 -query=2

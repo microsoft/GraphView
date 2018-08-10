@@ -10,7 +10,7 @@
     /// https://github.com/shingjan/DBx1000/blob/master/benchmarks/ycsb_query.cpp#L24-L58
     /// </summary>
     /// 
-    
+
     internal interface IDistribution
     {
         int Next();
@@ -28,6 +28,21 @@
         private double theta;
 
         /// <summary>
+        /// Motiviations: By following the above algorithm, the generated zipf distribution has the
+        /// such a feature. The key 0 always has the largest frequency, and 1 has the second largest, 
+        /// and so one. It means from key 0 to key n, its frequencies are in descending order.
+        /// In some cases, we don't hope it's like this. We hope those keys with high frequency are 
+        /// distributed uniformly. Hence we put an random map here, to convert generated keys to the uniform
+        /// keys. 
+        /// </summary>
+        private readonly int[] keysMap;
+
+        /// <summary>
+        /// A switch to control whether convert high frequency keys' distribution
+        /// </summary>
+        private bool reshuffleKeys;
+
+        /// <summary>
         /// zeta(n, theta)
         /// </summary>
         private double zetan;
@@ -37,13 +52,31 @@
         /// </summary>
         private double zeta2Theta;
 
-        public Zipf(int n, double theta)
+        public Zipf(int n, double theta, bool reshuffleKeys = true)
         {
             this.n = n;
             this.theta = theta;
-
+            this.reshuffleKeys = reshuffleKeys;
+            
             this.zetan = Zeta(n, theta);
             this.zeta2Theta = Zeta(2, theta);
+
+            this.keysMap = new int[this.n];
+
+            // TODO: Here ensure that those random numbers in 5 second are same. 
+            // This is a special requirement as we want to generate 
+            // same numbers in zipf distribution to run with multiple processes.
+            // Those processes will be started by batch scripts and ensure they will be 
+            // loaded in 5 seconds.
+
+            // If you don't need it, just new rand without any params
+            int seed = (int)(DateTime.Now.Ticks / 50000000);
+            Console.WriteLine("Zipf KeyMap Seed: {0}", seed);
+            Random rand = new Random(seed);
+            for (int i = 0; i < n; i++)
+            {
+                this.keysMap[i] = rand.Next(0, n);
+            }
         }
 
         /// <summary>
@@ -52,7 +85,12 @@
         /// <returns></returns>
         public int Next()
         {
-            return this.GenZipf(this.n, this.theta) - 1;
+            int key = this.GenZipf(this.n, this.theta) - 1;
+            if (this.reshuffleKeys)
+            {
+                return this.keysMap[key];
+            }
+            return key;
         }
 
         private double Zeta(int n, double theta)
@@ -84,7 +122,7 @@
 
     class Uniform : IDistribution
     {
-        private static int seed = Environment.TickCount;
+        private static int seed = Environment.TickCount + 0x3f3f3f3f;
 
         private static readonly ThreadLocal<Random> random =
             new ThreadLocal<Random>(() => new Random(Interlocked.Increment(ref seed)));

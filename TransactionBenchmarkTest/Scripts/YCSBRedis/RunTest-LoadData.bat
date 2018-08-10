@@ -1,0 +1,1 @@
+TransactionBenchmarkTest.exe -record=1000000 -worker_per_redis=6 -worker=6 -load=true -clear=true -run=false

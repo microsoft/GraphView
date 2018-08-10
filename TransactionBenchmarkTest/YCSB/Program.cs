@@ -2,7 +2,9 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace TransactionBenchmarkTest.YCSB
 {
@@ -156,17 +158,19 @@ namespace TransactionBenchmarkTest.YCSB
                 //"127.0.0.1:6390",
                 //"127.0.0.1:6391",
 
-                //"10.9.0.6:6380",
-                //"10.9.0.6:6381",
-                //"10.9.0.6:6382",
-                //"10.9.0.6:6383",
-                //"10.9.0.6:6384",
-                //"10.9.0.6:6385",
-                //"10.9.0.6:6386",
-                //"10.9.0.6:6387",
+                
+                //"10.1.9.8:6380",
+                //"10.1.9.9:6380",
+                //"10.1.9.10:6380",
+                //"10.1.9.7:6380",
+                //"10.1.9.8:6381",
+                //"10.1.9.9:6381",
+                //"10.1.9.10:6381",
+                //"10.1.9.7:6381",
             };
 
             RedisVersionDb.PARTITIONS_PER_INSTANCE = config.WorkerPerRedisInstance;
+            TxRange.RangeOffsetIndex = config.ProcessOffset;
             RedisVersionDb versionDb = RedisVersionDb.Instance(partitionCount, readWriteHosts, RedisVersionDbMode.Partition);
             YCSBAsyncBenchmarkTest test = new YCSBAsyncBenchmarkTest(recordCount,
                 executorCount, txCountPerExecutor, versionDb, tables, config);
@@ -283,6 +287,39 @@ namespace TransactionBenchmarkTest.YCSB
         //    }
         //};
 
+        private static void ZipfTest()
+        {
+            Dictionary<int, int> dict = new Dictionary<int, int>();
+            Zipf zipf = new Zipf(100000, 0.8, false);
+            for (int i = 0; i < 200000; i++)
+            {
+                int key = zipf.Next();
+                if (dict.ContainsKey(key))
+                {
+                    dict[key]++;
+                }
+                else
+                {
+                    dict[key] = 1;
+                }
+            }
+
+            List<KeyValuePair<int, int>> myList = dict.ToList();
+
+            myList.Sort(
+                delegate (KeyValuePair<int, int> pair1,
+                KeyValuePair<int, int> pair2)
+                {
+                    return pair2.Value.CompareTo(pair1.Value);
+                }
+            );
+
+            for (int i = 0; i < 5; i++)
+            {
+                Console.WriteLine(myList[i].Key + " " + myList[i].Value);
+            }
+        }
+
         public static void Main(string[] args)
         {
             Program.args = args;
@@ -302,7 +339,7 @@ namespace TransactionBenchmarkTest.YCSB
             // YCSBAsyncTestWithCassandra();
 
             // ExecuteRedisRawTest();
-
+            //ZipfTest();
             Console.WriteLine("Put Any Key to Quit: ");
             Console.Read();
         }

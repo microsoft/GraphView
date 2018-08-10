@@ -178,10 +178,11 @@ namespace GraphView.Transaction
                 exec = runtimeTuple.Item1;
                 Queue<TransactionRequest> reqQueue = runtimeTuple.Item2;
 
-                if (reqQueue.Count > 0)
-                {
-                    reqQueue.Clear();
+                while (reqQueue.Count > 0)
+                { 
+                    reqQueue.Dequeue();
                 }
+
                 return runtimeTuple;
             }
             else

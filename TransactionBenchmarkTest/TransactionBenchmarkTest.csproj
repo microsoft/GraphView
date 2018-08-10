@@ -168,7 +168,7 @@
     <Compile Include="TxTask.cs" />
     <Compile Include="Worker.cs" />
     <Compile Include="YCSB\BenchmarkTestConfig.cs" />
-    <Compile Include="YCSB\YCSBKeyGenerator.cs" />
+    <Compile Include="YCSB\YCSBDataGenerator.cs" />
     <Compile Include="YCSB\Main.cs" />
     <Compile Include="YCSB\Program.cs" />
     <Compile Include="YCSB\RedisBenchmarkTest.cs" />
@@ -200,6 +200,9 @@
       <ProductName>.NET Framework 3.5 SP1</ProductName>
       <Install>false</Install>
     </BootstrapperPackage>
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Scripts\YCSBRedis\" />
   </ItemGroup>
   <Choose>
     <When Condition="'$(VisualStudioVersion)' == '10.0' And '$(IsCodedUITest)' == 'True'">

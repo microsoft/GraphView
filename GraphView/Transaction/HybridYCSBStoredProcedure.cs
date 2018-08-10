@@ -8,8 +8,6 @@ namespace GraphView.Transaction
 {
     class HybridYCSBWorkload : StoredProcedureWorkload
     {
-        internal string TableId;
-
         internal object[] Keys;
 
         internal object[] Values;
@@ -73,6 +71,7 @@ namespace GraphView.Transaction
         public HybridYCSBStoredProcedure(TxResourceManager resourceManager = null)
         {
             this.txRequestGCQueue = new Queue<TransactionRequest>();
+            this.workload = new HybridYCSBWorkload(null, null, null, null);
             this.resourceManager = resourceManager;
         }
 
@@ -81,10 +80,6 @@ namespace GraphView.Transaction
             StoredProcedureWorkload workload)
         {
             this.sessionId = sessionId;
-            if (this.workload == null)
-            {
-                this.workload = new HybridYCSBWorkload(null, null, null, null);
-            }
             HybridYCSBWorkload hybridWorkload = workload as HybridYCSBWorkload;
             this.workload.Set(hybridWorkload);
 
@@ -176,7 +171,6 @@ namespace GraphView.Transaction
         public override void Reset()
         {
             this.sessionId = "";
-            this.workload = null;
             this.localIndex = 0;
 
             TransactionRequest transReq = null;

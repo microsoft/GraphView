@@ -131,7 +131,7 @@
             Console.WriteLine("Current Benchmark Test Config: {0}", this.config.ToString());
             Console.WriteLine("Wait for 5 seconds to confirm");
             Console.Out.Flush();
-            Thread.Sleep(5000);
+            //Thread.Sleep(5000);
         }
 
         internal void Setup(string dataFile, string operationFile)

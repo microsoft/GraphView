@@ -82,6 +82,8 @@ namespace TransactionBenchmarkTest.YCSB
         /// </summary>
         internal int WorkerPerRedisInstance { get; private set; } = 4;
 
+        internal int ProcessOffset { get; private set; } = 0;
+
         public BenchmarkTestConfig(string[] givenParams = null)
         {
             if (givenParams == null)
@@ -167,6 +169,9 @@ namespace TransactionBenchmarkTest.YCSB
                 },
                 {
                     "wpr|worker_per_redis=", "the number of worker per redis instance", v => this.WorkerPerRedisInstance = int.Parse(v)
+                },
+                {
+                    "po|process_offset=", "the offset of process", v => this.ProcessOffset = int.Parse(v)
                 }
             };
 
@@ -193,6 +198,7 @@ namespace TransactionBenchmarkTest.YCSB
                 "\nDistribution: {11}" +
                 "\nRead Percentage: {12}" +
                 "\nQuery Count Per Tx: {13}" +
+                "\nProcess Offset: {14}" + 
                 "\n----------------------------------",
                 this.WorkerCount,
                 this.WorkerPerRedisInstance,
@@ -207,7 +213,8 @@ namespace TransactionBenchmarkTest.YCSB
                 this.RedisHost,
                 this.Dist,
                 this.ReadPercentage,
-                this.QueryCount);
+                this.QueryCount,
+                this.ProcessOffset);
         }
     }
 }
