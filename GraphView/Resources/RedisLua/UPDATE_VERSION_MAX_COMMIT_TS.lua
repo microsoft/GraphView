@@ -10,10 +10,18 @@ if not entry then
     return negative_one
 end
 
+local function TsLess(ts1, ts2)
+    for i = string.len(ts1), 1, -1 do
+        if string.byte(ts1, i) ~= string.byte(ts2, i) then
+            return string.byte(ts1, i) < string.byte(ts2, i)
+        end
+    end
+    return false
+end
+
 local max_commit_ts = string.sub(entry, 3*8+1, 4*8)
 
--- cann't compare strings directly, "2" < "15" will return false 
-if string.byte(max_commit_ts) < string.byte(commit_time) then
+if TsLess(max_commit_ts, commit_time) then
     local new_version_entry = string.sub(entry, 1, 3*8) .. commit_time .. string.sub(entry, 4*8+1, string.len(entry))
     local ret = redis.call('HSET', KEYS[1], ARGV[1], new_version_entry);
     if ret == nil then

@@ -14,8 +14,17 @@ end
 local tx_commit_time = data[1]
 local commit_lower_bound = data[2]
 
+local function TsLess(ts1, ts2)
+    for i = string.len(ts1), 1, -1 do
+        if string.byte(ts1, i) ~= string.byte(ts2, i) then
+            return string.byte(ts1, i) < string.byte(ts2, i)
+        end
+    end
+    return false
+end
+
 if tx_commit_time == negative_one and 
-    string.byte(commit_lower_bound) < string.byte(commit_time) then
+    TsLess(commit_lower_bound, commit_time) then
     local ret = redis.call('HSET', KEYS[1], 'commit_lower_bound', commit_time)
     if ret ~= 0 then
         return negative_two

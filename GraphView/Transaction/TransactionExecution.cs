@@ -552,7 +552,7 @@ namespace GraphView.Transaction
                         // If the concurrent tx has finished (committed or aborted), there is a chance for this tx
                         // to re-gain the lock. 
                         // Enqueues a request to check the status of the tx that is holding the tail.
-                        this.getTxReq.Set(this.replaceVerEntry.TxId, this.remoteTxEntryRef);
+                        this.getTxReq.Set(this.replaceVerEntry.TxId, this.localTxEntry, this.remoteTxEntryRef);
                         this.getTxReq.Use();
                         this.versionDb.EnqueueTxEntryRequest(this.replaceVerEntry.TxId, this.getTxReq, this.executor.Partition);
 
