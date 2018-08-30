@@ -21,7 +21,7 @@
         /// <summary>
         /// A transient map from script name to sha1, it will be filled when the instance is created
         /// </summary>
-        private readonly Dictionary<string, string> luaScriptSha1Map = new Dictionary<string, string>();
+        private readonly Dictionary<LuaScriptName, string> luaScriptSha1Map = new Dictionary<LuaScriptName, string>();
 
         private string[] readWriteHosts;
 
@@ -47,11 +47,11 @@
         /// </summary>
         /// <param name="scriptName">The human readiable name for sha1, like INSERT_VERSION</param>
         /// <returns>script's sha1<returns>
-        internal string GetLuaScriptSha1(string scriptName)
+        internal string GetLuaScriptSha1(LuaScriptName scriptName)
         {
             if (!this.luaScriptSha1Map.ContainsKey(scriptName))
             {
-                throw new ArgumentException($"{scriptName} has not been registered in redis");
+                throw new ArgumentException($"{LuaToString(scriptName)} has not been registered in redis");
             }
             return this.luaScriptSha1Map[scriptName];
         }
@@ -75,7 +75,7 @@
                 {
                     string scriptName = Encoding.ASCII.GetString(valueBytes[i]);
                     string sha1 = Encoding.ASCII.GetString(valueBytes[i + 1]);
-                    this.luaScriptSha1Map[scriptName] = sha1;
+                    this.luaScriptSha1Map[LuaFromString(scriptName)] = sha1;
                 }
             }
         }
@@ -85,19 +85,13 @@
         /// </summary>
         private void CheckAndLoadLuaScripts()
         {
-            string[] luaScriptNames =
-            {
-                LuaScriptName.REMOVE_KEYS_WITH_PREFIX,
-                LuaScriptName.SET_AND_GET_COMMIT_TIME,
-                LuaScriptName.REPLACE_VERSION_ENTRY,
-                LuaScriptName.UPDATE_COMMIT_LOWER_BOUND,
-                LuaScriptName.UPDATE_VERSION_MAX_COMMIT_TS
-            };
+            var luaScriptNames =
+                (LuaScriptName[])Enum.GetValues(typeof(LuaScriptName));
 
             string[] luaBodies = new string[luaScriptNames.Length];
             for (int i = 0; i < luaScriptNames.Length; i++)
-            { 
-                string scriptName = luaScriptNames[i];
+            {
+                string scriptName = LuaToString(luaScriptNames[i]);
                 string resourceName = $"GraphView.Resources.RedisLua.{scriptName}.lua";
                 Stream stream = Assembly.GetExecutingAssembly().GetManifestResourceStream(resourceName);
 
@@ -112,7 +106,8 @@
             {
                 for (int i = 0; i < luaScriptNames.Length; i++)
                 {
-                    this.RegisterLuaScripts(host, luaScriptNames[i], luaBodies[i]);
+                    this.RegisterLuaScripts(
+                        host, LuaToString(luaScriptNames[i]), luaBodies[i]);
                 }
             }
         }
@@ -170,18 +165,26 @@
 
             // create and change to the meta data db
             BasicRedisClientManager clientManager = new BasicRedisClientManager((int)metaDataDbIndex, new string[] { metaDataConnStr });
-            RedisClient redisClient = (RedisClient) clientManager.GetClient();
+            RedisClient redisClient = (RedisClient)clientManager.GetClient();
 
             return redisClient;
         }
+        static private LuaScriptName LuaFromString(String s)
+        {
+            return (LuaScriptName)Enum.Parse(typeof(LuaScriptName), s);
+        }
+        static private String LuaToString(LuaScriptName l)
+        {
+            return Enum.GetName(typeof(LuaScriptName), l);
+        }
     }
 
-    internal sealed class LuaScriptName
+    internal enum LuaScriptName
     {
-        internal static string REMOVE_KEYS_WITH_PREFIX = "REMOVE_KEYS_WITH_PREFIX";
-        internal static string SET_AND_GET_COMMIT_TIME = "SET_AND_GET_COMMIT_TIME";
-        internal static string REPLACE_VERSION_ENTRY = "REPLACE_VERSION_ENTRY";
-        internal static string UPDATE_COMMIT_LOWER_BOUND = "UPDATE_COMMIT_LOWER_BOUND";
-        internal static string UPDATE_VERSION_MAX_COMMIT_TS = "UPDATE_VERSION_MAX_COMMIT_TS";
+        REMOVE_KEYS_WITH_PREFIX,
+        SET_AND_GET_COMMIT_TIME,
+        REPLACE_VERSION_ENTRY,
+        UPDATE_COMMIT_LOWER_BOUND,
+        UPDATE_VERSION_MAX_COMMIT_TS,
     }
 }
