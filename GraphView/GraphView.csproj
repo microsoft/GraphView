@@ -425,6 +425,9 @@
     <EmbeddedResource Include="Resources\RedisLua\UPDATE_COMMIT_LOWER_BOUND.lua" />
     <EmbeddedResource Include="Resources\RedisLua\REPLACE_VERSION_ENTRY.lua" />
     <EmbeddedResource Include="Resources\RedisLua\REMOVE_KEYS_WITH_PREFIX.lua" />
+    <EmbeddedResource Include="Resources\RedisLua\DELETE_DIRTY_VERSION.lua" />
+    <EmbeddedResource Include="Resources\RedisLua\GET_VERSION_LIST.lua" />
+    <EmbeddedResource Include="Resources\RedisLua\UPLOAD_NEW_VERSION.lua" />
   </ItemGroup>
   <ItemGroup />
   <ItemGroup>
