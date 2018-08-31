@@ -1,4 +1,5 @@
-﻿
+﻿using System.Diagnostics;
+
 namespace GraphView.Transaction
 {
     using System;
@@ -17,49 +18,52 @@ namespace GraphView.Transaction
 
         internal override void Visit(DeleteVersionRequest req)
         {
-            try
+            byte[][] returnBytes = req.Result as byte[][];
+            Debug.Assert(returnBytes.IsSuccess());
+            req.Result = returnBytes.IsSuccess();
+        }
+
+        private void PrintVersionKeys(long[] keys)
+        {
+            Console.WriteLine($"Read {keys.Length} key(s)");
+            foreach (var key in keys)
             {
-                long ret = (long)req.Result;
-                req.Result = ret == 1L;
+                Console.Write($"{key} ");
             }
-            catch (Exception)
+            Console.WriteLine();
+        }
+
+        private int ExtractVersionEntry(
+            byte[][] response, object recordKey, TxList<VersionEntry> dest)
+        {
+            Debug.Assert(response.Length <= 4 || response.Length % 2 == 0);
+            int entryCount = response.Length / 2;
+            long[] debugKeys = new long[entryCount];
+            for (int i = 0; i < entryCount; ++i)
             {
-                req.Result = false;
-            } 
+                int versionKeyIndex = i * 2;
+                long versionKey = BitConverter.ToInt64(
+                    response[versionKeyIndex], 0);
+                byte[] entryBytes = response[versionKeyIndex + 1];
+                VersionEntry.Deserialize(
+                    recordKey, versionKey, entryBytes, dest[i]);
+                debugKeys[i] = versionKey;
+            }
+            if (debugKeys.Length == 2)
+                Debug.Assert(debugKeys[0] + 1 == debugKeys[1]);
+            return entryCount;
         }
 
         internal override void Visit(GetVersionListRequest req)
         {
-            TxList<VersionEntry> versionList = req.LocalContainer;
-
             byte[][] returnBytes = req.Result as byte[][];
-            if (returnBytes == null || returnBytes.Length == 0)
-            {
-                req.Result = 0;
-                return;
-            }
-
-            // First scan to find the largest version key
-            long largestVersionKey = -1L;
-            for (int i = 0; i < returnBytes.Length; i += 2)
-            {
-                long versionKey = BitConverter.ToInt64(returnBytes[i], 0);
-                largestVersionKey = Math.Max(largestVersionKey, versionKey);
-            }
-
-            // second scan to find those two version entries
-            int entryCount = 0;
-            for (int i = 0; i < returnBytes.Length; i += 2)
-            {
-                long versionKey = BitConverter.ToInt64(returnBytes[i], 0);
-                if (versionKey >= 0L && (versionKey == largestVersionKey || versionKey == largestVersionKey - 1))
-                {
-                    VersionEntry entry = versionList[entryCount];
-                    VersionEntry.Deserialize(req.RecordKey, versionKey, returnBytes[i + 1], entry);
-                    entryCount++;
-                }
-            }
-      
+            // if ( returnBytes == null || returnBytes.Length == 0)
+            // {
+            //     req.Result = 0;
+            //     return;
+            // }
+            int entryCount = ExtractVersionEntry(
+                returnBytes, req.RecordKey, req.LocalContainer);
             req.Result = entryCount;
         }
 
@@ -81,7 +85,9 @@ namespace GraphView.Transaction
             byte[][] returnBytes = req.Result as byte[][];
             req.Result = returnBytes == null || returnBytes.Length == 0 ?
                 null :
-                VersionEntry.Deserialize(req.RecordKey, req.VersionKey, returnBytes[1], req.LocalVerEntry);
+                VersionEntry.Deserialize(
+                    req.RecordKey, req.VersionKey,
+                    returnBytes.ValueBytes(), req.LocalVerEntry);
         }
 
         internal override void Visit(ReadVersionRequest req)
@@ -97,21 +103,18 @@ namespace GraphView.Transaction
             byte[][] returnBytes = req.Result as byte[][];
             req.Result = returnBytes == null || returnBytes.Length < 2 ?
                 null :
-                VersionEntry.Deserialize(req.RecordKey, req.VersionKey, returnBytes[1], req.LocalVerEntry);
+                VersionEntry.Deserialize(
+                    req.RecordKey, req.VersionKey,
+                    returnBytes.ValueBytes(), req.LocalVerEntry);
         }
 
         internal override void Visit(UploadVersionRequest req)
         {
+            // what is this line doing ???
             req.RemoteVerEntry = req.VersionEntry;
-            try
-            {
-                long ret = (long)req.Result;
-                req.Result = ret == 1L;
-            }
-            catch (Exception)
-            {
-                req.Result = false;
-            }
+
+            byte[][] returnBytes = req.Result as byte[][];
+            req.Result = returnBytes.IsSuccess();
         }
 
         internal override void Visit(ReplaceWholeVersionRequest req)
@@ -171,8 +174,8 @@ namespace GraphView.Transaction
             byte[][] returnBytes = req.Result as byte[][];
 
             req.Result = returnBytes == null || returnBytes.Length == 0 ?
-                -1L:
-                BitConverter.ToInt64(returnBytes[1], 0);
+                -1L :
+                BitConverter.ToInt64(returnBytes.ValueBytes(), 0);
         }
 
         internal override void Visit(RecycleTxRequest req)
@@ -191,8 +194,8 @@ namespace GraphView.Transaction
         {
             byte[][] returnBytes = req.Result as byte[][];
             req.Result = returnBytes == null || returnBytes.Length == 0 ?
-                RedisVersionDb.REDIS_CALL_ERROR_CODE:
-                BitConverter.ToInt64(returnBytes[1], 0);
+                RedisVersionDb.REDIS_CALL_ERROR_CODE :
+                BitConverter.ToInt64(returnBytes.ValueBytes(), 0);
         }
 
         internal override void Visit(UpdateTxStatusRequest req)

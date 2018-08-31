@@ -325,6 +325,7 @@
     <Compile Include="Transaction\CassandraVersionTableVisitor.cs" />
     <Compile Include="Transaction\PartitionedCassandraVersionTable.cs" />
     <Compile Include="Transaction\PartitionedCassandraVersionTableVisitor.cs" />
+    <Compile Include="Transaction\RedisLuaResponse.cs" />
     <Compile Include="Transaction\RedisVersionTableVisitor.cs" />
     <Compile Include="Transaction\LogRequest.cs" />
     <Compile Include="Transaction\CassandraVersionDb.cs" />
@@ -419,7 +420,9 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="app.config" />
-    <None Include="packages.config" />
+    <None Include="packages.config">
+      <SubType>Designer</SubType>
+    </None>
     <EmbeddedResource Include="Resources\RedisLua\SET_AND_GET_COMMIT_TIME.lua" />
     <EmbeddedResource Include="Resources\RedisLua\UPDATE_VERSION_MAX_COMMIT_TS.lua" />
     <EmbeddedResource Include="Resources\RedisLua\UPDATE_COMMIT_LOWER_BOUND.lua" />

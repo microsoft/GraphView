@@ -1458,8 +1458,6 @@ namespace GraphView.Transaction
                     return;
                 }
 
-                // Sort the version list by the descending order of version keys.
-                this.versionList.Sort(this.readEntryCount);
                 this.CurrentProc = this.readCheckVersionEntryProc;
                 this.CurrentProc();
             }
