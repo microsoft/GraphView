@@ -32,11 +32,34 @@ end
 local latestPayload = redis.call('HGET', hashKey, latestVersion)
 local latestVersionNum = BytesToInt(latestVersion)
 
+local result = nil
+
 if latestVersionNum == 0 then
     return {latestVersion, latestPayload}
+else
+    local secondLatestVersion = IntToByteString(latestVersionNum - 1)
+    local secondLatestPayload = redis.call('HGET', hashKey, secondLatestVersion)
+    result = {
+        secondLatestVersion, secondLatestPayload, latestVersion, latestPayload}
 end
 
-local secondLatestVersion = IntToByteString(latestVersionNum - 1)
-local secondLatestPayload = redis.call('HGET', hashKey, secondLatestVersion)
+local function CheckVersionListResult(hashKey, result)
+    local function Assert(b, message)
+        if not b then error(message) end
+    end
+    if #result == 2 then
+        -- version num == 0
+        return -- this case is passing for sure
+    end
+    local ver2 = BytesToInt(result[1])
+    local ver1 = BytesToInt(result[3])
+    Assert(
+        ver1 == ver2 + 1,
+        "latest ver: " .. tostring(ver1) ..
+        ", second latest ver: " .. tostring(ver2) ..
+        ", hash key: " .. hashKey)
+end
 
-return {secondLatestVersion, secondLatestPayload, latestVersion, latestPayload}
+-- CheckVersionListResult(hashKey, result)
+
+return result
