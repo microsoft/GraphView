@@ -191,7 +191,7 @@
                                 // redisClient.HSet(hashId, key, value);
 
                                 pipe.QueueCommand(r => ((RedisNativeClient)r).HSet(hashId, key, value));
-                                pipe.QueueCommand(r => ((RedisNativeClient)r).HSet(hashId, Encoding.ASCII.GetBytes("__LATEST"), key));
+                                pipe.QueueCommand(r => ((RedisNativeClient)r).HSet(hashId, Encoding.ASCII.GetBytes("LATSET_VERSION"), key));
 
                                 loaded++;
                                 // if (loaded % 2000 == 0)

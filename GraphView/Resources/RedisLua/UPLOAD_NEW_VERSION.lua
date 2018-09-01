@@ -21,7 +21,7 @@ local function CheckNewVersion(hashKey, newVersion)
             error(message)
         end
     end
-    local oldKey = redis.call('HGET', hashKey, '__LATEST')
+    local oldKey = redis.call('HGET', hashKey, 'LATSET_VERSION')
     local newVersionNum = BytesToInt(newVersion)
     if oldKey == false or oldKey == nil then
         Assert(newVersion == 0, "starting version num isn't 0 of key" .. hashKey)
@@ -37,9 +37,9 @@ end
 
 -- CheckNewVersion(hashKey, versionKey)
 
--- field `__LATEST` store the lastest version number,
+-- field `LATSET_VERSION` store the lastest version number,
 -- usage see `GET_VERSION_LIST.lua`
 -- The correctness of this line relies on the lua-script caller
-redis.call('HSET', hashKey, '__LATEST', versionKey)
+redis.call('HSET', hashKey, 'LATSET_VERSION', versionKey)
 
 return success
