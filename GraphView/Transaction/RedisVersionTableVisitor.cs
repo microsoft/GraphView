@@ -127,19 +127,19 @@
 
         internal override void Visit(InitiGetVersionListRequest req)
         {
-            string hashId = req.RecordKey.ToString();
-            if (this.redisVersionDbMode == RedisVersionDbMode.Cluster)
-            {
-                hashId = RedisVersionDb.PACK_KEY(RedisVersionDb.VER_KEY_PREFIX, hashId);
-            }
+            string hashKey = GetHashKey(req);
+            VersionEntry emptyEntry =
+                VersionEntry.InitEmptyVersionEntry(req.RecordKey);
 
-            VersionEntry emptyEntry = VersionEntry.InitEmptyVersionEntry(req.RecordKey);
-            byte[] keyBytes = BitConverter.GetBytes(emptyEntry.VersionKey);
-            byte[] valueBytes = VersionEntry.Serialize(emptyEntry);
+            byte[][] args = {
+                Encoding.ASCII.GetBytes(hashKey),
+                BitConverter.GetBytes(emptyEntry.VersionKey),
+                VersionEntry.Serialize(emptyEntry)
+            };
 
-            RedisRequest redisReq = this.NextRedisRequest();
-            redisReq.Set(hashId, keyBytes, valueBytes, RedisRequestType.HSetNX);
-            redisReq.ParentRequest = req;
+            var redisRequest = CreateLuaRequest(
+                LuaScriptName.UPLOAD_NEW_VERSION, args);
+            redisRequest.ParentRequest = req;
         }
 
         internal override void Visit(ReadVersionRequest req)
