@@ -109,7 +109,7 @@ namespace GraphView.Transaction
                 Dictionary<long, VersionEntry> newVersionList =
                     new Dictionary<long, VersionEntry>(SingletonPartitionedVersionTable.VERSION_CAPACITY);
 
-                // Adds a special entry whose key is -1 when the list is initialized.
+                // Adds a special entry whose key is VERSION_KEY_START_INDEX when the list is initialized.
                 // The entry uses beginTimestamp as a pointer pointing to the newest verion in the list.
                 newVersionList.Add(
                     VersionEntry.VERSION_KEY_STRAT_INDEX, VersionEntry.InitEmptyVersionEntry(req.RecordKey));

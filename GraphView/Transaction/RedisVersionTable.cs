@@ -177,16 +177,17 @@
                                 VersionEntry.InitEmptyVersionEntry(i, emptyEntry);
                                 emptyEntry.Record = "";
 
-                                byte[] key = BitConverter.GetBytes(-1L);
+                                byte[] key = BitConverter.GetBytes(VersionEntry.VERSION_KEY_STRAT_INDEX);
                                 byte[] value = VersionEntry.Serialize(emptyEntry);
 
                                 // redisClient.HSet(hashId, key, value);
                                 pipe.QueueCommand(r => ((RedisNativeClient)r).HSet(hashId, key, value));
+                                pipe.QueueCommand(r => ((RedisNativeClient)r).HSet(hashId, Encoding.ASCII.GetBytes("LATEST_VERSION"), key));
 
                                 VersionEntry versionEntry = new VersionEntry();
                                 VersionEntry.InitFirstVersionEntry(i, new String('a', 100), versionEntry);
 
-                                key = BitConverter.GetBytes(0L);
+                                key = BitConverter.GetBytes(VersionEntry.VERSION_KEY_STRAT_INDEX + 1);
                                 value = VersionEntry.Serialize(versionEntry);
                                 // redisClient.HSet(hashId, key, value);
 

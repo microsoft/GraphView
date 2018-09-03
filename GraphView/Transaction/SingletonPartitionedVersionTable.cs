@@ -147,11 +147,11 @@ namespace GraphView.Transaction
                     VersionEntry.InitEmptyVersionEntry(i, emptyEntry);
                     emptyEntry.BeginTimestamp = 0L;
                     emptyEntry.EndTimestamp = 0L;
-                    versionList.Add(-1L, emptyEntry);
+                    versionList.Add(VersionEntry.VERSION_KEY_STRAT_INDEX, emptyEntry);
 
                     VersionEntry versionEntry = new VersionEntry();
                     VersionEntry.InitFirstVersionEntry(i, versionEntry.Record == null ? new String('a', 100) : versionEntry.Record, versionEntry);
-                    versionList.Add(0L, versionEntry);
+                    versionList.Add(VersionEntry.VERSION_KEY_STRAT_INDEX + 1, versionEntry);
                 }
                 pk++;
             }
