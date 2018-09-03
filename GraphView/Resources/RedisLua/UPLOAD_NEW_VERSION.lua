@@ -1,12 +1,6 @@
 local hashKey = KEYS[1]
 local versionKey = ARGV[1]
 local payload = ARGV[2]
-local success = {""}
-local fail = {}
-
-if redis.call('HSETNX', hashKey, versionKey, payload) ~= 1 then
-    return fail
-end
 
 local function BytesToInt(bytes)
     local result = 0
@@ -29,7 +23,7 @@ local function IntToByteString(val)
     return string.char(unpack(IntToBytes(val)))
 end
 
-local function CheckNewVersion(hashKey, newVersion)
+local function CheckNewVersionIsValid(hashKey, newVersion)
     local function Assert(b, message)
         if not b then
             error(message)
@@ -60,7 +54,14 @@ local function RecycleOldVersions()
     DeleteOneOldVersion(MAX_VERSION_LIST_LENGTH)
 end
 
-CheckNewVersion(hashKey, versionKey)
+local SUCCESS = {""}
+local FAIL = {}
+
+if redis.call('HSETNX', hashKey, versionKey, payload) ~= 1 then
+    return FAIL
+end
+
+-- CheckNewVersionIsValid(hashKey, versionKey)
 
 -- field `LATEST_VERSION` store the lastest version number,
 -- usage see `GET_VERSION_LIST.lua`
@@ -68,4 +69,4 @@ CheckNewVersion(hashKey, versionKey)
 redis.call('HSET', hashKey, 'LATEST_VERSION', versionKey)
 RecycleOldVersions()
 
-return success
+return SUCCESS

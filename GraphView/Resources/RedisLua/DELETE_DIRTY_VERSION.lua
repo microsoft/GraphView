@@ -1,7 +1,5 @@
 local hashKey = KEYS[1]
 local versionKey = ARGV[1]
-local success = {""}
-local fail = {}
 
 -- lua doesn't support actual 'integer' before 5.3
 -- So in theory, this code could blow up due to floating point precision issue.
@@ -26,12 +24,15 @@ local function IntToByteString(val)
     return string.char(unpack(IntToBytes(val)))
 end
 
+local SUCCESS = {""}
+local FAIL = {}
+
 if redis.call('HDEL', hashKey, versionKey) ~= 1 then
-    return fail
+    return FAIL
 end
 
 -- this relies on the caller is actually deleting the dirty version
 local currentLatest = IntToByteString(BytesToInt(versionKey) - 1)
 redis.call('HSET', hashKey, 'LATEST_VERSION', currentLatest)
 
-return success
+return SUCCESS

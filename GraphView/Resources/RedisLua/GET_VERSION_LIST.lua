@@ -43,7 +43,7 @@ else
         secondLatestVersion, secondLatestPayload, latestVersion, latestPayload}
 end
 
-local function CheckVersionListResult(hashKey, result)
+local function CheckVersionListResultIsValid(hashKey, result)
     local function Assert(b, message)
         if not b then error(message) end
     end
@@ -60,6 +60,6 @@ local function CheckVersionListResult(hashKey, result)
         ", hash key: " .. hashKey)
 end
 
--- CheckVersionListResult(hashKey, result)
+-- CheckVersionListResultIsValid(hashKey, result)
 
 return result

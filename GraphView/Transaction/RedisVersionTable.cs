@@ -195,10 +195,6 @@
                                 pipe.QueueCommand(r => ((RedisNativeClient)r).HSet(hashId, Encoding.ASCII.GetBytes("LATEST_VERSION"), key));
 
                                 loaded++;
-                                // if (loaded % 2000 == 0)
-                                // {
-                                //     Console.WriteLine("Loaded {0} records", loaded);
-                                // }
                             }
                             pipe.Flush();
                         }
