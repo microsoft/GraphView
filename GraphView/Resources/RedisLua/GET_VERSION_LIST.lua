@@ -24,7 +24,7 @@ local function IntToByteString(val)
 end
 
 -- entry doesn't exist
-local latestVersion = redis.call('HGET', hashKey, 'LATSET_VERSION')
+local latestVersion = redis.call('HGET', hashKey, 'LATEST_VERSION')
 if latestVersion == false then
     return {}
 end

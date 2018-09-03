@@ -32,6 +32,6 @@ end
 
 -- this relies on the caller is actually deleting the dirty version
 local currentLatest = IntToByteString(BytesToInt(versionKey) - 1)
-redis.call('HSET', hashKey, 'LATSET_VERSION', currentLatest)
+redis.call('HSET', hashKey, 'LATEST_VERSION', currentLatest)
 
 return success
