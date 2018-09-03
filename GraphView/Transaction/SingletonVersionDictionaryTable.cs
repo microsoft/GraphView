@@ -311,7 +311,7 @@
 
                     VersionEntry versionEntry = new VersionEntry();
                     VersionEntry.InitFirstVersionEntry(i, versionEntry.Record == null ? new String('a', 100) : versionEntry.Record, versionEntry);
-                    versionList.TryAdd(VersionEntry.VERSION_KEY_STRAT_INDEX, versionEntry);
+                    versionList.TryAdd(VersionEntry.VERSION_KEY_START_INDEX, versionEntry);
                 }
                 pk++;
             }

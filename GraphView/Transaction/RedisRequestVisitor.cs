@@ -204,7 +204,7 @@ namespace GraphView.Transaction
         internal override void Visit(InitiGetVersionListRequest req)
         {
             this.HashId = req.RecordKey as string;
-            long versionKey = VersionEntry.VERSION_KEY_STRAT_INDEX;
+            long versionKey = VersionEntry.VERSION_KEY_START_INDEX;
             VersionEntry emptyEntry = new VersionEntry(
                 req.RecordKey,
                 versionKey,

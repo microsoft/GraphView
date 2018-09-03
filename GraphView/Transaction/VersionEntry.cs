@@ -27,7 +27,7 @@ namespace GraphView.Transaction
         public static readonly object EMPTY_RECORD = "";
         public static readonly long EMPTY_TXID = -1L;
 
-        public static readonly long VERSION_KEY_STRAT_INDEX = 0L;
+        public static readonly long VERSION_KEY_START_INDEX = 0L;
 
         // The following three properties are readonly
         internal object RecordKey { get; set; }
@@ -122,7 +122,7 @@ namespace GraphView.Transaction
         public void Reset()
         {
             this.RecordKey = null;
-            this.VersionKey = VersionEntry.VERSION_KEY_STRAT_INDEX;
+            this.VersionKey = VersionEntry.VERSION_KEY_START_INDEX;
             this.BeginTimestamp = VersionEntry.DEFAULT_BEGIN_TIMESTAMP;
             this.EndTimestamp = VersionEntry.DEFAULT_END_TIMESTAMP;
             this.Record = null;
@@ -199,7 +199,7 @@ namespace GraphView.Transaction
         {
             if (version == null)
             {
-                return new VersionEntry(recordKey, VersionEntry.VERSION_KEY_STRAT_INDEX,
+                return new VersionEntry(recordKey, VersionEntry.VERSION_KEY_START_INDEX,
                     VersionEntry.EMPTY_RECORD, VersionEntry.EMPTY_TXID);
             }
             else

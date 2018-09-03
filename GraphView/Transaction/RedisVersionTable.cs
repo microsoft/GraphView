@@ -177,7 +177,7 @@
                                 VersionEntry.InitEmptyVersionEntry(i, emptyEntry);
                                 emptyEntry.Record = "";
 
-                                byte[] key = BitConverter.GetBytes(VersionEntry.VERSION_KEY_STRAT_INDEX);
+                                byte[] key = BitConverter.GetBytes(VersionEntry.VERSION_KEY_START_INDEX);
                                 byte[] value = VersionEntry.Serialize(emptyEntry);
 
                                 // redisClient.HSet(hashId, key, value);
@@ -187,7 +187,7 @@
                                 VersionEntry versionEntry = new VersionEntry();
                                 VersionEntry.InitFirstVersionEntry(i, new String('a', 100), versionEntry);
 
-                                key = BitConverter.GetBytes(VersionEntry.VERSION_KEY_STRAT_INDEX + 1);
+                                key = BitConverter.GetBytes(VersionEntry.VERSION_KEY_START_INDEX + 1);
                                 value = VersionEntry.Serialize(versionEntry);
                                 // redisClient.HSet(hashId, key, value);
 
@@ -375,7 +375,7 @@
         internal override IEnumerable<VersionEntry> InitializeAndGetVersionList(object recordKey)
         {
             string hashId = recordKey as string;
-            long versionKey = VersionEntry.VERSION_KEY_STRAT_INDEX;
+            long versionKey = VersionEntry.VERSION_KEY_START_INDEX;
             VersionEntry emptyEntry = VersionEntry.InitEmptyVersionEntry(recordKey);
 
             byte[] keyBytes = BitConverter.GetBytes(versionKey);

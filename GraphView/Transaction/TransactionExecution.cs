@@ -1480,7 +1480,7 @@ namespace GraphView.Transaction
                     this.largestVersionKeySet[this.largestVerKeySetCount++].Set(
                         this.readTableId,
                         this.readRecordKey,
-                        VersionEntry.VERSION_KEY_STRAT_INDEX,
+                        VersionEntry.VERSION_KEY_START_INDEX,
                         this.initiGetVListReq.RemoteVerList);
 
                     this.remoteVerListRef = this.initiGetVListReq.RemoteVerList;
