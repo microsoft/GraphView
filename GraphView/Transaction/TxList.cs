@@ -1,6 +1,7 @@
 ﻿namespace GraphView.Transaction
 {
     using System;
+    using System.Collections.Generic;
 
     public class TxList<T> where T : new()
     {
@@ -156,6 +157,11 @@
         {
             limit = limit == -1 ? this.Count : limit;
             Array.Sort(this.entries, 0, limit);
+        }
+
+        public void Sort(int limit, IComparer<T> comparer) {
+            limit = limit == -1 ? this.Count : limit;
+            Array.Sort<T>(this.entries, 0, limit, comparer);
         }
     }
 }

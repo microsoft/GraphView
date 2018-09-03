@@ -1503,6 +1503,21 @@ namespace GraphView.Transaction
                 }
             }
         }
+        class VersionEntryReverseCompare : IComparer<VersionEntry>
+        {
+            public int Compare(VersionEntry lhs, VersionEntry rhs)
+            {
+                return rhs.CompareTo(lhs);
+            }
+        }
+
+        private static IComparer<VersionEntry> reverseComparer =
+            new VersionEntryReverseCompare();
+
+        private void SortVersionList()
+        {
+            this.versionList.Sort(this.readEntryCount, reverseComparer);
+        }
 
         internal void ReadCheckVersionEntry()
         {
@@ -1510,6 +1525,7 @@ namespace GraphView.Transaction
             VersionEntry visibleVersion = null;
             // Keep a committed version to retrieve the largest version key
             VersionEntry committedVersion = null;
+            SortVersionList();
             while (this.readEntryCount > 0)
             {
                 VersionEntry versionEntry = this.versionList[this.readEntryCount - 1];
