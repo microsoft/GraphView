@@ -1,5 +1,4 @@
-﻿
-namespace GraphView.Transaction
+﻿namespace GraphView.Transaction
 {
     using System;
     using System.Collections.Generic;
@@ -29,7 +28,7 @@ namespace GraphView.Transaction
             }
 
             VersionEntry verEntry = versionList[req.VersionKey];
-            VersionEntry tailEntry = versionList[VersionEntry.VERSION_KEY_STRAT_INDEX];
+            VersionEntry tailEntry = versionList[SingletonDictionaryVersionTable.TAIL_KEY];
 
             long tailKey = tailEntry.BeginTimestamp;
             long headKey = tailEntry.EndTimestamp;
@@ -65,7 +64,7 @@ namespace GraphView.Transaction
                 return;
             }
 
-            VersionEntry tailPointer = versionList[VersionEntry.VERSION_KEY_STRAT_INDEX];
+            VersionEntry tailPointer = versionList[SingletonDictionaryVersionTable.TAIL_KEY];
             long lastVersionKey = tailPointer.BeginTimestamp;
 
             TxList<VersionEntry> localList = req.LocalContainer;
@@ -109,10 +108,10 @@ namespace GraphView.Transaction
                 Dictionary<long, VersionEntry> newVersionList =
                     new Dictionary<long, VersionEntry>(SingletonPartitionedVersionTable.VERSION_CAPACITY);
 
-                // Adds a special entry whose key is VERSION_KEY_START_INDEX when the list is initialized.
+                // Adds a special entry whose key is TAIL_KEY when the list is initialized.
                 // The entry uses beginTimestamp as a pointer pointing to the newest verion in the list.
                 newVersionList.Add(
-                    VersionEntry.VERSION_KEY_STRAT_INDEX, VersionEntry.InitEmptyVersionEntry(req.RecordKey));
+                    SingletonDictionaryVersionTable.TAIL_KEY, VersionEntry.InitEmptyVersionEntry(req.RecordKey));
 
                 this.dict.Add(req.RecordKey, newVersionList);
 
@@ -235,7 +234,7 @@ namespace GraphView.Transaction
                 versionList.Add(req.VersionKey, req.VersionEntry);
 
                 // Take the dirty version entry to store the current largest version key
-                VersionEntry tailEntry = versionList[VersionEntry.VERSION_KEY_STRAT_INDEX];
+                VersionEntry tailEntry = versionList[SingletonDictionaryVersionTable.TAIL_KEY];
                 tailEntry.BeginTimestamp = req.VersionKey;
 
                 VersionEntry oldVersion = null;

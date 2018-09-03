@@ -84,9 +84,9 @@
             {
                 ConcurrentDictionary<long, VersionEntry> newVersionList =
                     new ConcurrentDictionary<long, VersionEntry>(1, VersionTable.VERSION_CAPACITY);
-                // Adds a special entry whose key is VERSION_KEY_START_INDEX when the list is initialized.
+                // Adds a special entry whose key is TAIL_KEY when the list is initialized.
                 // The entry uses beginTimestamp as a pointer pointing to the newest verion in the list.
-                newVersionList.TryAdd(SingletonDictionaryVersionTable.TAIL_KEY, new VersionEntry(recordKey, VersionEntry.VERSION_KEY_STRAT_INDEX, -1, -1, null, -1, -1));
+                newVersionList.TryAdd(SingletonDictionaryVersionTable.TAIL_KEY, new VersionEntry(recordKey, TAIL_KEY, -1, -1, null, -1, -1));
 
                 if (this.dict.TryAdd(recordKey, newVersionList))
                 {
@@ -307,11 +307,11 @@
                     VersionEntry.InitEmptyVersionEntry(-1, emptyEntry);
                     emptyEntry.BeginTimestamp = 0L;
                     emptyEntry.EndTimestamp = 0L;
-                    versionList.TryAdd(-1L, emptyEntry);
+                    versionList.TryAdd(TAIL_KEY, emptyEntry);
 
                     VersionEntry versionEntry = new VersionEntry();
                     VersionEntry.InitFirstVersionEntry(i, versionEntry.Record == null ? new String('a', 100) : versionEntry.Record, versionEntry);
-                    versionList.TryAdd(0L, versionEntry);
+                    versionList.TryAdd(VersionEntry.VERSION_KEY_STRAT_INDEX, versionEntry);
                 }
                 pk++;
             }

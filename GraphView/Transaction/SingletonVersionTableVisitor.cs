@@ -30,7 +30,7 @@
             }
 
             VersionEntry tailEntry = null;
-            versionList.TryGetValue(VersionEntry.VERSION_KEY_STRAT_INDEX, out tailEntry);
+            versionList.TryGetValue(SingletonDictionaryVersionTable.TAIL_KEY, out tailEntry);
 
             // As only if a tx uploads a version entry, it will change the value tailEntry
             // Here the dirty version entry hasn't been deleted, so there will no other txs update the tailEntry
@@ -137,7 +137,7 @@
             {
                 // The new version has been inserted successfully. Re-directs the tail pointer to the new version.  
                 VersionEntry tailEntry = null;
-                versionList.TryGetValue(VersionEntry.VERSION_KEY_STRAT_INDEX, out tailEntry);
+                versionList.TryGetValue(SingletonDictionaryVersionTable.TAIL_KEY, out tailEntry);
 
                 long headKey = tailEntry.EndTimestamp;
                 long tailKey = tailEntry.BeginTimestamp;
@@ -210,7 +210,7 @@
             // The value at -1 in the version list is a special entry, 
             // whose beginTimestamp points to the newest version. 
             VersionEntry tailEntry = null;
-            versionList.TryGetValue(VersionEntry.VERSION_KEY_STRAT_INDEX, out tailEntry);
+            versionList.TryGetValue(SingletonDictionaryVersionTable.TAIL_KEY, out tailEntry);
             long lastVersionKey = Interlocked.Read(ref tailEntry.BeginTimestamp);
 
             TxList<VersionEntry> localList = req.LocalContainer;
