@@ -70,7 +70,7 @@
         // <summary>
         /// The bytes of 0 in long type, should mind that it must be a long type with 8 bytes
         /// It's used to be a return value of successful operations
-        /// </summary
+        /// </summary>
         public static readonly byte[] ZERO_BYTES = BitConverter.GetBytes(0L);
 
         /// <summary>
