@@ -1503,20 +1503,10 @@ namespace GraphView.Transaction
                 }
             }
         }
-        class VersionEntryReverseCompare : IComparer<VersionEntry>
-        {
-            public int Compare(VersionEntry lhs, VersionEntry rhs)
-            {
-                return rhs.CompareTo(lhs);
-            }
-        }
-
-        private static IComparer<VersionEntry> reverseComparer =
-            new VersionEntryReverseCompare();
 
         private void SortVersionList()
         {
-            this.versionList.Sort(this.readEntryCount, reverseComparer);
+            this.versionList.Sort(this.readEntryCount);
         }
 
         internal void ReadCheckVersionEntry()
