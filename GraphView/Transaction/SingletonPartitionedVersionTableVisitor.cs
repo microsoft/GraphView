@@ -125,7 +125,7 @@
             else
             {
                 req.RemoteVerList = null;
-                req.Result = true;
+                req.Result = false;
                 req.Finished = true;
             }
         }
