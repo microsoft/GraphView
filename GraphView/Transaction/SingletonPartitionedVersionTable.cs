@@ -143,15 +143,19 @@ namespace GraphView.Transaction
                     }
                     Dictionary<long, VersionEntry> versionList = this.dicts[pk][recordKey];
 
+                    // `+ 1` is for conforming to the logic of `Insert` and
+                    // `ReadAndInitialize` in 'TransactionExecution.cs'.
+                    // It's the version key of the first Inserted version.
+                    long firstMeaningfulVersion = VersionEntry.VERSION_KEY_START_INDEX + 1;
                     VersionEntry emptyEntry = new VersionEntry();
                     VersionEntry.InitEmptyVersionEntry(i, emptyEntry);
-                    emptyEntry.BeginTimestamp = 0L;
-                    emptyEntry.EndTimestamp = 0L;
+                    emptyEntry.BeginTimestamp = firstMeaningfulVersion;
+                    emptyEntry.EndTimestamp = firstMeaningfulVersion;
                     versionList.Add(SingletonDictionaryVersionTable.TAIL_KEY, emptyEntry);
 
                     VersionEntry versionEntry = new VersionEntry();
                     VersionEntry.InitFirstVersionEntry(i, versionEntry.Record == null ? new String('a', 100) : versionEntry.Record, versionEntry);
-                    versionList.Add(VersionEntry.VERSION_KEY_START_INDEX, versionEntry);
+                    versionList.Add(firstMeaningfulVersion, versionEntry);
                 }
                 pk++;
             }

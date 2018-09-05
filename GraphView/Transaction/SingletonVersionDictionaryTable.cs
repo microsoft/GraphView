@@ -303,15 +303,19 @@
                         this.dict.TryAdd(recordKey, versionList);
                     }
 
+                    // `+ 1` is for conforming to the logic of `Insert` and
+                    // `ReadAndInitialize` in `TransactionExecution`.
+                    // It's the version key of the first Inserted version.
+                    long firstMeaningfulVersion = VersionEntry.VERSION_KEY_START_INDEX + 1;
                     VersionEntry emptyEntry = new VersionEntry();
                     VersionEntry.InitEmptyVersionEntry(-1, emptyEntry);
-                    emptyEntry.BeginTimestamp = 0L;
-                    emptyEntry.EndTimestamp = 0L;
+                    emptyEntry.BeginTimestamp = firstMeaningfulVersion;
+                    emptyEntry.EndTimestamp = firstMeaningfulVersion;
                     versionList.TryAdd(TAIL_KEY, emptyEntry);
 
                     VersionEntry versionEntry = new VersionEntry();
                     VersionEntry.InitFirstVersionEntry(i, versionEntry.Record == null ? new String('a', 100) : versionEntry.Record, versionEntry);
-                    versionList.TryAdd(VersionEntry.VERSION_KEY_START_INDEX, versionEntry);
+                    versionList.TryAdd(firstMeaningfulVersion, versionEntry);
                 }
                 pk++;
             }
