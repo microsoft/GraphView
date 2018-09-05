@@ -80,9 +80,6 @@
         public static readonly byte[] LATEST_VERSION_PTR_FIELD =
             Encoding.ASCII.GetBytes("LATEST_VERSION");
 
-        public static readonly byte[] INIT_PLACEHOLDER_FIELD =
-            Encoding.ASCII.GetBytes("_");
-
         public static readonly byte[] EMPTY_BYTES = new byte[0];
 
         /// <summary>

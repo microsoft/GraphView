@@ -132,7 +132,7 @@
             var redisRequest = this.NextRedisRequest();
             redisRequest.Set(
                 hashKey,
-                RedisVersionDb.INIT_PLACEHOLDER_FIELD,
+                RedisVersionDb.LATEST_VERSION_PTR_FIELD,
                 RedisVersionDb.EMPTY_BYTES,
                 RedisRequestType.HSetNX);
 

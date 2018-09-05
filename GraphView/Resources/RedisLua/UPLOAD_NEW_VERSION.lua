@@ -31,7 +31,7 @@ local function CheckNewVersionIsValid(hashKey, newVersion)
     end
     local oldKey = redis.call('HGET', hashKey, 'LATEST_VERSION')
     local newVersionNum = BytesToInt(newVersion)
-    if oldKey == false or oldKey == nil then
+    if oldKey == false or #oldKey == 0 then
         return
     end
     local oldKeyNum = BytesToInt(oldKey)
