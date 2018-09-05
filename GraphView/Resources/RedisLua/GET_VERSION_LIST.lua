@@ -11,6 +11,7 @@ local function BytesToInt(bytes)
 end
 
 local function IntToBytes(val)
+    if val < 0 then return {} end
     local result = {}
     for i = 1, 8 do
         result[i] = val % 256
@@ -34,11 +35,11 @@ local latestVersionNum = BytesToInt(latestVersion)
 
 local result = nil
 
-if latestVersionNum == 0 then
-    return {latestVersion, latestPayload}
+local secondLatestVersion = IntToByteString(latestVersionNum - 1)
+local secondLatestPayload = redis.call('HGET', hashKey, secondLatestVersion)
+if secondLatestPayload == false then
+    result = {latestVersion, latestPayload}
 else
-    local secondLatestVersion = IntToByteString(latestVersionNum - 1)
-    local secondLatestPayload = redis.call('HGET', hashKey, secondLatestVersion)
     result = {
         secondLatestVersion, secondLatestPayload, latestVersion, latestPayload}
 end
@@ -48,7 +49,6 @@ local function CheckVersionListResultIsValid(hashKey, result)
         if not b then error(message) end
     end
     if #result == 2 then
-        -- version num == 0
         return -- this case is passing for sure
     end
     local ver2 = BytesToInt(result[1])

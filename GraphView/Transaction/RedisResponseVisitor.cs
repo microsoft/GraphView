@@ -69,8 +69,15 @@ namespace GraphView.Transaction
 
         internal override void Visit(InitiGetVersionListRequest req)
         {
-            byte[][] returnBytes = req.Result as byte[][];
-            req.Result = returnBytes.IsSuccess();
+            try
+            {
+                long ret = (long)req.Result;
+                req.Result = ret == 1L;
+            }
+            catch (Exception)
+            {
+                req.Result = false;
+            }
         }
 
         internal override void Visit(ReplaceVersionRequest req)

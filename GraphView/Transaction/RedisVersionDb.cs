@@ -74,6 +74,18 @@
         public static readonly byte[] ZERO_BYTES = BitConverter.GetBytes(0L);
 
         /// <summary>
+        /// This field in a specific HashId stores the current latest version
+        /// key, and is used when retrieving the latest versions in that list.
+        /// </summary>
+        public static readonly byte[] LATEST_VERSION_PTR_FIELD =
+            Encoding.ASCII.GetBytes("LATEST_VERSION");
+
+        public static readonly byte[] INIT_PLACEHOLDER_FIELD =
+            Encoding.ASCII.GetBytes("_");
+
+        public static readonly byte[] EMPTY_BYTES = new byte[0];
+
+        /// <summary>
         ///  The return error code of some functions
         /// </summary>
         internal static readonly long REDIS_CALL_ERROR_CODE = -2L;
