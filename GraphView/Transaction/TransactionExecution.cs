@@ -116,7 +116,7 @@ namespace GraphView.Transaction
         private object readRecordKey;
         // The number of entries in read operation
         private int readEntryCount;
-        private long readLargestVersionKey = -1;
+        private long readLargestVersionKey = VersionEntry.VERSION_KEY_START_INDEX;
         internal object ReadPayload { get; private set; }
 
         // The writeSet index to tranverse the writeset
@@ -253,7 +253,7 @@ namespace GraphView.Transaction
             this.remoteVersionRefList.Clear();
 
             this.writeSetIndex = 0;
-            this.readLargestVersionKey = -1;
+            this.readLargestVersionKey = VersionEntry.VERSION_KEY_START_INDEX;
             //this.txId = this.txRange.RangeStart;
 
             this.rereadVerEntry = null;
@@ -1377,7 +1377,7 @@ namespace GraphView.Transaction
 
         private void Read(string tableId, object recordKey, bool initi, out bool received, out object payload)
         {
-            this.readLargestVersionKey = -1L;
+            this.readLargestVersionKey = VersionEntry.VERSION_KEY_START_INDEX;
             this.readTableId = tableId;
             this.readRecordKey = recordKey;
 
@@ -1446,17 +1446,6 @@ namespace GraphView.Transaction
                 this.remoteVerListRef = this.getVListReq.RemoteVerList;
 
                 this.getVListReq.Free();
-                
-                // The local version list was assigned to the get-version-list request.
-                // By the time the request returns, the list has been filled.
-                if (this.readEntryCount == 0)
-                {
-                    // No versions for the record has been found.
-                    this.Progress = TxProgress.Open;
-                    this.CurrentProc = null;
-                    this.Procedure?.ReadCallback(this.readTableId, this.readRecordKey, null);
-                    return;
-                }
 
                 this.CurrentProc = this.readCheckVersionEntryProc;
                 this.CurrentProc();
