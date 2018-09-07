@@ -1589,7 +1589,10 @@ namespace GraphView.Transaction
                         committedVersion = versionEntry;
                         this.readLargestVersionKey = Math.Max(versionEntry.VersionKey, this.readLargestVersionKey);
 
-                        // When a tx has a begin timestamp after intialization
+                        // When a tx has a begin timestamp after intialization.
+                        // this.beginTimestamp is currently not used. It's used
+                        // while we may want to retrieve a snapshot of a version
+                        // list in the future.
                         if (this.beginTimestamp >= 0 &&
                             this.beginTimestamp >= versionEntry.BeginTimestamp &&
                             this.beginTimestamp < versionEntry.EndTimestamp)
