@@ -1415,6 +1415,7 @@ namespace GraphView.Transaction
 
                 this.getVListReq.Free();
 
+                SortVersionList();
                 this.CurrentProc = this.readCheckVersionEntryProc;
                 this.CurrentProc();
             }
@@ -1467,7 +1468,6 @@ namespace GraphView.Transaction
             VersionEntry visibleVersion = null;
             // Keep a committed version to retrieve the largest version key
             VersionEntry committedVersion = null;
-            SortVersionList();
             while (this.readEntryCount > 0)
             {
                 VersionEntry versionEntry = this.versionList[this.readEntryCount - 1];
