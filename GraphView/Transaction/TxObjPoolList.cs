@@ -31,8 +31,12 @@ namespace GraphView.Transaction
         /// `this.Count`
         /// </summary>
         /// <returns>The reference to the newly usable object</returns>
-        public T AllocateNew() {
-            if (size == pool.Count) pool.ResizeAndFill(size * 2);
+        public T AllocateNew()
+        {
+            if (this.size == this.pool.Count)
+            {
+                this.pool.ResizeAndFill(this.size * 2);
+            }
             return this[this.size++];
         }
 
@@ -45,7 +49,10 @@ namespace GraphView.Transaction
         {
             for (int i = 0; i < this.Count; ++i)
             {
-                if (pred(this[i])) return this[i];
+                if (pred(this[i]))
+                {
+                    return this[i];
+                }
             }
             return default(T);
         }
