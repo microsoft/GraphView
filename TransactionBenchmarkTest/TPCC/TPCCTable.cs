@@ -16,6 +16,17 @@ namespace TransactionBenchmarkTest.TPCC
         {
             return "W-" + W_ID.ToString();
         }
+
+        public override int GetHashCode()
+        {
+            return W_ID.GetHashCode();
+        }
+
+        public override bool Equals(object obj)
+        {
+            WarehousePkey that = obj as WarehousePkey;
+            return that != null && this.W_ID == that.W_ID;
+        }
     }
     public class WarehousePayload
     {
@@ -37,6 +48,19 @@ namespace TransactionBenchmarkTest.TPCC
         public override string ToString()
         {
             return "D-" + D_ID + "-" + D_W_ID;
+        }
+
+        public override int GetHashCode()
+        {
+            return this.D_ID.GetHashCode() ^ this.D_W_ID.GetHashCode();
+        }
+
+        public override bool Equals(object obj)
+        {
+            DistrictPkey that = obj as DistrictPkey;
+            return that != null
+                && this.D_ID == that.D_ID
+                && this.D_W_ID == that.D_W_ID;
         }
     }
     public class DistrictPayload
@@ -61,6 +85,22 @@ namespace TransactionBenchmarkTest.TPCC
         public override string ToString()
         {
             return "C-" + C_ID + "-" + C_D_ID + "-" + C_W_ID;
+        }
+
+        public override int GetHashCode()
+        {
+            return this.C_ID.GetHashCode()
+                 ^ this.C_D_ID.GetHashCode()
+                 ^ this.C_W_ID.GetHashCode();
+        }
+
+        public override bool Equals(object obj)
+        {
+            CustomerPkey that = obj as CustomerPkey;
+            return that != null
+                && this.C_ID == that.C_ID
+                && this.C_D_ID == that.C_D_ID
+                && this.C_W_ID == that.C_W_ID;
         }
     }
     public class CustomerPayload
@@ -122,6 +162,22 @@ namespace TransactionBenchmarkTest.TPCC
         {
             return "NO-" + NO_O_ID + "-" + NO_D_ID + "-" + NO_W_ID;
         }
+
+        public override int GetHashCode()
+        {
+            return NO_D_ID.GetHashCode()
+                 ^ NO_D_ID.GetHashCode()
+                 ^ NO_W_ID.GetHashCode();
+        }
+        
+        public override bool Equals(object obj)
+        {
+            NewOrderPkey that = obj as NewOrderPkey;
+            return that != null
+                && this.NO_O_ID == that.NO_O_ID
+                && this.NO_D_ID == that.NO_D_ID
+                && this.NO_W_ID == that.NO_W_ID;
+        }
     }
     public class NewOrderPayload    // no use
     {
@@ -138,6 +194,22 @@ namespace TransactionBenchmarkTest.TPCC
         public override string ToString()
         {
             return "O-" + O_ID + "-" + O_D_ID + "-" + O_W_ID;
+        }
+
+        public override int GetHashCode()
+        {
+            return this.O_ID.GetHashCode()
+                 ^ this.O_D_ID.GetHashCode()
+                 ^ this.O_W_ID.GetHashCode();
+        }
+
+        public override bool Equals(object obj)
+        {
+            OrderPkey that = obj as OrderPkey;
+            return that != null
+                && this.O_ID == that.O_ID
+                && this.O_D_ID == that.O_D_ID
+                && this.O_W_ID == that.O_W_ID;
         }
     }
     public class OrderPayload
@@ -160,6 +232,22 @@ namespace TransactionBenchmarkTest.TPCC
         {
             return "OL-" + OL_O_ID + "-" + OL_D_ID + "-" + OL_W_ID + "-" + OL_NUMBER;
         }
+
+        public override int GetHashCode() {
+            return this.OL_O_ID.GetHashCode()
+                 ^ this.OL_D_ID.GetHashCode()
+                 ^ this.OL_W_ID.GetHashCode()
+                 ^ this.OL_NUMBER.GetHashCode();
+        }
+
+        public override bool Equals(object obj) {
+            OrderLinePkey that = obj as OrderLinePkey;
+            return that != null
+                && this.OL_O_ID == that.OL_O_ID
+                && this.OL_D_ID == that.OL_D_ID
+                && this.OL_W_ID == that.OL_W_ID
+                && this.OL_NUMBER == that.OL_NUMBER;
+        }
     }
     public class OrderLinePayload
     {
@@ -179,6 +267,16 @@ namespace TransactionBenchmarkTest.TPCC
         {
             return "I-" + I_ID.ToString();
         }
+
+        public override int GetHashCode() {
+            return this.I_ID.GetHashCode();
+        }
+
+        public override bool Equals(object obj)
+        {
+            ItemPkey that = obj as ItemPkey;
+            return that != null && this.I_ID == that.I_ID;
+        }
     }
     public class ItemPayload
     {
@@ -197,6 +295,18 @@ namespace TransactionBenchmarkTest.TPCC
         {
             return "S-" + S_I_ID + "-" + S_W_ID;
         }
+
+        public override int GetHashCode() {
+            return this.S_I_ID.GetHashCode() ^ this.S_W_ID.GetHashCode();
+        }
+
+        public override bool Equals(object obj) {
+            StockPkey that = obj as StockPkey;
+            return that != null
+                && this.S_I_ID == that.S_I_ID
+                && this.S_W_ID == that.S_W_ID;
+        }
+
     }
     public class StockPayload
     {
