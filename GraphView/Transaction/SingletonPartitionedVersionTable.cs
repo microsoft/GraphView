@@ -21,10 +21,6 @@ namespace GraphView.Transaction
         /// </summary>
         private static readonly int RECORD_CAPACITY = 1000000;
 
-        internal static readonly int VERSION_CAPACITY = 16;
-
-        internal int PartitionCount { get; private set; }
-
         public SingletonPartitionedVersionTable(VersionDb versionDb, string tableId, int partitionCount)
             : base(versionDb, tableId, partitionCount)
         {

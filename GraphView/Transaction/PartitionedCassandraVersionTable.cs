@@ -11,8 +11,6 @@ namespace GraphView.Transaction
 {
     internal partial class PartitionedCassandraVersionTable : VersionTable
     {
-        internal int PartitionCount { get; private set; }
-
         internal CassandraSessionManager SessionManager
         {
             get
