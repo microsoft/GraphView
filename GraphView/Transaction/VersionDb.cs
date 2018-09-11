@@ -22,12 +22,6 @@ namespace GraphView.Transaction
         /// </summary>
         public static int EnqueuedRequests = 0;
 
-        /// <summary>
-        /// Whether to use user defined queue
-        /// </summary>
-        public static bool UDF_QUEUE = false;
-
-
         public static readonly int RECORD_CAPACITY = 1000000;
 
         /// <summary>
@@ -65,30 +59,9 @@ namespace GraphView.Transaction
         protected readonly Dictionary<string, VersionTable> versionTables;
 
         /// <summary>
-        /// A tx table or a version table is logically partitioned into k partitions, 
-        /// each having a dedicated request queue and request processor/visitor, 
-        /// for queuing tx requests and processing them toward a specific partition.
-        /// Only one thread is designated to process requests in one queue.
-        /// 
-        /// There may not may not be a 1:1 mapping from logical partitions to physical partitions
-        /// of the underlying k-v store hosting tx states. 
-        /// When the k-v store is partition transparent, logical partitions are purely to increase
-        /// concurrency while not incurring synchronization.   
-        /// When the k-v store is partition-aware, logical partitions are 1:1 mapped to k-v partitions. 
-        /// As a result, the designated thread of a logical partition exclusively flushes requests toward
-        /// one k-v partition, creating potential of batch processing and reducing fan-out. 
+        /// The visitor to access version Db
         /// </summary>
-        protected Queue<TxEntryRequest>[] txEntryRequestQueues;
-        protected Queue<TxEntryRequest>[] flushQueues;
-
-        protected RequestQueue<TxEntryRequest>[] requestUDFQueues;
-
-        protected int[] queueLatches;
-
-        /// <summary>
-        /// txEntry visitors for txEntry requests
-        /// </summary>
-        internal VersionDbVisitor[] dbVisitors;
+        protected VersionDbVisitor[] dbVisitors;
 
         // Resource managers to manage the runtime resource to avoid gc slowing the throughput
         internal readonly List<TxResourceManager> txResourceManagers;
@@ -127,20 +100,12 @@ namespace GraphView.Transaction
             this.versionTables = new Dictionary<string, VersionTable>();
 
             this.PartitionCount = partitionCount;
-            this.txEntryRequestQueues = new Queue<TxEntryRequest>[partitionCount];
-            this.flushQueues = new Queue<TxEntryRequest>[partitionCount];
-            this.dbVisitors = new VersionDbVisitor[partitionCount];
-            this.queueLatches = new int[partitionCount];
-            this.requestUDFQueues = new RequestQueue<TxEntryRequest>[partitionCount];
+            
             this.txResourceManagers = new List<TxResourceManager>();
             this.PartitionMounted = new bool[partitionCount];
 
             for (int pid = 0; pid < partitionCount; pid++)
             {
-                this.txEntryRequestQueues[pid] = new Queue<TxEntryRequest>(VersionDb.REQUEST_QUEUE_CAPACITY);
-                this.flushQueues[pid] = new Queue<TxEntryRequest>(VersionDb.REQUEST_QUEUE_CAPACITY);
-                this.queueLatches[pid] = 0;
-                this.requestUDFQueues[pid] = new RequestQueue<TxEntryRequest>(partitionCount);
                 this.txResourceManagers.Add(new TxResourceManager());
                 this.PartitionMounted[pid] = true;
             }
@@ -168,26 +133,12 @@ namespace GraphView.Transaction
                 this.txResourceManagers.Add(new TxResourceManager());
             }
 
-            // TODO: Comment to avoid memory overflow
-            Array.Resize(ref this.txEntryRequestQueues, partitionCount);
-            Array.Resize(ref this.flushQueues, partitionCount);
-            Array.Resize(ref this.requestUDFQueues, partitionCount);
-            Array.Resize(ref this.queueLatches, partitionCount);
             Array.Resize(ref this.PartitionMounted, partitionCount);
             for (int pid = currentPartitionCount; pid < partitionCount; pid++)
             {
-                this.txEntryRequestQueues[pid] = new Queue<TxEntryRequest>(VersionDb.REQUEST_QUEUE_CAPACITY);
-                this.flushQueues[pid] = new Queue<TxEntryRequest>(VersionDb.REQUEST_QUEUE_CAPACITY);
-                this.queueLatches[pid] = 0;
-                this.requestUDFQueues[pid] = new RequestQueue<TxEntryRequest>(partitionCount);
                 this.PartitionMounted[pid] = true;
             }
 
-            // mount all partitions
-            for (int pk = 0; pk < partitionCount; pk++)
-            {
-                this.PartitionMounted[pk] = true;
-            }
             this.PartitionCount = partitionCount;
         }
 
@@ -220,76 +171,12 @@ namespace GraphView.Transaction
         internal virtual void EnqueueTxEntryRequest(long txId, TxEntryRequest txEntryRequest, int executorPK = 0)
         {
             // Interlocked.Increment(ref VersionDb.EnqueuedRequests);
-
-            int pk = this.PhysicalTxPartitionByKey(txId);
-            if (VersionDb.UDF_QUEUE)
-            {
-                // Here we have checked that pk != execPartition in override methods
-                this.requestUDFQueues[executorPK].Enqueue(txEntryRequest, pk);
-            }
-            else
-            {
-                while (Interlocked.CompareExchange(ref queueLatches[pk], 1, 0) != 0) ;
-                Queue<TxEntryRequest> reqQueue = Volatile.Read(ref this.txEntryRequestQueues[pk]);
-                reqQueue.Enqueue(txEntryRequest);
-                Interlocked.Exchange(ref queueLatches[pk], 0);
-            }
+            return;
         }
 
-        /// <summary>
-        /// Move pending requests for a partition of the tx table to the partition's flush queue.
-        /// </summary>
-        /// <param name="partitionKey">The key of the tx table partition</param>
-        protected void DequeueTxEntryRequest(int partitionKey)
+        internal virtual void Visit(string tableId, int partitionKey)
         {
-            if (this.txEntryRequestQueues[partitionKey].Count > 0)
-            {
-                while (Interlocked.CompareExchange(ref queueLatches[partitionKey], 1, 0) != 0) ;
-
-                Queue<TxEntryRequest> freeQueue = Volatile.Read(ref this.flushQueues[partitionKey]);
-                Volatile.Write(ref this.flushQueues[partitionKey], Volatile.Read(ref this.txEntryRequestQueues[partitionKey]));
-                Volatile.Write(ref this.txEntryRequestQueues[partitionKey], freeQueue);
-
-                Interlocked.Exchange(ref queueLatches[partitionKey], 0);
-            }
-        }
-
-        internal void Visit(string tableId, int partitionKey)
-        {
-            // Here try to flush the tx requests
-            if (tableId == VersionDb.TX_TABLE)
-            {
-                if (VersionDb.UDF_QUEUE)
-                {
-                    TxEntryRequest req = null;
-                    VersionDbVisitor visitor = this.dbVisitors[partitionKey];
-                    while (this.requestUDFQueues[partitionKey].TryDequeue(out req))
-                    {
-                        // Console.WriteLine("Dequeued Elements");
-                        visitor.Invoke(req);
-                    }
-                }
-                else
-                {
-                    this.DequeueTxEntryRequest(partitionKey);
-                    Queue<TxEntryRequest> flushQueue = this.flushQueues[partitionKey];
-                    if (flushQueue.Count == 0)
-                    {
-                        return;
-                    }
-
-                    this.dbVisitors[partitionKey].Invoke(flushQueue);
-                    flushQueue.Clear();
-                }
-            }
-            else
-            {
-                VersionTable versionTable = this.GetVersionTable(tableId);
-                if (versionTable != null)
-                {
-                    versionTable.Visit(partitionKey);
-                }
-            }
+            return;
         }
     }
 

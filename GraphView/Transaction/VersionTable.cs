@@ -17,27 +17,12 @@ namespace GraphView.Transaction
         /// </summary>
         internal static readonly int VERSION_CAPACITY = 4;
 
-        protected RequestQueue<VersionEntryRequest>[] requestUDFQueues;
-
-        /// <summary>
-        /// Request queues for logical partitions of a version table
-        /// </summary>
-        protected Queue<VersionEntryRequest>[] requestQueues;
-
-        /// <summary>
-        /// A queue of version entry requests for each partition to be flushed to the k-v store
-        /// </summary>
-        protected Queue<VersionEntryRequest>[] flushQueues;
-
         /// <summary>
         /// table visitors for version entry requests
         /// </summary>
         internal VersionTableVisitor[] tableVisitors;   // to avoid memory overflow used by cassandra
 
-        /// <summary>
-        /// The latches to sync flush queues and request Queues
-        /// </summary>
-        protected int[] queueLatches;
+        
 
         /// <summary>
         /// The version db instance of the current version table
@@ -59,21 +44,6 @@ namespace GraphView.Transaction
 
             // the table visitors
             this.tableVisitors = new VersionTableVisitor[partitionCount];
-
-            // the request queues
-            this.requestUDFQueues = new RequestQueue<VersionEntryRequest>[partitionCount];
-            this.requestQueues = new Queue<VersionEntryRequest>[partitionCount];
-            this.flushQueues = new Queue<VersionEntryRequest>[partitionCount];
-            this.queueLatches = new int[partitionCount];
-
-            for (int pid = 0; pid < partitionCount; pid++)
-            {
-                // TODO: How to limit the request queue size
-                this.requestUDFQueues[pid] = new RequestQueue<VersionEntryRequest>(partitionCount);
-                this.requestQueues[pid] = new Queue<VersionEntryRequest>(VersionDb.REQUEST_QUEUE_CAPACITY);
-                this.flushQueues[pid] = new Queue<VersionEntryRequest>(VersionDb.REQUEST_QUEUE_CAPACITY);
-                this.queueLatches[pid] = 0;
-            }
         }
 
         /// <summary>
@@ -82,85 +52,18 @@ namespace GraphView.Transaction
         /// <param name="partitionCount">The number of partitions after add new partitions</param>
         internal virtual void AddPartition(int partitionCount)
         {
-            // TODO: Comment to aviod memory overflow
-            Array.Resize(ref this.requestUDFQueues, partitionCount);
-            Array.Resize(ref this.requestQueues, partitionCount);
-            Array.Resize(ref this.flushQueues, partitionCount);
-            Array.Resize(ref this.queueLatches, partitionCount);
-
-            for (int pid = this.PartitionCount; pid < partitionCount; pid++)
-            {
-                this.requestUDFQueues[pid] = new RequestQueue<VersionEntryRequest>(partitionCount);
-                this.requestQueues[pid] = new Queue<VersionEntryRequest>(VersionDb.REQUEST_QUEUE_CAPACITY);
-                this.flushQueues[pid] = new Queue<VersionEntryRequest>(VersionDb.REQUEST_QUEUE_CAPACITY);
-                this.queueLatches[pid] = 0;
-            }
+            this.PartitionCount = partitionCount;
         }
 
         internal virtual void EnqueueVersionEntryRequest(VersionEntryRequest req, int execPartition = 0)
         {
             // Interlocked.Increment(ref VersionDb.EnqueuedRequests);
-            //Console.WriteLine(req.GetType().Name);
-
-            int pk = this.VersionDb.PhysicalPartitionByKey(req.RecordKey);
-            if (VersionDb.UDF_QUEUE)
-            {
-                // Here we have checked that pk != execPartition in override methods
-                this.requestUDFQueues[execPartition].Enqueue(req, pk);
-            }
-            else
-            {
-                while (Interlocked.CompareExchange(ref queueLatches[pk], 1, 0) != 0) ;
-                Queue<VersionEntryRequest> reqQueue = Volatile.Read(ref this.requestQueues[pk]);
-                reqQueue.Enqueue(req);
-                Interlocked.Exchange(ref queueLatches[pk], 0);
-            }
+            return;
         }
 
-        /// <summary>
-        /// Move pending requests of a version table partition to the partition's flush queue. 
-        /// </summary>
-        /// <param name="pk">The key of the version table partition to flush</param>
-        protected void DequeueVersionEntryRequests(int pk)
+        internal virtual void Visit(int partitionKey)
         {
-            // Check whether the queue is empty at first
-            if (this.requestQueues[pk].Count > 0)
-            {
-                while (Interlocked.CompareExchange(ref queueLatches[pk], 1, 0) != 0) ;
-
-                Queue<VersionEntryRequest> freeQueue = this.flushQueues[pk];
-                this.flushQueues[pk] = this.requestQueues[pk];
-                this.requestQueues[pk] = freeQueue;
-
-                Interlocked.Exchange(ref queueLatches[pk], 0);
-            }
-        }
-
-        internal void Visit(int partitionKey)
-        {
-            if (VersionDb.UDF_QUEUE)
-            {
-                VersionEntryRequest req = null;
-                VersionTableVisitor visitor = this.tableVisitors[partitionKey];
-                while (this.requestUDFQueues[partitionKey].TryDequeue(out req))
-                {
-                    visitor.Invoke(req);
-                }
-            }
-            else
-            {
-                this.DequeueVersionEntryRequests(partitionKey);
-                Queue<VersionEntryRequest> flushQueue = this.flushQueues[partitionKey];
-
-                if (flushQueue.Count == 0)
-                {
-                    return;
-                }
-
-                VersionTableVisitor visitor = this.tableVisitors[partitionKey];
-                visitor.Invoke(flushQueue);
-                flushQueue.Clear();
-            }
+            return;   
         }
 
         /// <summary>
