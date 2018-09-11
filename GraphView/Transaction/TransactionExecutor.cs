@@ -143,7 +143,7 @@ namespace GraphView.Transaction
             this.flushTables = flushTables;
 
 
-            this.txExecution = new TransactionExecution(this.logStore, this.versionDb, null, this.txRange, this, this.ResourceManager);
+            this.txExecution = new TransactionExecution(this.logStore, this.versionDb, null, this.txRange, this.Partition, this.ResourceManager);
             
             this.recordCount = recordCount;
             this.taskCount = taskCount;
@@ -192,7 +192,7 @@ namespace GraphView.Transaction
                     this.versionDb,
                     null,
                     this.txRange,
-                    this);
+                    this.Partition);
 
                 Queue<TransactionRequest> reqQueue = new Queue<TransactionRequest>();
 
@@ -1280,7 +1280,7 @@ namespace GraphView.Transaction
                 this.versionDb,
                 null,
                 this.txRange,
-                this);
+                this.Partition);
 
             string priorSessionId = "";
 
@@ -1320,7 +1320,7 @@ namespace GraphView.Transaction
                 this.versionDb,
                 null,
                 this.txRange,
-                this);
+                this.Partition);
 
             string priorSessionId = "";
 
