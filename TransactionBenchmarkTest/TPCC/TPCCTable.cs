@@ -169,7 +169,7 @@ namespace TransactionBenchmarkTest.TPCC
                  ^ NO_D_ID.GetHashCode()
                  ^ NO_W_ID.GetHashCode();
         }
-        
+
         public override bool Equals(object obj)
         {
             NewOrderPkey that = obj as NewOrderPkey;
@@ -233,14 +233,16 @@ namespace TransactionBenchmarkTest.TPCC
             return "OL-" + OL_O_ID + "-" + OL_D_ID + "-" + OL_W_ID + "-" + OL_NUMBER;
         }
 
-        public override int GetHashCode() {
+        public override int GetHashCode()
+        {
             return this.OL_O_ID.GetHashCode()
                  ^ this.OL_D_ID.GetHashCode()
                  ^ this.OL_W_ID.GetHashCode()
                  ^ this.OL_NUMBER.GetHashCode();
         }
 
-        public override bool Equals(object obj) {
+        public override bool Equals(object obj)
+        {
             OrderLinePkey that = obj as OrderLinePkey;
             return that != null
                 && this.OL_O_ID == that.OL_O_ID
@@ -268,7 +270,8 @@ namespace TransactionBenchmarkTest.TPCC
             return "I-" + I_ID.ToString();
         }
 
-        public override int GetHashCode() {
+        public override int GetHashCode()
+        {
             return this.I_ID.GetHashCode();
         }
 
@@ -296,11 +299,13 @@ namespace TransactionBenchmarkTest.TPCC
             return "S-" + S_I_ID + "-" + S_W_ID;
         }
 
-        public override int GetHashCode() {
+        public override int GetHashCode()
+        {
             return this.S_I_ID.GetHashCode() ^ this.S_W_ID.GetHashCode();
         }
 
-        public override bool Equals(object obj) {
+        public override bool Equals(object obj)
+        {
             StockPkey that = obj as StockPkey;
             return that != null
                 && this.S_I_ID == that.S_I_ID
