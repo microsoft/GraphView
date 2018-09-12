@@ -17,6 +17,8 @@
 
         public static readonly long REDIS_DB_INDEX = 7L;
 
+        public static readonly int RANGE_OFFSET_PER_PROCESS = 8;
+
         private List<TransactionExecutor> executorList;
 
         /// <summary>
@@ -627,7 +629,13 @@
 
                 this.totalTasks += this.txCountPerExecutor;
                 int partition_index = i % this.versionDb.PartitionCount;
-                executors.Add(new TransactionExecutor(this.versionDb, null, reqQueue, partition_index, i, 0,
+
+                int txRangeStart = i;
+                if (config.MultiProcessMode)
+                {
+                    txRangeStart = i + config.ProcessOffset * RANGE_OFFSET_PER_PROCESS;
+                }
+                executors.Add(new TransactionExecutor(this.versionDb, null, reqQueue, partition_index, txRangeStart, 0,
                     null, tables, null, null, this.recordCount, this.txCountPerExecutor, null, workload, spType, config.PipelineSize));
 
                 Console.WriteLine("Filled {0}-th executors", i+1);

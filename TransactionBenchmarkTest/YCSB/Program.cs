@@ -158,7 +158,7 @@ namespace TransactionBenchmarkTest.YCSB
                 //"127.0.0.1:6390",
                 //"127.0.0.1:6391",
 
-                
+
                 //"10.1.9.8:6380",
                 //"10.1.9.9:6380",
                 //"10.1.9.10:6380",
@@ -170,8 +170,18 @@ namespace TransactionBenchmarkTest.YCSB
             };
 
             RedisVersionDb.PARTITIONS_PER_INSTANCE = config.WorkerPerRedisInstance;
-            TxRange.RangeOffsetIndex = config.ProcessOffset;
             RedisVersionDb versionDb = RedisVersionDb.Instance(partitionCount, readWriteHosts, RedisVersionDbMode.Partition);
+
+            if (config.MultiProcessMode)
+            {
+                versionDb.PhysicalTxPartitionByKey = key =>
+                {
+                    int range = TxRange.GetRange(key);
+                    return range - range / YCSBAsyncBenchmarkTest.RANGE_OFFSET_PER_PROCESS *
+                        YCSBAsyncBenchmarkTest.RANGE_OFFSET_PER_PROCESS;
+                };
+            }
+
             YCSBAsyncBenchmarkTest test = new YCSBAsyncBenchmarkTest(recordCount,
                 executorCount, txCountPerExecutor, versionDb, tables, config);
 

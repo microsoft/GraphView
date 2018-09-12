@@ -84,6 +84,12 @@ namespace TransactionBenchmarkTest.YCSB
 
         internal int ProcessOffset { get; private set; } = 0;
 
+        /// <summary>
+        /// Whether in multi-process mode
+        /// multi-process mode means workers are running in multiple processes
+        /// </summary>
+        internal bool MultiProcessMode { get; private set; } = false;
+
         public BenchmarkTestConfig(string[] givenParams = null)
         {
             if (givenParams == null)
@@ -172,7 +178,10 @@ namespace TransactionBenchmarkTest.YCSB
                 },
                 {
                     "po|process_offset=", "the offset of process", v => this.ProcessOffset = int.Parse(v)
-                }
+                },
+                {
+                    "mpm|multi_process_mode=", "multiple process mode", v => this.MultiProcessMode = bool.Parse(v)
+                },
             };
 
             optionSet.Parse(args);
@@ -199,6 +208,7 @@ namespace TransactionBenchmarkTest.YCSB
                 "\nRead Percentage: {12}" +
                 "\nQuery Count Per Tx: {13}" +
                 "\nProcess Offset: {14}" + 
+                "\nMulti-Process Mode: {15}" + 
                 "\n----------------------------------",
                 this.WorkerCount,
                 this.WorkerPerRedisInstance,
@@ -214,7 +224,8 @@ namespace TransactionBenchmarkTest.YCSB
                 this.Dist,
                 this.ReadPercentage,
                 this.QueryCount,
-                this.ProcessOffset);
+                this.ProcessOffset,
+                this.MultiProcessMode);
         }
     }
 }
