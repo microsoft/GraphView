@@ -168,11 +168,8 @@ namespace GraphView.Transaction
         /// </summary>
         /// <param name="txId">The specify txId to partition</param>
         /// <param name="txEntryRequest">The given request</param>
-        internal virtual void EnqueueTxEntryRequest(long txId, TxEntryRequest txEntryRequest, int executorPK = 0)
-        {
-            // Interlocked.Increment(ref VersionDb.EnqueuedRequests);
-            return;
-        }
+        internal abstract void EnqueueTxEntryRequest(
+            long txId, TxEntryRequest txEntryRequest, int execWorkerId = 0);
 
         internal virtual void Visit(string tableId, int partitionKey)
         {
