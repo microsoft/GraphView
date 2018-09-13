@@ -10,7 +10,7 @@ using ServiceStack.Redis;
 
 namespace TransactionBenchmarkTest.TPCC
 {
-    
+
     class Example
     {
         // dataset populating
@@ -80,33 +80,69 @@ namespace TransactionBenchmarkTest.TPCC
             long endTicks = DateTime.Now.Ticks;
             Console.WriteLine("Loading time total: {0} seconds", (endTicks - startTicks) / 10000000.0);
         }
-        
-        static void TPCCNewOrderTest()
+
+        static void SyncLoadTpccTable(TpccTable table, VersionDb versionDb)
+        {
+            Console.WriteLine($"Start loading table: '{table.Type().Name()}'");
+            var startTime = DateTime.UtcNow;
+
+            int c = TPCCTableLoader.Load(
+                Constants.BaseDirOfDatasets, table, versionDb);
+
+            var time = (DateTime.UtcNow - startTime).TotalSeconds;
+
+            Console.WriteLine(
+                $"{c} records in '{table.Name()}' loaded in {time:F3} sec");
+        }
+
+        static void SyncLoadTpccTablesInto(VersionDb versionDb)
+        {
+            Parallel.ForEach(
+                TpccTable.allTypes,
+                t => SyncLoadTpccTable(TpccTable.Instance(t), versionDb));
+        }
+
+        static SingletonVersionDb MakeSingletonVersionDb()
+        {
+            Console.WriteLine("Initializing SingletonVersionDb");
+            var versionDb = SingletonVersionDb.Instance(Constants.Singleton.Concurrency);
+            versionDb.CreateVersionTable(Constants.DefaultTbl);
+            return versionDb;
+        }
+
+        static void TPCCNewOrderTest(VersionDb versionDb)
         {
             int workerCount = 2;
             int workloadCountPerWorker = 2000;
-            string workloadFile = "D:\\tpcc-txns\\NEW_ORDER.csv";
             Console.WriteLine("\nNEW-ORDER: w={0}, N={1}", workerCount, workloadCountPerWorker);
 
-            TPCCBenchmark bench = new TPCCBenchmark(workerCount, workloadCountPerWorker);
-            bench.LoadNewOrderWorkload(workloadFile);
+            TPCCBenchmark bench = new TPCCBenchmark(versionDb, workloadCountPerWorker);
+            bench.LoadNewOrderWorkload(Constants.NewOrderWorkloadPath);
             bench.Run();
 
             Console.WriteLine("New-Order transaction throught: {0} tx/s", bench.Throughput);
         }
 
-        static void TPCCPaymentTest()
+        static void TPCCPaymentTest(VersionDb versionDb)
         {
             int workerCount = 1;
             int workloadCountPerWorker = 2000;
-            string workloadFile = "D:\\tpcc-txns\\PAYMENT.csv";
             Console.WriteLine("\nPAYMENT: w={0}, N={1}", workerCount, workloadCountPerWorker);
 
-            TPCCBenchmark bench = new TPCCBenchmark(workerCount, workloadCountPerWorker);
-            bench.LoadPaymentWorkload(workloadFile);
+            TPCCBenchmark bench = new TPCCBenchmark(versionDb, workloadCountPerWorker);
+            bench.LoadPaymentWorkload(Constants.PaymentWorkloadPath);
             bench.Run();
 
             Console.WriteLine("PAYMENT transaction throught: {0} tx/s", bench.Throughput);
+        }
+
+        static void SingletonTpccNewOrderTest()
+        {
+            SingletonVersionDb versionDb = MakeSingletonVersionDb();
+            // SyncLoadTpccTable(TpccTable.Instance(TableType.ORDERS), versionDb);
+            SyncLoadTpccTablesInto(versionDb);
+            GC.Collect();
+            // TPCCNewOrderTest(versionDb);
         }
 
 
@@ -233,29 +269,29 @@ namespace TransactionBenchmarkTest.TPCC
 
         static void Main(string[] args)
         {
-            string baseDir = "D:\\tpcc-tables\\";
-            LoadTables(baseDir);
+            SingletonTpccNewOrderTest();
+            getchar('q');
+            // LoadTables(Constants.BaseDirOfDatasets);
 
-            //TPCCNewOrderTest();
-            //TPCCPaymentTest();
+            // //TPCCNewOrderTest();
+            // //TPCCPaymentTest();
+
+            // //getchar('`');
+            // for (int i = 0; i < 100; i++)
+            // {
+            //     TPCCNewOrderAsyncTest();
+            //     Console.WriteLine();
+            // }
+            // //TPCCNewOrderAsyncTest();
+
+            // //getchar('`');
+            // //TPCCPaymentAsyncTest();
+
+            // //Transaction tx = new Transaction(null, RedisVersionDb.Instance);
+            // //var res = RedisVersionDb.Instance.GetVersionList("test", "D-2-1");
+            // // Console.WriteLine("DONE");
 
             //getchar('`');
-            for (int i = 0; i < 100; i++)
-            {
-                TPCCNewOrderAsyncTest();
-                Console.WriteLine();
-            }
-            //TPCCNewOrderAsyncTest();
-
-            //getchar('`');
-            //TPCCPaymentAsyncTest();
-
-            //Transaction tx = new Transaction(null, RedisVersionDb.Instance);
-            //var res = RedisVersionDb.Instance.GetVersionList("test", "D-2-1");
-            Console.WriteLine("DONE");
-
-            //getchar('`');
-
         }
 
     }

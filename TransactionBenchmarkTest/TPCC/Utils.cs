@@ -32,13 +32,20 @@ namespace TransactionBenchmarkTest.TPCC
         public const string DefaultTbl = "test";
 
         // data population
-        public const string BaseDirOfDatasets = "D:\\tpcc-tables\\";
+        public const string BaseDirOfDatasets =
+            @"D:\Elastas\benchmark\tpcc\data\tpcc-tables";
         public static string[] TableNames = { "WAREHOUSE.csv", "DISTRICT.csv", "CUSTOMER.csv", "ITEM.csv", "STOCK.csv", "ORDERS.csv", "ORDER_LINE.csv", "NEW_ORDER.csv", "HISTORY.csv" };
         public static TableCode[] TableCodes = { TableCode.W, TableCode.D, TableCode.C, TableCode.I, TableCode.S, TableCode.O, TableCode.OL, TableCode.NO, TableCode.H };
 
         // workload path
-        public const string NewOrderWorkloadPath = "D:\\tpcc-txns\\NEW_ORDER.csv";
-        public const string PaymentWorkloadPath = "D:\\tpcc-txns\\PAYMENT.csv";
+        public const string NewOrderWorkloadPath =
+            @"D:\Elastas\benchmark\tpcc\data\tpcc-txns\NEW_ORDER.csv";
+        public const string PaymentWorkloadPath = 
+            @"D:\Elastas\benchmark\tpcc\data\tpcc-txns\PAYMENT.csv";
+
+        static public class Singleton {
+            public const int Concurrency = 8;
+        }
     }
 
 }

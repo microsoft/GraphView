@@ -1197,10 +1197,26 @@ namespace GraphView.Transaction
             this.Procedure?.InsertCallBack(tableId, recordKey, record);
         }
 
+        public void InitAndInsert(
+            string tableId, object recordKey, object record) {
+            bool dummy1;
+            object dummy2;
+            ReadAndInitialize(tableId, recordKey, out dummy1, out dummy2);
+            Insert(tableId, recordKey, record);
+        }
+
         public void Read(string tableId, object recordKey, out bool received, out object payload)
         {
             this.ReadPayload = null;
             this.Read(tableId, recordKey, false, out received, out payload);
+        }
+
+        public object SyncRead(string tableId, object recordKey) {
+            bool dummy1;
+            object dummy2;
+            // Assume this Read never block and return before getting result
+            this.Read(tableId, recordKey, false, out dummy1, out dummy2);
+            return this.ReadPayload;
         }
 
         public void Update(string tableId, object recordKey, object payload)

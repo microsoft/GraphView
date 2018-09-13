@@ -5,31 +5,20 @@ using System.Text;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 using ServiceStack.Redis;
+using GraphView.Transaction;
 
 namespace TransactionBenchmarkTest.TPCC
 {
     public static class TableUtil
     {
-        static internal IEnumerable<string[]> LoadPyTpccCsv(string csvPath)
+        static public string Name(this TableType t)
         {
-            using (var streamReader = new System.IO.StreamReader(csvPath))
-            {
-                for (string line; (line = streamReader.ReadLine()) != null;)
-                {
-                    yield return SplitQuotedCsvLine(line);
-                }
-            }
-        }
-        static private string[] SplitQuotedCsvLine(string line)
-        {
-            return line.Split(',')
-                // remove double quotes
-                .Select(s => s.Substring(1, s.Length - 2)).ToArray();
+            return Enum.GetName(typeof(TableType), t);
         }
 
         static public string ToFilename(this TableType v, string dir = "")
         {
-            return $"{dir}\\{Enum.GetName(typeof(TableType), v)}.csv";
+            return $"{dir}\\{v.Name()}.csv";
         }
     }
     public enum TableType
@@ -57,25 +46,21 @@ namespace TransactionBenchmarkTest.TPCC
 
         struct PayloadPlaceholder { };
 
-        public IEnumerable<Tuple<object, object>> ReadFromDir(string dir)
-        {
-            string csvPath = this.Type().ToFilename(dir);
-            foreach (string[] columns in TableUtil.LoadPyTpccCsv(csvPath))
-            {
-                yield return this.ColumnsToKv(columns);
-            }
-        }
-
         /// <summary>
         /// Turn csv string columns to (XXPKey, XXPayload) objects
         /// </summary>
-        public abstract Tuple<object, object> ColumnsToKv(string[] columns);
+        public abstract Tuple<object, object> ParseColumns(string[] columns);
 
         public abstract TableType Type();
 
+        public string Name()
+        {
+            return this.Type().Name();
+        }
+
         class Customer : TpccTable
         {
-            public override Tuple<object, object> ColumnsToKv(string[] columns)
+            public override Tuple<object, object> ParseColumns(string[] columns)
             {
                 var cpk = new CustomerPkey
                 {
@@ -114,7 +99,7 @@ namespace TransactionBenchmarkTest.TPCC
 
         class Warehouse : TpccTable
         {
-            public override Tuple<object, object> ColumnsToKv(string[] columns)
+            public override Tuple<object, object> ParseColumns(string[] columns)
             {
                 var wpk = new WarehousePkey
                 {
@@ -142,7 +127,7 @@ namespace TransactionBenchmarkTest.TPCC
 
         class District : TpccTable
         {
-            public override Tuple<object, object> ColumnsToKv(string[] columns)
+            public override Tuple<object, object> ParseColumns(string[] columns)
             {
                 var dpk = new DistrictPkey
                 {
@@ -172,7 +157,7 @@ namespace TransactionBenchmarkTest.TPCC
 
         class Item : TpccTable
         {
-            public override Tuple<object, object> ColumnsToKv(string[] columns)
+            public override Tuple<object, object> ParseColumns(string[] columns)
             {
                 var ipk = new ItemPkey
                 {
@@ -195,7 +180,7 @@ namespace TransactionBenchmarkTest.TPCC
 
         class Stock : TpccTable
         {
-            public override Tuple<object, object> ColumnsToKv(string[] columns)
+            public override Tuple<object, object> ParseColumns(string[] columns)
             {
                 var spk = new StockPkey
                 {
@@ -230,7 +215,7 @@ namespace TransactionBenchmarkTest.TPCC
 
         class Order : TpccTable
         {
-            public override Tuple<object, object> ColumnsToKv(string[] columns)
+            public override Tuple<object, object> ParseColumns(string[] columns)
             {
                 var opk = new OrderPkey
                 {
@@ -256,7 +241,7 @@ namespace TransactionBenchmarkTest.TPCC
 
         class OrderLine : TpccTable
         {
-            public override Tuple<object, object> ColumnsToKv(string[] columns)
+            public override Tuple<object, object> ParseColumns(string[] columns)
             {
                 var olpk = new OrderLinePkey
                 {
@@ -284,7 +269,7 @@ namespace TransactionBenchmarkTest.TPCC
 
         class NewOrder : TpccTable
         {
-            public override Tuple<object, object> ColumnsToKv(string[] columns)
+            public override Tuple<object, object> ParseColumns(string[] columns)
             {
                 var nopk = new NewOrderPkey
                 {
@@ -302,7 +287,7 @@ namespace TransactionBenchmarkTest.TPCC
 
         class History : TpccTable
         {
-            public override Tuple<object, object> ColumnsToKv(string[] columns)
+            public override Tuple<object, object> ParseColumns(string[] columns)
             {
                 var hpl = new HistoryPayload
                 {
@@ -417,6 +402,27 @@ namespace TransactionBenchmarkTest.TPCC
                 && this.C_ID == that.C_ID
                 && this.C_D_ID == that.C_D_ID
                 && this.C_W_ID == that.C_W_ID;
+        }
+    }
+    public class CustomerLastNameIndexKey
+    {
+        public int C_W_ID;
+        public int C_D_ID;
+        public string C_LAST;
+
+        public override int GetHashCode()
+        {
+            return this.C_W_ID.GetHashCode()
+                 ^ this.C_D_ID.GetHashCode()
+                 ^ this.C_LAST.GetHashCode();
+        }
+        public override bool Equals(object obj)
+        {
+            CustomerLastNameIndexKey that = obj as CustomerLastNameIndexKey;
+            return that != null
+                && this.C_W_ID == that.C_W_ID
+                && this.C_D_ID == that.C_D_ID
+                && this.C_LAST == that.C_LAST;
         }
     }
     public class CustomerPayload
