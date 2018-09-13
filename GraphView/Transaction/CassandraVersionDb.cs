@@ -33,7 +33,7 @@
         /// singleton instance
         /// </summary>
         private static volatile CassandraVersionDb instance;
-        
+
         /// <summary>
         /// lock to init the singleton instance
         /// </summary>
@@ -49,7 +49,6 @@
             }
         }
 
-        //
         public int threadId = 0;
 
         private CassandraVersionDb(int partitionCount, int threadId)
@@ -293,12 +292,6 @@
 
             // 
             this.versionTables.Clear();
-
-            for (int pid = 0; pid < this.PartitionCount; pid++)
-            {
-                this.txEntryRequestQueues[pid].Clear();
-                this.flushQueues[pid].Clear();
-            }
         }
 
         internal override void ClearTxTable()

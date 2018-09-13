@@ -44,6 +44,21 @@
         /// </summary>
         private RedisVersionDbMode redisVersionDbMode;
 
+        /// <summary>
+        /// Request queues for logical partitions of a version table
+        /// </summary>
+        protected Queue<VersionEntryRequest>[] requestQueues;
+
+        /// <summary>
+        /// A queue of version entry requests for each partition to be flushed to the k-v store
+        /// </summary>
+        protected Queue<VersionEntryRequest>[] flushQueues;
+
+        /// <summary>
+        /// The latches to sync flush queues and request Queues
+        /// </summary>
+        protected int[] queueLatches;
+
         public RedisVersionTable(VersionDb versionDb, string tableId, long redisDbIndex)
             : base(versionDb, tableId, versionDb.PartitionCount)
         {
@@ -54,6 +69,10 @@
             this.LuaManager = redisVersionDb.RedisLuaManager;
             this.singletonConnPool = redisVersionDb.SingletonConnPool;
             this.redisVersionDbMode = redisVersionDb.Mode;
+
+            this.requestQueues = new Queue<VersionEntryRequest>[this.PartitionCount];
+            this.flushQueues = new Queue<VersionEntryRequest>[this.PartitionCount];
+            this.queueLatches = new int[this.PartitionCount];
 
             RedisConnectionPool clientPool = null;
             for (int pid = 0; pid < this.PartitionCount; pid++)
@@ -69,20 +88,71 @@
                 }
                 this.tableVisitors[pid] = new RedisVersionTableVisitor(
                     clientPool, this.LuaManager, this.responseVisitor, this.redisVersionDbMode);
+
+                this.requestQueues[pid] = new Queue<VersionEntryRequest>(VersionDb.REQUEST_QUEUE_CAPACITY);
+                this.flushQueues[pid] = new Queue<VersionEntryRequest>(VersionDb.REQUEST_QUEUE_CAPACITY);
+                this.queueLatches[pid] = 0;
             }
         }
 
         internal override void EnqueueVersionEntryRequest(VersionEntryRequest req, int srcPartition = 0)
         {
-            // Console.WriteLine("Src = {0}, Request = {1}", srcPartition, req.GetType().Name);
-            base.EnqueueVersionEntryRequest(req, srcPartition);
-            // Interlocked.Increment(ref VersionDb.EnqueuedRequests);
-            //int pk = srcPartition;
+            if (this.redisVersionDbMode == RedisVersionDbMode.Cluster)
+            {
+                this.requestQueues[srcPartition].Enqueue(req);
+            }
+            else
+            {
+                int pk = this.VersionDb.PhysicalPartitionByKey(req.RecordKey);
 
-            //while (Interlocked.CompareExchange(ref queueLatches[pk], 1, 0) != 0) ;
-            //Queue<VersionEntryRequest> reqQueue = Volatile.Read(ref this.requestQueues[pk]);
-            //reqQueue.Enqueue(req);
-            //Interlocked.Exchange(ref queueLatches[pk], 0);
+                while (Interlocked.CompareExchange(ref queueLatches[pk], 1, 0) != 0) ;
+                Queue<VersionEntryRequest> reqQueue = Volatile.Read(ref this.requestQueues[pk]);
+                reqQueue.Enqueue(req);
+                Interlocked.Exchange(ref queueLatches[pk], 0);
+            }
+        }
+
+        /// <summary>
+        /// Move pending requests of a version table partition to the partition's flush queue. 
+        /// </summary>
+        /// <param name="pk">The key of the version table partition to flush</param>
+        private void DequeueVersionEntryRequests(int pk)
+        {
+            if (this.redisVersionDbMode == RedisVersionDbMode.Cluster)
+            {
+                Queue<VersionEntryRequest> freeQueue = this.flushQueues[pk];
+                this.flushQueues[pk] = this.requestQueues[pk];
+                this.requestQueues[pk] = freeQueue;
+            }
+            else
+            {
+                // Check whether the queue is empty at first
+                if (this.requestQueues[pk].Count > 0)
+                {
+                    while (Interlocked.CompareExchange(ref queueLatches[pk], 1, 0) != 0) ;
+
+                    Queue<VersionEntryRequest> freeQueue = Volatile.Read(ref this.flushQueues[pk]);
+                    Volatile.Write(ref this.flushQueues[pk], Volatile.Read(ref this.requestQueues[pk]));
+                    Volatile.Write(ref this.requestQueues[pk], freeQueue);
+
+                    Interlocked.Exchange(ref queueLatches[pk], 0);
+                }
+            }
+        }
+
+        internal override void Visit(int partitionKey)
+        {
+            this.DequeueVersionEntryRequests(partitionKey);
+            Queue<VersionEntryRequest> flushQueue = this.flushQueues[partitionKey];
+
+            if (flushQueue.Count == 0)
+            {
+                return;
+            }
+
+            VersionTableVisitor visitor = this.tableVisitors[partitionKey];
+            visitor.Invoke(flushQueue);
+            flushQueue.Clear();
         }
 
         internal override void Clear()
@@ -202,8 +272,6 @@
         internal override void AddPartition(int partitionCount)
         {
             int prePartitionCount = this.PartitionCount;
-            base.AddPartition(partitionCount);
-            this.PartitionCount = partitionCount;
 
             RedisConnectionPool clientPool = null;
             if (this.redisVersionDbMode == RedisVersionDbMode.Cluster)
@@ -212,7 +280,11 @@
             }
 
             Array.Resize(ref this.tableVisitors, partitionCount);
-            for (int pk = 0; pk < this.PartitionCount; pk++)
+            Array.Resize(ref this.requestQueues, partitionCount);
+            Array.Resize(ref this.flushQueues, partitionCount);
+            Array.Resize(ref this.queueLatches, partitionCount);
+
+            for (int pk = prePartitionCount; pk < partitionCount; pk++)
             {
                 if (clientPool == null)
                 {
@@ -221,9 +293,13 @@
                 }
                 this.tableVisitors[pk] = new RedisVersionTableVisitor(
                     clientPool, this.LuaManager, this.responseVisitor, this.redisVersionDbMode);
+
+                this.requestQueues[pk] = new Queue<VersionEntryRequest>(VersionDb.REQUEST_QUEUE_CAPACITY);
+                this.flushQueues[pk] = new Queue<VersionEntryRequest>(VersionDb.REQUEST_QUEUE_CAPACITY);
+                this.queueLatches[pk] = 0;
             }
-            // Reshuffle Data
-            // this.ReshuffleRecords();
+
+            base.AddPartition(partitionCount);
         }
 
         /// <summary>

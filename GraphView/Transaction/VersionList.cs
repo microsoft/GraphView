@@ -1,124 +1,178 @@
 ﻿
-using ServiceStack;
-
 namespace GraphView.Transaction
 {
     using System;
-    using System.Collections;
-    using System.Collections.Generic;
     using System.Threading;
 
-    internal class VersionNode
+    /// <summary>
+    /// A circular list for representing version lists, whose concurrency follows the pattern
+    /// such that only one thread is allowed to append while others are allowed to see the old list. 
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
+    internal class CircularList<T> where T : class
     {
-        internal VersionEntry versionEntry;
-        internal VersionNextPointer nextPointer;
+        private T[] internalArray;
+        /// <summary>
+        /// The higher 4 bytes represent the list size. 
+        /// The lower 4 bytes represnet and the index of the tail in the array. 
+        /// </summary>
+        private long metaIndex;
 
-        public VersionNode(VersionEntry versionEntry, VersionNextPointer nextNode = null)
+        public CircularList(int capacity = 8)
         {
-            this.versionEntry = versionEntry;
-            this.nextPointer = nextNode;
+            this.internalArray = new T[capacity];
+            this.metaIndex = 0;
         }
 
-        internal VersionEntry VersionEntry
+        /// <summary>
+        /// Only one thread will enter this method to append a new element to the tail. 
+        /// </summary>
+        /// <param name="element">The element to append to the list</param>
+        /// <returns></returns>
+        public bool AddToTail(T element)
         {
-            get
+            long localMetaIndex = Interlocked.Read(ref this.metaIndex);
+            int size = (int)(this.metaIndex >> 32);
+            int tailIndex = (int)(this.metaIndex & 0xFFFFFFFFL);
+
+            if (size + 1 > this.internalArray.Length)
             {
-                return Volatile.Read<VersionEntry>(ref this.versionEntry);
+                return false;
             }
+
+            int newTailIndex = (tailIndex + 1) % this.internalArray.Length;
+            Interlocked.Exchange(ref this.internalArray[newTailIndex], element);
+            // By the time the above instruction finishes, other reading threads still see the old meta-index,
+            // hence will not see the new tail.
+            long newMetaIndex = ((long)size + 1) << 32 | (long)newTailIndex;
+            Interlocked.Exchange(ref this.metaIndex, newMetaIndex);
+
+            return true;
         }
 
-        internal VersionNextPointer NextPointer
+        public T RemoveFromHead()
         {
-            get
+            long localMetaIndex = Interlocked.Read(ref this.metaIndex);
+            int size = (int)(this.metaIndex >> 32);
+            int tailIndex = (int)(this.metaIndex & 0xFFFFFFFFL);
+
+            if (size == 0)
             {
-                return Volatile.Read<VersionNextPointer>(ref this.nextPointer);
+                return default(T);
             }
+
+            int headIndex = 
+                (tailIndex - size + 1 + this.internalArray.Length) % 
+                this.internalArray.Length;
+
+            T element = this.internalArray[headIndex];
+            long newMetaIndex = ((long)size - 1) << 32 | (long)tailIndex;
+            // Before the meta index is updated, other threads will still see the old head. 
+            Interlocked.Exchange(ref this.metaIndex, newMetaIndex);
+
+            return element;
         }
 
-        internal VersionNode NextNode
+        public void Clear()
         {
-            get
-            {
-                return Volatile.Read<VersionNextPointer>(ref this.nextPointer).PointingNode;
-            }
+            this.metaIndex = 0;
         }
 
-        internal byte State
+        public CircularList<T> Upsize()
         {
-            get
+            CircularList<T> newList = new CircularList<T>(this.internalArray.Length << 1);
+            long localMetaIndex = Interlocked.Read(ref this.metaIndex);
+            int size = (int)(this.metaIndex >> 32);
+            int tailIndex = (int)(this.metaIndex & 0xFFFFFFFFL);
+
+            if (size == 0)
             {
-                return Volatile.Read<VersionNextPointer>(ref this.nextPointer).HostState;
+                return newList;
             }
-            set
+
+            int headIndex =
+                (tailIndex - size + 1 + this.internalArray.Length) %
+                this.internalArray.Length;
+
+            if (tailIndex >= headIndex)
             {
-                Volatile.Write(ref this.nextPointer.tag, value);
+                Array.Copy(this.internalArray, headIndex, newList.internalArray, 0, size);
             }
+            else
+            {
+                Array.Copy(
+                    this.internalArray, 
+                    headIndex, 
+                    newList.internalArray, 
+                    0, 
+                    this.internalArray.Length - headIndex);
+
+                Array.Copy(
+                    this.internalArray, 
+                    0, 
+                    newList.internalArray, 
+                    this.internalArray.Length - headIndex, 
+                    tailIndex + 1);
+            }
+
+            newList.metaIndex = (long)size << 32 | (long)(size - 1);
+
+            return newList;
         }
     }
 
-    internal class VersionNextPointer
+    internal class VersionList 
     {
-        private readonly VersionNode nextNode;
-        /// The highest 4 bits represent a 'hold tag'.
-        /// The lowest 4 bits represent a 'delete tag'.
-        internal byte tag;
+        internal static bool readSnapshot = false;
 
-        public VersionNode PointingNode
+        // The tail key acts as the latch to prevent concurrent modifications of the list,
+        // while allowing concurrent reads. 
+        private long tailKey;
+        private CircularList<VersionEntry> versionList;
+
+        public VersionList(int capacity = 8)
         {
-            get
+            this.tailKey = -1;
+            this.versionList = new CircularList<VersionEntry>();
+        }
+
+        internal bool TryAdd(long versionKey, VersionEntry versionEntry, out VersionEntry remoteEntry)
+        {
+            remoteEntry = null;
+
+            long expectedTailKey = versionKey - 1;
+
+            if (Interlocked.CompareExchange(
+                ref this.tailKey, versionKey, expectedTailKey) != expectedTailKey)
             {
-                return this.nextNode;
+                // Someone else has uploaded a new version and increased the tail key. 
+                return false;
             }
-        }
 
-        public byte HostState
-        {
-            get
+            // Up until this point, the current thread has successfully increased the tail key,  
+            // and yet the version list is not modified. Other threads will continue to see 
+            // the unchanged version list and the old tail key, and as a result always fail 
+            // in the above CAS' assertion, when they try to upload a new version. 
+            // Hence, the current thread gains exclusive modification ownership of the version list. 
+
+            if (!this.versionList.AddToTail(versionEntry))
             {
-                return this.tag;
+                if (VersionList.readSnapshot)
+                {
+                    CircularList<VersionEntry> newVersionList = this.versionList.Upsize();
+                    newVersionList.AddToTail(versionEntry);
+                    Interlocked.Exchange(ref this.versionList, newVersionList);
+                }
+                else
+                {
+                    remoteEntry = this.versionList.RemoveFromHead();
+                    this.versionList.AddToTail(versionEntry);
+                }
             }
-        }
 
-        public VersionNextPointer(VersionNode node, byte tag)
-        {
-            this.nextNode = node;
-            this.tag = tag;
-        }
-    }
+            remoteEntry = remoteEntry ?? new VersionEntry();
 
-    internal class VersionList
-    {
-        private VersionNode head;
-
-        public VersionList()
-        {
-            throw new NotImplementedException();
-        }
-
-        internal VersionNode Head
-        {
-            get
-            {
-                return Volatile.Read<VersionNode>(ref this.head);
-            }
-        }
-
-        public bool PushFront(VersionEntry versionEntry)
-        {
-            throw new NotImplementedException();
-        }
-
-        //Note:
-        //A transaction can only delete a node created by itself.
-        //It is not possible that two thread what to delete the same node at the same time.
-        public bool DeleteNode(object recordKey, long versionKey)
-        {
-            throw new NotImplementedException();
-        }
-
-        public bool ChangeNodeValue(object recordKey, long versionKey, VersionEntry toBeChangedVersion, VersionEntry newVersion)
-        {
-            throw new NotImplementedException();
+            return true;
         }
     }
 }

@@ -519,13 +519,6 @@ namespace GraphView.Transaction
 
             // 
             this.versionTables.Clear();
-
-            int total = Math.Min(this.PartitionCount, this.flushQueues.Length);     // BAD code! just for test with cassandra + YCSBexecute2
-            for (int pid = 0; pid < total; pid++)
-            {
-                this.txEntryRequestQueues[pid].Clear();
-                this.flushQueues[pid].Clear();
-            }
         }
 
         internal override void ClearTxTable()

@@ -182,6 +182,10 @@
         /// </summary>
         public bool PipelineMode { get; set; } = false;
 
+        private Queue<TxEntryRequest>[] txEntryRequestQueues;
+        private Queue<TxEntryRequest>[] flushQueues;
+        private int[] queueLatches;
+
         private RedisVersionDb(int partitionCount, string[] readWriteHosts, RedisVersionDbMode mode = RedisVersionDbMode.Cluster)
             : base(partitionCount)
         {
@@ -199,6 +203,10 @@
 
             this.Setup();
 
+            this.txEntryRequestQueues = new Queue<TxEntryRequest>[partitionCount];
+            this.flushQueues = new Queue<TxEntryRequest>[partitionCount];
+            this.queueLatches = new int[partitionCount];
+
             for (int pid = 0; pid < this.PartitionCount; pid++)
             {
                 RedisConnectionPool clientPool = null;
@@ -213,6 +221,10 @@
                 }
                 this.dbVisitors[pid] = new RedisVersionDbVisitor(
                     clientPool, this.RedisLuaManager, this.responseVisitor, this.Mode);
+
+                this.txEntryRequestQueues[pid] = new Queue<TxEntryRequest>(VersionDb.REQUEST_QUEUE_CAPACITY);
+                this.flushQueues[pid] = new Queue<TxEntryRequest>(VersionDb.REQUEST_QUEUE_CAPACITY);
+                this.queueLatches[pid] = 0;
             }
         }
 
@@ -461,9 +473,12 @@
         internal override void AddPartition(int partitionCount)
         {
             int prePartitionCount = this.PartitionCount;
-            base.AddPartition(partitionCount);
 
             Array.Resize(ref this.dbVisitors, partitionCount);
+            Array.Resize(ref this.txEntryRequestQueues, partitionCount);
+            Array.Resize(ref this.flushQueues, partitionCount);
+            Array.Resize(ref this.queueLatches, partitionCount);
+            
             for (int pid = prePartitionCount; pid < partitionCount; pid++)
             {
                 RedisConnectionPool clientPool = null;
@@ -478,6 +493,10 @@
                 }
                 this.dbVisitors[pid] = new RedisVersionDbVisitor(
                     clientPool, this.RedisLuaManager, this.responseVisitor, this.Mode);
+
+                this.txEntryRequestQueues[pid] = new Queue<TxEntryRequest>(VersionDb.REQUEST_QUEUE_CAPACITY);
+                this.flushQueues[pid] = new Queue<TxEntryRequest>(VersionDb.REQUEST_QUEUE_CAPACITY);
+                this.queueLatches[pid] = 0;
             }
 
             foreach (VersionTable versionTable in this.versionTables.Values)
@@ -485,7 +504,7 @@
                 versionTable.AddPartition(partitionCount);
             }
 
-            this.PartitionCount = partitionCount;
+            base.AddPartition(partitionCount);
         }
 
         internal override void MockLoadData(int recordCount)
@@ -545,40 +564,78 @@
     /// </summary>
     public partial class RedisVersionDb
     {
-        //internal override void Visit(string tableId, int partitionKey)
-        //{
-        //    if (tableId == VersionDb.TX_TABLE)
-        //    {
-        //        RedisConnectionPool clientPool = this.RedisManager.GetClientPool(RedisVersionDb.TX_DB_INDEX, partitionKey);
-        //        this.DequeueTxEntryRequest(partitionKey);
-        //        foreach (TxEntryRequest req in this.flushQueues[partitionKey])
-        //        {
-        //            clientPool.EnqueueTxEntryRequest(req);
-        //        }
-        //        clientPool.Visit();
-        //        this.flushQueues[partitionKey].Clear();
-        //    }
-        //    else
-        //    {
-        //        VersionTable versionTable = this.GetVersionTable(tableId);
-        //        if (versionTable != null)
-        //        {
-        //            versionTable.Visit(partitionKey);
-        //        }
-        //    }
-        //}
+        /// <summary>
+        /// Move pending requests for a partition of the tx table to the partition's flush queue.
+        /// </summary>
+        /// <param name="partitionKey">The key of a tx table partition</param>
+        private void DequeueTxEntryRequest(int partitionKey)
+        {
+            if (this.txEntryRequestQueues[partitionKey].Count > 0)
+            {
+                if (this.Mode == RedisVersionDbMode.Cluster)
+                {
+                    Queue<TxEntryRequest> freeQueue = this.flushQueues[partitionKey];
+                    this.flushQueues[partitionKey] = this.txEntryRequestQueues[partitionKey];
+                    this.txEntryRequestQueues[partitionKey] = freeQueue;
+                }
+                else
+                {
+                    while (Interlocked.CompareExchange(ref queueLatches[partitionKey], 1, 0) != 0) ;
+
+                    Queue<TxEntryRequest> freeQueue = Volatile.Read(ref this.flushQueues[partitionKey]);
+                    Volatile.Write(ref this.flushQueues[partitionKey], Volatile.Read(ref this.txEntryRequestQueues[partitionKey]));
+                    Volatile.Write(ref this.txEntryRequestQueues[partitionKey], freeQueue);
+
+                    Interlocked.Exchange(ref queueLatches[partitionKey], 0);
+                }
+            }
+        }
 
         internal override void EnqueueTxEntryRequest(long txId, TxEntryRequest txEntryRequest, int srcPartition = 0)
         {
-            // Console.WriteLine("Src = {0}, Request = {1}", srcPartition, txEntryRequest.GetType().Name);
-            base.EnqueueTxEntryRequest(txId, txEntryRequest, srcPartition);
-            // Interlocked.Increment(ref VersionDb.EnqueuedRequests);
-            //int pk = srcPartition;
+            if (this.Mode == RedisVersionDbMode.Cluster)
+            {
+                // In the cluster mode, Redis provides transparent data partitioning. 
+                // Tx requests from a tx worker are queued locally.  
+                // Requests across all queues are flushed through a single connection point.
+                this.txEntryRequestQueues[srcPartition].Enqueue(txEntryRequest);
+            }
+            else
+            {
+                // In the non-cluster mode, each Redis instance represents a data partition. 
+                // Tx requests towards a data partitioned are pushed into one queue, 
+                // which are flushed to the corresponding Redis connection point. 
+                int pk = this.PhysicalTxPartitionByKey(txId);
 
-            //while (Interlocked.CompareExchange(ref queueLatches[pk], 1, 0) != 0) ;
-            //Queue<TxEntryRequest> reqQueue = Volatile.Read(ref this.txEntryRequestQueues[pk]);
-            //reqQueue.Enqueue(txEntryRequest);
-            //Interlocked.Exchange(ref queueLatches[pk], 0);
+                while (Interlocked.CompareExchange(ref queueLatches[pk], 1, 0) != 0) ;
+                Queue<TxEntryRequest> reqQueue = Volatile.Read(ref this.txEntryRequestQueues[pk]);
+                reqQueue.Enqueue(txEntryRequest);
+                Interlocked.Exchange(ref queueLatches[pk], 0);
+            }
+        }
+
+        internal override void Visit(string tableId, int partitionKey)
+        {
+            if (tableId == VersionDb.TX_TABLE)
+            {
+                this.DequeueTxEntryRequest(partitionKey);
+                Queue<TxEntryRequest> flushQueue = this.flushQueues[partitionKey];
+                if (flushQueue.Count == 0)
+                {
+                    return;
+                }
+
+                this.dbVisitors[partitionKey].Invoke(flushQueue);
+                flushQueue.Clear();
+            }
+            else
+            {
+                VersionTable versionTable = this.GetVersionTable(tableId);
+                if (versionTable != null)
+                {
+                    versionTable.Visit(partitionKey);
+                }
+            }
         }
 
         /// <summary>
