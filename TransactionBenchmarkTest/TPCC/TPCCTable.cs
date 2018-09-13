@@ -406,8 +406,8 @@ namespace TransactionBenchmarkTest.TPCC
     }
     public class CustomerLastNameIndexKey
     {
-        public int C_W_ID;
-        public int C_D_ID;
+        public uint C_W_ID;
+        public uint C_D_ID;
         public string C_LAST;
 
         public override int GetHashCode()
@@ -423,6 +423,16 @@ namespace TransactionBenchmarkTest.TPCC
                 && this.C_W_ID == that.C_W_ID
                 && this.C_D_ID == that.C_D_ID
                 && this.C_LAST == that.C_LAST;
+        }
+        static public CustomerLastNameIndexKey
+        FromPKeyAndPayload(CustomerPkey cpk, CustomerPayload cpl)
+        {
+            return new CustomerLastNameIndexKey
+            {
+                C_W_ID = cpk.C_W_ID,
+                C_D_ID = cpk.C_D_ID,
+                C_LAST = cpl.C_LAST,
+            };
         }
     }
     public class CustomerPayload

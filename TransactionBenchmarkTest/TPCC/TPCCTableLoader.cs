@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Diagnostics;
 
 using GraphView.Transaction;
 
@@ -41,17 +42,85 @@ namespace TransactionBenchmarkTest.TPCC
         static public
         int Load(string dir, TpccTable table, VersionDb versionDb)
         {
-            int c = 0;
+            int recordCount = 0;
             var txExec = new TransactionExecution(
                 null, versionDb, null, new TxRange((int)table.Type()), 0);
+            var auxIndexLoader = AuxIndexLoader.FromTableType(table.Type());
             foreach (var kv in LoadKvsFromDir(dir, table))
             {
+                object k = kv.Item1, v = kv.Item2;
                 txExec.Reset();
-                txExec.InitAndInsert(Constants.DefaultTbl, kv.Item1, kv.Item2);
+                txExec.InitAndInsert(Constants.DefaultTbl, k, v);
                 txExec.Commit();
-                ++c;
+                auxIndexLoader.BuildAuxIndex(k, v);
+                ++recordCount;
             }
-            return c;
+            recordCount += auxIndexLoader.SaveTo(versionDb);
+            return recordCount;
+        }
+        /// <summary>
+        /// Auxiliary index loader
+        /// </summary>
+        private class AuxIndexLoader
+        {
+            public static AuxIndexLoader FromTableType(TableType t)
+            {
+                switch (t)
+                {
+                    case TableType.CUSTOMER:
+                        return new CustomerLastNameIndexLoader();
+                    default:
+                        return new AuxIndexLoader();
+                }
+            }
+            public virtual void BuildAuxIndex(object k, object v) { }
+
+            public virtual int SaveTo(VersionDb versionDb)
+            {
+                return 0;
+            }
+        }
+        private class CustomerLastNameIndexLoader : AuxIndexLoader
+        {
+            public override void BuildAuxIndex(object k, object v)
+            {
+                var cpk = k as CustomerPkey;
+                var cpl = v as CustomerPayload;
+                Debug.Assert(k != null && v != null);
+                var lastNameKey =
+                    CustomerLastNameIndexKey.FromPKeyAndPayload(cpk, cpl);
+                uint cid = cpk.C_ID;
+                AddToStore(lastNameKey, cid);
+            }
+            private void AddToStore(CustomerLastNameIndexKey k, uint cid)
+            {
+                if (!this.tempStore.ContainsKey(k))
+                {
+                    this.tempStore[k] = new List<uint>();
+                }
+                this.tempStore[k].Add(cid);
+            }
+
+            public override int SaveTo(VersionDb versionDb)
+            {
+                int recordCount = 0;
+                var txExec = new TransactionExecution(
+                    null, versionDb, null, new TxRange(0));
+                foreach (var kv in this.tempStore)
+                {
+                    CustomerLastNameIndexKey lastNameKey = kv.Key;
+                    List<uint> cids = kv.Value;
+                    cids.Sort();
+                    txExec.Reset();
+                    txExec.InitAndInsert(
+                        Constants.DefaultTbl, lastNameKey, cids.ToArray());
+                    txExec.Commit();
+                    ++recordCount;
+                }
+                return recordCount;
+            }
+            Dictionary<CustomerLastNameIndexKey, List<uint>> tempStore =
+                new Dictionary<CustomerLastNameIndexKey, List<uint>>();
         }
     }
 }
