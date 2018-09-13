@@ -66,7 +66,7 @@ namespace GraphView.Transaction
         // Resource managers to manage the runtime resource to avoid gc slowing the throughput
         internal readonly List<TxResourceManager> txResourceManagers;
 
-        internal int PartitionCount { get; set; }   // to avoid memory overflow used by cassandra
+        public int PartitionCount { get; protected set; }   // to avoid memory overflow used by cassandra
 
         /// <summary>
         /// A flag to determine whether the partition is mounted
@@ -103,6 +103,7 @@ namespace GraphView.Transaction
             
             this.txResourceManagers = new List<TxResourceManager>();
             this.PartitionMounted = new bool[partitionCount];
+            this.dbVisitors = new VersionDbVisitor[partitionCount];
 
             for (int pid = 0; pid < partitionCount; pid++)
             {

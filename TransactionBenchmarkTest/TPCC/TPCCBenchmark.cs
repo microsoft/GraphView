@@ -15,30 +15,23 @@ namespace TransactionBenchmarkTest.TPCC
         private Queue<TPCCWorkload> tpccWorkloadQueue;
 
         //private int workloadCount;
-        public VersionDb vdb;
-        public RedisClient redisClient;
-
         public int commitCount;
         public int abortCount;
-        
-        public TPCCWorker()
+
+        private TransactionExecution execution;
+
+        public TPCCWorker(TransactionExecution execution)
         {
             this.commitCount = this.abortCount = 0;
-
-            this.vdb = RedisVersionDb.Instance();
-            this.vdb.CreateVersionTable(Constants.DefaultTbl, Constants.RedisDbN);
-
-            this.redisClient = new RedisClient(Constants.RedisHost, Constants.RedisPort);   // for payment to access `c_last` index
-            this.redisClient.ChangeDb(Constants.RedisIndexDbN);
-
+            this.execution = execution;
             this.tpccWorkloadQueue = new Queue<TPCCWorkload>();
         }
-        
+
         public void Run()
         {
             foreach (var workload in tpccWorkloadQueue)
             {
-                var ret = workload.Run();
+                var ret = workload.Run(execution);
                 if (ret.txFinalStatus == TxFinalStatus.COMMITTED)
                     this.commitCount++;
                 else if (ret.txFinalStatus == TxFinalStatus.ABORTED)
@@ -50,7 +43,7 @@ namespace TransactionBenchmarkTest.TPCC
         {
             this.tpccWorkloadQueue.Enqueue(tpccWorkload);
         }
-        
+
     }
 
     class TPCCBenchmark
@@ -63,16 +56,37 @@ namespace TransactionBenchmarkTest.TPCC
         private long startTicks;
         private long endTicks;
 
-        public TPCCBenchmark(int workerCount, int workloadCountPerWorker)
+        static private
+        TransactionExecution[] InitializeExecEnvs(VersionDb versionDb)
         {
-            this.workerCount = workerCount;
+            int workerCount = versionDb.PartitionCount;
+            TransactionExecution[] execs = new TransactionExecution[workerCount];
+            for (int i = 0; i < workerCount; ++i)
+            {
+                execs[i] = new TransactionExecution(
+                    null, versionDb, null, new TxRange(i), i);
+            }
+            return execs;
+        }
+
+        static TPCCWorker[] InititializeWorkers(VersionDb versionDb)
+        {
+            int workerCount = versionDb.PartitionCount;
+            var workers = new TPCCWorker[workerCount];
+            var execs = InitializeExecEnvs(versionDb);
+            for (int i = 0; i < workerCount; ++i)
+            {
+                workers[i] = new TPCCWorker(execs[i]);
+            }
+            return workers;
+        }
+
+        public TPCCBenchmark(VersionDb versionDb, int workloadCountPerWorker)
+        {
+            this.workerCount = versionDb.PartitionCount;
             this.workloadCountPerWorker = workloadCountPerWorker;
 
-            this.tpccWorkers = new TPCCWorker[workerCount];
-            for (int i = 0; i < this.workerCount; i++)
-            {
-                this.tpccWorkers[i] = new TPCCWorker();
-            }
+            this.tpccWorkers = InititializeWorkers(versionDb);
         }
 
         public void LoadNewOrderWorkload(string filepath)
@@ -105,7 +119,7 @@ namespace TransactionBenchmarkTest.TPCC
 
                 int i = lineNum++ / workloadCountPerWorker;
 
-                TPCCNewOrderWorkload neworder = new TPCCNewOrderWorkload(no, this.tpccWorkers[i].vdb, this.tpccWorkers[i].redisClient);
+                TPCCNewOrderWorkload neworder = new TPCCNewOrderWorkload(no/*, this.tpccWorkers[i].vdb, this.tpccWorkers[i].redisClient*/);
                 this.tpccWorkers[i].AddWorkload(neworder);
 
                 if (lineNum == workloadTotal) break;
@@ -144,7 +158,7 @@ namespace TransactionBenchmarkTest.TPCC
 
                 int i = lineNum++ / workloadCountPerWorker;
 
-                TPCCPaymentWorkload pmw = new TPCCPaymentWorkload(pm, this.tpccWorkers[i].vdb, this.tpccWorkers[i].redisClient);
+                TPCCPaymentWorkload pmw = new TPCCPaymentWorkload(pm/*, this.tpccWorkers[i].vdb, this.tpccWorkers[i].redisClient*/);
                 this.tpccWorkers[i].AddWorkload(pmw);
 
                 if (lineNum == workloadTotal) break;
