@@ -49,7 +49,7 @@ local function DeleteOneOldVersion(maxVersionListLength)
 end
 
 local function RecycleOldVersions()
-    local MAX_VERSION_LIST_LENGTH = 10
+    local MAX_VERSION_LIST_LENGTH = 32
     DeleteOneOldVersion(MAX_VERSION_LIST_LENGTH)
 end
 
