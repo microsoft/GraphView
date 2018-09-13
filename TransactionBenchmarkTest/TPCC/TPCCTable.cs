@@ -8,6 +8,322 @@ using ServiceStack.Redis;
 
 namespace TransactionBenchmarkTest.TPCC
 {
+    public static class TableUtil
+    {
+        static internal IEnumerable<string[]> LoadPyTpccCsv(string csvPath)
+        {
+            using (var streamReader = new System.IO.StreamReader(csvPath))
+            {
+                for (string line; (line = streamReader.ReadLine()) != null;)
+                {
+                    yield return SplitQuotedCsvLine(line);
+                }
+            }
+        }
+        static private string[] SplitQuotedCsvLine(string line)
+        {
+            return line.Split(',')
+                // remove double quotes
+                .Select(s => s.Substring(1, s.Length - 2)).ToArray();
+        }
+
+        static public string ToFilename(this TableType v, string dir = "")
+        {
+            return $"{dir}\\{Enum.GetName(typeof(TableType), v)}.csv";
+        }
+    }
+    public enum TableType
+    {
+        CUSTOMER, WAREHOUSE, DISTRICT,
+        HISTORY, ITEM, NEW_ORDER,
+        ORDER_LINE, ORDERS, STOCK
+    }
+
+    public abstract class TpccTable
+    {
+        static private TpccTable[] instances =
+        {
+            new Customer(), new Warehouse(), new District(),
+            new History(), new Item(), new NewOrder(),
+            new OrderLine(), new Order(), new Stock()
+        };
+        static public TableType[] allTypes =
+            Enum.GetValues(typeof(TableType)) as TableType[];
+
+        static public TpccTable Instance(TableType v)
+        {
+            return instances[(int)v];
+        }
+
+        struct PayloadPlaceholder { };
+
+        public IEnumerable<Tuple<object, object>> ReadFromDir(string dir)
+        {
+            string csvPath = this.Type().ToFilename(dir);
+            foreach (string[] columns in TableUtil.LoadPyTpccCsv(csvPath))
+            {
+                yield return this.ColumnsToKv(columns);
+            }
+        }
+
+        /// <summary>
+        /// Turn csv string columns to (XXPKey, XXPayload) objects
+        /// </summary>
+        public abstract Tuple<object, object> ColumnsToKv(string[] columns);
+
+        public abstract TableType Type();
+
+        class Customer : TpccTable
+        {
+            public override Tuple<object, object> ColumnsToKv(string[] columns)
+            {
+                var cpk = new CustomerPkey
+                {
+                    C_ID = Convert.ToUInt32(columns[0]),
+                    C_D_ID = Convert.ToUInt32(columns[1]),
+                    C_W_ID = Convert.ToUInt32(columns[2])
+                };
+                var cpl = new CustomerPayload
+                {
+                    C_FIRST = columns[3],
+                    C_MIDDLE = columns[4],
+                    C_LAST = columns[5],
+                    C_STREET_1 = columns[6],
+                    C_STREET_2 = columns[7],
+                    C_CITY = columns[8],
+                    C_STATE = columns[9],
+                    C_ZIP = columns[10],
+                    C_PHONE = columns[11],
+                    C_SINCE = columns[12],
+                    C_CREDIT = columns[13],
+                    C_CREDIT_LIM = Convert.ToDouble(columns[14]),
+                    C_DISCOUNT = Convert.ToDouble(columns[15]),
+                    C_BALANCE = Convert.ToDouble(columns[16]),
+                    C_YTD_PAYMENT = Convert.ToDouble(columns[17]),
+                    C_PAYMENT_CNT = Convert.ToUInt32(columns[18]),
+                    C_DELIVERY_CNT = Convert.ToUInt32(columns[19]),
+                    C_DATA = columns[20]
+                };
+                return new Tuple<object, object>(cpk, cpl);
+            }
+            public override TableType Type()
+            {
+                return TableType.CUSTOMER;
+            }
+        }
+
+        class Warehouse : TpccTable
+        {
+            public override Tuple<object, object> ColumnsToKv(string[] columns)
+            {
+                var wpk = new WarehousePkey
+                {
+                    W_ID = Convert.ToUInt32(columns[0])
+                };
+                var wpl = new WarehousePayload
+                {
+                    W_NAME = columns[1],
+                    W_STREET_1 = columns[2],
+                    W_STREET_2 = columns[3],
+                    W_CITY = columns[4],
+                    W_STATE = columns[5],
+                    W_ZIP = columns[6],
+                    W_TAX = Convert.ToDouble(columns[7]),
+                    W_YTD = Convert.ToDouble(columns[8])
+                };
+                return new Tuple<object, object>(wpk, wpl);
+            }
+
+            public override TableType Type()
+            {
+                return TableType.WAREHOUSE;
+            }
+        }
+
+        class District : TpccTable
+        {
+            public override Tuple<object, object> ColumnsToKv(string[] columns)
+            {
+                var dpk = new DistrictPkey
+                {
+                    D_ID = Convert.ToUInt32(columns[0]),
+                    D_W_ID = Convert.ToUInt32(columns[1])
+                };
+                var dpl = new DistrictPayload
+                {
+                    D_NAME = columns[2],
+                    D_STREET_1 = columns[3],
+                    D_STREET_2 = columns[4],
+                    D_CITY = columns[5],
+                    D_STATE = columns[6],
+                    D_ZIP = columns[7],
+                    D_TAX = Convert.ToDouble(columns[8]),
+                    D_YTD = Convert.ToDouble(columns[9]),
+                    D_NEXT_O_ID = Convert.ToUInt32(columns[10])
+                };
+                return new Tuple<object, object>(dpk, dpl);
+            }
+
+            public override TableType Type()
+            {
+                return TableType.DISTRICT;
+            }
+        }
+
+        class Item : TpccTable
+        {
+            public override Tuple<object, object> ColumnsToKv(string[] columns)
+            {
+                var ipk = new ItemPkey
+                {
+                    I_ID = Convert.ToUInt32(columns[0])
+                };
+                var ipl = new ItemPayload
+                {
+                    I_IM_ID = Convert.ToUInt32(columns[1]),
+                    I_NAME = columns[2],
+                    I_PRICE = Convert.ToDouble(columns[3]),
+                    I_DATA = columns[4]
+                };
+                return new Tuple<object, object>(ipk, ipl);
+            }
+            public override TableType Type()
+            {
+                return TableType.ITEM;
+            }
+        }
+
+        class Stock : TpccTable
+        {
+            public override Tuple<object, object> ColumnsToKv(string[] columns)
+            {
+                var spk = new StockPkey
+                {
+                    S_I_ID = Convert.ToUInt32(columns[0]),
+                    S_W_ID = Convert.ToUInt32(columns[1])
+                };
+                var spl = new StockPayload
+                {
+                    S_QUANTITY = Convert.ToInt32(columns[2]),
+                    S_DIST_01 = columns[3],
+                    S_DIST_02 = columns[4],
+                    S_DIST_03 = columns[5],
+                    S_DIST_04 = columns[6],
+                    S_DIST_05 = columns[7],
+                    S_DIST_06 = columns[8],
+                    S_DIST_07 = columns[9],
+                    S_DIST_08 = columns[10],
+                    S_DIST_09 = columns[11],
+                    S_DIST_10 = columns[12],
+                    S_YTD = Convert.ToUInt32(columns[13]),
+                    S_ORDER_CNT = Convert.ToUInt32(columns[14]),
+                    S_REMOTE_CNT = Convert.ToUInt32(columns[15]),
+                    S_DATA = columns[16]
+                };
+                return new Tuple<object, object>(spl, spl);
+            }
+            public override TableType Type()
+            {
+                return TableType.STOCK;
+            }
+        }
+
+        class Order : TpccTable
+        {
+            public override Tuple<object, object> ColumnsToKv(string[] columns)
+            {
+                var opk = new OrderPkey
+                {
+                    O_ID = Convert.ToUInt32(columns[0]),
+                    O_D_ID = Convert.ToUInt32(columns[1]),
+                    O_W_ID = Convert.ToUInt32(columns[2])
+                };
+                var opl = new OrderPayload
+                {
+                    O_C_ID = Convert.ToUInt32(columns[3]),
+                    O_ENTRY_D = columns[4],
+                    O_CARRIER_ID = Convert.ToUInt32(columns[5]),
+                    O_OL_CNT = Convert.ToUInt32(columns[6]),
+                    O_ALL_LOCAL = Convert.ToUInt32(columns[7])
+                };
+                return new Tuple<object, object>(opk, opl);
+            }
+            public override TableType Type()
+            {
+                return TableType.ORDERS;
+            }
+        }
+
+        class OrderLine : TpccTable
+        {
+            public override Tuple<object, object> ColumnsToKv(string[] columns)
+            {
+                var olpk = new OrderLinePkey
+                {
+                    OL_O_ID = Convert.ToUInt32(columns[0]),
+                    OL_D_ID = Convert.ToUInt32(columns[1]),
+                    OL_W_ID = Convert.ToUInt32(columns[2]),
+                    OL_NUMBER = Convert.ToUInt32(columns[3])
+                };
+                var olpl = new OrderLinePayload
+                {
+                    OL_I_ID = Convert.ToUInt32(columns[4]),
+                    OL_SUPPLY_W_ID = Convert.ToUInt32(columns[5]),
+                    OL_DELIVERY_D = columns[6],
+                    OL_QUANTITY = Convert.ToUInt32(columns[7]),
+                    OL_AMOUNT = Convert.ToDouble(columns[8]),
+                    OL_DIST_INFO = columns[9]
+                };
+                return new Tuple<object, object>(olpk, olpl);
+            }
+            public override TableType Type()
+            {
+                return TableType.ORDER_LINE;
+            }
+        }
+
+        class NewOrder : TpccTable
+        {
+            public override Tuple<object, object> ColumnsToKv(string[] columns)
+            {
+                var nopk = new NewOrderPkey
+                {
+                    NO_O_ID = Convert.ToUInt32(columns[0]),
+                    NO_D_ID = Convert.ToUInt32(columns[1]),
+                    NO_W_ID = Convert.ToUInt32(columns[2])
+                };
+                return new Tuple<object, object>(nopk, new PayloadPlaceholder());
+            }
+            public override TableType Type()
+            {
+                return TableType.NEW_ORDER;
+            }
+        }
+
+        class History : TpccTable
+        {
+            public override Tuple<object, object> ColumnsToKv(string[] columns)
+            {
+                var hpl = new HistoryPayload
+                {
+                    H_C_ID = Convert.ToUInt32(columns[0]),
+                    H_C_D_ID = Convert.ToUInt32(columns[1]),
+                    H_C_W_ID = Convert.ToUInt32(columns[2]),
+                    H_D_ID = Convert.ToUInt32(columns[3]),
+                    H_W_ID = Convert.ToUInt32(columns[4]),
+                    H_DATE = columns[5],
+                    H_AMOUNT = Convert.ToDouble(columns[6]),
+                    H_DATA = columns[7]
+                };
+                string hpk = HistoryPayload.GetHPkey();
+                return new Tuple<object, object>(hpk, hpl);
+            }
+            public override TableType Type()
+            {
+                return TableType.HISTORY;
+            }
+        }
+    }
     // Warehouse
     public class WarehousePkey
     {
@@ -15,6 +331,17 @@ namespace TransactionBenchmarkTest.TPCC
         public override string ToString()
         {
             return "W-" + W_ID.ToString();
+        }
+
+        public override int GetHashCode()
+        {
+            return W_ID.GetHashCode();
+        }
+
+        public override bool Equals(object obj)
+        {
+            WarehousePkey that = obj as WarehousePkey;
+            return that != null && this.W_ID == that.W_ID;
         }
     }
     public class WarehousePayload
@@ -37,6 +364,19 @@ namespace TransactionBenchmarkTest.TPCC
         public override string ToString()
         {
             return "D-" + D_ID + "-" + D_W_ID;
+        }
+
+        public override int GetHashCode()
+        {
+            return this.D_ID.GetHashCode() ^ this.D_W_ID.GetHashCode();
+        }
+
+        public override bool Equals(object obj)
+        {
+            DistrictPkey that = obj as DistrictPkey;
+            return that != null
+                && this.D_ID == that.D_ID
+                && this.D_W_ID == that.D_W_ID;
         }
     }
     public class DistrictPayload
@@ -61,6 +401,22 @@ namespace TransactionBenchmarkTest.TPCC
         public override string ToString()
         {
             return "C-" + C_ID + "-" + C_D_ID + "-" + C_W_ID;
+        }
+
+        public override int GetHashCode()
+        {
+            return this.C_ID.GetHashCode()
+                 ^ this.C_D_ID.GetHashCode()
+                 ^ this.C_W_ID.GetHashCode();
+        }
+
+        public override bool Equals(object obj)
+        {
+            CustomerPkey that = obj as CustomerPkey;
+            return that != null
+                && this.C_ID == that.C_ID
+                && this.C_D_ID == that.C_D_ID
+                && this.C_W_ID == that.C_W_ID;
         }
     }
     public class CustomerPayload
@@ -122,6 +478,22 @@ namespace TransactionBenchmarkTest.TPCC
         {
             return "NO-" + NO_O_ID + "-" + NO_D_ID + "-" + NO_W_ID;
         }
+
+        public override int GetHashCode()
+        {
+            return NO_D_ID.GetHashCode()
+                 ^ NO_D_ID.GetHashCode()
+                 ^ NO_W_ID.GetHashCode();
+        }
+
+        public override bool Equals(object obj)
+        {
+            NewOrderPkey that = obj as NewOrderPkey;
+            return that != null
+                && this.NO_O_ID == that.NO_O_ID
+                && this.NO_D_ID == that.NO_D_ID
+                && this.NO_W_ID == that.NO_W_ID;
+        }
     }
     public class NewOrderPayload    // no use
     {
@@ -138,6 +510,22 @@ namespace TransactionBenchmarkTest.TPCC
         public override string ToString()
         {
             return "O-" + O_ID + "-" + O_D_ID + "-" + O_W_ID;
+        }
+
+        public override int GetHashCode()
+        {
+            return this.O_ID.GetHashCode()
+                 ^ this.O_D_ID.GetHashCode()
+                 ^ this.O_W_ID.GetHashCode();
+        }
+
+        public override bool Equals(object obj)
+        {
+            OrderPkey that = obj as OrderPkey;
+            return that != null
+                && this.O_ID == that.O_ID
+                && this.O_D_ID == that.O_D_ID
+                && this.O_W_ID == that.O_W_ID;
         }
     }
     public class OrderPayload
@@ -160,6 +548,24 @@ namespace TransactionBenchmarkTest.TPCC
         {
             return "OL-" + OL_O_ID + "-" + OL_D_ID + "-" + OL_W_ID + "-" + OL_NUMBER;
         }
+
+        public override int GetHashCode()
+        {
+            return this.OL_O_ID.GetHashCode()
+                 ^ this.OL_D_ID.GetHashCode()
+                 ^ this.OL_W_ID.GetHashCode()
+                 ^ this.OL_NUMBER.GetHashCode();
+        }
+
+        public override bool Equals(object obj)
+        {
+            OrderLinePkey that = obj as OrderLinePkey;
+            return that != null
+                && this.OL_O_ID == that.OL_O_ID
+                && this.OL_D_ID == that.OL_D_ID
+                && this.OL_W_ID == that.OL_W_ID
+                && this.OL_NUMBER == that.OL_NUMBER;
+        }
     }
     public class OrderLinePayload
     {
@@ -179,6 +585,17 @@ namespace TransactionBenchmarkTest.TPCC
         {
             return "I-" + I_ID.ToString();
         }
+
+        public override int GetHashCode()
+        {
+            return this.I_ID.GetHashCode();
+        }
+
+        public override bool Equals(object obj)
+        {
+            ItemPkey that = obj as ItemPkey;
+            return that != null && this.I_ID == that.I_ID;
+        }
     }
     public class ItemPayload
     {
@@ -197,6 +614,20 @@ namespace TransactionBenchmarkTest.TPCC
         {
             return "S-" + S_I_ID + "-" + S_W_ID;
         }
+
+        public override int GetHashCode()
+        {
+            return this.S_I_ID.GetHashCode() ^ this.S_W_ID.GetHashCode();
+        }
+
+        public override bool Equals(object obj)
+        {
+            StockPkey that = obj as StockPkey;
+            return that != null
+                && this.S_I_ID == that.S_I_ID
+                && this.S_W_ID == that.S_W_ID;
+        }
+
     }
     public class StockPayload
     {

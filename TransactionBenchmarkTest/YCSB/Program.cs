@@ -84,7 +84,7 @@ namespace TransactionBenchmarkTest.YCSB
             const bool daemonMode = false;
             const string dataFile = "ycsb_data_r.in";
             const string operationFile = "ycsb_ops_r.in";
-            VersionDb.UDF_QUEUE = false;
+            // VersionDb.UDF_QUEUE = false;
 
             // an executor is responsiable for all flush
             string[] tables =
