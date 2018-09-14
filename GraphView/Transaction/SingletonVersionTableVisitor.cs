@@ -16,7 +16,7 @@
 
         internal override void Visit(DeleteVersionRequest req)
         {
-            ConcurrentDictionary<long, VersionEntry> versionList = req.RemoteVerList as 
+            ConcurrentDictionary<long, VersionEntry> versionList = req.RemoteVerList as
                 ConcurrentDictionary<long, VersionEntry>;
             // Only get the version list location when version list is null
             if (versionList == null)
@@ -68,6 +68,8 @@
                 // Adds a special entry whose key is -1 when the list is initialized.
                 // The entry uses beginTimestamp as a pointer pointing to the newest verion in the list.
                 VersionEntry entry = VersionEntry.InitEmptyVersionEntry(req.RecordKey);
+                entry.BeginTimestamp = VersionEntry.DEFAULT_BEGIN_TIMESTAMP;
+                entry.EndTimestamp = VersionEntry.DEFAULT_END_TIMESTAMP;
                 newVersionList.TryAdd(SingletonDictionaryVersionTable.TAIL_KEY, entry);
 
                 if (this.dict.TryAdd(req.RecordKey, newVersionList))
@@ -89,7 +91,7 @@
         }
 
         internal override void Visit(ReplaceVersionRequest req)
-        { 
+        {
             VersionEntry entry = req.RemoteVerEntry;
             if (entry == null)
             {
@@ -123,7 +125,7 @@
 
         internal override void Visit(UploadVersionRequest req)
         {
-            ConcurrentDictionary<long, VersionEntry> versionList = req.RemoteVerList as 
+            ConcurrentDictionary<long, VersionEntry> versionList = req.RemoteVerList as
                 ConcurrentDictionary<long, VersionEntry>;
             if (versionList == null)
             {
@@ -145,6 +147,13 @@
                 // This is because once created, the whole tail entry always stays and is never replaced.
                 // All concurrent tx's only access the tail pointer, i.e., the beginTimestamp field.  
                 tailEntry.BeginTimestamp = req.VersionKey;
+
+                // EndTimestamp (headKey) being never set means we just insert
+                // the first valid version. So the headKey should be redirected.
+                if (tailEntry.EndTimestamp == VersionEntry.DEFAULT_END_TIMESTAMP)
+                {
+                    tailEntry.EndTimestamp = tailEntry.BeginTimestamp;
+                }
 
                 VersionEntry oldVerEntry = null;
                 if (versionList.Count > VersionTable.VERSION_CAPACITY)
