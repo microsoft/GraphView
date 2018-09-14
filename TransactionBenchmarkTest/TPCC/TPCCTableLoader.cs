@@ -39,9 +39,14 @@ namespace TransactionBenchmarkTest.TPCC
                 yield return table.ParseColumns(columns);
             }
         }
+        static private void CreateTable(VersionDb versionDb, TpccTable table)
+        {
+            versionDb.CreateVersionTable(table.Name());
+        }
         static public
         int Load(string dir, TpccTable table, VersionDb versionDb)
         {
+            CreateTable(versionDb, table);
             int recordCount = 0;
             var txExec = new TransactionExecution(
                 null, versionDb, null, new TxRange((int)table.Type()), 0);
@@ -50,10 +55,14 @@ namespace TransactionBenchmarkTest.TPCC
             {
                 object k = kv.Item1, v = kv.Item2;
                 txExec.Reset();
-                txExec.InitAndInsert(Constants.DefaultTbl, k, v);
-                txExec.Commit();
-                auxIndexLoader.BuildAuxIndex(k, v);
-                ++recordCount;
+                try
+                {
+                    txExec.InitAndInsert(table.Name(), k, v);
+                    txExec.Commit();
+                    auxIndexLoader.BuildAuxIndex(k, v);
+                    ++recordCount;
+                }
+                catch (AbortException) { }
             }
             recordCount += auxIndexLoader.SaveTo(versionDb);
             return recordCount;
@@ -113,7 +122,7 @@ namespace TransactionBenchmarkTest.TPCC
                     cids.Sort();
                     txExec.Reset();
                     txExec.InitAndInsert(
-                        Constants.DefaultTbl, lastNameKey, cids.ToArray());
+                        TableType.CUSTOMER.Name(), lastNameKey, cids.ToArray());
                     txExec.Commit();
                     ++recordCount;
                 }

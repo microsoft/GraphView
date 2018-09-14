@@ -14,6 +14,11 @@ namespace GraphView.Transaction
             base(message, innerException)
         { }
     }
+    public class AbortException : Exception
+    {
+        public AbortException() : base("Transaction aborted") { }
+        public AbortException(string message) : base($"Transaction Aborted {message}") { }
+    }
 
     public partial class Transaction
     {
