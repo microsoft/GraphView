@@ -205,7 +205,7 @@ namespace TransactionBenchmarkTest.TPCC
                     S_REMOTE_CNT = Convert.ToUInt32(columns[15]),
                     S_DATA = columns[16]
                 };
-                return new Tuple<object, object>(spl, spl);
+                return new Tuple<object, object>(spk, spl);
             }
             public override TableType Type()
             {
