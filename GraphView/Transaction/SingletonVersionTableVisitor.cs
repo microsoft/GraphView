@@ -14,6 +14,11 @@
             this.dict = dict;
         }
 
+        static void ResetTailEntry(VersionEntry tailEntry) {
+            tailEntry.BeginTimestamp = VersionEntry.DEFAULT_BEGIN_TIMESTAMP;
+            tailEntry.EndTimestamp = VersionEntry.DEFAULT_END_TIMESTAMP;
+        }
+
         internal override void Visit(DeleteVersionRequest req)
         {
             ConcurrentDictionary<long, VersionEntry> versionList = req.RemoteVerList as
@@ -36,8 +41,12 @@
             // Here the dirty version entry hasn't been deleted, so there will no other txs update the tailEntry
             // We don't need to take Interlocked to update its value
 
-            long tailKey = tailEntry.BeginTimestamp;
-            tailEntry.BeginTimestamp = tailKey - 1;
+            // when the deleted entry is the only one in version list
+            if (tailEntry.BeginTimestamp == tailEntry.EndTimestamp) {
+                ResetTailEntry(tailEntry);
+            } else {
+                --tailEntry.BeginTimestamp;
+            }
 
             VersionEntry versionEntry = null;
             long headKey = tailEntry.EndTimestamp;
@@ -68,8 +77,7 @@
                 // Adds a special entry whose key is -1 when the list is initialized.
                 // The entry uses beginTimestamp as a pointer pointing to the newest verion in the list.
                 VersionEntry entry = VersionEntry.InitEmptyVersionEntry(req.RecordKey);
-                entry.BeginTimestamp = VersionEntry.DEFAULT_BEGIN_TIMESTAMP;
-                entry.EndTimestamp = VersionEntry.DEFAULT_END_TIMESTAMP;
+                ResetTailEntry(entry);
                 newVersionList.TryAdd(SingletonDictionaryVersionTable.TAIL_KEY, entry);
 
                 if (this.dict.TryAdd(req.RecordKey, newVersionList))
