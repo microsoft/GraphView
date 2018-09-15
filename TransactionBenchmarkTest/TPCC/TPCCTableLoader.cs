@@ -30,7 +30,7 @@ namespace TransactionBenchmarkTest.TPCC
     }
     public class TPCCTableLoader
     {
-        static private IEnumerable<Tuple<object, object>>
+        static private IEnumerable<Tuple<TpccTableKey, TpccTablePayload>>
         LoadKvsFromDir(string dir, TpccTable table)
         {
             string csvPath = table.Type().ToFilename(dir);
@@ -53,13 +53,12 @@ namespace TransactionBenchmarkTest.TPCC
             var auxIndexLoader = AuxIndexLoader.FromTableType(table.Type());
             foreach (var kv in LoadKvsFromDir(dir, table))
             {
-                object k = kv.Item1, v = kv.Item2;
                 txExec.Reset();
                 try
                 {
-                    txExec.InitAndInsert(table.Name(), k, v);
+                    txExec.TpccSyncInsert(kv.Item1, kv.Item2);
                     txExec.Commit();
-                    auxIndexLoader.BuildAuxIndex(k, v);
+                    auxIndexLoader.BuildAuxIndex(kv.Item1, kv.Item2);
                     ++recordCount;
                 }
                 catch (AbortException) { }
@@ -82,7 +81,8 @@ namespace TransactionBenchmarkTest.TPCC
                         return new AuxIndexLoader();
                 }
             }
-            public virtual void BuildAuxIndex(object k, object v) { }
+            public virtual
+            void BuildAuxIndex(TpccTableKey k, TpccTablePayload v) { }
 
             public virtual int SaveTo(VersionDb versionDb)
             {
@@ -91,7 +91,8 @@ namespace TransactionBenchmarkTest.TPCC
         }
         private class CustomerLastNameIndexLoader : AuxIndexLoader
         {
-            public override void BuildAuxIndex(object k, object v)
+            public override
+            void BuildAuxIndex(TpccTableKey k, TpccTablePayload v)
             {
                 var cpk = k as CustomerPkey;
                 var cpl = v as CustomerPayload;
@@ -119,10 +120,9 @@ namespace TransactionBenchmarkTest.TPCC
                 {
                     CustomerLastNameIndexKey lastNameKey = kv.Key;
                     List<uint> cids = kv.Value;
-                    cids.Sort();
                     txExec.Reset();
-                    txExec.InitAndInsert(
-                        TableType.CUSTOMER.Name(), lastNameKey, cids.ToArray());
+                    txExec.TpccSyncInsert(
+                        lastNameKey, CustomerLastNamePayloads.FromList(cids));
                     txExec.Commit();
                     ++recordCount;
                 }

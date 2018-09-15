@@ -4,6 +4,8 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
+using GraphView.Transaction;
+
 namespace TransactionBenchmarkTest.TPCC
 {
 
@@ -40,11 +42,44 @@ namespace TransactionBenchmarkTest.TPCC
         // workload path
         public const string NewOrderWorkloadPath =
             @"D:\Elastas\benchmark\tpcc\data\tpcc-txns\NEW_ORDER.csv";
-        public const string PaymentWorkloadPath = 
+        public const string PaymentWorkloadPath =
             @"D:\Elastas\benchmark\tpcc\data\tpcc-txns\PAYMENT.csv";
 
-        static public class Singleton {
-            public const int Concurrency = 8;
+        static public class Singleton
+        {
+            public const int Concurrency = 1;
+        }
+    }
+
+    static class SyncTxExecHelper
+    {
+        static private void ThrowErrorIfAborted(TransactionExecution txExec)
+        {
+            if (txExec.TxStatus == TxStatus.Aborted)
+            {
+                throw new AbortException();
+            }
+        }
+        static public TpccTablePayload TpccSyncRead(
+            this TransactionExecution txExec, TpccTableKey key)
+        {
+            var v = txExec.SyncRead(key.Table.Name(), key) as TpccTablePayload;
+            ThrowErrorIfAborted(txExec);
+            return v;
+        }
+        static public void TpccSyncUpdate(
+            this TransactionExecution txExec,
+            TpccTableKey key, TpccTablePayload val)
+        {
+            txExec.Update(key.Table.Name(), key, val);
+            ThrowErrorIfAborted(txExec);
+        }
+        static public void TpccSyncInsert(
+            this TransactionExecution txExec,
+            TpccTableKey key, TpccTablePayload val)
+        {
+            txExec.InitAndInsert(key.Table.Name(), key, val);
+            ThrowErrorIfAborted(txExec);
         }
     }
 

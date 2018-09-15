@@ -13,8 +13,10 @@ namespace TransactionBenchmarkTest.TPCC
     {
         static public string Name(this TableType t)
         {
-            return Enum.GetName(typeof(TableType), t);
+            return TableTypeNames[(int)t];
         }
+        static private string[] TableTypeNames =
+            typeof(TableType).GetEnumNames();
 
         static public string ToFilename(this TableType v, string dir = "")
         {
@@ -27,6 +29,7 @@ namespace TransactionBenchmarkTest.TPCC
         HISTORY, ITEM, NEW_ORDER,
         ORDER_LINE, ORDERS, STOCK
     }
+
 
     public abstract class TpccTable
     {
@@ -49,7 +52,7 @@ namespace TransactionBenchmarkTest.TPCC
         /// <summary>
         /// Turn csv string columns to (XXPKey, XXPayload) objects
         /// </summary>
-        public abstract Tuple<object, object> ParseColumns(string[] columns);
+        public abstract Tuple<TpccTableKey, TpccTablePayload> ParseColumns(string[] columns);
 
         public abstract TableType Type();
 
@@ -60,7 +63,8 @@ namespace TransactionBenchmarkTest.TPCC
 
         class Customer : TpccTable
         {
-            public override Tuple<object, object> ParseColumns(string[] columns)
+            public override
+            Tuple<TpccTableKey, TpccTablePayload> ParseColumns(string[] columns)
             {
                 var cpk = new CustomerPkey
                 {
@@ -89,7 +93,7 @@ namespace TransactionBenchmarkTest.TPCC
                     C_DELIVERY_CNT = Convert.ToUInt32(columns[19]),
                     C_DATA = columns[20]
                 };
-                return new Tuple<object, object>(cpk, cpl);
+                return new Tuple<TpccTableKey, TpccTablePayload>(cpk, cpl);
             }
             public override TableType Type()
             {
@@ -99,7 +103,7 @@ namespace TransactionBenchmarkTest.TPCC
 
         class Warehouse : TpccTable
         {
-            public override Tuple<object, object> ParseColumns(string[] columns)
+            public override Tuple<TpccTableKey, TpccTablePayload> ParseColumns(string[] columns)
             {
                 var wpk = new WarehousePkey
                 {
@@ -116,7 +120,7 @@ namespace TransactionBenchmarkTest.TPCC
                     W_TAX = Convert.ToDouble(columns[7]),
                     W_YTD = Convert.ToDouble(columns[8])
                 };
-                return new Tuple<object, object>(wpk, wpl);
+                return new Tuple<TpccTableKey, TpccTablePayload>(wpk, wpl);
             }
 
             public override TableType Type()
@@ -127,7 +131,7 @@ namespace TransactionBenchmarkTest.TPCC
 
         class District : TpccTable
         {
-            public override Tuple<object, object> ParseColumns(string[] columns)
+            public override Tuple<TpccTableKey, TpccTablePayload> ParseColumns(string[] columns)
             {
                 var dpk = new DistrictPkey
                 {
@@ -146,7 +150,7 @@ namespace TransactionBenchmarkTest.TPCC
                     D_YTD = Convert.ToDouble(columns[9]),
                     D_NEXT_O_ID = Convert.ToUInt32(columns[10])
                 };
-                return new Tuple<object, object>(dpk, dpl);
+                return new Tuple<TpccTableKey, TpccTablePayload>(dpk, dpl);
             }
 
             public override TableType Type()
@@ -157,7 +161,7 @@ namespace TransactionBenchmarkTest.TPCC
 
         class Item : TpccTable
         {
-            public override Tuple<object, object> ParseColumns(string[] columns)
+            public override Tuple<TpccTableKey, TpccTablePayload> ParseColumns(string[] columns)
             {
                 var ipk = new ItemPkey
                 {
@@ -170,7 +174,7 @@ namespace TransactionBenchmarkTest.TPCC
                     I_PRICE = Convert.ToDouble(columns[3]),
                     I_DATA = columns[4]
                 };
-                return new Tuple<object, object>(ipk, ipl);
+                return new Tuple<TpccTableKey, TpccTablePayload>(ipk, ipl);
             }
             public override TableType Type()
             {
@@ -180,7 +184,7 @@ namespace TransactionBenchmarkTest.TPCC
 
         class Stock : TpccTable
         {
-            public override Tuple<object, object> ParseColumns(string[] columns)
+            public override Tuple<TpccTableKey, TpccTablePayload> ParseColumns(string[] columns)
             {
                 var spk = new StockPkey
                 {
@@ -205,7 +209,7 @@ namespace TransactionBenchmarkTest.TPCC
                     S_REMOTE_CNT = Convert.ToUInt32(columns[15]),
                     S_DATA = columns[16]
                 };
-                return new Tuple<object, object>(spk, spl);
+                return new Tuple<TpccTableKey, TpccTablePayload>(spk, spl);
             }
             public override TableType Type()
             {
@@ -215,7 +219,7 @@ namespace TransactionBenchmarkTest.TPCC
 
         class Order : TpccTable
         {
-            public override Tuple<object, object> ParseColumns(string[] columns)
+            public override Tuple<TpccTableKey, TpccTablePayload> ParseColumns(string[] columns)
             {
                 var opk = new OrderPkey
                 {
@@ -231,7 +235,7 @@ namespace TransactionBenchmarkTest.TPCC
                     O_OL_CNT = Convert.ToUInt32(columns[6]),
                     O_ALL_LOCAL = Convert.ToUInt32(columns[7])
                 };
-                return new Tuple<object, object>(opk, opl);
+                return new Tuple<TpccTableKey, TpccTablePayload>(opk, opl);
             }
             public override TableType Type()
             {
@@ -241,7 +245,7 @@ namespace TransactionBenchmarkTest.TPCC
 
         class OrderLine : TpccTable
         {
-            public override Tuple<object, object> ParseColumns(string[] columns)
+            public override Tuple<TpccTableKey, TpccTablePayload> ParseColumns(string[] columns)
             {
                 var olpk = new OrderLinePkey
                 {
@@ -259,7 +263,7 @@ namespace TransactionBenchmarkTest.TPCC
                     OL_AMOUNT = Convert.ToDouble(columns[8]),
                     OL_DIST_INFO = columns[9]
                 };
-                return new Tuple<object, object>(olpk, olpl);
+                return new Tuple<TpccTableKey, TpccTablePayload>(olpk, olpl);
             }
             public override TableType Type()
             {
@@ -269,7 +273,7 @@ namespace TransactionBenchmarkTest.TPCC
 
         class NewOrder : TpccTable
         {
-            public override Tuple<object, object> ParseColumns(string[] columns)
+            public override Tuple<TpccTableKey, TpccTablePayload> ParseColumns(string[] columns)
             {
                 var nopk = new NewOrderPkey
                 {
@@ -277,7 +281,7 @@ namespace TransactionBenchmarkTest.TPCC
                     NO_D_ID = Convert.ToUInt32(columns[1]),
                     NO_W_ID = Convert.ToUInt32(columns[2])
                 };
-                return new Tuple<object, object>(nopk, new PayloadPlaceholder());
+                return new Tuple<TpccTableKey, TpccTablePayload>(nopk, new NewOrderPayload());
             }
             public override TableType Type()
             {
@@ -287,7 +291,7 @@ namespace TransactionBenchmarkTest.TPCC
 
         class History : TpccTable
         {
-            public override Tuple<object, object> ParseColumns(string[] columns)
+            public override Tuple<TpccTableKey, TpccTablePayload> ParseColumns(string[] columns)
             {
                 var hpl = new HistoryPayload
                 {
@@ -300,8 +304,8 @@ namespace TransactionBenchmarkTest.TPCC
                     H_AMOUNT = Convert.ToDouble(columns[6]),
                     H_DATA = columns[7]
                 };
-                string hpk = HistoryPayload.GetHPkey();
-                return new Tuple<object, object>(hpk, hpl);
+                HistoryPKey hpk = HistoryPKey.New();
+                return new Tuple<TpccTableKey, TpccTablePayload>(hpk, hpl);
             }
             public override TableType Type()
             {
@@ -309,9 +313,27 @@ namespace TransactionBenchmarkTest.TPCC
             }
         }
     }
-    // Warehouse
-    public class WarehousePkey
+    public class TpccTableKV
     {
+        protected TpccTableKV(TableType type)
+        {
+            this.Table = TpccTable.Instance(type);
+        }
+        public TpccTable Table { get; private set; }
+    }
+    public class TpccTableKey : TpccTableKV
+    {
+        protected TpccTableKey(TableType t) : base(t) { }
+    }
+    public class TpccTablePayload : TpccTableKV
+    {
+        protected TpccTablePayload(TableType t) : base(t) { }
+    }
+    // Warehouse
+    public class WarehousePkey : TpccTableKey
+    {
+        public WarehousePkey() : base(TableType.WAREHOUSE) { }
+
         public uint W_ID;
         public override string ToString()
         {
@@ -329,8 +351,10 @@ namespace TransactionBenchmarkTest.TPCC
             return that != null && this.W_ID == that.W_ID;
         }
     }
-    public class WarehousePayload
+    public class WarehousePayload : TpccTablePayload
     {
+        public WarehousePayload() : base(TableType.WAREHOUSE) { }
+
         public string W_NAME;
         public string W_STREET_1;
         public string W_STREET_2;
@@ -342,8 +366,10 @@ namespace TransactionBenchmarkTest.TPCC
     }
 
     // District
-    public class DistrictPkey
+    public class DistrictPkey : TpccTableKey
     {
+        public DistrictPkey() : base(TableType.DISTRICT) { }
+
         public uint D_ID;
         public uint D_W_ID;
         public override string ToString()
@@ -364,8 +390,10 @@ namespace TransactionBenchmarkTest.TPCC
                 && this.D_W_ID == that.D_W_ID;
         }
     }
-    public class DistrictPayload
+    public class DistrictPayload : TpccTablePayload
     {
+        public DistrictPayload() : base(TableType.DISTRICT) { }
+
         public string D_NAME;
         public string D_STREET_1;
         public string D_STREET_2;
@@ -378,8 +406,10 @@ namespace TransactionBenchmarkTest.TPCC
     }
 
     // Customer
-    public class CustomerPkey
+    public class CustomerPkey : TpccTableKey
     {
+        public CustomerPkey() : base(TableType.CUSTOMER) { }
+
         public uint C_ID;
         public uint C_D_ID;
         public uint C_W_ID;
@@ -404,8 +434,10 @@ namespace TransactionBenchmarkTest.TPCC
                 && this.C_W_ID == that.C_W_ID;
         }
     }
-    public class CustomerLastNameIndexKey
+    public class CustomerLastNameIndexKey : TpccTableKey
     {
+        public CustomerLastNameIndexKey() : base(TableType.CUSTOMER) { }
+
         public uint C_W_ID;
         public uint C_D_ID;
         public string C_LAST;
@@ -435,8 +467,25 @@ namespace TransactionBenchmarkTest.TPCC
             };
         }
     }
-    public class CustomerPayload
+    public class CustomerLastNamePayloads : TpccTablePayload
     {
+        public CustomerLastNamePayloads() : base(TableType.CUSTOMER) { }
+        public uint GetRequiredId()
+        {
+            return C_IDs[C_IDs.Length / 2];
+        }
+        static public CustomerLastNamePayloads FromList(List<uint> cids)
+        {
+            uint[] cid_array = cids.ToArray();
+            Array.Sort(cid_array);
+            return new CustomerLastNamePayloads { C_IDs = cid_array };
+        }
+        public uint[] C_IDs;
+    }
+    public class CustomerPayload : TpccTablePayload
+    {
+        public CustomerPayload() : base(TableType.CUSTOMER) { }
+
         public string C_FIRST;
         public string C_MIDDLE;
         public string C_LAST;
@@ -466,9 +515,23 @@ namespace TransactionBenchmarkTest.TPCC
         }
     }
 
-    // HISTORY primary key is uuid
-    public class HistoryPayload
+    public class HistoryPKey : TpccTableKey
     {
+        static public HistoryPKey New()
+        {
+            return new HistoryPKey { GUID = HistoryPayload.GetHPkey() };
+        }
+
+        public HistoryPKey() : base(TableType.HISTORY) { }
+
+        public string GUID;
+    }
+
+    // HISTORY primary key is uuid
+    public class HistoryPayload : TpccTablePayload
+    {
+        public HistoryPayload() : base(TableType.HISTORY) { }
+
         public uint H_C_ID;
         public uint H_C_D_ID;
         public uint H_C_W_ID;
@@ -485,8 +548,10 @@ namespace TransactionBenchmarkTest.TPCC
     }
 
     // NEW-ORDER
-    public class NewOrderPkey
+    public class NewOrderPkey : TpccTableKey
     {
+        public NewOrderPkey() : base(TableType.NEW_ORDER) { }
+
         public uint NO_O_ID;
         public uint NO_D_ID;
         public uint NO_W_ID;
@@ -511,14 +576,28 @@ namespace TransactionBenchmarkTest.TPCC
                 && this.NO_W_ID == that.NO_W_ID;
         }
     }
-    public class NewOrderPayload    // no use
+    public class NewOrderPayload : TpccTablePayload    // no use
     {
+        public NewOrderPayload() : base(TableType.NEW_ORDER) { }
+
+        static public NewOrderPayload Placeholder()
+        {
+            if (NewOrderPayload.instance == null)
+            {
+                NewOrderPayload.instance = new NewOrderPayload();
+            }
+            return NewOrderPayload.instance;
+        }
+        static private NewOrderPayload instance = null;
+        /*
         public char NO_PL;  // Specially, it is just a placeholder character `*`, not json string
+        */
     }
 
     // ORDER
-    public class OrderPkey
+    public class OrderPkey : TpccTableKey
     {
+        public OrderPkey() : base(TableType.ORDERS) { }
         public uint O_ID;
         public uint O_D_ID;
         public uint O_W_ID;
@@ -544,8 +623,9 @@ namespace TransactionBenchmarkTest.TPCC
                 && this.O_W_ID == that.O_W_ID;
         }
     }
-    public class OrderPayload
+    public class OrderPayload : TpccTablePayload
     {
+        public OrderPayload() : base(TableType.ORDERS) { }
         public uint O_C_ID;
         public string O_ENTRY_D;
         public uint O_CARRIER_ID;
@@ -554,8 +634,9 @@ namespace TransactionBenchmarkTest.TPCC
     }
 
     // ORDER LINE
-    public class OrderLinePkey
+    public class OrderLinePkey : TpccTableKey
     {
+        public OrderLinePkey() : base(TableType.ORDER_LINE) { }
         public uint OL_O_ID;
         public uint OL_D_ID;
         public uint OL_W_ID;
@@ -583,8 +664,10 @@ namespace TransactionBenchmarkTest.TPCC
                 && this.OL_NUMBER == that.OL_NUMBER;
         }
     }
-    public class OrderLinePayload
+    public class OrderLinePayload : TpccTablePayload
     {
+        public OrderLinePayload() : base(TableType.ORDER_LINE) { }
+
         public uint OL_I_ID;
         public uint OL_SUPPLY_W_ID;
         public string OL_DELIVERY_D;
@@ -594,8 +677,10 @@ namespace TransactionBenchmarkTest.TPCC
     }
 
     // ITEM
-    public class ItemPkey
+    public class ItemPkey : TpccTableKey
     {
+        public ItemPkey() : base(TableType.ITEM) { }
+
         public uint I_ID;
         public override string ToString()
         {
@@ -613,8 +698,9 @@ namespace TransactionBenchmarkTest.TPCC
             return that != null && this.I_ID == that.I_ID;
         }
     }
-    public class ItemPayload
+    public class ItemPayload : TpccTablePayload
     {
+        public ItemPayload() : base(TableType.ITEM) { }
         public uint I_IM_ID;
         public string I_NAME;
         public double I_PRICE;
@@ -622,8 +708,10 @@ namespace TransactionBenchmarkTest.TPCC
     }
 
     // STOCK
-    public class StockPkey
+    public class StockPkey : TpccTableKey
     {
+        public StockPkey() : base(TableType.STOCK) { }
+
         public uint S_I_ID;
         public uint S_W_ID;
         public override string ToString()
@@ -645,8 +733,10 @@ namespace TransactionBenchmarkTest.TPCC
         }
 
     }
-    public class StockPayload
+    public class StockPayload : TpccTablePayload
     {
+        public StockPayload() : base(TableType.STOCK) { }
+
         public int S_QUANTITY;
         public string S_DIST_01;
         public string S_DIST_02;
