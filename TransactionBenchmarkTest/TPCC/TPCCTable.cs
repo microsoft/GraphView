@@ -22,6 +22,15 @@ namespace TransactionBenchmarkTest.TPCC
         {
             return $"{dir}\\{v.Name()}.csv";
         }
+        static public int HashFields(params object[] objs)
+        {
+            int hash = 17;
+            foreach (var obj in objs)
+            {
+                hash = hash * 23 + obj.GetHashCode();
+            }
+            return hash;
+        }
     }
     public enum TableType
     {
@@ -379,7 +388,7 @@ namespace TransactionBenchmarkTest.TPCC
 
         public override int GetHashCode()
         {
-            return this.D_ID.GetHashCode() ^ this.D_W_ID.GetHashCode();
+            return TableUtil.HashFields(this.D_ID, this.D_W_ID);
         }
 
         public override bool Equals(object obj)
@@ -420,9 +429,7 @@ namespace TransactionBenchmarkTest.TPCC
 
         public override int GetHashCode()
         {
-            return this.C_ID.GetHashCode()
-                 ^ this.C_D_ID.GetHashCode()
-                 ^ this.C_W_ID.GetHashCode();
+            return TableUtil.HashFields(this.C_ID, this.C_D_ID, this.C_W_ID);
         }
 
         public override bool Equals(object obj)
@@ -444,9 +451,7 @@ namespace TransactionBenchmarkTest.TPCC
 
         public override int GetHashCode()
         {
-            return this.C_W_ID.GetHashCode()
-                 ^ this.C_D_ID.GetHashCode()
-                 ^ this.C_LAST.GetHashCode();
+            return TableUtil.HashFields(this.C_W_ID, this.C_D_ID, this.C_LAST);
         }
         public override bool Equals(object obj)
         {
@@ -562,9 +567,8 @@ namespace TransactionBenchmarkTest.TPCC
 
         public override int GetHashCode()
         {
-            return NO_D_ID.GetHashCode()
-                 ^ NO_D_ID.GetHashCode()
-                 ^ NO_W_ID.GetHashCode();
+            return TableUtil.HashFields(
+                this.NO_O_ID, this.NO_D_ID, this.NO_W_ID);
         }
 
         public override bool Equals(object obj)
@@ -609,9 +613,7 @@ namespace TransactionBenchmarkTest.TPCC
 
         public override int GetHashCode()
         {
-            return this.O_ID.GetHashCode()
-                 ^ this.O_D_ID.GetHashCode()
-                 ^ this.O_W_ID.GetHashCode();
+            return TableUtil.HashFields(this.O_ID, this.O_D_ID, this.O_W_ID);
         }
 
         public override bool Equals(object obj)
@@ -648,10 +650,8 @@ namespace TransactionBenchmarkTest.TPCC
 
         public override int GetHashCode()
         {
-            return this.OL_O_ID.GetHashCode()
-                 ^ this.OL_D_ID.GetHashCode()
-                 ^ this.OL_W_ID.GetHashCode()
-                 ^ this.OL_NUMBER.GetHashCode();
+            return TableUtil.HashFields(
+                this.OL_D_ID, this.OL_O_ID, this.OL_W_ID, this.OL_NUMBER);
         }
 
         public override bool Equals(object obj)
@@ -721,7 +721,7 @@ namespace TransactionBenchmarkTest.TPCC
 
         public override int GetHashCode()
         {
-            return this.S_I_ID.GetHashCode() ^ this.S_W_ID.GetHashCode();
+            return TableUtil.HashFields(this.S_I_ID, this.S_W_ID);
         }
 
         public override bool Equals(object obj)
