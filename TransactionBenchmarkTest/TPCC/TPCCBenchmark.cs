@@ -6,13 +6,13 @@ using System.Threading.Tasks;
 using ServiceStack.Redis;
 using GraphView.Transaction;
 using System.Threading;
-using Newtonsoft.Json;
 
 namespace TransactionBenchmarkTest.TPCC
 {
     class TPCCWorker
     {
-        private Queue<TPCCWorkload> tpccWorkloadQueue;
+        private WorkloadParam[] parameters;
+        private TPCCWorkload workload;
 
         //private int workloadCount;
         public int commitCount;
@@ -24,26 +24,27 @@ namespace TransactionBenchmarkTest.TPCC
         {
             this.commitCount = this.abortCount = 0;
             this.execution = execution;
-            this.tpccWorkloadQueue = new Queue<TPCCWorkload>();
+            this.parameters = new WorkloadParam[0];
+            this.workload = null;
+        }
+        public void SetWorkload(
+            TPCCWorkload workload, WorkloadParam[] parameters)
+        {
+            this.workload = workload;
+            this.parameters = parameters;
         }
 
         public void Run()
         {
-            foreach (var workload in tpccWorkloadQueue)
+            foreach (var parameter in this.parameters)
             {
-                var ret = workload.Run(execution);
+                var ret = this.workload.Run(execution, parameter);
                 if (ret.txFinalStatus == TxFinalStatus.COMMITTED)
                     this.commitCount++;
                 else if (ret.txFinalStatus == TxFinalStatus.ABORTED)
                     this.abortCount++;
             }
         }
-
-        public void AddWorkload(TPCCWorkload tpccWorkload)
-        {
-            this.tpccWorkloadQueue.Enqueue(tpccWorkload);
-        }
-
     }
 
     class TPCCBenchmark
@@ -89,81 +90,71 @@ namespace TransactionBenchmarkTest.TPCC
             this.tpccWorkers = InititializeWorkers(versionDb);
         }
 
-        public void LoadNewOrderWorkload(string filepath)
+        static private
+        IEnumerable<string[]> ReadWorkloadFile(string filepath)
         {
-            Console.WriteLine("Loading New-Order workload");
             var csvReader = new System.IO.StreamReader(filepath);
-            string line = null;
-            int lineNum = 0;
-            line = csvReader.ReadLine();    // ignore the first line
+            csvReader.ReadLine();    // skip csv header
 
-            int workloadTotal = workerCount * workloadCountPerWorker;
-
-            while ((line = csvReader.ReadLine()) != null)       // if not enough?
+            for (string line; (line = csvReader.ReadLine()) != null;)
             {
                 string[] columns = line.Split(new string[] { Constants.WorkloadDelimiter }, StringSplitOptions.None);
                 for (int j = 0; j < columns.Length; j++) { columns[j] = columns[j].Substring(1); }
                 columns[columns.Length - 1] = columns[columns.Length - 1].Substring(0, columns[columns.Length - 1].Length - 1); // remove `"`
-
-                var no = new NewOrderInParameters
-                {
-                    timestamp = columns[0],
-                    W_ID = Convert.ToUInt32(columns[5]),
-                    D_ID = Convert.ToUInt32(columns[3]),
-                    C_ID = Convert.ToUInt32(columns[1]),
-                    OL_I_IDs = JsonConvert.DeserializeObject<uint[]>(columns[6]),
-                    OL_SUPPLY_W_IDs = JsonConvert.DeserializeObject<uint[]>(columns[4]),
-                    OL_QUANTITYs = JsonConvert.DeserializeObject<uint[]>(columns[2]),
-                    O_ENTRY_D = columns[7]
-                };
-
-                int i = lineNum++ / workloadCountPerWorker;
-
-                TPCCNewOrderWorkload neworder = new TPCCNewOrderWorkload(no/*, this.tpccWorkers[i].vdb, this.tpccWorkers[i].redisClient*/);
-                this.tpccWorkers[i].AddWorkload(neworder);
-
-                if (lineNum == workloadTotal) break;
+                yield return columns;
             }
-            if (lineNum != workloadTotal) throw new Exception("there is no enough workload");
+        }
+
+        static private List<WorkloadParam> EnumeratorTake(
+            IEnumerator<WorkloadParam> iter, int n)
+        {
+            List<WorkloadParam> result = new List<WorkloadParam>(n);
+            for (int i = 0; i < n && iter.MoveNext(); ++i)
+            {
+                result.Add(iter.Current);
+            }
+            return result;
+        }
+
+        static private Exception NotEnoughWorkload(
+            int i, List<WorkloadParam> parameters, int shouldBe)
+        {
+            return new Exception(
+                $"Not enough workload for worker {i}, " +
+                $"only {parameters.Count} loaded, " +
+                $"should be {shouldBe}");
+        }
+
+        public void LoadWorkload(WorkloadFactory factory, string filepath)
+        {
+            IEnumerator<WorkloadParam> paramIter =
+                ReadWorkloadFile(filepath)
+                    .Select(factory.ColumnsToParam).GetEnumerator();
+            for (int i = 0; i < this.tpccWorkers.Length; ++i)
+            {
+                List<WorkloadParam> parameters = EnumeratorTake(
+                    paramIter, this.workloadCountPerWorker);
+                if (parameters.Count != this.workloadCountPerWorker)
+                {
+                    throw NotEnoughWorkload(
+                        i, parameters, this.workloadCountPerWorker);
+                }
+                this.tpccWorkers[i].SetWorkload(
+                    factory.NewWorkload(), parameters.ToArray());
+            }
+        }
+
+
+        public void LoadNewOrderWorkload(string filepath)
+        {
+            Console.WriteLine("Loading NEW_ORDER workload...");
+            LoadWorkload(new NewOrderWorkloadFactory(), filepath);
         }
 
         public void LoadPaymentWorkload(string filepath)
         {
             Console.WriteLine("Loading PAYMENT workload...");
-            var csvReader = new System.IO.StreamReader(filepath);
-            string line = null;
-            int lineNum = 0;
-            line = csvReader.ReadLine();    // ignore the first line: header
-
-            int workloadTotal = workerCount * workloadCountPerWorker;
-
-            while ((line = csvReader.ReadLine()) != null)
-            {
-                string[] columns = line.Split(new string[] { Constants.WorkloadDelimiter }, StringSplitOptions.None);
-                for (int j = 0; j < columns.Length; j++) { columns[j] = columns[j].Substring(1); }
-                columns[columns.Length - 1] = columns[columns.Length - 1].Substring(0, columns[columns.Length - 1].Length - 1); // remove `"`
-
-                var pm = new PaymentInParameters
-                {
-                    timestamp = columns[0],
-                    C_ID = (columns[1] == "" ? 0 : Convert.ToUInt32(columns[1])),
-                    C_LAST = columns[2],    // may be ""
-                    H_DATE = columns[3],
-                    C_D_ID = Convert.ToUInt32(columns[4]),
-                    D_ID = Convert.ToUInt32(columns[5]),
-                    W_ID = Convert.ToUInt32(columns[6]),
-                    C_W_ID = Convert.ToUInt32(columns[7]),
-                    H_AMOUNT = Convert.ToDouble(columns[8])
-                };
-
-                int i = lineNum++ / workloadCountPerWorker;
-
-                TPCCPaymentWorkload pmw = new TPCCPaymentWorkload(pm/*, this.tpccWorkers[i].vdb, this.tpccWorkers[i].redisClient*/);
-                this.tpccWorkers[i].AddWorkload(pmw);
-
-                if (lineNum == workloadTotal) break;
-            }
-            if (lineNum != workloadTotal) throw new Exception("there is no enough workload");
+            LoadWorkload(new PaymentWorkloadFactory(), filepath);
         }
 
         public void Run()
@@ -184,6 +175,14 @@ namespace TransactionBenchmarkTest.TPCC
             }
 
             this.endTicks = DateTime.Now.Ticks;
+        }
+
+        public void PrintStats()
+        {
+            int committed = this.tpccWorkers.Select(worker => worker.commitCount).Sum();
+            int aborted = this.tpccWorkers.Select(worker => worker.abortCount).Sum();
+            Console.WriteLine($"Committed: {committed}, aborted: {aborted}");
+            Console.WriteLine($"Abort rate: {(double)aborted / (committed + aborted):F3}");
         }
 
         internal int Throughput

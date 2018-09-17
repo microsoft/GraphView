@@ -9,7 +9,8 @@ using GraphView.Transaction;
 
 namespace TransactionBenchmarkTest.TPCC
 {
-    class NewOrderInParameters
+    public class WorkloadParam { }
+    class NewOrderInParameters : WorkloadParam
     {
         public string timestamp;
         public uint W_ID;
@@ -28,7 +29,7 @@ namespace TransactionBenchmarkTest.TPCC
         public CustomerPayload cpl;
     }
 
-    class PaymentInParameters
+    class PaymentInParameters : WorkloadParam
     {
         public string timestamp;
         public uint W_ID;
@@ -56,30 +57,69 @@ namespace TransactionBenchmarkTest.TPCC
 
     abstract class TPCCWorkload
     {
-        protected object inParams;
-        // protected RedisClient redisClient;
-        // protected VersionDb vdb;
-        public TPCCWorkload(object inParams/*, VersionDb vdb, RedisClient redisClient*/)
+        public abstract
+        TPCCWorkloadOutput Run(TransactionExecution exec, WorkloadParam param);
+    }
+
+    abstract class WorkloadFactory
+    {
+        public abstract TPCCWorkload NewWorkload();
+        public abstract WorkloadParam ColumnsToParam(string[] columns);
+    }
+
+    class NewOrderWorkloadFactory : WorkloadFactory
+    {
+        public override TPCCWorkload NewWorkload()
         {
-            this.inParams = inParams;
-            // this.vdb = vdb;
-            // this.redisClient = redisClient;
+            return new TPCCNewOrderWorkload();
         }
 
-        public abstract TPCCWorkloadOutput Run(TransactionExecution exec);
+        public override WorkloadParam ColumnsToParam(string[] columns)
+        {
+            return new NewOrderInParameters
+            {
+                timestamp = columns[0],
+                W_ID = Convert.ToUInt32(columns[5]),
+                D_ID = Convert.ToUInt32(columns[3]),
+                C_ID = Convert.ToUInt32(columns[1]),
+                OL_I_IDs = JsonConvert.DeserializeObject<uint[]>(columns[6]),
+                OL_SUPPLY_W_IDs = JsonConvert.DeserializeObject<uint[]>(columns[4]),
+                OL_QUANTITYs = JsonConvert.DeserializeObject<uint[]>(columns[2]),
+                O_ENTRY_D = columns[7]
+            };
+        }
+    }
+    class PaymentWorkloadFactory : WorkloadFactory
+    {
+        public override TPCCWorkload NewWorkload()
+        {
+            return new TPCCPaymentWorkload();
+        }
+
+        public override WorkloadParam ColumnsToParam(string[] columns)
+        {
+            return new PaymentInParameters
+            {
+                timestamp = columns[0],
+                C_ID = (columns[1] == "" ? 0 : Convert.ToUInt32(columns[1])),
+                C_LAST = columns[2],    // may be ""
+                H_DATE = columns[3],
+                C_D_ID = Convert.ToUInt32(columns[4]),
+                D_ID = Convert.ToUInt32(columns[5]),
+                W_ID = Convert.ToUInt32(columns[6]),
+                C_W_ID = Convert.ToUInt32(columns[7]),
+                H_AMOUNT = Convert.ToDouble(columns[8])
+            };
+        }
     }
 
 
 
     class TPCCNewOrderWorkload : TPCCWorkload
     {
-        public TPCCNewOrderWorkload(object inParams/*, VersionDb vdb, RedisClient redisClient*/) : base(inParams/*, vdb, redisClient*/)
+        public override TPCCWorkloadOutput Run(TransactionExecution exec, WorkloadParam param)
         {
-        }
-
-        public override TPCCWorkloadOutput Run(TransactionExecution exec)
-        {
-            NewOrderInParameters input = (NewOrderInParameters)this.inParams;
+            NewOrderInParameters input = (NewOrderInParameters)param;
             TPCCWorkloadOutput ret = new TPCCWorkloadOutput();
             ret.txFinalStatus = TxFinalStatus.UNKNOWN;
             exec.Reset();
@@ -245,13 +285,9 @@ namespace TransactionBenchmarkTest.TPCC
 
     class TPCCPaymentWorkload : TPCCWorkload
     {
-        public TPCCPaymentWorkload(object inParams/*, VersionDb vdb, RedisClient redisClient*/) : base(inParams/*, vdb, redisClient*/)
+        public override TPCCWorkloadOutput Run(TransactionExecution exec, WorkloadParam param)
         {
-        }
-
-        public override TPCCWorkloadOutput Run(TransactionExecution exec)
-        {
-            PaymentInParameters input = (PaymentInParameters)this.inParams;
+            PaymentInParameters input = (PaymentInParameters)param;
             TPCCWorkloadOutput ret = new TPCCWorkloadOutput();
             ret.txFinalStatus = TxFinalStatus.UNKNOWN;
             // Transaction tx = new Transaction(null, vdb);
@@ -360,6 +396,4 @@ namespace TransactionBenchmarkTest.TPCC
             return ret;
         }
     }
-
-
 }
