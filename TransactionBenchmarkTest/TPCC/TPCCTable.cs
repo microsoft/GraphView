@@ -359,6 +359,10 @@ namespace TransactionBenchmarkTest.TPCC
             WarehousePkey that = obj as WarehousePkey;
             return that != null && this.W_ID == that.W_ID;
         }
+        public void Set(uint W_ID)
+        {
+            this.W_ID = W_ID;
+        }
     }
     public class WarehousePayload : TpccTablePayload
     {
@@ -397,6 +401,12 @@ namespace TransactionBenchmarkTest.TPCC
             return that != null
                 && this.D_ID == that.D_ID
                 && this.D_W_ID == that.D_W_ID;
+        }
+
+        public void Set(uint D_ID, uint D_W_ID)
+        {
+            this.D_ID = D_ID;
+            this.D_W_ID = D_W_ID;
         }
     }
     public class DistrictPayload : TpccTablePayload
@@ -440,6 +450,13 @@ namespace TransactionBenchmarkTest.TPCC
                 && this.C_D_ID == that.C_D_ID
                 && this.C_W_ID == that.C_W_ID;
         }
+
+        public void Set(uint C_ID, uint C_D_ID, uint C_W_ID)
+        {
+            this.C_ID = C_ID;
+            this.C_D_ID = C_D_ID;
+            this.C_W_ID = C_W_ID;
+        }
     }
     public class CustomerLastNameIndexKey : TpccTableKey
     {
@@ -461,6 +478,14 @@ namespace TransactionBenchmarkTest.TPCC
                 && this.C_D_ID == that.C_D_ID
                 && this.C_LAST == that.C_LAST;
         }
+
+        public void Set(uint C_W_ID, uint C_D_ID, string C_LAST)
+        {
+            this.C_W_ID = C_W_ID;
+            this.C_D_ID = C_D_ID;
+            this.C_LAST = C_LAST;
+        }
+
         static public CustomerLastNameIndexKey
         FromPKeyAndPayload(CustomerPkey cpk, CustomerPayload cpl)
         {
@@ -697,6 +722,11 @@ namespace TransactionBenchmarkTest.TPCC
             ItemPkey that = obj as ItemPkey;
             return that != null && this.I_ID == that.I_ID;
         }
+
+        public void Set(uint I_ID)
+        {
+            this.I_ID = I_ID;
+        }
     }
     public class ItemPayload : TpccTablePayload
     {
@@ -730,6 +760,12 @@ namespace TransactionBenchmarkTest.TPCC
             return that != null
                 && this.S_I_ID == that.S_I_ID
                 && this.S_W_ID == that.S_W_ID;
+        }
+
+        public void Set(uint S_I_ID, uint S_W_ID)
+        {
+            this.S_I_ID = S_I_ID;
+            this.S_W_ID = S_W_ID;
         }
 
     }

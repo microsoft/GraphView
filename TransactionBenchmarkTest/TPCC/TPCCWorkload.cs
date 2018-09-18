@@ -117,11 +117,25 @@ namespace TransactionBenchmarkTest.TPCC
 
     class TPCCNewOrderWorkload : TPCCWorkload
     {
+        private const int MAX_ITEM_NUM = 15;
+
+        private WarehousePkey wpk = new WarehousePkey();
+        private DistrictPkey dpk = new DistrictPkey();
+        private CustomerPkey cpk = new CustomerPkey();
+        private TxObjPoolList<ItemPkey> ipks =
+            new TxObjPoolList<ItemPkey>(MAX_ITEM_NUM);
+        private ItemPayload[] items =
+            new ItemPayload[TPCCNewOrderWorkload.MAX_ITEM_NUM];
+        private TxObjPoolList<StockPkey> spks =
+            new TxObjPoolList<StockPkey>(MAX_ITEM_NUM);
+
+        private NewOrderOutput noOutput = new NewOrderOutput();
+        private TPCCWorkloadOutput ret = new TPCCWorkloadOutput();
+
         public override TPCCWorkloadOutput Run(TransactionExecution exec, WorkloadParam param)
         {
             NewOrderInParameters input = (NewOrderInParameters)param;
-            TPCCWorkloadOutput ret = new TPCCWorkloadOutput();
-            ret.txFinalStatus = TxFinalStatus.UNKNOWN;
+            this.ret.txFinalStatus = TxFinalStatus.UNKNOWN;
             exec.Reset();
             // Transaction tx = new Transaction(null, vdb);
             try
@@ -142,31 +156,31 @@ namespace TransactionBenchmarkTest.TPCC
                 }
 
                 // whether all items exist without a wrong item number
-                ItemPayload[] items = new ItemPayload[input.OL_I_IDs.Length];
+                ipks.Clear();
                 for (int i = 0; i < input.OL_I_IDs.Length; i++)
                 {
-                    ItemPkey ipk = new ItemPkey { I_ID = input.OL_I_IDs[i] };
+                    ItemPkey ipk = ipks.AllocateNew();
+                    ipk.Set(I_ID: input.OL_I_IDs[i]);
                     // var str = (string)tx.Read(Constants.DefaultTbl, ipk.ToString());
-                    var ipl = exec.TpccSyncRead(ipk) as ItemPayload;
                     // items[i] = JsonConvert.DeserializeObject<ItemPayload>(str);
-                    items[i] = ipl;
+                    this.items[i] = exec.TpccSyncRead(ipk) as ItemPayload;
                 }
 
                 // read Warehouse,District, Customer
-                WarehousePkey wpk = new WarehousePkey { W_ID = input.W_ID };
+                this.wpk.Set(W_ID: input.W_ID);
                 // WarehousePayload wpl = JsonConvert.DeserializeObject<WarehousePayload>((string)tx.Read(Constants.DefaultTbl, wpk.ToString()));
-                WarehousePayload wpl = exec.TpccSyncRead(wpk) as WarehousePayload;
+                WarehousePayload wpl = exec.TpccSyncRead(this.wpk) as WarehousePayload;
                 double W_TAX = wpl.W_TAX;
 
-                DistrictPkey dpk = new DistrictPkey { D_ID = input.D_ID, D_W_ID = input.W_ID };
+                this.dpk.Set(D_ID: input.D_ID, D_W_ID: input.W_ID);
                 // DistrictPayload dpl = JsonConvert.DeserializeObject<DistrictPayload>((string)tx.Read(Constants.DefaultTbl, dpk.ToString()));
-                DistrictPayload dpl = exec.TpccSyncRead(dpk) as DistrictPayload;
+                DistrictPayload dpl = exec.TpccSyncRead(this.dpk) as DistrictPayload;
                 double D_TAX = dpl.D_TAX;
                 uint D_NEXT_O_ID = dpl.D_NEXT_O_ID;
 
-                CustomerPkey cpk = new CustomerPkey { C_ID = input.C_ID, C_D_ID = input.D_ID, C_W_ID = input.W_ID };
+                this.cpk.Set(C_ID: input.C_ID, C_D_ID: input.D_ID, C_W_ID: input.W_ID);
                 // CustomerPayload cpl = JsonConvert.DeserializeObject<CustomerPayload>((string)tx.Read(Constants.DefaultTbl, cpk.ToString()));
-                CustomerPayload cpl = exec.TpccSyncRead(cpk) as CustomerPayload;
+                CustomerPayload cpl = exec.TpccSyncRead(this.cpk) as CustomerPayload;
                 double C_DISCOUNT = cpl.C_DISCOUNT;
 
                 // insert order/new-order, update next-order-id
@@ -204,6 +218,7 @@ namespace TransactionBenchmarkTest.TPCC
 
                 // insert order lines
                 Tuple<string, int, char, double, double>[] itemsData = new Tuple<string, int, char, double, double>[input.OL_I_IDs.Length];
+                this.spks.Clear();
                 var total = 0.0;
                 for (int i = 0; i < input.OL_I_IDs.Length; i++)
                 {
@@ -212,12 +227,13 @@ namespace TransactionBenchmarkTest.TPCC
                     var OL_I_ID = input.OL_I_IDs[i];
                     var OL_QUANTITY = input.OL_QUANTITYs[i];
 
-                    var I_NAME = items[i].I_NAME;
-                    var I_DATA = items[i].I_DATA;
-                    var I_PRICE = items[i].I_PRICE;
+                    var I_NAME = this.items[i].I_NAME;
+                    var I_DATA = this.items[i].I_DATA;
+                    var I_PRICE = this.items[i].I_PRICE;
 
                     // read & update stock info
-                    var spk = new StockPkey { S_I_ID = OL_I_ID, S_W_ID = OL_SUPPLY_W_ID };
+                    StockPkey spk = this.spks.AllocateNew();
+                    spk.Set(S_I_ID: OL_I_ID, S_W_ID: OL_SUPPLY_W_ID);
                     // StockPayload spl = JsonConvert.DeserializeObject<StockPayload>((string)tx.Read(Constants.DefaultTbl, spk.ToString()));
                     StockPayload spl = exec.TpccSyncRead(spk) as StockPayload;
                     spl.S_YTD += OL_QUANTITY;
@@ -262,20 +278,19 @@ namespace TransactionBenchmarkTest.TPCC
 
                 // to return
                 total *= (1 - C_DISCOUNT) * (1 + W_TAX + D_TAX);
-                NewOrderOutput noOutput = new NewOrderOutput();
-                noOutput.other = new Tuple<double, double, uint, double>(W_TAX, D_TAX, D_NEXT_O_ID, total);
-                noOutput.itemsData = itemsData;
-                noOutput.cpl = cpl;
-                ret.data = noOutput;
+                this.noOutput.other = new Tuple<double, double, uint, double>(W_TAX, D_TAX, D_NEXT_O_ID, total);
+                this.noOutput.itemsData = itemsData;
+                this.noOutput.cpl = cpl;
+                this.ret.data = noOutput;
 
                 // tx.Commit();
                 exec.Commit();
-                ret.txFinalStatus = TxFinalStatus.COMMITTED;
+                this.ret.txFinalStatus = TxFinalStatus.COMMITTED;
             }
             catch (AbortException e)
             {
                 // tx.Abort();     // TODO is it right? if e is a TransactionException ?
-                ret.txFinalStatus = TxFinalStatus.ABORTED;
+                this.ret.txFinalStatus = TxFinalStatus.ABORTED;
             }
 
             return ret;
@@ -285,11 +300,19 @@ namespace TransactionBenchmarkTest.TPCC
 
     class TPCCPaymentWorkload : TPCCWorkload
     {
+        private WarehousePkey wpk = new WarehousePkey();
+        private DistrictPkey dpk = new DistrictPkey();
+        private CustomerPkey cpk = new CustomerPkey();
+        private CustomerLastNameIndexKey lastNameKey =
+            new CustomerLastNameIndexKey();
+
+        private TPCCWorkloadOutput ret = new TPCCWorkloadOutput();
+        private PaymentOutput pmOutput = new PaymentOutput();
+
         public override TPCCWorkloadOutput Run(TransactionExecution exec, WorkloadParam param)
         {
             PaymentInParameters input = (PaymentInParameters)param;
-            TPCCWorkloadOutput ret = new TPCCWorkloadOutput();
-            ret.txFinalStatus = TxFinalStatus.UNKNOWN;
+            this.ret.txFinalStatus = TxFinalStatus.UNKNOWN;
             // Transaction tx = new Transaction(null, vdb);
             exec.Reset();
             try
@@ -306,44 +329,40 @@ namespace TransactionBenchmarkTest.TPCC
                 {
                     // var lastNameKey = new LastNameIndexKey(
                     //     input.C_W_ID, input.C_D_ID, input.C_LAST);
-                    var lastNameKey = new CustomerLastNameIndexKey
-                    {
-                        C_W_ID = input.C_W_ID,
-                        C_D_ID = input.C_D_ID,
-                        C_LAST = input.C_LAST
-                    };
-                    var lastNamePayload = exec.TpccSyncRead(lastNameKey)
+                    this.lastNameKey.Set(
+                        C_W_ID: input.C_W_ID,
+                        C_D_ID: input.C_D_ID,
+                        C_LAST: input.C_LAST);
+                    var lastNamePayload = exec.TpccSyncRead(this.lastNameKey)
                         as CustomerLastNamePayloads;
                     C_ID = lastNamePayload.GetRequiredId();
                 }
 
-                var cpk = new CustomerPkey
-                {
-                    C_ID = C_ID,
-                    C_D_ID = input.C_D_ID,
-                    C_W_ID = input.C_W_ID
-                };
+                this.cpk.Set(
+                    C_ID: C_ID,
+                    C_D_ID: input.C_D_ID,
+                    C_W_ID: input.C_W_ID);
                 // var cpl = JsonConvert.DeserializeObject<CustomerPayload>((string)tx.Read(Constants.DefaultTbl, cpk.ToString()));
-                var cpl = exec.TpccSyncRead(cpk) as CustomerPayload;
+                var cpl = exec.TpccSyncRead(this.cpk) as CustomerPayload;
                 cpl.C_BALANCE -= input.H_AMOUNT;
                 cpl.C_YTD_PAYMENT += input.H_AMOUNT;
                 cpl.C_PAYMENT_CNT += 1;
                 //var C_DATA = cpl.C_DATA;
 
                 // warehouse, district
-                var wpk = new WarehousePkey { W_ID = input.W_ID };
+                this.wpk.Set(W_ID: input.W_ID);
                 // var wpl = JsonConvert.DeserializeObject<WarehousePayload>((string)tx.Read(Constants.DefaultTbl, wpk.ToString()));
-                var wpl = exec.TpccSyncRead(wpk) as WarehousePayload;
+                var wpl = exec.TpccSyncRead(this.wpk) as WarehousePayload;
                 wpl.W_YTD += input.H_AMOUNT;
                 // tx.Update(Constants.DefaultTbl, wpk.ToString(), JsonConvert.SerializeObject(wpl));
-                exec.TpccSyncUpdate(wpk, wpl);
+                exec.TpccSyncUpdate(this.wpk, wpl);
 
-                var dpk = new DistrictPkey { D_ID = input.D_ID, D_W_ID = input.W_ID };
+                this.dpk.Set(D_ID: input.D_ID, D_W_ID: input.W_ID);
                 // var dpl = JsonConvert.DeserializeObject<DistrictPayload>((string)tx.Read(Constants.DefaultTbl, dpk.ToString()));
-                var dpl = exec.TpccSyncRead(dpk) as DistrictPayload;
+                var dpl = exec.TpccSyncRead(this.dpk) as DistrictPayload;
                 dpl.D_YTD += input.H_AMOUNT;
                 // tx.Update(Constants.DefaultTbl, dpk.ToString(), JsonConvert.SerializeObject(dpl));
-                exec.TpccSyncUpdate(dpk, dpl);
+                exec.TpccSyncUpdate(this.dpk, dpl);
 
                 // credit info
                 if (cpl.C_CREDIT == Constants.BadCredit)
@@ -357,14 +376,14 @@ namespace TransactionBenchmarkTest.TPCC
                     cpl.C_DATA = newData;
                 }
                 // tx.Update(Constants.DefaultTbl, cpk.ToString(), JsonConvert.SerializeObject(cpl));
-                exec.TpccSyncUpdate(cpk, cpl);
+                exec.TpccSyncUpdate(this.cpk, cpl);
 
                 // history
                 var hpl = new HistoryPayload
                 {
                     H_C_ID = C_ID,
-                    H_C_D_ID = cpk.C_D_ID,
-                    H_C_W_ID = cpk.C_W_ID,
+                    H_C_D_ID = this.cpk.C_D_ID,
+                    H_C_W_ID = this.cpk.C_W_ID,
                     H_D_ID = input.D_ID,
                     H_W_ID = input.W_ID,
                     H_DATA = wpl.W_NAME + "    " + dpl.D_NAME,
@@ -377,20 +396,19 @@ namespace TransactionBenchmarkTest.TPCC
                 exec.TpccSyncInsert(hpk, hpl);
 
                 // to return
-                PaymentOutput pmOutput = new PaymentOutput();
-                pmOutput.wpl = wpl;
-                pmOutput.dpl = dpl;
-                pmOutput.cpl = cpl;  // TODO C_ID may be null in input
-                ret.data = pmOutput;
+                this.pmOutput.wpl = wpl;
+                this.pmOutput.dpl = dpl;
+                this.pmOutput.cpl = cpl;  // TODO C_ID may be null in input
+                this.ret.data = pmOutput;
 
                 // tx.Commit();
                 exec.Commit();
-                ret.txFinalStatus = TxFinalStatus.COMMITTED;
+                this.ret.txFinalStatus = TxFinalStatus.COMMITTED;
             }
             catch (AbortException)
             {
                 // tx.Abort();
-                ret.txFinalStatus = TxFinalStatus.ABORTED;
+                this.ret.txFinalStatus = TxFinalStatus.ABORTED;
             }
 
             return ret;
