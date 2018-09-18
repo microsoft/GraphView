@@ -112,37 +112,42 @@ namespace TransactionBenchmarkTest.TPCC
 
         static void TPCCNewOrderTest(VersionDb versionDb)
         {
-            int workerCount = 2;
-            int workloadCountPerWorker = 2000;
+            int workerCount = versionDb.PartitionCount;
+            int workloadCountPerWorker = 513364;
             Console.WriteLine("\nNEW-ORDER: w={0}, N={1}", workerCount, workloadCountPerWorker);
 
             TPCCBenchmark bench = new TPCCBenchmark(versionDb, workloadCountPerWorker);
             bench.LoadNewOrderWorkload(Constants.NewOrderWorkloadPath);
             bench.Run();
+            bench.PrintStats();
 
             Console.WriteLine("New-Order transaction throught: {0} tx/s", bench.Throughput);
         }
 
         static void TPCCPaymentTest(VersionDb versionDb)
         {
-            int workerCount = 1;
-            int workloadCountPerWorker = 2000;
+            int workerCount = versionDb.PartitionCount;
+            int workloadCountPerWorker = 490443;
             Console.WriteLine("\nPAYMENT: w={0}, N={1}", workerCount, workloadCountPerWorker);
 
             TPCCBenchmark bench = new TPCCBenchmark(versionDb, workloadCountPerWorker);
             bench.LoadPaymentWorkload(Constants.PaymentWorkloadPath);
             bench.Run();
+            bench.PrintStats();
 
             Console.WriteLine("PAYMENT transaction throught: {0} tx/s", bench.Throughput);
         }
 
-        static void SingletonTpccNewOrderTest()
+        static void SingletonTpccPaymentTest()
         {
             SingletonVersionDb versionDb = MakeSingletonVersionDb();
-            // SyncLoadTpccTable(TpccTable.Instance(TableType.ORDERS), versionDb);
             SyncLoadTpccTablesInto(versionDb);
-            GC.Collect();
-            // TPCCNewOrderTest(versionDb);
+            TPCCPaymentTest(versionDb);
+        }
+        static void SingletonTpccNewOrderBenchmark() {
+            SingletonVersionDb versionDb = MakeSingletonVersionDb();
+            SyncLoadTpccTablesInto(versionDb);
+            TPCCNewOrderTest(versionDb);
         }
 
 
@@ -269,7 +274,7 @@ namespace TransactionBenchmarkTest.TPCC
 
         static void Main(string[] args)
         {
-            SingletonTpccNewOrderTest();
+            SingletonTpccPaymentTest();
             getchar('q');
             // LoadTables(Constants.BaseDirOfDatasets);
 

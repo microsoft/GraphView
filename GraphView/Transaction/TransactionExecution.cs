@@ -1214,6 +1214,7 @@ namespace GraphView.Transaction
         public object SyncRead(string tableId, object recordKey) {
             bool dummy1;
             object dummy2;
+            this.ReadPayload = null;
             // Assume this Read never block and return before getting result
             this.Read(tableId, recordKey, false, out dummy1, out dummy2);
             return this.ReadPayload;

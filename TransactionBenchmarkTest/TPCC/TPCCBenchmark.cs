@@ -157,9 +157,21 @@ namespace TransactionBenchmarkTest.TPCC
             LoadWorkload(new PaymentWorkloadFactory(), filepath);
         }
 
+        static double TotalMemoryInMB() {
+            return GC.GetTotalMemory(false) / 1024.0 / 1024.0;
+        }
+
+        static void ForceGC()
+        {
+            Console.WriteLine($"Before GC: {TotalMemoryInMB()}MB is used");
+            GC.Collect();
+            Console.WriteLine($"After GC: {TotalMemoryInMB()}MB is used");
+        }
+
         public void Run()
         {
             Console.WriteLine("Running TPCC workload...");
+            ForceGC();
             this.startTicks = DateTime.Now.Ticks;
 
             Thread[] threads = new Thread[workerCount];
