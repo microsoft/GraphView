@@ -216,6 +216,7 @@
   <ItemGroup>
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="TPCC\CassandraTest.cs" />
+    <Compile Include="TPCC\SyncTpccExecution.cs" />
     <Compile Include="TPCC\TPCCTableLoader.cs" />
     <Compile Include="TPCC\Example.cs" />
     <Compile Include="IDataGenerator.cs" />

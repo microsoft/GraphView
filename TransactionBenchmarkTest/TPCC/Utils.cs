@@ -50,37 +50,4 @@ namespace TransactionBenchmarkTest.TPCC
             public const int Concurrency = 1;
         }
     }
-
-    static class SyncTxExecHelper
-    {
-        static private void ThrowErrorIfAborted(TransactionExecution txExec)
-        {
-            if (txExec.TxStatus == TxStatus.Aborted)
-            {
-                throw new AbortException();
-            }
-        }
-        static public TpccTablePayload TpccSyncRead(
-            this TransactionExecution txExec, TpccTableKey key)
-        {
-            var v = txExec.SyncRead(key.Table.Name(), key) as TpccTablePayload;
-            ThrowErrorIfAborted(txExec);
-            return v;
-        }
-        static public void TpccSyncUpdate(
-            this TransactionExecution txExec,
-            TpccTableKey key, TpccTablePayload val)
-        {
-            txExec.Update(key.Table.Name(), key, val);
-            ThrowErrorIfAborted(txExec);
-        }
-        static public void TpccSyncInsert(
-            this TransactionExecution txExec,
-            TpccTableKey key, TpccTablePayload val)
-        {
-            txExec.InitAndInsert(key.Table.Name(), key, val);
-            ThrowErrorIfAborted(txExec);
-        }
-    }
-
 }

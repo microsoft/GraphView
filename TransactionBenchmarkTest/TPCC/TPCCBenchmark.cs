@@ -18,9 +18,9 @@ namespace TransactionBenchmarkTest.TPCC
         public int commitCount;
         public int abortCount;
 
-        private TransactionExecution execution;
+        private SyncExecution execution;
 
-        public TPCCWorker(TransactionExecution execution)
+        public TPCCWorker(SyncExecution execution)
         {
             this.commitCount = this.abortCount = 0;
             this.execution = execution;
@@ -36,8 +36,9 @@ namespace TransactionBenchmarkTest.TPCC
 
         public void Run()
         {
-            foreach (var parameter in this.parameters)
+            for (int i = 0; i < this.parameters.Length; ++i)
             {
+                WorkloadParam parameter = this.parameters[i];
                 var ret = this.workload.Run(execution, parameter);
                 if (ret.txFinalStatus == TxFinalStatus.COMMITTED)
                     this.commitCount++;
@@ -57,37 +58,23 @@ namespace TransactionBenchmarkTest.TPCC
         private long startTicks;
         private long endTicks;
 
-        static private
-        TransactionExecution[] InitializeExecEnvs(VersionDb versionDb)
+        static TPCCWorker[] InititializeWorkers(SyncExecutionBuilder builder)
         {
-            int workerCount = versionDb.PartitionCount;
-            TransactionExecution[] execs = new TransactionExecution[workerCount];
-            for (int i = 0; i < workerCount; ++i)
-            {
-                execs[i] = new TransactionExecution(
-                    null, versionDb, null, new TxRange(i), i);
-            }
-            return execs;
-        }
-
-        static TPCCWorker[] InititializeWorkers(VersionDb versionDb)
-        {
-            int workerCount = versionDb.PartitionCount;
-            var workers = new TPCCWorker[workerCount];
-            var execs = InitializeExecEnvs(versionDb);
-            for (int i = 0; i < workerCount; ++i)
+            SyncExecution[] execs = builder.BuildAll();
+            var workers = new TPCCWorker[execs.Length];
+            for (int i = 0; i < workers.Length; ++i)
             {
                 workers[i] = new TPCCWorker(execs[i]);
             }
             return workers;
         }
 
-        public TPCCBenchmark(VersionDb versionDb, int workloadCountPerWorker)
+        public TPCCBenchmark(SyncExecutionBuilder builder, int workloadCountPerWorker)
         {
-            this.workerCount = versionDb.PartitionCount;
             this.workloadCountPerWorker = workloadCountPerWorker;
 
-            this.tpccWorkers = InititializeWorkers(versionDb);
+            this.tpccWorkers = InititializeWorkers(builder);
+            this.workerCount = this.tpccWorkers.Length;
         }
 
         static private
@@ -163,9 +150,9 @@ namespace TransactionBenchmarkTest.TPCC
 
         static void ForceGC()
         {
-            Console.WriteLine($"Before GC: {TotalMemoryInMB()}MB is used");
+            Console.WriteLine($"Before GC: {TotalMemoryInMB():F3}MB is used");
             GC.Collect();
-            Console.WriteLine($"After GC: {TotalMemoryInMB()}MB is used");
+            Console.WriteLine($"After GC: {TotalMemoryInMB():F3}MB is used");
         }
 
         public void Run()

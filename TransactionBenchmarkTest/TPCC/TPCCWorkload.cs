@@ -59,12 +59,12 @@ namespace TransactionBenchmarkTest.TPCC
     {
         private TPCCWorkloadOutput output = new TPCCWorkloadOutput();
         public
-        TPCCWorkloadOutput Run(TransactionExecution exec, WorkloadParam param)
+        TPCCWorkloadOutput Run(SyncExecution exec, WorkloadParam param)
         {
             this.output.txFinalStatus = TxFinalStatus.UNKNOWN;
             try
             {
-                exec.Reset();
+                exec.Start();
                 this.output.data = this.ExecuteStoredProcedure(exec, param);
                 this.output.txFinalStatus = TxFinalStatus.COMMITTED;
             }
@@ -76,13 +76,14 @@ namespace TransactionBenchmarkTest.TPCC
         }
 
         protected abstract object ExecuteStoredProcedure(
-            TransactionExecution exec, WorkloadParam param);
+            SyncExecution exec, WorkloadParam param);
     }
 
     abstract class WorkloadFactory
     {
         public abstract TPCCWorkload NewWorkload();
         public abstract WorkloadParam ColumnsToParam(string[] columns);
+        public abstract string Name();
     }
 
     class NewOrderWorkloadFactory : WorkloadFactory
@@ -105,6 +106,11 @@ namespace TransactionBenchmarkTest.TPCC
                 OL_QUANTITYs = JsonConvert.DeserializeObject<uint[]>(columns[2]),
                 O_ENTRY_D = columns[7]
             };
+        }
+
+        public override string Name()
+        {
+            return "NEW_ORDER";
         }
     }
     class PaymentWorkloadFactory : WorkloadFactory
@@ -129,6 +135,11 @@ namespace TransactionBenchmarkTest.TPCC
                 H_AMOUNT = Convert.ToDouble(columns[8])
             };
         }
+
+        public override string Name()
+        {
+            return "PAYMENT";
+        }
     }
 
 
@@ -149,8 +160,8 @@ namespace TransactionBenchmarkTest.TPCC
 
         private NewOrderOutput noOutput = new NewOrderOutput();
 
-        protected override object ExecuteStoredProcedure(
-            TransactionExecution exec, WorkloadParam param)
+        protected override
+        object ExecuteStoredProcedure(SyncExecution exec, WorkloadParam param)
         {
             NewOrderInParameters input = (NewOrderInParameters)param;
 
@@ -179,24 +190,29 @@ namespace TransactionBenchmarkTest.TPCC
                 ipk.Set(I_ID: input.OL_I_IDs[i]);
                 // var str = (string)tx.Read(Constants.DefaultTbl, ipk.ToString());
                 // items[i] = JsonConvert.DeserializeObject<ItemPayload>(str);
-                this.items[i] = exec.TpccSyncRead(ipk) as ItemPayload;
+                TpccTablePayload payload;
+                exec.Read(ipk, out payload);
+                this.items[i] = payload as ItemPayload;
             }
 
             // read Warehouse,District, Customer
             this.wpk.Set(W_ID: input.W_ID);
             // WarehousePayload wpl = JsonConvert.DeserializeObject<WarehousePayload>((string)tx.Read(Constants.DefaultTbl, wpk.ToString()));
-            WarehousePayload wpl = exec.TpccSyncRead(this.wpk) as WarehousePayload;
+            WarehousePayload wpl;
+            exec.ReadCopyAs(this.wpk, out wpl);
             double W_TAX = wpl.W_TAX;
 
             this.dpk.Set(D_ID: input.D_ID, D_W_ID: input.W_ID);
             // DistrictPayload dpl = JsonConvert.DeserializeObject<DistrictPayload>((string)tx.Read(Constants.DefaultTbl, dpk.ToString()));
-            DistrictPayload dpl = exec.TpccSyncRead(this.dpk) as DistrictPayload;
+            DistrictPayload dpl;
+            exec.ReadAs(this.dpk, out dpl);
             double D_TAX = dpl.D_TAX;
             uint D_NEXT_O_ID = dpl.D_NEXT_O_ID;
 
             this.cpk.Set(C_ID: input.C_ID, C_D_ID: input.D_ID, C_W_ID: input.W_ID);
             // CustomerPayload cpl = JsonConvert.DeserializeObject<CustomerPayload>((string)tx.Read(Constants.DefaultTbl, cpk.ToString()));
-            CustomerPayload cpl = exec.TpccSyncRead(this.cpk) as CustomerPayload;
+            CustomerPayload cpl;
+            exec.ReadAs(this.cpk, out cpl);
             double C_DISCOUNT = cpl.C_DISCOUNT;
 
             // insert order/new-order, update next-order-id
@@ -216,11 +232,11 @@ namespace TransactionBenchmarkTest.TPCC
             };
             // tx.ReadAndInitialize(Constants.DefaultTbl, opk.ToString());
             // tx.Insert(Constants.DefaultTbl, opk.ToString(), JsonConvert.SerializeObject(opl));
-            exec.TpccSyncInsert(opk, opl);
+            exec.Insert(opk, opl);
 
             dpl.D_NEXT_O_ID = D_NEXT_O_ID + 1;
             // tx.Update(Constants.DefaultTbl, dpk.ToString(), JsonConvert.SerializeObject(dpl));
-            exec.TpccSyncUpdate(dpk, dpl);
+            exec.Update(dpk, dpl);
 
             NewOrderPkey nopk = new NewOrderPkey
             {
@@ -230,7 +246,7 @@ namespace TransactionBenchmarkTest.TPCC
             };
             // tx.ReadAndInitialize(Constants.DefaultTbl, nopk.ToString());
             // tx.Insert(Constants.DefaultTbl, nopk.ToString(), Constants.PlaceHolder);
-            exec.TpccSyncInsert(nopk, NewOrderPayload.Placeholder());
+            exec.Insert(nopk, NewOrderPayload.Placeholder());
 
             // insert order lines
             Tuple<string, int, char, double, double>[] itemsData = new Tuple<string, int, char, double, double>[input.OL_I_IDs.Length];
@@ -251,7 +267,8 @@ namespace TransactionBenchmarkTest.TPCC
                 StockPkey spk = this.spks.AllocateNew();
                 spk.Set(S_I_ID: OL_I_ID, S_W_ID: OL_SUPPLY_W_ID);
                 // StockPayload spl = JsonConvert.DeserializeObject<StockPayload>((string)tx.Read(Constants.DefaultTbl, spk.ToString()));
-                StockPayload spl = exec.TpccSyncRead(spk) as StockPayload;
+                StockPayload spl;
+                exec.ReadCopyAs<StockPayload>(spk, out spl);
                 spl.S_YTD += OL_QUANTITY;
                 if (spl.S_QUANTITY >= OL_QUANTITY + 10)
                     spl.S_QUANTITY -= (int)OL_QUANTITY;
@@ -260,7 +277,7 @@ namespace TransactionBenchmarkTest.TPCC
                 spl.S_ORDER_CNT += 1;
                 if (input.OL_SUPPLY_W_IDs[i] != input.W_ID) spl.S_REMOTE_CNT += 1;
                 // tx.Update(Constants.DefaultTbl, spk.ToString(), JsonConvert.SerializeObject(spl));
-                exec.TpccSyncUpdate(spk, spl);
+                exec.Update(spk, spl);
 
                 var OL_AMOUNT = OL_QUANTITY * I_PRICE;
                 total += OL_AMOUNT;
@@ -285,7 +302,7 @@ namespace TransactionBenchmarkTest.TPCC
                 };
                 // tx.ReadAndInitialize(Constants.DefaultTbl, olpk.ToString());
                 // tx.Insert(Constants.DefaultTbl, olpk.ToString(), JsonConvert.SerializeObject(olpl));
-                exec.TpccSyncInsert(olpk, olpl);
+                exec.Insert(olpk, olpl);
 
                 // add to return
                 var brand = (I_DATA.Contains("ORIGINAL") && spl.S_DATA.Contains("ORIGINAL")) ? 'B' : 'G';
@@ -316,8 +333,8 @@ namespace TransactionBenchmarkTest.TPCC
 
         private PaymentOutput pmOutput = new PaymentOutput();
 
-        protected override object ExecuteStoredProcedure(
-            TransactionExecution exec, WorkloadParam param)
+        protected override
+        object ExecuteStoredProcedure(SyncExecution exec, WorkloadParam param)
         {
             PaymentInParameters input = (PaymentInParameters)param;
             // Transaction tx = new Transaction(null, vdb);
@@ -338,8 +355,8 @@ namespace TransactionBenchmarkTest.TPCC
                     C_W_ID: input.C_W_ID,
                     C_D_ID: input.C_D_ID,
                     C_LAST: input.C_LAST);
-                var lastNamePayload = exec.TpccSyncRead(this.lastNameKey)
-                    as CustomerLastNamePayloads;
+                CustomerLastNamePayloads lastNamePayload;
+                exec.ReadAs(this.lastNameKey, out lastNamePayload);
                 C_ID = lastNamePayload.GetRequiredId();
             }
 
@@ -348,7 +365,8 @@ namespace TransactionBenchmarkTest.TPCC
                 C_D_ID: input.C_D_ID,
                 C_W_ID: input.C_W_ID);
             // var cpl = JsonConvert.DeserializeObject<CustomerPayload>((string)tx.Read(Constants.DefaultTbl, cpk.ToString()));
-            var cpl = exec.TpccSyncRead(this.cpk) as CustomerPayload;
+            CustomerPayload cpl;
+            exec.ReadCopyAs(this.cpk, out cpl);
             cpl.C_BALANCE -= input.H_AMOUNT;
             cpl.C_YTD_PAYMENT += input.H_AMOUNT;
             cpl.C_PAYMENT_CNT += 1;
@@ -357,17 +375,19 @@ namespace TransactionBenchmarkTest.TPCC
             // warehouse, district
             this.wpk.Set(W_ID: input.W_ID);
             // var wpl = JsonConvert.DeserializeObject<WarehousePayload>((string)tx.Read(Constants.DefaultTbl, wpk.ToString()));
-            var wpl = exec.TpccSyncRead(this.wpk) as WarehousePayload;
+            WarehousePayload wpl;
+            exec.ReadCopyAs(this.wpk, out wpl);
             wpl.W_YTD += input.H_AMOUNT;
             // tx.Update(Constants.DefaultTbl, wpk.ToString(), JsonConvert.SerializeObject(wpl));
-            exec.TpccSyncUpdate(this.wpk, wpl);
+            exec.Update(this.wpk, wpl);
 
             this.dpk.Set(D_ID: input.D_ID, D_W_ID: input.W_ID);
             // var dpl = JsonConvert.DeserializeObject<DistrictPayload>((string)tx.Read(Constants.DefaultTbl, dpk.ToString()));
-            var dpl = exec.TpccSyncRead(this.dpk) as DistrictPayload;
+            DistrictPayload dpl;
+            exec.ReadCopyAs(this.dpk, out dpl);
             dpl.D_YTD += input.H_AMOUNT;
             // tx.Update(Constants.DefaultTbl, dpk.ToString(), JsonConvert.SerializeObject(dpl));
-            exec.TpccSyncUpdate(this.dpk, dpl);
+            exec.Update(this.dpk, dpl);
 
             // credit info
             if (cpl.C_CREDIT == Constants.BadCredit)
@@ -381,7 +401,7 @@ namespace TransactionBenchmarkTest.TPCC
                 cpl.C_DATA = newData;
             }
             // tx.Update(Constants.DefaultTbl, cpk.ToString(), JsonConvert.SerializeObject(cpl));
-            exec.TpccSyncUpdate(this.cpk, cpl);
+            exec.Update(this.cpk, cpl);
 
             // history
             var hpl = new HistoryPayload
@@ -398,7 +418,7 @@ namespace TransactionBenchmarkTest.TPCC
             var hpk = HistoryPKey.New();
             // tx.ReadAndInitialize(Constants.DefaultTbl, hpk);
             // tx.Insert(Constants.DefaultTbl, hpk, JsonConvert.SerializeObject(hpl));
-            exec.TpccSyncInsert(hpk, hpl);
+            exec.Insert(hpk, hpl);
 
             // to return
             this.pmOutput.wpl = wpl;

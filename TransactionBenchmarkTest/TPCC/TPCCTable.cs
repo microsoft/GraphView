@@ -328,15 +328,19 @@ namespace TransactionBenchmarkTest.TPCC
         {
             this.Table = TpccTable.Instance(type);
         }
-        public TpccTable Table { get; private set; }
+        public TpccTable Table { get; protected set; }
     }
     public class TpccTableKey : TpccTableKV
     {
         protected TpccTableKey(TableType t) : base(t) { }
     }
-    public class TpccTablePayload : TpccTableKV
+    public abstract class TpccTablePayload : TpccTableKV, Copyable
     {
         protected TpccTablePayload(TableType t) : base(t) { }
+
+        public abstract Copyable Copy();
+
+        public abstract bool CopyFrom(Copyable copyable);
     }
     // Warehouse
     public class WarehousePkey : TpccTableKey
@@ -367,6 +371,40 @@ namespace TransactionBenchmarkTest.TPCC
     public class WarehousePayload : TpccTablePayload
     {
         public WarehousePayload() : base(TableType.WAREHOUSE) { }
+
+        public override Copyable Copy()
+        {
+            WarehousePayload copy = new WarehousePayload();
+            copy.SafeCopyFrom(this);
+            return copy;
+        }
+        public override bool CopyFrom(Copyable copyable)
+        {
+            WarehousePayload that = copyable as WarehousePayload;
+            if (that == null) return false;
+            this.SafeCopyFrom(that);
+            return true;
+        }
+        public void SafeCopyFrom(WarehousePayload that)
+        {
+            this.Set(
+                that.W_NAME, that.W_STREET_1, that.W_STREET_2, that.W_CITY,
+                that.W_STATE, that.W_ZIP, that.W_TAX, that.W_YTD);
+        }
+
+        public void Set(
+            string W_NAME, string W_STREET_1, string W_STREET_2, string W_CITY,
+            string W_STATE, string W_ZIP, double W_TAX, double W_YTD)
+        {
+            this.W_NAME = W_NAME;
+            this.W_STREET_1 = W_STREET_1;
+            this.W_STREET_2 = W_STREET_2;
+            this.W_CITY = W_CITY;
+            this.W_STATE = W_STATE;
+            this.W_ZIP = W_ZIP;
+            this.W_TAX = W_TAX;
+            this.W_YTD = W_YTD;
+        }
 
         public string W_NAME;
         public string W_STREET_1;
@@ -412,6 +450,48 @@ namespace TransactionBenchmarkTest.TPCC
     public class DistrictPayload : TpccTablePayload
     {
         public DistrictPayload() : base(TableType.DISTRICT) { }
+
+        public override Copyable Copy()
+        {
+            DistrictPayload copy = new DistrictPayload();
+            copy.SafeCopyFrom(this);
+            return copy;
+        }
+
+        public override bool CopyFrom(Copyable copyable)
+        {
+            DistrictPayload that = copyable as DistrictPayload;
+            if (that == null)
+            {
+                return false;
+            }
+            this.SafeCopyFrom(that);
+            return true;
+        }
+
+        public void SafeCopyFrom(DistrictPayload that)
+        {
+            this.Set(
+                that.D_NAME, that.D_STREET_1, that.D_STREET_2, that.D_CITY,
+                that.D_STATE, that.D_ZIP, that.D_TAX, that.D_YTD,
+                that.D_NEXT_O_ID);
+        }
+
+        public void Set(
+            string D_NAME, string D_STREET_1, string D_STREET_2, string D_CITY,
+            string D_STATE, string D_ZIP, double D_TAX, double D_YTD,
+            uint D_NEXT_O_ID)
+        {
+            this.D_NAME = D_NAME;
+            this.D_STREET_1 = D_STREET_1;
+            this.D_STREET_2 = D_STREET_2;
+            this.D_CITY = D_CITY;
+            this.D_STATE = D_STATE;
+            this.D_ZIP = D_ZIP;
+            this.D_TAX = D_TAX;
+            this.D_YTD = D_YTD;
+            this.D_NEXT_O_ID = D_NEXT_O_ID;
+        }
 
         public string D_NAME;
         public string D_STREET_1;
@@ -504,6 +584,14 @@ namespace TransactionBenchmarkTest.TPCC
         {
             return C_IDs[C_IDs.Length / 2];
         }
+        public override Copyable Copy()
+        {
+            return this;
+        }
+        public override bool CopyFrom(Copyable that)
+        {
+            return false;
+        }
         static public CustomerLastNamePayloads FromList(List<uint> cids)
         {
             uint[] cid_array = cids.ToArray();
@@ -515,6 +603,59 @@ namespace TransactionBenchmarkTest.TPCC
     public class CustomerPayload : TpccTablePayload
     {
         public CustomerPayload() : base(TableType.CUSTOMER) { }
+
+        public override Copyable Copy()
+        {
+            CustomerPayload copy = new CustomerPayload();
+            copy.SafeCopyFrom(this);
+            return copy;
+        }
+
+        public override bool CopyFrom(Copyable copyable)
+        {
+            CustomerPayload that = copyable as CustomerPayload;
+            if (that == null) return false;
+            this.SafeCopyFrom(that);
+            return true;
+        }
+
+        public void SafeCopyFrom(CustomerPayload that)
+        {
+            this.Set(
+                that.C_FIRST, that.C_MIDDLE, that.C_LAST, that.C_STREET_1,
+                that.C_STREET_2, that.C_CITY, that.C_STATE, that.C_ZIP,
+                that.C_PHONE, that.C_SINCE, that.C_CREDIT, that.C_CREDIT_LIM,
+                that.C_DISCOUNT, that.C_BALANCE, that.C_YTD_PAYMENT,
+                that.C_PAYMENT_CNT, that.C_DELIVERY_CNT, that.C_DATA);
+        }
+
+        public void Set(
+            string C_FIRST, string C_MIDDLE, string C_LAST, string C_STREET_1,
+            string C_STREET_2, string C_CITY, string C_STATE, string C_ZIP,
+            string C_PHONE, string C_SINCE, string C_CREDIT,
+            double C_CREDIT_LIM, double C_DISCOUNT, double C_BALANCE,
+            double C_YTD_PAYMENT, uint C_PAYMENT_CNT, uint C_DELIVERY_CNT,
+            string C_DATA)
+        {
+            this.C_FIRST = C_FIRST;
+            this.C_MIDDLE = C_MIDDLE;
+            this.C_LAST = C_LAST;
+            this.C_STREET_1 = C_STREET_1;
+            this.C_STREET_2 = C_STREET_2;
+            this.C_CITY = C_CITY;
+            this.C_STATE = C_STATE;
+            this.C_ZIP = C_ZIP;
+            this.C_PHONE = C_PHONE;
+            this.C_SINCE = C_SINCE;
+            this.C_CREDIT = C_CREDIT;
+            this.C_CREDIT_LIM = C_CREDIT_LIM;
+            this.C_DISCOUNT = C_DISCOUNT;
+            this.C_BALANCE = C_BALANCE;
+            this.C_YTD_PAYMENT = C_YTD_PAYMENT;
+            this.C_PAYMENT_CNT = C_PAYMENT_CNT;
+            this.C_DELIVERY_CNT = C_DELIVERY_CNT;
+            this.C_DATA = C_DATA;
+        }
 
         public string C_FIRST;
         public string C_MIDDLE;
@@ -561,6 +702,16 @@ namespace TransactionBenchmarkTest.TPCC
     public class HistoryPayload : TpccTablePayload
     {
         public HistoryPayload() : base(TableType.HISTORY) { }
+
+        public override Copyable Copy()
+        {
+            return this;
+        }
+
+        public override bool CopyFrom(Copyable copyable)
+        {
+            return false;
+        }
 
         public uint H_C_ID;
         public uint H_C_D_ID;
@@ -609,6 +760,15 @@ namespace TransactionBenchmarkTest.TPCC
     {
         public NewOrderPayload() : base(TableType.NEW_ORDER) { }
 
+        public override Copyable Copy()
+        {
+            return this;
+        }
+        public override bool CopyFrom(Copyable copyable)
+        {
+            return copyable is NewOrderPayload;
+        }
+
         static public NewOrderPayload Placeholder()
         {
             if (NewOrderPayload.instance == null)
@@ -653,6 +813,43 @@ namespace TransactionBenchmarkTest.TPCC
     public class OrderPayload : TpccTablePayload
     {
         public OrderPayload() : base(TableType.ORDERS) { }
+
+        public override Copyable Copy()
+        {
+            OrderPayload copy = new OrderPayload();
+            copy.SafeCopyFrom(this);
+            return copy;
+        }
+
+        public override bool CopyFrom(Copyable copyable)
+        {
+            OrderPayload that = copyable as OrderPayload;
+            if (that == null)
+            {
+                return false;
+            }
+            this.SafeCopyFrom(that);
+            return true;
+        }
+
+        public void SafeCopyFrom(OrderPayload that)
+        {
+            this.Set(
+                that.O_C_ID, that.O_ENTRY_D, that.O_CARRIER_ID,
+                that.O_OL_CNT, that.O_ALL_LOCAL);
+        }
+
+        public void Set(
+            uint O_C_ID, string O_ENTRY_D, uint O_CARRIER_ID, uint O_OL_CNT,
+            uint O_ALL_LOCAL)
+        {
+            this.O_C_ID = O_C_ID;
+            this.O_ENTRY_D = O_ENTRY_D;
+            this.O_CARRIER_ID = O_CARRIER_ID;
+            this.O_OL_CNT = O_OL_CNT;
+            this.O_ALL_LOCAL = O_ALL_LOCAL;
+        }
+
         public uint O_C_ID;
         public string O_ENTRY_D;
         public uint O_CARRIER_ID;
@@ -693,6 +890,40 @@ namespace TransactionBenchmarkTest.TPCC
     {
         public OrderLinePayload() : base(TableType.ORDER_LINE) { }
 
+        public override Copyable Copy()
+        {
+            OrderLinePayload copy = new OrderLinePayload();
+            copy.SafeCopyFrom(this);
+            return copy;
+        }
+
+        public override bool CopyFrom(Copyable copyable)
+        {
+            OrderLinePayload that = copyable as OrderLinePayload;
+            if (that == null) return false;
+            this.SafeCopyFrom(that);
+            return true;
+        }
+
+        public void SafeCopyFrom(OrderLinePayload that)
+        {
+            this.Set(
+                that.OL_I_ID, that.OL_SUPPLY_W_ID, that.OL_DELIVERY_D,
+                that.OL_QUANTITY, that.OL_AMOUNT, that.OL_DIST_INFO);
+        }
+
+        public void Set(
+            uint OL_I_ID, uint OL_SUPPLY_W_ID, string OL_DELIVERY_D,
+            uint OL_QUANTITY, double OL_AMOUNT, string OL_DIST_INFO)
+        {
+            this.OL_I_ID = OL_I_ID;
+            this.OL_SUPPLY_W_ID = OL_SUPPLY_W_ID;
+            this.OL_DELIVERY_D = OL_DELIVERY_D;
+            this.OL_QUANTITY = OL_QUANTITY;
+            this.OL_AMOUNT = OL_AMOUNT;
+            this.OL_DIST_INFO = OL_DIST_INFO;
+        }
+
         public uint OL_I_ID;
         public uint OL_SUPPLY_W_ID;
         public string OL_DELIVERY_D;
@@ -731,6 +962,38 @@ namespace TransactionBenchmarkTest.TPCC
     public class ItemPayload : TpccTablePayload
     {
         public ItemPayload() : base(TableType.ITEM) { }
+
+        public override Copyable Copy()
+        {
+            ItemPayload copy = new ItemPayload();
+            copy.SafeCopyFrom(this);
+            return copy;
+        }
+
+        public override bool CopyFrom(Copyable copyable)
+        {
+            ItemPayload that = copyable as ItemPayload;
+            if (that == null)
+            {
+                return false;
+            }
+            this.SafeCopyFrom(that);
+            return true;
+        }
+
+        public void SafeCopyFrom(ItemPayload that)
+        {
+            this.Set(that.I_IM_ID, that.I_NAME, that.I_PRICE, that.I_DATA);
+        }
+
+        public void Set(
+            uint I_IM_ID, string I_NAME, double I_PRICE, string I_DATA)
+        {
+            this.I_IM_ID = I_IM_ID;
+            this.I_NAME = I_NAME;
+            this.I_PRICE = I_PRICE;
+            this.I_DATA = I_DATA;
+        }
         public uint I_IM_ID;
         public string I_NAME;
         public double I_PRICE;
@@ -772,6 +1035,57 @@ namespace TransactionBenchmarkTest.TPCC
     public class StockPayload : TpccTablePayload
     {
         public StockPayload() : base(TableType.STOCK) { }
+
+        public override Copyable Copy()
+        {
+            StockPayload copy = new StockPayload();
+            copy.SafeCopyFrom(this);
+            return copy;
+        }
+
+        public override bool CopyFrom(Copyable copyable)
+        {
+            StockPayload that = copyable as StockPayload;
+            if (that == null)
+            {
+                return false;
+            }
+            this.SafeCopyFrom(that);
+            return true;
+        }
+
+        public void SafeCopyFrom(StockPayload that)
+        {
+            this.Set(
+                that.S_QUANTITY, that.S_DIST_01, that.S_DIST_02, that.S_DIST_03,
+                that.S_DIST_04, that.S_DIST_05, that.S_DIST_06, that.S_DIST_07,
+                that.S_DIST_08, that.S_DIST_09, that.S_DIST_10, that.S_YTD,
+                that.S_ORDER_CNT, that.S_REMOTE_CNT, that.S_DATA);
+        }
+
+        public void Set(
+            int S_QUANTITY, string S_DIST_01, string S_DIST_02,
+            string S_DIST_03, string S_DIST_04, string S_DIST_05,
+            string S_DIST_06, string S_DIST_07, string S_DIST_08,
+            string S_DIST_09, string S_DIST_10, uint S_YTD,
+            uint S_ORDER_CNT, uint S_REMOTE_CNT, string S_DATA)
+        {
+            this.S_QUANTITY = S_QUANTITY;
+            this.S_DIST_01 = S_DIST_01;
+            this.S_DIST_02 = S_DIST_02;
+            this.S_DIST_03 = S_DIST_03;
+            this.S_DIST_04 = S_DIST_04;
+            this.S_DIST_05 = S_DIST_05;
+            this.S_DIST_06 = S_DIST_06;
+            this.S_DIST_07 = S_DIST_07;
+            this.S_DIST_08 = S_DIST_08;
+            this.S_DIST_09 = S_DIST_09;
+            this.S_DIST_10 = S_DIST_10;
+            this.S_YTD = S_YTD;
+            this.S_ORDER_CNT = S_ORDER_CNT;
+            this.S_REMOTE_CNT = S_REMOTE_CNT;
+            this.S_DATA = S_DATA;
+        }
 
         public int S_QUANTITY;
         public string S_DIST_01;

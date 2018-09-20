@@ -46,6 +46,11 @@ namespace GraphView.Transaction
             this.tableVisitors = new VersionTableVisitor[partitionCount];
         }
 
+        public VersionTableVisitor GetWorkerLocalVisitor(int workerId)
+        {
+            return this.tableVisitors[workerId];
+        }
+
         /// <summary>
         /// Add new partitions
         /// </summary>
