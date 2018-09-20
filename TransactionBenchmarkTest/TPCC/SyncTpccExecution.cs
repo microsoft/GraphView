@@ -33,9 +33,10 @@ namespace TransactionBenchmarkTest.TPCC
             this.txExec.Reset();
         }
 
-        public void Commit()
+        public SyncExecution Commit()
         {
             this.txExec.Commit();
+            return this;
         }
 
         public void Abort()
@@ -43,26 +44,16 @@ namespace TransactionBenchmarkTest.TPCC
             this.txExec.Abort();
         }
 
-        public
-        bool Read(TpccTableKey key, out TpccTablePayload record)
-        {
-            record = this.txExec.SyncRead(
-                key.Table.Name(), key) as TpccTablePayload;
-            return this.IsAborted();
-        }
-
-        public
-        bool Update(TpccTableKey key, TpccTablePayload record)
+        public SyncExecution Update(TpccTableKey key, TpccTablePayload record)
         {
             this.txExec.Update(key.Table.Name(), key, record);
-            return this.IsAborted();
+            return this;
         }
 
-        public
-        bool Insert(TpccTableKey key, TpccTablePayload record)
+        public SyncExecution Insert(TpccTableKey key, TpccTablePayload record)
         {
             this.txExec.InitAndInsert(key.Table.Name(), key, record);
-            return this.IsAborted();
+            return this;
         }
 
         public bool IsAborted()
@@ -70,26 +61,24 @@ namespace TransactionBenchmarkTest.TPCC
             return this.txExec.TxStatus == TxStatus.Aborted;
         }
 
-        public bool ReadAs<T>(TpccTableKey key, out T record)
+        public SyncExecution Read<T>(TpccTableKey key, out T record)
+            where T : TpccTablePayload
+        {
+            record = this.txExec.SyncRead(key.Table.Name(), key) as T;
+            return this;
+        }
+
+        public virtual SyncExecution ReadCopy<T>(TpccTableKey key, out T record)
             where T : TpccTablePayload
         {
             TpccTablePayload payload;
-            bool isAborted = this.Read(key, out payload);
+            this.ReadCopyImpl(key, out payload);
             record = payload as T;
-            return isAborted;
+            return this;
         }
 
-        public bool ReadCopyAs<T>(TpccTableKey key, out T record)
-            where T : TpccTablePayload
-        {
-            TpccTablePayload payload;
-            bool isAborted = this.ReadCopy(key, out payload);
-            record = payload as T;
-            return isAborted;
-        }
-
-        public virtual
-        bool ReadCopy(TpccTableKey key, out TpccTablePayload record)
+        protected virtual SyncExecution ReadCopyImpl(
+            TpccTableKey key, out TpccTablePayload record)
         {
             return this.Read(key, out record);
         }
@@ -128,17 +117,15 @@ namespace TransactionBenchmarkTest.TPCC
             return visitor.recordPool;
         }
 
-        public override
-        bool ReadCopy(TpccTableKey key, out TpccTablePayload record)
+        protected override SyncExecution ReadCopyImpl(
+            TpccTableKey key, out TpccTablePayload record)
         {
-            bool isAborted = Read(key, out record);
-            if (isAborted)
+            if (!Read(key, out record).IsAborted())
             {
-                return false;
+                record = this.GetObjectPool(
+                    key.Table.Type()).GetCopy(record) as TpccTablePayload;
             }
-            record = this.GetObjectPool(
-                key.Table.Type()).GetCopy(record) as TpccTablePayload;
-            return record != null;
+            return this;
         }
 
         private CachableObjectPool GetObjectPool(TableType type)
