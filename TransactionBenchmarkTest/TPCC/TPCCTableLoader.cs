@@ -48,19 +48,19 @@ namespace TransactionBenchmarkTest.TPCC
         {
             CreateTable(versionDb, table);
             int recordCount = 0;
-            SyncExecution txExec = new SyncExecution(versionDb);
+            var txExec = new SyncExecution(versionDb, (int)table.Type());
             var auxIndexLoader = AuxIndexLoader.FromTableType(table.Type());
             foreach (var kv in LoadKvsFromDir(dir, table))
             {
                 txExec.Start();
-                try
-                {
-                    txExec.Insert(kv.Item1, kv.Item2);
-                    txExec.Commit();
-                    auxIndexLoader.BuildAuxIndex(kv.Item1, kv.Item2);
-                    ++recordCount;
+                if (txExec.Insert(kv.Item1, kv.Item2).IsAborted()){
+                    continue;
                 }
-                catch (AbortException) { }
+                if (txExec.Commit().IsAborted()) {
+                    continue;
+                }
+                auxIndexLoader.BuildAuxIndex(kv.Item1, kv.Item2);
+                ++recordCount;
             }
             recordCount += auxIndexLoader.SaveTo(versionDb);
             return recordCount;

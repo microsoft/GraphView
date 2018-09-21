@@ -23,7 +23,52 @@ namespace TransactionBenchmarkTest.TPCC
     }
     class NewOrderOutput
     {
-        //public TxFinalStatus txFinalStatus;
+        public class ItemOutput
+        {
+            string I_NAME;
+            char brand;
+            double I_PRICE;
+            double OL_AMOUNT;
+
+            public void Set(
+                string I_NAME, char brand, double I_PRICE, double OL_AMOUNT)
+            {
+                this.I_NAME = I_NAME;
+                this.brand = brand;
+                this.I_PRICE = I_PRICE;
+                this.OL_AMOUNT = OL_AMOUNT;
+            }
+        }
+        public uint W_ID;
+        public string C_LAST;
+        public string C_CREDIT;
+        public double C_DISCOUNT;
+        public double W_TAX;
+        public double D_TAX;
+        public uint O_OL_CNT;
+        public uint O_ID;
+        public string O_ENTRY_D;
+        public double totalAmount;
+
+        public void Set(
+            uint W_ID, string C_LAST, string C_CREDIT, double C_DISCOUNT,
+            double W_TAX, double D_TAX, uint O_OL_CNT, uint O_ID,
+            string O_ENTRY_D, double totalAmount) {
+            this.W_ID = W_ID;
+            this.C_LAST = C_LAST;
+            this.C_CREDIT = C_CREDIT;
+            this.C_DISCOUNT = C_DISCOUNT;
+            this.W_TAX = W_TAX;
+            this.D_TAX = D_TAX;
+            this.O_OL_CNT = O_OL_CNT;
+            this.O_ID = O_ID;
+            this.O_ENTRY_D = O_ENTRY_D;
+            this.totalAmount = totalAmount;
+        }
+
+        public TxObjPoolList<ItemOutput> itemOutputs =
+            new TxObjPoolList<ItemOutput>(15);
+
         public Tuple<string, int, char, double, double>[] itemsData;
         public Tuple<double, double, uint, double> other;
         public CustomerPayload cpl;
@@ -64,14 +109,13 @@ namespace TransactionBenchmarkTest.TPCC
             this.output.txFinalStatus = TxFinalStatus.UNKNOWN;
             exec.Start();
             this.output.data = this.ExecuteStoredProcedure(exec, param);
-            if (exec.IsAborted())
+            if (!exec.IsAborted())
             {
                 this.output.txFinalStatus = TxFinalStatus.COMMITTED;
             }
             else
             {
                 this.output.txFinalStatus = TxFinalStatus.ABORTED;
-                exec.Abort();
             }
             return this.output;
         }
@@ -271,8 +315,8 @@ namespace TransactionBenchmarkTest.TPCC
             }
 
             // insert order lines
-            Tuple<string, int, char, double, double>[] itemsData = new Tuple<string, int, char, double, double>[input.OL_I_IDs.Length];
             this.spks.Clear();
+            this.noOutput.itemOutputs.Clear();
             var total = 0.0;
             for (int i = 0; i < input.OL_I_IDs.Length; i++)
             {
@@ -337,7 +381,9 @@ namespace TransactionBenchmarkTest.TPCC
 
                 // add to return
                 var brand = (I_DATA.Contains("ORIGINAL") && spl.S_DATA.Contains("ORIGINAL")) ? 'B' : 'G';
-                itemsData[i] = new Tuple<string, int, char, double, double>(I_NAME, spl.S_QUANTITY, brand, I_PRICE, OL_AMOUNT);
+                this.noOutput.itemOutputs.AllocateNew().Set(
+                    this.items[i].I_NAME, brand,
+                    this.items[i].I_PRICE, olpl.OL_AMOUNT);
             }
 
             // tx.Commit();
@@ -348,9 +394,10 @@ namespace TransactionBenchmarkTest.TPCC
 
             // to return
             total *= (1 - C_DISCOUNT) * (1 + W_TAX + D_TAX);
-            this.noOutput.other = new Tuple<double, double, uint, double>(W_TAX, D_TAX, D_NEXT_O_ID, total);
-            this.noOutput.itemsData = itemsData;
-            this.noOutput.cpl = cpl;
+            this.noOutput.Set(
+                wpk.W_ID, cpl.C_LAST, cpl.C_CREDIT, cpl.C_DISCOUNT,
+                wpl.W_TAX, dpl.D_TAX, opl.O_OL_CNT, opk.O_ID,
+                opl.O_ENTRY_D, total);
 
             return this.noOutput;
         }

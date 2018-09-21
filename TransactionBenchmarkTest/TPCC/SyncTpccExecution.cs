@@ -24,8 +24,9 @@ namespace TransactionBenchmarkTest.TPCC
         TransactionExecution MakeSimpleExecution(
             VersionDb versionDb, int workerId)
         {
+            int visitorId = workerId % versionDb.PartitionCount;
             return new TransactionExecution(
-                null, versionDb, null, new TxRange(workerId), workerId);
+                null, versionDb, null, new TxRange(workerId), visitorId);
         }
 
         public void Start()
