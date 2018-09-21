@@ -163,7 +163,7 @@
                 }    
             }
 
-            if (verEntry.TxId == req.ReadTxId && verEntry.EndTimestamp == req.ExpectedEndTs)
+            if (verEntry.TxId == req.SenderId && verEntry.EndTimestamp == req.ExpectedEndTs)
             {
                 verEntry.BeginTimestamp = req.BeginTs;
                 verEntry.EndTimestamp = req.EndTs;

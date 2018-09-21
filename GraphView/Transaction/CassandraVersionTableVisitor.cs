@@ -110,7 +110,7 @@ namespace GraphView.Transaction
             this.CQLExecuteWithIfApplied(string.Format(CassandraVersionTable.CQL_REPLACE_VERSION,
                                                 req.TableId, req.BeginTs, req.EndTs, req.TxId,
                                                 req.RecordKey.ToString(), req.VersionKey,
-                                                req.ReadTxId, req.ExpectedEndTs));
+                                                req.SenderId, req.ExpectedEndTs));
 
             req.Result = this.GetVersionEntryByKey(req.TableId, req.RecordKey, req.VersionKey);
             req.Finished = true;

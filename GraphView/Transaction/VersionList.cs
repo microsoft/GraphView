@@ -2,6 +2,8 @@
 namespace GraphView.Transaction
 {
     using System;
+    using System.Collections;
+    using System.Collections.Generic;
     using System.Threading;
 
     /// <summary>
@@ -9,18 +11,18 @@ namespace GraphView.Transaction
     /// such that only one thread is allowed to append while others are allowed to see the old list. 
     /// </summary>
     /// <typeparam name="T"></typeparam>
-    internal class CircularList<T> where T : class
+    internal class CircularVersionList
     {
-        private T[] internalArray;
+        private VersionEntry[] internalArray;
         /// <summary>
         /// The higher 4 bytes represent the list size. 
-        /// The lower 4 bytes represnet and the index of the tail in the array. 
+        /// The lower 4 bytes represnet the index of the tail in the array. 
         /// </summary>
         private long metaIndex;
 
-        public CircularList(int capacity = 8)
+        internal CircularVersionList(int capacity = 8)
         {
-            this.internalArray = new T[capacity];
+            this.internalArray = new VersionEntry[capacity];
             this.metaIndex = 0;
         }
 
@@ -29,11 +31,11 @@ namespace GraphView.Transaction
         /// </summary>
         /// <param name="element">The element to append to the list</param>
         /// <returns></returns>
-        public bool AddToTail(T element)
+        internal bool AddToTail(VersionEntry element)
         {
             long localMetaIndex = Interlocked.Read(ref this.metaIndex);
-            int size = (int)(this.metaIndex >> 32);
-            int tailIndex = (int)(this.metaIndex & 0xFFFFFFFFL);
+            int size = (int)(localMetaIndex >> 32);
+            int tailIndex = (int)(localMetaIndex & 0xFFFFFFFFL);
 
             if (size + 1 > this.internalArray.Length)
             {
@@ -41,36 +43,105 @@ namespace GraphView.Transaction
             }
 
             int newTailIndex = (tailIndex + 1) % this.internalArray.Length;
+            // By the time Interlocked.Exchange() finishes, the new element is added to the array. 
+            // But the meta-index has not been updated. As a result, other reading threads 
+            // continue to see an old version of the list, until the meta-index is updated.
             Interlocked.Exchange(ref this.internalArray[newTailIndex], element);
-            // By the time the above instruction finishes, other reading threads still see the old meta-index,
-            // hence will not see the new tail.
             long newMetaIndex = ((long)size + 1) << 32 | (long)newTailIndex;
             Interlocked.Exchange(ref this.metaIndex, newMetaIndex);
 
             return true;
         }
 
-        public T RemoveFromHead()
+        /// <summary>
+        /// Only one thread will enter this method to remove the head. 
+        /// </summary>
+        /// <returns></returns>
+        internal VersionEntry RemoveFromHead()
         {
             long localMetaIndex = Interlocked.Read(ref this.metaIndex);
-            int size = (int)(this.metaIndex >> 32);
-            int tailIndex = (int)(this.metaIndex & 0xFFFFFFFFL);
+            int size = (int)(localMetaIndex >> 32);
+            int tailIndex = (int)(localMetaIndex & 0xFFFFFFFFL);
 
             if (size == 0)
             {
-                return default(T);
+                return null;
             }
 
-            int headIndex = 
-                (tailIndex - size + 1 + this.internalArray.Length) % 
+            int headIndex =
+                (tailIndex - size + 1 + this.internalArray.Length) %
                 this.internalArray.Length;
+            VersionEntry element = this.internalArray[headIndex];
 
-            T element = this.internalArray[headIndex];
             long newMetaIndex = ((long)size - 1) << 32 | (long)tailIndex;
-            // Before the meta index is updated, other threads will still see the old head. 
+            // As soon as the meta-index is updated, other threads will see the new head. 
             Interlocked.Exchange(ref this.metaIndex, newMetaIndex);
-
+            
             return element;
+        }
+
+        internal void RemoveFromTail(long txId, long targetVersionKey)
+        {
+            long localMetaIndex = Interlocked.Read(ref this.metaIndex);
+            int size = (int)(localMetaIndex >> 32);
+            int tailIndex = (int)(localMetaIndex & 0xFFFFFFFFL);
+
+            if (size == 0)
+            {
+                return;
+            }
+
+            VersionEntry lastVersion = Volatile.Read(ref this.internalArray[tailIndex]);
+
+            long newMetaIndex = ((long)size - 1) << 32 | (long)tailIndex - 1;
+            while (lastVersion != null && 
+                lastVersion.VersionKey == targetVersionKey && 
+                lastVersion.TxId == txId)
+            {
+                if (Interlocked.CompareExchange(ref this.metaIndex, newMetaIndex, localMetaIndex) != localMetaIndex)
+                {
+                    localMetaIndex = Interlocked.Read(ref this.metaIndex);
+                    size = (int)(localMetaIndex >> 32);
+                    tailIndex = (int)(localMetaIndex & 0xFFFFFFFFL);
+
+                    lastVersion = Volatile.Read(ref this.internalArray[tailIndex]);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Peeks last two elements in the list. 
+        /// 
+        /// Note that since concurrent threads may remove elements from the head or the tail, 
+        /// the elements returned by this method may have been removed.
+        /// What's more, since removed elements are recycled to accommondate new data, 
+        /// it's possible the returned elements do not contain the original data anymore. 
+        /// It's the caller's responsibility to check this discrepancy.  
+        /// </summary>
+        /// <param name="last">The last element</param>
+        /// <param name="secondToLast">The second to the last element</param>
+        public void PeekTail(out VersionEntry last, out VersionEntry secondToLast)
+        {
+            long localMetaIndex = Interlocked.Read(ref this.metaIndex);
+            int size = (int)(localMetaIndex >> 32);
+            int tailIndex = (int)(localMetaIndex & 0xFFFFFFFFL);
+
+            if (size < 1)
+            {
+                last = null;
+                secondToLast = null;
+                return;
+            }
+
+            last = Volatile.Read(ref this.internalArray[tailIndex]);
+
+            if (size < 2)
+            {
+                secondToLast = null;
+                return;
+            }
+
+            secondToLast = Volatile.Read(ref this.internalArray[tailIndex - 1]);
         }
 
         public void Clear()
@@ -78,12 +149,12 @@ namespace GraphView.Transaction
             this.metaIndex = 0;
         }
 
-        public CircularList<T> Upsize()
+        internal CircularVersionList Upsize()
         {
-            CircularList<T> newList = new CircularList<T>(this.internalArray.Length << 1);
+            CircularVersionList newList = new CircularVersionList(this.internalArray.Length << 1);
             long localMetaIndex = Interlocked.Read(ref this.metaIndex);
-            int size = (int)(this.metaIndex >> 32);
-            int tailIndex = (int)(this.metaIndex & 0xFFFFFFFFL);
+            int size = (int)(localMetaIndex >> 32);
+            int tailIndex = (int)(localMetaIndex & 0xFFFFFFFFL);
 
             if (size == 0)
             {
@@ -101,17 +172,17 @@ namespace GraphView.Transaction
             else
             {
                 Array.Copy(
-                    this.internalArray, 
-                    headIndex, 
-                    newList.internalArray, 
-                    0, 
+                    this.internalArray,
+                    headIndex,
+                    newList.internalArray,
+                    0,
                     this.internalArray.Length - headIndex);
 
                 Array.Copy(
-                    this.internalArray, 
-                    0, 
-                    newList.internalArray, 
-                    this.internalArray.Length - headIndex, 
+                    this.internalArray,
+                    0,
+                    newList.internalArray,
+                    this.internalArray.Length - headIndex,
                     tailIndex + 1);
             }
 
@@ -119,31 +190,104 @@ namespace GraphView.Transaction
 
             return newList;
         }
+
+        internal int Count
+        {
+            get
+            {
+                long localMetaIndex = Interlocked.Read(ref this.metaIndex);
+                int size = (int)(localMetaIndex >> 32);
+
+                return size;
+            }
+        }
     }
 
-    internal class VersionList 
+    internal class VersionList : IDictionary<long, VersionEntry>
     {
-        internal static bool readSnapshot = false;
+        internal static int MaxCapacity = 32;
 
         // The tail key acts as the latch to prevent concurrent modifications of the list,
         // while allowing concurrent reads. 
         private long tailKey;
-        private CircularList<VersionEntry> versionList;
+        private CircularVersionList versionList;
 
         public VersionList(int capacity = 8)
         {
             this.tailKey = -1;
-            this.versionList = new CircularList<VersionEntry>();
+            this.versionList = new CircularVersionList(capacity < 0 ? VersionList.MaxCapacity : capacity);
         }
 
-        internal bool TryAdd(long versionKey, VersionEntry versionEntry, out VersionEntry remoteEntry)
+        #region IDictionary interfaces
+        public VersionEntry this[long key] { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
+
+        public ICollection<long> Keys => throw new NotImplementedException();
+
+        public ICollection<VersionEntry> Values => throw new NotImplementedException();
+
+        public int Count => throw new NotImplementedException();
+
+        public bool IsReadOnly => throw new NotImplementedException();
+
+        public void Add(long key, VersionEntry value)
+        {
+            this.TryAdd(value, out VersionEntry ve);
+        }
+
+        public void Add(KeyValuePair<long, VersionEntry> item)
+        {
+            this.TryAdd(item.Value, out VersionEntry ve);
+        }
+
+        public void Clear()
+        {
+            throw new NotImplementedException();
+        }
+
+        public bool Contains(KeyValuePair<long, VersionEntry> item)
+        {
+            throw new NotImplementedException();
+        }
+
+        public bool ContainsKey(long key)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void CopyTo(KeyValuePair<long, VersionEntry>[] array, int arrayIndex)
+        {
+            throw new NotImplementedException();
+        }
+
+        public IEnumerator<KeyValuePair<long, VersionEntry>> GetEnumerator()
+        {
+            throw new NotImplementedException();
+        }
+
+        public bool Remove(long key)
+        {
+            throw new NotImplementedException();
+        }
+
+        public bool Remove(KeyValuePair<long, VersionEntry> item)
+        {
+            throw new NotImplementedException();
+        }
+
+        public bool TryGetValue(long key, out VersionEntry value)
+        {
+            throw new NotImplementedException();
+        }
+        #endregion
+
+        internal bool TryAdd(VersionEntry versionEntry, out VersionEntry remoteEntry)
         {
             remoteEntry = null;
 
-            long expectedTailKey = versionKey - 1;
+            long expectedTailKey = versionEntry.VersionKey - 1;
 
             if (Interlocked.CompareExchange(
-                ref this.tailKey, versionKey, expectedTailKey) != expectedTailKey)
+                ref this.tailKey, versionEntry.VersionKey, expectedTailKey) != expectedTailKey)
             {
                 // Someone else has uploaded a new version and increased the tail key. 
                 return false;
@@ -157,9 +301,9 @@ namespace GraphView.Transaction
 
             if (!this.versionList.AddToTail(versionEntry))
             {
-                if (VersionList.readSnapshot)
+                if (this.versionList.Count < VersionList.MaxCapacity)
                 {
-                    CircularList<VersionEntry> newVersionList = this.versionList.Upsize();
+                    CircularVersionList newVersionList = this.versionList.Upsize();
                     newVersionList.AddToTail(versionEntry);
                     Interlocked.Exchange(ref this.versionList, newVersionList);
                 }
@@ -173,6 +317,21 @@ namespace GraphView.Transaction
             remoteEntry = remoteEntry ?? new VersionEntry();
 
             return true;
+        }
+
+        internal void TryPeek(out VersionEntry last, out VersionEntry secondToLast)
+        {
+            this.versionList.PeekTail(out last, out secondToLast);
+        }
+
+        internal void TryRemove(long senderTxId, long targetVersionKey)
+        {
+            this.versionList.RemoveFromTail(senderTxId, targetVersionKey);
+        }
+
+        IEnumerator IEnumerable.GetEnumerator()
+        {
+            throw new NotImplementedException();
         }
     }
 }

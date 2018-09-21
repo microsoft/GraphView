@@ -397,17 +397,17 @@ namespace GraphView.Transaction
                         newImageEntry.EndTimestamp = VersionEntry.DEFAULT_END_TIMESTAMP;
                         newImageEntry.MaxCommitTs = 0L;
 
-                        //VersionEntry newImageEntry = new VersionEntry(
-                        //        writeEntry.RecordKey,
-                        //        writeEntry.VersionKey,
-                        //        payload,
-                        //        this.txId);
-
-                        this.uploadReq.Set(tableId, recordKey, newImageEntry.VersionKey, newImageEntry, writeEntry.RemoteVerList);
+                        this.uploadReq.Set(
+                            tableId, 
+                            recordKey, 
+                            newImageEntry.VersionKey, 
+                            newImageEntry, 
+                            this.txId, 
+                            writeEntry.RemoteVerList);
                         this.uploadReq.Use();
                         this.versionDb.EnqueueVersionEntryRequest(tableId, this.uploadReq, this.execId);
                     }
-                    // The write-set record is an delete record, only replace the old version
+                    // The write-set record is a delete record, only replace the old version
                     else
                     {
                         ReadSetEntry readVersion = this.FindReadSetEntry(tableId, recordKey);
@@ -540,7 +540,7 @@ namespace GraphView.Transaction
                         // If the concurrent tx has finished (committed or aborted), there is a chance for this tx
                         // to re-gain the lock. 
                         // Enqueues a request to check the status of the tx that is holding the tail.
-                        this.getTxReq.Set(this.replaceVerEntry.TxId, this.localTxEntry, this.remoteTxEntryRef);
+                        this.getTxReq.Set(this.replaceVerEntry.TxId, this.txId, this.localTxEntry, this.remoteTxEntryRef);
                         this.getTxReq.Use();
                         this.versionDb.EnqueueTxEntryRequest(this.replaceVerEntry.TxId, this.getTxReq, this.execId);
 
@@ -784,6 +784,7 @@ namespace GraphView.Transaction
                         entry.TableId,
                         entry.RecordKey,
                         entry.VersionKey,
+                        this.txId,
                         this.localVerEntry,
                         entry.RemoteVerEntry);
                     this.readReq.Use();
@@ -813,8 +814,14 @@ namespace GraphView.Transaction
                     if (this.rereadVerEntry.MaxCommitTs < this.commitTs)
                     {
                         // Updates the version's max commit timestamp
-                        this.updateMaxTsReq.Set(tableId, this.rereadVerEntry.RecordKey,
-                            this.rereadVerEntry.VersionKey, this.commitTs, this.localVerEntry, this.readReq.RemoteVerEntry);
+                        this.updateMaxTsReq.Set(
+                            tableId, 
+                            this.rereadVerEntry.RecordKey,
+                            this.rereadVerEntry.VersionKey, 
+                            this.commitTs, 
+                            this.txId, 
+                            this.localVerEntry, 
+                            this.readReq.RemoteVerEntry);
                         this.updateMaxTsReq.Use();
 
                         this.versionDb.EnqueueVersionEntryRequest(tableId, updateMaxTsReq, this.execId);
@@ -878,7 +885,7 @@ namespace GraphView.Transaction
                     }
                     else
                     {
-                        this.updateBoundReq.Set(txEntry.TxId, this.commitTs + 1, remoteTxEntry);
+                        this.updateBoundReq.Set(txEntry.TxId, this.txId, this.commitTs + 1, remoteTxEntry);
                         this.updateBoundReq.Use();
 
                         this.versionDb.EnqueueTxEntryRequest(txEntry.TxId, this.updateBoundReq, this.execId);
@@ -936,7 +943,7 @@ namespace GraphView.Transaction
                         // i.e., abort or pass validation.
 
                         // reread other versions, no remote tx table entry reference
-                        this.getTxReq.Set(this.rereadVerEntry.TxId, this.localTxEntry, this.remoteTxEntryRef);
+                        this.getTxReq.Set(this.rereadVerEntry.TxId, this.txId, this.localTxEntry, this.remoteTxEntryRef);
                         this.getTxReq.Use();
                         this.versionDb.EnqueueTxEntryRequest(this.rereadVerEntry.TxId, this.getTxReq, this.execId);
                     }
@@ -1076,7 +1083,7 @@ namespace GraphView.Transaction
                     PostProcessingEntry entry = this.abortSet.Pop();
                     if (entry.BeginTimestamp == VersionEntry.DEFAULT_BEGIN_TIMESTAMP)
                     {
-                        this.deleteReq.Set(entry.TableId, entry.RecordKey, entry.VersionKey, entry.RemoteVerList);
+                        this.deleteReq.Set(entry.TableId, entry.RecordKey, entry.VersionKey, this.txId, entry.RemoteVerList);
                         this.deleteReq.Use();
 
                         this.versionDb.EnqueueVersionEntryRequest(entry.TableId, this.deleteReq, this.execId);
@@ -1330,14 +1337,14 @@ namespace GraphView.Transaction
 
             if (initi)
             {
-                this.initiGetVListReq.Set(tableId, recordKey);
+                this.initiGetVListReq.Set(tableId, recordKey, this.txId);
                 this.initiGetVListReq.Use();
 
                 this.versionDb.EnqueueVersionEntryRequest(tableId, this.initiGetVListReq, this.execId);
             }
             else
             {
-                this.getVListReq.Set(tableId, recordKey, this.versionList, this.remoteVersionRefList);
+                this.getVListReq.Set(tableId, recordKey, this.txId, this.versionList, this.remoteVersionRefList);
                 this.getVListReq.Use();
 
                 this.versionDb.EnqueueVersionEntryRequest(tableId, this.getVListReq, this.execId);
@@ -1393,7 +1400,7 @@ namespace GraphView.Transaction
                 }
                 else
                 {
-                    this.getVListReq.Set(this.readTableId, this.readRecordKey, this.versionList, this.remoteVersionRefList);
+                    this.getVListReq.Set(this.readTableId, this.readRecordKey, this.txId, this.versionList, this.remoteVersionRefList);
                     this.getVListReq.Use();
 
                     this.versionDb.EnqueueVersionEntryRequest(this.readTableId, this.getVListReq, this.execId);
@@ -1478,7 +1485,7 @@ namespace GraphView.Transaction
                     if (versionEntry.TxId >= 0)
                     {
                         // Send the GetTxEntry request
-                        this.getTxReq.Set(versionEntry.TxId, this.localTxEntry, this.remoteTxEntryRef);
+                        this.getTxReq.Set(versionEntry.TxId, this.txId, this.localTxEntry, this.remoteTxEntryRef);
                         this.getTxReq.Use();
 
                         this.versionDb.EnqueueTxEntryRequest(versionEntry.TxId, getTxReq, this.execId);

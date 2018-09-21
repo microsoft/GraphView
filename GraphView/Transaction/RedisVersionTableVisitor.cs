@@ -170,7 +170,7 @@
                 BitConverter.GetBytes(req.BeginTs),
                 BitConverter.GetBytes(req.EndTs),
                 BitConverter.GetBytes(req.TxId),
-                BitConverter.GetBytes(req.ReadTxId),
+                BitConverter.GetBytes(req.SenderId),
                 BitConverter.GetBytes(req.ExpectedEndTs),
                 RedisVersionDb.NEGATIVE_ONE_BYTES,
             };
