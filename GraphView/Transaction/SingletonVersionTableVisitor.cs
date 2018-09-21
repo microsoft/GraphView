@@ -5,9 +5,63 @@
     using NonBlocking;
     using System.Collections.Generic;
 
+    public interface Copyable
+    {
+        Copyable Copy();
+
+        /// <summary>
+        /// Copy another `Copyable` to `this`
+        /// </summary>
+        /// <returns>
+        /// returns `true` if copy successfully
+        /// `false` if `that` is not the same type as `this`
+        /// </returns>
+        bool CopyFrom(Copyable that);
+    }
+
+    class CachableObjectPool
+    {
+        private List<Copyable> objectPool = new List<Copyable>();
+
+        public void Cache(Copyable obj)
+        {
+            objectPool.Add(obj);
+        }
+        public Copyable GetCopy(Copyable obj)
+        {
+            for (int i = objectPool.Count - 1; i >= 0; --i)
+            {
+                Copyable o = objectPool[i];
+                if (o.CopyFrom(obj))
+                {
+                    objectPool.Remove(o);
+                    return o;
+                }
+            }
+            return obj.Copy();
+        }
+        public object TryGetCopy(object obj)
+        {
+            Copyable copyable = obj as Copyable;
+            if (copyable == null) return obj;
+            return this.GetCopy(copyable);
+        }
+        public bool TryCache(object obj)
+        {
+            Copyable copyable = obj as Copyable;
+            if (copyable == null)
+            {
+                return false;
+            }
+            this.Cache(copyable);
+            return true;
+        }
+    }
+
     internal class SingletonVersionTableVisitor : VersionTableVisitor
     {
         private readonly ConcurrentDictionary<object, ConcurrentDictionary<long, VersionEntry>> dict;
+        public readonly CachableObjectPool recordPool = new CachableObjectPool();
 
         public SingletonVersionTableVisitor(ConcurrentDictionary<object, ConcurrentDictionary<long, VersionEntry>> dict)
         {
@@ -58,6 +112,7 @@
 
             if (versionList.TryRemove(req.VersionKey, out versionEntry))
             {
+                this.recordPool.TryCache(versionEntry.Record);
                 req.Result = true;
             }
             else
@@ -168,6 +223,7 @@
                 {
                     tailEntry.EndTimestamp = headKey + 1;
                     versionList.TryRemove(headKey, out oldVerEntry);
+                    this.recordPool.TryCache(oldVerEntry.Record);
                 }
 
                 req.RemoteVerEntry = oldVerEntry == null ? new VersionEntry() : oldVerEntry;

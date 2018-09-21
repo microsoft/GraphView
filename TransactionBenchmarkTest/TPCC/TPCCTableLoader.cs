@@ -48,20 +48,19 @@ namespace TransactionBenchmarkTest.TPCC
         {
             CreateTable(versionDb, table);
             int recordCount = 0;
-            var txExec = new TransactionExecution(
-                null, versionDb, null, new TxRange((int)table.Type()), 0);
+            var txExec = new SyncExecution(versionDb, (int)table.Type());
             var auxIndexLoader = AuxIndexLoader.FromTableType(table.Type());
             foreach (var kv in LoadKvsFromDir(dir, table))
             {
-                txExec.Reset();
-                try
-                {
-                    txExec.TpccSyncInsert(kv.Item1, kv.Item2);
-                    txExec.Commit();
-                    auxIndexLoader.BuildAuxIndex(kv.Item1, kv.Item2);
-                    ++recordCount;
+                txExec.Start();
+                if (txExec.Insert(kv.Item1, kv.Item2).IsAborted()){
+                    continue;
                 }
-                catch (AbortException) { }
+                if (txExec.Commit().IsAborted()) {
+                    continue;
+                }
+                auxIndexLoader.BuildAuxIndex(kv.Item1, kv.Item2);
+                ++recordCount;
             }
             recordCount += auxIndexLoader.SaveTo(versionDb);
             return recordCount;
@@ -114,14 +113,13 @@ namespace TransactionBenchmarkTest.TPCC
             public override int SaveTo(VersionDb versionDb)
             {
                 int recordCount = 0;
-                var txExec = new TransactionExecution(
-                    null, versionDb, null, new TxRange(0));
+                SyncExecution txExec = new SyncExecution(versionDb);
                 foreach (var kv in this.tempStore)
                 {
                     CustomerLastNameIndexKey lastNameKey = kv.Key;
                     List<uint> cids = kv.Value;
-                    txExec.Reset();
-                    txExec.TpccSyncInsert(
+                    txExec.Start();
+                    txExec.Insert(
                         lastNameKey, CustomerLastNamePayloads.FromList(cids));
                     txExec.Commit();
                     ++recordCount;
