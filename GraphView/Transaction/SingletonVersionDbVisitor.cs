@@ -17,7 +17,7 @@ namespace GraphView.Transaction
         internal override void Visit(GetTxEntryRequest req)
         {
             TxTableEntry txEntry = req.RemoteTxEntry;
-            if (txEntry == null)
+            if (txEntry == null || req.TxId != txEntry.TxId)
             {
                 if (!this.txTable.TryGetValue(req.TxId, out txEntry))
                 {

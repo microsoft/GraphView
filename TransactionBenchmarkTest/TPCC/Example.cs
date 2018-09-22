@@ -113,7 +113,7 @@ namespace TransactionBenchmarkTest.TPCC
         static void TPCCNewOrderTest(SyncExecutionBuilder execBuilder)
         {
             int workerCount = execBuilder.VersionDb.PartitionCount;
-            int workloadCountPerWorker = 513364;
+            int workloadCountPerWorker = 513364 / workerCount;
             Console.WriteLine("\nNEW-ORDER: w={0}, N={1}", workerCount, workloadCountPerWorker);
 
             TPCCBenchmark bench =
@@ -128,7 +128,7 @@ namespace TransactionBenchmarkTest.TPCC
         static void TPCCPaymentTest(SyncExecutionBuilder execBuilder)
         {
             int workerCount = execBuilder.VersionDb.PartitionCount;
-            int workloadCountPerWorker = 490443;
+            int workloadCountPerWorker = 490443 / workerCount;
             Console.WriteLine("\nPAYMENT: w={0}, N={1}", workerCount, workloadCountPerWorker);
 
             TPCCBenchmark bench =
@@ -278,7 +278,7 @@ namespace TransactionBenchmarkTest.TPCC
 
         static void Main(string[] args)
         {
-            SingletonTpccNewOrderBenchmark();
+            SingletonTpccPaymentTest();
             getchar('q');
             // LoadTables(Constants.BaseDirOfDatasets);
 

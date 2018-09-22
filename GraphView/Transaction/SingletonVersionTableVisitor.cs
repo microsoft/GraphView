@@ -68,7 +68,8 @@
             this.dict = dict;
         }
 
-        static void ResetTailEntry(VersionEntry tailEntry) {
+        static void ResetTailEntry(VersionEntry tailEntry)
+        {
             tailEntry.BeginTimestamp = VersionEntry.DEFAULT_BEGIN_TIMESTAMP;
             tailEntry.EndTimestamp = VersionEntry.DEFAULT_END_TIMESTAMP;
         }
@@ -96,9 +97,12 @@
             // We don't need to take Interlocked to update its value
 
             // when the deleted entry is the only one in version list
-            if (tailEntry.BeginTimestamp == tailEntry.EndTimestamp) {
+            if (tailEntry.BeginTimestamp == tailEntry.EndTimestamp)
+            {
                 ResetTailEntry(tailEntry);
-            } else {
+            }
+            else
+            {
                 --tailEntry.BeginTimestamp;
             }
 
@@ -145,12 +149,9 @@
                     return;
                 }
             }
-            else
-            {
-                req.RemoteVerList = null;
-                req.Result = false;
-                req.Finished = true;
-            }
+            req.RemoteVerList = null;
+            req.Result = false;
+            req.Finished = true;
         }
 
         internal override void Visit(ReplaceVersionRequest req)
@@ -223,7 +224,10 @@
                 {
                     tailEntry.EndTimestamp = headKey + 1;
                     versionList.TryRemove(headKey, out oldVerEntry);
-                    this.recordPool.TryCache(oldVerEntry.Record);
+                    if (oldVerEntry != null)
+                    {
+                        this.recordPool.TryCache(oldVerEntry.Record);
+                    }
                 }
 
                 req.RemoteVerEntry = oldVerEntry == null ? new VersionEntry() : oldVerEntry;
