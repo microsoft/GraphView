@@ -119,24 +119,29 @@ namespace TransactionBenchmarkTest.TPCC
                 $"should be {shouldBe}");
         }
 
+        static private int CalculateWorkload(int total, int workers) {
+            return (total + workers - 1) / workers;
+        }
+
         public void LoadWorkload(WorkloadFactory factory, string filepath)
         {
-            Console.WriteLine($"Loading {factory.Name()} workload...");
-            IEnumerator<WorkloadParam> paramIter =
+            Console.Write($"Loading {factory.Name()} workload... ");
+            List<WorkloadParam> paramList =
                 ReadWorkloadFile(filepath)
-                    .Select(factory.ColumnsToParam).GetEnumerator();
+                .Select(factory.ColumnsToParam).ToList();
+            int realWorkload = CalculateWorkload(
+                paramList.Count, this.workerCount);
+
+            IEnumerable<WorkloadParam> paramIter = paramList.AsEnumerable();
             for (int i = 0; i < this.tpccWorkers.Length; ++i)
             {
-                List<WorkloadParam> parameters = EnumeratorTake(
-                    paramIter, this.workloadCountPerWorker);
-                if (parameters.Count != this.workloadCountPerWorker)
-                {
-                    throw NotEnoughWorkload(
-                        i, parameters, this.workloadCountPerWorker);
-                }
+                WorkloadParam[] paramSlice =
+                    paramIter.Take(realWorkload).ToArray();
+                paramIter = paramIter.Skip(realWorkload);
                 this.tpccWorkers[i].SetWorkload(
-                    factory.NewWorkload(), parameters.ToArray());
+                    factory.NewWorkload(), paramSlice);
             }
+            Console.WriteLine("Done");
         }
 
         static double TotalMemoryInMB()
