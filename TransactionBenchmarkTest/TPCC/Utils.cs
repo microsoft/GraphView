@@ -47,7 +47,63 @@ namespace TransactionBenchmarkTest.TPCC
 
         static public class Singleton
         {
-            public const int Concurrency = 1;
+            public const int Concurrency = 4;
+        }
+    }
+
+    public class BenchmarkConfig
+    {
+        static public BenchmarkConfig globalConfig = new BenchmarkConfig();
+
+        public enum TransactionType
+        {
+            PAYMENT, NEW_ORDER
+        }
+        public BenchmarkConfig()
+        {
+            this.Concurrency = 2;
+            this.WorkloadPerWorker = 200000;
+            this.TxType = TransactionType.PAYMENT;
+            this.DatasetDir = Constants.BaseDirOfDatasets;
+            this.WorkloadFile = DefaultWorkloadFile(TxType);
+        }
+
+        public int Concurrency;
+        public int WorkloadPerWorker;
+        public TransactionType TxType;
+        public string DatasetDir;
+        public string WorkloadFile;
+
+        public void Print() {
+            Console.WriteLine($"Concurrency: {this.Concurrency}");
+            Console.WriteLine($"Workload per worker: {this.WorkloadPerWorker}");
+            Console.WriteLine($"Transaction type: {typeof(TransactionType).GetEnumName(this.TxType)}");
+            Console.WriteLine();
+        }
+
+        static public TransactionType StringToTxType(string t)
+        {
+            switch (t.ToLower())
+            {
+                case "payment":
+                    return TransactionType.PAYMENT;
+                case "new_order":
+                    return TransactionType.NEW_ORDER;
+                default:
+                    throw new Exception($"unknown transaction type: {t}");
+            }
+        }
+
+        static public string DefaultWorkloadFile(TransactionType t)
+        {
+            switch (t)
+            {
+                case TransactionType.PAYMENT:
+                    return Constants.PaymentWorkloadPath;
+                case TransactionType.NEW_ORDER:
+                    return Constants.NewOrderWorkloadPath;
+            }
+            throw new Exception("unknown transaction");
         }
     }
 }

@@ -121,6 +121,7 @@ namespace TransactionBenchmarkTest.TPCC
 
         public void LoadWorkload(WorkloadFactory factory, string filepath)
         {
+            Console.WriteLine($"Loading {factory.Name()} workload...");
             IEnumerator<WorkloadParam> paramIter =
                 ReadWorkloadFile(filepath)
                     .Select(factory.ColumnsToParam).GetEnumerator();
@@ -136,19 +137,6 @@ namespace TransactionBenchmarkTest.TPCC
                 this.tpccWorkers[i].SetWorkload(
                     factory.NewWorkload(), parameters.ToArray());
             }
-        }
-
-
-        public void LoadNewOrderWorkload(string filepath)
-        {
-            Console.WriteLine("Loading NEW_ORDER workload...");
-            LoadWorkload(new NewOrderWorkloadFactory(), filepath);
-        }
-
-        public void LoadPaymentWorkload(string filepath)
-        {
-            Console.WriteLine("Loading PAYMENT workload...");
-            LoadWorkload(new PaymentWorkloadFactory(), filepath);
         }
 
         static double TotalMemoryInMB()

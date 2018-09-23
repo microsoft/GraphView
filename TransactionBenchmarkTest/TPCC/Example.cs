@@ -13,81 +13,13 @@ namespace TransactionBenchmarkTest.TPCC
 
     class Example
     {
-        // dataset populating
-        static void LoadTables(string baseDir)
-        {
-            Console.WriteLine("Loading tables...");
-            RedisClient redisClient = new RedisClient(Constants.RedisHost, Constants.RedisPort);   // for payment to create `c_last` index
-            redisClient.ChangeDb(Constants.RedisIndexDbN);
-            redisClient.FlushAll(); // flush all first
-
-            VersionDb redisVersionDb = RedisVersionDb.Instance();
-            redisVersionDb.CreateVersionTable(Constants.DefaultTbl, Constants.RedisDbN);
-
-            //string baseDir = Constants.BaseDirOfDatasets;
-            string[] tables = Constants.TableNames;
-            TableCode[] codes = Constants.TableCodes;
-
-            long startTicks = DateTime.Now.Ticks;
-
-            for (int i = 0; i < tables.Length; i++)
-            {
-                Console.WriteLine("Loading table " + tables[i]);
-                var tablePath = baseDir + tables[i];
-                var csvReader = new System.IO.StreamReader(tablePath);
-                var code = codes[i];
-                string line;
-                var cnt = 0;
-                int batchSize = 100;
-                bool eatup = false;
-
-                while(true)
-                {
-                    Transaction tx = new Transaction(null, redisVersionDb);
-                    try
-                    {
-                        for (int k = 0; k < batchSize; k++)
-                        {
-                            line = csvReader.ReadLine();
-                            if (line == null)
-                            {
-                                eatup = true;
-                                break;
-                            }
-                            string[] columns = line.Split(Constants.Delimiter);
-                            for (int j = 0; j < columns.Length; j++) { columns[j] = columns[j].Substring(1, columns[j].Length - 2); }   // remove head/tail `"` 
-
-                            Tuple<string, string> kv = RecordGenerator.BuildRedisKV(code, columns, redisClient);
-
-                            string tmpRecord = (string)tx.ReadAndInitialize(Constants.DefaultTbl, kv.Item1);
-                            if (tmpRecord == null) tx.Insert(Constants.DefaultTbl, kv.Item1, kv.Item2);
-
-                            cnt++;
-                        }
-
-                        tx.Commit();
-                    } catch (TransactionException e) { }
-
-                    if (cnt % 10000 == 0)
-                    {
-                        Console.WriteLine("\t Load records {0}", cnt);
-                    }
-
-                    if (eatup) break;
-                }
-            }
-
-            long endTicks = DateTime.Now.Ticks;
-            Console.WriteLine("Loading time total: {0} seconds", (endTicks - startTicks) / 10000000.0);
-        }
-
-        static void SyncLoadTpccTable(TpccTable table, VersionDb versionDb)
+        static void SyncLoadTpccTable(
+            TpccTable table, VersionDb versionDb, string dir)
         {
             Console.WriteLine($"Start loading table: '{table.Type().Name()}'");
             var startTime = DateTime.UtcNow;
 
-            int c = TPCCTableLoader.Load(
-                Constants.BaseDirOfDatasets, table, versionDb);
+            int c = TPCCTableLoader.Load(dir, table, versionDb);
 
             var time = (DateTime.UtcNow - startTime).TotalSeconds;
 
@@ -95,65 +27,19 @@ namespace TransactionBenchmarkTest.TPCC
                 $"{c} records in '{table.Name()}' loaded in {time:F3} sec");
         }
 
-        static void SyncLoadTpccTablesInto(VersionDb versionDb)
+        static void SyncLoadTpccTablesInto(VersionDb versionDb, string dir)
         {
             Parallel.ForEach(
                 TpccTable.allTypes,
-                t => SyncLoadTpccTable(TpccTable.Instance(t), versionDb));
+                t => SyncLoadTpccTable(TpccTable.Instance(t), versionDb, dir));
         }
 
-        static SingletonVersionDb MakeSingletonVersionDb()
+        static SingletonVersionDb MakeSingletonVersionDb(int concurrency)
         {
             Console.WriteLine("Initializing SingletonVersionDb");
-            var versionDb = SingletonVersionDb.Instance(Constants.Singleton.Concurrency);
-            versionDb.CreateVersionTable(Constants.DefaultTbl);
+            var versionDb = SingletonVersionDb.Instance(concurrency);
             return versionDb;
         }
-
-        static void TPCCNewOrderTest(SyncExecutionBuilder execBuilder)
-        {
-            int workerCount = execBuilder.VersionDb.PartitionCount;
-            int workloadCountPerWorker = 513364 / workerCount;
-            Console.WriteLine("\nNEW-ORDER: w={0}, N={1}", workerCount, workloadCountPerWorker);
-
-            TPCCBenchmark bench =
-                new TPCCBenchmark(execBuilder, workloadCountPerWorker);
-            bench.LoadNewOrderWorkload(Constants.NewOrderWorkloadPath);
-            bench.Run();
-            bench.PrintStats();
-
-            Console.WriteLine("New-Order transaction throught: {0} tx/s", bench.Throughput);
-        }
-
-        static void TPCCPaymentTest(SyncExecutionBuilder execBuilder)
-        {
-            int workerCount = execBuilder.VersionDb.PartitionCount;
-            int workloadCountPerWorker = 490443 / workerCount;
-            Console.WriteLine("\nPAYMENT: w={0}, N={1}", workerCount, workloadCountPerWorker);
-
-            TPCCBenchmark bench =
-                new TPCCBenchmark(execBuilder, workloadCountPerWorker);
-            bench.LoadPaymentWorkload(Constants.PaymentWorkloadPath);
-            bench.Run();
-            bench.PrintStats();
-
-            Console.WriteLine("PAYMENT transaction throught: {0} tx/s", bench.Throughput);
-        }
-
-        static void SingletonTpccPaymentTest()
-        {
-            SingletonVersionDb versionDb = MakeSingletonVersionDb();
-            var execBuilder = new SingletonExecutionBuilder(versionDb);
-            SyncLoadTpccTablesInto(versionDb);
-            TPCCPaymentTest(execBuilder);
-        }
-        static void SingletonTpccNewOrderBenchmark() {
-            SingletonVersionDb versionDb = MakeSingletonVersionDb();
-            var execBuilder = new SingletonExecutionBuilder(versionDb);
-            SyncLoadTpccTablesInto(versionDb);
-            TPCCNewOrderTest(execBuilder);
-        }
-
 
         static void TPCCNewOrderAsyncTest()
         {
@@ -264,6 +150,81 @@ namespace TransactionBenchmarkTest.TPCC
             //}
         }
 
+        static public void ParseArguments(string[] args)
+        {
+            BenchmarkConfig config = BenchmarkConfig.globalConfig;
+            for (int i = 0; i < args.Length;)
+            {
+                switch (args[i++])
+                {
+                    case "-c":
+                    case "--concurrency":
+                        config.Concurrency = Convert.ToInt32(args[i++]);
+                        break;
+                    case "-t":
+                    case "--type":
+                        config.TxType = BenchmarkConfig.StringToTxType(args[i++]);
+                        break;
+                    case "-w":
+                    case "--workload":
+                        config.WorkloadPerWorker = Convert.ToInt32(args[i++]);
+                        break;
+                    case "-d":
+                    case "--data-dir":
+                        config.DatasetDir = args[i++];
+                        break;
+                    case "-f":
+                    case "--workload-file":
+                        config.WorkloadFile = args[i++];
+                        break;
+                    default:
+                        throw new ArgumentException($"unknown argument: {args[i - 1]}");
+                }
+            }
+        }
+
+        static WorkloadFactory GetWorkloadFactory(
+            BenchmarkConfig.TransactionType txType)
+        {
+            switch (txType)
+            {
+                case BenchmarkConfig.TransactionType.PAYMENT:
+                    return new PaymentWorkloadFactory();
+                case BenchmarkConfig.TransactionType.NEW_ORDER:
+                    return new NewOrderWorkloadFactory();
+            }
+            return null;
+        }
+        static TPCCBenchmark InitializeBenchmark(
+            BenchmarkConfig.TransactionType txType,
+            SyncExecutionBuilder execBuilder,
+            int workerWorkload, string workloadFile)
+        {
+            TPCCBenchmark benchmark = new TPCCBenchmark(execBuilder, workerWorkload);
+            benchmark.LoadWorkload(GetWorkloadFactory(txType), workloadFile);
+            return benchmark;
+        }
+
+        static void RunSyncBenchmark(TPCCBenchmark benchmark) {
+            benchmark.Run();
+            benchmark.PrintStats();
+            Console.WriteLine(
+                "Transaction throughput: {0} tx/s", benchmark.Throughput);
+        }
+
+        static void SingletonTpccBenchmarkWithGlobalConfig()
+        {
+            BenchmarkConfig config = BenchmarkConfig.globalConfig;
+            SingletonVersionDb versionDb =
+                MakeSingletonVersionDb(config.Concurrency);
+            SyncLoadTpccTablesInto(versionDb, config.DatasetDir);
+            var execBuilder = new SingletonExecutionBuilder(versionDb);
+            var benchmark = InitializeBenchmark(
+                config.TxType, execBuilder,
+                config.WorkloadPerWorker, config.WorkloadFile);
+            RunSyncBenchmark(benchmark);
+        }
+
         static void getchar(char c)
         {
             //Console.Beep(500, 600);
@@ -278,7 +239,9 @@ namespace TransactionBenchmarkTest.TPCC
 
         static void Main(string[] args)
         {
-            SingletonTpccPaymentTest();
+            ParseArguments(args);
+            BenchmarkConfig.globalConfig.Print();
+            SingletonTpccBenchmarkWithGlobalConfig();
             getchar('q');
             // LoadTables(Constants.BaseDirOfDatasets);
 
