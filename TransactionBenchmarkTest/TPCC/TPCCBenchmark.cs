@@ -14,17 +14,20 @@ namespace TransactionBenchmarkTest.TPCC
         private WorkloadParam[] parameters;
         private TPCCWorkload workload;
 
+        private int workloadCount = 0;
+
         //private int workloadCount;
         public int commitCount;
         public int abortCount;
 
         private SyncExecution execution;
 
-        public TPCCWorker(SyncExecution execution)
+        public TPCCWorker(SyncExecution execution, int workloadCount = 0)
         {
             this.commitCount = this.abortCount = 0;
             this.execution = execution;
             this.parameters = new WorkloadParam[0];
+            this.workloadCount = workloadCount;
             this.workload = null;
         }
         public void SetWorkload(
@@ -36,9 +39,10 @@ namespace TransactionBenchmarkTest.TPCC
 
         public void Run()
         {
-            for (int i = 0; i < this.parameters.Length; ++i)
+            for (int i = 0; i < this.workloadCount; ++i)
             {
-                WorkloadParam parameter = this.parameters[i];
+                WorkloadParam parameter =
+                    this.parameters[i % this.parameters.Length];
                 var ret = this.workload.Run(execution, parameter);
                 if (ret.txFinalStatus == TxFinalStatus.COMMITTED)
                     this.commitCount++;
@@ -55,25 +59,28 @@ namespace TransactionBenchmarkTest.TPCC
 
         private TPCCWorker[] tpccWorkers;
 
-        private long startTicks;
-        private long endTicks;
+        private DateTime startTicks;
+        private DateTime endTicks;
 
-        static TPCCWorker[] InititializeWorkers(SyncExecutionBuilder builder)
+        static TPCCWorker[] InititializeWorkers(
+            SyncExecutionBuilder builder, int workloadCount)
         {
             SyncExecution[] execs = builder.BuildAll();
             var workers = new TPCCWorker[execs.Length];
             for (int i = 0; i < workers.Length; ++i)
             {
-                workers[i] = new TPCCWorker(execs[i]);
+                workers[i] = new TPCCWorker(execs[i], workloadCount);
             }
             return workers;
         }
 
-        public TPCCBenchmark(SyncExecutionBuilder builder, int workloadCountPerWorker)
+        public TPCCBenchmark(
+            SyncExecutionBuilder builder, int workloadCountPerWorker)
         {
             this.workloadCountPerWorker = workloadCountPerWorker;
 
-            this.tpccWorkers = InititializeWorkers(builder);
+            this.tpccWorkers = InititializeWorkers(
+                builder, workloadCountPerWorker);
             this.workerCount = this.tpccWorkers.Length;
         }
 
@@ -144,7 +151,8 @@ namespace TransactionBenchmarkTest.TPCC
             LoadWorkload(new PaymentWorkloadFactory(), filepath);
         }
 
-        static double TotalMemoryInMB() {
+        static double TotalMemoryInMB()
+        {
             return GC.GetTotalMemory(false) / 1024.0 / 1024.0;
         }
 
@@ -159,7 +167,7 @@ namespace TransactionBenchmarkTest.TPCC
         {
             Console.WriteLine("Running TPCC workload...");
             ForceGC();
-            this.startTicks = DateTime.Now.Ticks;
+            this.startTicks = DateTime.UtcNow;
 
             Thread[] threads = new Thread[workerCount];
             for (int i = 0; i < this.workerCount; i++)
@@ -173,7 +181,7 @@ namespace TransactionBenchmarkTest.TPCC
                 thread.Join();
             }
 
-            this.endTicks = DateTime.Now.Ticks;
+            this.endTicks = DateTime.UtcNow;
         }
 
         public void PrintStats()
@@ -188,7 +196,7 @@ namespace TransactionBenchmarkTest.TPCC
         {
             get
             {
-                double seconds = (this.endTicks - this.startTicks) / 10000000.0;
+                double seconds = (this.endTicks - this.startTicks).TotalSeconds;
                 int workloadTotal = this.workerCount * this.workloadCountPerWorker;
                 Console.WriteLine("Processed {0} workloads in {1} seconds", workloadTotal, seconds);
                 return (int)(workloadTotal / seconds);
