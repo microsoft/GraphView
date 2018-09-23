@@ -3,13 +3,14 @@ namespace GraphView.Transaction
 {
     using System.Collections.Generic;
 
-    //using System.Collections.Concurrent;
-
     public abstract class TxRequest : IResource
     {
         internal volatile bool Finished = false;
         internal object Result { get; set; }
         internal bool InUse { get; set; }
+
+        // The Id of the transaction initiating this request
+        internal long SenderId { get; set; }
         
         public void Use()
         {
@@ -144,6 +145,7 @@ namespace GraphView.Transaction
         public void Set(long txId)
         {
             this.TxId = txId;
+            this.SenderId = txId;
         }
 
         internal override void Accept(TxEntryVisitor visitor)
@@ -171,6 +173,7 @@ namespace GraphView.Transaction
         public void Set(long txId, TxTableEntry remoteEntry = null)
         {
             this.TxId = txId;
+            this.SenderId = txId;
             this.RemoteTxEntry = remoteEntry;
         }
 
@@ -200,6 +203,7 @@ namespace GraphView.Transaction
         public void Set(long txId, TxTableEntry remoteTxEntry = null)
         {
             this.TxId = txId;
+            this.SenderId = txId;
             this.RemoteTxEntry = remoteTxEntry;
         }
 
@@ -225,9 +229,10 @@ namespace GraphView.Transaction
         public GetTxEntryRequest(long txId)
             : base(txId) { }
 
-        public void Set(long txId, TxTableEntry localEntry = null, TxTableEntry remoteEntry = null)
+        public void Set(long txId, long senderId, TxTableEntry localEntry = null, TxTableEntry remoteEntry = null)
         {
             this.TxId = txId;
+            this.SenderId = senderId;
             this.LocalTxEntry = localEntry;
             this.RemoteTxEntry = remoteEntry;
         }
@@ -262,6 +267,7 @@ namespace GraphView.Transaction
         public void Set(long txId, long proposedCommitTs, TxTableEntry remoteEntry = null)
         {
             this.TxId = txId;
+            this.SenderId = txId;
             this.ProposedCommitTs = proposedCommitTs;
             this.RemoteTxEntry = remoteEntry;
         }
@@ -293,9 +299,10 @@ namespace GraphView.Transaction
             this.CommitTsLowerBound = commitTsLowerBound;
         }
 
-        public void Set(long txId, long lowerBound, TxTableEntry remoteEntry = null)
+        public void Set(long txId, long senderId, long lowerBound, TxTableEntry remoteEntry = null)
         {
             this.TxId = txId;
+            this.SenderId = senderId;
             this.CommitTsLowerBound = lowerBound;
             this.RemoteTxEntry = remoteEntry;
         }
@@ -330,6 +337,7 @@ namespace GraphView.Transaction
         public void Set(long txId, TxStatus status, TxTableEntry remoteEntry = null)
         {
             this.TxId = txId;
+            this.SenderId = txId;
             this.TxStatus = status;
             this.RemoteTxEntry = remoteEntry;
         }
@@ -361,6 +369,7 @@ namespace GraphView.Transaction
         public void Set(long txId)
         {
             this.TxId = txId;
+            this.SenderId = txId;
         }
 
         internal override void Accept(TxEntryVisitor visitor)
@@ -380,9 +389,6 @@ namespace GraphView.Transaction
         }
     }
 
-    /// <summary>
-    /// TODO: The first TryGet could be optimized by recording the version list reference
-    /// </summary>
     public class DeleteVersionRequest : VersionEntryRequest
     {
         public DeleteVersionRequest(string tableId, object recordKey, long versionKey)
@@ -392,12 +398,14 @@ namespace GraphView.Transaction
             string tableId,
             object recordKey,
             long versionKey,
+            long senderId,
             IDictionary<long, VersionEntry> remoteVerList = null)
         {
             this.TableId = tableId;
             this.RecordKey = recordKey;
             this.VersionKey = versionKey;
             this.RemoteVerList = remoteVerList;
+            this.SenderId = senderId;
         }
 
         internal override void Accept(VersionEntryVisitor visitor)
@@ -430,6 +438,7 @@ namespace GraphView.Transaction
         public void Set(
             string tableId, 
             object recordKey, 
+            long senderId,
             TxList<VersionEntry> localContainer,
             TxList<VersionEntry> remoteContainer = null)
         {
@@ -438,6 +447,7 @@ namespace GraphView.Transaction
             this.VersionKey = -1L;
             this.LocalContainer = localContainer;
             this.RemoteContainer = remoteContainer;
+            this.SenderId = senderId;
         }
 
         public GetVersionListRequest(
@@ -478,11 +488,13 @@ namespace GraphView.Transaction
 
         public void Set(
             string tableId, 
-            object recordKey)
+            object recordKey,
+            long senderId)
         {
             this.TableId = tableId;
             this.RecordKey = recordKey;
             this.VersionKey = -1L;
+            this.SenderId = senderId;
         }
 
         internal override void Accept(VersionEntryVisitor visitor)
@@ -511,6 +523,7 @@ namespace GraphView.Transaction
             string tableId,
             object recordKey,
             long versionKey,
+            long senderId,
             VersionEntry localEntry = null,
             VersionEntry remoteEntry = null)
         {
@@ -519,6 +532,7 @@ namespace GraphView.Transaction
             this.VersionKey = versionKey;
             this.LocalVerEntry = localEntry;
             this.RemoteVerEntry = remoteEntry;
+            this.SenderId = senderId;
         }
 
         internal override void Accept(VersionEntryVisitor visitor)
@@ -543,7 +557,6 @@ namespace GraphView.Transaction
         public long BeginTs { get; internal set; }
         public long EndTs { get; internal set; }
         public long TxId { get; internal set; }
-        public long ReadTxId { get; internal set; }
         public long ExpectedEndTs { get; internal set; }
 
         public ReplaceVersionRequest(
@@ -553,14 +566,14 @@ namespace GraphView.Transaction
             long beginTimestamp, 
             long endTimestamp, 
             long txId, 
-            long readTxId, 
+            long senderId, 
             long expectedEndTimestamp)
             : base(tableId, recordKey, versionKey)
         {
             this.BeginTs = beginTimestamp;
             this.EndTs = endTimestamp;
             this.TxId = txId;
-            this.ReadTxId = readTxId;
+            this.SenderId = senderId;
             this.ExpectedEndTs = expectedEndTimestamp;
         }
 
@@ -582,7 +595,7 @@ namespace GraphView.Transaction
             this.BeginTs = beginTimestamp;
             this.EndTs = endTimestamp;
             this.TxId = txId;
-            this.ReadTxId = readTxId;
+            this.SenderId = readTxId;
             this.ExpectedEndTs = expectedEndTimestamp;
             this.LocalVerEntry = localVersionEntry;
             this.RemoteVerEntry = remoteVersionEntry;
@@ -623,6 +636,7 @@ namespace GraphView.Transaction
             string tableId,
             object recordKey,
             long versionKey,
+            long senderId,
             VersionEntry localVerEntry = null,
             VersionEntry remoteVerEntry = null)
         {
@@ -631,6 +645,7 @@ namespace GraphView.Transaction
             this.VersionKey = versionKey;
             this.LocalVerEntry = localVerEntry;
             this.RemoteVerEntry = remoteVerEntry;
+            this.SenderId = senderId;
         }
 
         internal override void Accept(VersionEntryVisitor visitor)
@@ -666,6 +681,7 @@ namespace GraphView.Transaction
             object recordKey, 
             long versionKey, 
             long commitTime, 
+            long senderId,
             VersionEntry localVerEntry = null,
             VersionEntry remoteVerEntry = null)
         {
@@ -675,6 +691,7 @@ namespace GraphView.Transaction
             this.MaxCommitTs = commitTime;
             this.LocalVerEntry = localVerEntry;
             this.RemoteVerEntry = remoteVerEntry;
+            this.SenderId = senderId;
         }
 
         internal override void Accept(VersionEntryVisitor visitor)
@@ -710,6 +727,7 @@ namespace GraphView.Transaction
             object recordKey, 
             long versionKey, 
             VersionEntry versionEntry,
+            long senderId,
             IDictionary<long, VersionEntry> remoteVerList = null)
         {
             this.TableId = tableId;
@@ -717,6 +735,7 @@ namespace GraphView.Transaction
             this.VersionKey = versionKey;
             this.VersionEntry = versionEntry;
             this.RemoteVerList = remoteVerList;
+            this.SenderId = senderId;
         }
 
         internal override void Accept(VersionEntryVisitor visitor)

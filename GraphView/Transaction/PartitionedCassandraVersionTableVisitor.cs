@@ -134,7 +134,7 @@ namespace GraphView.Transaction
         {
             // read first
             VersionEntry ve = this.GetVersionEntryByKey(req.TableId, req.RecordKey, req.VersionKey, req.LocalVerEntry);
-            if (ve.TxId == req.ReadTxId && ve.EndTimestamp == req.ExpectedEndTs)
+            if (ve.TxId == req.SenderId && ve.EndTimestamp == req.ExpectedEndTs)
             {
                 this.CQLExecute(string.Format(PartitionedCassandraVersionTable.CQL_REPLACE_VERSION,
                                                 req.TableId, req.BeginTs, req.EndTs, req.TxId,

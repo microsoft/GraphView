@@ -171,7 +171,7 @@
                 }
             }
 
-            if (entry.TxId == req.ReadTxId && entry.EndTimestamp == req.ExpectedEndTs)
+            if (entry.TxId == req.SenderId && entry.EndTimestamp == req.ExpectedEndTs)
             {
                 while (Interlocked.CompareExchange(ref entry.latch, 1, 0) != 0) ;
 
