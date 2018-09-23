@@ -205,6 +205,8 @@
                 VersionEntry tailEntry = null;
                 versionList.TryGetValue(SingletonDictionaryVersionTable.TAIL_KEY, out tailEntry);
 
+                lock (tailEntry) {
+
                 long headKey = tailEntry.EndTimestamp;
                 long tailKey = tailEntry.BeginTimestamp;
                 // Here we use Interlocked to atomically update the tail entry, instead of ConcurrentDict.TryUpdate().
@@ -231,6 +233,7 @@
                 }
 
                 req.RemoteVerEntry = oldVerEntry == null ? new VersionEntry() : oldVerEntry;
+                }
                 req.Result = true;
                 req.Finished = true;
                 return;
@@ -283,16 +286,18 @@
                 req.Finished = true;
                 return;
             }
+            int entryCount = 0;
 
             // The value at -1 in the version list is a special entry, 
             // whose beginTimestamp points to the newest version. 
             VersionEntry tailEntry = null;
             versionList.TryGetValue(SingletonDictionaryVersionTable.TAIL_KEY, out tailEntry);
+            lock (tailEntry)
+            {
             long lastVersionKey = Interlocked.Read(ref tailEntry.BeginTimestamp);
 
             TxList<VersionEntry> localList = req.LocalContainer;
             TxList<VersionEntry> remoteList = req.RemoteContainer;
-            int entryCount = 0;
             // Only returns top 2 newest versions. This is enough for serializability. 
             // For other isolation levels, more versions may need to be returned.
             // When old versions may be truncated, it is desirable to maintain a head pointer as well,
@@ -318,6 +323,7 @@
 
                 lastVersionKey--;
             }
+            }
 
             req.RemoteVerList = versionList;
             req.Result = entryCount;
@@ -341,6 +347,7 @@
                 {
                     req.Result = null;
                     req.Finished = true;
+                    return;
                 }
             }
 

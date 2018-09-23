@@ -1198,7 +1198,8 @@ namespace GraphView.Transaction
         }
 
         public void InitAndInsert(
-            string tableId, object recordKey, object record) {
+            string tableId, object recordKey, object record)
+        {
             bool dummy1;
             object dummy2;
             ReadAndInitialize(tableId, recordKey, out dummy1, out dummy2);
@@ -1211,7 +1212,8 @@ namespace GraphView.Transaction
             this.Read(tableId, recordKey, false, out received, out payload);
         }
 
-        public object SyncRead(string tableId, object recordKey) {
+        public object SyncRead(string tableId, object recordKey)
+        {
             bool dummy1;
             object dummy2;
             this.ReadPayload = null;
@@ -1415,6 +1417,7 @@ namespace GraphView.Transaction
             VersionEntry visibleVersion = null;
             // Keep a committed version to retrieve the largest version key
             VersionEntry committedVersion = null;
+            TxTableEntry pendingTx = null;
             while (this.readEntryCount > 0)
             {
                 VersionEntry versionEntry = this.versionList[this.readEntryCount - 1];
@@ -1426,7 +1429,7 @@ namespace GraphView.Transaction
                         return;
                     }
 
-                    TxTableEntry pendingTx = this.getTxReq.Result as TxTableEntry;
+                    pendingTx = this.getTxReq.Result as TxTableEntry;
                     this.getTxReq.Free();
 
                     if (pendingTx == null)
@@ -1477,11 +1480,20 @@ namespace GraphView.Transaction
                 {
                     if (versionEntry.TxId >= 0)
                     {
-                        // Send the GetTxEntry request
-                        this.getTxReq.Set(versionEntry.TxId, this.localTxEntry, this.remoteTxEntryRef);
-                        this.getTxReq.Use();
+                        if (pendingTx != null && pendingTx.TxId == versionEntry.TxId)
+                        {
+                            this.getTxReq.Result = pendingTx;
+                            this.getTxReq.Use();
+                            this.getTxReq.Finished = true;
+                        }
+                        else
+                        {
+                            // Send the GetTxEntry request
+                            this.getTxReq.Set(versionEntry.TxId, this.localTxEntry, this.remoteTxEntryRef);
+                            this.getTxReq.Use();
 
-                        this.versionDb.EnqueueTxEntryRequest(versionEntry.TxId, getTxReq, this.execId);
+                            this.versionDb.EnqueueTxEntryRequest(versionEntry.TxId, getTxReq, this.execId);
+                        }
                     }
                     else
                     {
