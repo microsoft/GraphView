@@ -54,7 +54,7 @@
     <PlatformTarget>AnyCPU</PlatformTarget>
   </PropertyGroup>
   <PropertyGroup>
-    <StartupObject>TransactionBenchmarkTest.TPCC.Example</StartupObject>
+    <StartupObject>TransactionBenchmarkTest.YCSB.SingletonYcsbBenchmark</StartupObject>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'">
     <DebugSymbols>true</DebugSymbols>
@@ -230,6 +230,7 @@
     <Compile Include="TxTask.cs" />
     <Compile Include="Worker.cs" />
     <Compile Include="YCSB\BenchmarkTestConfig.cs" />
+    <Compile Include="YCSB\SingletonYcsbBenchmark.cs" />
     <Compile Include="YCSB\YCSBDataGenerator.cs" />
     <Compile Include="YCSB\Main.cs" />
     <Compile Include="YCSB\Program.cs" />
