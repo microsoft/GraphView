@@ -68,6 +68,11 @@ namespace TransactionBenchmarkTest.YCSB
         {
             return new String('a', 100);
         }
+        static public object UpdatePayload()
+        {
+            return YcsbHelper.UPDATE_PAYLOAD;
+        }
+        static string UPDATE_PAYLOAD = new string('a', 100);
     }
     public struct YcsbQuery
     {
@@ -121,7 +126,8 @@ namespace TransactionBenchmarkTest.YCSB
             switch (nextop)
             {
                 case "READ": return GetRead(gen.NextIntKey());
-                case "UPDATE": return GetUpdate(gen.NextIntKey(), "TODO:");
+                case "UPDATE": return GetUpdate(
+                    gen.NextIntKey(), YcsbHelper.UpdatePayload());
             }
             throw new Exception($"Unknown generated operation: {nextop}");
         }
@@ -230,8 +236,9 @@ namespace TransactionBenchmarkTest.YCSB
             VersionDb versionDb, Func<YcsbWorkload> workloadFactory)
         {
             var txExecs = SingletonYCSBTxExecHelper.MakeTxExecs(versionDb);
-            this.localEnvs = txExecs.Select(
-                exec => new LocalBenchmarkEnv(exec, workloadFactory())).ToArray();
+            this.localEnvs = txExecs.AsParallel()
+                .Select(exec => new LocalBenchmarkEnv(exec, workloadFactory()))
+                .ToArray();
         }
 
         public SingletonYcsbBenchmark.BenchResult Go()
@@ -396,7 +403,10 @@ namespace TransactionBenchmarkTest.YCSB
             List<BenchResult> results = new List<BenchResult>(repeat);
             for (int i = 0; i < repeat; ++i)
             {
-                Console.WriteLine($"ROUND {i+1}:");
+                if (repeat > 1)
+                {
+                    Console.WriteLine($"ROUND {i + 1}:");
+                }
                 BenchResult result = BenchmarkWithConfigOnce(config);
                 results.Add(result);
                 result.Print();
@@ -417,6 +427,7 @@ namespace TransactionBenchmarkTest.YCSB
             {
                 config.PrintSimple();
                 BenchmarkWithConfig(configs.Repeat, config);
+                GC.Collect();
             }
         }
 
@@ -427,7 +438,7 @@ namespace TransactionBenchmarkTest.YCSB
             public int RecordCount = 500000;
             public int WorkerWorkload = 500000;
             public int QueryPerTx = 2;
-            public double[] ReadRatios = new double[] { 0, 0.5, 0.8, 1};
+            public double[] ReadRatios = new double[] { 0, 0.5, 0.8, 1 };
             public double[] ZipfSkews = new double[] { 0.8, 0.9 };
             public int[] Concurrencies = new int[] { 1, 2, 4, 8, 16, 32 };
 
