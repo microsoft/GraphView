@@ -37,6 +37,11 @@
             }
             return SingletonVersionDb.instance;
         }
+        
+        internal static void DestroyInstance()
+        {
+            SingletonVersionDb.instance = null;
+        }
 
         internal override void AddPartition(int partitionCount)
         {

@@ -59,7 +59,7 @@
 
             if (this.dist == Distribution.Zipf)
             {
-                Console.WriteLine("theta = {0}", theta);
+                // Console.WriteLine("theta = {0}", theta);
                 this.zipf = new Zipf(recordCount, theta);
             }
             else

@@ -234,7 +234,7 @@ namespace TransactionBenchmarkTest.YCSB
                 exec => new LocalBenchmarkEnv(exec, workloadFactory())).ToArray();
         }
 
-        public SingletonYcsbBenchmark.Output Go()
+        public SingletonYcsbBenchmark.BenchResult Go()
         {
             GC.Collect();
             DateTime startTime = DateTime.UtcNow;
@@ -252,10 +252,10 @@ namespace TransactionBenchmarkTest.YCSB
                 outputs, endTime - startTime);
         }
 
-        static private SingletonYcsbBenchmark.Output CombineOutputs(
+        static private SingletonYcsbBenchmark.BenchResult CombineOutputs(
             YcsbWorkload.Output[] partialOutputs, TimeSpan time)
         {
-            var output = new SingletonYcsbBenchmark.Output();
+            var output = new SingletonYcsbBenchmark.BenchResult();
             output.CompleteTime = time;
             output.NCommit = partialOutputs.Select(_ => _.NCommit).Sum();
             output.NAbort = partialOutputs.Select(_ => _.NAbort).Sum();
@@ -267,7 +267,7 @@ namespace TransactionBenchmarkTest.YCSB
 
     internal class YcsbConfig
     {
-        public int RecordCount = 1000000;
+        public int RecordCount = 500000;
         public int WorkerWorkload = 500000;
         public int Concurrency = 4;
         public int QueriesPerTx = 2;
@@ -283,8 +283,15 @@ namespace TransactionBenchmarkTest.YCSB
             Console.WriteLine($"Query(s) in each tx: {this.QueriesPerTx}");
             Console.WriteLine($"Read ratio: {this.ReadRatio}");
             this.PrintDistribution();
-            Console.WriteLine($"Workload per worker: {this.WorkerWorkload} ({this.WorkerWorkload * this.Concurrency} in total)");
+            Console.WriteLine($"Workload per worker: {this.WorkerWorkload}");
             Console.WriteLine($"Records in db: {this.RecordCount}");
+        }
+        public void PrintSimple()
+        {
+            if (this.Dist == Distribution.Zipf) Console.Write($"Zipf(theta={this.ZipfSkew}), ");
+            else Console.Write("Uniform, ");
+            Console.WriteLine(String.Join(
+                ", ", $"Read={this.ReadRatio}", $"Core={this.Concurrency}"));
         }
         private void PrintDistribution()
         {
@@ -302,11 +309,11 @@ namespace TransactionBenchmarkTest.YCSB
 
     public class SingletonYcsbBenchmark
     {
-        public class Output
+        public class BenchResult
         {
             public int NCommit = 0;
             public int NAbort = 0;
-            public TimeSpan CompleteTime;
+            public TimeSpan CompleteTime = new TimeSpan();
             public double Throughput
             {
                 get
@@ -323,9 +330,24 @@ namespace TransactionBenchmarkTest.YCSB
             }
             public void Print()
             {
-                Console.WriteLine($"Commit Count: {this.NCommit}, Abort Count: {this.NAbort}");
-                Console.WriteLine($"Abort Rate: {this.AbortRate * 100:F2}%");
-                Console.WriteLine($"Throughput: {this.Throughput:F2} txs/sec");
+                Console.WriteLine($"commit: {this.NCommit}, abort: {this.NAbort}({this.AbortRate * 100:F3}%)");
+                Console.WriteLine($"time: {this.CompleteTime.TotalSeconds:F2}, throughput: {this.Throughput:F2} txs/sec");
+            }
+
+            static public BenchResult Average(IEnumerable<BenchResult> results)
+            {
+                int c = results.Count();
+                BenchResult avg = new BenchResult();
+                foreach (var result in results)
+                {
+                    avg.NAbort += result.NAbort;
+                    avg.NCommit += result.NCommit;
+                    avg.CompleteTime += result.CompleteTime;
+                }
+                avg.NAbort /= c;
+                avg.NCommit /= c;
+                avg.CompleteTime = new TimeSpan(avg.CompleteTime.Ticks / c);
+                return avg;
             }
         }
         static void LoadYcsbData(SingletonVersionDb versionDb, int recordCount)
@@ -340,30 +362,148 @@ namespace TransactionBenchmarkTest.YCSB
                 }
             }
         }
-        static void BenchmarkWithConfig(YcsbConfig config)
+        static BenchResult BenchmarkWithConfigOnce(YcsbConfig config)
         {
-            config.Print();
-            Console.WriteLine();
+            // config.Print();
+            // Console.WriteLine();
             var versionDb = YcsbHelper.MakeVersionDb(config.Concurrency);
+            // Console.Write("loading data... ");
             LoadYcsbData(versionDb, config.RecordCount);
+            // Console.WriteLine("done");
             var generator = new YCSBDataGenerator(
                 config.RecordCount, config.ReadRatio,
                 config.Dist, config.ZipfSkew);
             Func<YcsbWorkload> workloadFactory =
                 () => YcsbWorkload.Generate(
                     config.WorkerWorkload, config.QueriesPerTx, generator);
+            // Console.Write("generate workload... ");
             var benchmark = new YcsbBenchmarkEnv(versionDb, workloadFactory);
+            // Console.WriteLine("done");
             var result = benchmark.Go();
-            result.Print();
-            Console.WriteLine();
+            SingletonVersionDb.DestroyInstance();
+            return result;
         }
 
+        static void PrintAverageResult(List<BenchResult> results)
+        {
+            if (results.Count == 1) return;
+            Console.WriteLine("Average: ");
+            BenchResult.Average(results).Print();
+        }
+
+        static void BenchmarkWithConfig(int repeat, YcsbConfig config)
+        {
+            List<BenchResult> results = new List<BenchResult>(repeat);
+            for (int i = 0; i < repeat; ++i)
+            {
+                Console.WriteLine($"ROUND {i+1}:");
+                BenchResult result = BenchmarkWithConfigOnce(config);
+                results.Add(result);
+                result.Print();
+            }
+            PrintAverageResult(results);
+            Console.WriteLine("---");
+        }
+
+        static void Pause()
+        {
+            Console.WriteLine("put any key to continue");
+            Console.Read();
+        }
+
+        static void BenchmarkWithZipfConfigs(BenchmarkConfigs configs)
+        {
+            foreach (YcsbConfig config in configs.GetConfigs())
+            {
+                config.PrintSimple();
+                BenchmarkWithConfig(configs.Repeat, config);
+            }
+        }
+
+        class BenchmarkConfigs
+        {
+            public int Repeat = 1;
+            public Distribution Dist = Distribution.Zipf;
+            public int RecordCount = 500000;
+            public int WorkerWorkload = 500000;
+            public int QueryPerTx = 2;
+            public double[] ReadRatios = new double[] { 0, 0.5, 0.8, 1};
+            public double[] ZipfSkews = new double[] { 0.8, 0.9 };
+            public int[] Concurrencies = new int[] { 1, 2, 4, 8, 16, 32 };
+
+            static public BenchmarkConfigs Parse(string[] args)
+            {
+                BenchmarkConfigs config = new BenchmarkConfigs();
+                for (int i = 0; i < args.Length; ++i)
+                {
+                    switch (args[i])
+                    {
+                        case "-u":
+                        case "--uniform":
+                            config.Dist = Distribution.Uniform;
+                            break;
+                        case "-r":
+                        case "--records":
+                            config.RecordCount = Convert.ToInt32(args[++i]);
+                            break;
+                        case "-w":
+                        case "--workload":
+                            config.WorkerWorkload = Convert.ToInt32(args[++i]);
+                            break;
+                        case "-c":
+                        case "--concurrency":
+                            config.Concurrencies = args[++i].Split(',').Select(s => Convert.ToInt32(s)).ToArray();
+                            break;
+                        case "-s":
+                        case "--skew":
+                            config.ZipfSkews = args[++i].Split(',').Select(s => Convert.ToDouble(s)).ToArray();
+                            break;
+                        case "-rr":
+                        case "--read-ratio":
+                            config.ReadRatios = args[++i].Split(',').Select(s => Convert.ToDouble(s)).ToArray();
+                            break;
+                        case "-q":
+                        case "--query":
+                            config.QueryPerTx = Convert.ToInt32(args[++i]);
+                            break;
+                        case "--repeat":
+                            config.Repeat = Convert.ToInt32(args[++i]);
+                            break;
+                        default:
+                            throw new ArgumentException($"unknown option {args[i]}");
+                    }
+                }
+                return config;
+            }
+
+            public IEnumerable<YcsbConfig> GetConfigs()
+            {
+                YcsbConfig config = new YcsbConfig();
+                config.Dist = this.Dist;
+                config.RecordCount = this.RecordCount;
+                config.WorkerWorkload = this.WorkerWorkload;
+                config.QueriesPerTx = this.QueryPerTx;
+                foreach (double skew in this.ZipfSkews)
+                {
+                    config.ZipfSkew = skew;
+                    foreach (double rr in this.ReadRatios)
+                    {
+                        config.ReadRatio = rr;
+                        foreach (int c in this.Concurrencies)
+                        {
+                            config.Concurrency = c;
+                            yield return config;
+                        }
+                    }
+                }
+            }
+        }
 
         public static void Main(string[] args)
         {
-            YcsbConfig config = new YcsbConfig();
-            BenchmarkWithConfig(config);
-            Console.Read();
+            BenchmarkConfigs configs = BenchmarkConfigs.Parse(args);
+            BenchmarkWithZipfConfigs(configs);
+            Pause();
         }
     }
 }

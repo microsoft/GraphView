@@ -22,7 +22,7 @@
         {
             int maxConcurrency = Math.Max(1, this.VersionDb.PartitionCount / 2);
             this.dict = new ConcurrentDictionary<object, ConcurrentDictionary<long, VersionEntry>>(
-                maxConcurrency, VersionDb.RECORD_CAPACITY);
+                maxConcurrency, 1200500/*VersionDb.RECORD_CAPACITY*/);
 
             for (int i = 0; i < partitionCount; i++)
             {
@@ -283,7 +283,7 @@
 
         internal override void Clear()
         {
-            this.dict.Clear(); 
+            this.dict.Clear();
         }
 
         internal override void MockLoadData(int recordCount)

@@ -71,7 +71,6 @@
 
             // If you don't need it, just new rand without any params
             int seed = (int)(DateTime.Now.Ticks / 50000000);
-            Console.WriteLine("Zipf KeyMap Seed: {0}", seed);
             Random rand = new Random(seed);
             for (int i = 0; i < n; i++)
             {
