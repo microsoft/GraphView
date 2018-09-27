@@ -1,4 +1,5 @@
 ﻿using System.Runtime.CompilerServices;
+using System.Threading;
 
 namespace GraphView.Transaction
 {
@@ -142,6 +143,17 @@ namespace GraphView.Transaction
                 this.RecordKey == ventry.RecordKey;
         }
 
+        public void Latch()
+        {
+            while (Interlocked.CompareExchange(ref this.latch, 1, 0) != 0)
+                continue;
+        }
+
+        public void Unlatch()
+        {
+            Interlocked.Exchange(ref this.latch, 0);
+        }
+
         /// <summary>
         /// Serialize essential properties in version entry to bytes array
         /// </summary>
@@ -209,7 +221,7 @@ namespace GraphView.Transaction
                 return version;
             }
         }
-            
+
 
         public static VersionEntry InitFirstVersionEntry(object recordKey, object payload, VersionEntry version = null)
         {
@@ -227,25 +239,17 @@ namespace GraphView.Transaction
 
         public int CompareTo(VersionEntry other)
         {
-            // Two version entries are only comparable if they belong to the same record
-            if (this.RecordKey != other.RecordKey)
+            if (this.VersionKey < other.VersionKey)
             {
                 return -1;
             }
+            else if (this.VersionKey == other.VersionKey)
+            {
+                return 0;
+            }
             else
             {
-                if (this.VersionKey < other.VersionKey)
-                {
-                    return -1;
-                }
-                else if (this.VersionKey == other.VersionKey)
-                {
-                    return 0;
-                }
-                else
-                {
-                    return 1;
-                }
+                return 1;
             }
         }
     }

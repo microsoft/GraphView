@@ -173,14 +173,12 @@
 
             if (entry.TxId == req.SenderId && entry.EndTimestamp == req.ExpectedEndTs)
             {
-                while (Interlocked.CompareExchange(ref entry.latch, 1, 0) != 0) ;
-
+                entry.Latch();
                 entry.BeginTimestamp = req.BeginTs;
                 entry.EndTimestamp = req.EndTs;
                 entry.TxId = req.TxId;
                 VersionEntry.CopyValue(entry, req.LocalVerEntry);
-
-                Interlocked.Exchange(ref entry.latch, 0);
+                entry.Unlatch();
             }
 
             req.Result = req.LocalVerEntry;
@@ -265,12 +263,10 @@
                 }
             }
 
-            while (Interlocked.CompareExchange(ref verEntry.latch, 1, 0) != 0) ;
-
+            verEntry.Latch();
             verEntry.MaxCommitTs = Math.Max(req.MaxCommitTs, verEntry.MaxCommitTs);
             VersionEntry.CopyValue(verEntry, req.LocalVerEntry);
-
-            Interlocked.Exchange(ref verEntry.latch, 0);
+            verEntry.Unlatch();
 
             req.Result = req.LocalVerEntry;
             req.Finished = true;
@@ -307,9 +303,9 @@
                 VersionEntry verEntry = null;
                 if (versionList.TryGetValue(lastVersionKey, out verEntry))
                 {
-                    while (Interlocked.CompareExchange(ref verEntry.latch, 1, 0) != 0) ;
+                    verEntry.Latch();
                     VersionEntry.CopyValue(verEntry, localList[entryCount]);
-                    Interlocked.Exchange(ref verEntry.latch, 0);
+                    verEntry.Unlatch();
 
                     // Here only add a reference to the list, no need to take the latch
                     remoteList.Add(verEntry);
@@ -351,9 +347,9 @@
                 }
             }
 
-            while (Interlocked.CompareExchange(ref versionEntry.latch, 1, 0) != 0) ;
+            versionEntry.Latch();
             VersionEntry.CopyValue(versionEntry, req.LocalVerEntry);
-            Interlocked.Exchange(ref versionEntry.latch, 0);
+            versionEntry.Unlatch();
 
             req.Result = req.LocalVerEntry;
             req.Finished = true;
