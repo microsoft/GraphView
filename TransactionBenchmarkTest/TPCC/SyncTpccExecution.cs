@@ -40,9 +40,10 @@ namespace TransactionBenchmarkTest.TPCC
             return this;
         }
 
-        public void Abort()
+        public SyncExecution Abort()
         {
             this.txExec.Abort();
+            return this;
         }
 
         public SyncExecution Update(TpccTableKey key, TpccTablePayload record)
@@ -65,11 +66,20 @@ namespace TransactionBenchmarkTest.TPCC
         public SyncExecution Read<T>(TpccTableKey key, out T record)
             where T : TpccTablePayload
         {
-            record = this.txExec.SyncRead(key.Table.Name(), key) as T;
+            object payload = this.txExec.SyncRead(key.Table.Name(), key);
+            record = payload as T;
+            if (!this.IsAborted())
+            {
+                if (payload == null)
+                {
+                    return this.Abort();
+                }
+                Debug.Assert(record != null);
+            }
             return this;
         }
 
-        public virtual SyncExecution ReadCopy<T>(TpccTableKey key, out T record)
+        public SyncExecution ReadCopy<T>(TpccTableKey key, out T record)
             where T : TpccTablePayload
         {
             TpccTablePayload payload;

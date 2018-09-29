@@ -398,11 +398,11 @@ namespace GraphView.Transaction
                         newImageEntry.MaxCommitTs = 0L;
 
                         this.uploadReq.Set(
-                            tableId, 
-                            recordKey, 
-                            newImageEntry.VersionKey, 
-                            newImageEntry, 
-                            this.txId, 
+                            tableId,
+                            recordKey,
+                            newImageEntry.VersionKey,
+                            newImageEntry,
+                            this.txId,
                             writeEntry.RemoteVerList);
                         this.uploadReq.Use();
                         this.versionDb.EnqueueVersionEntryRequest(tableId, this.uploadReq, this.execId);
@@ -815,12 +815,12 @@ namespace GraphView.Transaction
                     {
                         // Updates the version's max commit timestamp
                         this.updateMaxTsReq.Set(
-                            tableId, 
+                            tableId,
                             this.rereadVerEntry.RecordKey,
-                            this.rereadVerEntry.VersionKey, 
-                            this.commitTs, 
-                            this.txId, 
-                            this.localVerEntry, 
+                            this.rereadVerEntry.VersionKey,
+                            this.commitTs,
+                            this.txId,
+                            this.localVerEntry,
                             this.readReq.RemoteVerEntry);
                         this.updateMaxTsReq.Use();
 
@@ -1439,21 +1439,12 @@ namespace GraphView.Transaction
                     pendingTx = this.getTxReq.Result as TxTableEntry;
                     this.getTxReq.Free();
 
+                    --this.readEntryCount;
+
                     if (pendingTx == null)
                     {
                         // Failed to retrieve the status of the tx holding the version. 
                         // Moves on to the next version.
-                        this.readEntryCount--;
-                        continue;
-                    }
-
-                    // The last version entry is the one need to check whether visiable
-                    this.readEntryCount--;
-
-                    // If the version entry is a dirty write, skips the entry.
-                    if (versionEntry.EndTimestamp == VersionEntry.DEFAULT_END_TIMESTAMP &&
-                        (pendingTx.Status == TxStatus.Ongoing || pendingTx.Status == TxStatus.Aborted))
-                    {
                         continue;
                     }
 
@@ -1462,17 +1453,14 @@ namespace GraphView.Transaction
 
                     this.readLargestVersionKey = Math.Max(versionEntry.VersionKey, this.readLargestVersionKey);
 
-                    // A dirty write has been appended after this version entry. 
-                    // This version is visible if the writing tx has not been committed 
-                    if (versionEntry.EndTimestamp == long.MaxValue && pendingTx.Status != TxStatus.Committed)
+                    if (versionEntry.EndTimestamp == VersionEntry.DEFAULT_BEGIN_TIMESTAMP)
                     {
-                        visibleVersion = versionEntry;
-                    }
-                    // A dirty write is visible to this tx when the writing tx has been committed, 
-                    // which has not finished postprocessing and changing the dirty write to a normal version entry
-                    else if (versionEntry.EndTimestamp == VersionEntry.DEFAULT_END_TIMESTAMP &&
-                        pendingTx.Status == TxStatus.Committed)
-                    {
+                        // this version is a dirty version
+                        if (pendingTx.Status != TxStatus.Committed)
+                        {
+                            continue;
+                        }
+                        // this version is a committed version but doesn't finish post-processing
                         visibleVersion = new VersionEntry(
                             versionEntry.RecordKey,
                             versionEntry.VersionKey,
@@ -1481,6 +1469,24 @@ namespace GraphView.Transaction
                             versionEntry.Record,
                             VersionEntry.EMPTY_TXID,
                             versionEntry.MaxCommitTs);
+                    }
+                    else if (versionEntry.EndTimestamp == long.MaxValue)
+                    {
+                        // A dirty write has been appended after this version entry. 
+                        // This version is visible if the writing tx has not been committed
+                        if (pendingTx.Status != TxStatus.Committed)
+                        {
+                            visibleVersion = versionEntry;
+                        }
+                        else
+                        {
+                            AbortWithMessage("This version is no longer visible");
+                            return;
+                        }
+                    }
+                    else
+                    {
+                        throw new Exception("Invalid state: 0 <= EndTimestamp < Inf");
                     }
                 }
                 else
@@ -1524,7 +1530,15 @@ namespace GraphView.Transaction
                         {
                             visibleVersion = versionEntry;
                         }
-                        this.readEntryCount--;
+                        else if (versionEntry.EndTimestamp != VersionEntry.DEFAULT_END_TIMESTAMP)
+                        {
+                            // caused by a delete operation or concurrent read
+                            break;
+                        }
+                        else
+                        {
+                            throw new Exception("EndTimestamp == DEFAULT and TxId == EMPTY");
+                        }
                     }
                 }
 
