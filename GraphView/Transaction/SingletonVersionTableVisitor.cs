@@ -62,6 +62,7 @@
     {
         private readonly ConcurrentDictionary<object, ConcurrentDictionary<long, VersionEntry>> dict;
         public readonly CachableObjectPool recordPool = new CachableObjectPool();
+        private readonly CachableObjectPool keyPool = new CachableObjectPool();
 
         public SingletonVersionTableVisitor(ConcurrentDictionary<object, ConcurrentDictionary<long, VersionEntry>> dict)
         {
@@ -117,6 +118,9 @@
             if (versionList.TryRemove(req.VersionKey, out versionEntry))
             {
                 this.recordPool.TryCache(versionEntry.Record);
+                this.keyPool.TryCache(versionEntry.RecordKey);
+                versionEntry.Record = null;
+                versionEntry.RecordKey = null;
                 req.Result = true;
             }
             else
@@ -179,6 +183,7 @@
                 entry.TxId = req.TxId;
                 VersionEntry.CopyValue(entry, req.LocalVerEntry);
                 entry.Unlatch();
+                // req.LocalVerEntry.RecordKey = req.RecordKey;
             }
 
             req.Result = req.LocalVerEntry;
@@ -199,11 +204,13 @@
 
             if (versionList.TryAdd(req.VersionKey, req.VersionEntry))
             {
+                // replace the recordkey in version entry with a copy
+                object oRecordKey = req.VersionEntry.RecordKey;
+                req.VersionEntry.RecordKey =
+                    this.keyPool.TryGetCopy(oRecordKey);
                 // The new version has been inserted successfully. Re-directs the tail pointer to the new version.  
                 VersionEntry tailEntry = null;
                 versionList.TryGetValue(SingletonDictionaryVersionTable.TAIL_KEY, out tailEntry);
-
-                lock (tailEntry) {
 
                 long headKey = tailEntry.EndTimestamp;
                 long tailKey = tailEntry.BeginTimestamp;
@@ -227,11 +234,13 @@
                     if (oldVerEntry != null)
                     {
                         this.recordPool.TryCache(oldVerEntry.Record);
+                        this.keyPool.TryCache(oldVerEntry.RecordKey);
+                        oldVerEntry.Record = null;
+                        oldVerEntry.RecordKey = null;
                     }
                 }
 
                 req.RemoteVerEntry = oldVerEntry == null ? new VersionEntry() : oldVerEntry;
-                }
                 req.Result = true;
                 req.Finished = true;
                 return;
@@ -288,8 +297,6 @@
             // whose beginTimestamp points to the newest version. 
             VersionEntry tailEntry = null;
             versionList.TryGetValue(SingletonDictionaryVersionTable.TAIL_KEY, out tailEntry);
-            lock (tailEntry)
-            {
             long lastVersionKey = Interlocked.Read(ref tailEntry.BeginTimestamp);
 
             TxList<VersionEntry> localList = req.LocalContainer;
@@ -318,7 +325,6 @@
                 }
 
                 lastVersionKey--;
-            }
             }
 
             req.RemoteVerList = versionList;

@@ -330,9 +330,13 @@ namespace TransactionBenchmarkTest.TPCC
         }
         public TpccTable Table { get; protected set; }
     }
-    public class TpccTableKey : TpccTableKV
+    public abstract class TpccTableKey : TpccTableKV, Copyable
     {
         protected TpccTableKey(TableType t) : base(t) { }
+
+        public abstract Copyable Copy();
+
+        public abstract bool CopyFrom(Copyable copyable);
     }
     public abstract class TpccTablePayload : TpccTableKV, Copyable
     {
@@ -362,6 +366,23 @@ namespace TransactionBenchmarkTest.TPCC
         {
             WarehousePkey that = obj as WarehousePkey;
             return that != null && this.W_ID == that.W_ID;
+        }
+        public override Copyable Copy()
+        {
+            WarehousePkey copy = new WarehousePkey();
+            copy.SafeCopyFrom(this);
+            return copy;
+        }
+        public override bool CopyFrom(Copyable copyable)
+        {
+            WarehousePkey that = copyable as WarehousePkey;
+            if (that == null) return false;
+            this.SafeCopyFrom(that);
+            return true;
+        }
+        public void SafeCopyFrom(WarehousePkey that)
+        {
+            this.Set(that.W_ID);
         }
         public void Set(uint W_ID)
         {
@@ -439,6 +460,26 @@ namespace TransactionBenchmarkTest.TPCC
             return that != null
                 && this.D_ID == that.D_ID
                 && this.D_W_ID == that.D_W_ID;
+        }
+
+        public override Copyable Copy()
+        {
+            DistrictPkey copy = new DistrictPkey();
+            copy.SafeCopyFrom(this);
+            return copy;
+        }
+
+        public override bool CopyFrom(Copyable copyable)
+        {
+            DistrictPkey that = copyable as DistrictPkey;
+            if (that == null) return false;
+            this.SafeCopyFrom(that);
+            return true;
+        }
+
+        public void SafeCopyFrom(DistrictPkey that)
+        {
+            this.Set(that.D_ID, that.D_W_ID);
         }
 
         public void Set(uint D_ID, uint D_W_ID)
@@ -531,6 +572,26 @@ namespace TransactionBenchmarkTest.TPCC
                 && this.C_W_ID == that.C_W_ID;
         }
 
+        public override Copyable Copy()
+        {
+            CustomerPkey copy = new CustomerPkey();
+            copy.SafeCopyFrom(this);
+            return copy;
+        }
+
+        public override bool CopyFrom(Copyable copyable)
+        {
+            CustomerPkey that = copyable as CustomerPkey;
+            if (that == null) return false;
+            this.SafeCopyFrom(that);
+            return true;
+        }
+
+        public void SafeCopyFrom(CustomerPkey that)
+        {
+            this.Set(that.C_ID, that.C_D_ID, that.C_W_ID);
+        }
+
         public void Set(uint C_ID, uint C_D_ID, uint C_W_ID)
         {
             this.C_ID = C_ID;
@@ -557,6 +618,26 @@ namespace TransactionBenchmarkTest.TPCC
                 && this.C_W_ID == that.C_W_ID
                 && this.C_D_ID == that.C_D_ID
                 && this.C_LAST == that.C_LAST;
+        }
+
+        public override Copyable Copy()
+        {
+            CustomerLastNameIndexKey copy = new CustomerLastNameIndexKey();
+            copy.SafeCopyFrom(this);
+            return copy;
+        }
+
+        public override bool CopyFrom(Copyable copyable)
+        {
+            CustomerLastNameIndexKey that = copyable as CustomerLastNameIndexKey;
+            if (that == null) return false;
+            this.SafeCopyFrom(that);
+            return true;
+        }
+
+        public void SafeCopyFrom(CustomerLastNameIndexKey that)
+        {
+            this.Set(that.C_W_ID, that.C_D_ID, that.C_LAST);
         }
 
         public void Set(uint C_W_ID, uint C_D_ID, string C_LAST)
@@ -686,7 +767,7 @@ namespace TransactionBenchmarkTest.TPCC
         }
     }
 
-    public class HistoryPKey : TpccTableKey
+    public class HistoryPKey : TpccTableKey, Copyable
     {
         static public HistoryPKey New()
         {
@@ -694,6 +775,37 @@ namespace TransactionBenchmarkTest.TPCC
         }
 
         public HistoryPKey() : base(TableType.HISTORY) { }
+
+        public override bool Equals(object obj)
+        {
+            HistoryPKey that = obj as HistoryPKey;
+            return that != null && that.GUID == this.GUID;
+        }
+
+        public override int GetHashCode()
+        {
+            return this.GUID.GetHashCode();
+        }
+
+        public override Copyable Copy()
+        {
+            HistoryPKey copy = new HistoryPKey();
+            copy.CopyFrom(this);
+            return copy;
+        }
+
+        public override bool CopyFrom(Copyable copyable)
+        {
+            HistoryPKey that = copyable as HistoryPKey;
+            if (that == null) return false;
+            this.SafeCopyFrom(that);
+            return true;
+        }
+
+        public void SafeCopyFrom(HistoryPKey that)
+        {
+            this.GUID = that.GUID;
+        }
 
         public string GUID;
     }
@@ -755,6 +867,33 @@ namespace TransactionBenchmarkTest.TPCC
                 && this.NO_D_ID == that.NO_D_ID
                 && this.NO_W_ID == that.NO_W_ID;
         }
+
+        public override Copyable Copy()
+        {
+            NewOrderPkey copy = new NewOrderPkey();
+            copy.CopyFrom(this);
+            return copy;
+        }
+
+        public override bool CopyFrom(Copyable copyable)
+        {
+            NewOrderPkey that = copyable as NewOrderPkey;
+            if (that == null) return false;
+            this.SafeCopyFrom(that);
+            return true;
+        }
+
+        public void SafeCopyFrom(NewOrderPkey that)
+        {
+            this.Set(that.NO_O_ID, that.NO_D_ID, that.NO_W_ID);
+        }
+
+        public void Set(uint NO_O_ID, uint NO_D_ID, uint NO_W_ID)
+        {
+            this.NO_O_ID = NO_O_ID;
+            this.NO_D_ID = NO_D_ID;
+            this.NO_W_ID = NO_W_ID;
+        }
     }
     public class NewOrderPayload : TpccTablePayload    // no use
     {
@@ -808,6 +947,33 @@ namespace TransactionBenchmarkTest.TPCC
                 && this.O_ID == that.O_ID
                 && this.O_D_ID == that.O_D_ID
                 && this.O_W_ID == that.O_W_ID;
+        }
+
+        public override Copyable Copy()
+        {
+            OrderPkey copy = new OrderPkey();
+            copy.SafeCopyFrom(this);
+            return copy;
+        }
+
+        public override bool CopyFrom(Copyable copyable)
+        {
+            OrderPkey that = copyable as OrderPkey;
+            if (that == null) return false;
+            this.SafeCopyFrom(that);
+            return true;
+        }
+
+        public void SafeCopyFrom(OrderPkey that)
+        {
+            this.Set(that.O_ID, that.O_D_ID, that.O_W_ID);
+        }
+
+        public void Set(uint O_ID, uint O_D_ID, uint O_W_ID)
+        {
+            this.O_ID = O_ID;
+            this.O_D_ID = O_D_ID;
+            this.O_W_ID = O_W_ID;
         }
     }
     public class OrderPayload : TpccTablePayload
@@ -885,6 +1051,34 @@ namespace TransactionBenchmarkTest.TPCC
                 && this.OL_W_ID == that.OL_W_ID
                 && this.OL_NUMBER == that.OL_NUMBER;
         }
+
+        public override Copyable Copy()
+        {
+            OrderLinePkey copy = new OrderLinePkey();
+            copy.CopyFrom(this);
+            return copy;
+        }
+
+        public override bool CopyFrom(Copyable copyable)
+        {
+            OrderLinePkey that = copyable as OrderLinePkey;
+            if (that == null) return false;
+            this.SafeCopyFrom(that);
+            return true;
+        }
+
+        public void SafeCopyFrom(OrderLinePkey that)
+        {
+            this.Set(that.OL_O_ID, that.OL_D_ID, that.OL_W_ID, that.OL_NUMBER);
+        }
+
+        public void Set(uint OL_O_ID, uint OL_D_ID, uint OL_W_ID, uint OL_NUMBER)
+        {
+            this.OL_O_ID = OL_O_ID;
+            this.OL_D_ID = OL_D_ID;
+            this.OL_W_ID = OL_W_ID;
+            this.OL_NUMBER = OL_NUMBER;
+        }
     }
     public class OrderLinePayload : TpccTablePayload
     {
@@ -952,6 +1146,26 @@ namespace TransactionBenchmarkTest.TPCC
         {
             ItemPkey that = obj as ItemPkey;
             return that != null && this.I_ID == that.I_ID;
+        }
+
+        public override Copyable Copy()
+        {
+            ItemPkey copy = new ItemPkey();
+            copy.SafeCopyFrom(this);
+            return copy;
+        }
+
+        public override bool CopyFrom(Copyable copyable)
+        {
+            ItemPkey that = copyable as ItemPkey;
+            if (that == null) return false;
+            this.SafeCopyFrom(that);
+            return true;
+        }
+
+        public void SafeCopyFrom(ItemPkey that)
+        {
+            this.Set(that.I_ID);
         }
 
         public void Set(uint I_ID)
@@ -1023,6 +1237,26 @@ namespace TransactionBenchmarkTest.TPCC
             return that != null
                 && this.S_I_ID == that.S_I_ID
                 && this.S_W_ID == that.S_W_ID;
+        }
+
+        public override Copyable Copy()
+        {
+            StockPkey copy = new StockPkey();
+            copy.CopyFrom(this);
+            return copy;
+        }
+
+        public override bool CopyFrom(Copyable copyable)
+        {
+            StockPkey that = copyable as StockPkey;
+            if (that == null) return false;
+            this.SafeCopyFrom(that);
+            return true;
+        }
+
+        public void SafeCopyFrom(StockPkey that)
+        {
+            this.Set(that.S_I_ID, that.S_W_ID);
         }
 
         public void Set(uint S_I_ID, uint S_W_ID)
