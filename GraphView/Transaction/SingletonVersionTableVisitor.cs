@@ -1,6 +1,7 @@
 ﻿namespace GraphView.Transaction
 {
     using System.Threading;
+    using System.Diagnostics;
     using System;
     using NonBlocking;
     using System.Collections.Generic;
@@ -34,7 +35,7 @@
                 Copyable o = objectPool[i];
                 if (o.CopyFrom(obj))
                 {
-                    objectPool.Remove(o);
+                    objectPool.RemoveAt(i);
                     return o;
                 }
             }
@@ -71,8 +72,10 @@
 
         static void ResetTailEntry(VersionEntry tailEntry)
         {
-            tailEntry.BeginTimestamp = VersionEntry.DEFAULT_BEGIN_TIMESTAMP;
-            tailEntry.EndTimestamp = VersionEntry.DEFAULT_END_TIMESTAMP;
+            Interlocked.Exchange(
+                ref tailEntry.BeginTimestamp, VersionEntry.DEFAULT_BEGIN_TIMESTAMP);
+            Interlocked.Exchange(
+                ref tailEntry.EndTimestamp, VersionEntry.DEFAULT_END_TIMESTAMP);
         }
 
         internal override void Visit(DeleteVersionRequest req)
@@ -93,26 +96,29 @@
             VersionEntry tailEntry = null;
             versionList.TryGetValue(SingletonDictionaryVersionTable.TAIL_KEY, out tailEntry);
 
+            long headKey = Interlocked.Read(ref tailEntry.EndTimestamp);
+            long tailKey = Interlocked.Read(ref tailEntry.BeginTimestamp);
+
             // As only if a tx uploads a version entry, it will change the value tailEntry
             // Here the dirty version entry hasn't been deleted, so there will no other txs update the tailEntry
             // We don't need to take Interlocked to update its value
 
             // when the deleted entry is the only one in version list
-            if (tailEntry.BeginTimestamp == tailEntry.EndTimestamp)
+            if (headKey == tailKey)
             {
                 ResetTailEntry(tailEntry);
-            }
-            else
-            {
-                --tailEntry.BeginTimestamp;
+                req.Result = true;
+                req.Finished = true;
+                return;
             }
 
+            Interlocked.Exchange(ref tailEntry.BeginTimestamp, tailKey - 1);
+
             VersionEntry versionEntry = null;
-            long headKey = tailEntry.EndTimestamp;
             if (headKey > 0)
             {
                 versionList.TryAdd(headKey - 1, versionEntry);
-                tailEntry.EndTimestamp = headKey - 1;
+                Interlocked.Exchange(ref tailEntry.EndTimestamp, headKey - 1);
             }
 
             if (versionList.TryRemove(req.VersionKey, out versionEntry))
@@ -175,6 +181,11 @@
                 }
             }
 
+            // if (!entry.RecordKey.Equals(req.RecordKey))
+            // {
+            //     throw new Exception("Inconsistent record key");
+            // }
+
             if (entry.TxId == req.SenderId && entry.EndTimestamp == req.ExpectedEndTs)
             {
                 entry.Latch();
@@ -187,6 +198,13 @@
             }
 
             req.Result = req.LocalVerEntry;
+            req.Finished = true;
+        }
+
+        static private void UploadFail(UploadVersionRequest req)
+        {
+            req.RemoteVerEntry = req.VersionEntry;
+            req.Result = false;
             req.Finished = true;
         }
 
@@ -205,31 +223,38 @@
             if (versionList.TryAdd(req.VersionKey, req.VersionEntry))
             {
                 // replace the recordkey in version entry with a copy
-                object oRecordKey = req.VersionEntry.RecordKey;
                 req.VersionEntry.RecordKey =
-                    this.keyPool.TryGetCopy(oRecordKey);
+                    this.keyPool.TryGetCopy(req.VersionEntry.RecordKey);
+
                 // The new version has been inserted successfully. Re-directs the tail pointer to the new version.  
                 VersionEntry tailEntry = null;
                 versionList.TryGetValue(SingletonDictionaryVersionTable.TAIL_KEY, out tailEntry);
 
-                long headKey = tailEntry.EndTimestamp;
-                long tailKey = tailEntry.BeginTimestamp;
+                long headKey = Interlocked.Read(ref tailEntry.EndTimestamp);
+                long tailKey = Interlocked.Read(ref tailEntry.BeginTimestamp);
+
+                if (req.VersionKey < headKey)
+                {
+                    versionList.Remove(req.VersionKey);
+                    UploadFail(req);
+                    return;
+                }
                 // Here we use Interlocked to atomically update the tail entry, instead of ConcurrentDict.TryUpdate().
                 // This is because once created, the whole tail entry always stays and is never replaced.
                 // All concurrent tx's only access the tail pointer, i.e., the beginTimestamp field.  
-                tailEntry.BeginTimestamp = req.VersionKey;
+                Interlocked.Exchange(ref tailEntry.BeginTimestamp, req.VersionKey);
+
+                VersionEntry oldVerEntry = null;
 
                 // EndTimestamp (headKey) being never set means we just insert
                 // the first valid version. So the headKey should be redirected.
-                if (tailEntry.EndTimestamp == VersionEntry.DEFAULT_END_TIMESTAMP)
+                if (headKey == VersionEntry.DEFAULT_END_TIMESTAMP)
                 {
-                    tailEntry.EndTimestamp = tailEntry.BeginTimestamp;
+                    Interlocked.Exchange(ref tailEntry.EndTimestamp, tailKey);
                 }
-
-                VersionEntry oldVerEntry = null;
-                if (versionList.Count > VersionTable.VERSION_CAPACITY)
+                else if (versionList.Count > VersionTable.VERSION_CAPACITY)
                 {
-                    tailEntry.EndTimestamp = headKey + 1;
+                    Interlocked.Exchange(ref tailEntry.EndTimestamp, headKey + 1);
                     versionList.TryRemove(headKey, out oldVerEntry);
                     if (oldVerEntry != null)
                     {
@@ -240,6 +265,12 @@
                     }
                 }
 
+                // long debugTailkey = Interlocked.Read(ref tailEntry.BeginTimestamp);
+                // if (debugTailkey != req.VersionKey)
+                // {
+                //     throw new Exception("Someone kicks in :(");
+                // }
+
                 req.RemoteVerEntry = oldVerEntry == null ? new VersionEntry() : oldVerEntry;
                 req.Result = true;
                 req.Finished = true;
@@ -249,9 +280,7 @@
             {
                 // The same version key has been added before or by a concurrent tx. 
                 // The new version cannot be inserted.
-                req.RemoteVerEntry = req.VersionEntry;
-                req.Result = false;
-                req.Finished = true;
+                UploadFail(req);
             }
         }
 
@@ -311,6 +340,12 @@
                 if (versionList.TryGetValue(lastVersionKey, out verEntry))
                 {
                     verEntry.Latch();
+
+                    // if (!verEntry.RecordKey.Equals(req.RecordKey))
+                    // {
+                    //     throw new Exception("Inconsistent record key");
+                    // }
+
                     VersionEntry.CopyValue(verEntry, localList[entryCount]);
                     verEntry.Unlatch();
 
