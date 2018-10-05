@@ -39,8 +39,8 @@ namespace GraphView.Transaction
         // of a tx, after a version entry is created
         internal long BeginTimestamp;
         internal long EndTimestamp;
-        internal long TxId { get; set; }
-        internal long MaxCommitTs { get; set; }
+        internal long TxId;
+        internal long MaxCommitTs;
 
         internal int latch = 0;
 
@@ -100,6 +100,17 @@ namespace GraphView.Transaction
             dst.TxId = src.TxId;
             dst.Record = src.Record;
             dst.MaxCommitTs = src.MaxCommitTs;
+        }
+
+        public static void CopyFromRemote(VersionEntry src, VersionEntry dst)
+        {
+            dst.RecordKey = src.RecordKey;
+            dst.VersionKey = Interlocked.Read(ref src.VersionKey);
+            dst.BeginTimestamp = Interlocked.Read(ref src.BeginTimestamp);
+            dst.EndTimestamp = Interlocked.Read(ref src.EndTimestamp);
+            dst.TxId = Interlocked.Read(ref src.TxId);
+            dst.Record = src.Record;
+            dst.MaxCommitTs = Interlocked.Read(ref src.MaxCommitTs);
         }
 
         public void Set(

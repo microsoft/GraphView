@@ -99,6 +99,12 @@
             long headKey = Interlocked.Read(ref tailEntry.EndTimestamp);
             long tailKey = Interlocked.Read(ref tailEntry.BeginTimestamp);
 
+            // Debug Assertion
+            // if (tailKey != req.VersionKey)
+            // {
+            //     throw new Exception("Abort isn't deleting it's dirty write?");
+            // }
+
             // As only if a tx uploads a version entry, it will change the value tailEntry
             // Here the dirty version entry hasn't been deleted, so there will no other txs update the tailEntry
             // We don't need to take Interlocked to update its value
@@ -123,6 +129,11 @@
 
             if (versionList.TryRemove(req.VersionKey, out versionEntry))
             {
+                // Debug Assertion
+                // if (Interlocked.Read(ref versionEntry.TxId) != req.SenderId)
+                // {
+                //     throw new Exception("I'm not deleting my own dirty write?");
+                // }
                 this.recordPool.TryCache(versionEntry.Record);
                 this.keyPool.TryCache(versionEntry.RecordKey);
                 versionEntry.Record = null;
@@ -181,21 +192,23 @@
                 }
             }
 
+            // Debug Assertion
             // if (!entry.RecordKey.Equals(req.RecordKey))
             // {
             //     throw new Exception("Inconsistent record key");
             // }
 
-            if (entry.TxId == req.SenderId && entry.EndTimestamp == req.ExpectedEndTs)
+            entry.Latch();
+            if (Interlocked.Read(ref entry.TxId) == req.SenderId &&
+                Interlocked.Read(ref entry.EndTimestamp) == req.ExpectedEndTs)
             {
-                entry.Latch();
-                entry.BeginTimestamp = req.BeginTs;
-                entry.EndTimestamp = req.EndTs;
-                entry.TxId = req.TxId;
-                VersionEntry.CopyValue(entry, req.LocalVerEntry);
-                entry.Unlatch();
+                Interlocked.Exchange(ref entry.BeginTimestamp, req.BeginTs);
+                Interlocked.Exchange(ref entry.EndTimestamp, req.EndTs);
+                Interlocked.Exchange(ref entry.TxId, req.TxId);
+                VersionEntry.CopyFromRemote(entry, req.LocalVerEntry);
                 // req.LocalVerEntry.RecordKey = req.RecordKey;
             }
+            entry.Unlatch();
 
             req.Result = req.LocalVerEntry;
             req.Finished = true;
@@ -242,7 +255,13 @@
                 // Here we use Interlocked to atomically update the tail entry, instead of ConcurrentDict.TryUpdate().
                 // This is because once created, the whole tail entry always stays and is never replaced.
                 // All concurrent tx's only access the tail pointer, i.e., the beginTimestamp field.  
-                Interlocked.Exchange(ref tailEntry.BeginTimestamp, req.VersionKey);
+                long oldVersion = Interlocked.Exchange(ref tailEntry.BeginTimestamp, req.VersionKey);
+
+                // Debug Assertion
+                // if (oldVersion != req.VersionKey - 1)
+                // {
+                //     throw new Exception("inconsistent version key");
+                // }
 
                 VersionEntry oldVerEntry = null;
 
@@ -265,6 +284,7 @@
                     }
                 }
 
+                // Debug Assertion
                 // long debugTailkey = Interlocked.Read(ref tailEntry.BeginTimestamp);
                 // if (debugTailkey != req.VersionKey)
                 // {
@@ -302,8 +322,10 @@
             }
 
             verEntry.Latch();
-            verEntry.MaxCommitTs = Math.Max(req.MaxCommitTs, verEntry.MaxCommitTs);
-            VersionEntry.CopyValue(verEntry, req.LocalVerEntry);
+            Interlocked.Exchange(
+                ref verEntry.MaxCommitTs,
+                Math.Max(req.MaxCommitTs, Interlocked.Read(ref verEntry.MaxCommitTs)));
+            VersionEntry.CopyFromRemote(verEntry, req.LocalVerEntry);
             verEntry.Unlatch();
 
             req.Result = req.LocalVerEntry;
@@ -341,19 +363,20 @@
                 {
                     verEntry.Latch();
 
+                    // Debug Assertion
                     // if (!verEntry.RecordKey.Equals(req.RecordKey))
                     // {
                     //     throw new Exception("Inconsistent record key");
                     // }
 
-                    VersionEntry.CopyValue(verEntry, localList[entryCount]);
+                    VersionEntry.CopyFromRemote(verEntry, localList[entryCount]);
                     verEntry.Unlatch();
 
                     // Here only add a reference to the list, no need to take the latch
                     remoteList.Add(verEntry);
                     entryCount++;
 
-                    if (verEntry.TxId == VersionEntry.EMPTY_TXID)
+                    if (Interlocked.Read(ref verEntry.TxId) == VersionEntry.EMPTY_TXID)
                     {
                         break;
                     }
@@ -388,8 +411,14 @@
                 }
             }
 
+            // Debug Assertion
+            // if (!versionEntry.RecordKey.Equals(req.RecordKey))
+            // {
+            //     throw new Exception("Inconsistent record key");
+            // }
+
             versionEntry.Latch();
-            VersionEntry.CopyValue(versionEntry, req.LocalVerEntry);
+            VersionEntry.CopyFromRemote(versionEntry, req.LocalVerEntry);
             versionEntry.Unlatch();
 
             req.Result = req.LocalVerEntry;
