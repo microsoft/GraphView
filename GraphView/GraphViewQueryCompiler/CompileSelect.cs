@@ -1152,7 +1152,6 @@ namespace GraphView
                 else if (tableReference is WSchemaObjectFunctionTableReference)
                 {
                     var functionTableReference = tableReference as WSchemaObjectFunctionTableReference;
-                    var functionName = functionTableReference.SchemaObject.Identifiers.Last().ToString();
                     var tableOp = functionTableReference.Compile(context, command);
 
                     tableReferences.Add(functionTableReference.Alias.Value);
@@ -1274,7 +1273,6 @@ namespace GraphView
                             CapAggregate capAggregate = new CapAggregate();
                             for (int i = 0; i < fcall.Parameters.Count; i += 2)
                             {
-                                WColumnNameList columnNameList = fcall.Parameters[i] as WColumnNameList;
                                 WValueExpression capName = fcall.Parameters[i+1] as WValueExpression;
 
                                 IAggregateFunction sideEffectState;
@@ -3559,4 +3557,3 @@ namespace GraphView
         }
     }
 }
-
