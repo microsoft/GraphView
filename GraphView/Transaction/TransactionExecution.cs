@@ -1371,7 +1371,6 @@ namespace GraphView.Transaction
 
                 this.getVListReq.Free();
 
-                SortVersionList();
                 this.CurrentProc = this.readCheckVersionEntryProc;
                 this.CurrentProc();
             }
@@ -1418,142 +1417,206 @@ namespace GraphView.Transaction
             this.versionList.Sort(this.readEntryCount);
         }
 
+        /// <summary>
+        /// (only) depends on `this.versionList`, `this.readEntryCount`
+        /// </summary>
+        /// <param name="index">
+        /// output index of the visible version in this.versionList, invalid when no visible version found
+        /// </param>
+        /// <param name="maxVersionKey">
+        /// output largest versionKey in this.versionList, valid even when no visible version found
+        /// </param>
+        /// <returns> returns `null` if no visible version</returns>
+        private VersionEntry PickVisibleVersion(out int index, out long maxVersionKey)
+        {
+            maxVersionKey = VersionEntry.VERSION_KEY_START_INDEX;
+            index = this.readEntryCount - 1;
+            for (; index >= 0; --index)
+            {
+                VersionEntry versionEntry = this.versionList[index];
+                maxVersionKey = Math.Max(maxVersionKey, versionEntry.VersionKey);
+
+                // Dirty version
+                if (versionEntry.EndTimestamp == VersionEntry.DEFAULT_END_TIMESTAMP)
+                {
+                    CheckInvariant(versionEntry.BeginTimestamp == VersionEntry.DEFAULT_BEGIN_TIMESTAMP);
+                    CheckInvariant(index == this.readEntryCount - 1);
+                    continue;
+                }
+                // Current newest version
+                if (versionEntry.EndTimestamp == long.MaxValue)
+                {
+                    CheckInvariant(versionEntry.BeginTimestamp >= 0);
+                    return versionEntry;
+                }
+                // else: 0 <= versionEntry.EndTimestamp < Infinity
+                // an old version modified by someone else, and its following
+                // versions are sure to be invisible too
+                CheckInvariant(versionEntry.TxId == VersionEntry.EMPTY_TXID);
+                break;
+            }
+            return null;
+        }
+
         internal void ReadCheckVersionEntry()
         {
-            VersionEntry visiableVersionRef = null;
-            VersionEntry visibleVersion = null;
+            SortVersionList();
+            // VersionEntry visibleVersion = null;
             // Keep a committed version to retrieve the largest version key
-            VersionEntry committedVersion = null;
-            TxTableEntry pendingTx = null;
-            while (this.readEntryCount > 0)
+            // VersionEntry committedVersion = null;
+            // TxTableEntry pendingTx = null;
+            int visibleVersionIdx;
+            VersionEntry visibleVersion = this.PickVisibleVersion(
+                out visibleVersionIdx, out this.readLargestVersionKey);
+
+            VersionEntry visiableVersionRef = null;
+            if (visibleVersion != null && this.versionDb is SingletonVersionDb)
             {
-                VersionEntry versionEntry = this.versionList[this.readEntryCount - 1];
-                // Wait for the GetTxEntry response
-                if (this.getTxReq.IsActive())
-                {
-                    if (!this.getTxReq.Finished)
-                    {
-                        return;
-                    }
-
-                    pendingTx = this.getTxReq.Result as TxTableEntry;
-                    this.getTxReq.Free();
-
-                    --this.readEntryCount;
-
-                    if (pendingTx == null)
-                    {
-                        // Failed to retrieve the status of the tx holding the version. 
-                        // Moves on to the next version.
-                        continue;
-                    }
-
-                    // The current version is commited and should be extracted the largest version key
-                    committedVersion = versionEntry;
-
-                    this.readLargestVersionKey = Math.Max(versionEntry.VersionKey, this.readLargestVersionKey);
-
-                    if (versionEntry.EndTimestamp == VersionEntry.DEFAULT_BEGIN_TIMESTAMP)
-                    {
-                        // this version is a dirty version
-                        if (pendingTx.Status != TxStatus.Committed)
-                        {
-                            continue;
-                        }
-                        // this version is a committed version but doesn't finish post-processing
-                        visibleVersion = new VersionEntry(
-                            versionEntry.RecordKey,
-                            versionEntry.VersionKey,
-                            pendingTx.CommitTime,
-                            long.MaxValue,
-                            versionEntry.Record,
-                            VersionEntry.EMPTY_TXID,
-                            versionEntry.MaxCommitTs);
-                    }
-                    else if (versionEntry.EndTimestamp == long.MaxValue)
-                    {
-                        // A dirty write has been appended after this version entry. 
-                        // This version is visible if the writing tx has not been committed
-                        if (pendingTx.Status != TxStatus.Committed)
-                        {
-                            visibleVersion = versionEntry;
-                        }
-                        else
-                        {
-                            AbortWithMessage("This version is no longer visible");
-                            return;
-                        }
-                    }
-                    else
-                    {
-                        throw new Exception("Invalid state: 0 <= EndTimestamp < Inf");
-                    }
-                }
-                else
-                {
-                    if (versionEntry.TxId >= 0)
-                    {
-                        if (pendingTx != null && pendingTx.TxId == versionEntry.TxId)
-                        {
-                            this.getTxReq.Result = pendingTx;
-                            this.getTxReq.Use();
-                            this.getTxReq.Finished = true;
-                        }
-                        else
-                        {
-                            // Send the GetTxEntry request
-                            this.getTxReq.Set(versionEntry.TxId, this.txId, this.localTxEntry, this.remoteTxEntryRef);
-                            this.getTxReq.Use();
-
-                            this.versionDb.EnqueueTxEntryRequest(versionEntry.TxId, getTxReq, this.execId);
-                        }
-                    }
-                    else
-                    {
-                        committedVersion = versionEntry;
-                        this.readLargestVersionKey = Math.Max(versionEntry.VersionKey, this.readLargestVersionKey);
-                        --this.readEntryCount;
-                        // When a tx has a begin timestamp after intialization.
-                        // this.beginTimestamp is currently not used. It's used
-                        // while we may want to retrieve a snapshot of a version
-                        // list in the future.
-                        if (this.beginTimestamp >= 0 &&
-                            this.beginTimestamp >= versionEntry.BeginTimestamp &&
-                            this.beginTimestamp < versionEntry.EndTimestamp)
-                        {
-
-                            visibleVersion = versionEntry;
-                        }
-                        // When a tx has no begin timestamp after intialization, the tx is under serializability. 
-                        // A read always returns the most-recently committed version.
-                        else if (versionEntry.EndTimestamp == long.MaxValue)
-                        {
-                            visibleVersion = versionEntry;
-                        }
-                        else if (versionEntry.EndTimestamp != VersionEntry.DEFAULT_END_TIMESTAMP)
-                        {
-                            // caused by a delete operation or concurrent read
-                            break;
-                        }
-                        else
-                        {
-                            throw new Exception("EndTimestamp == DEFAULT and TxId == EMPTY");
-                        }
-                    }
-                }
-
-                // Break the loop once find a visiable version
-                if (visibleVersion != null)
-                {
-                    // save the reference of visiable version entry
-                    // JUST FOR IN-MEMORY VERSION
-                    if (this.remoteVersionRefList.Count > this.readEntryCount)
-                    {
-                        visiableVersionRef = this.remoteVersionRefList[this.readEntryCount];
-                    }
-                    break;
-                }
+                visiableVersionRef = this.remoteVersionRefList[visibleVersionIdx];
             }
+
+            // while (this.readEntryCount > 0)
+            // {
+            //     VersionEntry versionEntry = this.versionList[this.readEntryCount - 1];
+            //     // Wait for the GetTxEntry response
+            //     if (this.getTxReq.IsActive())
+            //     {
+            //         if (!this.getTxReq.Finished)
+            //         {
+            //             return;
+            //         }
+
+            //         pendingTx = this.getTxReq.Result as TxTableEntry;
+            //         this.getTxReq.Free();
+
+            //         --this.readEntryCount;
+
+            //         if (pendingTx == null)
+            //         {
+            //             // Failed to retrieve the status of the tx holding the version. 
+            //             // Moves on to the next version.
+            //             continue;
+            //         }
+
+            //         // The current version is commited and should be extracted the largest version key
+            //         committedVersion = versionEntry;
+
+            //         this.readLargestVersionKey = Math.Max(versionEntry.VersionKey, this.readLargestVersionKey);
+
+            //         if (versionEntry.EndTimestamp == VersionEntry.DEFAULT_BEGIN_TIMESTAMP)
+            //         {
+            //             // this version is a dirty version
+            //             if (pendingTx.Status != TxStatus.Committed)
+            //             {
+            //                 continue;
+            //             }
+            //             // this version is a committed version but doesn't finish post-processing
+            //             visibleVersion = new VersionEntry(
+            //                 versionEntry.RecordKey,
+            //                 versionEntry.VersionKey,
+            //                 pendingTx.CommitTime,
+            //                 long.MaxValue,
+            //                 versionEntry.Record,
+            //                 VersionEntry.EMPTY_TXID,
+            //                 versionEntry.MaxCommitTs);
+            //         }
+            //         else if (versionEntry.EndTimestamp == long.MaxValue)
+            //         {
+            //             // A dirty write has been appended after this version entry. 
+            //             // This version is visible if the writing tx has not been committed
+            //             if (pendingTx.Status != TxStatus.Committed)
+            //             {
+            //                 visibleVersion = versionEntry;
+            //             }
+            //             else
+            //             {
+            //                 AbortWithMessage("This version is no longer visible");
+            //                 return;
+            //             }
+            //         }
+            //         else
+            //         {
+            //             throw new Exception("Invalid state: 0 <= EndTimestamp < Inf");
+            //         }
+            //     }
+            //     else
+            //     {
+            //         if (versionEntry.EndTimestamp == VersionEntry.DEFAULT_END_TIMESTAMP)
+            //         {
+            //             Debug.Assert(versionEntry.BeginTimestamp == VersionEntry.DEFAULT_BEGIN_TIMESTAMP);
+            //             --this.readEntryCount;
+            //             continue;
+            //         }
+            //         if (versionEntry.EndTimestamp == long.MaxValue)
+            //         {
+            //             --this.readEntryCount;
+            //             visibleVersion = versionEntry;
+            //         }
+            //         else if (versionEntry.TxId >= 0)
+            //         {
+            //             if (pendingTx != null && pendingTx.TxId == versionEntry.TxId)
+            //             {
+            //                 this.getTxReq.Result = pendingTx;
+            //                 this.getTxReq.Use();
+            //                 this.getTxReq.Finished = true;
+            //             }
+            //             else
+            //             {
+            //                 // Send the GetTxEntry request
+            //                 this.getTxReq.Set(versionEntry.TxId, this.txId, this.localTxEntry, this.remoteTxEntryRef);
+            //                 this.getTxReq.Use();
+
+            //                 this.versionDb.EnqueueTxEntryRequest(versionEntry.TxId, getTxReq, this.execId);
+            //             }
+            //         }
+            //         else
+            //         {
+            //             committedVersion = versionEntry;
+            //             this.readLargestVersionKey = Math.Max(versionEntry.VersionKey, this.readLargestVersionKey);
+            //             --this.readEntryCount;
+            //             // When a tx has a begin timestamp after intialization.
+            //             // this.beginTimestamp is currently not used. It's used
+            //             // while we may want to retrieve a snapshot of a version
+            //             // list in the future.
+            //             if (this.beginTimestamp >= 0 &&
+            //                 this.beginTimestamp >= versionEntry.BeginTimestamp &&
+            //                 this.beginTimestamp < versionEntry.EndTimestamp)
+            //             {
+
+            //                 visibleVersion = versionEntry;
+            //             }
+            //             // When a tx has no begin timestamp after intialization, the tx is under serializability. 
+            //             // A read always returns the most-recently committed version.
+            //             else if (versionEntry.EndTimestamp == long.MaxValue)
+            //             {
+            //                 visibleVersion = versionEntry;
+            //             }
+            //             else if (versionEntry.EndTimestamp != VersionEntry.DEFAULT_END_TIMESTAMP)
+            //             {
+            //                 // caused by a delete operation or concurrent read
+            //                 break;
+            //             }
+            //             else
+            //             {
+            //                 throw new Exception("EndTimestamp == DEFAULT and TxId == EMPTY");
+            //             }
+            //         }
+            //     }
+
+            //     // Break the loop once find a visiable version
+            //     if (visibleVersion != null)
+            //     {
+            //         // save the reference of visiable version entry
+            //         // JUST FOR IN-MEMORY VERSION
+
+            //         if (this.remoteVersionRefList.Count > this.readEntryCount)
+            //         {
+            //         visiableVersionRef = this.remoteVersionRefList[this.readEntryCount];
+            //         Debug.Assert(visiableVersionRef != null);
+            //         }
+            //         break;
+            //     }
+            // }
 
             object payload = null;
             // Put the visible version into the read set. 
@@ -1621,6 +1684,14 @@ namespace GraphView.Transaction
         {
             return this.largestVersionKeySet.Find(
                 this.setEntryEqual.Get(tableId, recordKey));
+        }
+
+        static private void CheckInvariant(bool invariant)
+        {
+            if (!invariant)
+            {
+                throw new Exception();
+            }
         }
     }
 }
