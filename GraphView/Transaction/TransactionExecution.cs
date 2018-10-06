@@ -1249,7 +1249,7 @@ namespace GraphView.Transaction
             else if (readEntry != null)
             {
                 this.writeSet.AllocateNew().Set(
-                    tableId, recordKey, payload, readEntry.TailKey + 1,
+                    tableId, recordKey, payload, readEntry.VersionKey + 1,
                     readEntry.RemoteVerList);
             }
             else
