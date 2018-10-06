@@ -446,7 +446,6 @@ namespace GraphView
 
             UnionFind unionFind = new UnionFind();
             Dictionary<string, MatchNode> vertexTableCollection = new Dictionary<string, MatchNode>(StringComparer.OrdinalIgnoreCase);
-//            Dictionary<string, WNamedTableReference> vertexTableReferencesDict = new Dictionary<string, WNamedTableReference>();
             List<ConnectedComponent> connectedSubGraphs = new List<ConnectedComponent>();
             Dictionary<string, ConnectedComponent> subGraphMap = new Dictionary<string, ConnectedComponent>(StringComparer.OrdinalIgnoreCase);
             Dictionary<string, string> parent = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
@@ -463,7 +462,6 @@ namespace GraphView
                 foreach (WNamedTableReference vertexTableRef in vertexTableList)
                 {
                     vertexTableCollection.GetOrCreate(vertexTableRef.Alias.Value);
-//                    vertexTableReferencesDict[vertexTableRef.Alias.Value] = vertexTableRef;
                     if (!parent.ContainsKey(vertexTableRef.Alias.Value))
                         parent[vertexTableRef.Alias.Value] = vertexTableRef.Alias.Value;
                 }
@@ -588,17 +586,6 @@ namespace GraphView
                             {
                                 srcNode.DanglingEdges.Add(edgeFromSrcNode);
                                 srcNode.Properties.Add(GremlinKeyword.Star);
-                                //if (edgeFromSrcNode.EdgeType == WEdgeType.BothEdge)
-                                //{
-                                //    srcNode.Properties.Add(GremlinKeyword.EdgeAdj);
-                                //    srcNode.Properties.Add(GremlinKeyword.ReverseEdgeAdj);
-                                //}
-                                //else if (edgeFromSrcNode.EdgeType == WEdgeType.OutEdge) {
-                                //    srcNode.Properties.Add(GremlinKeyword.EdgeAdj);
-                                //}
-                                //else {
-                                //    srcNode.Properties.Add(GremlinKeyword.ReverseEdgeAdj);
-                                //}
                             }
                         }
                         if (path.Tail == null) continue;
@@ -829,13 +816,6 @@ namespace GraphView
                             : context.OuterContextOp,
                             predicate.CompileToBatchFunction(context, command)));
 
-                    //childrenProcessor.Add(
-                    //    new FilterOperator(
-                    //        childrenProcessor.Count != 0
-                    //        ? childrenProcessor.Last()
-                    //        : context.OuterContextOp,
-                    //        predicate.CompileToFunction(context, connection)));
-
                     toBeRemovedIndexes.Add(i);
                     context.CurrentExecutionOperator = childrenProcessor.Last();
                 }
@@ -1020,8 +1000,7 @@ namespace GraphView
                                 currentNode.DanglingEdges[0].AttachedJsonQuery))
                             : new FetchNodeOperator(
                                 command,
-                                currentNode.AttachedJsonQuery
-                                /*currentNode.AttachedJsonQueryOfNodesViaExternalAPI*/);
+                                currentNode.AttachedJsonQuery);
 
                         //
                         // The graph contains more than one component
@@ -1098,7 +1077,6 @@ namespace GraphView
                             context.LocateColumnReference(traversalEdge.EdgeAlias, GremlinKeyword.Star),
                             this.GetTraversalType(traversalEdge),
                             currentNode.AttachedJsonQuery,
-                            //currentNode.AttachedJsonQueryOfNodesViaExternalAPI, 
                             null, booleanFunction));
                         context.CurrentExecutionOperator = operatorChain.Last();
                         //
@@ -1255,37 +1233,6 @@ namespace GraphView
                     projectOperator.AddSelectScalarElement(scalarFunction);
                 }
 
-                //// Rebuilds the output layout of the context
-                //context.ClearField();
-                //int i = 0;
-                //if (context.CarryOn)
-                //{
-                //    foreach (var parentFieldPair in context.ParentContextRawRecordLayout)
-                //    {
-                //        context.RawRecordLayout.Add(parentFieldPair.Key, parentFieldPair.Value);
-                //    }
-                //    i = context.ParentContextRawRecordLayout.Count;
-                //}
-
-                //foreach (var expr in selectScalarExprList)
-                //{
-                //    var alias = expr.ColumnName;
-                //    WColumnReferenceExpression columnReference;
-                //    if (alias == null)
-                //    {
-                //        columnReference = expr.SelectExpr as WColumnReferenceExpression;
-                //        if (columnReference == null)
-                //        {
-                //            var value = expr.SelectExpr as WValueExpression;
-                //            columnReference = new WColumnReferenceExpression("", value.Value);
-                //        }
-                //    }
-                //    else
-                //        columnReference = new WColumnReferenceExpression("", alias);
-                //    // TODO: Change to Addfield with correct ColumnGraphType
-                //    context.RawRecordLayout.Add(columnReference, i++);
-                //}
-
                 operatorChain.Add(projectOperator);
                 context.CurrentExecutionOperator = projectOperator;
             }
@@ -1370,16 +1317,6 @@ namespace GraphView
                     }
                 }
 
-                //// Rebuilds the output layout of the context
-                //context.ClearField();
-
-                //foreach (var expr in selectScalarExprList)
-                //{
-                //    var alias = expr.ColumnName;
-                //    // TODO: Change to Addfield with correct ColumnGraphType
-                //    context.AddField("", alias ?? GremlinKeyword.TableDefaultColumnName, ColumnGraphType.Value);
-                //}
-
                 operatorChain.Add(projectAggregationOp);
                 context.CurrentExecutionOperator = projectAggregationOp;
             }
@@ -1423,44 +1360,17 @@ namespace GraphView
 
     partial class WWithPathClause
     {
-        //internal override GraphViewExecutionOperator Generate(GraphViewConnection dbConnection)
-        //{
-        //    foreach (var path in Paths)
-        //    {
-        //        //path.Item2.SelectElements = new List<WSelectElement>();
-        //        PathOperators.Add(new Tuple<string, GraphViewExecutionOperator, int>(path.Item1,
-        //            path.Item2.Generate(dbConnection), path.Item3));
-        //    }
-        //    if (PathOperators.Count != 0) return PathOperators.First().Item2;
-        //    else return null;
-        //}
+
     }
 
     partial class WChoose
     {
-        //internal override GraphViewExecutionOperator Generate(GraphViewConnection dbConnection)
-        //{
-        //    List<GraphViewExecutionOperator> Source = new List<GraphViewExecutionOperator>();
-        //    foreach (var x in InputExpr)
-        //    {
-        //        Source.Add(x.Generate(dbConnection));
-        //    }
-        //    return new ConcatenateOperator(Source);
-        //}
+        
     }
 
     partial class WCoalesce
     {
-        //internal override GraphViewExecutionOperator Generate(GraphViewConnection dbConnection)
-        //{
-        //    List<GraphViewExecutionOperator> Source = new List<GraphViewExecutionOperator>();
-        //    foreach (var x in InputExpr)
-        //    {
-        //        Source.Add(x.Generate(dbConnection));
-        //    }
-        //    var op = new CoalesceOperator(Source, CoalesceNumber);
-        //    return new OutputOperator(op, op.header, null);
-        //}
+        
     }
 
     partial class WSqlBatch
@@ -1835,12 +1745,10 @@ namespace GraphView
             }
 
             WSelectQueryBlock.ConstructJsonQueryOnNode(command, matchNode, null, command.Connection.RealPartitionKey);
-            //WSelectQueryBlock.ConstructJsonQueryOnNodeViaExternalAPI(matchNode, null);
 
             FetchNodeOperator fetchNodeOp = new FetchNodeOperator(
                 command, 
-                matchNode.AttachedJsonQuery
-                /*matchNode.AttachedJsonQueryOfNodesViaExternalAPI*/);
+                matchNode.AttachedJsonQuery);
 
             foreach (string propertyName in matchNode.Properties) {
                 ColumnGraphType columnGraphType = GraphViewReservedProperties.IsNodeReservedProperty(propertyName)
@@ -1888,7 +1796,6 @@ namespace GraphView
             //
             if (isSendQueryRequired) {
                 WSelectQueryBlock.ConstructJsonQueryOnNode(command, matchNode, null, command.Connection.RealPartitionKey);
-                //WSelectQueryBlock.ConstructJsonQueryOnNodeViaExternalAPI(matchNode, null);
             }
 
             WBooleanExpression nodeCondition = null;
@@ -1918,7 +1825,7 @@ namespace GraphView
             TraversalOperator traversalOp = new TraversalOperator(
                 context.CurrentExecutionOperator, command, 
                 edgeFieldIndex, this.GetTraversalTypeParameter(),
-                matchNode.AttachedJsonQuery/*, matchNode.AttachedJsonQueryOfNodesViaExternalAPI*/, null, booleanFunction);
+                matchNode.AttachedJsonQuery, null, booleanFunction);
             context.CurrentExecutionOperator = traversalOp;
 
             // Update context's record layout
