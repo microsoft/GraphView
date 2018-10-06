@@ -1249,7 +1249,7 @@ namespace GraphView.Transaction
             else if (readEntry != null)
             {
                 this.writeSet.AllocateNew().Set(
-                    tableId, recordKey, payload, readEntry.VersionKey + 1,
+                    tableId, recordKey, payload, readEntry.TailKey + 1,
                     readEntry.RemoteVerList);
             }
             else
@@ -1423,19 +1423,17 @@ namespace GraphView.Transaction
         /// <param name="index">
         /// output index of the visible version in this.versionList, invalid when no visible version found
         /// </param>
-        /// <param name="maxVersionKey">
+        /// <param name="maxVisibleVersion">
         /// output largest versionKey in this.versionList, valid even when no visible version found
         /// </param>
         /// <returns> returns `null` if no visible version</returns>
-        private VersionEntry PickVisibleVersion(out int index, out long maxVersionKey)
+        private VersionEntry PickVisibleVersion(out int index, out long maxVisibleVersion)
         {
-            maxVersionKey = VersionEntry.VERSION_KEY_START_INDEX;
+            maxVisibleVersion = VersionEntry.VERSION_KEY_START_INDEX;
             index = this.readEntryCount - 1;
             for (; index >= 0; --index)
             {
                 VersionEntry versionEntry = this.versionList[index];
-                maxVersionKey = Math.Max(maxVersionKey, versionEntry.VersionKey);
-
                 // Dirty version
                 if (versionEntry.EndTimestamp == VersionEntry.DEFAULT_END_TIMESTAMP)
                 {
@@ -1443,6 +1441,8 @@ namespace GraphView.Transaction
                     CheckInvariant(index == this.readEntryCount - 1);
                     continue;
                 }
+                // Dirty version doesn't count as maxVersionKey
+                maxVisibleVersion = Math.Max(maxVisibleVersion, versionEntry.VersionKey);
                 // Current newest version
                 if (versionEntry.EndTimestamp == long.MaxValue)
                 {
