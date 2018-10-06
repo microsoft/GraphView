@@ -144,13 +144,13 @@ namespace GraphView.Transaction
                     // It's the version key of the first Inserted version.
                     long firstMeaningfulVersion = VersionEntry.VERSION_KEY_START_INDEX + 1;
                     VersionEntry emptyEntry = new VersionEntry();
-                    VersionEntry.InitEmptyVersionEntry(i, emptyEntry);
+                    VersionEntry.InitEmptyVersionEntry(emptyEntry);
                     emptyEntry.BeginTimestamp = firstMeaningfulVersion;
                     emptyEntry.EndTimestamp = firstMeaningfulVersion;
                     versionList.Add(SingletonDictionaryVersionTable.TAIL_KEY, emptyEntry);
 
                     VersionEntry versionEntry = new VersionEntry();
-                    VersionEntry.InitFirstVersionEntry(i, versionEntry.Record == null ? new String('a', 100) : versionEntry.Record, versionEntry);
+                    VersionEntry.InitFirstVersionEntry(versionEntry.Record == null ? new String('a', 100) : versionEntry.Record, versionEntry);
                     versionList.Add(firstMeaningfulVersion, versionEntry);
                 }
                 pk++;

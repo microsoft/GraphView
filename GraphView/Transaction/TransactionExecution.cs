@@ -389,7 +389,6 @@ namespace GraphView.Transaction
                     {
                         // VersionEntry newImageEntry = TransactionExecutor.versionEntryArray[versionEntryIndex];
                         VersionEntry newImageEntry = this.localUploadVerEntry;
-                        newImageEntry.RecordKey = writeEntry.RecordKey;
                         newImageEntry.VersionKey = writeEntry.VersionKey;
                         newImageEntry.Record = payload;
                         newImageEntry.TxId = this.txId;
@@ -517,7 +516,7 @@ namespace GraphView.Transaction
                         // Add the updated tail to the abort set
                         this.AddVersionToAbortSet(
                             this.replaceTableId,
-                            this.replaceVerEntry.RecordKey,
+                            this.writeSet[this.writeSetIndex].RecordKey,
                             this.replaceVerEntry.VersionKey,
                             rolledBackBegin,
                             long.MaxValue,
@@ -525,7 +524,7 @@ namespace GraphView.Transaction
                         // Add the updated tail to the commit set
                         this.AddVersionToCommitSet(
                             this.replaceTableId,
-                            this.replaceVerEntry.RecordKey,
+                            this.writeSet[this.writeSetIndex].RecordKey, 
                             this.replaceVerEntry.VersionKey,
                             rolledBackBegin,
                             TransactionExecution.UNSET_TX_COMMIT_TIMESTAMP,
@@ -583,7 +582,7 @@ namespace GraphView.Transaction
 
                         this.retryReplaceReq.Set(
                             this.replaceTableId,
-                            replaceVerEntry.RecordKey,
+                            this.writeSet[this.writeSetIndex].RecordKey,
                             replaceVerEntry.VersionKey,
                             conflictTxStatus.CommitTime,
                             long.MaxValue,
@@ -610,7 +609,7 @@ namespace GraphView.Transaction
                         {
                             this.retryReplaceReq.Set(
                                 this.replaceTableId,
-                                this.replaceVerEntry.RecordKey,
+                                this.writeSet[this.writeSetIndex].RecordKey,
                                 this.replaceVerEntry.VersionKey,
                                 this.replaceVerEntry.BeginTimestamp,
                                 long.MaxValue,
@@ -648,7 +647,7 @@ namespace GraphView.Transaction
                     // Add the updated tail to the abort set
                     this.AddVersionToAbortSet(
                         this.replaceTableId,
-                        retryEntry.RecordKey,
+                        this.writeSet[this.writeSetIndex].RecordKey,
                         retryEntry.VersionKey,
                         rolledBackBegin,
                         long.MaxValue,
@@ -657,7 +656,7 @@ namespace GraphView.Transaction
                     // Add the updated tail to the commit set
                     this.AddVersionToCommitSet(
                         this.replaceTableId,
-                        retryEntry.RecordKey,
+                        this.writeSet[this.writeSetIndex].RecordKey,
                         retryEntry.VersionKey,
                         rolledBackBegin,
                         TransactionExecution.UNSET_TX_COMMIT_TIMESTAMP,
@@ -816,7 +815,7 @@ namespace GraphView.Transaction
                         // Updates the version's max commit timestamp
                         this.updateMaxTsReq.Set(
                             tableId,
-                            this.rereadVerEntry.RecordKey,
+                            this.readReq.RecordKey,
                             this.rereadVerEntry.VersionKey,
                             this.commitTs,
                             this.txId,

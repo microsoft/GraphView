@@ -244,7 +244,7 @@
                                 }
 
                                 VersionEntry versionEntry = new VersionEntry();
-                                VersionEntry.InitFirstVersionEntry(i, new String('a', 100), versionEntry);
+                                VersionEntry.InitFirstVersionEntry(new String('a', 100), versionEntry);
 
                                 byte[] key = BitConverter.GetBytes(VersionEntry.VERSION_KEY_START_INDEX + 1);
                                 byte[] value = VersionEntry.Serialize(versionEntry);
@@ -421,7 +421,7 @@
             for (int i = 0; i < returnBytes.Length; i += 2)
             {
                 long versionKey = BitConverter.ToInt64(returnBytes[i], 0);
-                VersionEntry entry = VersionEntry.Deserialize(recordKey, versionKey, returnBytes[i + 1]);
+                VersionEntry entry = VersionEntry.Deserialize(versionKey, returnBytes[i + 1]);
                 entries.Add(entry);
             }
 
@@ -440,7 +440,7 @@
         {
             string hashId = recordKey as string;
             long versionKey = VersionEntry.VERSION_KEY_START_INDEX;
-            VersionEntry emptyEntry = VersionEntry.InitEmptyVersionEntry(recordKey);
+            VersionEntry emptyEntry = VersionEntry.InitEmptyVersionEntry();
 
             byte[] keyBytes = BitConverter.GetBytes(versionKey);
             byte[] valueBytes = VersionEntry.Serialize(emptyEntry);
@@ -514,7 +514,7 @@
             {
                 return null;
             }
-            return VersionEntry.Deserialize(recordKey, versionKey, returnBytes[1]);
+            return VersionEntry.Deserialize(versionKey, returnBytes[1]);
         }
 
         /// <summary>
@@ -631,7 +631,7 @@
                 return null;
             }
             // return format is [keybytes, valuebytes]
-            return VersionEntry.Deserialize(recordKey, versionKey, returnBytes[1]);
+            return VersionEntry.Deserialize(versionKey, returnBytes[1]);
         }
 
         /// <summary>
@@ -692,7 +692,7 @@
             {
                 return null;
             }
-            return VersionEntry.Deserialize(recordKey, versionKey, valueBytes);
+            return VersionEntry.Deserialize(versionKey, valueBytes);
         }
 
         /// <summary>
@@ -788,7 +788,7 @@
             {
                 object recordKey = reqList[i].HashId;
                 long versionKey = BitConverter.ToInt64(reqList[i].Key, 0);
-                VersionEntry entry = VersionEntry.Deserialize(recordKey, versionKey, valuesBytes[i]);
+                VersionEntry entry = VersionEntry.Deserialize(versionKey, valuesBytes[i]);
                 versionEntries.Add(new VersionPrimaryKey(recordKey, versionKey), entry);
             }
             return versionEntries;

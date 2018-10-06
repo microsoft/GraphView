@@ -59,7 +59,6 @@ namespace GraphView.Transaction
             foreach (var row in rs)
             {
                 req.LocalContainer[cnt].Set(
-                    row.GetValue<string>("recordkey"),
                     row.GetValue<long>("versionkey"),
                     row.GetValue<long>("begintimestamp"),
                     row.GetValue<long>("endtimestamp"),
@@ -76,11 +75,11 @@ namespace GraphView.Transaction
 
         internal override void Visit(InitiGetVersionListRequest req)
         {
-            VersionEntry emptyEntry = VersionEntry.InitEmptyVersionEntry(req.RecordKey);
+            VersionEntry emptyEntry = VersionEntry.InitEmptyVersionEntry();
 
             this.CQLExecute(string.Format(PartitionedCassandraVersionTable.CQL_UPLOAD_VERSION_ENTRY,
                                                                 req.TableId,
-                                                                emptyEntry.RecordKey.ToString(),
+                                                                req.RecordKey.ToString(),
                                                                 emptyEntry.VersionKey,
                                                                 emptyEntry.BeginTimestamp,
                                                                 emptyEntry.EndTimestamp,
@@ -105,7 +104,7 @@ namespace GraphView.Transaction
 
             if (ve == null)
             {
-                return new VersionEntry(recordKey, versionKey, row.GetValue<long>("begintimestamp"),
+                return new VersionEntry(versionKey, row.GetValue<long>("begintimestamp"),
                     row.GetValue<long>("endtimestamp"),
                     BytesSerializer.Deserialize(row.GetValue<byte[]>("record")),
                     row.GetValue<long>("txid"),
@@ -114,7 +113,7 @@ namespace GraphView.Transaction
             else
             {
                 ve.Set(
-                    recordKey, versionKey, row.GetValue<long>("begintimestamp"),
+                    versionKey, row.GetValue<long>("begintimestamp"),
                     row.GetValue<long>("endtimestamp"),
                     BytesSerializer.Deserialize(row.GetValue<byte[]>("record")),
                     row.GetValue<long>("txid"),
@@ -154,7 +153,7 @@ namespace GraphView.Transaction
                                         req.TableId, req.VersionEntry.BeginTimestamp, req.VersionEntry.EndTimestamp,
                                         BytesSerializer.ToHexString(BytesSerializer.Serialize(req.VersionEntry.Record)),
                                         req.VersionEntry.TxId, req.VersionEntry.MaxCommitTs,
-                                        req.VersionEntry.RecordKey.ToString(), req.VersionEntry.VersionKey));
+                                        req.RecordKey.ToString(), req.VersionEntry.VersionKey));
             req.Result = 1L;
             req.Finished = true;
         }
@@ -180,7 +179,7 @@ namespace GraphView.Transaction
             {
                 this.CQLExecute(string.Format(PartitionedCassandraVersionTable.CQL_UPLOAD_VERSION_ENTRY,
                                                       req.TableId,
-                                                      req.VersionEntry.RecordKey.ToString(),
+                                                      req.RecordKey.ToString(),
                                                       req.VersionEntry.VersionKey,
                                                       req.VersionEntry.BeginTimestamp,
                                                       req.VersionEntry.EndTimestamp,

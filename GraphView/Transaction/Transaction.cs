@@ -112,7 +112,7 @@ namespace GraphView.Transaction
         /// </summary>
         private readonly Dictionary<string, Dictionary<object, long>> largestVersionKeyMap;
 
-        private readonly List<Tuple<string, VersionEntry>> validationVersions;
+        private readonly List<Tuple<string, object, VersionEntry>> validationVersions;
 
         //private readonly Queue<Tuple<long, long>> garbageQueue;
         private readonly Queue<long> garbageQueueTxId;
@@ -168,7 +168,7 @@ namespace GraphView.Transaction
             this.abortSet = new Dictionary<string, Dictionary<object, List<PostProcessingEntry>>>();
             this.commitSet = new Dictionary<string, Dictionary<object, List<PostProcessingEntry>>>();
             this.largestVersionKeyMap = new Dictionary<string, Dictionary<object, long>>();
-            this.validationVersions = new List<Tuple<string, VersionEntry>>();
+            this.validationVersions = new List<Tuple<string, object, VersionEntry>>();
 
             this.txId = txId < 0 ? this.versionDb.InsertNewTx() : txId;
             this.txStatus = TxStatus.Ongoing;
@@ -215,7 +215,6 @@ namespace GraphView.Transaction
                         if (this.writeSet[tableId][recordKey] != null)
                         {
                             VersionEntry newImageEntry = new VersionEntry(
-                                recordKey,
                                 this.largestVersionKeyMap[tableId][recordKey] + 1,
                                 writeRecord,
                                 this.txId);
@@ -344,7 +343,6 @@ namespace GraphView.Transaction
                         //INSERT Op.
                         //create and upload the new version entry.
                         VersionEntry newImageEntry = new VersionEntry(
-                            recordKey,
                             this.largestVersionKeyMap[tableId][recordKey] + 1,
                             writeRecord,
                             this.txId);
@@ -447,7 +445,7 @@ namespace GraphView.Transaction
                     VersionEntry rereadEntry = this.versionDb.GetVersionEntryByKey(
                         tableId, recordKey, readSet[tableId][recordKey].VersionKey);
 
-                    this.validationVersions.Add(Tuple.Create(tableId, rereadEntry));
+                    this.validationVersions.Add(Tuple.Create(tableId, recordKey, rereadEntry));
 
                     // validationKeys.Add(new VersionPrimaryKey(recordKey, readSet[tableId][recordKey].VersionKey));
                 }
@@ -461,10 +459,10 @@ namespace GraphView.Transaction
                 //}
             }
 
-            foreach (Tuple<string, VersionEntry> entry in this.validationVersions)
+            foreach (Tuple<string, object, VersionEntry> entry in this.validationVersions)
             {
                 //first get the version, compare its maxCommitTs with my CommitTs
-                VersionEntry versionEntry = entry.Item2;
+                VersionEntry versionEntry = entry.Item3;
 
                 if (versionEntry.MaxCommitTs < this.CommitTs)
                 {
@@ -473,8 +471,8 @@ namespace GraphView.Transaction
 					// try to push the version’s maxCommitTs as my CommitTs
 					versionEntry = this.versionDb.UpdateVersionMaxCommitTs(
 						entry.Item1,
-						entry.Item2.RecordKey,
-						entry.Item2.VersionKey,
+						entry.Item2,
+						versionEntry.VersionKey,
 						this.commitTs);
 				}
 
@@ -630,7 +628,6 @@ namespace GraphView.Transaction
                                     recordKey,
                                     entry.VersionKey,
                                     new VersionEntry(
-                                        recordKey,
                                         entry.VersionKey,
                                         readEntry.BeginTimestamp,
                                         this.commitTs,
@@ -1069,7 +1066,6 @@ namespace GraphView.Transaction
                         else if (versionEntry.EndTimestamp == VersionEntry.DEFAULT_END_TIMESTAMP && pendingTxStatus == TxStatus.Committed)
                         {
                             visibleVersion = new VersionEntry(
-                                versionEntry.RecordKey, 
                                 versionEntry.VersionKey, 
                                 pendingTxEntry.CommitTime, 
                                 long.MaxValue, 

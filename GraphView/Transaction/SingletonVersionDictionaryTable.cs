@@ -86,7 +86,7 @@
                     new ConcurrentDictionary<long, VersionEntry>(1, VersionTable.VERSION_CAPACITY);
                 // Adds a special entry whose key is TAIL_KEY when the list is initialized.
                 // The entry uses beginTimestamp as a pointer pointing to the newest verion in the list.
-                newVersionList.TryAdd(SingletonDictionaryVersionTable.TAIL_KEY, new VersionEntry(recordKey, TAIL_KEY, -1, -1, null, -1, -1));
+                newVersionList.TryAdd(SingletonDictionaryVersionTable.TAIL_KEY, new VersionEntry(TAIL_KEY, -1, -1, null, -1, -1));
 
                 if (this.dict.TryAdd(recordKey, newVersionList))
                 {
@@ -152,7 +152,7 @@
             if (entry.TxId == readTxId && entry.EndTimestamp == expectedEndTimestamp)
             {
                 VersionEntry newEntry = new VersionEntry(
-                    recordKey, versionKey, beginTimestamp, endTimestamp, entry.Record, txId, entry.MaxCommitTs);
+                    versionKey, beginTimestamp, endTimestamp, entry.Record, txId, entry.MaxCommitTs);
 
                 if (versionList.TryUpdate(versionKey, newEntry, entry))
                 {
@@ -226,7 +226,7 @@
 
             while (verEntry.MaxCommitTs < commitTs)
             {
-                VersionEntry newEntry = new VersionEntry(recordKey, versionKey,
+                VersionEntry newEntry = new VersionEntry(versionKey,
                     verEntry.BeginTimestamp, verEntry.EndTimestamp, verEntry.Record, verEntry.TxId, commitTs);
 
                 if (versionList.TryUpdate(versionKey, newEntry, verEntry))
@@ -308,13 +308,13 @@
                     // It's the version key of the first Inserted version.
                     long firstMeaningfulVersion = VersionEntry.VERSION_KEY_START_INDEX + 1;
                     VersionEntry emptyEntry = new VersionEntry();
-                    VersionEntry.InitEmptyVersionEntry(-1, emptyEntry);
+                    VersionEntry.InitEmptyVersionEntry(emptyEntry);
                     emptyEntry.BeginTimestamp = firstMeaningfulVersion;
                     emptyEntry.EndTimestamp = firstMeaningfulVersion;
                     versionList.TryAdd(TAIL_KEY, emptyEntry);
 
                     VersionEntry versionEntry = new VersionEntry();
-                    VersionEntry.InitFirstVersionEntry(i, versionEntry.Record == null ? new String('a', 100) : versionEntry.Record, versionEntry);
+                    VersionEntry.InitFirstVersionEntry(versionEntry.Record == null ? new String('a', 100) : versionEntry.Record, versionEntry);
                     versionList.TryAdd(firstMeaningfulVersion, versionEntry);
                 }
                 pk++;

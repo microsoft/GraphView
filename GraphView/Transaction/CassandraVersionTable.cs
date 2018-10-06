@@ -134,7 +134,6 @@
             foreach (var row in rs)
             {
                 entries.Add(new VersionEntry(
-                    row.GetValue<string>("recordkey"),
                     row.GetValue<long>("versionkey"),
                     row.GetValue<long>("begintimestamp"),
                     row.GetValue<long>("endtimestamp"),
@@ -149,11 +148,11 @@
 
         internal override IEnumerable<VersionEntry> InitializeAndGetVersionList(object recordKey)
         {
-            VersionEntry emptyEntry = VersionEntry.InitEmptyVersionEntry(recordKey);
+            VersionEntry emptyEntry = VersionEntry.InitEmptyVersionEntry();
 
             bool applied = this.CQLExecuteWithIfApplied(string.Format(CassandraVersionTable.CQL_UPLOAD_VERSION_ENTRY,
                                                                 this.tableId,
-                                                                emptyEntry.RecordKey,
+                                                                recordKey,
                                                                 emptyEntry.VersionKey,
                                                                 emptyEntry.BeginTimestamp,
                                                                 emptyEntry.EndTimestamp,
@@ -186,14 +185,14 @@
                                                                     this.tableId, versionEntry.BeginTimestamp, versionEntry.EndTimestamp,
                                                                     BytesSerializer.ToHexString(BytesSerializer.Serialize(versionEntry.Record)),
                                                                     versionEntry.TxId, versionEntry.MaxCommitTs,
-                                                                    versionEntry.RecordKey.ToString(), versionEntry.VersionKey));
+                                                                    recordKey.ToString(), versionEntry.VersionKey));
         }
 
         internal override bool UploadNewVersionEntry(object recordKey, long versionKey, VersionEntry versionEntry)
         {
             return this.CQLExecuteWithIfApplied(string.Format(CassandraVersionTable.CQL_UPLOAD_VERSION_ENTRY,
                                                       this.tableId,
-                                                      versionEntry.RecordKey.ToString(),
+                                                      recordKey.ToString(),
                                                       versionEntry.VersionKey,
                                                       versionEntry.BeginTimestamp,
                                                       versionEntry.EndTimestamp,
@@ -228,7 +227,7 @@
             }
 
             return new VersionEntry(
-                recordKey, versionKey, row.GetValue<long>("begintimestamp"),
+                versionKey, row.GetValue<long>("begintimestamp"),
                 row.GetValue<long>("endtimestamp"),
                 BytesSerializer.Deserialize(row.GetValue<byte[]>("record")),
                 row.GetValue<long>("txid"),

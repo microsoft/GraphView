@@ -3,7 +3,6 @@ using System.Threading;
 
 namespace GraphView.Transaction
 {
-    using System.Runtime.Serialization;
     using System;
     using System.Collections.Generic;
 
@@ -31,7 +30,6 @@ namespace GraphView.Transaction
         public static readonly long VERSION_KEY_START_INDEX = -1L;
 
         // The following three properties are readonly
-        internal object RecordKey { get; set; }
         internal long VersionKey;
         internal object Record { get; set; }
 
@@ -50,7 +48,6 @@ namespace GraphView.Transaction
         }
 
         public VersionEntry(
-            object recordKey,
             long versionKey,
             long beginTimestamp,
             long endTimestamp,
@@ -58,7 +55,6 @@ namespace GraphView.Transaction
             long txId,
             long maxCommitTs)
         {
-            this.RecordKey = recordKey;
             this.VersionKey = versionKey;
             this.BeginTimestamp = beginTimestamp;
             this.EndTimestamp = endTimestamp;
@@ -68,12 +64,10 @@ namespace GraphView.Transaction
         }
 
         public VersionEntry(
-            object recordKey,
             long versionKey,
             object record,
             long txId)
         {
-            this.RecordKey = recordKey;
             this.VersionKey = versionKey;
             this.BeginTimestamp = VersionEntry.DEFAULT_BEGIN_TIMESTAMP;
             this.EndTimestamp = VersionEntry.DEFAULT_END_TIMESTAMP;
@@ -86,14 +80,13 @@ namespace GraphView.Transaction
         {
             int hash = 17;
             hash = hash * 23 + this.VersionKey.GetHashCode();
-            hash = hash * 23 + this.RecordKey.GetHashCode();
+            //hash = hash * 23 + this.RecordKey.GetHashCode();
 
             return hash;
         }
 
         public static void CopyValue(VersionEntry src, VersionEntry dst)
         {
-            dst.RecordKey = src.RecordKey;
             dst.VersionKey = src.VersionKey;
             dst.BeginTimestamp = src.BeginTimestamp;
             dst.EndTimestamp = src.EndTimestamp;
@@ -104,7 +97,6 @@ namespace GraphView.Transaction
 
         public static void CopyFromRemote(VersionEntry src, VersionEntry dst)
         {
-            dst.RecordKey = src.RecordKey;
             dst.VersionKey = Interlocked.Read(ref src.VersionKey);
             dst.BeginTimestamp = Interlocked.Read(ref src.BeginTimestamp);
             dst.EndTimestamp = Interlocked.Read(ref src.EndTimestamp);
@@ -114,7 +106,6 @@ namespace GraphView.Transaction
         }
 
         public void Set(
-            object recordKey,
             long versionKey,
             long beginTimestamp,
             long endTimestamp,
@@ -122,7 +113,6 @@ namespace GraphView.Transaction
             long txId,
             long maxCommitTs)
         {
-            this.RecordKey = recordKey;
             this.VersionKey = versionKey;
             this.BeginTimestamp = beginTimestamp;
             this.EndTimestamp = endTimestamp;
@@ -133,7 +123,6 @@ namespace GraphView.Transaction
 
         public void Reset()
         {
-            this.RecordKey = null;
             this.VersionKey = VersionEntry.VERSION_KEY_START_INDEX;
             this.BeginTimestamp = VersionEntry.DEFAULT_BEGIN_TIMESTAMP;
             this.EndTimestamp = VersionEntry.DEFAULT_END_TIMESTAMP;
@@ -150,8 +139,7 @@ namespace GraphView.Transaction
                 return false;
             }
 
-            return this.VersionKey == ventry.VersionKey &&
-                this.RecordKey == ventry.RecordKey;
+            return this.VersionKey == ventry.VersionKey;
         }
 
         public void Latch()
@@ -194,7 +182,7 @@ namespace GraphView.Transaction
         /// <param name="versionKey"></param>
         /// <param name="bytes"></param>
         /// <returns></returns>
-        public static VersionEntry Deserialize(object recordKey, long versionKey, byte[] bytes, VersionEntry versionEntry = null)
+        public static VersionEntry Deserialize(long versionKey, byte[] bytes, VersionEntry versionEntry = null)
         {
             long beginTimestamp = BitConverter.ToInt64(bytes, VersionEntry.BEGIN_TIMESTAMP_OFFSET);
             long endTimestamp = BitConverter.ToInt64(bytes, VersionEntry.END_TIMESTAMP_OFFSET);
@@ -207,39 +195,36 @@ namespace GraphView.Transaction
 
             if (versionEntry == null)
             {
-                return new VersionEntry(recordKey, versionKey, beginTimestamp, endTimestamp,
+                return new VersionEntry(versionKey, beginTimestamp, endTimestamp,
                     record, txId, maxCommitTs);
             }
             else
             {
-                versionEntry.Set(recordKey, versionKey, beginTimestamp, endTimestamp,
+                versionEntry.Set(versionKey, beginTimestamp, endTimestamp,
                     record, txId, maxCommitTs);
                 return versionEntry;
             }
         }
 
-        public static VersionEntry InitEmptyVersionEntry(object recordKey, VersionEntry version = null)
+        public static VersionEntry InitEmptyVersionEntry(VersionEntry version = null)
         {
             if (version == null)
             {
-                return new VersionEntry(recordKey, VersionEntry.VERSION_KEY_START_INDEX,
+                return new VersionEntry(VersionEntry.VERSION_KEY_START_INDEX,
                     VersionEntry.EMPTY_RECORD, VersionEntry.EMPTY_TXID);
             }
             else
             {
                 version.Reset();
-                version.RecordKey = recordKey;
                 return version;
             }
         }
 
-
-        public static VersionEntry InitFirstVersionEntry(object recordKey, object payload, VersionEntry version = null)
+        public static VersionEntry InitFirstVersionEntry(object payload, VersionEntry version = null)
         {
             version = version == null ? new VersionEntry() : version;
             version.Reset();
 
-            version.RecordKey = recordKey;
             version.VersionKey = 0L;
             version.BeginTimestamp = 0L;
             version.EndTimestamp = long.MaxValue;

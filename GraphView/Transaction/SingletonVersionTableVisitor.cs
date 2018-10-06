@@ -63,7 +63,6 @@
     {
         private readonly ConcurrentDictionary<object, ConcurrentDictionary<long, VersionEntry>> dict;
         public readonly CachableObjectPool recordPool = new CachableObjectPool();
-        private readonly CachableObjectPool keyPool = new CachableObjectPool();
 
         public SingletonVersionTableVisitor(ConcurrentDictionary<object, ConcurrentDictionary<long, VersionEntry>> dict)
         {
@@ -135,9 +134,7 @@
                 //     throw new Exception("I'm not deleting my own dirty write?");
                 // }
                 this.recordPool.TryCache(versionEntry.Record);
-                this.keyPool.TryCache(versionEntry.RecordKey);
                 versionEntry.Record = null;
-                versionEntry.RecordKey = null;
                 req.Result = true;
             }
             else
@@ -156,7 +153,7 @@
                 ConcurrentDictionary<long, VersionEntry> newVersionList = new ConcurrentDictionary<long, VersionEntry>(32);
                 // Adds a special entry whose key is -1 when the list is initialized.
                 // The entry uses beginTimestamp as a pointer pointing to the newest verion in the list.
-                VersionEntry entry = VersionEntry.InitEmptyVersionEntry(req.RecordKey);
+                VersionEntry entry = VersionEntry.InitEmptyVersionEntry();
                 ResetTailEntry(entry);
                 newVersionList.TryAdd(SingletonDictionaryVersionTable.TAIL_KEY, entry);
 
@@ -192,6 +189,7 @@
                 }
             }
 
+            Debug.Assert(entry.VersionKey == req.VersionKey);
             // Debug Assertion
             // if (!entry.RecordKey.Equals(req.RecordKey))
             // {
@@ -235,10 +233,6 @@
 
             if (versionList.TryAdd(req.VersionKey, req.VersionEntry))
             {
-                // replace the recordkey in version entry with a copy
-                req.VersionEntry.RecordKey =
-                    this.keyPool.TryGetCopy(req.VersionEntry.RecordKey);
-
                 // The new version has been inserted successfully. Re-directs the tail pointer to the new version.  
                 VersionEntry tailEntry = null;
                 versionList.TryGetValue(SingletonDictionaryVersionTable.TAIL_KEY, out tailEntry);
@@ -278,9 +272,7 @@
                     if (oldVerEntry != null)
                     {
                         this.recordPool.TryCache(oldVerEntry.Record);
-                        this.keyPool.TryCache(oldVerEntry.RecordKey);
                         oldVerEntry.Record = null;
-                        oldVerEntry.RecordKey = null;
                     }
                 }
 
@@ -320,6 +312,8 @@
                     throw new TransactionException("The specified version does not exist.");
                 }
             }
+
+            Debug.Assert(verEntry.VersionKey == req.VersionKey);
 
             verEntry.Latch();
             Interlocked.Exchange(
@@ -411,6 +405,7 @@
                 }
             }
 
+            Debug.Assert(Interlocked.Read(ref versionEntry.VersionKey) == req.VersionKey);
             // Debug Assertion
             // if (!versionEntry.RecordKey.Equals(req.RecordKey))
             // {

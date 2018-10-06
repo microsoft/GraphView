@@ -34,7 +34,7 @@ namespace GraphView.Transaction
         }
 
         private int ExtractVersionEntry(
-            byte[][] response, object recordKey, TxList<VersionEntry> dest)
+            byte[][] response, TxList<VersionEntry> dest)
         {
             Debug.Assert(response.Length <= 4 || response.Length % 2 == 0);
             int entryCount = response.Length / 2;
@@ -46,7 +46,7 @@ namespace GraphView.Transaction
                     response[versionKeyIndex], 0);
                 byte[] entryBytes = response[versionKeyIndex + 1];
                 VersionEntry.Deserialize(
-                    recordKey, versionKey, entryBytes, dest[i]);
+                    versionKey, entryBytes, dest[i]);
                 debugKeys[i] = versionKey;
             }
             if (debugKeys.Length == 2)
@@ -63,7 +63,7 @@ namespace GraphView.Transaction
             //     return;
             // }
             int entryCount = ExtractVersionEntry(
-                returnBytes, req.RecordKey, req.LocalContainer);
+                returnBytes, req.LocalContainer);
             req.Result = entryCount;
         }
 
@@ -86,7 +86,7 @@ namespace GraphView.Transaction
             req.Result = returnBytes == null || returnBytes.Length == 0 ?
                 null :
                 VersionEntry.Deserialize(
-                    req.RecordKey, req.VersionKey,
+                    req.VersionKey,
                     returnBytes.ValueBytes(), req.LocalVerEntry);
         }
 
@@ -95,7 +95,7 @@ namespace GraphView.Transaction
             byte[] valueBytes = req.Result as byte[];
             req.Result = valueBytes == null || valueBytes.Length == 0 ?
                 null :
-                VersionEntry.Deserialize(req.RecordKey, req.VersionKey, valueBytes, req.LocalVerEntry);
+                VersionEntry.Deserialize(req.VersionKey, valueBytes, req.LocalVerEntry);
         }
 
         internal override void Visit(UpdateVersionMaxCommitTsRequest req)
@@ -104,7 +104,7 @@ namespace GraphView.Transaction
             req.Result = returnBytes == null || returnBytes.Length < 2 ?
                 null :
                 VersionEntry.Deserialize(
-                    req.RecordKey, req.VersionKey,
+                    req.VersionKey,
                     returnBytes.ValueBytes(), req.LocalVerEntry);
         }
 

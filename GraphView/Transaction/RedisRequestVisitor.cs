@@ -206,7 +206,6 @@ namespace GraphView.Transaction
             this.HashId = req.RecordKey as string;
             long versionKey = VersionEntry.VERSION_KEY_START_INDEX;
             VersionEntry emptyEntry = new VersionEntry(
-                req.RecordKey,
                 versionKey,
                 VersionEntry.EMPTY_RECORD,
                 VersionEntry.EMPTY_TXID);

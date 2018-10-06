@@ -219,7 +219,6 @@ namespace GraphView.Transaction
             foreach (var row in rs)
             {
                 entries.Add(new VersionEntry(
-                    row.GetValue<string>("recordkey"),
                     row.GetValue<long>("versionkey"),
                     row.GetValue<long>("begintimestamp"),
                     row.GetValue<long>("endtimestamp"),
@@ -234,13 +233,13 @@ namespace GraphView.Transaction
 
         internal override IEnumerable<VersionEntry> InitializeAndGetVersionList(object recordKey)
         {
-            VersionEntry emptyEntry = VersionEntry.InitEmptyVersionEntry(recordKey);
+            VersionEntry emptyEntry = VersionEntry.InitEmptyVersionEntry();
 
             try
             {
                 this.CQLExecute(string.Format(PartitionedCassandraVersionTable.CQL_UPLOAD_VERSION_ENTRY,
                                                                     this.tableId,
-                                                                    emptyEntry.RecordKey.ToString(),
+                                                                    recordKey.ToString(),
                                                                     emptyEntry.VersionKey,
                                                                     emptyEntry.BeginTimestamp,
                                                                     emptyEntry.EndTimestamp,
@@ -277,7 +276,7 @@ namespace GraphView.Transaction
                                                                     this.tableId, versionEntry.BeginTimestamp, versionEntry.EndTimestamp,
                                                                     BytesSerializer.ToHexString(BytesSerializer.Serialize(versionEntry.Record)),
                                                                     versionEntry.TxId, versionEntry.MaxCommitTs,
-                                                                    versionEntry.RecordKey.ToString(), versionEntry.VersionKey));
+                                                                    recordKey.ToString(), versionEntry.VersionKey));
             return true;
         }
 
@@ -285,7 +284,7 @@ namespace GraphView.Transaction
         {
             this.CQLExecute(string.Format(PartitionedCassandraVersionTable.CQL_UPLOAD_VERSION_ENTRY,
                                                       this.tableId,
-                                                      versionEntry.RecordKey.ToString(),
+                                                      recordKey.ToString(),
                                                       versionEntry.VersionKey,
                                                       versionEntry.BeginTimestamp,
                                                       versionEntry.EndTimestamp,
@@ -338,7 +337,7 @@ namespace GraphView.Transaction
             }
 
             return new VersionEntry(
-                recordKey, versionKey, row.GetValue<long>("begintimestamp"),
+                versionKey, row.GetValue<long>("begintimestamp"),
                 row.GetValue<long>("endtimestamp"),
                 BytesSerializer.Deserialize(row.GetValue<byte[]>("record")),
                 row.GetValue<long>("txid"),

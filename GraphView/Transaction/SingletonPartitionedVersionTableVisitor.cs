@@ -111,7 +111,7 @@
                 // Adds a special entry whose key is TAIL_KEY when the list is initialized.
                 // The entry uses beginTimestamp as a pointer pointing to the newest verion in the list.
                 newVersionList.Add(
-                    SingletonDictionaryVersionTable.TAIL_KEY, VersionEntry.InitEmptyVersionEntry(req.RecordKey));
+                    SingletonDictionaryVersionTable.TAIL_KEY, VersionEntry.InitEmptyVersionEntry());
 
                 this.dict.Add(req.RecordKey, newVersionList);
 
