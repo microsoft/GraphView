@@ -164,6 +164,11 @@ namespace TransactionBenchmarkTest.TPCC
                     case "-t":
                     case "--type":
                         config.TxType = BenchmarkConfig.StringToTxType(args[i++]);
+                        if (config.WorkloadFile == null)
+                        {
+                            config.WorkloadFile =
+                                BenchmarkConfig.DefaultWorkloadFile(config.TxType);
+                        }
                         break;
                     case "-w":
                     case "--workload":

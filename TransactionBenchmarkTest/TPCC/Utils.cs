@@ -65,7 +65,7 @@ namespace TransactionBenchmarkTest.TPCC
             this.WorkloadPerWorker = 200000;
             this.TxType = TransactionType.PAYMENT;
             this.DatasetDir = Constants.BaseDirOfDatasets;
-            this.WorkloadFile = DefaultWorkloadFile(TxType);
+            this.WorkloadFile = null;
         }
 
         public int Concurrency;
