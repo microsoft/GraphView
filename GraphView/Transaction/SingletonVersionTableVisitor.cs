@@ -233,6 +233,8 @@
 
             if (versionList.TryAdd(req.VersionKey, req.VersionEntry))
             {
+                req.VersionEntry.ResetLatchQueue();
+
                 // The new version has been inserted successfully. Re-directs the tail pointer to the new version.  
                 VersionEntry tailEntry = null;
                 versionList.TryGetValue(SingletonDictionaryVersionTable.TAIL_KEY, out tailEntry);

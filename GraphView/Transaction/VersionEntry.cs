@@ -42,6 +42,13 @@ namespace GraphView.Transaction
 
         internal int latch = 0;
 
+        /// <summary>
+        /// A circular queue of signals controlling threads who can or cannot proceed.
+        /// The capacity of the array is no less than # of threads.
+        /// </summary>
+        internal bool[] latchQueue = new bool[64];
+        internal long ticketCounter;
+
         public VersionEntry()
         {
             this.Reset();
@@ -61,6 +68,8 @@ namespace GraphView.Transaction
             this.Record = record;
             this.TxId = txId;
             this.MaxCommitTs = maxCommitTs;
+
+            this.ResetLatchQueue();
         }
 
         public VersionEntry(
@@ -74,6 +83,16 @@ namespace GraphView.Transaction
             this.Record = record;
             this.TxId = txId;
             this.MaxCommitTs = VersionEntry.DEFAULT_MAX_COMMIT_TS;
+        }
+
+        public void ResetLatchQueue()
+        {
+            for (int tid = 0; tid < this.latchQueue.Length; tid++)
+            {
+                Volatile.Write(ref this.latchQueue[tid], false);
+            }
+            Volatile.Write(ref this.latchQueue[0], true);
+            Interlocked.Exchange(ref this.ticketCounter, -1);
         }
 
         public override int GetHashCode()
@@ -147,10 +166,33 @@ namespace GraphView.Transaction
             while (Interlocked.CompareExchange(ref this.latch, 1, 0) != 0)
                 continue;
         }
-
+        
         public void Unlatch()
         {
             Interlocked.Exchange(ref this.latch, 0);
+        }
+
+        /// <summary>
+        /// Enqueus the current thread by obtaining a ticket/position in the queue. 
+        /// Blocks itself if it has not been given a green light.
+        /// </summary>
+        /// <returns>The ticket/position of the current thread in the queue</returns>
+        public int EnterQueuedLatch()
+        {
+            int ticket = (int)(Interlocked.Increment(ref ticketCounter) % this.latchQueue.Length);
+            while (!Volatile.Read(ref this.latchQueue[ticket])) ;
+            return ticket;
+        }
+
+        /// <summary>
+        /// Signals the next ticket/position in the queue.
+        /// </summary>
+        /// <param name="ticket">The ticket of the current thread</param>
+        public void ExitQueuedLatch(int ticket)
+        {
+            int nextTicket = (ticket + 1) % this.latchQueue.Length;
+            Volatile.Write(ref this.latchQueue[nextTicket], true);
+            Volatile.Write(ref this.latchQueue[ticket], false);
         }
 
         /// <summary>
