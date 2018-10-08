@@ -524,7 +524,7 @@ namespace GraphView.Transaction
                         // Add the updated tail to the commit set
                         this.AddVersionToCommitSet(
                             this.replaceTableId,
-                            this.writeSet[this.writeSetIndex].RecordKey, 
+                            this.writeSet[this.writeSetIndex].RecordKey,
                             this.replaceVerEntry.VersionKey,
                             rolledBackBegin,
                             TransactionExecution.UNSET_TX_COMMIT_TIMESTAMP,
@@ -1414,6 +1414,10 @@ namespace GraphView.Transaction
         private void SortVersionList()
         {
             this.versionList.Sort(this.readEntryCount);
+            if (this.versionDb is SingletonVersionDb)
+            {
+                this.remoteVersionRefList.Sort(this.readEntryCount);
+            }
         }
 
         /// <summary>
@@ -1472,6 +1476,7 @@ namespace GraphView.Transaction
             if (visibleVersion != null && this.versionDb is SingletonVersionDb)
             {
                 visiableVersionRef = this.remoteVersionRefList[visibleVersionIdx];
+                CheckInvariant(visiableVersionRef.VersionKey == visibleVersion.VersionKey);
             }
 
             // while (this.readEntryCount > 0)
