@@ -15,7 +15,7 @@ namespace GraphView.Transaction
         /// <summary>
         /// The maximal version entry count for version list
         /// </summary>
-        internal static readonly int VERSION_CAPACITY = 8;
+        internal static readonly int VERSION_CAPACITY = 1024;
 
         /// <summary>
         /// table visitors for version entry requests
