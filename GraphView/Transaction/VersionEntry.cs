@@ -49,6 +49,8 @@ namespace GraphView.Transaction
         internal bool[] latchQueue = new bool[64];
         internal long ticketCounter;
 
+        private ReaderWriterLockSlim readerWriterLock = new ReaderWriterLockSlim();
+
         public VersionEntry()
         {
             this.Reset();
@@ -193,6 +195,26 @@ namespace GraphView.Transaction
             int nextTicket = (ticket + 1) % this.latchQueue.Length;
             Volatile.Write(ref this.latchQueue[nextTicket], true);
             Volatile.Write(ref this.latchQueue[ticket], false);
+        }
+
+        public void ReadLock()
+        {
+            readerWriterLock.EnterReadLock();
+        }
+
+        public void UnReadLock()
+        {
+            readerWriterLock.ExitReadLock();
+        }
+
+        public void WriteLock()
+        {
+            readerWriterLock.EnterReadLock();
+        }
+
+        public void UnWriteLock()
+        {
+            readerWriterLock.ExitWriteLock();
         }
 
         /// <summary>
