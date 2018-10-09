@@ -196,7 +196,8 @@
             //     throw new Exception("Inconsistent record key");
             // }
 
-            entry.Latch();
+            int ticket = entry.EnterQueuedLatch();
+            //entry.WriteLock();
             if (Interlocked.Read(ref entry.TxId) == req.SenderId &&
                 Interlocked.Read(ref entry.EndTimestamp) == req.ExpectedEndTs)
             {
@@ -206,7 +207,8 @@
                 VersionEntry.CopyFromRemote(entry, req.LocalVerEntry);
                 // req.LocalVerEntry.RecordKey = req.RecordKey;
             }
-            entry.Unlatch();
+            entry.ExitQueuedLatch(ticket);
+            //entry.UnWriteLock();
 
             req.Result = req.LocalVerEntry;
             req.Finished = true;
@@ -317,12 +319,14 @@
 
             Debug.Assert(verEntry.VersionKey == req.VersionKey);
 
-            verEntry.Latch();
+            int ticket = verEntry.EnterQueuedLatch();
+            //verEntry.WriteLock();
             Interlocked.Exchange(
                 ref verEntry.MaxCommitTs,
                 Math.Max(req.MaxCommitTs, Interlocked.Read(ref verEntry.MaxCommitTs)));
             VersionEntry.CopyFromRemote(verEntry, req.LocalVerEntry);
-            verEntry.Unlatch();
+            verEntry.ExitQueuedLatch(ticket);
+            //verEntry.UnWriteLock();
 
             req.Result = req.LocalVerEntry;
             req.Finished = true;
@@ -357,8 +361,8 @@
                 VersionEntry verEntry = null;
                 if (versionList.TryGetValue(lastVersionKey, out verEntry))
                 {
-                    verEntry.Latch();
-
+                    int ticket = verEntry.EnterQueuedLatch();
+                    //verEntry.ReadLock();
                     // Debug Assertion
                     // if (!verEntry.RecordKey.Equals(req.RecordKey))
                     // {
@@ -366,7 +370,8 @@
                     // }
 
                     VersionEntry.CopyFromRemote(verEntry, localList[entryCount]);
-                    verEntry.Unlatch();
+                    verEntry.ExitQueuedLatch(ticket);
+                    //verEntry.UnReadLock();
 
                     // Here only add a reference to the list, no need to take the latch
                     remoteList.Add(verEntry);
@@ -414,9 +419,11 @@
             //     throw new Exception("Inconsistent record key");
             // }
 
-            versionEntry.Latch();
+            int ticket = versionEntry.EnterQueuedLatch();
+             // versionEntry.ReadLock();
             VersionEntry.CopyFromRemote(versionEntry, req.LocalVerEntry);
-            versionEntry.Unlatch();
+            versionEntry.ExitQueuedLatch(ticket);
+            //versionEntry.UnReadLock();
 
             req.Result = req.LocalVerEntry;
             req.Finished = true;

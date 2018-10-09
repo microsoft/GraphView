@@ -209,7 +209,7 @@ namespace GraphView.Transaction
 
         public void WriteLock()
         {
-            readerWriterLock.EnterReadLock();
+            readerWriterLock.EnterWriteLock();
         }
 
         public void UnWriteLock()
