@@ -22,15 +22,6 @@ namespace TransactionBenchmarkTest.TPCC
         {
             return $"{dir}\\{v.Name()}.csv";
         }
-        static public int HashFields(params object[] objs)
-        {
-            int hash = 17;
-            foreach (var obj in objs)
-            {
-                hash = hash * 23 + obj.GetHashCode();
-            }
-            return hash;
-        }
     }
     public enum TableType
     {
@@ -233,12 +224,12 @@ namespace TransactionBenchmarkTest.TPCC
                 var opk = new OrderPkey
                 {
                     O_ID = Convert.ToUInt32(columns[0]),
-                    O_D_ID = Convert.ToUInt32(columns[1]),
-                    O_W_ID = Convert.ToUInt32(columns[2])
+                    O_D_ID = Convert.ToUInt32(columns[2]),
+                    O_W_ID = Convert.ToUInt32(columns[3])
                 };
                 var opl = new OrderPayload
                 {
-                    O_C_ID = Convert.ToUInt32(columns[3]),
+                    O_C_ID = Convert.ToUInt32(columns[1]),
                     O_ENTRY_D = columns[4],
                     O_CARRIER_ID = Convert.ToUInt32(columns[5]),
                     O_OL_CNT = Convert.ToUInt32(columns[6]),
@@ -351,6 +342,8 @@ namespace TransactionBenchmarkTest.TPCC
     {
         public WarehousePkey() : base(TableType.WAREHOUSE) { }
 
+        public const int IdBits = 7;
+
         public uint W_ID;
         public override string ToString()
         {
@@ -359,7 +352,7 @@ namespace TransactionBenchmarkTest.TPCC
 
         public override int GetHashCode()
         {
-            return W_ID.GetHashCode();
+            return (int)W_ID;
         }
 
         public override bool Equals(object obj)
@@ -442,6 +435,8 @@ namespace TransactionBenchmarkTest.TPCC
     {
         public DistrictPkey() : base(TableType.DISTRICT) { }
 
+        public const int IdBits = 4;
+
         public uint D_ID;
         public uint D_W_ID;
         public override string ToString()
@@ -451,7 +446,7 @@ namespace TransactionBenchmarkTest.TPCC
 
         public override int GetHashCode()
         {
-            return TableUtil.HashFields(this.D_ID, this.D_W_ID);
+            return (int)(this.D_ID << WarehousePkey.IdBits | this.D_W_ID);
         }
 
         public override bool Equals(object obj)
@@ -550,6 +545,8 @@ namespace TransactionBenchmarkTest.TPCC
     {
         public CustomerPkey() : base(TableType.CUSTOMER) { }
 
+        public const int IdBits = 12;
+
         public uint C_ID;
         public uint C_D_ID;
         public uint C_W_ID;
@@ -560,7 +557,10 @@ namespace TransactionBenchmarkTest.TPCC
 
         public override int GetHashCode()
         {
-            return TableUtil.HashFields(this.C_ID, this.C_D_ID, this.C_W_ID);
+            return (int)(
+                this.C_ID << WarehousePkey.IdBits + DistrictPkey.IdBits |
+                this.C_D_ID << WarehousePkey.IdBits |
+                this.C_W_ID);
         }
 
         public override bool Equals(object obj)
@@ -609,7 +609,9 @@ namespace TransactionBenchmarkTest.TPCC
 
         public override int GetHashCode()
         {
-            return TableUtil.HashFields(this.C_W_ID, this.C_D_ID, this.C_LAST);
+            return (int)(
+                C_D_ID << WarehousePkey.IdBits & C_W_ID) * 17 +
+                C_LAST.GetHashCode();
         }
         public override bool Equals(object obj)
         {
@@ -855,8 +857,10 @@ namespace TransactionBenchmarkTest.TPCC
 
         public override int GetHashCode()
         {
-            return TableUtil.HashFields(
-                this.NO_O_ID, this.NO_D_ID, this.NO_W_ID);
+            return (int)(
+                this.NO_O_ID << DistrictPkey.IdBits + WarehousePkey.IdBits |
+                this.NO_D_ID << WarehousePkey.IdBits |
+                this.NO_W_ID);
         }
 
         public override bool Equals(object obj)
@@ -926,6 +930,9 @@ namespace TransactionBenchmarkTest.TPCC
     public class OrderPkey : TpccTableKey
     {
         public OrderPkey() : base(TableType.ORDERS) { }
+
+        public const int IdBits = 12;
+
         public uint O_ID;
         public uint O_D_ID;
         public uint O_W_ID;
@@ -937,7 +944,10 @@ namespace TransactionBenchmarkTest.TPCC
 
         public override int GetHashCode()
         {
-            return TableUtil.HashFields(this.O_ID, this.O_D_ID, this.O_W_ID);
+            return (int)(
+                this.O_ID << WarehousePkey.IdBits + DistrictPkey.IdBits |
+                this.O_D_ID << WarehousePkey.IdBits |
+                this.O_W_ID);
         }
 
         public override bool Equals(object obj)
@@ -1038,8 +1048,10 @@ namespace TransactionBenchmarkTest.TPCC
 
         public override int GetHashCode()
         {
-            return TableUtil.HashFields(
-                this.OL_D_ID, this.OL_O_ID, this.OL_W_ID, this.OL_NUMBER);
+            return (int)(((
+                OL_O_ID << DistrictPkey.IdBits + WarehousePkey.IdBits |
+                OL_D_ID << WarehousePkey.IdBits |
+                OL_W_ID) + 17) * 23 + OL_NUMBER);
         }
 
         public override bool Equals(object obj)
@@ -1139,7 +1151,7 @@ namespace TransactionBenchmarkTest.TPCC
 
         public override int GetHashCode()
         {
-            return this.I_ID.GetHashCode();
+            return (int)this.I_ID;
         }
 
         public override bool Equals(object obj)
@@ -1228,7 +1240,7 @@ namespace TransactionBenchmarkTest.TPCC
 
         public override int GetHashCode()
         {
-            return TableUtil.HashFields(this.S_I_ID, this.S_W_ID);
+            return (int)(this.S_I_ID << WarehousePkey.IdBits | this.S_W_ID);
         }
 
         public override bool Equals(object obj)
