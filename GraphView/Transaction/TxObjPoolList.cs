@@ -13,7 +13,17 @@ namespace GraphView.Transaction
         private TxList<T> pool;
         private int size;
 
-        public T this[int i] { get { return pool[i]; } }
+        public T this[int i]
+        {
+            get
+            {
+                if (i < 0 || i >= this.size)
+                {
+                    throw new ArgumentOutOfRangeException($"invalid index {i} with size {this.size}");
+                }
+                return pool[i];
+            }
+        }
 
         public int Count { get { return this.size; } }
 
@@ -42,7 +52,9 @@ namespace GraphView.Transaction
 
         public T Pop()
         {
-            return this[--this.size];
+            T result = this[this.size - 1];
+            --this.size;
+            return result;
         }
 
         public T Find(Func<T, bool> pred)
