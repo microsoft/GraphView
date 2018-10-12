@@ -108,27 +108,12 @@ namespace TransactionBenchmarkTest.TPCC
             }
         }
 
-        static private List<WorkloadParam> EnumeratorTake(
-            IEnumerator<WorkloadParam> iter, int n)
+        static private int CalculateWorkload(int total, int workers)
         {
-            List<WorkloadParam> result = new List<WorkloadParam>(n);
-            for (int i = 0; i < n && iter.MoveNext(); ++i)
+            if (workers == 0)
             {
-                result.Add(iter.Current);
+                return 0;
             }
-            return result;
-        }
-
-        static private Exception NotEnoughWorkload(
-            int i, List<WorkloadParam> parameters, int shouldBe)
-        {
-            return new Exception(
-                $"Not enough workload for worker {i}, " +
-                $"only {parameters.Count} loaded, " +
-                $"should be {shouldBe}");
-        }
-
-        static private int CalculateWorkload(int total, int workers) {
             return (total + workers - 1) / workers;
         }
 
@@ -136,19 +121,15 @@ namespace TransactionBenchmarkTest.TPCC
         {
             Console.Write($"Loading {factory.Name()} workload... ");
             List<WorkloadParam> paramList =
-                ReadWorkloadFile(filepath)
-                .Select(factory.ColumnsToParam).ToList();
-            int realWorkload = CalculateWorkload(
-                paramList.Count, this.workerCount);
+                ReadWorkloadFile(filepath).Select(factory.ColumnsToParam).ToList();
+            int realWorkload = CalculateWorkload(paramList.Count, this.workerCount);
 
             IEnumerable<WorkloadParam> paramIter = paramList.AsEnumerable();
             for (int i = 0; i < this.tpccWorkers.Length; ++i)
             {
-                WorkloadParam[] paramSlice =
-                    paramIter.Take(realWorkload).ToArray();
+                WorkloadParam[] paramSlice = paramIter.Take(realWorkload).ToArray();
                 paramIter = paramIter.Skip(realWorkload);
-                this.tpccWorkers[i].SetWorkload(
-                    factory.NewWorkload(), paramSlice);
+                this.tpccWorkers[i].SetWorkload(factory.NewWorkload(), paramSlice);
             }
             Console.WriteLine("Done");
         }
@@ -165,34 +146,41 @@ namespace TransactionBenchmarkTest.TPCC
             Console.WriteLine($"After GC: {TotalMemoryInMB():F3}MB is used");
         }
 
+        private void PrintMonitorInfo(double time, int threadsAlive, int deltaAbort, int deltaCommit)
+        {
+            int sum = deltaCommit + deltaAbort;
+            Console.WriteLine($"Time:{time:F3}|Count:{sum}|Throughput:{sum / time:F2}|AbortRate:{deltaAbort/sum:F3}|ThreadsAlive:{threadsAlive}");
+        }
+
         private void MonitorThroughput(int ms)
         {
-            bool isAllFinished = false;
             long lastTime = DateTime.Now.Ticks;
-            int lastSum = 0;
+            int lastCommit = 0;
+            int lastAbort = 0;
+            int threadsAlive = this.workerCount;
 
-            while (!isAllFinished)
+            do
             {
                 Thread.Sleep(ms);
                 long currentTime = DateTime.Now.Ticks;
-                isAllFinished = true;
-                int sum = 0;
-                int threadCount = 0;
+                int nowCommit = 0;
+                int nowAbort = 0;
                 for (int i = 0; i < workerCount; i++)
                 {
-                    sum += tpccWorkers[i].commitCount + tpccWorkers[i].abortCount;
-                    if (!tpccWorkers[i].IsFinished)
+                    nowCommit += tpccWorkers[i].commitCount;
+                    nowAbort += tpccWorkers[i].abortCount;
+                    if (tpccWorkers[i].IsFinished)
                     {
-                        isAllFinished = false;
-                        threadCount++;
-
+                        --threadsAlive;
                     }
                 }
                 double time = (currentTime - lastTime) / 10000000.0;
-                Console.WriteLine("Time: {0}, Throughput: {1}, count: {2}, working thread: {3}", time, (sum - lastSum) / time, (sum - lastSum), threadCount);
+                PrintMonitorInfo(time, threadsAlive, nowAbort - lastAbort, nowCommit - lastCommit);
+
                 lastTime = currentTime;
-                lastSum = sum;
-            }
+                lastCommit = nowCommit;
+                lastAbort = nowAbort;
+            } while (threadsAlive != 0);
         }
 
         public void Run()
