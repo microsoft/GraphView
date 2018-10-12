@@ -121,6 +121,7 @@ namespace GraphView.Transaction
         private VersionEntry rereadVerEntry = null;
         private VersionEntry replaceVerEntry = null;
         private VersionEntry replaceRemoteVerRef = null;
+        private WriteSetEntry currentWriteSetEntry = null;
         private string replaceTableId;
 
         // local version entry (remote version entry is stored in readSet)
@@ -244,6 +245,7 @@ namespace GraphView.Transaction
             this.replaceVerEntry = null;
             // TODO: could optimize it
             this.remoteTxEntryRef = null;
+            this.currentWriteSetEntry = null;
 
             this.readSet.Clear();
             this.writeSet.Clear();
@@ -379,6 +381,7 @@ namespace GraphView.Transaction
                     !this.getTxReq.IsActive() && !this.retryReplaceReq.IsActive())
                 {
                     WriteSetEntry writeEntry = this.writeSet[this.writeSetIndex++];
+                    this.currentWriteSetEntry = writeEntry;
                     string tableId = writeEntry.TableId;
                     object recordKey = writeEntry.RecordKey;
                     object payload = writeEntry.Payload;
@@ -516,7 +519,7 @@ namespace GraphView.Transaction
                         // Add the updated tail to the abort set
                         this.AddVersionToAbortSet(
                             this.replaceTableId,
-                            this.writeSet[this.writeSetIndex].RecordKey,
+                            this.currentWriteSetEntry.RecordKey,
                             this.replaceVerEntry.VersionKey,
                             rolledBackBegin,
                             long.MaxValue,
@@ -524,7 +527,7 @@ namespace GraphView.Transaction
                         // Add the updated tail to the commit set
                         this.AddVersionToCommitSet(
                             this.replaceTableId,
-                            this.writeSet[this.writeSetIndex].RecordKey,
+                            this.currentWriteSetEntry.RecordKey,
                             this.replaceVerEntry.VersionKey,
                             rolledBackBegin,
                             TransactionExecution.UNSET_TX_COMMIT_TIMESTAMP,
@@ -582,7 +585,7 @@ namespace GraphView.Transaction
 
                         this.retryReplaceReq.Set(
                             this.replaceTableId,
-                            this.writeSet[this.writeSetIndex].RecordKey,
+                            this.currentWriteSetEntry.RecordKey,
                             replaceVerEntry.VersionKey,
                             conflictTxStatus.CommitTime,
                             long.MaxValue,
@@ -609,7 +612,7 @@ namespace GraphView.Transaction
                         {
                             this.retryReplaceReq.Set(
                                 this.replaceTableId,
-                                this.writeSet[this.writeSetIndex].RecordKey,
+                                this.currentWriteSetEntry.RecordKey,
                                 this.replaceVerEntry.VersionKey,
                                 this.replaceVerEntry.BeginTimestamp,
                                 long.MaxValue,
@@ -647,7 +650,7 @@ namespace GraphView.Transaction
                     // Add the updated tail to the abort set
                     this.AddVersionToAbortSet(
                         this.replaceTableId,
-                        this.writeSet[this.writeSetIndex].RecordKey,
+                        this.currentWriteSetEntry.RecordKey,
                         retryEntry.VersionKey,
                         rolledBackBegin,
                         long.MaxValue,
@@ -656,7 +659,7 @@ namespace GraphView.Transaction
                     // Add the updated tail to the commit set
                     this.AddVersionToCommitSet(
                         this.replaceTableId,
-                        this.writeSet[this.writeSetIndex].RecordKey,
+                        this.currentWriteSetEntry.RecordKey,
                         retryEntry.VersionKey,
                         rolledBackBegin,
                         TransactionExecution.UNSET_TX_COMMIT_TIMESTAMP,
