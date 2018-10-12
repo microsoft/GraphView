@@ -12,7 +12,7 @@
     /// </summary>
     internal partial class SingletonDictionaryVersionTable : VersionTable
     {
-        private readonly ConcurrentDictionary<object, ConcurrentDictionary<long, VersionEntry>> dict;
+        private readonly Dictionary<object, ConcurrentDictionary<long, VersionEntry>> dict;
 
         public static readonly long TAIL_KEY = -1L;
 
@@ -21,8 +21,9 @@
             : base(versionDb, tableId, partitionCount)
         {
             int maxConcurrency = Math.Max(1, this.VersionDb.PartitionCount / 2);
-            this.dict = new ConcurrentDictionary<object, ConcurrentDictionary<long, VersionEntry>>(
-                maxConcurrency, 1200500/*VersionDb.RECORD_CAPACITY*/);
+            // this.dict = new ConcurrentDictionary<object, ConcurrentDictionary<long, VersionEntry>>(
+            //     maxConcurrency, 1200500/*VersionDb.RECORD_CAPACITY*/);
+            this.dict = new Dictionary<object, ConcurrentDictionary<long, VersionEntry>>(1200000);
 
             for (int i = 0; i < partitionCount; i++)
             {
@@ -88,12 +89,11 @@
                 // The entry uses beginTimestamp as a pointer pointing to the newest verion in the list.
                 newVersionList.TryAdd(SingletonDictionaryVersionTable.TAIL_KEY, new VersionEntry(TAIL_KEY, -1, -1, null, -1, -1));
 
-                if (this.dict.TryAdd(recordKey, newVersionList))
-                {
-                    // The version list is newly created by this tx. 
-                    // No meaningful versions exist, except for the artificial entry as a tail pointer. 
-                    return null;
-                }
+                // if concurrentDict.TryAdd()
+                this.dict.Add(recordKey, newVersionList);
+                // The version list is newly created by this tx. 
+                // No meaningful versions exist, except for the artificial entry as a tail pointer. 
+                return null;
             }
 
             // Retrieves the tail pointer. 
@@ -300,7 +300,7 @@
                     if (!this.dict.TryGetValue(recordKey, out versionList))
                     {
                         versionList = new ConcurrentDictionary<long, VersionEntry>();
-                        this.dict.TryAdd(recordKey, versionList);
+                        this.dict.Add(recordKey, versionList);
                     }
 
                     // `+ 1` is for conforming to the logic of `Insert` and

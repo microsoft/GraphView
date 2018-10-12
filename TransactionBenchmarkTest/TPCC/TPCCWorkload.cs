@@ -289,7 +289,7 @@ namespace TransactionBenchmarkTest.TPCC
             };
             // tx.ReadAndInitialize(Constants.DefaultTbl, opk.ToString());
             // tx.Insert(Constants.DefaultTbl, opk.ToString(), JsonConvert.SerializeObject(opl));
-            if (exec.Insert(opk, opl).IsAborted())
+            if (false && exec.Insert(opk, opl).IsAborted())
             {
                 return null;
             }
@@ -309,7 +309,7 @@ namespace TransactionBenchmarkTest.TPCC
             };
             // tx.ReadAndInitialize(Constants.DefaultTbl, nopk.ToString());
             // tx.Insert(Constants.DefaultTbl, nopk.ToString(), Constants.PlaceHolder);
-            if (exec.Insert(nopk, NewOrderPayload.Placeholder()).IsAborted())
+            if (false && exec.Insert(nopk, NewOrderPayload.Placeholder()).IsAborted())
             {
                 return null;
             }
@@ -374,7 +374,7 @@ namespace TransactionBenchmarkTest.TPCC
                 };
                 // tx.ReadAndInitialize(Constants.DefaultTbl, olpk.ToString());
                 // tx.Insert(Constants.DefaultTbl, olpk.ToString(), JsonConvert.SerializeObject(olpl));
-                if (exec.Insert(olpk, olpl).IsAborted())
+                if (false && exec.Insert(olpk, olpl).IsAborted())
                 {
                     return null;
                 }
@@ -520,7 +520,7 @@ namespace TransactionBenchmarkTest.TPCC
             var hpk = HistoryPKey.New();
             // tx.ReadAndInitialize(Constants.DefaultTbl, hpk);
             // tx.Insert(Constants.DefaultTbl, hpk, JsonConvert.SerializeObject(hpl));
-            if (exec.Insert(hpk, hpl).IsAborted())
+            if (false && exec.Insert(hpk, hpl).IsAborted())
             {
                 return null;
             }

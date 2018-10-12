@@ -61,10 +61,10 @@
 
     internal class SingletonVersionTableVisitor : VersionTableVisitor
     {
-        private readonly ConcurrentDictionary<object, ConcurrentDictionary<long, VersionEntry>> dict;
+        private readonly Dictionary<object, ConcurrentDictionary<long, VersionEntry>> dict;
         public readonly CachableObjectPool recordPool = new CachableObjectPool();
 
-        public SingletonVersionTableVisitor(ConcurrentDictionary<object, ConcurrentDictionary<long, VersionEntry>> dict)
+        public SingletonVersionTableVisitor(Dictionary<object, ConcurrentDictionary<long, VersionEntry>> dict)
         {
             this.dict = dict;
         }
@@ -157,15 +157,15 @@
                 ResetTailEntry(entry);
                 newVersionList.TryAdd(SingletonDictionaryVersionTable.TAIL_KEY, entry);
 
-                if (this.dict.TryAdd(req.RecordKey, newVersionList))
-                {
-                    // The version list is newly created by this tx. 
-                    // No meaningful versions exist, except for the artificial entry as a tail pointer. 
-                    req.RemoteVerList = newVersionList;
-                    req.Result = true;
-                    req.Finished = true;
-                    return;
-                }
+                // if concurrentDict.TryAdd()
+                this.dict.Add(req.RecordKey, newVersionList);
+
+                // The version list is newly created by this tx. 
+                // No meaningful versions exist, except for the artificial entry as a tail pointer. 
+                req.RemoteVerList = newVersionList;
+                req.Result = true;
+                req.Finished = true;
+                return;
             }
             req.RemoteVerList = null;
             req.Result = false;
