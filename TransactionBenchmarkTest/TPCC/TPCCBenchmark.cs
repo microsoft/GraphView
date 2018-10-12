@@ -22,6 +22,8 @@ namespace TransactionBenchmarkTest.TPCC
 
         private SyncExecution execution;
 
+        private volatile bool isFinished;
+
         public TPCCWorker(SyncExecution execution, int workloadCount = 0)
         {
             this.commitCount = this.abortCount = 0;
@@ -37,6 +39,12 @@ namespace TransactionBenchmarkTest.TPCC
             this.parameters = parameters;
         }
 
+        public bool IsFinished
+        {
+            get { return isFinished; }
+            set { isFinished = value; }
+        }
+
         public void Run()
         {
             for (int i = 0; i < this.workloadCount; ++i)
@@ -49,6 +57,7 @@ namespace TransactionBenchmarkTest.TPCC
                 else if (ret.txFinalStatus == TxFinalStatus.ABORTED)
                     this.abortCount++;
             }
+            isFinished = true;
         }
     }
 
@@ -156,6 +165,36 @@ namespace TransactionBenchmarkTest.TPCC
             Console.WriteLine($"After GC: {TotalMemoryInMB():F3}MB is used");
         }
 
+        private void MonitorThroughput(int ms)
+        {
+            bool isAllFinished = false;
+            long lastTime = DateTime.Now.Ticks;
+            int lastSum = 0;
+
+            while (!isAllFinished)
+            {
+                Thread.Sleep(ms);
+                long currentTime = DateTime.Now.Ticks;
+                isAllFinished = true;
+                int sum = 0;
+                int threadCount = 0;
+                for (int i = 0; i < workerCount; i++)
+                {
+                    sum += tpccWorkers[i].commitCount + tpccWorkers[i].abortCount;
+                    if (!tpccWorkers[i].IsFinished)
+                    {
+                        isAllFinished = false;
+                        threadCount++;
+
+                    }
+                }
+                double time = (currentTime - lastTime) / 10000000.0;
+                Console.WriteLine("Time: {0}, Throughput: {1}, count: {2}, working thread: {3}", time, (sum - lastSum) / time, (sum - lastSum), threadCount);
+                lastTime = currentTime;
+                lastSum = sum;
+            }
+        }
+
         public void Run()
         {
             Console.WriteLine("Running TPCC workload...");
@@ -168,6 +207,8 @@ namespace TransactionBenchmarkTest.TPCC
                 threads[i] = new Thread(new ThreadStart(tpccWorkers[i].Run));
                 threads[i].Start();
             }
+
+            MonitorThroughput(100);
 
             foreach (Thread thread in threads)
             {
