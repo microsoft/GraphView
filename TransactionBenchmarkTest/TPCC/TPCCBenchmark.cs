@@ -11,8 +11,7 @@ namespace TransactionBenchmarkTest.TPCC
 {
     class TPCCWorker
     {
-        private WorkloadParam[] parameters;
-        private TPCCWorkload workload;
+        private WorkloadParam[] workloads;
 
         private int workloadCount = 0;
 
@@ -28,15 +27,12 @@ namespace TransactionBenchmarkTest.TPCC
         {
             this.commitCount = this.abortCount = 0;
             this.execution = execution;
-            this.parameters = new WorkloadParam[0];
+            this.workloads = new WorkloadParam[0];
             this.workloadCount = workloadCount;
-            this.workload = null;
         }
-        public void SetWorkload(
-            TPCCWorkload workload, WorkloadParam[] parameters)
+        public void SetWorkload(WorkloadParam[] workloads)
         {
-            this.workload = workload;
-            this.parameters = parameters;
+            this.workloads = workloads;
         }
 
         public bool IsFinished
@@ -49,9 +45,9 @@ namespace TransactionBenchmarkTest.TPCC
         {
             for (int i = 0; i < this.workloadCount; ++i)
             {
-                WorkloadParam parameter =
-                    this.parameters[i % this.parameters.Length];
-                var ret = this.workload.Run(execution, parameter);
+                WorkloadParam workload =
+                    this.workloads[i % this.workloads.Length];
+                var ret = workload.Execute(this.execution);
                 if (ret.txFinalStatus == TxFinalStatus.COMMITTED)
                     this.commitCount++;
                 else if (ret.txFinalStatus == TxFinalStatus.ABORTED)
@@ -94,7 +90,7 @@ namespace TransactionBenchmarkTest.TPCC
         }
 
         static private
-        IEnumerable<string[]> ReadWorkloadFile(string filepath)
+        IEnumerable<string[]> ReadWorkloadCsv(string filepath)
         {
             var csvReader = new System.IO.StreamReader(filepath);
             csvReader.ReadLine();    // skip csv header
@@ -117,19 +113,20 @@ namespace TransactionBenchmarkTest.TPCC
             return (total + workers - 1) / workers;
         }
 
-        public void LoadWorkload(WorkloadFactory factory, string filepath)
+        public void LoadWorkload(WorkloadBuilder builder, string filepath)
         {
-            Console.Write($"Loading {factory.Name()} workload... ");
-            List<WorkloadParam> paramList =
-                ReadWorkloadFile(filepath).Select(factory.ColumnsToParam).ToList();
+            Console.Write($"Loading {builder.Name()} workload... ");
+            List<string[]> paramList = ReadWorkloadCsv(filepath).ToList();
             int realWorkload = CalculateWorkload(paramList.Count, this.workerCount);
 
-            IEnumerable<WorkloadParam> paramIter = paramList.AsEnumerable();
+            IEnumerable<string[]> paramIter = paramList.AsEnumerable();
             for (int i = 0; i < this.tpccWorkers.Length; ++i)
             {
-                WorkloadParam[] paramSlice = paramIter.Take(realWorkload).ToArray();
+                builder.NewStoredProcedure();
+                WorkloadParam[] paramSlice =
+                    paramIter.Take(realWorkload).Select(builder.BuildWorkload).ToArray();
                 paramIter = paramIter.Skip(realWorkload);
-                this.tpccWorkers[i].SetWorkload(factory.NewWorkload(), paramSlice);
+                this.tpccWorkers[i].SetWorkload(paramSlice);
             }
             Console.WriteLine("Done");
         }

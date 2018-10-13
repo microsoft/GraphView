@@ -33,21 +33,44 @@ namespace TransactionBenchmarkTest.TPCC
         public const int RedisIndexDbN = 7;      // c_last name index db
         public const string DefaultTbl = "test";
 
-        // data population
-        public const string BaseDirOfDatasets =
-            @"D:\Elastas\benchmark\tpcc\data\tpcc-tables";
         public static string[] TableNames = { "WAREHOUSE.csv", "DISTRICT.csv", "CUSTOMER.csv", "ITEM.csv", "STOCK.csv", "ORDERS.csv", "ORDER_LINE.csv", "NEW_ORDER.csv", "HISTORY.csv" };
         public static TableCode[] TableCodes = { TableCode.W, TableCode.D, TableCode.C, TableCode.I, TableCode.S, TableCode.O, TableCode.OL, TableCode.NO, TableCode.H };
 
-        // workload path
-        public const string NewOrderWorkloadPath =
-            @"D:\Elastas\benchmark\tpcc\data\tpcc-txns\NEW_ORDER.csv";
-        public const string PaymentWorkloadPath =
-            @"D:\Elastas\benchmark\tpcc\data\tpcc-txns\PAYMENT.csv";
+        public const string TpccFileDir = @"D:\Elastas\benchmark\tpcc\data";
+        public const string DataSetDir = TpccFileDir + @"\tpcc-tables";
+        public const string WorkloadDir = TpccFileDir + @"\tpcc-txns";
+    }
 
-        static public class Singleton
+    static public class FileHelper
+    {
+        static public string TablePath(string tableName)
         {
-            public const int Concurrency = 4;
+            return $"{Constants.DataSetDir}\\{tableName}.csv";
+        }
+        static public string WorkloadPath(string workloadName)
+        {
+            return $"{Constants.WorkloadDir}\\{workloadName}.csv";
+        }
+        static public
+        IEnumerable<string[]> LoadCsv(string path, bool ignoreFirstLine = false)
+        {
+            using (var streamReader = new System.IO.StreamReader(path))
+            {
+                if (ignoreFirstLine)
+                {
+                    streamReader.ReadLine();
+                }
+                for (string line; (line = streamReader.ReadLine()) != null;)
+                {
+                    yield return SplitQuotedLine(line);
+                }
+            }
+        }
+        static private string[] SplitQuotedLine(string line)
+        {
+            return line.Split(',')
+                // remove double quotes
+                .Select(s => s.Substring(1, s.Length - 2)).ToArray();
         }
     }
 
@@ -64,20 +87,24 @@ namespace TransactionBenchmarkTest.TPCC
             this.Concurrency = 2;
             this.WorkloadPerWorker = 200000;
             this.TxType = TransactionType.PAYMENT;
-            this.DatasetDir = Constants.BaseDirOfDatasets;
+            this.PaymentRatio = 1; // currently not used
+            this.DatasetDir = Constants.DataSetDir;
             this.WorkloadFile = null;
         }
 
         public int Concurrency;
         public int WorkloadPerWorker;
         public TransactionType TxType;
+        public double PaymentRatio; // currently not used
         public string DatasetDir;
         public string WorkloadFile;
 
-        public void Print() {
+        public void Print()
+        {
             Console.WriteLine($"Concurrency: {this.Concurrency}");
             Console.WriteLine($"Workload per worker: {this.WorkloadPerWorker}");
             Console.WriteLine($"Transaction type: {typeof(TransactionType).GetEnumName(this.TxType)}");
+            Console.WriteLine($"Payment Ratio: {this.PaymentRatio}");
             Console.WriteLine();
         }
 
@@ -99,9 +126,9 @@ namespace TransactionBenchmarkTest.TPCC
             switch (t)
             {
                 case TransactionType.PAYMENT:
-                    return Constants.PaymentWorkloadPath;
+                    return FileHelper.WorkloadPath("PAYMENT");
                 case TransactionType.NEW_ORDER:
-                    return Constants.NewOrderWorkloadPath;
+                    return FileHelper.WorkloadPath("NEW_ORDER");
             }
             throw new Exception("unknown transaction");
         }

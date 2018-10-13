@@ -15,13 +15,7 @@ namespace TransactionBenchmarkTest.TPCC
         {
             return TableTypeNames[(int)t];
         }
-        static private string[] TableTypeNames =
-            typeof(TableType).GetEnumNames();
-
-        static public string ToFilename(this TableType v, string dir = "")
-        {
-            return $"{dir}\\{v.Name()}.csv";
-        }
+        static private string[] TableTypeNames = typeof(TableType).GetEnumNames();
     }
     public enum TableType
     {

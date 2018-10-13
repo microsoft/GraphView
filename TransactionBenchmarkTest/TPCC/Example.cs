@@ -182,13 +182,17 @@ namespace TransactionBenchmarkTest.TPCC
                     case "--workload-file":
                         config.WorkloadFile = args[i++];
                         break;
+                    case "-p":
+                    case "--payment-ratio":
+                        config.PaymentRatio = Convert.ToDouble(args[i++]);
+                        break;
                     default:
                         throw new ArgumentException($"unknown argument: {args[i - 1]}");
                 }
             }
         }
 
-        static WorkloadFactory GetWorkloadFactory(
+        static WorkloadBuilder GetWorkloadBuilder(
             BenchmarkConfig.TransactionType txType)
         {
             switch (txType)
@@ -206,11 +210,12 @@ namespace TransactionBenchmarkTest.TPCC
             int workerWorkload, string workloadFile)
         {
             TPCCBenchmark benchmark = new TPCCBenchmark(execBuilder, workerWorkload);
-            benchmark.LoadWorkload(GetWorkloadFactory(txType), workloadFile);
+            benchmark.LoadWorkload(GetWorkloadBuilder(txType), workloadFile);
             return benchmark;
         }
 
-        static void RunSyncBenchmark(TPCCBenchmark benchmark) {
+        static void RunSyncBenchmark(TPCCBenchmark benchmark)
+        {
             benchmark.Run();
             benchmark.PrintStats();
             Console.WriteLine(

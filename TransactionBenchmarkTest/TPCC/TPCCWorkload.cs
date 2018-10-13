@@ -9,7 +9,14 @@ using GraphView.Transaction;
 
 namespace TransactionBenchmarkTest.TPCC
 {
-    public class WorkloadParam { }
+    internal class WorkloadParam
+    {
+        public TPCCWorkloadOutput Execute(SyncExecution txExec)
+        {
+            return this.storedProcedure.Run(txExec, this);
+        }
+        public SyncStoredProcedure storedProcedure;
+    }
     class NewOrderInParameters : WorkloadParam
     {
         public string timestamp;
@@ -53,7 +60,8 @@ namespace TransactionBenchmarkTest.TPCC
         public void Set(
             uint W_ID, string C_LAST, string C_CREDIT, double C_DISCOUNT,
             double W_TAX, double D_TAX, uint O_OL_CNT, uint O_ID,
-            string O_ENTRY_D, double totalAmount) {
+            string O_ENTRY_D, double totalAmount)
+        {
             this.W_ID = W_ID;
             this.C_LAST = C_LAST;
             this.C_CREDIT = C_CREDIT;
@@ -100,7 +108,7 @@ namespace TransactionBenchmarkTest.TPCC
         public object data;
     }
 
-    abstract class TPCCWorkload
+    abstract class SyncStoredProcedure
     {
         private TPCCWorkloadOutput output = new TPCCWorkloadOutput();
         public
@@ -124,21 +132,39 @@ namespace TransactionBenchmarkTest.TPCC
             SyncExecution exec, WorkloadParam param);
     }
 
-    abstract class WorkloadFactory
+    abstract class WorkloadBuilder
     {
-        public abstract TPCCWorkload NewWorkload();
-        public abstract WorkloadParam ColumnsToParam(string[] columns);
         public abstract string Name();
-    }
 
-    class NewOrderWorkloadFactory : WorkloadFactory
-    {
-        public override TPCCWorkload NewWorkload()
+        protected abstract SyncStoredProcedure MakeStoredProcedure();
+        protected abstract WorkloadParam ParseColumns(string[] columns);
+
+        public void NewStoredProcedure()
         {
-            return new TPCCNewOrderWorkload();
+            this.storedProcedure = this.MakeStoredProcedure();
+        }
+        public WorkloadParam BuildWorkload(string[] columns)
+        {
+            WorkloadParam workload = this.ParseColumns(columns);
+            if (this.storedProcedure == null)
+            {
+                this.NewStoredProcedure();
+            }
+            workload.storedProcedure = this.storedProcedure;
+            return workload;
         }
 
-        public override WorkloadParam ColumnsToParam(string[] columns)
+        private SyncStoredProcedure storedProcedure;
+    }
+
+    class NewOrderWorkloadFactory : WorkloadBuilder
+    {
+        protected override SyncStoredProcedure MakeStoredProcedure()
+        {
+            return new NewOrderSyncSP();
+        }
+
+        protected override WorkloadParam ParseColumns(string[] columns)
         {
             return new NewOrderInParameters
             {
@@ -158,14 +184,14 @@ namespace TransactionBenchmarkTest.TPCC
             return "NEW_ORDER";
         }
     }
-    class PaymentWorkloadFactory : WorkloadFactory
+    class PaymentWorkloadFactory : WorkloadBuilder
     {
-        public override TPCCWorkload NewWorkload()
+        protected override SyncStoredProcedure MakeStoredProcedure()
         {
-            return new TPCCPaymentWorkload();
+            return new PaymentSyncSP();
         }
 
-        public override WorkloadParam ColumnsToParam(string[] columns)
+        protected override WorkloadParam ParseColumns(string[] columns)
         {
             return new PaymentInParameters
             {
@@ -189,7 +215,7 @@ namespace TransactionBenchmarkTest.TPCC
 
 
 
-    class TPCCNewOrderWorkload : TPCCWorkload
+    class NewOrderSyncSP : SyncStoredProcedure
     {
         private const int MAX_ITEM_NUM = 15;
 
@@ -199,7 +225,7 @@ namespace TransactionBenchmarkTest.TPCC
         private TxObjPoolList<ItemPkey> ipks =
             new TxObjPoolList<ItemPkey>(MAX_ITEM_NUM);
         private ItemPayload[] items =
-            new ItemPayload[TPCCNewOrderWorkload.MAX_ITEM_NUM];
+            new ItemPayload[NewOrderSyncSP.MAX_ITEM_NUM];
         private TxObjPoolList<StockPkey> spks =
             new TxObjPoolList<StockPkey>(MAX_ITEM_NUM);
 
@@ -404,7 +430,7 @@ namespace TransactionBenchmarkTest.TPCC
     }
 
 
-    class TPCCPaymentWorkload : TPCCWorkload
+    class PaymentSyncSP : SyncStoredProcedure
     {
         private WarehousePkey wpk = new WarehousePkey();
         private DistrictPkey dpk = new DistrictPkey();

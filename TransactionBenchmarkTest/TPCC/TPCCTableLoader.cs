@@ -9,32 +9,13 @@ using GraphView.Transaction;
 
 namespace TransactionBenchmarkTest.TPCC
 {
-    public class CsvUtil
-    {
-        static internal IEnumerable<string[]> LoadPyTpccCsv(string csvPath)
-        {
-            using (var streamReader = new System.IO.StreamReader(csvPath))
-            {
-                for (string line; (line = streamReader.ReadLine()) != null;)
-                {
-                    yield return SplitQuotedCsvLine(line);
-                }
-            }
-        }
-        static private string[] SplitQuotedCsvLine(string line)
-        {
-            return line.Split(',')
-                // remove double quotes
-                .Select(s => s.Substring(1, s.Length - 2)).ToArray();
-        }
-    }
     public class TPCCTableLoader
     {
         static private IEnumerable<Tuple<TpccTableKey, TpccTablePayload>>
         LoadKvsFromDir(string dir, TpccTable table)
         {
-            string csvPath = table.Type().ToFilename(dir);
-            foreach (string[] columns in CsvUtil.LoadPyTpccCsv(csvPath))
+            string csvPath = FileHelper.TablePath(table.Type().Name());
+            foreach (string[] columns in FileHelper.LoadCsv(csvPath))
             {
                 yield return table.ParseColumns(columns);
             }
@@ -53,10 +34,12 @@ namespace TransactionBenchmarkTest.TPCC
             foreach (var kv in LoadKvsFromDir(dir, table))
             {
                 txExec.Start();
-                if (txExec.Insert(kv.Item1, kv.Item2).IsAborted()){
+                if (txExec.Insert(kv.Item1, kv.Item2).IsAborted())
+                {
                     continue;
                 }
-                if (txExec.Commit().IsAborted()) {
+                if (txExec.Commit().IsAborted())
+                {
                     continue;
                 }
                 auxIndexLoader.BuildAuxIndex(kv.Item1, kv.Item2);
