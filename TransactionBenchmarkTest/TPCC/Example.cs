@@ -29,6 +29,10 @@ namespace TransactionBenchmarkTest.TPCC
 
         static void SyncLoadTpccTablesInto(VersionDb versionDb, string dir)
         {
+            // foreach (var t in TpccTable.allTypes)
+            // {
+            //     SyncLoadTpccTable(TpccTable.Instance(t), versionDb, dir);
+            // }
             Parallel.ForEach(
                 TpccTable.allTypes,
                 t => SyncLoadTpccTable(TpccTable.Instance(t), versionDb, dir));
@@ -163,11 +167,14 @@ namespace TransactionBenchmarkTest.TPCC
                         break;
                     case "-t":
                     case "--type":
-                        config.TxType = BenchmarkConfig.StringToTxType(args[i++]);
-                        if (config.WorkloadFile == null)
+                        var t = BenchmarkConfig.StringToTxType(args[i++]);
+                        if (t == BenchmarkConfig.TransactionType.PAYMENT)
                         {
-                            config.WorkloadFile =
-                                BenchmarkConfig.DefaultWorkloadFile(config.TxType);
+                            config.PaymentRatio = 1;
+                        }
+                        else
+                        {
+                            config.PaymentRatio = 0;
                         }
                         break;
                     case "-w":
@@ -176,11 +183,7 @@ namespace TransactionBenchmarkTest.TPCC
                         break;
                     case "-d":
                     case "--data-dir":
-                        config.DatasetDir = args[i++];
-                        break;
-                    case "-f":
-                    case "--workload-file":
-                        config.WorkloadFile = args[i++];
+                        config.TpccFileDir = args[i++];
                         break;
                     case "-p":
                     case "--payment-ratio":
@@ -192,25 +195,14 @@ namespace TransactionBenchmarkTest.TPCC
             }
         }
 
-        static WorkloadBuilder GetWorkloadBuilder(
-            BenchmarkConfig.TransactionType txType)
-        {
-            switch (txType)
-            {
-                case BenchmarkConfig.TransactionType.PAYMENT:
-                    return new PaymentWorkloadFactory();
-                case BenchmarkConfig.TransactionType.NEW_ORDER:
-                    return new NewOrderWorkloadFactory();
-            }
-            return null;
-        }
         static TPCCBenchmark InitializeBenchmark(
-            BenchmarkConfig.TransactionType txType,
             SyncExecutionBuilder execBuilder,
-            int workerWorkload, string workloadFile)
+            int workerWorkload, string workloadDir, double paymentRatio)
         {
             TPCCBenchmark benchmark = new TPCCBenchmark(execBuilder, workerWorkload);
-            benchmark.LoadWorkload(GetWorkloadBuilder(txType), workloadFile);
+            WorkloadLoader loader = new WorkloadLoader(workloadDir);
+            WorkloadAllocator allocator = new HybridAllocator(loader, paymentRatio);
+            benchmark.AllocateWorkload(allocator);
             return benchmark;
         }
 
@@ -225,13 +217,17 @@ namespace TransactionBenchmarkTest.TPCC
         static void SingletonTpccBenchmarkWithGlobalConfig()
         {
             BenchmarkConfig config = BenchmarkConfig.globalConfig;
+
             SingletonVersionDb versionDb =
                 MakeSingletonVersionDb(config.Concurrency);
-            SyncLoadTpccTablesInto(versionDb, config.DatasetDir);
+            SyncLoadTpccTablesInto(
+                versionDb, FileHelper.DataSetDir(config.TpccFileDir));
+
             var execBuilder = new SingletonExecutionBuilder(versionDb);
             var benchmark = InitializeBenchmark(
-                config.TxType, execBuilder,
-                config.WorkloadPerWorker, config.WorkloadFile);
+                execBuilder, config.WorkloadPerWorker,
+                FileHelper.WorkloadDir(config.TpccFileDir),
+                config.PaymentRatio);
             RunSyncBenchmark(benchmark);
         }
 

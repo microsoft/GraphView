@@ -14,7 +14,7 @@ namespace TransactionBenchmarkTest.TPCC
         static private IEnumerable<Tuple<TpccTableKey, TpccTablePayload>>
         LoadKvsFromDir(string dir, TpccTable table)
         {
-            string csvPath = FileHelper.TablePath(table.Type().Name());
+            string csvPath = FileHelper.CSVPath(dir, table.Type().Name());
             foreach (string[] columns in FileHelper.LoadCsv(csvPath))
             {
                 yield return table.ParseColumns(columns);

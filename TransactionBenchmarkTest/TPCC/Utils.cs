@@ -43,13 +43,17 @@ namespace TransactionBenchmarkTest.TPCC
 
     static public class FileHelper
     {
-        static public string TablePath(string tableName)
+        static public string CSVPath(string dir, string fileName)
         {
-            return $"{Constants.DataSetDir}\\{tableName}.csv";
+            return $"{dir}\\{fileName}.csv";
         }
-        static public string WorkloadPath(string workloadName)
+        static public string DataSetDir(string tpccFileDir)
         {
-            return $"{Constants.WorkloadDir}\\{workloadName}.csv";
+            return $"{tpccFileDir}\\tpcc-tables";
+        }
+        static public string WorkloadDir(string tpccFileDir)
+        {
+            return $"{tpccFileDir}\\tpcc-txns";
         }
         static public
         IEnumerable<string[]> LoadCsv(string path, bool ignoreFirstLine = false)
@@ -90,24 +94,19 @@ namespace TransactionBenchmarkTest.TPCC
         {
             this.Concurrency = 2;
             this.WorkloadPerWorker = 200000;
-            this.TxType = TransactionType.PAYMENT;
             this.PaymentRatio = 1; // currently not used
-            this.DatasetDir = Constants.DataSetDir;
-            this.WorkloadFile = null;
+            this.TpccFileDir = Constants.TpccFileDir;
         }
 
         public int Concurrency;
         public int WorkloadPerWorker;
-        public TransactionType TxType;
         public double PaymentRatio; // currently not used
-        public string DatasetDir;
-        public string WorkloadFile;
+        public string TpccFileDir;
 
         public void Print()
         {
             Console.WriteLine($"Concurrency: {this.Concurrency}");
             Console.WriteLine($"Workload per worker: {this.WorkloadPerWorker}");
-            Console.WriteLine($"Transaction type: {typeof(TransactionType).GetEnumName(this.TxType)}");
             Console.WriteLine($"Payment Ratio: {this.PaymentRatio}");
             Console.WriteLine();
         }
@@ -123,18 +122,6 @@ namespace TransactionBenchmarkTest.TPCC
                 default:
                     throw new Exception($"unknown transaction type: {t}");
             }
-        }
-
-        static public string DefaultWorkloadFile(TransactionType t)
-        {
-            switch (t)
-            {
-                case TransactionType.PAYMENT:
-                    return FileHelper.WorkloadPath("PAYMENT");
-                case TransactionType.NEW_ORDER:
-                    return FileHelper.WorkloadPath("NEW_ORDER");
-            }
-            throw new Exception("unknown transaction");
         }
     }
 }

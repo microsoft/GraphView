@@ -57,6 +57,133 @@ namespace TransactionBenchmarkTest.TPCC
         }
     }
 
+    class WorkloadLoader
+    {
+        class CircularLoader<T>
+        {
+            public CircularLoader(IEnumerable<T> data)
+            {
+                this.data = data.ToArray();
+                this.index = 0;
+            }
+            public IEnumerable<T> GetChunk(int length)
+            {
+                for (int i = 0; i < length; ++i)
+                {
+                    yield return data[this.index];
+                    this.index = (this.index + 1) % this.data.Length;
+                }
+            }
+            T[] data;
+            int index;
+        }
+        public WorkloadLoader(string workloadDir)
+        {
+            this.workloadDir = workloadDir;
+        }
+        public IEnumerable<string[]> NextColumns(int n, string workloadName) {
+            switch (workloadName)
+            {
+                case "PAYMENT": return NextPaymentColumns(n);
+                case "NEW_ORDER": return NextNewOrderColumns(n);
+            }
+            throw new Exception($"unknown workload {workloadName}");
+        }
+        public IEnumerable<string[]> NextPaymentColumns(int n)
+        {
+            return this.PaymentLoader().GetChunk(n);
+        }
+        public IEnumerable<string[]> NextNewOrderColumns(int n)
+        {
+            return this.NewOrderLoader().GetChunk(n);
+        }
+        private CircularLoader<string[]> PaymentLoader()
+        {
+            return GetOrCreate(ref this.paymentLoader, "PAYMENT");
+        }
+        private CircularLoader<string[]> NewOrderLoader()
+        {
+            return GetOrCreate(ref this.newOrderLoader, "NEW_ORDER");
+        }
+        private CircularLoader<string[]> GetOrCreate(
+            ref CircularLoader<string[]> loader, string name)
+        {
+            if (loader == null)
+            {
+                loader = new CircularLoader<string[]>(
+                    FileHelper.LoadCsv($"{this.workloadDir}\\{name}.csv", true));
+            }
+            return loader;
+        }
+
+        private string workloadDir;
+        private CircularLoader<string[]> paymentLoader;
+        private CircularLoader<string[]> newOrderLoader;
+    }
+
+    abstract class WorkloadAllocator
+    {
+        public WorkloadAllocator(WorkloadLoader loader)
+        {
+            this.paymentBuilder = new PaymentWorkloadBuilder();
+            this.newOrderBuilder = new NewOrderWorkloadBuilder();
+            this.loader = loader;
+        }
+        public WorkloadParam[] Allocate(int n, int workerId, int totalWorker)
+        {
+            this.paymentBuilder.ResetStoredProcedure();
+            this.newOrderBuilder.ResetStoredProcedure();
+            return this.AllocateImpl(n, workerId, totalWorker);
+        }
+        static private IEnumerable<WorkloadParam> GetParams(
+            int n, WorkloadLoader loader, WorkloadBuilder builder) {
+            if (n == 0)
+            {
+                return Enumerable.Empty<WorkloadParam>();
+            }
+            builder.NewStoredProcedureIfNon();
+            return loader.NextColumns(n, builder.Name())
+                .Select(builder.BuildWorkload);
+        }
+
+        protected IEnumerable<WorkloadParam> GetPayments(int n)
+        {
+            return GetParams(n, this.loader, this.paymentBuilder);
+        }
+        protected IEnumerable<WorkloadParam> GetNewOrders(int n)
+        {
+            return GetParams(n, this.loader, this.newOrderBuilder);
+        }
+
+        protected abstract
+        WorkloadParam[] AllocateImpl(int n, int workerId, int totalWorker);
+
+        private WorkloadLoader loader;
+        private WorkloadBuilder paymentBuilder;
+        private WorkloadBuilder newOrderBuilder;
+    }
+
+    class HybridAllocator : WorkloadAllocator
+    {
+        public HybridAllocator(WorkloadLoader loader, double paymentRatio) : base(loader)
+        {
+            this.paymentRatio = paymentRatio;
+        }
+        protected override
+        WorkloadParam[] AllocateImpl(int n, int workerId, int totalWorker)
+        {
+            int paymentNum = (int)(n * this.paymentRatio);
+            int newOrderNum = n - paymentNum;
+            Random random = new Random();
+            WorkloadParam[] workloads = GetPayments(paymentNum)
+                .Concat(GetNewOrders(newOrderNum))
+                .OrderBy(_ => random.Next())
+                .ToArray();
+            return workloads;
+        }
+        private double paymentRatio;
+    }
+
     class TPCCBenchmark
     {
         private int workerCount;
@@ -98,22 +225,17 @@ namespace TransactionBenchmarkTest.TPCC
             return (total + workers - 1) / workers;
         }
 
-        public void LoadWorkload(WorkloadBuilder builder, string filepath)
+        public void AllocateWorkload(WorkloadAllocator allocator)
         {
-            Console.Write($"Loading {builder.Name()} workload... ");
-            List<string[]> paramList = FileHelper.LoadCsv(filepath, true).ToList();
-            int realWorkload = CalculateWorkload(paramList.Count, this.workerCount);
-
-            IEnumerable<string[]> paramIter = paramList.AsEnumerable();
-            for (int i = 0; i < this.tpccWorkers.Length; ++i)
-            {
-                builder.NewStoredProcedure();
-                WorkloadParam[] paramSlice =
-                    paramIter.Take(realWorkload).Select(builder.BuildWorkload).ToArray();
-                paramIter = paramIter.Skip(realWorkload);
-                this.tpccWorkers[i].SetWorkload(paramSlice);
+            Console.Write("Start Loading workload... ");
+            DateTime start = DateTime.UtcNow;
+            for (int i = 0; i < this.tpccWorkers.Length; ++i) {
+                WorkloadParam[] workloads = allocator.Allocate(
+                    this.workloadCountPerWorker, i, this.workerCount);
+                this.tpccWorkers[i].SetWorkload(workloads);
             }
-            Console.WriteLine("Done");
+            DateTime end = DateTime.UtcNow;
+            Console.WriteLine($"Done ({(end - start).TotalSeconds:F3} sec)");
         }
 
         static double TotalMemoryInMB()
@@ -132,7 +254,7 @@ namespace TransactionBenchmarkTest.TPCC
         {
             int sum = deltaCommit + deltaAbort;
             if (sum == 0) return;
-            Console.WriteLine($"Time:{time:F3}|Count:{sum}|Throughput:{sum / time:F2}|AbortRate:{deltaAbort*1.0 / sum:F3}|ThreadsAlive:{threadsAlive}");
+            Console.WriteLine($"Time:{time:F3}|Count:{sum}|Throughput:{sum / time:F2}|AbortRate:{deltaAbort * 1.0 / sum:F3}|ThreadsAlive:{threadsAlive}");
         }
 
         private void MonitorThroughput(int ms)

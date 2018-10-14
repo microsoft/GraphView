@@ -143,6 +143,16 @@ namespace TransactionBenchmarkTest.TPCC
         {
             this.storedProcedure = this.MakeStoredProcedure();
         }
+        public void NewStoredProcedureIfNon()
+        {
+            if (this.storedProcedure == null)
+                NewStoredProcedure();
+        }
+        public void ResetStoredProcedure()
+        {
+            this.storedProcedure = null;
+        }
+
         public WorkloadParam BuildWorkload(string[] columns)
         {
             WorkloadParam workload = this.ParseColumns(columns);
@@ -157,7 +167,7 @@ namespace TransactionBenchmarkTest.TPCC
         private SyncStoredProcedure storedProcedure;
     }
 
-    class NewOrderWorkloadFactory : WorkloadBuilder
+    class NewOrderWorkloadBuilder : WorkloadBuilder
     {
         protected override SyncStoredProcedure MakeStoredProcedure()
         {
@@ -184,7 +194,7 @@ namespace TransactionBenchmarkTest.TPCC
             return "NEW_ORDER";
         }
     }
-    class PaymentWorkloadFactory : WorkloadBuilder
+    class PaymentWorkloadBuilder : WorkloadBuilder
     {
         protected override SyncStoredProcedure MakeStoredProcedure()
         {
