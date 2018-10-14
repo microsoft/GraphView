@@ -68,9 +68,13 @@ namespace TransactionBenchmarkTest.TPCC
         }
         static private string[] SplitQuotedLine(string line)
         {
-            return line.Split(',')
-                // remove double quotes
-                .Select(s => s.Substring(1, s.Length - 2)).ToArray();
+            string[] result = line.Split(new string[]{"\",\""}, StringSplitOptions.None);
+            result[0] = result[0].Substring(1);
+            result[result.Length - 1] = result.Last().Substring(0, result.Last().Length - 1);
+            return result;
+            // return line.Split(',')
+            //     // remove double quotes
+            //     .Select(s => s.Substring(1, s.Length - 2)).ToArray();
         }
     }
 

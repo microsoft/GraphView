@@ -89,21 +89,6 @@ namespace TransactionBenchmarkTest.TPCC
             this.workerCount = this.tpccWorkers.Length;
         }
 
-        static private
-        IEnumerable<string[]> ReadWorkloadCsv(string filepath)
-        {
-            var csvReader = new System.IO.StreamReader(filepath);
-            csvReader.ReadLine();    // skip csv header
-
-            for (string line; (line = csvReader.ReadLine()) != null;)
-            {
-                string[] columns = line.Split(new string[] { Constants.WorkloadDelimiter }, StringSplitOptions.None);
-                for (int j = 0; j < columns.Length; j++) { columns[j] = columns[j].Substring(1); }
-                columns[columns.Length - 1] = columns[columns.Length - 1].Substring(0, columns[columns.Length - 1].Length - 1); // remove `"`
-                yield return columns;
-            }
-        }
-
         static private int CalculateWorkload(int total, int workers)
         {
             if (workers == 0)
@@ -116,7 +101,7 @@ namespace TransactionBenchmarkTest.TPCC
         public void LoadWorkload(WorkloadBuilder builder, string filepath)
         {
             Console.Write($"Loading {builder.Name()} workload... ");
-            List<string[]> paramList = ReadWorkloadCsv(filepath).ToList();
+            List<string[]> paramList = FileHelper.LoadCsv(filepath, true).ToList();
             int realWorkload = CalculateWorkload(paramList.Count, this.workerCount);
 
             IEnumerable<string[]> paramIter = paramList.AsEnumerable();
@@ -146,7 +131,8 @@ namespace TransactionBenchmarkTest.TPCC
         private void PrintMonitorInfo(double time, int threadsAlive, int deltaAbort, int deltaCommit)
         {
             int sum = deltaCommit + deltaAbort;
-            Console.WriteLine($"Time:{time:F3}|Count:{sum}|Throughput:{sum / time:F2}|AbortRate:{deltaAbort/sum:F3}|ThreadsAlive:{threadsAlive}");
+            if (sum == 0) return;
+            Console.WriteLine($"Time:{time:F3}|Count:{sum}|Throughput:{sum / time:F2}|AbortRate:{deltaAbort*1.0 / sum:F3}|ThreadsAlive:{threadsAlive}");
         }
 
         private void MonitorThroughput(int ms)
@@ -154,10 +140,11 @@ namespace TransactionBenchmarkTest.TPCC
             long lastTime = DateTime.Now.Ticks;
             int lastCommit = 0;
             int lastAbort = 0;
-            int threadsAlive = this.workerCount;
 
+            int threadsAlive = this.workerCount;
             do
             {
+                threadsAlive = this.workerCount;
                 Thread.Sleep(ms);
                 long currentTime = DateTime.Now.Ticks;
                 int nowCommit = 0;
