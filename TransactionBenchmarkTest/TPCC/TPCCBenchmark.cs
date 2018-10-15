@@ -77,7 +77,8 @@ namespace TransactionBenchmarkTest.TPCC
         {
             this.workloadDir = workloadDir;
         }
-        public IEnumerable<string[]> NextColumns(int n, string workloadName) {
+        public IEnumerable<string[]> NextColumns(int n, string workloadName)
+        {
             switch (workloadName)
             {
                 case "PAYMENT": return NextPaymentColumns(n);
@@ -132,7 +133,8 @@ namespace TransactionBenchmarkTest.TPCC
             return this.AllocateImpl(n, workerId, totalWorker);
         }
         static private IEnumerable<WorkloadParam> GetParams(
-            int n, WorkloadLoader loader, WorkloadBuilder builder) {
+            int n, WorkloadLoader loader, WorkloadBuilder builder)
+        {
             if (n == 0)
             {
                 return Enumerable.Empty<WorkloadParam>();
@@ -165,6 +167,17 @@ namespace TransactionBenchmarkTest.TPCC
         {
             this.paymentRatio = paymentRatio;
         }
+        static private void Shuffle(WorkloadParam[] ps)
+        {
+            Random rng = new Random((int)DateTime.Now.Ticks);
+            for (int i = ps.Length - 1; i >= 0; --i)
+            {
+                int j = rng.Next(i + 1);
+                var temp = ps[i];
+                ps[i] = ps[j];
+                ps[j] = temp;
+            }
+        }
         protected override
         WorkloadParam[] AllocateImpl(int n, int workerId, int totalWorker)
         {
@@ -173,11 +186,103 @@ namespace TransactionBenchmarkTest.TPCC
             Random random = new Random();
             WorkloadParam[] workloads = GetPayments(paymentNum)
                 .Concat(GetNewOrders(newOrderNum))
-                .OrderBy(_ => random.Next())
                 .ToArray();
+            Shuffle(workloads);
             return workloads;
         }
         private double paymentRatio;
+    }
+
+    internal class WorkerMonitor
+    {
+        struct WorkerState
+        {
+            public long timeTicks;
+            public int abortNum;
+            public int commitNum;
+            public int threadsAlive;
+
+            public PeriodResult Difference(WorkerState lastState)
+            {
+                return new PeriodResult
+                {
+                    dTime = (this.timeTicks - lastState.timeTicks) / 10000000.0,
+                    dAbort = this.abortNum - lastState.abortNum,
+                    dCommit = this.commitNum - lastState.commitNum,
+                    threadsAlive = this.threadsAlive
+                };
+            }
+        }
+        struct PeriodResult
+        {
+            public double dTime;
+            public int dAbort;
+            public int dCommit;
+            public int threadsAlive;
+
+            public int Finished
+            {
+                get { return this.dAbort + this.dCommit; }
+            }
+            public int Throughput
+            {
+                get { return (int)(this.Finished / this.dTime); }
+            }
+            public double AbortRate
+            {
+                get { return this.dAbort * 1.0 / this.Finished; }
+            }
+            public void Print()
+            {
+                Console.WriteLine($"Time:{this.dTime:F3}|Count:{this.Finished}|Throughput:{this.Throughput}|AbortRate:{this.AbortRate:F3}|ThreadsAlive:{this.threadsAlive}");
+            }
+        }
+        public WorkerMonitor(TPCCWorker[] workers)
+        {
+            this.workers = workers;
+        }
+        public void StartBlocking(int intervalInMs)
+        {
+            this.throughputs = new List<int>(30 * 1000 / intervalInMs);
+            WorkerState lastState = Capture();
+            for (; lastState.threadsAlive != 0;)
+            {
+                Thread.Sleep(intervalInMs);
+                WorkerState currentState = Capture();
+                PeriodResult tempResult = currentState.Difference(lastState);
+                tempResult.Print();
+                this.throughputs.Add(tempResult.Throughput);
+                lastState = currentState;
+            }
+        }
+        private WorkerState Capture()
+        {
+            WorkerState state = new WorkerState();
+            state.threadsAlive = this.workers.Length;
+            state.abortNum = 0;
+            state.commitNum = 0;
+            state.timeTicks = DateTime.Now.Ticks;
+            for (int i = 0; i < workers.Length; ++i)
+            {
+                var worker = workers[i];
+                state.abortNum += worker.abortCount;
+                state.commitNum += worker.commitCount;
+                if (worker.IsFinished) --state.threadsAlive;
+            }
+            return state;
+        }
+        public int SuggestThroughput() {
+            Console.WriteLine($"Capture {throughputs.Count} times");
+            int validSampleNum = 5;
+            int[] validSamples = throughputs
+                .Skip(throughputs.Count / 10)
+                .OrderByDescending(a => a)
+                .Take(validSampleNum).ToArray();
+            return validSamples[validSampleNum / 2];
+        }
+
+        private List<int> throughputs;
+        private TPCCWorker[] workers;
     }
 
     class TPCCBenchmark
@@ -212,20 +317,12 @@ namespace TransactionBenchmarkTest.TPCC
             this.workerCount = this.tpccWorkers.Length;
         }
 
-        static private int CalculateWorkload(int total, int workers)
-        {
-            if (workers == 0)
-            {
-                return 0;
-            }
-            return (total + workers - 1) / workers;
-        }
-
         public void AllocateWorkload(WorkloadAllocator allocator)
         {
             Console.Write("Start Loading workload... ");
             DateTime start = DateTime.UtcNow;
-            for (int i = 0; i < this.tpccWorkers.Length; ++i) {
+            for (int i = 0; i < this.tpccWorkers.Length; ++i)
+            {
                 WorkloadParam[] workloads = allocator.Allocate(
                     this.workloadCountPerWorker, i, this.workerCount);
                 this.tpccWorkers[i].SetWorkload(workloads);
@@ -246,45 +343,6 @@ namespace TransactionBenchmarkTest.TPCC
             Console.WriteLine($"After GC: {TotalMemoryInMB():F3}MB is used");
         }
 
-        private void PrintMonitorInfo(double time, int threadsAlive, int deltaAbort, int deltaCommit)
-        {
-            int sum = deltaCommit + deltaAbort;
-            if (sum == 0) return;
-            Console.WriteLine($"Time:{time:F3}|Count:{sum}|Throughput:{sum / time:F2}|AbortRate:{deltaAbort * 1.0 / sum:F3}|ThreadsAlive:{threadsAlive}");
-        }
-
-        private void MonitorThroughput(int ms)
-        {
-            long lastTime = DateTime.Now.Ticks;
-            int lastCommit = 0;
-            int lastAbort = 0;
-
-            int threadsAlive = this.workerCount;
-            do
-            {
-                threadsAlive = this.workerCount;
-                Thread.Sleep(ms);
-                long currentTime = DateTime.Now.Ticks;
-                int nowCommit = 0;
-                int nowAbort = 0;
-                for (int i = 0; i < workerCount; i++)
-                {
-                    nowCommit += tpccWorkers[i].commitCount;
-                    nowAbort += tpccWorkers[i].abortCount;
-                    if (tpccWorkers[i].IsFinished)
-                    {
-                        --threadsAlive;
-                    }
-                }
-                double time = (currentTime - lastTime) / 10000000.0;
-                PrintMonitorInfo(time, threadsAlive, nowAbort - lastAbort, nowCommit - lastCommit);
-
-                lastTime = currentTime;
-                lastCommit = nowCommit;
-                lastAbort = nowAbort;
-            } while (threadsAlive != 0);
-        }
-
         public void Run()
         {
             Console.WriteLine("Running TPCC workload...");
@@ -294,11 +352,12 @@ namespace TransactionBenchmarkTest.TPCC
             Thread[] threads = new Thread[workerCount];
             for (int i = 0; i < this.workerCount; i++)
             {
-                threads[i] = new Thread(new ThreadStart(tpccWorkers[i].Run));
+                threads[i] = new Thread(tpccWorkers[i].Run);
                 threads[i].Start();
             }
 
-            MonitorThroughput(100);
+            WorkerMonitor monitor = new WorkerMonitor(this.tpccWorkers);
+            monitor.StartBlocking(100);
 
             foreach (Thread thread in threads)
             {
@@ -306,6 +365,7 @@ namespace TransactionBenchmarkTest.TPCC
             }
 
             this.endTicks = DateTime.UtcNow;
+            Console.WriteLine($"Monitor Suggested throughput: {monitor.SuggestThroughput()}");
         }
 
         public void PrintStats()
