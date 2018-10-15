@@ -74,7 +74,16 @@
             Random rand = new Random(seed);
             for (int i = 0; i < n; i++)
             {
-                this.keysMap[i] = rand.Next(0, n);
+                this.keysMap[i] = i;
+            }
+
+            // https://en.wikipedia.org/wiki/Fisher%E2%80%93Yates_shuffle
+            for (int t = n - 1; t > 0; t--)
+            {
+                int tmp = keysMap[t];
+                int r = rand.Next(t + 1);
+                keysMap[t] = keysMap[r];
+                keysMap[r] = tmp;
             }
         }
 
