@@ -57,7 +57,7 @@ namespace TransactionBenchmarkTest.YCSB
         /// <summary>
         /// The redis instance host
         /// </summary>
-        internal string RedisHost { get; private set; } =
+        internal string Host { get; private set; } =
             "xnke5SdHz5xcsBF+OlZPL7PdzI7Vz3De7ntGI2fIye0=@elastas.redis.cache.windows.net:6379";
         //internal string RedisHost { get; private set; } =
         //    "127.0.0.1:6379";
@@ -149,7 +149,7 @@ namespace TransactionBenchmarkTest.YCSB
                     "rn|run=", "whether to run the test", v => this.RunTest = ("true".Equals(v) ? true : false)
                 },
                 {
-                    "h|host=", "the redis connection string", v => this.RedisHost = v
+                    "h|host=", "the redis connection string", v => this.Host = v
                 },
                 {
                     "d|dist=", "the distribution of generated keys", v =>
@@ -220,7 +220,7 @@ namespace TransactionBenchmarkTest.YCSB
                 this.RunTest,
                 this.PipelineSize,
                 this.Scale,
-                this.RedisHost,
+                this.Host,
                 this.Dist,
                 this.ReadPercentage,
                 this.QueryCount,

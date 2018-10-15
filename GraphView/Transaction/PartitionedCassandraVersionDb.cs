@@ -13,7 +13,7 @@ namespace GraphView.Transaction
         /// <summary>
         /// default keyspace
         /// </summary>
-        public static readonly string DEFAULT_KEYSPACE = "versiondb_intk_3";
+        public static readonly string DEFAULT_KEYSPACE = "versiondb_txn";
 
         /// <summary>
         /// singleton instance

@@ -332,6 +332,172 @@
             this.executorList = executors;
         }
 
+        class DataLoadWorker
+        {
+            private VersionDb db;
+            private int start;
+            private int end;
+            private YCSBAsyncBenchmarkTest test;
+            private int sum = 0;
+            private volatile bool isFinished = false;
+
+            public DataLoadWorker(VersionDb db, int start, int end, YCSBAsyncBenchmarkTest test)
+            {
+                this.db = db;
+                this.start = start;
+                this.end = end;
+                this.test = test;
+            }
+
+            public int getCount()
+            {
+                return sum;
+            }
+
+            public bool getIsFinished()
+            {
+                return this.isFinished;
+            }
+
+            public void load()
+            {
+                test.loadWithOneThread(db, start, end , ref sum);
+                isFinished = true;
+            }
+
+        }
+
+
+        internal void load(VersionDb db, int threadCount, int totalRecord)
+        {
+            int interval = totalRecord / threadCount;
+            List<Thread> threadList = new List<Thread>();
+
+            int[] count = new int[threadCount];
+            List<DataLoadWorker> loadList = new List<DataLoadWorker>();
+
+            for (int i = 0; i < threadCount; i++)
+            {
+                DataLoadWorker load = new DataLoadWorker(db, interval * i,
+                    Math.Min(interval * (i + 1), totalRecord), this);
+                Thread t = new Thread(new ThreadStart(load.load));
+                loadList.Add(load);
+                threadList.Add(t);
+                t.Start();
+            }
+
+            long lastTime = DateTime.Now.Ticks;
+            long now;
+            int lastSum = 0;
+            int sum = 0;
+            int thread = 0;
+            foreach (DataLoadWorker loader in loadList)
+            {
+                lastSum += loader.getCount();
+            }
+
+            bool isFinished = false;
+
+            while (!isFinished)
+            {
+                Thread.Sleep(1000);
+                sum = 0;
+                isFinished = true;
+                thread = 0;
+                foreach (DataLoadWorker loader in loadList)
+                {
+                    sum += loader.getCount();
+                    if (!loader.getIsFinished())
+                    {
+                        thread++;
+                        isFinished = false;
+                    }
+                }
+                now = DateTime.Now.Ticks;
+                long runSeconds = (now - lastTime) / 10000000;
+                Console.WriteLine("Time Inteval : {0}, Total Finish Count: {1}, Throughput: {2} txn/s, thread : {3}", 
+                    runSeconds, sum, (sum - lastSum) / runSeconds, thread);
+                lastSum = sum;
+                lastTime = now;
+            }
+
+            foreach (Thread t in threadList)
+            {
+                t.Join();
+            }
+
+        }
+
+        internal void loadWithOneThread(VersionDb db, int start, int end, ref int sum)
+        {
+            int batchSize = 1;
+
+            for (int i = start; i < end; i += batchSize)
+            {
+                sum += batchInsert(db, i, Math.Min(end, i + batchSize));
+            }
+        }
+
+        internal int batchInsert(VersionDb db, int start, int end)
+        {
+            int count = 0;
+            Transaction txn = new Transaction(null, db);
+            string readValue = null;
+            for (int i = start; i < end; i++)
+            {
+                readValue = (string)txn.ReadAndInitialize(TABLE_ID, i);
+                if (readValue == null)
+                {
+                    txn.Insert(TABLE_ID, i, new String('a', 100));
+                    count++;
+                }
+            }
+            txn.Commit();
+            return count;
+        }
+
+        private List<TransactionExecutor> fillYCSBWorkLoad()
+        {
+            List<TransactionExecutor> executorList = new List<TransactionExecutor>();
+
+            IDataGenerator generator = this.BuildDataGenerator();
+            var workloadAction = this.BuildWorkloadAction(generator);
+            StoredProcedureWorkload.Reload = workloadAction;
+            StoredProcedureType type = this.GetStoredProcedureType(config.Type);
+
+            this.totalTasks = this.txCountPerExecutor * executorCount;
+
+            for (int i = 0; i < executorCount; i++)
+            {
+                int partition_index = i % this.versionDb.PartitionCount;
+                Queue<TransactionRequest> requestQueue = new Queue<TransactionRequest>();
+                for (int j = 0; j < this.txCountPerExecutor; j++)
+                {
+                    StoredProcedureWorkload workload = GetStoredProcedureWorkload(config.Type,config.QueryCount);
+                    StoredProcedureWorkload.Reload(workload);
+                    string sessionId = (i * this.txCountPerExecutor + j + 1).ToString();
+                    TransactionRequest request = new TransactionRequest(sessionId, workload,StoredProcedureType.YCSBStordProcedure);
+                    requestQueue.Enqueue(request);
+                }
+                executorList.Add(new TransactionExecutor(this.versionDb, null, requestQueue, partition_index, 
+                    i, 0, null, tables, null, null, this.recordCount, this.txCountPerExecutor, null, null,
+                    type, config.PipelineSize));
+            }
+            return executorList;
+        }
+
+        internal void prepare()
+        {
+            if (config.ClearVersionDb)
+            {
+                this.versionDb.Clear();
+            }
+
+            this.versionDb.CreateVersionTable(TABLE_ID);
+            this.executorList = fillYCSBWorkLoad();
+        }
+
+
         // for PartitionedCassandra
         internal void Run2(string exeType = "ycsb_sync_ro_intk")
         {
@@ -441,6 +607,9 @@
             }
             
             Console.WriteLine("Finished !");
+            long runSeconds = (this.testEndTicks - this.testBeginTicks) / 10000000;
+            Console.WriteLine("Time Cost : {0}, Finish Count: {1}, Throughput : {2} txn/s", runSeconds,
+                this.txCountPerExecutor * this.executorCount, this.txCountPerExecutor * this.executorCount / runSeconds);
         }
 
         internal void Stats2()

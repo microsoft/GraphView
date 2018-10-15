@@ -1,10 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using ServiceStack.Redis;
-using GraphView.Transaction;
 using System.Threading;
 
 namespace TransactionBenchmarkTest.TPCC

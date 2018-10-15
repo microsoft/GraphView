@@ -137,7 +137,7 @@ namespace GraphView.Transaction
             this.txRange = startRange < 0 ? null : new TxRange(startRange);
             this.ResourceManager = resourceManager == null ? new TxResourceManager() : resourceManager;
             this.txRuntimePool = new Queue<Tuple<TransactionExecution, Queue<TransactionRequest>>>();
-            this.workingSet = new List<string>(this.workingSetSize);
+            this.workingSet = new List<string>(workingSetSize);
 
             this.Partition = partition;
             this.flushTables = flushTables;

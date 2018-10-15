@@ -1,4 +1,5 @@
-﻿using GraphView.Transaction;
+﻿using Cassandra;
+using GraphView.Transaction;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -190,6 +191,41 @@ namespace TransactionBenchmarkTest.YCSB
             test.Stats();
         }
 
+        /// <summary>
+        /// YCSB async benchmark test on Cassandra with partitions 
+        /// </summary>
+        /// <param name="args"></param>
+        static void YCSBAsyncTestWithPartitionedCassandraVersionDb(string[] args)
+        {
+            BenchmarkTestConfig config = new BenchmarkTestConfig(args);
+
+            int replicationFactor = 3;
+
+            ConsistencyLevel consistencyLevel = ConsistencyLevel.Quorum;
+
+            string[] tables =
+            {
+                YCSBAsyncBenchmarkTest.TABLE_ID,
+                VersionDb.TX_TABLE
+
+            };
+
+            PartitionedCassandraVersionDb versionDb = PartitionedCassandraVersionDb.Instance(config.WorkerCount, 
+                config.Host, replicationFactor, consistencyLevel);
+            YCSBAsyncBenchmarkTest test = new YCSBAsyncBenchmarkTest(config.RecordCount, config.WorkerCount, 
+                config.WorkloadCount, versionDb, tables, config);
+            if (config.LoadRecords)
+            {
+                test.load(versionDb, config.WorkerCount, config.RecordCount);
+            }
+            else
+            {
+                test.prepare();
+                test.StartMonitors();
+                test.Run2();
+            }
+        }
+
         // args[0]: dataFile
         // args[1]: opsFile
         // args[2]: partitionCount
@@ -343,7 +379,8 @@ namespace TransactionBenchmarkTest.YCSB
 
             // For the YCSB async test
             // YCSBAsyncTest();
-            YCSBAsyncTestWithRedisVersionDb(args);
+            // YCSBAsyncTestWithRedisVersionDb(args);
+            YCSBAsyncTestWithPartitionedCassandraVersionDb(args);
             // YCSBAsyncTestWithMemoryVersionDb(args);
             // YCSBAsyncTestWithPartitionedVersionDb(args);
             // YCSBAsyncTestWithCassandra();
