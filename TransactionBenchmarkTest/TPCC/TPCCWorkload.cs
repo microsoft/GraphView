@@ -256,29 +256,6 @@ namespace TransactionBenchmarkTest.TPCC
                 throw new Exception("invalid input");
             }
 
-            // all local or not
-            bool allLocal = true;
-            for (int i = 0; i < input.OL_I_IDs.Length; i++)
-            {
-                allLocal = allLocal & input.OL_I_IDs[i] == input.W_ID;
-            }
-
-            // whether all items exist without a wrong item number
-            ipks.Clear();
-            for (int i = 0; i < input.OL_I_IDs.Length; i++)
-            {
-                ItemPkey ipk = ipks.AllocateNew();
-                ipk.Set(I_ID: input.OL_I_IDs[i]);
-                // var str = (string)tx.Read(Constants.DefaultTbl, ipk.ToString());
-                // items[i] = JsonConvert.DeserializeObject<ItemPayload>(str);
-                TpccTablePayload payload;
-                if (exec.Read(ipk, out payload).IsAborted())
-                {
-                    return null;
-                }
-                this.items[i] = payload as ItemPayload;
-            }
-
             // read Warehouse,District, Customer
             this.wpk.Set(W_ID: input.W_ID);
             // WarehousePayload wpl = JsonConvert.DeserializeObject<WarehousePayload>((string)tx.Read(Constants.DefaultTbl, wpk.ToString()));
@@ -299,6 +276,13 @@ namespace TransactionBenchmarkTest.TPCC
             double D_TAX = dpl.D_TAX;
             uint D_NEXT_O_ID = dpl.D_NEXT_O_ID;
 
+            dpl.D_NEXT_O_ID = D_NEXT_O_ID + 1;
+            // tx.Update(Constants.DefaultTbl, dpk.ToString(), JsonConvert.SerializeObject(dpl));
+            if (exec.Update(dpk, dpl).IsAborted())
+            {
+                return null;
+            }
+
             this.cpk.Set(C_ID: input.C_ID, C_D_ID: input.D_ID, C_W_ID: input.W_ID);
             // CustomerPayload cpl = JsonConvert.DeserializeObject<CustomerPayload>((string)tx.Read(Constants.DefaultTbl, cpk.ToString()));
             CustomerPayload cpl;
@@ -308,6 +292,14 @@ namespace TransactionBenchmarkTest.TPCC
             }
             double C_DISCOUNT = cpl.C_DISCOUNT;
 
+            // all local or not
+            bool allLocal = true;
+            for (int i = 0; i < input.OL_I_IDs.Length; i++)
+            {
+                allLocal = allLocal & input.OL_I_IDs[i] == input.W_ID;
+            }
+
+            /*
             // insert order/new-order, update next-order-id
             OrderPkey opk = new OrderPkey
             {
@@ -329,14 +321,8 @@ namespace TransactionBenchmarkTest.TPCC
             {
                 return null;
             }
-
-            dpl.D_NEXT_O_ID = D_NEXT_O_ID + 1;
-            // tx.Update(Constants.DefaultTbl, dpk.ToString(), JsonConvert.SerializeObject(dpl));
-            if (exec.Update(dpk, dpl).IsAborted())
-            {
-                return null;
-            }
-
+            */
+            /*
             NewOrderPkey nopk = new NewOrderPkey
             {
                 NO_O_ID = D_NEXT_O_ID,
@@ -348,6 +334,23 @@ namespace TransactionBenchmarkTest.TPCC
             if (false && exec.Insert(nopk, NewOrderPayload.Placeholder()).IsAborted())
             {
                 return null;
+            }
+            */
+
+            // whether all items exist without a wrong item number
+            ipks.Clear();
+            for (int i = 0; i < input.OL_I_IDs.Length; i++)
+            {
+                ItemPkey ipk = ipks.AllocateNew();
+                ipk.Set(I_ID: input.OL_I_IDs[i]);
+                // var str = (string)tx.Read(Constants.DefaultTbl, ipk.ToString());
+                // items[i] = JsonConvert.DeserializeObject<ItemPayload>(str);
+                TpccTablePayload payload;
+                if (exec.Read(ipk, out payload).IsAborted())
+                {
+                    return null;
+                }
+                this.items[i] = payload as ItemPayload;
             }
 
             // insert order lines
@@ -390,6 +393,7 @@ namespace TransactionBenchmarkTest.TPCC
                 var OL_AMOUNT = OL_QUANTITY * I_PRICE;
                 total += OL_AMOUNT;
 
+                /*
                 // insert order line
                 OrderLinePkey olpk = new OrderLinePkey
                 {
@@ -420,6 +424,7 @@ namespace TransactionBenchmarkTest.TPCC
                 this.noOutput.itemOutputs.AllocateNew().Set(
                     this.items[i].I_NAME, brand,
                     this.items[i].I_PRICE, olpl.OL_AMOUNT);
+                */
             }
 
             // tx.Commit();
@@ -432,8 +437,8 @@ namespace TransactionBenchmarkTest.TPCC
             total *= (1 - C_DISCOUNT) * (1 + W_TAX + D_TAX);
             this.noOutput.Set(
                 wpk.W_ID, cpl.C_LAST, cpl.C_CREDIT, cpl.C_DISCOUNT,
-                wpl.W_TAX, dpl.D_TAX, opl.O_OL_CNT, opk.O_ID,
-                opl.O_ENTRY_D, total);
+                wpl.W_TAX, dpl.D_TAX, (uint)input.OL_I_IDs.Length, D_NEXT_O_ID,
+                input.O_ENTRY_D, total);
 
             return this.noOutput;
         }
@@ -455,6 +460,35 @@ namespace TransactionBenchmarkTest.TPCC
         {
             PaymentInParameters input = (PaymentInParameters)param;
             // Transaction tx = new Transaction(null, vdb);
+
+            // warehouse, district
+            this.wpk.Set(W_ID: input.W_ID);
+            // var wpl = JsonConvert.DeserializeObject<WarehousePayload>((string)tx.Read(Constants.DefaultTbl, wpk.ToString()));
+            WarehousePayload wpl;
+            if (exec.ReadCopy(this.wpk, out wpl).IsAborted())
+            {
+                return null;
+            }
+            wpl.W_YTD += input.H_AMOUNT;
+            // tx.Update(Constants.DefaultTbl, wpk.ToString(), JsonConvert.SerializeObject(wpl));
+            if (exec.Update(this.wpk, wpl).IsAborted())
+            {
+                return null;
+            }
+
+            this.dpk.Set(D_ID: input.D_ID, D_W_ID: input.W_ID);
+            // var dpl = JsonConvert.DeserializeObject<DistrictPayload>((string)tx.Read(Constants.DefaultTbl, dpk.ToString()));
+            DistrictPayload dpl;
+            if (exec.ReadCopy(this.dpk, out dpl).IsAborted())
+            {
+                return null;
+            }
+            dpl.D_YTD += input.H_AMOUNT;
+            // tx.Update(Constants.DefaultTbl, dpk.ToString(), JsonConvert.SerializeObject(dpl));
+            if (exec.Update(this.dpk, dpl).IsAborted())
+            {
+                return null;
+            }
 
             // determine c_id
             var C_ID = input.C_ID;
@@ -495,35 +529,6 @@ namespace TransactionBenchmarkTest.TPCC
             cpl.C_PAYMENT_CNT += 1;
             //var C_DATA = cpl.C_DATA;
 
-            // warehouse, district
-            this.wpk.Set(W_ID: input.W_ID);
-            // var wpl = JsonConvert.DeserializeObject<WarehousePayload>((string)tx.Read(Constants.DefaultTbl, wpk.ToString()));
-            WarehousePayload wpl;
-            if (exec.ReadCopy(this.wpk, out wpl).IsAborted())
-            {
-                return null;
-            }
-            wpl.W_YTD += input.H_AMOUNT;
-            // tx.Update(Constants.DefaultTbl, wpk.ToString(), JsonConvert.SerializeObject(wpl));
-            if (exec.Update(this.wpk, wpl).IsAborted())
-            {
-                return null;
-            }
-
-            this.dpk.Set(D_ID: input.D_ID, D_W_ID: input.W_ID);
-            // var dpl = JsonConvert.DeserializeObject<DistrictPayload>((string)tx.Read(Constants.DefaultTbl, dpk.ToString()));
-            DistrictPayload dpl;
-            if (exec.ReadCopy(this.dpk, out dpl).IsAborted())
-            {
-                return null;
-            }
-            dpl.D_YTD += input.H_AMOUNT;
-            // tx.Update(Constants.DefaultTbl, dpk.ToString(), JsonConvert.SerializeObject(dpl));
-            if (exec.Update(this.dpk, dpl).IsAborted())
-            {
-                return null;
-            }
-
             // credit info
             if (cpl.C_CREDIT == Constants.BadCredit)
             {
@@ -541,6 +546,7 @@ namespace TransactionBenchmarkTest.TPCC
                 return null;
             }
 
+            /*
             // history
             var hpl = new HistoryPayload
             {
@@ -560,6 +566,7 @@ namespace TransactionBenchmarkTest.TPCC
             {
                 return null;
             }
+            */
             // tx.Commit();
             if (exec.Commit().IsAborted())
             {
