@@ -100,7 +100,7 @@ namespace TransactionBenchmarkTest
         public int SuggestThroughput()
         {
             Console.WriteLine($"Capture {throughputs.Count} times");
-            int validSampleNum = 5;
+            int validSampleNum = this.throughputs.Count / 4;
             int[] validSamples = throughputs
                 .Skip(throughputs.Count / 10)
                 .OrderByDescending(a => a)
