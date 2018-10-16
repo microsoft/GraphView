@@ -96,12 +96,14 @@ namespace TransactionBenchmarkTest.TPCC
             this.WorkloadPerWorker = 200000;
             this.PaymentRatio = 1; // currently not used
             this.TpccFileDir = Constants.TpccFileDir;
+            this.Warehouses = 4;
         }
 
         public int Concurrency;
         public int WorkloadPerWorker;
         public double PaymentRatio; // currently not used
         public string TpccFileDir;
+        public int Warehouses;
 
         public void Print()
         {
