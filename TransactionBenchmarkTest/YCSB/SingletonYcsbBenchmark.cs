@@ -126,8 +126,9 @@ namespace TransactionBenchmarkTest.YCSB
             switch (nextop)
             {
                 case "READ": return GetRead(gen.NextIntKey());
-                case "UPDATE": return GetUpdate(
-                    gen.NextIntKey(), YcsbHelper.UpdatePayload());
+                case "UPDATE":
+                    return GetUpdate(
+         gen.NextIntKey(), YcsbHelper.UpdatePayload());
             }
             throw new Exception($"Unknown generated operation: {nextop}");
         }
@@ -165,7 +166,7 @@ namespace TransactionBenchmarkTest.YCSB
         }
     }
 
-    class YcsbWorkload
+    class YcsbWorker : BenchmarkWorker
     {
         public class Output
         {
@@ -173,31 +174,35 @@ namespace TransactionBenchmarkTest.YCSB
             public int NAbort = 0;
         }
         private List<YcsbTx> txs;
+        private TransactionExecution txExec;
+        public Output output;
 
-        internal Output ExecuteIn(TransactionExecution txExec)
+        public override void Run()
         {
-            Output output = new Output();
             for (int i = 0; i < txs.Count; ++i)
             {
-                this.txs[i].ExecuteIn(txExec);
+                this.txs[i].ExecuteIn(this.txExec);
                 if (txExec.IsAborted())
                 {
-                    ++output.NAbort;
+                    ++this.abortCount;
                 }
                 else
                 {
                     Debug.Assert(txExec.TxStatus == TxStatus.Committed);
-                    ++output.NCommit;
+                    ++this.commitCount;
                 }
             }
-            return output;
+            this.isFinished = true;
+            this.output = new Output
+            { NCommit = this.commitCount, NAbort = this.abortCount };
         }
 
-        static internal YcsbWorkload Generate(
-            int txCount, int queryCount, YCSBDataGenerator gen)
+        static internal YcsbWorker Generate(
+            int txCount, int queryCount, YCSBDataGenerator gen, TransactionExecution txExec)
         {
-            YcsbWorkload workload = new YcsbWorkload();
+            YcsbWorker workload = new YcsbWorker();
             workload.txs = new List<YcsbTx>(txCount);
+            workload.txExec = txExec;
             for (int i = 0; i < txCount; ++i)
             {
                 workload.txs.Add(YcsbTx.Generate(queryCount, gen));
@@ -208,59 +213,43 @@ namespace TransactionBenchmarkTest.YCSB
 
     class YcsbBenchmarkEnv
     {
-        public class LocalBenchmarkEnv
-        {
-            public LocalBenchmarkEnv(
-                TransactionExecution txExec, YcsbWorkload workload)
-            {
-                this.txExec = txExec;
-                this.workload = workload;
-            }
-            public void Start()
-            {
-                this.thread = new Thread(
-                    () => this.output = this.workload.ExecuteIn(this.txExec));
-                this.thread.Start();
-            }
-            public YcsbWorkload.Output GetOutput()
-            {
-                this.thread.Join();
-                return this.output;
-            }
-            private TransactionExecution txExec;
-            private YcsbWorkload workload;
-            private YcsbWorkload.Output output;
-            private Thread thread;
-        }
         public YcsbBenchmarkEnv(
-            VersionDb versionDb, Func<YcsbWorkload> workloadFactory)
+            VersionDb versionDb, Func<TransactionExecution, YcsbWorker> workerFactory)
         {
             var txExecs = SingletonYCSBTxExecHelper.MakeTxExecs(versionDb);
-            this.localEnvs = txExecs.AsParallel()
-                .Select(exec => new LocalBenchmarkEnv(exec, workloadFactory()))
+            this.workers = txExecs.AsParallel()
+                .Select(workerFactory)
                 .ToArray();
         }
 
         public SingletonYcsbBenchmark.BenchResult Go()
         {
+            Thread[] threads = new Thread[this.workers.Length];
             GC.Collect();
             DateTime startTime = DateTime.UtcNow;
-            var outputs = new YcsbWorkload.Output[this.localEnvs.Length];
-            for (int i = 0; i < this.localEnvs.Length; ++i)
+            for (int i = 0; i < this.workers.Length; ++i)
             {
-                this.localEnvs[i].Start();
+                threads[i] = new Thread(this.workers[i].Run);
+                threads[i].Start();
             }
-            for (int i = 0; i < this.localEnvs.Length; ++i)
+
+            WorkerMonitor monitor = new WorkerMonitor(this.workers);
+            monitor.StartBlocking(100);
+
+            foreach (Thread t in threads)
             {
-                outputs[i] = this.localEnvs[i].GetOutput();
+                t.Join();
             }
             DateTime endTime = DateTime.UtcNow;
-            return YcsbBenchmarkEnv.CombineOutputs(
-                outputs, endTime - startTime);
+            var result = YcsbBenchmarkEnv.CombineOutputs(
+                this.workers.Select(w => w.output).ToArray(),
+                endTime - startTime);
+            result.SuggestedThroughput = monitor.SuggestThroughput();
+            return result;
         }
 
         static private SingletonYcsbBenchmark.BenchResult CombineOutputs(
-            YcsbWorkload.Output[] partialOutputs, TimeSpan time)
+            YcsbWorker.Output[] partialOutputs, TimeSpan time)
         {
             var output = new SingletonYcsbBenchmark.BenchResult();
             output.CompleteTime = time;
@@ -269,7 +258,7 @@ namespace TransactionBenchmarkTest.YCSB
             return output;
         }
 
-        LocalBenchmarkEnv[] localEnvs;
+        YcsbWorker[] workers;
     }
 
     internal class YcsbConfig
@@ -335,10 +324,12 @@ namespace TransactionBenchmarkTest.YCSB
                     return NAbort / (NCommit + NAbort + 0.0);
                 }
             }
+            public int SuggestedThroughput = 0;
+
             public void Print()
             {
                 Console.WriteLine($"commit: {this.NCommit}, abort: {this.NAbort}({this.AbortRate * 100:F3}%)");
-                Console.WriteLine($"time: {this.CompleteTime.TotalSeconds:F2}, throughput: {this.Throughput:F2} txs/sec");
+                Console.WriteLine($"time: {this.CompleteTime.TotalSeconds:F2}, throughput: {this.Throughput:F2} txs/sec (monitor suggest: {this.SuggestedThroughput})");
             }
 
             static public BenchResult Average(IEnumerable<BenchResult> results)
@@ -350,9 +341,11 @@ namespace TransactionBenchmarkTest.YCSB
                     avg.NAbort += result.NAbort;
                     avg.NCommit += result.NCommit;
                     avg.CompleteTime += result.CompleteTime;
+                    avg.SuggestedThroughput += result.SuggestedThroughput;
                 }
                 avg.NAbort /= c;
                 avg.NCommit /= c;
+                avg.SuggestedThroughput /= c;
                 avg.CompleteTime = new TimeSpan(avg.CompleteTime.Ticks / c);
                 return avg;
             }
@@ -380,11 +373,11 @@ namespace TransactionBenchmarkTest.YCSB
             var generator = new YCSBDataGenerator(
                 config.RecordCount, config.ReadRatio,
                 config.Dist, config.ZipfSkew);
-            Func<YcsbWorkload> workloadFactory =
-                () => YcsbWorkload.Generate(
-                    config.WorkerWorkload, config.QueriesPerTx, generator);
+            Func<TransactionExecution, YcsbWorker> workerFactory =
+                txExec => YcsbWorker.Generate(
+                    config.WorkerWorkload, config.QueriesPerTx, generator, txExec);
             // Console.Write("generate workload... ");
-            var benchmark = new YcsbBenchmarkEnv(versionDb, workloadFactory);
+            var benchmark = new YcsbBenchmarkEnv(versionDb, workerFactory);
             // Console.WriteLine("done");
             var result = benchmark.Go();
             SingletonVersionDb.DestroyInstance();

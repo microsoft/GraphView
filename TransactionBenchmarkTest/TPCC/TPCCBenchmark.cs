@@ -5,23 +5,15 @@ using System.Threading;
 
 namespace TransactionBenchmarkTest.TPCC
 {
-    class TPCCWorker
+    class TPCCWorker : BenchmarkWorker
     {
         private WorkloadParam[] workloads;
-
         private int workloadCount = 0;
-
-        //private int workloadCount;
-        public int commitCount;
-        public int abortCount;
 
         private SyncExecution execution;
 
-        private volatile bool isFinished;
-
         public TPCCWorker(SyncExecution execution, int workloadCount = 0)
         {
-            this.commitCount = this.abortCount = 0;
             this.execution = execution;
             this.workloads = new WorkloadParam[0];
             this.workloadCount = workloadCount;
@@ -31,13 +23,7 @@ namespace TransactionBenchmarkTest.TPCC
             this.workloads = workloads;
         }
 
-        public bool IsFinished
-        {
-            get { return isFinished; }
-            set { isFinished = value; }
-        }
-
-        public void Run()
+        public override void Run()
         {
             for (int i = 0; i < this.workloadCount; ++i)
             {
@@ -191,98 +177,6 @@ namespace TransactionBenchmarkTest.TPCC
             return workloads;
         }
         private double paymentRatio;
-    }
-
-    internal class WorkerMonitor
-    {
-        struct WorkerState
-        {
-            public long timeTicks;
-            public int abortNum;
-            public int commitNum;
-            public int threadsAlive;
-
-            public PeriodResult Difference(WorkerState lastState)
-            {
-                return new PeriodResult
-                {
-                    dTime = (this.timeTicks - lastState.timeTicks) / 10000000.0,
-                    dAbort = this.abortNum - lastState.abortNum,
-                    dCommit = this.commitNum - lastState.commitNum,
-                    threadsAlive = this.threadsAlive
-                };
-            }
-        }
-        struct PeriodResult
-        {
-            public double dTime;
-            public int dAbort;
-            public int dCommit;
-            public int threadsAlive;
-
-            public int Finished
-            {
-                get { return this.dAbort + this.dCommit; }
-            }
-            public int Throughput
-            {
-                get { return (int)(this.Finished / this.dTime); }
-            }
-            public double AbortRate
-            {
-                get { return this.dAbort * 1.0 / this.Finished; }
-            }
-            public void Print()
-            {
-                Console.WriteLine($"Time:{this.dTime:F3}|Count:{this.Finished}|Throughput:{this.Throughput}|AbortRate:{this.AbortRate:F3}|ThreadsAlive:{this.threadsAlive}");
-            }
-        }
-        public WorkerMonitor(TPCCWorker[] workers)
-        {
-            this.workers = workers;
-        }
-        public void StartBlocking(int intervalInMs)
-        {
-            this.throughputs = new List<int>(30 * 1000 / intervalInMs);
-            WorkerState lastState = Capture();
-            for (; lastState.threadsAlive != 0;)
-            {
-                Thread.Sleep(intervalInMs);
-                WorkerState currentState = Capture();
-                PeriodResult tempResult = currentState.Difference(lastState);
-                tempResult.Print();
-                this.throughputs.Add(tempResult.Throughput);
-                lastState = currentState;
-            }
-        }
-        private WorkerState Capture()
-        {
-            WorkerState state = new WorkerState();
-            state.threadsAlive = this.workers.Length;
-            state.abortNum = 0;
-            state.commitNum = 0;
-            state.timeTicks = DateTime.Now.Ticks;
-            for (int i = 0; i < workers.Length; ++i)
-            {
-                var worker = workers[i];
-                state.abortNum += worker.abortCount;
-                state.commitNum += worker.commitCount;
-                if (worker.IsFinished) --state.threadsAlive;
-            }
-            return state;
-        }
-        public int SuggestThroughput() {
-            Console.WriteLine($"Capture {throughputs.Count} times");
-            int validSampleNum = 5;
-            int[] validSamples = throughputs
-                .Skip(throughputs.Count / 10)
-                .OrderByDescending(a => a)
-                .Take(validSampleNum).ToArray();
-            return validSamples[validSampleNum / 2];
-        }
-
-        private List<int> throughputs;
-        private TPCCWorker[] workers;
     }
 
     class TPCCBenchmark
