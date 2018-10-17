@@ -222,7 +222,7 @@ namespace TransactionBenchmarkTest.YCSB
             {
                 test.prepare();
                 test.StartMonitors();
-                test.Run2();
+                test.Run2("async");
             }
         }
 
