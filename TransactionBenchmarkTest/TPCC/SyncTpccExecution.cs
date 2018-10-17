@@ -111,11 +111,11 @@ namespace TransactionBenchmarkTest.TPCC
         GetObjectPoolRefs(SingletonVersionDb versionDb, int workerId)
         {
             var poolRefs = new CachableObjectPool[TpccTable.allTypes.Length];
-            for (int i = 0; i < poolRefs.Length; ++i)
+            foreach (TableType t in TpccTable.AllUsedTypes)
             {
-                string tableName = TpccTable.allTypes[i].Name();
-                poolRefs[i] = SingletonExecution.GetLocalObjectPool(
-                    versionDb.GetVersionTable(tableName), workerId);
+                poolRefs[(int)t] =
+                    SingletonExecution.GetLocalObjectPool(
+                        versionDb.GetVersionTable(t.Name()), workerId);
             }
             return poolRefs;
         }

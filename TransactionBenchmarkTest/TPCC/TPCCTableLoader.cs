@@ -95,6 +95,7 @@ namespace TransactionBenchmarkTest.TPCC
 
             public override int SaveTo(VersionDb versionDb)
             {
+                CreateTable(versionDb, TpccTable.Instance(TableType.CUSTOMER_INDEX));
                 int recordCount = 0;
                 SyncExecution txExec = new SyncExecution(versionDb);
                 foreach (var kv in this.tempStore)

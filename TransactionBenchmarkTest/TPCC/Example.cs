@@ -34,7 +34,7 @@ namespace TransactionBenchmarkTest.TPCC
             //     SyncLoadTpccTable(TpccTable.Instance(t), versionDb, dir);
             // }
             Parallel.ForEach(
-                TpccTable.allTypes,
+                TpccTable.AllUsedTypes,
                 t => SyncLoadTpccTable(TpccTable.Instance(t), versionDb, dir));
         }
 

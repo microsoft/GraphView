@@ -21,7 +21,7 @@ namespace TransactionBenchmarkTest.TPCC
     {
         CUSTOMER, WAREHOUSE, DISTRICT,
         HISTORY, ITEM, NEW_ORDER,
-        ORDER_LINE, ORDERS, STOCK
+        ORDER_LINE, ORDERS, STOCK, CUSTOMER_INDEX
     }
 
 
@@ -31,10 +31,15 @@ namespace TransactionBenchmarkTest.TPCC
         {
             new Customer(), new Warehouse(), new District(),
             new History(), new Item(), new NewOrder(),
-            new OrderLine(), new Order(), new Stock()
+            new OrderLine(), new Order(), new Stock(),
+            new CustomerLastNameIndex()
         };
         static public TableType[] allTypes =
             Enum.GetValues(typeof(TableType)) as TableType[];
+
+        static public TableType[] AllUsedTypes = new TableType[] {
+                TableType.CUSTOMER, TableType.WAREHOUSE, TableType.DISTRICT,
+                TableType.ITEM, TableType.STOCK };
 
         static public TpccTable Instance(TableType v)
         {
@@ -92,6 +97,18 @@ namespace TransactionBenchmarkTest.TPCC
             public override TableType Type()
             {
                 return TableType.CUSTOMER;
+            }
+        }
+
+        class CustomerLastNameIndex : TpccTable
+        {
+            public override Tuple<TpccTableKey, TpccTablePayload> ParseColumns(string[] columns)
+            {
+                return null;
+            }
+            public override TableType Type()
+            {
+                return TableType.CUSTOMER_INDEX;
             }
         }
 
@@ -595,7 +612,7 @@ namespace TransactionBenchmarkTest.TPCC
     }
     public class CustomerLastNameIndexKey : TpccTableKey
     {
-        public CustomerLastNameIndexKey() : base(TableType.CUSTOMER) { }
+        public CustomerLastNameIndexKey() : base(TableType.CUSTOMER_INDEX) { }
 
         public uint C_W_ID;
         public uint C_D_ID;
