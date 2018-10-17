@@ -189,10 +189,15 @@ namespace TransactionBenchmarkTest.TPCC
                     case "--payment-ratio":
                         config.PaymentRatio = Convert.ToDouble(args[i++]);
                         break;
+                    case "-W":
+                    case "--warehouses":
+                        config.Warehouses = Convert.ToInt32(args[i++]);
+                        break;
                     default:
                         throw new ArgumentException($"unknown argument: {args[i - 1]}");
                 }
             }
+            config.TpccFileDir += $"-{config.Warehouses}";
         }
 
         static TPCCBenchmark InitializeBenchmark(

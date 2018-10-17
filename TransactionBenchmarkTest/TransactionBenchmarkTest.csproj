@@ -214,6 +214,7 @@
     </Otherwise>
   </Choose>
   <ItemGroup>
+    <Compile Include="BenchmarkWorker.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="TPCC\CassandraTest.cs" />
     <Compile Include="TPCC\SyncTpccExecution.cs" />
