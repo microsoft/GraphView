@@ -621,7 +621,7 @@ namespace TransactionBenchmarkTest.TPCC
         public override int GetHashCode()
         {
             return (int)(
-                C_D_ID << WarehousePkey.IdBits & C_W_ID) * 17 +
+                C_D_ID << WarehousePkey.IdBits | C_W_ID) * 17 +
                 C_LAST.GetHashCode();
         }
         public override bool Equals(object obj)
