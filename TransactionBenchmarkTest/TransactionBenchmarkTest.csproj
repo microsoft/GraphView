@@ -54,7 +54,7 @@
     <PlatformTarget>AnyCPU</PlatformTarget>
   </PropertyGroup>
   <PropertyGroup>
-    <StartupObject>TransactionBenchmarkTest.YCSB.SingletonYcsbBenchmark</StartupObject>
+    <StartupObject>TransactionBenchmarkTest.RawDictionaryBenchmark</StartupObject>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'">
     <DebugSymbols>true</DebugSymbols>
@@ -216,6 +216,7 @@
   <ItemGroup>
     <Compile Include="BenchmarkWorker.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="RawDictionaryBenchmark.cs" />
     <Compile Include="TPCC\CassandraTest.cs" />
     <Compile Include="TPCC\SyncTpccExecution.cs" />
     <Compile Include="TPCC\TPCCTableLoader.cs" />
