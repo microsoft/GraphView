@@ -674,6 +674,18 @@ namespace GraphView.Transaction
             }
 
             this.SetCommitTimestamp();
+            // when there is no write, I think we could bypass the follow-up steps for read-only transaction
+            /*
+            if (this.writeSet.Count > 0)
+            {
+                this.SetCommitTimestamp();
+            }
+            else
+            {
+                this.WriteToLog();
+            }
+            */
+            
         }
 
         private void AddVersionToAbortSet(
