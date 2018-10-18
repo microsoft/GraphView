@@ -1,45 +1,59 @@
 ﻿using GraphView.Transaction;
 using NDesk.Options;
+using NonBlocking;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
 using TransactionBenchmarkTest.YCSB;
 
 namespace TransactionBenchmarkTest
 {
-    class RawDictionaryBenchmark
+
+    class DictionaryFactory
     {
-        private readonly Dictionary<long, Dictionary<long, VersionEntry>> dictionary;
-
-        private int innerCapacity;
-        private int threadCount;
-        private int workLoadPerThread;
-        private int recordCount;
-        private Distribution distribution;
-        private double theta;
-        private int capacity;
-
-        public RawDictionaryBenchmark(int threadCount, int workLoadPerThread, Distribution distribution,
-            double theta, int recordCount = 1000000, int capacity = 10000, int innerCapacity = 100)
+        public static IDictionaryComponent newInstance(string type)
         {
-            this.threadCount = threadCount;
-            this.workLoadPerThread = workLoadPerThread;
-            this.distribution = distribution;
-            this.theta = theta;
-            this.recordCount = recordCount;
-            this.dictionary = new Dictionary<long, Dictionary<long, VersionEntry>>();
+            switch (type)
+            {
+                case "simple":
+                    return new SimpleDicionary();
+                case "concurrent":
+                    return new ConcurrentDictionary();
+                case "mix":
+                    return new OuterConcurrentDicionary();
+                default:
+                    throw new ArgumentException($"wrong type {type}");
+            }
+
+        }
+    }
+
+    interface IDictionaryComponent
+    {
+        void Init(int capacity, int innerCapacity, int recordCount);
+        void RandomAcess(long key);
+        void LoadData(int recordCount);
+    }
+
+    class SimpleDicionary : IDictionaryComponent
+    {
+        private Dictionary<long, Dictionary<long, VersionEntry>> dictionary;
+        private int capacity;
+        private int innerCapacity;
+
+        public void Init(int capacity, int innerCapacity, int recordCount)
+        {
             this.capacity = capacity;
             this.innerCapacity = innerCapacity;
+            dictionary = new Dictionary<long, Dictionary<long, VersionEntry>>(capacity);
+            LoadData(recordCount);
         }
 
-        public void LoadData(int listCount)
+        public void LoadData(int recordCount)
         {
             for (int i = 0; i < recordCount; i++)
             {
-                Dictionary<long, VersionEntry> entryList = GenerateVersoinList(listCount);
+                Dictionary<long, VersionEntry> entryList = GenerateVersoinList(5);
                 dictionary.Add(i, entryList);
             }
         }
@@ -55,6 +69,132 @@ namespace TransactionBenchmarkTest
             return entryList;
         }
 
+        public void RandomAcess(long key)
+        {
+            Dictionary<long, VersionEntry> list = dictionary[key];
+            if (list != null)
+            {
+                VersionEntry entry = list[0];
+            }
+        }
+    }
+
+    class ConcurrentDictionary : IDictionaryComponent
+    {
+        private ConcurrentDictionary<long, ConcurrentDictionary<long, VersionEntry>> dictionary;
+        private int capacity;
+        private int innerCapacity;
+
+        public void Init(int capacity, int innerCapacity, int recordCount)
+        {
+            this.capacity = capacity;
+            this.innerCapacity = innerCapacity;
+            dictionary = new ConcurrentDictionary<long, ConcurrentDictionary<long, VersionEntry>>();
+            LoadData(recordCount);
+        }
+
+        public void LoadData(int recordCount)
+        {
+            for (int i = 0; i < recordCount; i++)
+            {
+                ConcurrentDictionary<long, VersionEntry> entryList = GenerateVersoinList(5);
+                dictionary.Add(i, entryList);
+            }
+        }
+
+        private ConcurrentDictionary<long, VersionEntry> GenerateVersoinList(int listCount)
+        {
+            ConcurrentDictionary<long, VersionEntry> entryList = new ConcurrentDictionary<long, VersionEntry>();
+            for (int i = 0; i < listCount; i++)
+            {
+                VersionEntry entry = new VersionEntry(i, new String('a', 100), -1);
+                entryList.Add(i, entry);
+            }
+            return entryList;
+        }
+
+        public void RandomAcess(long key)
+        {
+            ConcurrentDictionary<long, VersionEntry> list = dictionary[key];
+            if (list != null)
+            {
+                VersionEntry entry = list[0];
+            }
+        }
+    }
+
+    class OuterConcurrentDicionary : IDictionaryComponent
+    {
+        private ConcurrentDictionary<long, Dictionary<long, VersionEntry>> dictionary;
+        private int capacity;
+        private int innerCapacity;
+
+        public void Init(int capacity, int innerCapacity, int recordCount)
+        {
+            this.capacity = capacity;
+            this.innerCapacity = innerCapacity;
+            dictionary = new ConcurrentDictionary<long, Dictionary<long, VersionEntry>>();
+            LoadData(recordCount);
+        }
+
+        public void LoadData(int recordCount)
+        {
+            for (int i = 0; i < recordCount; i++)
+            {
+                Dictionary<long, VersionEntry> entryList = GenerateVersoinList(5);
+                dictionary.Add(i, entryList);
+            }
+        }
+
+        private Dictionary<long, VersionEntry> GenerateVersoinList(int listCount)
+        {
+            Dictionary<long, VersionEntry> entryList = new Dictionary<long, VersionEntry>();
+            for (int i = 0; i < listCount; i++)
+            {
+                VersionEntry entry = new VersionEntry(i, new String('a', 100), -1);
+                entryList.Add(i, entry);
+            }
+            return entryList;
+        }
+
+        public void RandomAcess(long key)
+        {
+            Dictionary<long, VersionEntry> list = dictionary[key];
+            if (list != null)
+            {
+                VersionEntry entry = list[0];
+            }
+        }
+    }
+
+    class RawDictionaryBenchmark
+    {
+        private IDictionaryComponent dictionary;
+
+        private int innerCapacity;
+        private int threadCount;
+        private int workLoadPerThread;
+        private int recordCount;
+        private Distribution distribution;
+        private double theta;
+        private int capacity;
+        private string type;
+
+        public RawDictionaryBenchmark(string type, int threadCount, int workLoadPerThread, Distribution distribution,
+            double theta, int recordCount = 1000000, int capacity = 10000, int innerCapacity = 100)
+        {
+            this.threadCount = threadCount;
+            this.workLoadPerThread = workLoadPerThread;
+            this.distribution = distribution;
+            this.theta = theta;
+            this.recordCount = recordCount;
+            this.dictionary = DictionaryFactory.newInstance(type);
+            this.dictionary.Init(capacity, innerCapacity, recordCount);
+            this.capacity = capacity;
+            this.innerCapacity = innerCapacity;
+            this.type = type;
+        }
+
         public void printArguments()
         {
             Console.WriteLine("worker: {0}", this.threadCount);
@@ -63,13 +203,13 @@ namespace TransactionBenchmarkTest
             Console.WriteLine("Distribution: {0}", distribution.ToString());
             Console.WriteLine("theta value: {0}", this.theta);
             Console.WriteLine("dictionary capacity : {0}", this.capacity);
-            Console.WriteLine("version list dictionary capacity : {0}", this.innerCapacity);      
+            Console.WriteLine("version list dictionary capacity : {0}", this.innerCapacity);
+            Console.WriteLine("dictionary type : {0}", this.type);
         }
 
         public void Run()
         {
             printArguments();
-            LoadData(5);
             List<Worker> workerList = new List<Worker>();
             List<Thread> threadList = new List<Thread>();
 
@@ -158,13 +298,13 @@ namespace TransactionBenchmarkTest
 
         class Worker
         {
-            private readonly Dictionary<long, Dictionary<long, VersionEntry>> dictionary;
+            private IDictionaryComponent dictionary;
             private readonly long[] keys;
             private volatile bool isFinished = false;
             private volatile int count = 0;
             private int workLoad;
             private YCSBDataGenerator dataGenerator;
-            public Worker(Dictionary<long, Dictionary<long, VersionEntry>> dictionary, int workLoad,
+            public Worker(IDictionaryComponent dictionary, int workLoad,
                 int recordCount, Distribution dist, double theta)
             {
                 this.dictionary = dictionary;
@@ -184,15 +324,9 @@ namespace TransactionBenchmarkTest
 
             public void Run()
             {
-                Dictionary<long, VersionEntry> list = null;
-                VersionEntry entry = null;
                 for (int i = 0; i < workLoad; i++)
                 {
-                    list = dictionary[keys[i]];
-                    if (list != null)
-                    {
-                        entry = list[0];
-                    }
+                    this.dictionary.RandomAcess(keys[i]);
                     count++;
                 }
                 isFinished = true;
@@ -219,6 +353,7 @@ namespace TransactionBenchmarkTest
             double theta = 0.8;
             int capacity = 1000000;
             int innerCapacity = 100;
+            string type = "simple";
 
             OptionSet optionSet = new OptionSet()
             {
@@ -255,10 +390,13 @@ namespace TransactionBenchmarkTest
                 },
                 {
                     "ic|innercapacity=", "the initial capacity of the dictionary ", v => innerCapacity = int.Parse(v)
+                },
+                {
+                    "y|type=", "the type of the dictionary ", v => type = v
                 }
             };
             optionSet.Parse(args);
-            RawDictionaryBenchmark benchmark = new RawDictionaryBenchmark(workerCount, workloadCount,
+            RawDictionaryBenchmark benchmark = new RawDictionaryBenchmark(type, workerCount, workloadCount,
                 distribution, theta, recordCount, capacity, innerCapacity);
             benchmark.Run();
     }
