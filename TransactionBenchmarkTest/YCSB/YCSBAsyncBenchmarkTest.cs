@@ -555,18 +555,21 @@
 
             int delta_t = 1;
             int round = 0;
-            long lastTimeTotal = 0;
+            int lastTimeTotal = 0;
+            int lastTimeCommit = 0;
             while (true)
             {
                 Thread.Sleep(delta_t*1000);     // sleep 1s
                 round++;
 
                 int total = 0;
+                int commit = 0;
                 bool allok = true;
 
                 foreach (TransactionExecutor executor in this.executorList)
                 {
                     total += executor.FinishedTxs;
+                    commit += executor.CommittedTxs;
                     allok &= executor.AllRequestsFinished;
                 }
                 if (round == this.stableRoundStart)
@@ -584,9 +587,11 @@
                     }
                     break;
                 }
-
-                Console.WriteLine("Elapsed ~{0}s, Finished {1} TXs, {2} Ops/s", round*delta_t, total, total - lastTimeTotal);
+                double abortRatioLocal = (total == lastTimeTotal ? 0 : 1 - 1.0 * (commit - lastTimeCommit) / (total - lastTimeTotal));
+                Console.WriteLine("Elapsed ~{0}s, Finished {1} TXs, {2} Ops/s, Commit {3} , Abort : {4}", round * delta_t, total,
+                    total - lastTimeTotal,(commit - lastTimeCommit), abortRatioLocal);
                 lastTimeTotal = total;
+                lastTimeCommit = commit;
                 if (allok)
                 {
                     break;
@@ -601,15 +606,19 @@
                 (this.versionDb as PartitionedCassandraVersionDb).StopMonitors();
             }
 
+            int totalCommit = 0;
+
             foreach (TransactionExecutor executor in this.executorList)
             {
+                totalCommit += executor.CommittedTxs;
                 executor.Active = false;
             }
             
             Console.WriteLine("Finished !");
             long runSeconds = (this.testEndTicks - this.testBeginTicks) / 10000000;
-            Console.WriteLine("Time Cost : {0}, Finish Count: {1}, Throughput : {2} txn/s", runSeconds,
-                this.txCountPerExecutor * this.executorCount, this.txCountPerExecutor * this.executorCount / runSeconds);
+            double abortRatio = (this.txCountPerExecutor * this.executorCount == 0 ? 0 : 1 - 1.0 * totalCommit / (this.txCountPerExecutor * this.executorCount)); 
+            Console.WriteLine("Time Cost : {0}, Finish Count: {1}, Throughput : {2} txn/s , AbortRatio: {3}", runSeconds,
+                this.txCountPerExecutor * this.executorCount, this.txCountPerExecutor * this.executorCount / runSeconds, abortRatio);
         }
 
         internal void Stats2()
@@ -967,6 +976,7 @@
                 workloadReloadAction = workload =>
                 {
                     YCSBWorkload ycsbWorkload = workload as YCSBWorkload;
+                    ycsbWorkload.Type = generator.NextOperation();
                     ycsbWorkload.Key = generator.NextIntKey();
                     ycsbWorkload.Value = payload;
                 };
